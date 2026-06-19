@@ -98,6 +98,11 @@ tbody td { padding: 8px; }
 .badge { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .tr { text-align: right; }
 .tc { text-align: center; }
+/* Wide tables scroll inside their card instead of stretching the whole page */
+html { overflow-x: clip; }
+#pos-table, #picks-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#pos-table table, #picks-table table { min-width: 560px; }
+@media (max-width:760px){ table { font-size: 12px; } thead th, tbody td { padding: 6px 6px; } }
 
 .smalls-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .small-chip { background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
