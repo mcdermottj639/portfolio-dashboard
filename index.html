@@ -1276,6 +1276,7 @@ function optCard(o,cid){
   return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+dteB+' '+itmB+' '+st+'</div></div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+m.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   (o.summary?'<div class="cross-note" style="background:var(--surface-2);color:var(--text);margin-top:10px;margin-bottom:0">'+o.summary+'</div>':'')+fill+
+  (o.rollAlert?'<div class="cross-note" style="background:#fff7ed;color:#92400e;margin:8px 0 0">🔁 '+o.rollAlert+'</div>':'')+
   (o.strike!=null&&o.perShare!=null?'<div style="font-size:10px;color:#9ca3af;margin:10px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:130px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
 }
 function ideaCard(i,cid){
@@ -1285,6 +1286,7 @@ function ideaCard(i,cid){
   if(i.breakeven!=null)rows.push(['Breakeven','$'+i.breakeven]);
   if(i.maxLoss!=null)rows.push(['Max loss','$'+i.maxLoss]);
   if(i.income!=null)rows.push(['Income','~$'+i.income]);
+  if(i.annYield!=null)rows.push(['Ann. yield',i.annYield+'%']);
   if(live){ if(i.delta!=null)rows.push(['Delta',i.delta]); if(i.iv!=null)rows.push(['IV',i.iv+'%']); if(i.openInterest!=null)rows.push(['Open int',i.openInterest]); if(i.pop!=null)rows.push(['POP',i.pop+'%']); }
   const tag='<span class="badge" style="background:'+(live?'#d1fae5':'var(--surface-2)')+';color:'+(live?'#065f46':'#9ca3af')+'">'+(live?'● LIVE':'EST')+'</span>';
   const cc=i.strategy==='Covered call';
@@ -1303,6 +1305,10 @@ const OPT_KNOWLEDGE=[
   ['💵 Cash-secured put','Sell a put while holding enough cash to buy 100 shares at the strike. You get paid to potentially buy a stock you want at a lower effective price; if it stays above the strike you just keep the premium.'],
   ['🔤 The Greeks','<b>Delta</b> ≈ how much the option moves per $1 of stock. <b>Theta</b> = daily time decay (works against buyers). <b>Vega</b> = sensitivity to volatility. <b>Gamma</b> = how fast delta changes. Long options lose value as expiry nears, all else equal.'],
   ['⚠️ Key risks','Options expire — they can go to $0. Buying: max loss is the premium. Selling naked: losses can be large/unlimited. Assignment can happen early on ITM short options. Wide bid/ask and low volume hurt fills — check open interest.'],
+  ['↔️ Vertical spreads','Buy one option and sell another at a different strike, same expiry. Caps both cost and risk — a call <b>debit spread</b> is a cheaper, defined-risk way to play upside than a naked long call.'],
+  ['🦺 Collar','On a stock you own 100+ shares of: buy a protective put and sell a call to pay for it. Locks in a floor and a ceiling — a cheap way to protect a big winner.'],
+  ['🔁 Rolling','Close an option and reopen a similar one further out (and/or at a new strike). Used to avoid assignment on a short call, buy more time, or collect additional premium.'],
+  ['🎡 The Wheel','Sell cash-secured puts on a stock you like; if assigned, you own the shares and sell covered calls against them — a repeatable income loop.'],
 ];
 function renderOptions(app,o){
   _optCharts=[];
@@ -1318,6 +1324,15 @@ function renderOptions(app,o){
   h+='<div class="card"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · data-driven · est. premiums</span></span></div>';
   if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls from the oversold scan + covered-call income on your 100+ share holdings).</div>';
   else h+='<div class="picks-grid2">'+ideas.map(function(i,k){return ideaCard(i,'pf-idea-'+k);}).join('')+'</div><div class="fund-note">Estimated premiums — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
+  h+='</div>';
+  // Covered-call income ranker (your 100+ share holdings, by annualized yield)
+  const ccs=ideas.filter(function(i){return i.strategy==='Covered call';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
+  if(ccs.length){ h+='<div class="card"><div class="card-title"><span>💰 Covered-Call Income <span class="card-hint">your 100+ share holdings · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+ccs.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr"><b style="color:#10b981">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ price × (365 ÷ days). Caps upside at the strike; the premium is yours to keep.</div></div>'; }
+  // Options P&L (closed trades)
+  const hist=(o&&o.history)||[];
+  h+='<div class="card"><div class="card-title"><span>📒 Options P&amp;L <span class="card-hint">closed trades</span></span></div>';
+  if(!hist.length)h+='<div class="tech-empty">No closed option trades in the history yet.</div>';
+  else{ const rz=(o.realized||0); h+='<div style="font-size:13px;margin-bottom:8px">Realized: <b style="color:'+(rz>=0?'#10b981':'#ef4444')+'">'+(rz>=0?'+':'-')+fmtD(Math.abs(rz))+'</b></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Net P&amp;L</th><th class="tr">Trades</th><th class="tr">Closed</th></tr></thead><tbody>'+hist.map(function(x){return '<tr><td class="sym">'+x.symbol+'</td><td class="tr '+(x.net>=0?'pos':'neg')+'">'+(x.net>=0?'+':'-')+fmtD(Math.abs(x.net))+'</td><td class="tr">'+x.trades+'</td><td class="tr" style="color:#9ca3af">'+(x.date||'')+'</td></tr>';}).join('')+'</tbody></table></div>'; }
   h+='</div>';
   // Knowledge
   h+='<div class="card"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+

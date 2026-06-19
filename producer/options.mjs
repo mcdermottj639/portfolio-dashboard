@@ -120,9 +120,11 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
         ];
       } else {
         base.income = +(prem * 100).toFixed(0);
+        base.annYield = px > 0 ? Math.round((prem / px) * (365 / t.dte) * 100) : null;
+        base.shares = Math.floor(t.shares);
         base.thesis = [
           `You own ${Math.floor(t.shares)} sh of ${t.underlying} — sell the $${strike} call exp ${base.expiration} for ~$${base.income} income (live mark $${prem.toFixed(2)}).`,
-          `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%). Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}. Keep premium + shares if it expires below.`,
+          `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}. Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}. Keep premium + shares if it expires below.`,
           `Defined-risk income — same structure as your IREN call.`,
         ];
       }
@@ -141,8 +143,10 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
       ];
     } else {
       base.income = +(prem * 100).toFixed(0);
+      base.annYield = px > 0 ? Math.round((prem / px) * (365 / t.dte) * 100) : null;
+      base.shares = Math.floor(t.shares);
       base.thesis = [
-        `You own ${Math.floor(t.shares)} sh of ${t.underlying} — selling a $${strike} call (~${t.dte}d) collects ~$${(prem * 100).toFixed(0)} income (est).`,
+        `You own ${Math.floor(t.shares)} sh of ${t.underlying} — selling a $${strike} call (~${t.dte}d) collects ~$${(prem * 100).toFixed(0)} income (est)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}.`,
         `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%); keep premium + shares if it expires below.`,
         `Estimate — confirm live premium in the chain.`,
       ];
