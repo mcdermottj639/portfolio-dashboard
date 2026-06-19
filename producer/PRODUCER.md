@@ -120,6 +120,18 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       top 3 with thesis). `build-data.mjs` embeds it as `data.picks`; the dashboard reads it
       directly (the old Kyle note is retired).
 
+3c. **Options page** (the Options tab). Fully Robinhood-driven; can run every snapshot
+   (cheap) or once/day with picks.
+   1. `mcp__claude_ai_Robinhood__get_option_orders { account_number: <account> }`
+      → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
+   2. `mcp__claude_ai_Robinhood__get_option_positions { account_number: <account>, nonzero: true }`
+      → `producer/raw/options-positions.json` (open contracts; may be empty).
+   3. `node producer/options-build.mjs` → writes `producer/raw/options.json`
+      (analyzes your contracts — covered/naked, DTE, breakeven, moneyness — and generates
+      directional ideas from the Daily Picks scan + covered-call income on your 100+ share
+      holdings). `build-data.mjs` embeds it as `data.options`. Needs `positions.json`,
+      `quotes.json`, and (for ideas) `picks.json` from the steps above.
+
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```
    PF_PASSPHRASE="<the dashboard passphrase>" node producer/build-data.mjs "<label>"

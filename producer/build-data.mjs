@@ -116,6 +116,9 @@ const data = {
 // the dashboard reads it directly (the old Kyle-note path is retired).
 const picksFile = filesMatching(/^picks\.json$/)[0];
 if (picksFile) data.picks = readJSON(picksFile);
+// Options page (your positions/pending + directional ideas). Embedded as data.options.
+const optionsFile = filesMatching(/^options\.json$/)[0];
+if (optionsFile) data.options = readJSON(optionsFile);
 
 await emit(data);
 console.log('built:',
