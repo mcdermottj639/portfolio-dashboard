@@ -183,8 +183,21 @@ html { overflow-x: clip; }
 .legend-row { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:11px; color:#6b7280; }
 
 /* ─── Tab Bar ─── */
-.tabbar { position: sticky; top: env(safe-area-inset-top); z-index: 100; display: flex; gap: 8px; background: #f0f2f5; padding: 4px 0 12px; margin-bottom: 4px; }
-.tab { flex: 1 1 0; min-width: 0; max-width: 260px; padding: 11px 12px; border-radius: 12px; border: none; background: white; color: #6b7280; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; white-space: nowrap; }
+.tabbar { position: sticky; top: env(safe-area-inset-top); z-index: 100; display: flex; flex-wrap: wrap; gap: 8px; background: #f0f2f5; padding: 4px 0 12px; margin-bottom: 4px; }
+/* Analyze page */
+.az-link { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+.az-search { display: flex; gap: 8px; }
+.az-search input { flex: 1; min-width: 0; padding: 11px 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 16px; background: var(--surface-2); color: var(--text); }
+.az-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 11px 16px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.az-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.az-chip { background: var(--surface-2); color: var(--text); font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; cursor: pointer; }
+.az-gauge { width: 132px; height: 132px; border-radius: 50%; margin: 4px auto 0; display: flex; align-items: center; justify-content: center; }
+.az-gauge-in { width: 100px; height: 100px; border-radius: 50%; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+html[data-theme="dark"] .az-gauge-in { background: #161616; }
+.az-track { height: 7px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+.az-fill { height: 100%; border-radius: 4px; }
+.az-level { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 13px; background: var(--surface-2); border-radius: 10px; margin-bottom: 8px; }
+.tab { flex: 1 1 auto; min-width: 74px; max-width: 260px; padding: 11px 12px; border-radius: 12px; border: none; background: white; color: #6b7280; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; white-space: nowrap; }
 .tab:hover { color: #1c1c1e; }
 .tab.active { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); color: white; box-shadow: 0 2px 8px rgba(15,52,96,0.3); }
 .tab .tab-sub { font-size: 10px; opacity: 0.7; font-weight: 500; margin-left: 4px; }
@@ -314,6 +327,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
   <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
   <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Picks<span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
+  <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
 </div>
 <div id="page-portfolio">
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
@@ -326,6 +340,9 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
 </div>
 <div id="page-options" style="display:none">
   <div id="options-app"><div class="loading-wrap"><div class="spinner"></div>Loading options…</div></div>
+</div>
+<div id="page-analyze" style="display:none">
+  <div id="analyze-app"><div class="loading-wrap"><div class="spinner"></div>Loading…</div></div>
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
@@ -996,7 +1013,7 @@ function _renderPos(rows){
   const smallRows=rows.filter(r=>r.val>0&&r.val<SMALL_THR);
   const sorted=[...mainRows].sort((a,b)=>_sd*((b[_sc]??0)-(a[_sc]??0)));
   const cols=[
-    {k:'symbol',lbl:'Symbol',th:'',            fn:r=>`<span class="sym">${r.symbol}</span>`},
+    {k:'symbol',lbl:'Symbol',th:'',            fn:r=>`<span class="sym az-link" onclick="azConfirm('${r.symbol}')">${r.symbol}</span>`},
     {k:'pct',   lbl:'% Port',th:'tr sortable', fn:r=>`<span style="font-weight:700;color:${r.r.color}">${fmt(r.pct,1)}%</span>`},
     {k:'pct',   lbl:'Risk',  th:'tc',           fn:r=>`<span class="badge" style="background:${r.r.bg};color:${r.r.fg}">${r.r.level}</span>`},
     {k:'qty',   lbl:'Shares',th:'tr sortable', fn:r=>fmt(r.qty,r.qty<1?4:2)},
@@ -1183,13 +1200,14 @@ let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null;
 let PICK_TRIM=[],PICK_ADD=[],PICK_INCOME=[],PICK_HISTORY=[],MKTX=null;
 
 function switchTab(tab){
-  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options'};
+  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze'};
   for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none'; const bt=document.getElementById('tab-'+t); if(bt)bt.classList.toggle('active',t===tab); }
   try{localStorage.setItem('dash_tab',tab);}catch(e){}
   window.scrollTo(0,0);
   if(tab==='picks'&&!_picksInit){_picksInit=true;initPicks();}
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
   if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
+  if(tab==='analyze'&&!_analyzeInit){_analyzeInit=true;initAnalyze();}
 }
 window.switchTab=switchTab;
 
@@ -1302,7 +1320,7 @@ function ideaCard(i,cid){
   const refPx=ot==='put'?i.strike/0.93:(i.covered?i.strike/1.12:i.strike/1.05);
   const spec={type:ot,side:os,strike:i.strike,prem:prem,contracts:1,covered:!!i.covered,costBasis:i.covered?i.strike/1.12:undefined,px:refPx};
   if(prem!=null)_optCharts.push([cid,spec]);
-  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+'</div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr az-link" onclick="azConfirm(\''+i.underlying+'\')">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+'</div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
   (prem!=null?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
@@ -1355,6 +1373,125 @@ function renderOptions(app,o){
 
 function runNewAnalysis(){ try{sendPrompt("run my stock analysis");}catch(e){alert("Go to the chat window and type: run my stock analysis");} }
 window.runNewAnalysis=runNewAnalysis;
+
+/* ═══════════════════════════════════════════
+   ANALYZE PAGE  (per-ticker deep dive, page 5)
+═══════════════════════════════════════════ */
+let _analyzeInit=false, _azLast=null;
+function initAnalyze(){ renderAzShell(); if(_azLast)runAnalysis(_azLast); }
+function renderAzShell(){
+  const app=document.getElementById('analyze-app'); if(!app)return;
+  let chips='';
+  try{ const P=window.__PORT; const syms=P&&P.enriched?[...new Set(P.enriched.filter(p=>p.val>0).sort((a,b)=>b.val-a.val).map(p=>p.symbol))].slice(0,10):[];
+    if(syms.length)chips='<div style="font-size:11px;color:#9ca3af;margin:12px 0 6px">Your top holdings</div><div class="az-chips">'+syms.map(s=>'<span class="az-chip" onclick="runAnalysis(\''+s+'\')">'+s+'</span>').join('')+'</div>'; }catch(e){}
+  app.innerHTML=
+    '<div class="picks-hero"><div><div class="ph-label">Analyze</div><div class="ph-date">Single-Stock Deep Dive</div><div class="ph-stale">Technical + fundamental read from the latest snapshot · research only.</div></div></div>'+
+    '<div class="card"><div class="az-search"><input id="az-ticker" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button></div>'+chips+'</div>'+
+    '<div id="az-result"></div>';
+}
+function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(s)runAnalysis(s); }
+window.azGo=azGo;
+function azBars(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}; const b=h[sym]||[]; return b.map(x=>parseFloat(x.close_price!=null?x.close_price:x.c)).filter(c=>c>0); }
+function azQuote(sym){ const q=(window.__DATA&&window.__DATA.quotes)||{}; return q[sym]||null; }
+function azOverview(sym){ try{ const k=makeKey(AV,{tool_name:'COMPANY_OVERVIEW',arguments:JSON.stringify({symbol:avSym(sym)})}); return parseAV(((window.__DATA&&window.__DATA.recorded)||{})[k]); }catch(e){return null;} }
+function _smaN(a,n){ if(!a||a.length<n)return null; let s=0; for(let i=a.length-n;i<a.length;i++)s+=a[i]; return s/n; }
+function _stdevN(a){ if(a.length<2)return 0; const m=a.reduce((s,x)=>s+x,0)/a.length; let v=0; for(const x of a)v+=(x-m)*(x-m); return Math.sqrt(v/a.length); }
+const _cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+function analyzeStock(sym){
+  const closes=azBars(sym), q=azQuote(sym), ov=azOverview(sym)||{};
+  let price=q?parseFloat(q.last_trade_price||q.adjusted_previous_close||0):0;
+  if(!price&&closes.length)price=closes[closes.length-1];
+  if(!price) return null;
+  const prev=q?parseFloat(q.adjusted_previous_close||q.previous_close||0):0;
+  const dayChg=prev>0?(price-prev)/prev*100:null;
+  const hasTA=closes.length>=20;
+  let rsi=null,sma20=null,sma50=null,mom20=null,recHi=null,recLo=null,vol=null,ytd=null,trendUp=null;
+  if(hasTA){
+    rsi=calcRSI(closes); sma20=_smaN(closes,20); sma50=_smaN(closes,Math.min(50,closes.length));
+    mom20=closes.length>21?(price/closes[closes.length-21]-1)*100:null;
+    const rec=closes.slice(-Math.min(30,closes.length)); recHi=Math.max(...rec); recLo=Math.min(...rec);
+    const rets=[]; for(let i=Math.max(1,closes.length-20);i<closes.length;i++)rets.push(closes[i]/closes[i-1]-1);
+    vol=_stdevN(rets); ytd=closes[0]>0?(price/closes[0]-1)*100:null;
+    trendUp=(sma20&&sma50)?(price>sma20&&sma20>=sma50):(sma20?price>sma20:null);
+  }
+  const hi52=parseFloat(ov['52WeekHigh'])||recHi||null, lo52=parseFloat(ov['52WeekLow'])||recLo||null;
+  const pctFromHigh=hi52?(price/hi52-1)*100:null;
+  let pattern=45,signal=45,risk=50;
+  if(hasTA){
+    pattern=_cl(50+(trendUp?22:-18)+(sma50&&sma20>sma50?8:-6)+(mom20!=null?_cl(mom20,-15,15):0),5,98);
+    const rsiGood=rsi==null?0:(rsi>=40&&rsi<=68?18:rsi<30?10:rsi>75?-15:0);
+    signal=_cl(50+(trendUp?16:-14)+rsiGood+(dayChg!=null?_cl(dayChg*2,-10,10):0),5,98);
+    risk=_cl(70-_cl((vol||0)*400,0,40)+(pctFromHigh!=null&&pctFromHigh<-10?8:0)-(rsi!=null&&rsi>78?15:0),5,95);
+  }
+  const setup=Math.round(hasTA?(pattern*0.4+signal*0.35+risk*0.25):42);
+  let label,tone,conf;
+  if(!hasTA){ label='Limited Data'; tone='neu'; conf=40; }
+  else if(rsi<30&&trendUp!==false){ label='Oversold Bounce'; tone='pos'; conf=_cl(setup,45,80); }
+  else if(rsi>78){ label='Overbought — Caution'; tone='neg'; conf=_cl(setup-10,30,70); }
+  else if(trendUp&&setup>=62){ label='Buy Opportunity'; tone='pos'; conf=_cl(setup,55,90); }
+  else if(trendUp){ label='Accumulate / Hold'; tone='pos'; conf=_cl(setup,45,75); }
+  else if(trendUp===false){ label='Caution — Downtrend'; tone='neg'; conf=_cl(100-setup,40,75); }
+  else { label='Hold / Watch'; tone='neu'; conf=_cl(setup,40,70); }
+  const k=vol?Math.max(0.05,vol*2.2):0.08;
+  const entryLo=+(price*0.985).toFixed(2), entryHi=+price.toFixed(2);
+  const stop=+Math.min(recLo&&recLo<price?recLo*0.99:price*(1-k), price*(1-k)).toFixed(2);
+  const r=Math.max(price-stop,price*0.02);
+  const tp1=+(recHi&&recHi>price?Math.min(recHi,price+r*1.8):price+r*1.6).toFixed(2);
+  const tp2=+Math.max(price+r*2.6, hi52&&hi52>price?Math.min(hi52,price+r*3):price+r*2.6).toFixed(2);
+  return { sym, price:+price.toFixed(2), dayChg, label, tone, conf:Math.round(conf), setup,
+    pattern:Math.round(pattern), signal:Math.round(signal), risk:Math.round(risk),
+    rsi:rsi!=null?Math.round(rsi):null, mom20, ytd, hi52, lo52, pctFromHigh, vol, trendUp, hasTA, sma20,
+    sector:ov.Sector||null, pe:(ov.PERatio&&ov.PERatio!=='None')?ov.PERatio:(ov.TrailingPE||null), fwdPE:(ov.ForwardPE&&ov.ForwardPE!=='None')?ov.ForwardPE:null,
+    revGrowth:ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:null,
+    divYield:ov.DividendYield!=null?parseFloat(ov.DividendYield)*100:null,
+    entryLo, entryHi, stop, tp1, tp2, invalid:+(stop*0.997).toFixed(2) };
+}
+function azScoreColor(v){ return v>=66?'#10b981':v>=45?'#f59e0b':'#ef4444'; }
+function azBar(lbl,v,desc){ const c=azScoreColor(v); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>'+lbl+'</span><span style="color:'+c+'">'+v+'</span></div><div class="az-track"><div class="az-fill" style="width:'+v+'%;background:'+c+'"></div></div><div style="font-size:10.5px;color:#9ca3af;margin-top:2px">'+desc+'</div></div>'; }
+function runAnalysis(sym){
+  _azLast=sym;
+  const el=document.getElementById('az-result'); const inp=document.getElementById('az-ticker'); if(inp)inp.value=sym;
+  if(!el)return;
+  const a=analyzeStock(sym);
+  if(!a){ el.innerHTML='<div class="card"><div class="tech-empty">No data for <b>'+sym+'</b> in this snapshot. Your holdings, today’s picks, and the market symbols are analyzable; others get added on the next producer run.</div></div>'; return; }
+  const tc=a.tone==='pos'?'#10b981':a.tone==='neg'?'#ef4444':'#9ca3af';
+  const sc=azScoreColor(a.setup);
+  const dC=a.dayChg==null?'#9ca3af':a.dayChg>=0?'#10b981':'#ef4444';
+  const setupTxt=a.setup>=66?'Strong setup':a.setup>=45?'Average setup — proceed with care':'Weak setup';
+  const nar=[];
+  if(a.hasTA){
+    nar.push(['📈 Current Trend', a.trendUp?'#10b981':a.trendUp===false?'#ef4444':'#f59e0b',
+      (a.trendUp?'Uptrend':a.trendUp===false?'Downtrend':'Sideways')+'. Price '+(a.sma20?(a.price>=a.sma20?'above':'below')+' its 20-day average':'')+(a.mom20!=null?'; '+(a.mom20>=0?'+':'')+a.mom20.toFixed(1)+'% over ~20 sessions.':'.')]);
+    nar.push(['🎯 Momentum / RSI', a.rsi==null?'#9ca3af':a.rsi>70?'#ef4444':a.rsi<30?'#3b82f6':'#10b981',
+      'RSI '+(a.rsi!=null?a.rsi:'—')+(a.rsi>70?' — overbought, stretched.':a.rsi<30?' — oversold, bounce potential.':' — healthy, room to run.')+(a.pctFromHigh!=null?' Trading '+Math.abs(a.pctFromHigh).toFixed(0)+'% below the 52-week high.':'')]);
+    nar.push(['💡 Why This Signal', tc, a.label+' — '+(a.trendUp?'trend and ':'')+'the indicators net to a '+a.setup+'/100 setup, ~'+a.conf+'% confidence. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':'Favor pullbacks toward the entry zone.')]);
+  } else {
+    nar.push(['ℹ️ Limited Data', '#9ca3af', 'Not enough price history in this snapshot for a full technical read on '+sym+'. Showing price + fundamentals; full TA appears once it has daily history (holdings & picks get it on the next run).']);
+  }
+  if(a.sector||a.pe||a.revGrowth!=null) nar.push(['🏛️ Fundamentals', '#6366f1',
+    [a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—']);
+  const levels='Entry $'+a.entryLo+'-$'+a.entryHi+'  Stop $'+a.stop+'  TP1 $'+a.tp1+'  TP2 $'+a.tp2+'  Invalid <$'+a.invalid;
+  el.innerHTML=
+    '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px">'+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'">'+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
+    '<div class="card" style="text-align:center"><div class="az-gauge" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
+      (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+'</div>':'')+'</div>'+
+    '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+
+    '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
+      [['Entry Zone','$'+a.entryLo+' – $'+a.entryHi,'#6366f1','Suggested entry area'],['Stop Loss','$'+a.stop,'#ef4444','Exit if price closes below'],['Target 1','$'+a.tp1,'#10b981','First target ('+((a.tp1/a.price-1)*100).toFixed(1)+'%)'],['Target 2','$'+a.tp2,'#10b981','Extended ('+((a.tp2/a.price-1)*100).toFixed(1)+'%)']].map(L=>'<div class="az-level" style="border-left:3px solid '+L[2]+'"><div><div style="font-size:13px;font-weight:700">'+L[0]+'</div><div style="font-size:11px;color:#9ca3af">'+L[3]+'</div></div><div style="font-size:15px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+
+      '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button></div>'+
+    '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
+    '<div class="disclaimer">Algorithmic technical/fundamental read from your latest snapshot — probabilities, not certainty, and not financial advice. ~15-min delayed.</div>';
+}
+window.runAnalysis=runAnalysis;
+function azConfirm(sym){
+  let ov=document.getElementById('az-confirm');
+  if(!ov){ ov=document.createElement('div'); ov.id='az-confirm'; ov.style.cssText='position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);padding:24px'; document.body.appendChild(ov); }
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:320px;width:100%;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif"><div style="font-size:30px">🔍</div><div style="font-size:16px;font-weight:800;margin:6px 0 2px;color:#1c1c1e">Analyze '+sym+'?</div><div style="font-size:12px;color:#6b7280;margin-bottom:16px">Run the full technical + fundamental breakdown.</div><div style="display:flex;gap:10px"><button class="az-btn" style="flex:1;background:#e5e7eb;color:#1c1c1e" onclick="azConfirmClose()">Cancel</button><button class="az-btn" style="flex:1" onclick="azConfirmGo(\''+sym+'\')">Yes, analyze</button></div></div>';
+  ov.style.display='flex';
+}
+function azConfirmClose(){ const ov=document.getElementById('az-confirm'); if(ov)ov.style.display='none'; }
+function azConfirmGo(sym){ azConfirmClose(); _azLast=sym; switchTab('analyze'); runAnalysis(sym); }
+window.azConfirm=azConfirm; window.azConfirmClose=azConfirmClose; window.azConfirmGo=azConfirmGo;
 
 function heldInfo(sym){ const P=window.__PORT; if(!P)return null; const p=P.enriched.find(e=>e.symbol===sym&&e.val>0); return p?{pct:p.pct,val:p.val}:null; }
 function clusterFor(sym){ for(const [name,def] of Object.entries(CLUSTERS)){ if(def.tickers.includes(sym))return name; } return null; }
