@@ -126,6 +126,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
    2. `mcp__claude_ai_Robinhood__get_option_positions { account_number: <account>, nonzero: true }`
       → `producer/raw/options-positions.json` (open contracts; may be empty).
+   2b. **Live quotes for YOUR contracts:** collect the `option_id` of every pending order leg
+      (from step 1) and every open position (step 2), then `get_option_quotes { instrument_ids:[…] }`
+      and save the raw result to `producer/raw/option-pos-quotes.json`. `options-build.mjs` uses
+      these for live mark / P&L / Greeks / assignment odds on your positions.
    3. **Live idea premiums:** `node producer/options-plan.mjs` prints the idea contracts to
       price. For each, `get_option_instruments { chain_symbol, expiration_dates, type }` → pick
       the nearest listed strike to the printed target → `get_option_quotes { instrument_ids:[id] }`,

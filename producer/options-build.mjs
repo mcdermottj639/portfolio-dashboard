@@ -45,6 +45,30 @@ for (const f of readdirSync(RAW).filter((x) => /^quotes.*\.json$/.test(x))) {
   }
 }
 
+// live quotes for the user's OWN contracts (pending + open), keyed by option instrument id
+const posQById = {};
+if (existsSync(join(RAW, 'option-pos-quotes.json'))) {
+  const d = unwrap(readJSON(join(RAW, 'option-pos-quotes.json')));
+  for (const q of (Array.isArray(d) ? d : (d.data?.results ?? d.results ?? d.quotes ?? []))) {
+    const id = q.instrument_id || q.id || q.option_id; if (id) posQById[id] = q.quote ?? q;
+  }
+}
+function enrichLive(a, optionId) {
+  const q = posQById[optionId]; if (!q || !a) return a;
+  a.mark = num(q.mark_price ?? q.adjusted_mark_price);
+  a.bid = num(q.bid_price); a.ask = num(q.ask_price);
+  a.delta = q.delta != null ? +num(q.delta).toFixed(2) : null;
+  a.theta = q.theta != null ? +num(q.theta).toFixed(3) : null;
+  a.iv = q.implied_volatility != null ? +(num(q.implied_volatility) * 100).toFixed(0) : null;
+  a.openInterest = num(q.open_interest);
+  if (q.break_even_price != null) a.breakeven = num(q.break_even_price);
+  if (a.mark != null && a.perShare != null)
+    a.pnl = +(((a.side === 'short' ? (a.perShare - a.mark) : (a.mark - a.perShare)) * 100 * (a.contracts || 1))).toFixed(0);
+  if (a.delta != null) a.assignProb = Math.round(Math.abs(a.delta) * 100); // ≈ chance ITM at expiry
+  a.live = true;
+  return a;
+}
+
 function analyzeOrder(o) {
   const leg = (o.legs || [])[0]; if (!leg) return null;
   const sym = o.chain_symbol; const px = pxBySym[sym];
@@ -56,6 +80,9 @@ function analyzeOrder(o) {
     chain_symbol: sym, costBasis: costBySym[sym],
   });
   a.state = o.state; a.openingStrategy = o.opening_strategy || o.closing_strategy || null;
+  a.costBasis = costBySym[sym] != null ? +costBySym[sym] : null;
+  a.limitPrice = num(o.price);
+  enrichLive(a, leg.option_id);
   return a;
 }
 
@@ -74,6 +101,8 @@ if (existsSync(join(RAW, 'options-positions.json'))) {
     const ref = legByOptId[p.option_id]; if (!ref) return null;
     const a = analyzeLeg(ref.leg, pxBySym[p.chain_symbol] || 0, sharesBySym[p.chain_symbol] || 0,
       { quantity: p.quantity, premium: num(p.average_price) * 100 * (num(p.quantity) || 1), direction: ref.o.direction, chain_symbol: p.chain_symbol, costBasis: costBySym[p.chain_symbol] });
+    a.costBasis = costBySym[p.chain_symbol] != null ? +costBySym[p.chain_symbol] : null;
+    enrichLive(a, p.option_id);
     return a;
   }).filter(Boolean);
 }
