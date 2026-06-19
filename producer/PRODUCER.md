@@ -9,7 +9,21 @@ GitHub Pages repo. The phone PWA then loads that `data.json`.
 ```json
 { "account": "<real Robinhood account number>", "passphrase": "<dashboard passphrase>" }
 ```
-Read `account` and `passphrase` from there. Symbols for history: **top 15 holdings by value + SPY + QQQ**.
+Read `account` and `passphrase` from there.
+
+**Market symbols** — the Markets tab renders a fixed set of benchmark/risk/sector tickers
+regardless of what the account holds. These come from `producer/markets.mjs`
+(`MARKET_SYMBOLS`) and must be fetched **every run** in addition to the account's own
+positions, otherwise the Markets tab shows "—" for everything you don't hold:
+
+```
+SPY QQQ DIA IWM            (indexes)
+GLD TLT HYG IBIT           (risk gauges)
+XLK XLC XLY XLF XLV XLI XLP XLE XLU XLB XLRE   (SPDR sectors)
+```
+
+Symbols for **day** history (YTD): top 15 holdings by value + every market symbol above.
+Symbols for **month** history (5Y stats): every market symbol above.
 
 ## Steps
 
@@ -23,13 +37,16 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    |---|---|---|
    | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` |
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols] }` | `producer/raw/quotes.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [top15 + "SPY","QQQ"], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
+   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` |
+   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [top15 + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
+   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
 
    Notes:
    - "all position symbols" = every `symbol` from the positions response.
+   - "all market symbols" = the `MARKET_SYMBOLS` list above (indexes + risk gauges + sectors).
    - "top 15" = the 15 positions with the largest market value. If you must batch
      historicals (≤10 symbols/call), save each batch as `hist-day-1.json`, `hist-day-2.json`, …
+     (and `hist-month-1.json`, `hist-month-2.json`, … for the monthly series).
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 

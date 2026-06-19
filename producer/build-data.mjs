@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
+import { MARKET_SYMBOLS } from './markets.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -86,3 +87,18 @@ console.log('built:',
   positions.length, 'positions ·', Object.keys(quotes).length, 'quotes ·',
   Object.entries(hist).map(([k, v]) => Object.keys(v).length + ' ' + k).join(' · ') || 'no hist',
   '·', Object.keys(recorded).length, 'recorded');
+
+// --- Markets-tab coverage check ---------------------------------------------
+// The Markets tab renders a fixed set of benchmark/risk/sector tickers. Anything
+// missing here renders as "—" on the phone, so surface it loudly — it almost
+// always means the producer didn't fetch quotes/historicals for those symbols.
+const missingQuotes = MARKET_SYMBOLS.filter((s) => !quotes[s]);
+const missingDay = MARKET_SYMBOLS.filter((s) => !(hist.day && hist.day[s]));
+const missingMonth = MARKET_SYMBOLS.filter((s) => !(hist.month && hist.month[s]));
+const warn = (label, syms) => { if (syms.length) console.warn(`⚠️  Markets tab will show "—" — missing ${label} for: ${syms.join(', ')}`); };
+warn('quotes (price + day%)', missingQuotes);
+warn('day historicals (YTD%)', missingDay);
+warn('month historicals (5Y%)', missingMonth);
+if (!missingQuotes.length && !missingDay.length && !missingMonth.length) {
+  console.log('Markets coverage: ✅ all', MARKET_SYMBOLS.length, 'index/risk/sector symbols present');
+}

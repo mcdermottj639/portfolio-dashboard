@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
+import { MARKET_SYMBOLS } from './markets.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,9 +39,27 @@ function series(symbol, endPx, drift) {
   return { symbol, bars: out };
 }
 
+// Deterministic pseudo-price for a symbol so the sample Markets tab is fully populated.
+function mktPx(sym) {
+  let h = 0; for (let i = 0; i < sym.length; i++) h = (h * 31 + sym.charCodeAt(i)) >>> 0;
+  return 40 + (h % 600); // stable 40–640 range
+}
+// ~60 monthly bars (5 years), trending up to endPx, fully deterministic.
+function monthSeries(symbol, endPx, drift) {
+  const out = [], months = 60, start = endPx / (1 + drift);
+  for (let i = 0; i < months; i++) {
+    const t = i / (months - 1);
+    const wave = Math.sin(t * Math.PI * 4) * endPx * 0.03;
+    const c = start + (endPx - start) * t + wave;
+    const d = new Date(Date.UTC(2021, 5 + i, 1));
+    out.push({ begins_at: d.toISOString(), close_price: c.toFixed(2), interpolated: false });
+  }
+  return { symbol, bars: out };
+}
+
 const recorded = {};   // exact-key calls: portfolio, positions, (AV in the real producer)
 const quotes = {};     // per-symbol quote store
-const hist = { day: {} }; // per-symbol historicals, by interval
+const hist = { day: {}, month: {} }; // per-symbol historicals, by interval
 
 // get_portfolio
 recorded[makeKey(RH + 'get_portfolio', { account_number: 'ACCT' })] = {
@@ -68,6 +87,16 @@ const drift = { NVDA: 0.42, MSFT: 0.18, AAPL: -0.05, GLD: 0.21, SPY: 0.11, QQQ: 
 for (const s of [...POS.map((p) => p.symbol), 'SPY', 'QQQ']) {
   const endPx = s === 'SPY' ? 612.4 : s === 'QQQ' ? 548.9 : POS.find((p) => p.symbol === s).px;
   hist.day[s] = series(s, endPx, drift[s] ?? 0.1).bars;
+}
+
+// Markets-tab symbols (indexes + risk gauges + sectors): quotes + day + month history,
+// so the Markets tab renders fully in preview just like the real producer output.
+for (const s of MARKET_SYMBOLS) {
+  const endPx = quotes[s] ? parseFloat(quotes[s].last_trade_price) : mktPx(s);
+  if (!quotes[s]) quotes[s] = { last_trade_price: String(endPx), adjusted_previous_close: (endPx * 0.997).toFixed(2) };
+  const d = drift[s] ?? 0.12;
+  if (!hist.day[s]) hist.day[s] = series(s, endPx, d).bars;
+  hist.month[s] = monthSeries(s, endPx, d + 0.6).bars; // 5Y drift larger than YTD
 }
 
 const now = new Date(); // sample stamp only
