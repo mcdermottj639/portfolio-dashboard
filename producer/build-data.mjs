@@ -120,6 +120,26 @@ if (picksFile) data.picks = readJSON(picksFile);
 const optionsFile = filesMatching(/^options\.json$/)[0];
 if (optionsFile) data.options = readJSON(optionsFile);
 
+// Breadth / Movers (the Markets "Breadth" card → MKTX via data.picks.markets). Computed from
+// data already collected — VIX (Robinhood) + biggest movers in your own book — no extra calls.
+// News sentiment is left out unless AV supplies it (rate-limited); the card degrades gracefully.
+(() => {
+  const fmtChg = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+  const held = new Set((positions || []).map((p) => p.symbol));
+  const moves = [];
+  for (const sym of held) {
+    const q = quotes[sym]; if (!q) continue;
+    const px = parseFloat(q.last_trade_price || 0), pv = parseFloat(q.adjusted_previous_close || q.previous_close || 0);
+    if (px > 0 && pv > 0) moves.push({ t: sym, n: (px / pv - 1) * 100 });
+  }
+  moves.sort((a, b) => b.n - a.n);
+  const top = (arr) => arr.slice(0, 4).map((m) => ({ t: m.t, chg: fmtChg(m.n) }));
+  const markets = {};
+  if (vix != null) markets.vix = { level: vix.toFixed(2), chg: '' };
+  if (moves.length) markets.movers = { gainers: top(moves), losers: top([...moves].reverse()) };
+  if (Object.keys(markets).length) { data.picks = data.picks || {}; data.picks.markets = markets; }
+})();
+
 await emit(data);
 console.log('built:',
   positions.length, 'positions ·', Object.keys(quotes).length, 'quotes ·',

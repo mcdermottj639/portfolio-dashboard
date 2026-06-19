@@ -151,6 +151,12 @@ const pickOv = { // hybrid: AV growth on a couple of finalists; others fall back
   PEP:  { Symbol: 'PEP',  Sector: 'Consumer Defensive', ForwardPE: '16.5', QuarterlyRevenueGrowthYOY: '0.085' },
 };
 const picks = buildPicks(pickFinalists, pickFund, pickOv);
+// sample breadth (VIX + your-book movers) for the Markets "Breadth" card
+picks.markets = {
+  vix: { level: '16.40', chg: '' },
+  movers: { gainers: [{ t: 'NVDA', chg: '+2.0%' }, { t: 'MSFT', chg: '+0.6%' }],
+            losers: [{ t: 'AAPL', chg: '-1.1%' }, { t: 'GLD', chg: '-0.2%' }] },
+};
 
 // --- sample Options (pending covered call + directional ideas) ---
 const optPending = [ analyzeLeg(
