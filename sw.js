@@ -1,9 +1,12 @@
 /* Portfolio Dashboard — service worker
    Strategy:
-     - App shell (html, manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
-     - data.json: network-first with cache fallback (always tries fresh data, falls back to last snapshot offline)
-   Bump CACHE_VERSION whenever the shell (index.html/sw.js/manifest) changes so clients pick it up. */
-const CACHE_VERSION = 'pf-v5';
+     - HTML navigations (index.html / './'): NETWORK-FIRST with cache fallback, so the app
+       always loads the newest UI when online and still works offline. (Previously cache-first,
+       which left installed PWAs stuck a version behind after each update.)
+     - data.json: network-first with cache fallback (freshest snapshot; offline → last snapshot)
+     - other shell assets (manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
+   Bump CACHE_VERSION when the shell changes. */
+const CACHE_VERSION = 'pf-v6';
 const SHELL = [
   './',
   './index.html',
@@ -37,19 +40,22 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
 
-  // data.json — network-first so the app shows the freshest snapshot, cache as backup.
-  if (url.pathname.endsWith('/data.json') || url.pathname.endsWith('data.json')) {
+  // HTML navigations + data.json — network-first so the newest UI/snapshot always loads when
+  // online; fall back to cache offline.
+  const isNav = req.mode === 'navigate'
+    || url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+  if (isNav || url.pathname.endsWith('data.json')) {
     e.respondWith(
       fetch(req).then((res) => {
         const copy = res.clone();
         caches.open(CACHE_VERSION).then((c) => c.put(req, copy));
         return res;
-      }).catch(() => caches.match(req))
+      }).catch(() => caches.match(req).then((hit) => hit || caches.match('./index.html')))
     );
     return;
   }
 
-  // Everything else — cache-first, fall back to network (and cache it).
+  // Everything else (icons, manifest, Chart.js) — cache-first, fall back to network (and cache it).
   e.respondWith(
     caches.match(req).then((hit) =>
       hit || fetch(req).then((res) => {
