@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
+import { avKey, specForId } from './av.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -70,10 +71,22 @@ for (const f of filesMatching(/^hist-(day|week|month).*\.json$/)) {
 const recorded = {};
 recorded[makeKey(RH + 'get_portfolio', { account_number: account })] = { structuredContent: { data: portfolio } };
 recorded[makeKey(RH + 'get_equity_positions', { account_number: account })] = { structuredContent: { data: { positions } } };
-// optional Alpha Vantage passthroughs: producer/raw/av/<exact key>.json
+// optional Alpha Vantage passthroughs (legacy, hand-keyed): producer/raw/av/<exact key>.json
 const avDir = join(RAWDIR, 'av');
 if (existsSync(avDir)) for (const f of readdirSync(avDir).filter((x) => x.endsWith('.json'))) {
   recorded[decodeURIComponent(f.replace(/\.json$/, ''))] = readJSON(join(avDir, f));
+}
+// Alpha Vantage daily snapshots: producer/raw/av-src/<id>.json (id = friendly name
+// from av.mjs). Refreshed ≤ once/day; replayed on every intra-day build. The id is
+// mapped to the exact replay key the shim expects, so the agent never hand-keys.
+const avSrcDir = join(RAWDIR, 'av-src');
+let avCount = 0;
+if (existsSync(avSrcDir)) for (const f of readdirSync(avSrcDir).filter((x) => x.endsWith('.json'))) {
+  const id = f.replace(/\.json$/, '');
+  const spec = specForId(id);
+  if (!spec) { console.warn('⚠️  av-src: no spec for', f, '— skipped (rename to a known id, see av.mjs)'); continue; }
+  recorded[avKey(spec.tool, spec.args)] = readJSON(join(avSrcDir, f));
+  avCount++;
 }
 
 const data = {
@@ -86,7 +99,8 @@ await emit(data);
 console.log('built:',
   positions.length, 'positions ·', Object.keys(quotes).length, 'quotes ·',
   Object.entries(hist).map(([k, v]) => Object.keys(v).length + ' ' + k).join(' · ') || 'no hist',
-  '·', Object.keys(recorded).length, 'recorded');
+  '·', Object.keys(recorded).length, 'recorded ·', avCount, 'AV',
+  avCount ? '' : '(macro/fundamentals will show "—" until av-src is populated)');
 
 // --- Markets-tab coverage check ---------------------------------------------
 // The Markets tab renders a fixed set of benchmark/risk/sector tickers. Anything

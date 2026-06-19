@@ -29,7 +29,9 @@ Symbols for **month** history (5Y stats): every market symbol above.
 
 Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\Portfolio Dashboard`
 
-1. **Create the scratch dir** `producer/raw/` (it is git-ignored; overwrite each run).
+1. **Create the scratch dir** `producer/raw/` (it is git-ignored). Overwrite the Robinhood
+   files each run, but **leave `producer/raw/av-src/` in place** — that holds the once-a-day
+   Alpha Vantage snapshot (step 3) which is reused across intra-day runs.
 
 2. **Call the Robinhood MCP tools** and save each raw result verbatim into `producer/raw/`:
 
@@ -50,11 +52,31 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 
-3. **(Optional) Alpha Vantage** — only if you want fundamentals/macro live. Skipped by
-   default to avoid free-tier rate limits; those sections degrade to "unavailable" without it.
-   If included, save each raw AV response to `producer/raw/av/<key>.json` where `<key>` is the
-   URL-encoded string `mcp__4ae6f0d3-5112-4955-94dc-c6bea90e45dd__TOOL_CALL|{...stable-args...}`.
-   (See `key.mjs` — easier to add later with a small helper than by hand.)
+3. **Alpha Vantage — ONCE PER DAY only** (powers Macro Signals + Fundamentals + Earnings).
+   The free tier is **25 requests/day**, so AV is *not* fetched on every 15-min run — only on
+   the **first run of the trading day**. On every later run, skip this step entirely; the
+   existing `producer/raw/av-src/` files are replayed unchanged.
+
+   **Decide whether to fetch:** look at `producer/raw/av-src/.fetched` (a file containing the
+   last fetch date in ET, `YYYY-MM-DD`). If it is missing or not today's date, do the daily
+   fetch below; otherwise skip to step 4.
+
+   **Daily fetch:**
+   1. Print the plan (auto-computes which holdings to cover from the raw files saved in step 2):
+      ```
+      node producer/av-plan.mjs
+      ```
+      It lists ≤25 calls and confirms the budget. ~19 calls is typical (4 macro + 1 earnings +
+      up to 14 fundamentals).
+   2. For each printed line, call the Alpha Vantage MCP tool
+      `mcp__claude_ai_AlphaVantage__TOOL_CALL` with `{ tool_name: "<tool>", arguments: "<args JSON>" }`
+      and save the **verbatim** result object to the printed path
+      `producer/raw/av-src/<id>.json`. (Free tier allows ~5 calls/min — pace them.)
+   3. Write today's ET date (`YYYY-MM-DD`) into `producer/raw/av-src/.fetched`.
+
+   If AV is unavailable or you skip it, those three sections simply show "—" — everything else
+   still works. `build-data.mjs` maps the saved files to the correct replay keys automatically
+   (no hand-keying) and prints how many AV snapshots it embedded.
 
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```

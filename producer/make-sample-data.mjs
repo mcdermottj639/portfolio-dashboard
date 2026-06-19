@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
+import { avKey } from './av.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -99,6 +100,31 @@ for (const s of MARKET_SYMBOLS) {
   hist.month[s] = monthSeries(s, endPx, d + 0.6).bars; // 5Y drift larger than YTD
 }
 
+// --- sample Alpha Vantage responses (macro + fundamentals + earnings) -------
+// Shapes match what index.html's parseAV/fetchMacro/fetchOverviewBatch expect.
+const avText = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj) }] });
+const avStruct = (obj) => ({ structuredContent: obj });
+// macro: TREASURY_YIELD / FEDERAL_FUNDS_RATE → array of {value}; CPI → ≥13 monthly points
+// (newest first; YoY = (latest-12mo)/12mo); INDEX_DATA VIX → {data:[{close}]}
+recorded[avKey('TREASURY_YIELD', { interval: 'monthly', maturity: '10year' })] = avText([{ date: '2026-06-01', value: '4.32' }]);
+recorded[avKey('FEDERAL_FUNDS_RATE', { interval: 'monthly' })] = avText([{ date: '2026-06-01', value: '4.33' }]);
+recorded[avKey('CPI', { interval: 'monthly' })] = avText(
+  Array.from({ length: 14 }, (_, i) => ({ date: `2026-${String(6 - i).padStart(2, '0')}`, value: (315.4 - i * 0.6).toFixed(1) })));
+recorded[avKey('INDEX_DATA', { symbol: 'VIX', interval: 'daily' })] = avText({ data: [{ close: '14.8' }] });
+// earnings calendar → CSV string (parseAV returns it verbatim; consumer parseCSV's it)
+const earnDate = new Date(Date.now() + 9 * 86400 * 1000).toISOString().slice(0, 10);
+recorded[avKey('EARNINGS_CALENDAR', { horizon: '3month' })] =
+  avText(`symbol,name,reportDate,fiscalDateEnding,estimate,currency\nNVDA,NVIDIA Corp,${earnDate},2026-07-31,1.05,USD`);
+// company overview per sample holding → object with Symbol + fundamentals fields
+const OV = {
+  NVDA: { Sector: 'TECHNOLOGY', Industry: 'Semiconductors', PERatio: '52.1', ForwardPE: '38.4', PEGRatio: '1.3', Beta: '1.72', DividendYield: '0.0003', EPS: '3.10', QuarterlyRevenueGrowthYOY: '0.69', AnalystTargetPrice: '185', ProfitMargin: '0.55' },
+  MSFT: { Sector: 'TECHNOLOGY', Industry: 'Software', PERatio: '36.8', ForwardPE: '31.2', PEGRatio: '2.1', Beta: '0.91', DividendYield: '0.0072', EPS: '13.05', QuarterlyRevenueGrowthYOY: '0.16', AnalystTargetPrice: '540', ProfitMargin: '0.36' },
+  AAPL: { Sector: 'TECHNOLOGY', Industry: 'Consumer Electronics', PERatio: '31.0', ForwardPE: '28.5', PEGRatio: '2.6', Beta: '1.25', DividendYield: '0.0044', EPS: '6.95', QuarterlyRevenueGrowthYOY: '0.05', AnalystTargetPrice: '310', ProfitMargin: '0.25' },
+  GLD:  { Sector: 'N/A', Industry: 'Exchange Traded Fund', PERatio: 'None', ForwardPE: 'None', PEGRatio: 'None', Beta: '0.12', DividendYield: '0.0', EPS: 'None', QuarterlyRevenueGrowthYOY: 'None', AnalystTargetPrice: 'None', ProfitMargin: 'None' },
+};
+for (const p of POS) recorded[avKey('COMPANY_OVERVIEW', { symbol: p.symbol.replace(/\./g, '-') })] =
+  avStruct(Object.assign({ Symbol: p.symbol, Name: p.symbol }, OV[p.symbol] || {}));
+
 const now = new Date(); // sample stamp only
 const data = {
   schemaVersion: 1,
@@ -111,5 +137,5 @@ const data = {
 };
 
 await emit(data);
-console.log('  sample:', Object.keys(recorded).length, 'recorded ·',
-  Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily histories');
+console.log('  sample:', Object.keys(recorded).length, 'recorded (incl. AV macro/fundamentals/earnings) ·',
+  Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily ·', Object.keys(hist.month).length, 'monthly histories');
