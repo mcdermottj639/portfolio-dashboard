@@ -84,12 +84,19 @@ if (existsSync(join(RAW, 'picks.json'))) picksCands = readJSON(join(RAW, 'picks.
 const holdings100 = Object.entries(sharesBySym).filter(([, sh]) => sh >= 100)
   .map(([symbol, shares]) => ({ symbol, underlying: symbol, shares, px: pxBySym[symbol] }))
   .filter((h) => h.px).sort((a, b) => b.shares * b.px - a.shares * a.px).slice(0, 3);
-const ideas = buildIdeas(picksCands, holdings100, pxBySym);
+// live option quotes for the idea contracts (producer/raw/option-quotes.json), if fetched
+const liveBySym = {};
+if (existsSync(join(RAW, 'option-quotes.json'))) {
+  const d = unwrap(readJSON(join(RAW, 'option-quotes.json')));
+  for (const q of (Array.isArray(d) ? d : (d.quotes ?? d.results ?? []))) if (q && q.underlying) liveBySym[q.underlying] = q;
+}
+const ideas = buildIdeas(picksCands, holdings100, pxBySym, liveBySym);
+const liveCount = ideas.ideas.filter((i) => i.live).length;
 
 const out = {
   asOf: new Date().toISOString(),
   pending, positions, ideas,
 };
 writeFileSync(join(RAW, 'options.json'), JSON.stringify(out, null, 2));
-console.log(`options: ${pending.length} pending · ${positions.length} open · ${ideas.ideas.length} ideas` +
+console.log(`options: ${pending.length} pending · ${positions.length} open · ${ideas.ideas.length} ideas (${liveCount} live, ${ideas.ideas.length - liveCount} est)` +
   (pending[0] ? ` · pending: ${pending[0].underlying} ${pending[0].side} ${pending[0].type} $${pending[0].strike}` : ''));
