@@ -486,7 +486,7 @@ function sc(n){ return n>0?'pos':n<0?'neg':'neu'; }
 
 /* ─── Parsers ─── */
 function parse(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; if(r.content?.[0]?.text)return JSON.parse(r.content[0].text);}catch(e){} return null; }
-function parseAV(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; const t=r.content?.[0]?.text; if(t){ try{return JSON.parse(t);}catch(e){return t;} } }catch(e){} return null; }
+function parseAV(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; const t=r.content?.[0]?.text; if(t){ try{return JSON.parse(t);}catch(e){return t;} } if(Array.isArray(r))return r; if(typeof r==='object'&&(r.Symbol||r['Time Series (Daily)']))return r; }catch(e){} return null; }
 function parseCSV(text){ if(!text||typeof text!=='string')return[]; const lines=text.trim().split('\n'); if(lines.length<2)return[]; const headers=lines[0].split(',').map(h=>h.trim()); return lines.slice(1).filter(l=>l.trim()).map(line=>{ const vals=line.split(','); const obj={}; headers.forEach((h,i)=>{obj[h]=(vals[i]||'').trim();}); return obj; }); }
 
 /* ─── Cache ─── */
@@ -1210,7 +1210,14 @@ window.switchTab=switchTab;
       var c=title.querySelector('.chevron'); if(c)c.style.transform=hide?'rotate(-90deg)':'';
     });
   }
-  function scan(root){ try{ (root||document).querySelectorAll('.card').forEach(enhance); }catch(e){} }
+  // Wrap any wide table in a horizontal-scroll container so it never spills the page.
+  function wrapTables(root){ try{ (root||document).querySelectorAll('table').forEach(function(t){
+    var p=t.parentElement; if(!p||p.dataset.tw)return;
+    if((p.style&&p.style.overflowX==='auto'))return;
+    var w=document.createElement('div'); w.dataset.tw='1'; w.style.overflowX='auto'; w.style.webkitOverflowScrolling='touch';
+    p.insertBefore(w,t); w.appendChild(t);
+  }); }catch(e){} }
+  function scan(root){ try{ (root||document).querySelectorAll('.card').forEach(enhance); wrapTables(root); }catch(e){} }
   function start(){
     scan(document);
     try{
@@ -1218,7 +1225,8 @@ window.switchTab=switchTab;
         for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes;
           for(var j=0;j<a.length;j++){ var nd=a[j]; if(!nd||nd.nodeType!==1)continue;
             if(nd.classList&&nd.classList.contains('card'))enhance(nd);
-            if(nd.querySelectorAll)nd.querySelectorAll('.card').forEach(enhance); } }
+            if(nd.querySelectorAll)nd.querySelectorAll('.card').forEach(enhance); }
+          wrapTables(document); }
       });
       ['page-portfolio','page-markets','page-picks','page-options'].forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
     }catch(e){}
