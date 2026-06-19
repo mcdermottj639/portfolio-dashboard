@@ -69,6 +69,13 @@ function enrichLive(a, optionId) {
   return a;
 }
 
+function rollAlert(a) {
+  if (!a || a.side !== 'short' || a.type !== 'call') return null;
+  if (a.itm) return 'In-the-money — assignment risk. Consider rolling up/out (buy it back, sell a later/higher call) to defer assignment and collect more premium.';
+  if (a.dte != null && a.dte <= 10) return `Expires in ${a.dte}d — if it stays below $${a.strike} you keep the premium; otherwise roll out for more income.`;
+  return null;
+}
+
 function analyzeOrder(o) {
   const leg = (o.legs || [])[0]; if (!leg) return null;
   const sym = o.chain_symbol; const px = pxBySym[sym];
@@ -83,6 +90,7 @@ function analyzeOrder(o) {
   a.costBasis = costBySym[sym] != null ? +costBySym[sym] : null;
   a.limitPrice = num(o.price);
   enrichLive(a, leg.option_id);
+  a.rollAlert = rollAlert(a);
   return a;
 }
 
@@ -103,6 +111,7 @@ if (existsSync(join(RAW, 'options-positions.json'))) {
       { quantity: p.quantity, premium: num(p.average_price) * 100 * (num(p.quantity) || 1), direction: ref.o.direction, chain_symbol: p.chain_symbol, costBasis: costBySym[p.chain_symbol] });
     a.costBasis = costBySym[p.chain_symbol] != null ? +costBySym[p.chain_symbol] : null;
     enrichLive(a, p.option_id);
+    a.rollAlert = rollAlert(a);
     return a;
   }).filter(Boolean);
 }
@@ -122,9 +131,26 @@ if (existsSync(join(RAW, 'option-quotes.json'))) {
 const ideas = buildIdeas(picksCands, holdings100, pxBySym, liveBySym);
 const liveCount = ideas.ideas.filter((i) => i.live).length;
 
+// Realized P&L history from filled orders: net per chain that has a closing fill.
+const byChain = {};
+for (const o of orders) {
+  if (o.state !== 'filled') continue;
+  const c = (byChain[o.chain_id] = byChain[o.chain_id] || { symbol: o.chain_symbol, net: 0, trades: 0, closed: false, last: '' });
+  const pp = num(o.processed_premium) || 0;
+  c.net += (o.direction === 'credit' ? pp : -pp);
+  c.trades++;
+  if (o.closing_strategy) c.closed = true;
+  const d = o.last_transaction_at || o.updated_at || o.created_at || ''; if (d > c.last) c.last = d;
+}
+const history = Object.values(byChain).filter((c) => c.closed)
+  .map((c) => ({ symbol: c.symbol, net: +c.net.toFixed(2), trades: c.trades, date: (c.last || '').slice(0, 10) }))
+  .sort((a, b) => (a.date < b.date ? 1 : -1));
+const realized = +history.reduce((s, h) => s + h.net, 0).toFixed(2);
+
 const out = {
   asOf: new Date().toISOString(),
   pending, positions, ideas,
+  history, realized,
 };
 writeFileSync(join(RAW, 'options.json'), JSON.stringify(out, null, 2));
 console.log(`options: ${pending.length} pending · ${positions.length} open · ${ideas.ideas.length} ideas (${liveCount} live, ${ideas.ideas.length - liveCount} est)` +
