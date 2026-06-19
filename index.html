@@ -197,6 +197,9 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 .az-track { height: 7px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 3px; }
 .az-fill { height: 100%; border-radius: 4px; }
 .az-level { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 13px; background: var(--surface-2); border-radius: 10px; margin-bottom: 8px; }
+/* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
+.money { transition: filter .12s; }
+body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-select: none; }
 .tab { flex: 1 1 auto; min-width: 74px; max-width: 260px; padding: 11px 12px; border-radius: 12px; border: none; background: white; color: #6b7280; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; white-space: nowrap; }
 .tab:hover { color: #1c1c1e; }
 .tab.active { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); color: white; box-shadow: 0 2px 8px rgba(15,52,96,0.3); }
@@ -448,7 +451,8 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
                : err    ? '⚠️ Couldn’t load data ('+err+')'
                :          '📡 Snapshot: '+lab;
       var themeIcon=(document.documentElement.getAttribute('data-theme')==='dark')?'☀️':'🌙';
-      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:16px;align-items:center"><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Light / dark">'+themeIcon+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      var privOn=document.body&&document.body.classList.contains('pf-private');
+      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:16px;align-items:center"><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Light / dark">'+themeIcon+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       var rb=document.getElementById('pf-refresh'); if(rb) rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); };
     });
@@ -1781,6 +1785,39 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 })();
 
 function toggleTheme(){ const h=document.documentElement; const t=h.getAttribute('data-theme')==='dark'?'light':'dark'; h.setAttribute('data-theme',t); try{localStorage.setItem('pf_theme',t);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=t==='dark'?'☀️':'🌙'; const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',t==='dark'?'#000000':'#16213e'); }
+
+/* Privacy mode: blur your $ figures on the Portfolio tab (other tabs are market data, untouched). */
+let _moneyMo=null,_moneyT=null;
+function _wrapMoney(){
+  const root=document.getElementById('page-portfolio'); if(!root)return;
+  if(_moneyMo)_moneyMo.disconnect();
+  try{
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(n){
+      if(!n.nodeValue||n.nodeValue.indexOf('$')<0)return NodeFilter.FILTER_REJECT;
+      const p=n.parentNode; if(!p)return NodeFilter.FILTER_REJECT;
+      if(p.classList&&p.classList.contains('money'))return NodeFilter.FILTER_REJECT;
+      const t=p.nodeName; if(t==='SCRIPT'||t==='STYLE'||t==='CANVAS'||t==='TEXTAREA'||t==='INPUT')return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }});
+    const g=/\$\d[\d,]*(?:\.\d+)?/g; const nodes=[];
+    while(walker.nextNode()){ g.lastIndex=0; if(g.test(walker.currentNode.nodeValue))nodes.push(walker.currentNode); }
+    nodes.forEach(function(n){
+      const txt=n.nodeValue,frag=document.createDocumentFragment(); let last=0,m; g.lastIndex=0;
+      while((m=g.exec(txt))){ if(m.index>last)frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+        const s=document.createElement('span'); s.className='money'; s.textContent=m[0]; frag.appendChild(s); last=m.index+m[0].length; }
+      if(last<txt.length)frag.appendChild(document.createTextNode(txt.slice(last)));
+      if(n.parentNode)n.parentNode.replaceChild(frag,n);
+    });
+  }catch(e){}
+  if(_moneyMo)_moneyMo.observe(root,{childList:true,subtree:true});
+}
+function startMoney(){ const root=document.getElementById('page-portfolio'); if(!root)return;
+  if(!_moneyMo)_moneyMo=new MutationObserver(function(){ clearTimeout(_moneyT); _moneyT=setTimeout(_wrapMoney,150); });
+  _wrapMoney(); }
+function stopMoney(){ if(_moneyMo){ _moneyMo.disconnect(); _moneyMo=null; } }
+function togglePrivacy(){ const on=!document.body.classList.contains('pf-private'); document.body.classList.toggle('pf-private',on); try{localStorage.setItem('pf_private',on?'1':'0');}catch(e){} const b=document.getElementById('pf-priv'); if(b)b.textContent=on?'🙈':'👁️'; if(on)startMoney(); else stopMoney(); }
+window.togglePrivacy=togglePrivacy;
+(function(){ try{ if(localStorage.getItem('pf_private')==='1'){ if(document.body)document.body.classList.add('pf-private'); startMoney(); } }catch(e){} })();
 window.toggleTheme=toggleTheme;
 (function(){ const b=document.getElementById('theme-toggle'); if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙'; })();
 
