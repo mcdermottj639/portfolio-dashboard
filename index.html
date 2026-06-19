@@ -358,15 +358,41 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
     return fetch('./data.json',{cache:'no-store'}).then(function(r){ if(!r.ok)throw new Error('data.json '+r.status); return r.json(); })
       .then(function(raw){
         if(!raw||!raw.enc) return raw;                       // plaintext (dev / sample)
+        // Normalize: trim, and convert "smart" dashes/minus back to a plain hyphen so a
+        // mobile keyboard can't silently break an otherwise-correct passphrase.
+        function norm(p){ return p==null?p:String(p).trim().replace(/[‐-―−⁃]/g,'-'); }
         var hk=(location.hash.match(/(?:^|[#&])key=([^&]+)/)||[])[1];
         if(hk){ try{hk=decodeURIComponent(hk);}catch(e){} history.replaceState(null,'',location.pathname+location.search); }
-        var pass=hk||localStorage.getItem('pf_pass')||null;
+        var pass=norm(hk||localStorage.getItem('pf_pass')||null);
+        // Custom unlock prompt — a real password input (no auto-capitalize / autocorrect /
+        // smart-punctuation), unlike window.prompt which iOS mangles.
+        function askPass(showErr){
+          return new Promise(function(resolve){
+            var host=document.body||document.documentElement;
+            var ov=document.getElementById('pf-unlock');
+            if(!ov){
+              ov=document.createElement('div'); ov.id='pf-unlock';
+              ov.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);padding:24px';
+              ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:340px;width:100%;font-family:-apple-system,BlinkMacSystemFont,sans-serif"><div style="font-size:15px;font-weight:700;color:#1c1c1e">🔒 Dashboard passphrase</div><div style="font-size:12px;color:#6b7280;margin:6px 0 12px">Enter your passphrase to unlock.</div><input id="pf-pass-input" type="password" autocapitalize="off" autocorrect="off" autocomplete="current-password" spellcheck="false" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px" placeholder="passphrase"><div id="pf-pass-err" style="font-size:12px;color:#dc2626;margin-top:8px;display:none">Incorrect — check capitalization and try again.</div><button id="pf-pass-go" style="margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;background:#00c244;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Unlock</button></div>';
+              host.appendChild(ov);
+            }
+            var inp=ov.querySelector('#pf-pass-input'); var err=ov.querySelector('#pf-pass-err');
+            err.style.display=showErr?'block':'none'; inp.value=''; try{inp.focus();}catch(e){}
+            function go(){ resolve(inp.value); }
+            ov.querySelector('#pf-pass-go').onclick=go;
+            inp.onkeydown=function(e){ if(e.key==='Enter')go(); };
+          });
+        }
+        function closeAsk(){ var ov=document.getElementById('pf-unlock'); if(ov)ov.remove(); }
         function attempt(n){
-          if(n>6) return Object.assign({error:'bad passphrase'},EMPTY);
-          if(!pass) pass=window.prompt('🔒 Dashboard passphrase');
-          if(pass==null) return Object.assign({locked:true},EMPTY);
-          return decryptEnvelope(raw, pass).then(function(obj){ try{localStorage.setItem('pf_pass',pass);}catch(e){} return obj; })
-            .catch(function(){ try{localStorage.removeItem('pf_pass');}catch(e){} pass=null; return attempt(n+1); });
+          if(n>10) return Object.assign({error:'bad passphrase'},EMPTY);
+          var get = pass!=null ? Promise.resolve(pass) : askPass(n>0);
+          return get.then(function(entered){
+            var p=norm(entered);
+            if(!p){ pass=null; return attempt(n); }
+            return decryptEnvelope(raw, p).then(function(obj){ try{localStorage.setItem('pf_pass',p);}catch(e){} closeAsk(); return obj; })
+              .catch(function(){ try{localStorage.removeItem('pf_pass');}catch(e){} pass=null; return attempt(n+1); });
+          });
         }
         return attempt(0);
       })
