@@ -89,6 +89,35 @@ if (existsSync(avSrcDir)) for (const f of readdirSync(avSrcDir).filter((x) => x.
   avCount++;
 }
 
+// Sector + dividends from Robinhood fundamentals (free, every run) → synthesize the AV
+// COMPANY_OVERVIEW the dashboard reads for sector allocation + dividend income, but ONLY
+// where AV didn't already supply one (AV adds revenue growth / forward P/E that RH lacks).
+// Save get_equity_fundamentals for the covered holdings to producer/raw/holdings-fund.json.
+let rhOvCount = 0;
+const hfFile = filesMatching(/^holdings-fund\.json$/)[0];
+if (hfFile) {
+  const FREQ = { Quarterly: 4, Monthly: 12, 'Semi-Annual': 2, 'Semi-Annually': 2, Annual: 1, Annually: 1, Weekly: 52 };
+  const hf = unwrap(readJSON(hfFile));
+  for (const r of (hf.data?.results ?? hf.results ?? [])) {
+    if (!r.symbol) continue;
+    const key = avKey('COMPANY_OVERVIEW', { symbol: r.symbol.replace(/\./g, '-') });
+    if (recorded[key]) continue; // AV already provided richer data — keep it
+    const dps = r.dividend_per_share != null ? parseFloat(r.dividend_per_share) : 0;
+    const annDps = dps ? dps * (FREQ[r.distribution_frequency] || 1) : 0;
+    recorded[key] = { structuredContent: {
+      Symbol: r.symbol, Name: r.symbol, Sector: r.sector || 'N/A', Industry: r.industry || '',
+      PERatio: r.pe_ratio != null ? String(r.pe_ratio) : 'None',
+      MarketCapitalization: r.market_cap != null ? String(Math.round(parseFloat(r.market_cap))) : 'None',
+      '52WeekHigh': r.high_52_weeks != null ? String(r.high_52_weeks) : 'None',
+      '52WeekLow': r.low_52_weeks != null ? String(r.low_52_weeks) : 'None',
+      DividendPerShare: annDps ? annDps.toFixed(4) : '0',
+      DividendYield: r.dividend_yield != null ? (parseFloat(r.dividend_yield) / 100).toFixed(4) : '0',
+      ExDividendDate: r.ex_dividend_date || 'None',
+    } };
+    rhOvCount++;
+  }
+}
+
 // VIX from Robinhood index quotes (free, every run) → synthesize the AV INDEX_DATA
 // response the macro card reads. AV's own INDEX_DATA is premium-only, so this is how
 // the VIX tile gets a live value on the free tier. Save the raw get_index_quotes
@@ -144,7 +173,7 @@ await emit(data);
 console.log('built:',
   positions.length, 'positions ·', Object.keys(quotes).length, 'quotes ·',
   Object.entries(hist).map(([k, v]) => Object.keys(v).length + ' ' + k).join(' · ') || 'no hist',
-  '·', Object.keys(recorded).length, 'recorded ·', avCount, 'AV',
+  '·', Object.keys(recorded).length, 'recorded ·', avCount, 'AV ·', rhOvCount, 'RH-overview',
   '·', vix != null ? 'VIX ' + vix : 'no VIX',
   '·', data.picks ? data.picks.candidates.length + ' picks' : 'no picks',
   avCount ? '' : '(macro/fundamentals will show "—" until av-src is populated)');
