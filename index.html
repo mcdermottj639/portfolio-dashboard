@@ -179,10 +179,11 @@ tbody td { padding: 8px; }
 
 /* ─── Tab Bar ─── */
 .tabbar { position: sticky; top: 0; z-index: 100; display: flex; gap: 8px; background: #f0f2f5; padding: 4px 0 12px; margin-bottom: 4px; }
-.tab { flex: 1; max-width: 260px; padding: 11px 18px; border-radius: 12px; border: none; background: white; color: #6b7280; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; font-family: inherit; }
+.tab { flex: 1 1 0; min-width: 0; max-width: 260px; padding: 11px 12px; border-radius: 12px; border: none; background: white; color: #6b7280; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; white-space: nowrap; }
 .tab:hover { color: #1c1c1e; }
 .tab.active { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); color: white; box-shadow: 0 2px 8px rgba(15,52,96,0.3); }
-.tab .tab-sub { font-size: 10px; opacity: 0.7; font-weight: 500; }
+.tab .tab-sub { font-size: 10px; opacity: 0.7; font-weight: 500; margin-left: 4px; }
+@media (max-width:760px){ .tabbar{ gap:6px; } .tab{ padding:10px 5px; font-size:12px; gap:4px; } .tab .tab-sub{ display:none; } }
 
 /* ─── Daily Picks page ─── */
 .picks-hero { background: linear-gradient(135deg, #0f3460 0%, #16213e 60%, #1a1a2e 100%); color: white; padding: 20px 24px; border-radius: 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -306,9 +307,8 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
 <div class="tabbar" id="tabbar">
   <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Portfolio</button>
   <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
-  <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Daily Picks <span class="tab-sub" id="tab-picks-date"></span></button>
+  <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Picks<span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
-  <button class="tab theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle theme">🌙</button>
 </div>
 <div id="page-portfolio">
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
@@ -399,7 +399,8 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
       var left = locked ? '🔒 Locked — enter your passphrase to view'
                : err    ? '⚠️ Couldn’t load data ('+err+')'
                :          '📡 Snapshot: '+lab;
-      bar.innerHTML='<span>'+left+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span>';
+      var themeIcon=(document.documentElement.getAttribute('data-theme')==='dark')?'☀️':'🌙';
+      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:16px;align-items:center"><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Light / dark">'+themeIcon+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       var rb=document.getElementById('pf-refresh'); if(rb) rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); };
     });
