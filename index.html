@@ -997,7 +997,7 @@ async function load(){
       <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · Alpha Vantage)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
       ${smalls.length>0?`<div class="card"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
-      <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 See today's Daily Picks (QQQ scan) →</span></div>
+      <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 See today's Daily Picks (S&P 500 / large-cap scan) →</span></div>
       <div class="disclaimer">Live from Robinhood + Alpha Vantage. Research only — not financial advice.</div>`;
 
     renderSnapshot(stats,null);
@@ -1111,11 +1111,11 @@ function rsiColor(r){ return r>=70?'#ef4444':r<=30?'#3b82f6':'#374151'; }
 
 async function loadPicksData(){
   try{
-    const r=await window.cowork.callMcpTool(KYLE+'read_artifact',{artifact_id:PICKS_DATA_NOTE_ID});
-    const txt=(r&&r.content&&r.content[0]&&r.content[0].text)||(typeof r==='string'?r:'');
-    const m=txt.match(/<!--PICKS_JSON-->([\s\S]*?)<!--\/PICKS_JSON-->/);
-    if(m){
-      const d=JSON.parse(m[1].trim());
+    // Picks are produced by the scheduled producer (Robinhood scanner \u2192 scored) and
+    // embedded in data.json as `picks`. The old Kyle-note source is retired.
+    const data=await (window.__dataReady||Promise.resolve(window.__DATA||{}));
+    const d=(data&&data.picks)||null;
+    if(d){
       if(d.date)ANALYSIS_DATE=d.date;
       if(d.ts)ANALYSIS_TS=new Date(d.ts+'T00:00:00').getTime();
       if(Array.isArray(d.candidates)&&d.candidates.length)PICK_CANDIDATES=d.candidates;
@@ -1139,7 +1139,7 @@ function renderPicksStatic(){
   app.innerHTML=`
     <div class="picks-hero">
       <div>
-        <div class="ph-label">Daily QQQ Analysis</div>
+        <div class="ph-label">Daily Large-Cap Scan</div>
         <div class="ph-date">${ANALYSIS_DATE}</div>
         <div class="ph-stale">Scan <span style="color:${staleColor};font-weight:600">${staleTxt}</span> · 10 candidates scored · top 3 picks · prices &amp; RSI refresh live</div>
       </div>
