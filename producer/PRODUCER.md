@@ -53,9 +53,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 
 3. **Alpha Vantage — ONCE PER DAY only** (powers Macro Signals + Fundamentals + Earnings).
-   The free tier is **25 requests/day**, so AV is *not* fetched on every 15-min run — only on
-   the **first run of the trading day**. On every later run, skip this step entirely; the
-   existing `producer/raw/av-src/` files are replayed unchanged.
+   No separate API key step: the **Alpha Vantage MCP connector is already authenticated**
+   (same as Robinhood), so you just call the tool. The connector uses a **free** key, capped
+   at **25 requests/day**, so AV is *not* fetched on every 15-min run — only on the **first run
+   of the trading day**. On every later run, skip this step entirely; the existing
+   `producer/raw/av-src/` files are replayed unchanged.
 
    **Decide whether to fetch:** look at `producer/raw/av-src/.fetched` (a file containing the
    last fetch date in ET, `YYYY-MM-DD`). If it is missing or not today's date, do the daily
@@ -66,17 +68,23 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       ```
       node producer/av-plan.mjs
       ```
-      It lists ≤25 calls and confirms the budget. ~19 calls is typical (4 macro + 1 earnings +
-      up to 14 fundamentals).
+      It lists the calls and confirms the budget. ~18 calls is typical (3 macro + 1 earnings +
+      up to 14 fundamentals) — comfortably under 25.
    2. For each printed line, call the Alpha Vantage MCP tool
       `mcp__claude_ai_AlphaVantage__TOOL_CALL` with `{ tool_name: "<tool>", arguments: "<args JSON>" }`
       and save the **verbatim** result object to the printed path
-      `producer/raw/av-src/<id>.json`. (Free tier allows ~5 calls/min — pace them.)
+      `producer/raw/av-src/<id>.json`. **Pace the calls ~1/second** — the free tier throttles
+      bursts (a too-fast call comes back with an "Information" rate-limit message instead of data).
    3. Write today's ET date (`YYYY-MM-DD`) into `producer/raw/av-src/.fetched`.
 
-   If AV is unavailable or you skip it, those three sections simply show "—" — everything else
-   still works. `build-data.mjs` maps the saved files to the correct replay keys automatically
-   (no hand-keying) and prints how many AV snapshots it embedded.
+   Notes / known free-tier limits (verified against the live connector):
+   - **VIX is premium-only** (`INDEX_DATA` returns "not yet entitled to index data access"), so
+     the VIX macro tile stays "—". The plan omits it on purpose.
+   - The economic indicators return CSV; `COMPANY_OVERVIEW` returns a JSON object — the PWA
+     parses both.
+   - If AV is unavailable or you skip it, those sections simply show "—"; everything else still
+     works. `build-data.mjs` maps the saved files to the correct replay keys automatically
+     (no hand-keying) and prints how many AV snapshots it embedded.
 
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```

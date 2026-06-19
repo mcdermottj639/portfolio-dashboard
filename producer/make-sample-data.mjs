@@ -104,13 +104,16 @@ for (const s of MARKET_SYMBOLS) {
 // Shapes match what index.html's parseAV/fetchMacro/fetchOverviewBatch expect.
 const avText = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj) }] });
 const avStruct = (obj) => ({ structuredContent: obj });
-// macro: TREASURY_YIELD / FEDERAL_FUNDS_RATE → array of {value}; CPI → ≥13 monthly points
-// (newest first; YoY = (latest-12mo)/12mo); INDEX_DATA VIX → {data:[{close}]}
-recorded[avKey('TREASURY_YIELD', { interval: 'monthly', maturity: '10year' })] = avText([{ date: '2026-06-01', value: '4.32' }]);
-recorded[avKey('FEDERAL_FUNDS_RATE', { interval: 'monthly' })] = avText([{ date: '2026-06-01', value: '4.33' }]);
-recorded[avKey('CPI', { interval: 'monthly' })] = avText(
-  Array.from({ length: 14 }, (_, i) => ({ date: `2026-${String(6 - i).padStart(2, '0')}`, value: (315.4 - i * 0.6).toFixed(1) })));
-recorded[avKey('INDEX_DATA', { symbol: 'VIX', interval: 'daily' })] = avText({ data: [{ close: '14.8' }] });
+// macro: the live free-tier connector returns CSV (header `timestamp,value`, newest first)
+// for these economic indicators — mirror that here so preview exercises the parseCSV path.
+// (VIX/INDEX_DATA is premium-only on the free key, so it's intentionally absent → tile "—".)
+const csv = (rows) => 'timestamp,value\n' + rows.map((r) => `${r.t},${r.v}`).join('\n');
+recorded[avKey('TREASURY_YIELD', { interval: 'monthly', maturity: '10year' })] =
+  avText(csv([{ t: '2026-06-01', v: '4.32' }, { t: '2026-05-01', v: '4.48' }]));
+recorded[avKey('FEDERAL_FUNDS_RATE', { interval: 'monthly' })] =
+  avText(csv([{ t: '2026-06-01', v: '4.33' }, { t: '2026-05-01', v: '4.33' }]));
+recorded[avKey('CPI', { interval: 'monthly' })] =
+  avText(csv(Array.from({ length: 14 }, (_, i) => ({ t: `2026-${String(6 - i).padStart(2, '0')}-01`, v: (315.4 - i * 0.6).toFixed(1) }))));
 // earnings calendar → CSV string (parseAV returns it verbatim; consumer parseCSV's it)
 const earnDate = new Date(Date.now() + 9 * 86400 * 1000).toISOString().slice(0, 10);
 recorded[avKey('EARNINGS_CALENDAR', { horizon: '3month' })] =

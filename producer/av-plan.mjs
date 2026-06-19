@@ -35,3 +35,5 @@ if (calls.length > FREE_LIMIT) {
 } else {
   console.log(`Budget OK: ${calls.length}/${FREE_LIMIT} used today (${FREE_LIMIT - calls.length} to spare).`);
 }
+console.log('\nPace calls ~1/second (the free tier throttles bursts). The VIX macro tile is\n' +
+  'omitted — INDEX_DATA is a premium-only endpoint, so it stays "—" on the free key.');

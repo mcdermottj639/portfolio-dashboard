@@ -26,11 +26,22 @@ export const avSym = (s) => s.replace(/\./g, '-');
 // --- the canonical daily call set -------------------------------------------
 // `id` is the friendly filename the agent saves each raw response under
 // (producer/raw/av-src/<id>.json). `tool`/`args` must match index.html's avCall().
+// Verified against the live free-tier connector (2026-06): the economic
+// indicators return CSV (timestamp,value), which the consumer's parseCSV path
+// handles; COMPANY_OVERVIEW returns a JSON object with Symbol/Beta/PERatio/etc.
 export const MACRO_CALLS = [
   { id: 'macro-treasury10y', tool: 'TREASURY_YIELD',     args: { interval: 'monthly', maturity: '10year' } },
   { id: 'macro-cpi',         tool: 'CPI',                args: { interval: 'monthly' } },
   { id: 'macro-fedfunds',    tool: 'FEDERAL_FUNDS_RATE', args: { interval: 'monthly' } },
-  { id: 'macro-vix',         tool: 'INDEX_DATA',         args: { symbol: 'VIX', interval: 'daily' } },
+];
+// PREMIUM-ONLY — the free key returns "not yet entitled to index data access",
+// so the VIX macro tile stays "—" on the free tier. Not part of the daily plan,
+// but specForId still resolves it so a premium key can drop the file in and have
+// it keyed correctly. NOTE: if enabled, INDEX_DATA returns CSV — the consumer's
+// VIX parser currently only reads the object/array form, so it would need a
+// parseCSV branch first.
+export const PREMIUM_CALLS = [
+  { id: 'macro-vix', tool: 'INDEX_DATA', args: { symbol: 'VIX', interval: 'daily' } },
 ];
 export const EARNINGS_CALL = { id: 'earnings-cal', tool: 'EARNINGS_CALENDAR', args: { horizon: '3month' } };
 
@@ -43,9 +54,11 @@ export function avKey(tool, args) {
   return makeKey(AV, { tool_name: tool, arguments: JSON.stringify(args) });
 }
 
-// Recover the call spec from a raw/av-src/<id>.json filename.
+// Recover the call spec from a raw/av-src/<id>.json filename. Includes premium
+// calls so a premium key's snapshot is keyed correctly even though the free-tier
+// daily plan omits them.
 export function specForId(id) {
-  for (const c of [...MACRO_CALLS, EARNINGS_CALL]) if (c.id === id) return c;
+  for (const c of [...MACRO_CALLS, ...PREMIUM_CALLS, EARNINGS_CALL]) if (c.id === id) return c;
   if (id.startsWith('overview-')) return overviewCall(id.slice('overview-'.length));
   return null;
 }
