@@ -5,11 +5,22 @@ This is the job that refreshes the dashboard. A scheduled Claude Code agent runs
 optionally **Alpha Vantage**) MCP connectors, assembles `data.json`, and pushes it to the
 GitHub Pages repo. The phone PWA then loads that `data.json`.
 
-**Secrets** live in `producer/secret.local.json` (git-ignored, never committed):
-```json
-{ "account": "<real Robinhood account number>", "passphrase": "<dashboard passphrase>" }
-```
-Read `account` and `passphrase` from there.
+> **Setting up the schedule?** See [`SCHEDULING.md`](./SCHEDULING.md) for the one-time
+> Claude-Code-on-the-web setup (env vars, connectors, trigger, and the exact prompt).
+
+**Secrets.** Two values are needed: the real Robinhood **account number** (for the live MCP
+calls) and the dashboard **passphrase** (to encrypt `data.json`). Resolve them in this order:
+
+1. **Environment variables** (preferred — used by the scheduled web runs, see `SCHEDULING.md`):
+   `PF_ACCOUNT` = account number, `PF_PASSPHRASE` = passphrase.
+2. **`producer/secret.local.json`** (git-ignored, for local/manual runs):
+   ```json
+   { "account": "<real Robinhood account number>", "passphrase": "<dashboard passphrase>" }
+   ```
+
+`PF_PASSPHRASE` is read directly by `build-data.mjs`/`emit.mjs` at build time. The account
+number is used only by you (this agent) when calling the Robinhood tools — it never goes into
+`data.json` (the keying uses the `ACCT` placeholder).
 
 **Market symbols** — the Markets tab renders a fixed set of benchmark/risk/sector tickers
 regardless of what the account holds. These come from `producer/markets.mjs`

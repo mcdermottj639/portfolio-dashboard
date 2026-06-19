@@ -42,6 +42,9 @@ anyone else hitting the URL sees only ciphertext. The committed sample is fake p
 | `data.json` | The current snapshot. Overwritten by the producer each run. Committed sample is clearly labeled. |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA shell — installability + offline. |
 | `producer/PRODUCER.md` | Runbook the scheduled agent follows. |
+| `producer/SCHEDULING.md` | One-time setup for recurring runs on Claude Code on the web. |
+| `producer/markets.mjs`, `producer/av.mjs` | Market-symbol + Alpha Vantage call definitions (single source of truth). |
+| `producer/av-plan.mjs` | Prints the day's Alpha Vantage call plan (free-tier budgeted). |
 | `producer/build-data.mjs` | Assembles `data.json` from raw MCP outputs. |
 | `producer/key.mjs` | Response-keying shared by producer + shim (keep in sync with the shim). |
 | `producer/make-sample-data.mjs` | Generates the labeled sample `data.json`. |
