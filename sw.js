@@ -3,7 +3,7 @@
      - App shell (html, manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
      - data.json: network-first with cache fallback (always tries fresh data, falls back to last snapshot offline)
    Bump CACHE_VERSION whenever the shell (index.html/sw.js/manifest) changes so clients pick it up. */
-const CACHE_VERSION = 'pf-v3';
+const CACHE_VERSION = 'pf-v4';
 const SHELL = [
   './',
   './index.html',
