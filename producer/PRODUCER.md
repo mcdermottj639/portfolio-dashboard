@@ -126,11 +126,18 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
    2. `mcp__claude_ai_Robinhood__get_option_positions { account_number: <account>, nonzero: true }`
       → `producer/raw/options-positions.json` (open contracts; may be empty).
-   3. `node producer/options-build.mjs` → writes `producer/raw/options.json`
-      (analyzes your contracts — covered/naked, DTE, breakeven, moneyness — and generates
-      directional ideas from the Daily Picks scan + covered-call income on your 100+ share
-      holdings). `build-data.mjs` embeds it as `data.options`. Needs `positions.json`,
-      `quotes.json`, and (for ideas) `picks.json` from the steps above.
+   3. **Live idea premiums:** `node producer/options-plan.mjs` prints the idea contracts to
+      price. For each, `get_option_instruments { chain_symbol, expiration_dates, type }` → pick
+      the nearest listed strike to the printed target → `get_option_quotes { instrument_ids:[id] }`,
+      and append one normalized object to `producer/raw/option-quotes.json` (a JSON array):
+      `{ underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, openInterest, volume, popLong }`
+      from the quote's `mark_price / bid_price / ask_price / break_even_price / implied_volatility /
+      delta / open_interest / volume / chance_of_profit_long`. (Skip if you want estimates instead.)
+   4. `node producer/options-build.mjs` → writes `producer/raw/options.json`
+      (analyzes your contracts — covered/naked, DTE, breakeven, moneyness — and builds the
+      directional ideas, using the live option quotes when present, else estimates).
+      `build-data.mjs` embeds it as `data.options`. Needs `positions.json`, `quotes.json`, and
+      (for ideas) `picks.json`.
 
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```

@@ -162,7 +162,11 @@ const options = {
   ideas: buildIdeas(picks.candidates, [
     { symbol:'IREN', underlying:'IREN', shares:174, px:60.02 },
     { symbol:'GRAB', underlying:'GRAB', shares:124, px:4.50 },
-  ], { NFLX:'77.33', PEP:'142.5', KLAC:'261.1' }),
+  ], { NFLX:'77.33', PEP:'142.5', KLAC:'261.1' }, {
+    // sample live quotes so preview shows the LIVE path (real producer fills these from RH)
+    NFLX:{ strike:81, expiration:'2026-07-17', mark:3.45, bid:3.40, ask:3.50, breakeven:84.45, iv:1.02, delta:0.35, openInterest:10412, volume:2969, popLong:0.20 },
+    IREN:{ strike:65, expiration:'2026-07-17', mark:4.10, bid:4.00, ask:4.20, breakeven:69.10, iv:0.95, delta:0.42, openInterest:8800, volume:1500, popLong:0.30 },
+  }),
 };
 
 const now = new Date(); // sample stamp only

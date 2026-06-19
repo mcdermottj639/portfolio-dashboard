@@ -1178,11 +1178,14 @@ function optCard(o){
 }
 function ideaCard(i){
   const dirC=i.direction==='Bullish'?'#10b981':i.direction==='Income'?'#0ea5e9':'#ef4444';
-  const rows=[['Strike','$'+i.strike],['Expiry',i.expiration+' · '+i.dte+'d'],['Est. premium','~$'+(i.estPremium!=null?i.estPremium.toFixed(2):'—')]];
+  const live=!!i.live; const prem=live?i.premium:i.estPremium;
+  const rows=[['Strike','$'+i.strike],['Expiry',(i.expiration||'')+' · '+i.dte+'d'],[live?'Premium (mark)':'Est. premium','~$'+(prem!=null?(+prem).toFixed(2):'—')]];
   if(i.breakeven!=null)rows.push(['Breakeven','$'+i.breakeven]);
   if(i.maxLoss!=null)rows.push(['Max loss','$'+i.maxLoss]);
   if(i.income!=null)rows.push(['Income','~$'+i.income]);
-  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span></div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
+  if(live){ if(i.delta!=null)rows.push(['Delta',i.delta]); if(i.iv!=null)rows.push(['IV',i.iv+'%']); if(i.openInterest!=null)rows.push(['Open int',i.openInterest]); if(i.pop!=null)rows.push(['POP',i.pop+'%']); }
+  const tag='<span class="badge" style="background:'+(live?'#d1fae5':'var(--surface-2)')+';color:'+(live?'#065f46':'#9ca3af')+'">'+(live?'● LIVE':'EST')+'</span>';
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+'</div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul></div>';
 }
