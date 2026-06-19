@@ -67,6 +67,12 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 
+2c. **Holdings fundamentals (free, every run)** — `mcp__claude_ai_Robinhood__get_equity_fundamentals`
+   for the **top 14 holdings by market value** (the same set AV would cover; batch ≤10/call)
+   → `producer/raw/holdings-fund.json`. `build-data.mjs` turns these into sector + dividend
+   data (synthesized `COMPANY_OVERVIEW`) so **Allocation-by-Sector and Income/Dividends work
+   without Alpha Vantage** — AV (when not capped) still overrides with richer growth metrics.
+
 3. **Alpha Vantage — ONCE PER DAY only** (powers Macro Signals + Fundamentals + Earnings).
    No separate API key step: the **Alpha Vantage MCP connector is already authenticated**
    (same as Robinhood), so you just call the tool. The connector uses a **free** key, capped
