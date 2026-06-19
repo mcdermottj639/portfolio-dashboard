@@ -38,6 +38,8 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <!-- Live-only controls (write to MCP / trigger scans) are hidden in the offline PWA. -->
 <style>.kyle-btn,.run-btn{display:none!important}</style>
+<!-- Set theme before paint (no flash). Default: saved choice, else system preference. -->
+<script>(function(){try{var t=localStorage.getItem('pf_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -245,6 +247,59 @@ tbody td { padding: 8px; }
 .macro-label{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px}
 .macro-val{font-size:20px;font-weight:700;color:#1c1c1e}
 .kyle-btn{background:rgba(255,255,255,0.16);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}.kyle-btn:hover{background:rgba(255,255,255,0.26)}.kyle-btn:disabled{opacity:0.6;cursor:default}
+
+/* ═══ Cash-App-inspired theming (Cash green accent · bold · light/dark) ═══ */
+:root{ --accent:#00c244; --surface-2:#f9fafb; --text:#1c1c1e; }
+html[data-theme="dark"]{ color-scheme:dark; --accent:#00d632; --surface-2:#202124; --text:#ffffff; }
+
+/* Both themes: a bold near-black "wealth" hero + cash-green accents in place of indigo */
+.header,.picks-hero{ background:linear-gradient(140deg,#0c1f17 0%,#06100b 100%); }
+.tab.active{ background:linear-gradient(140deg,#0c1f17 0%,#06100b 100%); box-shadow:0 2px 10px rgba(0,194,68,0.25); }
+.h-tag{ background:rgba(0,214,80,0.18); }
+.dp-link,.tv-link{ color:var(--accent); }
+.thesis2 li::before{ color:var(--accent); }
+.conf2-fill{ background:linear-gradient(to right,#00c244,#00d632); }
+.teaser-link{ background:var(--accent); } .teaser-link:hover{ filter:brightness(0.92); }
+.card,.col-card{ border-radius:18px; }
+.theme-toggle{ flex:0 0 auto!important; max-width:50px!important; font-size:17px; padding:11px 0!important; }
+
+/* ═══ DARK THEME surfaces ═══ */
+html[data-theme="dark"] body{ background:#000; color:var(--text); }
+html[data-theme="dark"] .tabbar{ background:#000; }
+html[data-theme="dark"] .tab{ background:#161616; color:#9a9aa0; box-shadow:none; }
+html[data-theme="dark"] .tab:hover{ color:#fff; }
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .col-card{ background:#161616; box-shadow:none; border:1px solid #242427; }
+html[data-theme="dark"] .col-title{ color:var(--text); }
+html[data-theme="dark"] .macro-val{ color:var(--text); }
+html[data-theme="dark"] .snap,
+html[data-theme="dark"] .mkt-tile,
+html[data-theme="dark"] .macro-tile,
+html[data-theme="dark"] .pk-m{ background:var(--surface-2); }
+html[data-theme="dark"] thead th{ border-bottom-color:#262629; }
+html[data-theme="dark"] thead th.sortable:hover,
+html[data-theme="dark"] thead th.active{ color:#fff; }
+html[data-theme="dark"] tbody tr{ border-bottom-color:#1d1d1f; }
+html[data-theme="dark"] tbody tr:hover{ background:#1a1a1c; }
+html[data-theme="dark"] .risk-line,
+html[data-theme="dark"] .exdiv-line,
+html[data-theme="dark"] .harv-line{ border-bottom-color:#242427; }
+html[data-theme="dark"] .risk-name{ color:#c9c9ce; }
+html[data-theme="dark"] .thesis2 li{ color:#c9c9ce; }
+html[data-theme="dark"] .alloc-track,
+html[data-theme="dark"] .conf2-track,
+html[data-theme="dark"] .gauge{ background:#2a2a2e; }
+html[data-theme="dark"] .scn{ border-color:#2a2a2e; }
+html[data-theme="dark"] .tv-link{ border-color:#2a2a2e; }
+html[data-theme="dark"] .small-chip{ background:#3a2f0a; color:#fde68a; }
+html[data-theme="dark"] .pk-sig.buy{ background:#06371f; color:#34d399; }
+html[data-theme="dark"] .pk-sig.cautious{ background:#3a2f0a; color:#fde68a; }
+html[data-theme="dark"] .margin-banner{ background:#2a1414; border-color:#7f1d1d; }
+html[data-theme="dark"] .inc-tile{ background:#0c2417; border-color:#14532d; }
+html[data-theme="dark"] .harvest-tile{ background:#2a1414; border-color:#7f1d1d; }
+html[data-theme="dark"] #pf-fresh{ background:#161616!important; color:#9a9aa0!important; border-color:#242427!important; }
+html[data-theme="dark"] .teaser-bar{ background:#0c2417; border-color:#14532d; }
+html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0!important; }
 </style>
 </head>
 <body>
@@ -252,6 +307,7 @@ tbody td { padding: 8px; }
   <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Portfolio</button>
   <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
   <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Daily Picks <span class="tab-sub" id="tab-picks-date"></span></button>
+  <button class="tab theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle theme">🌙</button>
 </div>
 <div id="page-portfolio">
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
@@ -1358,7 +1414,7 @@ function renderMktTiles(qMap){
   const idx=document.getElementById('mkt-index'); if(idx)idx.innerHTML='<div class="mkt-grid">'+MKT_INDEX.map(i=>mktTile(i,qMap[i.s])).join('')+'</div>';
   const rk=document.getElementById('mkt-risk'); if(rk)rk.innerHTML='<div class="mkt-grid">'+MKT_RISK.map(i=>mktTile(i,qMap[i.s])).join('')+'</div>';
   const sec=document.getElementById('mkt-sectors'); if(sec){
-    const cells=MKT_SECTORS.map(i=>{ const q=qMap[i.s]; const chg=q&&q.chg; const ytd=q&&q.ytd!=null?q.ytd:null, fv=q&&q.fiveyr!=null?q.fiveyr:null; const pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%'; const pcol=v=>v==null?'#6b7280':v>=0?'#10b981':'#ef4444'; const edge=chg==null?'#e5e7eb':chg>=1.5?'#065f46':chg>=0.5?'#10b981':chg>=0?'#86efac':chg>-0.5?'#fca5a5':chg>-1.5?'#ef4444':'#991b1b'; return `<div class="sec-cell" style="background:#ffffff;border:2.5px solid ${edge};color:#1c1c1e"><div style="font-size:11px;font-weight:800">${i.s}</div><div style="font-size:9.5px;color:#6b7280">${i.n}</div><div style="font-size:13px;font-weight:800;margin-top:2px;color:${pcol(chg)}">${chg==null?'—':(chg>=0?'+':'')+fmt(chg,1)+'%'}</div><div style="font-size:8.5px;color:#6b7280;margin-top:3px;line-height:1.3">YTD <b style="color:${pcol(ytd)}">${pf(ytd)}</b> · 5Y <b style="color:${pcol(fv)}">${pf(fv)}</b></div></div>`; }).join('');
+    const cells=MKT_SECTORS.map(i=>{ const q=qMap[i.s]; const chg=q&&q.chg; const ytd=q&&q.ytd!=null?q.ytd:null, fv=q&&q.fiveyr!=null?q.fiveyr:null; const pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%'; const pcol=v=>v==null?'#6b7280':v>=0?'#10b981':'#ef4444'; const edge=chg==null?'#e5e7eb':chg>=1.5?'#065f46':chg>=0.5?'#10b981':chg>=0?'#86efac':chg>-0.5?'#fca5a5':chg>-1.5?'#ef4444':'#991b1b'; return `<div class="sec-cell" style="background:var(--surface-2);border:2.5px solid ${edge};color:var(--text)"><div style="font-size:11px;font-weight:800">${i.s}</div><div style="font-size:9.5px;color:#6b7280">${i.n}</div><div style="font-size:13px;font-weight:800;margin-top:2px;color:${pcol(chg)}">${chg==null?'—':(chg>=0?'+':'')+fmt(chg,1)+'%'}</div><div style="font-size:8.5px;color:#6b7280;margin-top:3px;line-height:1.3">YTD <b style="color:${pcol(ytd)}">${pf(ytd)}</b> · 5Y <b style="color:${pcol(fv)}">${pf(fv)}</b></div></div>`; }).join('');
     const green=MKT_SECTORS.filter(i=>qMap[i.s]&&qMap[i.s].chg>0).length;
     sec.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:10px"><b>${green} of ${MKT_SECTORS.length}</b> sectors green today — ${green>=8?'broad risk-on':green>=5?'mixed tape':'risk-off / defensive'}.</div><div class="sec-grid">${cells}</div>`;
   }
@@ -1389,6 +1445,10 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
   try{ const d=document.getElementById('tab-picks-date'); if(d)d.textContent='· '+ANALYSIS_DATE.replace(', 2026',''); }catch(e){}
   try{ const _dt=localStorage.getItem('dash_tab'); if(_dt==='picks'||_dt==='markets')switchTab(_dt); }catch(e){}
 })();
+
+function toggleTheme(){ const h=document.documentElement; const t=h.getAttribute('data-theme')==='dark'?'light':'dark'; h.setAttribute('data-theme',t); try{localStorage.setItem('pf_theme',t);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=t==='dark'?'☀️':'🌙'; const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',t==='dark'?'#000000':'#16213e'); }
+window.toggleTheme=toggleTheme;
+(function(){ const b=document.getElementById('theme-toggle'); if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙'; })();
 
 load();
 </script>
