@@ -1233,15 +1233,52 @@ let _optionsInit=false;
 function initOptions(){ const app=document.getElementById('options-app'); if(!app)return; (window.__dataReady||Promise.resolve(window.__DATA||{})).then(function(d){ try{ renderOptions(app,(d&&d.options)||null); }catch(e){ app.innerHTML='<div class="card"><div class="tech-empty">Options data error: '+(e&&e.message)+'</div></div>'; } }); }
 
 function optSideBadge(o){ const isShort=o.side==='short'; const c=isShort?'#f59e0b':'#6366f1'; return '<span class="badge" style="background:'+(isShort?'#fef3c7':'#ede9fe')+';color:'+(isShort?'#92400e':'#5b21b6')+'">'+(o.side||'').toUpperCase()+' '+(o.type||'').toUpperCase()+'</span>'; }
-function optCard(o){
-  const cov = o.covered===true?'<span class="badge" style="background:#d1fae5;color:#065f46">COVERED</span>':o.covered===false?'<span class="badge" style="background:#fee2e2;color:#991b1b">NAKED</span>':'';
-  const st = o.state?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">'+o.state.toUpperCase()+'</span>':'';
-  const m=[['Strike','$'+o.strike],['Expiry',(o.expiration||'')+' · '+(o.dte!=null?o.dte+'d':'')],['Premium',o.premium!=null?fmtD(o.premium):'—'],['Breakeven',o.breakeven!=null?'$'+o.breakeven:'—'],['Moneyness',o.moneyness||'—'],['Underlying',o.underlyingPx!=null?'$'+o.underlyingPx:'—']];
-  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+st+'</div></div></div>'+
-  '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+m.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
-  (o.summary?'<div class="cross-note" style="background:var(--surface-2);color:var(--text);margin-top:10px;margin-bottom:0">'+o.summary+'</div>':'')+'</div>';
+/* ── payoff-at-expiration diagram ── */
+function payoffSeries(spec){
+  const type=spec.type, side=spec.side, strike=+spec.strike, prem=+spec.prem||0, mult=100*(spec.contracts||1);
+  const ref=(spec.px&&spec.px>0)?spec.px:strike;
+  const lo=Math.max(0.01,Math.min(strike,ref)*0.55), hi=Math.max(strike,ref)*1.45, N=30;
+  const labels=[], data=[];
+  for(let i=0;i<=N;i++){ const S=lo+(hi-lo)*i/N;
+    const intr=type==='call'?Math.max(S-strike,0):Math.max(strike-S,0);
+    let pl=side==='long'?(intr-prem)*mult:(prem-intr)*mult;
+    if(spec.covered&&type==='call'&&side==='short'&&spec.costBasis!=null)pl+=(S-spec.costBasis)*mult;
+    labels.push('$'+(S>=100?Math.round(S):S.toFixed(1))); data.push(+pl.toFixed(0));
+  }
+  return {labels,data};
 }
-function ideaCard(i){
+function drawPayoff(id,spec){ const c=document.getElementById(id); if(!c||typeof Chart==='undefined')return;
+  const s=payoffSeries(spec);
+  try{ new Chart(c,{type:'line',data:{labels:s.labels,datasets:[{data:s.data,borderWidth:2,pointRadius:0,tension:0,
+    segment:{borderColor:function(ctx){return ctx.p1.parsed.y<0?'#ef4444':'#10b981';}},borderColor:'#10b981'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:function(t){return t[0].label+' at expiry';},label:function(t){return (t.parsed.y>=0?'+':'')+'$'+t.parsed.y;}}}},
+    scales:{x:{ticks:{maxTicksLimit:5,font:{size:9},color:'#9ca3af'},grid:{display:false}},y:{ticks:{maxTicksLimit:4,font:{size:9},color:'#9ca3af',callback:function(v){return '$'+v;}},grid:{color:'rgba(127,127,127,0.15)'}}}}}); }catch(e){}
+}
+function optCard(o,cid){
+  const cov=o.covered===true?'<span class="badge" style="background:#d1fae5;color:#065f46">COVERED</span>':o.covered===false?'<span class="badge" style="background:#fee2e2;color:#991b1b">NAKED</span>':'';
+  const st=o.state?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">'+o.state.toUpperCase()+'</span>':'';
+  const dteB=o.dte!=null?'<span class="badge" style="background:'+(o.dte<=7?'#fee2e2':'var(--surface-2)')+';color:'+(o.dte<=7?'#991b1b':'#6b7280')+'">'+o.dte+'d left</span>':'';
+  const itmB=o.itm!=null?'<span class="badge" style="background:'+(o.itm?'#fef3c7':'var(--surface-2)')+';color:'+(o.itm?'#92400e':'#6b7280')+'">'+(o.itm?'ITM':'OTM')+'</span>':'';
+  const isPending=/queued|confirmed|partial/.test(o.state||'');
+  const m=[['Strike','$'+o.strike],['Underlying',o.underlyingPx!=null?'$'+o.underlyingPx:'—'],['Breakeven',o.breakeven!=null?'$'+o.breakeven:'—']];
+  if(o.premium!=null)m.push([o.side==='short'?'Credit':'Debit',fmtD(o.premium)]);
+  if(o.mark!=null)m.push(['Mark','$'+o.mark.toFixed(2)]);
+  if(isPending&&o.limitPrice!=null)m.push(['Your limit','$'+o.limitPrice.toFixed(2)]);
+  if(!isPending&&o.pnl!=null)m.push(['P&L','<span style="color:'+(o.pnl>=0?'#10b981':'#ef4444')+'">'+(o.pnl>=0?'+':'')+fmtD(o.pnl)+'</span>']);
+  if(o.delta!=null)m.push(['Delta',o.delta]);
+  if(o.theta!=null)m.push(['Theta',o.theta]);
+  if(o.iv!=null)m.push(['IV',o.iv+'%']);
+  if(o.assignProb!=null)m.push([o.side==='short'?'Assign odds':'ITM odds',o.assignProb+'%']);
+  let fill='';
+  if(isPending&&o.mark!=null&&o.limitPrice!=null){ const likely=o.side==='short'?o.mark>=o.limitPrice:o.mark<=o.limitPrice; fill='<div style="font-size:11px;color:'+(likely?'#059669':'#9ca3af')+';margin-top:8px">'+(likely?'✓ Limit looks fillable at the current mark.':'⏳ Mark hasn’t reached your limit yet.')+'</div>'; }
+  const spec={type:o.type,side:o.side,strike:o.strike,prem:o.perShare,contracts:o.contracts,covered:o.covered,costBasis:o.costBasis,px:o.underlyingPx};
+  if(o.strike!=null&&o.perShare!=null)_optCharts.push([cid,spec]);
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+dteB+' '+itmB+' '+st+'</div></div></div>'+
+  '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+m.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
+  (o.summary?'<div class="cross-note" style="background:var(--surface-2);color:var(--text);margin-top:10px;margin-bottom:0">'+o.summary+'</div>':'')+fill+
+  (o.strike!=null&&o.perShare!=null?'<div style="font-size:10px;color:#9ca3af;margin:10px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:130px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
+}
+function ideaCard(i,cid){
   const dirC=i.direction==='Bullish'?'#10b981':i.direction==='Income'?'#0ea5e9':'#ef4444';
   const live=!!i.live; const prem=live?i.premium:i.estPremium;
   const rows=[['Strike','$'+i.strike],['Expiry',(i.expiration||'')+' · '+i.dte+'d'],[live?'Premium (mark)':'Est. premium','~$'+(prem!=null?(+prem).toFixed(2):'—')]];
@@ -1250,10 +1287,16 @@ function ideaCard(i){
   if(i.income!=null)rows.push(['Income','~$'+i.income]);
   if(live){ if(i.delta!=null)rows.push(['Delta',i.delta]); if(i.iv!=null)rows.push(['IV',i.iv+'%']); if(i.openInterest!=null)rows.push(['Open int',i.openInterest]); if(i.pop!=null)rows.push(['POP',i.pop+'%']); }
   const tag='<span class="badge" style="background:'+(live?'#d1fae5':'var(--surface-2)')+';color:'+(live?'#065f46':'#9ca3af')+'">'+(live?'● LIVE':'EST')+'</span>';
+  const cc=i.strategy==='Covered call';
+  const spec=cc?{type:'call',side:'short',strike:i.strike,prem:prem,contracts:1,covered:true,costBasis:i.strike/1.12,px:i.strike/1.12}
+               :{type:'call',side:'long',strike:i.strike,prem:prem,contracts:1,px:i.strike/1.05};
+  if(prem!=null)_optCharts.push([cid,spec]);
   return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+'</div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
-  '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul></div>';
+  '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
+  (prem!=null?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
 }
+let _optCharts=[];
 const OPT_KNOWLEDGE=[
   ['📈 Calls & Puts','A <b>call</b> profits when the stock rises (right to buy at the strike); a <b>put</b> profits when it falls (right to sell at the strike). Each contract = 100 shares. Buyers risk only the premium paid; sellers collect premium but take on obligation.'],
   ['🛡️ Covered call','Sell a call against 100+ shares you already own. You collect premium as income and cap your upside at the strike. Low-risk because your shares back it — this is your pending IREN trade.'],
@@ -1262,24 +1305,28 @@ const OPT_KNOWLEDGE=[
   ['⚠️ Key risks','Options expire — they can go to $0. Buying: max loss is the premium. Selling naked: losses can be large/unlimited. Assignment can happen early on ITM short options. Wide bid/ask and low volume hurt fills — check open interest.'],
 ];
 function renderOptions(app,o){
+  _optCharts=[];
   let h='<div class="picks-hero"><div><div class="ph-label">Options</div><div class="ph-date">Contracts · Ideas · Knowledge</div><div class="ph-stale">Research &amp; education only — not financial advice.</div></div></div>';
   // Your options
   h+='<div class="card"><div class="card-title"><span>📂 Your Options</span></div>';
   const pend=(o&&o.pending)||[], pos=(o&&o.positions)||[];
   if(!pend.length&&!pos.length){ h+='<div class="tech-empty">No open or pending option contracts in the snapshot. Your pending IREN covered call will appear here on the next producer run.</div>'; }
-  else { if(pos.length)h+='<div class="picks-grid2">'+pos.map(optCard).join('')+'</div>'; if(pend.length){ h+='<div style="font-size:12px;font-weight:700;color:#9ca3af;margin:'+(pos.length?'12px':'2px')+' 0 8px">Pending orders</div><div class="picks-grid2">'+pend.map(optCard).join('')+'</div>'; } }
+  else { if(pos.length)h+='<div class="picks-grid2">'+pos.map(function(p,k){return optCard(p,'pf-pos-'+k);}).join('')+'</div>'; if(pend.length){ h+='<div style="font-size:12px;font-weight:700;color:#9ca3af;margin:'+(pos.length?'12px':'2px')+' 0 8px">Pending orders</div><div class="picks-grid2">'+pend.map(function(p,k){return optCard(p,'pf-pend-'+k);}).join('')+'</div>'; } }
   h+='</div>';
   // Ideas
   const ideas=(o&&o.ideas&&o.ideas.ideas)||[];
   h+='<div class="card"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · data-driven · est. premiums</span></span></div>';
   if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls from the oversold scan + covered-call income on your 100+ share holdings).</div>';
-  else h+='<div class="picks-grid2">'+ideas.map(ideaCard).join('')+'</div><div class="fund-note">Estimated premiums — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
+  else h+='<div class="picks-grid2">'+ideas.map(function(i,k){return ideaCard(i,'pf-idea-'+k);}).join('')+'</div><div class="fund-note">Estimated premiums — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
   h+='</div>';
   // Knowledge
   h+='<div class="card"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+
      OPT_KNOWLEDGE.map(function(k){return '<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">'+k[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.82;line-height:1.5">'+k[1]+'</div></div>';}).join('')+'</div></div>';
   h+='<div class="disclaimer">Options involve substantial risk and are not suitable for all investors. This page is research/education from your Robinhood data — not financial advice. You trade in the Robinhood app.</div>';
   app.innerHTML=h;
+  // draw payoff charts after the DOM is in place
+  const queued=_optCharts.slice(); _optCharts=[];
+  setTimeout(function(){ queued.forEach(function(q){ drawPayoff(q[0],q[1]); }); },0);
 }
 
 function runNewAnalysis(){ try{sendPrompt("run my stock analysis");}catch(e){alert("Go to the chat window and type: run my stock analysis");} }

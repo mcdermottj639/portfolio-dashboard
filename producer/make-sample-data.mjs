@@ -157,6 +157,7 @@ const optPending = [ analyzeLeg(
   { chain_symbol:'IREN', side:'sell', option_type:'call', strike_price:'70', expiration_date:'2026-07-17' },
   60.02, 174, { quantity:1, premium:340, direction:'credit', chain_symbol:'IREN', costBasis:49.37 }) ];
 optPending[0].state='queued';
+Object.assign(optPending[0], { mark:3.45, bid:3.40, ask:3.50, delta:0.35, theta:-0.114, iv:102, openInterest:10412, assignProb:35, itm:false, costBasis:49.37, limitPrice:3.40, live:true });
 const options = {
   asOf: new Date().toISOString(), pending: optPending, positions: [],
   ideas: buildIdeas(picks.candidates, [
