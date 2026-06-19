@@ -51,7 +51,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` |
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` |
    | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [top15 + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
+   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` |
 
@@ -122,6 +122,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    4. *(hybrid, optional)* If AV budget remains, call `COMPANY_OVERVIEW` for each finalist and
       save to `producer/raw/av-src/overview-<SYM>.json` (revenue growth + forward P/E). Skip if
       the 25/day cap is hit — scoring degrades gracefully to value-only.
+   4b. **For the Analyze tab** — so picks/recommendations are analyzable: `get_equity_quotes`
+      and `get_equity_historicals` (interval=day, Jan 1 this year) for the **pick candidate
+      tickers + any non-held option-idea underlyings** → `producer/raw/quotes-picks.json` and
+      `producer/raw/hist-day-picks.json` (build-data merges all `quotes*.json` / `hist-day*.json`).
    5. `node producer/picks-build.mjs` → writes `producer/raw/picks.json` (scored candidates +
       top 3 with thesis). `build-data.mjs` embeds it as `data.picks`; the dashboard reads it
       directly (the old Kyle note is retired).
