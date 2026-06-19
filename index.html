@@ -307,6 +307,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
   <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Portfolio</button>
   <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
   <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Daily Picks <span class="tab-sub" id="tab-picks-date"></span></button>
+  <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
   <button class="tab theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark" aria-label="Toggle theme">🌙</button>
 </div>
 <div id="page-portfolio">
@@ -317,6 +318,9 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
 </div>
 <div id="page-markets" style="display:none">
   <div id="markets-app"><div class="loading-wrap"><div class="spinner"></div>Loading markets…</div></div>
+</div>
+<div id="page-options" style="display:none">
+  <div id="options-app"><div class="loading-wrap"><div class="spinner"></div>Loading options…</div></div>
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
@@ -1147,14 +1151,68 @@ let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null;
 let PICK_TRIM=[],PICK_ADD=[],PICK_INCOME=[],PICK_HISTORY=[],MKTX=null;
 
 function switchTab(tab){
-  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks'};
+  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options'};
   for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none'; const bt=document.getElementById('tab-'+t); if(bt)bt.classList.toggle('active',t===tab); }
   try{localStorage.setItem('dash_tab',tab);}catch(e){}
   window.scrollTo(0,0);
   if(tab==='picks'&&!_picksInit){_picksInit=true;initPicks();}
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
+  if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
 }
 window.switchTab=switchTab;
+
+/* ═══════════════════════════════════════════
+   OPTIONS PAGE  (your contracts · ideas · knowledge)
+═══════════════════════════════════════════ */
+let _optionsInit=false;
+function initOptions(){ const app=document.getElementById('options-app'); if(!app)return; (window.__dataReady||Promise.resolve(window.__DATA||{})).then(function(d){ try{ renderOptions(app,(d&&d.options)||null); }catch(e){ app.innerHTML='<div class="card"><div class="tech-empty">Options data error: '+(e&&e.message)+'</div></div>'; } }); }
+
+function optSideBadge(o){ const isShort=o.side==='short'; const c=isShort?'#f59e0b':'#6366f1'; return '<span class="badge" style="background:'+(isShort?'#fef3c7':'#ede9fe')+';color:'+(isShort?'#92400e':'#5b21b6')+'">'+(o.side||'').toUpperCase()+' '+(o.type||'').toUpperCase()+'</span>'; }
+function optCard(o){
+  const cov = o.covered===true?'<span class="badge" style="background:#d1fae5;color:#065f46">COVERED</span>':o.covered===false?'<span class="badge" style="background:#fee2e2;color:#991b1b">NAKED</span>':'';
+  const st = o.state?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">'+o.state.toUpperCase()+'</span>':'';
+  const m=[['Strike','$'+o.strike],['Expiry',(o.expiration||'')+' · '+(o.dte!=null?o.dte+'d':'')],['Premium',o.premium!=null?fmtD(o.premium):'—'],['Breakeven',o.breakeven!=null?'$'+o.breakeven:'—'],['Moneyness',o.moneyness||'—'],['Underlying',o.underlyingPx!=null?'$'+o.underlyingPx:'—']];
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+st+'</div></div></div>'+
+  '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+m.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
+  (o.summary?'<div class="cross-note" style="background:var(--surface-2);color:var(--text);margin-top:10px;margin-bottom:0">'+o.summary+'</div>':'')+'</div>';
+}
+function ideaCard(i){
+  const dirC=i.direction==='Bullish'?'#10b981':i.direction==='Income'?'#0ea5e9':'#ef4444';
+  const rows=[['Strike','$'+i.strike],['Expiry',i.expiration+' · '+i.dte+'d'],['Est. premium','~$'+(i.estPremium!=null?i.estPremium.toFixed(2):'—')]];
+  if(i.breakeven!=null)rows.push(['Breakeven','$'+i.breakeven]);
+  if(i.maxLoss!=null)rows.push(['Max loss','$'+i.maxLoss]);
+  if(i.income!=null)rows.push(['Income','~$'+i.income]);
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span></div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
+  '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
+  '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul></div>';
+}
+const OPT_KNOWLEDGE=[
+  ['📈 Calls & Puts','A <b>call</b> profits when the stock rises (right to buy at the strike); a <b>put</b> profits when it falls (right to sell at the strike). Each contract = 100 shares. Buyers risk only the premium paid; sellers collect premium but take on obligation.'],
+  ['🛡️ Covered call','Sell a call against 100+ shares you already own. You collect premium as income and cap your upside at the strike. Low-risk because your shares back it — this is your pending IREN trade.'],
+  ['💵 Cash-secured put','Sell a put while holding enough cash to buy 100 shares at the strike. You get paid to potentially buy a stock you want at a lower effective price; if it stays above the strike you just keep the premium.'],
+  ['🔤 The Greeks','<b>Delta</b> ≈ how much the option moves per $1 of stock. <b>Theta</b> = daily time decay (works against buyers). <b>Vega</b> = sensitivity to volatility. <b>Gamma</b> = how fast delta changes. Long options lose value as expiry nears, all else equal.'],
+  ['⚠️ Key risks','Options expire — they can go to $0. Buying: max loss is the premium. Selling naked: losses can be large/unlimited. Assignment can happen early on ITM short options. Wide bid/ask and low volume hurt fills — check open interest.'],
+];
+function renderOptions(app,o){
+  let h='<div class="picks-hero"><div><div class="ph-label">Options</div><div class="ph-date">Contracts · Ideas · Knowledge</div><div class="ph-stale">Research &amp; education only — not financial advice.</div></div></div>';
+  // Your options
+  h+='<div class="card"><div class="card-title"><span>📂 Your Options</span></div>';
+  const pend=(o&&o.pending)||[], pos=(o&&o.positions)||[];
+  if(!pend.length&&!pos.length){ h+='<div class="tech-empty">No open or pending option contracts in the snapshot. Your pending IREN covered call will appear here on the next producer run.</div>'; }
+  else { if(pos.length)h+='<div class="picks-grid2">'+pos.map(optCard).join('')+'</div>'; if(pend.length){ h+='<div style="font-size:12px;font-weight:700;color:#9ca3af;margin:'+(pos.length?'12px':'2px')+' 0 8px">Pending orders</div><div class="picks-grid2">'+pend.map(optCard).join('')+'</div>'; } }
+  h+='</div>';
+  // Ideas
+  const ideas=(o&&o.ideas&&o.ideas.ideas)||[];
+  h+='<div class="card"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · data-driven · est. premiums</span></span></div>';
+  if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls from the oversold scan + covered-call income on your 100+ share holdings).</div>';
+  else h+='<div class="picks-grid2">'+ideas.map(ideaCard).join('')+'</div><div class="fund-note">Estimated premiums — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
+  h+='</div>';
+  // Knowledge
+  h+='<div class="card"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+
+     OPT_KNOWLEDGE.map(function(k){return '<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">'+k[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.82;line-height:1.5">'+k[1]+'</div></div>';}).join('')+'</div></div>';
+  h+='<div class="disclaimer">Options involve substantial risk and are not suitable for all investors. This page is research/education from your Robinhood data — not financial advice. You trade in the Robinhood app.</div>';
+  app.innerHTML=h;
+}
 
 function runNewAnalysis(){ try{sendPrompt("run my stock analysis");}catch(e){alert("Go to the chat window and type: run my stock analysis");} }
 window.runNewAnalysis=runNewAnalysis;

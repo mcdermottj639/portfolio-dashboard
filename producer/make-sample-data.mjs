@@ -9,6 +9,7 @@ import { emit } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
 import { avKey } from './av.mjs';
 import { buildPicks } from './picks.mjs';
+import { analyzeLeg, buildIdeas } from './options.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -151,6 +152,19 @@ const pickOv = { // hybrid: AV growth on a couple of finalists; others fall back
 };
 const picks = buildPicks(pickFinalists, pickFund, pickOv);
 
+// --- sample Options (pending covered call + directional ideas) ---
+const optPending = [ analyzeLeg(
+  { chain_symbol:'IREN', side:'sell', option_type:'call', strike_price:'70', expiration_date:'2026-07-17' },
+  60.02, 174, { quantity:1, premium:340, direction:'credit', chain_symbol:'IREN', costBasis:49.37 }) ];
+optPending[0].state='queued';
+const options = {
+  asOf: new Date().toISOString(), pending: optPending, positions: [],
+  ideas: buildIdeas(picks.candidates, [
+    { symbol:'IREN', underlying:'IREN', shares:174, px:60.02 },
+    { symbol:'GRAB', underlying:'GRAB', shares:124, px:4.50 },
+  ], { NFLX:'77.33', PEP:'142.5', KLAC:'261.1' }),
+};
+
 const now = new Date(); // sample stamp only
 const data = {
   schemaVersion: 1,
@@ -161,6 +175,7 @@ const data = {
   quotes,
   hist,
   picks,
+  options,
 };
 
 await emit(data);
