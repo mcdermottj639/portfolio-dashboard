@@ -112,12 +112,18 @@ const data = {
   generatedAtLabel: label,
   recorded, quotes, hist,
 };
+// Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks;
+// the dashboard reads it directly (the old Kyle-note path is retired).
+const picksFile = filesMatching(/^picks\.json$/)[0];
+if (picksFile) data.picks = readJSON(picksFile);
+
 await emit(data);
 console.log('built:',
   positions.length, 'positions ·', Object.keys(quotes).length, 'quotes ·',
   Object.entries(hist).map(([k, v]) => Object.keys(v).length + ' ' + k).join(' · ') || 'no hist',
   '·', Object.keys(recorded).length, 'recorded ·', avCount, 'AV',
   '·', vix != null ? 'VIX ' + vix : 'no VIX',
+  '·', data.picks ? data.picks.candidates.length + ' picks' : 'no picks',
   avCount ? '' : '(macro/fundamentals will show "—" until av-src is populated)');
 
 // --- Markets-tab coverage check ---------------------------------------------

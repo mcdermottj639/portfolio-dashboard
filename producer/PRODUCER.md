@@ -102,6 +102,24 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      works. `build-data.mjs` maps the saved files to the correct replay keys automatically
      (no hand-keying) and prints how many AV snapshots it embedded.
 
+3b. **Daily Picks — ONCE PER DAY** (the Picks tab). Like AV, only on the day's first run
+   (gate on the same `.fetched` date, or a separate `producer/raw/picks-built` marker). Fully
+   Robinhood-driven; AV is optional enrichment for the finalists only.
+   1. Run the saved scanner and save the result:
+      `mcp__claude_ai_Robinhood__run_scan { scan_id: "17e8f5a7-395f-4f22-bba8-f287d39b6e57" }`
+      → `producer/raw/scan.json`. (The scan = RSI(14) < 45 AND market cap > $10B — oversold
+      large-caps across all sectors, with RSI already a column. Re-create with `create_scan` if
+      the id ever 404s; update `SCAN_ID` in `picks.mjs`.)
+   2. `node producer/picks-select.mjs` → prints the ~12 most-oversold finalist tickers.
+   3. `mcp__claude_ai_Robinhood__get_equity_fundamentals { symbols: [those finalists] }`
+      → `producer/raw/picks-fund.json` (P/E, P/B, sector, 52-wk range, dividend).
+   4. *(hybrid, optional)* If AV budget remains, call `COMPANY_OVERVIEW` for each finalist and
+      save to `producer/raw/av-src/overview-<SYM>.json` (revenue growth + forward P/E). Skip if
+      the 25/day cap is hit — scoring degrades gracefully to value-only.
+   5. `node producer/picks-build.mjs` → writes `producer/raw/picks.json` (scored candidates +
+      top 3 with thesis). `build-data.mjs` embeds it as `data.picks`; the dashboard reads it
+      directly (the old Kyle note is retired).
+
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```
    PF_PASSPHRASE="<the dashboard passphrase>" node producer/build-data.mjs "<label>"

@@ -8,6 +8,7 @@ import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
 import { avKey } from './av.mjs';
+import { buildPicks } from './picks.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -131,6 +132,25 @@ const OV = {
 for (const p of POS) recorded[avKey('COMPANY_OVERVIEW', { symbol: p.symbol.replace(/\./g, '-') })] =
   avStruct(Object.assign({ Symbol: p.symbol, Name: p.symbol }, OV[p.symbol] || {}));
 
+// --- sample Daily Picks (exercises the same scoring engine the producer uses) ---
+const pickFinalists = [
+  { ticker: 'NFLX',  name: 'Netflix Inc.',        price: 77.33,  rsi: 28, marketCap: 3.26e11 },
+  { ticker: 'PEP',   name: 'PepsiCo Inc.',        price: 142.5,  rsi: 36, marketCap: 1.95e11 },
+  { ticker: 'KLAC',  name: 'KLA Corporation',     price: 261.1,  rsi: 41, marketCap: 3.39e11 },
+  { ticker: 'CVX',   name: 'Chevron Corporation', price: 173.9,  rsi: 43, marketCap: 3.46e11 },
+];
+const pickFund = {
+  NFLX: { symbol: 'NFLX', pe_ratio: '24.0', pb_ratio: '9.1', sector: 'Communication Services', dividend_yield: '0.0', high_52_weeks: '112.0', low_52_weeks: '70.0' },
+  PEP:  { symbol: 'PEP',  pe_ratio: '16.5', pb_ratio: '11.2', sector: 'Consumer Defensive', dividend_yield: '3.6', high_52_weeks: '180.0', low_52_weeks: '138.0' },
+  KLAC: { symbol: 'KLAC', pe_ratio: '28.4', pb_ratio: '18.0', sector: 'Technology', dividend_yield: '0.8', high_52_weeks: '310.0', low_52_weeks: '230.0' },
+  CVX:  { symbol: 'CVX',  pe_ratio: '13.8', pb_ratio: '1.8', sector: 'Energy', dividend_yield: '4.5', high_52_weeks: '195.0', low_52_weeks: '160.0' },
+};
+const pickOv = { // hybrid: AV growth on a couple of finalists; others fall back to value-only
+  NFLX: { Symbol: 'NFLX', Sector: 'Communication Services', ForwardPE: '24.0', QuarterlyRevenueGrowthYOY: '0.162' },
+  PEP:  { Symbol: 'PEP',  Sector: 'Consumer Defensive', ForwardPE: '16.5', QuarterlyRevenueGrowthYOY: '0.085' },
+};
+const picks = buildPicks(pickFinalists, pickFund, pickOv);
+
 const now = new Date(); // sample stamp only
 const data = {
   schemaVersion: 1,
@@ -140,8 +160,10 @@ const data = {
   recorded,
   quotes,
   hist,
+  picks,
 };
 
 await emit(data);
 console.log('  sample:', Object.keys(recorded).length, 'recorded (incl. AV macro/fundamentals/earnings) ·',
-  Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily ·', Object.keys(hist.month).length, 'monthly histories');
+  Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily ·', Object.keys(hist.month).length, 'monthly histories ·',
+  picks.candidates.length, 'picks (top:', picks.picks.map((p) => p.ticker).join('/') + ')');
