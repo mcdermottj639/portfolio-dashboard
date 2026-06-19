@@ -89,6 +89,23 @@ if (existsSync(avSrcDir)) for (const f of readdirSync(avSrcDir).filter((x) => x.
   avCount++;
 }
 
+// VIX from Robinhood index quotes (free, every run) → synthesize the AV INDEX_DATA
+// response the macro card reads. AV's own INDEX_DATA is premium-only, so this is how
+// the VIX tile gets a live value on the free tier. Save the raw get_index_quotes
+// result to producer/raw/index-quotes.json (see PRODUCER.md).
+const idxFile = filesMatching(/^index-quotes\.json$/)[0];
+let vix = null;
+if (idxFile) {
+  const d = unwrap(readJSON(idxFile));
+  const idxQuotes = d.data?.quotes ?? d.quotes ?? [];
+  const vq = idxQuotes.find((q) => q.symbol === 'VIX');
+  if (vq && (vq.value || vq.last_trade_price)) {
+    vix = parseFloat(vq.value || vq.last_trade_price);
+    recorded[avKey('INDEX_DATA', { symbol: 'VIX', interval: 'daily' })] =
+      { structuredContent: { data: [{ close: String(vix) }] } };
+  }
+}
+
 const data = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
@@ -100,6 +117,7 @@ console.log('built:',
   positions.length, 'positions ·', Object.keys(quotes).length, 'quotes ·',
   Object.entries(hist).map(([k, v]) => Object.keys(v).length + ' ' + k).join(' · ') || 'no hist',
   '·', Object.keys(recorded).length, 'recorded ·', avCount, 'AV',
+  '·', vix != null ? 'VIX ' + vix : 'no VIX',
   avCount ? '' : '(macro/fundamentals will show "—" until av-src is populated)');
 
 // --- Markets-tab coverage check ---------------------------------------------

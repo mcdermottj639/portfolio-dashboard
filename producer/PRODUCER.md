@@ -42,9 +42,13 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [top15 + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
+   | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` |
 
    Notes:
    - "all position symbols" = every `symbol` from the positions response.
+   - The VIX instrument id above is stable; if it ever 404s, re-resolve it with
+     `get_indexes { symbols: "VIX" }` (or `search` asset_type `market_index`). `build-data.mjs`
+     turns this quote into the macro card's VIX value — free, every run (AV's VIX is premium).
    - "all market symbols" = the `MARKET_SYMBOLS` list above (indexes + risk gauges + sectors).
    - "top 15" = the 15 positions with the largest market value. If you must batch
      historicals (≤10 symbols/call), save each batch as `hist-day-1.json`, `hist-day-2.json`, …
@@ -78,8 +82,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    3. Write today's ET date (`YYYY-MM-DD`) into `producer/raw/av-src/.fetched`.
 
    Notes / known free-tier limits (verified against the live connector):
-   - **VIX is premium-only** (`INDEX_DATA` returns "not yet entitled to index data access"), so
-     the VIX macro tile stays "—". The plan omits it on purpose.
+   - **VIX is premium-only on Alpha Vantage** (`INDEX_DATA` returns "not yet entitled to index
+     data access"), so it is **not** fetched from AV. Instead the VIX macro value comes from the
+     free **Robinhood** index quote saved in step 2 — no AV call spent on it.
    - The economic indicators return CSV; `COMPANY_OVERVIEW` returns a JSON object — the PWA
      parses both.
    - If AV is unavailable or you skip it, those sections simply show "—"; everything else still

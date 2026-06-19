@@ -114,6 +114,9 @@ recorded[avKey('FEDERAL_FUNDS_RATE', { interval: 'monthly' })] =
   avText(csv([{ t: '2026-06-01', v: '4.33' }, { t: '2026-05-01', v: '4.33' }]));
 recorded[avKey('CPI', { interval: 'monthly' })] =
   avText(csv(Array.from({ length: 14 }, (_, i) => ({ t: `2026-${String(6 - i).padStart(2, '0')}-01`, v: (315.4 - i * 0.6).toFixed(1) }))));
+// VIX: build-data.mjs synthesizes this INDEX_DATA shape from the free Robinhood index
+// quote (AV's INDEX_DATA is premium). Mirror that here so the sample macro card shows it.
+recorded[avKey('INDEX_DATA', { symbol: 'VIX', interval: 'daily' })] = { structuredContent: { data: [{ close: '16.4' }] } };
 // earnings calendar → CSV string (parseAV returns it verbatim; consumer parseCSV's it)
 const earnDate = new Date(Date.now() + 9 * 86400 * 1000).toISOString().slice(0, 10);
 recorded[avKey('EARNINGS_CALENDAR', { horizon: '3month' })] =

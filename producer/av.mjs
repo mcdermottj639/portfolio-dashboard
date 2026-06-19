@@ -34,12 +34,11 @@ export const MACRO_CALLS = [
   { id: 'macro-cpi',         tool: 'CPI',                args: { interval: 'monthly' } },
   { id: 'macro-fedfunds',    tool: 'FEDERAL_FUNDS_RATE', args: { interval: 'monthly' } },
 ];
-// PREMIUM-ONLY — the free key returns "not yet entitled to index data access",
-// so the VIX macro tile stays "—" on the free tier. Not part of the daily plan,
-// but specForId still resolves it so a premium key can drop the file in and have
-// it keyed correctly. NOTE: if enabled, INDEX_DATA returns CSV — the consumer's
-// VIX parser currently only reads the object/array form, so it would need a
-// parseCSV branch first.
+// PREMIUM-ONLY on Alpha Vantage — the free key returns "not yet entitled to index
+// data access". We do NOT spend an AV call on VIX; instead build-data.mjs sources
+// the VIX level from the free Robinhood index quote and synthesizes this same
+// INDEX_DATA response, so the macro tile is live on the free tier. Kept here so
+// specForId still resolves the key (e.g. if a premium AV key later supplies it).
 export const PREMIUM_CALLS = [
   { id: 'macro-vix', tool: 'INDEX_DATA', args: { symbol: 'VIX', interval: 'daily' } },
 ];
