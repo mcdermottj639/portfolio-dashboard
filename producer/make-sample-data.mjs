@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
+import { MARKET_SYMBOLS } from './markets.mjs';
+import { avKey } from './av.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,9 +40,27 @@ function series(symbol, endPx, drift) {
   return { symbol, bars: out };
 }
 
+// Deterministic pseudo-price for a symbol so the sample Markets tab is fully populated.
+function mktPx(sym) {
+  let h = 0; for (let i = 0; i < sym.length; i++) h = (h * 31 + sym.charCodeAt(i)) >>> 0;
+  return 40 + (h % 600); // stable 40–640 range
+}
+// ~60 monthly bars (5 years), trending up to endPx, fully deterministic.
+function monthSeries(symbol, endPx, drift) {
+  const out = [], months = 60, start = endPx / (1 + drift);
+  for (let i = 0; i < months; i++) {
+    const t = i / (months - 1);
+    const wave = Math.sin(t * Math.PI * 4) * endPx * 0.03;
+    const c = start + (endPx - start) * t + wave;
+    const d = new Date(Date.UTC(2021, 5 + i, 1));
+    out.push({ begins_at: d.toISOString(), close_price: c.toFixed(2), interpolated: false });
+  }
+  return { symbol, bars: out };
+}
+
 const recorded = {};   // exact-key calls: portfolio, positions, (AV in the real producer)
 const quotes = {};     // per-symbol quote store
-const hist = { day: {} }; // per-symbol historicals, by interval
+const hist = { day: {}, month: {} }; // per-symbol historicals, by interval
 
 // get_portfolio
 recorded[makeKey(RH + 'get_portfolio', { account_number: 'ACCT' })] = {
@@ -70,6 +90,47 @@ for (const s of [...POS.map((p) => p.symbol), 'SPY', 'QQQ']) {
   hist.day[s] = series(s, endPx, drift[s] ?? 0.1).bars;
 }
 
+// Markets-tab symbols (indexes + risk gauges + sectors): quotes + day + month history,
+// so the Markets tab renders fully in preview just like the real producer output.
+for (const s of MARKET_SYMBOLS) {
+  const endPx = quotes[s] ? parseFloat(quotes[s].last_trade_price) : mktPx(s);
+  if (!quotes[s]) quotes[s] = { last_trade_price: String(endPx), adjusted_previous_close: (endPx * 0.997).toFixed(2) };
+  const d = drift[s] ?? 0.12;
+  if (!hist.day[s]) hist.day[s] = series(s, endPx, d).bars;
+  hist.month[s] = monthSeries(s, endPx, d + 0.6).bars; // 5Y drift larger than YTD
+}
+
+// --- sample Alpha Vantage responses (macro + fundamentals + earnings) -------
+// Shapes match what index.html's parseAV/fetchMacro/fetchOverviewBatch expect.
+const avText = (obj) => ({ content: [{ type: 'text', text: typeof obj === 'string' ? obj : JSON.stringify(obj) }] });
+const avStruct = (obj) => ({ structuredContent: obj });
+// macro: the live free-tier connector returns CSV (header `timestamp,value`, newest first)
+// for these economic indicators — mirror that here so preview exercises the parseCSV path.
+// (VIX/INDEX_DATA is premium-only on the free key, so it's intentionally absent → tile "—".)
+const csv = (rows) => 'timestamp,value\n' + rows.map((r) => `${r.t},${r.v}`).join('\n');
+recorded[avKey('TREASURY_YIELD', { interval: 'monthly', maturity: '10year' })] =
+  avText(csv([{ t: '2026-06-01', v: '4.32' }, { t: '2026-05-01', v: '4.48' }]));
+recorded[avKey('FEDERAL_FUNDS_RATE', { interval: 'monthly' })] =
+  avText(csv([{ t: '2026-06-01', v: '4.33' }, { t: '2026-05-01', v: '4.33' }]));
+recorded[avKey('CPI', { interval: 'monthly' })] =
+  avText(csv(Array.from({ length: 14 }, (_, i) => ({ t: `2026-${String(6 - i).padStart(2, '0')}-01`, v: (315.4 - i * 0.6).toFixed(1) }))));
+// VIX: build-data.mjs synthesizes this INDEX_DATA shape from the free Robinhood index
+// quote (AV's INDEX_DATA is premium). Mirror that here so the sample macro card shows it.
+recorded[avKey('INDEX_DATA', { symbol: 'VIX', interval: 'daily' })] = { structuredContent: { data: [{ close: '16.4' }] } };
+// earnings calendar → CSV string (parseAV returns it verbatim; consumer parseCSV's it)
+const earnDate = new Date(Date.now() + 9 * 86400 * 1000).toISOString().slice(0, 10);
+recorded[avKey('EARNINGS_CALENDAR', { horizon: '3month' })] =
+  avText(`symbol,name,reportDate,fiscalDateEnding,estimate,currency\nNVDA,NVIDIA Corp,${earnDate},2026-07-31,1.05,USD`);
+// company overview per sample holding → object with Symbol + fundamentals fields
+const OV = {
+  NVDA: { Sector: 'TECHNOLOGY', Industry: 'Semiconductors', PERatio: '52.1', ForwardPE: '38.4', PEGRatio: '1.3', Beta: '1.72', DividendYield: '0.0003', EPS: '3.10', QuarterlyRevenueGrowthYOY: '0.69', AnalystTargetPrice: '185', ProfitMargin: '0.55' },
+  MSFT: { Sector: 'TECHNOLOGY', Industry: 'Software', PERatio: '36.8', ForwardPE: '31.2', PEGRatio: '2.1', Beta: '0.91', DividendYield: '0.0072', EPS: '13.05', QuarterlyRevenueGrowthYOY: '0.16', AnalystTargetPrice: '540', ProfitMargin: '0.36' },
+  AAPL: { Sector: 'TECHNOLOGY', Industry: 'Consumer Electronics', PERatio: '31.0', ForwardPE: '28.5', PEGRatio: '2.6', Beta: '1.25', DividendYield: '0.0044', EPS: '6.95', QuarterlyRevenueGrowthYOY: '0.05', AnalystTargetPrice: '310', ProfitMargin: '0.25' },
+  GLD:  { Sector: 'N/A', Industry: 'Exchange Traded Fund', PERatio: 'None', ForwardPE: 'None', PEGRatio: 'None', Beta: '0.12', DividendYield: '0.0', EPS: 'None', QuarterlyRevenueGrowthYOY: 'None', AnalystTargetPrice: 'None', ProfitMargin: 'None' },
+};
+for (const p of POS) recorded[avKey('COMPANY_OVERVIEW', { symbol: p.symbol.replace(/\./g, '-') })] =
+  avStruct(Object.assign({ Symbol: p.symbol, Name: p.symbol }, OV[p.symbol] || {}));
+
 const now = new Date(); // sample stamp only
 const data = {
   schemaVersion: 1,
@@ -82,5 +143,5 @@ const data = {
 };
 
 await emit(data);
-console.log('  sample:', Object.keys(recorded).length, 'recorded ·',
-  Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily histories');
+console.log('  sample:', Object.keys(recorded).length, 'recorded (incl. AV macro/fundamentals/earnings) ·',
+  Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily ·', Object.keys(hist.month).length, 'monthly histories');
