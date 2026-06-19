@@ -1,0 +1,18 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# Node (only the producer uses node for icon gen; no deps committed)
+node_modules/
+
+# Local scratch
+/tmp/
+*.local
+
+# Producer scratch (raw MCP outputs, regenerated each run)
+producer/raw/
+
+# Secrets — real account number + passphrase (never commit)
+producer/secret.local.json
