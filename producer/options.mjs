@@ -88,6 +88,13 @@ export function ideaTargets(picks, holdings) {
     targets.push({ underlying: h.symbol, kind: 'covered_call', type: 'call', direction: 'Income',
       strategy: 'Covered call', expiration, dte, targetStrike: Math.round(h.px * 1.12), px: h.px, shares: h.shares });
   }
+  // Cash-secured puts on the next oversold names (distinct underlyings from the long calls,
+  // so live quotes don't collide) — get paid to potentially own them ~7% cheaper.
+  for (const c of (picks || []).slice(3, 5)) {
+    if (!c.price) continue;
+    targets.push({ underlying: c.ticker, kind: 'csp', type: 'put', direction: 'Income',
+      strategy: 'Cash-secured put', expiration, dte, targetStrike: Math.round(c.price * 0.93), px: c.price, rsi: c.rsi });
+  }
   return targets;
 }
 
@@ -100,55 +107,57 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
   const ideas = targets.map((t) => {
     const px = num(quotesBySym[t.underlying]) || t.px;
     const live = liveBySym[t.underlying];
+    const optSide = t.kind === 'long_call' ? 'long' : 'short';
     const base = { underlying: t.underlying, direction: t.direction, strategy: t.strategy,
-      expiration: t.expiration, dte: t.dte, confidence: t.composite ? Math.round(t.composite * 9) : 60 };
-    if (live && num(live.mark) != null) {
-      const strike = num(live.strike) ?? t.targetStrike, prem = num(live.mark);
+      expiration: t.expiration, dte: t.dte, optType: t.type, optSide, covered: t.kind === 'covered_call',
+      confidence: t.composite ? Math.round(t.composite * 9) : 60 };
+    const hasLive = live && num(live.mark) != null;
+    let strike, prem;
+    if (hasLive) {
+      strike = num(live.strike) ?? t.targetStrike; prem = num(live.mark);
       Object.assign(base, { live: true, expiration: live.expiration || t.expiration, strike, premium: prem,
         iv: live.iv != null ? +(num(live.iv) * 100).toFixed(0) : null,
         delta: live.delta != null ? +num(live.delta).toFixed(2) : null,
         openInterest: live.openInterest != null ? num(live.openInterest) : null,
         volume: live.volume != null ? num(live.volume) : null,
         pop: live.popLong != null ? +(num(live.popLong) * 100).toFixed(0) : null });
-      if (t.kind === 'long_call') {
-        base.breakeven = num(live.breakeven) ?? +(strike + prem).toFixed(2);
-        base.maxLoss = +(prem * 100).toFixed(0);
-        base.thesis = [
-          `${t.underlying} oversold (RSI ${t.rsi}) — long $${strike} call exp ${base.expiration} at the ~$${prem.toFixed(2)} live mark.`,
-          `Breakeven $${base.breakeven} (${(((base.breakeven) / px - 1) * 100).toFixed(1)}%); max loss the $${base.maxLoss} premium. Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}.`,
-          `Live as of this snapshot — model POP(long) ~${base.pop ?? '—'}%. Not a recommendation; confirm before trading.`,
-        ];
-      } else {
-        base.income = +(prem * 100).toFixed(0);
-        base.annYield = px > 0 ? Math.round((prem / px) * (365 / t.dte) * 100) : null;
-        base.shares = Math.floor(t.shares);
-        base.thesis = [
-          `You own ${Math.floor(t.shares)} sh of ${t.underlying} — sell the $${strike} call exp ${base.expiration} for ~$${base.income} income (live mark $${prem.toFixed(2)}).`,
-          `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}. Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}. Keep premium + shares if it expires below.`,
-          `Defined-risk income — same structure as your IREN call.`,
-        ];
-      }
-      return base;
+    } else {
+      strike = t.kind === 'covered_call' ? (Math.round(px * 1.12 / 5) * 5 || Math.round(px * 1.12))
+             : t.kind === 'csp' ? Math.round(px * 0.93) : Math.round(px * 1.05);
+      prem = estPremium(px, strike, t.dte, t.type, t.kind === 'long_call' ? 0.55 : 0.6);
+      Object.assign(base, { live: false, strike, estPremium: prem });
     }
-    // estimate fallback (no live quote available)
-    const strike = t.kind === 'covered_call' ? (Math.round(px * 1.12 / 5) * 5 || Math.round(px * 1.12)) : Math.round(px * 1.05);
-    const prem = estPremium(px, strike, t.dte, 'call', t.kind === 'covered_call' ? 0.6 : 0.55);
-    Object.assign(base, { live: false, strike, estPremium: prem });
+    const L = base.live;
     if (t.kind === 'long_call') {
-      base.breakeven = +(strike + prem).toFixed(2); base.maxLoss = +(prem * 100).toFixed(0);
-      base.thesis = [
+      base.breakeven = (hasLive && num(live.breakeven) != null) ? num(live.breakeven) : +(strike + prem).toFixed(2);
+      base.maxLoss = +(prem * 100).toFixed(0);
+      base.thesis = L ? [
+        `${t.underlying} oversold (RSI ${t.rsi}) — long $${strike} call exp ${base.expiration} at the ~$${prem.toFixed(2)} live mark.`,
+        `Breakeven $${base.breakeven} (${((base.breakeven / px - 1) * 100).toFixed(1)}%); max loss the $${base.maxLoss} premium. Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}.`,
+        `Live as of this snapshot — model POP(long) ~${base.pop ?? '—'}%. Not a recommendation; confirm before trading.`,
+      ] : [
         `${t.underlying} screens oversold (RSI ${t.rsi}) — a long $${strike} call (~${t.dte}d) plays a bounce with defined risk.`,
         `Est. premium ~$${prem.toFixed(2)}; breakeven ~$${(strike + prem).toFixed(2)}; max loss ~$${(prem * 100).toFixed(0)}.`,
         `Estimate — confirm the live ask/OI in the chain before trading.`,
       ];
-    } else {
+    } else if (t.kind === 'covered_call') {
       base.income = +(prem * 100).toFixed(0);
       base.annYield = px > 0 ? Math.round((prem / px) * (365 / t.dte) * 100) : null;
-      base.shares = Math.floor(t.shares);
+      base.shares = Math.floor(t.shares || 0);
       base.thesis = [
-        `You own ${Math.floor(t.shares)} sh of ${t.underlying} — selling a $${strike} call (~${t.dte}d) collects ~$${(prem * 100).toFixed(0)} income (est)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}.`,
-        `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%); keep premium + shares if it expires below.`,
-        `Estimate — confirm live premium in the chain.`,
+        `You own ${base.shares} sh of ${t.underlying} — sell the $${strike} call (~${t.dte}d) for ~$${base.income} income${L ? ` (live mark $${prem.toFixed(2)})` : ' (est)'}.`,
+        `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}. Keep premium + shares if it expires below.`,
+        L ? `Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}.` : `Defined-risk income — same structure as your IREN call.`,
+      ];
+    } else { // cash-secured put
+      base.income = +(prem * 100).toFixed(0);
+      base.breakeven = (hasLive && num(live.breakeven) != null) ? num(live.breakeven) : +(strike - prem).toFixed(2);
+      base.cashSecured = +(strike * 100).toFixed(0);
+      base.annYield = strike > 0 ? Math.round((prem / strike) * (365 / t.dte) * 100) : null;
+      base.thesis = [
+        `Sell the $${strike} put (~${t.dte}d) on ${t.underlying} for ~$${base.income}${L ? ` (live mark $${prem.toFixed(2)})` : ' (est)'} — get paid to maybe buy it ${((1 - strike / px) * 100).toFixed(0)}% lower.`,
+        `Effective buy ~$${base.breakeven} if assigned; needs ~$${base.cashSecured} cash secured${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}.`,
+        L ? `Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}. Keep the premium if it stays above $${strike}.` : `Estimate — confirm the live bid in the chain.`,
       ];
     }
     return base;
