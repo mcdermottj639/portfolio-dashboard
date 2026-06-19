@@ -1193,6 +1193,39 @@ function switchTab(tab){
 }
 window.switchTab=switchTab;
 
+/* Make every card collapsible (cards rendered later are caught via MutationObserver). */
+(function(){
+  function enhance(card){
+    var title=card.querySelector(':scope > .card-title');
+    if(!title || title.dataset.coll) return;
+    title.dataset.coll='1';
+    if(title.classList.contains('collapsible')) return; // already wired (has its own toggleSection)
+    var body=document.createElement('div'); body.className='card-body';
+    var n=title.nextSibling; while(n){ var nx=n.nextSibling; body.appendChild(n); n=nx; }
+    card.appendChild(body);
+    if(!title.querySelector('.chevron')){ var ch=document.createElement('span'); ch.className='chevron'; ch.textContent='▼'; title.appendChild(ch); }
+    title.classList.add('collapsible');
+    title.addEventListener('click',function(){
+      var hide=body.style.display!=='none'; body.style.display=hide?'none':'';
+      var c=title.querySelector('.chevron'); if(c)c.style.transform=hide?'rotate(-90deg)':'';
+    });
+  }
+  function scan(root){ try{ (root||document).querySelectorAll('.card').forEach(enhance); }catch(e){} }
+  function start(){
+    scan(document);
+    try{
+      var mo=new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes;
+          for(var j=0;j<a.length;j++){ var nd=a[j]; if(!nd||nd.nodeType!==1)continue;
+            if(nd.classList&&nd.classList.contains('card'))enhance(nd);
+            if(nd.querySelectorAll)nd.querySelectorAll('.card').forEach(enhance); } }
+      });
+      ['page-portfolio','page-markets','page-picks','page-options'].forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
+    }catch(e){}
+  }
+  if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+
 /* ═══════════════════════════════════════════
    OPTIONS PAGE  (your contracts · ideas · knowledge)
 ═══════════════════════════════════════════ */
