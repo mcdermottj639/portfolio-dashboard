@@ -1503,7 +1503,7 @@ window.runNewAnalysis=runNewAnalysis;
    ANALYZE PAGE  (per-ticker deep dive, page 5)
 ═══════════════════════════════════════════ */
 let _analyzeInit=false, _azLast=null;
-function initAnalyze(){ renderAzShell(); if(_azLast)runAnalysis(_azLast); }
+function initAnalyze(){ renderAzShell(); loadPicksData().then(function(){ if(_azLast)runAnalysis(_azLast); }); }
 function renderAzShell(){
   const app=document.getElementById('analyze-app'); if(!app)return;
   let chips='';
@@ -1518,14 +1518,35 @@ function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.va
 window.azGo=azGo;
 function azBars(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}; const b=h[sym]||[]; return b.map(x=>parseFloat(x.close_price!=null?x.close_price:x.c)).filter(c=>c>0); }
 function azQuote(sym){ const q=(window.__DATA&&window.__DATA.quotes)||{}; return q[sym]||null; }
+/* Pull an app recommendation for a symbol from today's Picks (so picks are analyzable even
+   before the producer fetches their raw quote/history, and so the Analyze page can show the
+   actual call). Merges live price/RSI when the Picks tab has fetched them. */
+function azPick(sym){
+  sym=(sym||'').toUpperCase();
+  const full=(typeof PICK_PICKS!=='undefined'?PICK_PICKS:[]).find(p=>p&&p.ticker===sym);
+  const cand=(typeof PICK_CANDIDATES!=='undefined'?PICK_CANDIDATES:[]).find(c=>c&&c.ticker===sym);
+  if(!full&&!cand)return null;
+  const live=(typeof _picksLive!=='undefined'&&_picksLive[sym])||null;
+  const lrsi=(typeof _picksRSI!=='undefined')?_picksRSI[sym]:null;
+  const price=(live&&live.price)||(full&&full.basePrice)||(cand&&cand.price)||null;
+  const rsi=lrsi!=null?lrsi:(full&&full.rsi!=null?full.rsi:(cand?cand.rsi:null));
+  return { sym, price, rsi, rank:cand?cand.rank:null,
+    company:(full&&full.company)||(cand&&cand.company)||null, sector:(full&&full.sector)||null,
+    composite:(cand&&cand.composite!=null)?cand.composite:(full&&full.composite!=null?full.composite:null),
+    signal:(full&&full.signal)||null, confidence:full?full.confidence:null, rr:(full&&full.rr)||(cand&&cand.rr)||null,
+    timeframe:full?full.timeframe:null, thesis:(full&&full.thesis)||null,
+    entry:full?full.entry:null, sl:full?full.sl:null, tp1:full?full.tp1:null, tp2:full?full.tp2:null,
+    revGrowth:cand?cand.revGrowth:null, fwdPE:cand?cand.fwdPE:null, flag:cand?cand.flag:null };
+}
 function azOverview(sym){ try{ const k=makeKey(AV,{tool_name:'COMPANY_OVERVIEW',arguments:JSON.stringify({symbol:avSym(sym)})}); return parseAV(((window.__DATA&&window.__DATA.recorded)||{})[k]); }catch(e){return null;} }
 function _smaN(a,n){ if(!a||a.length<n)return null; let s=0; for(let i=a.length-n;i<a.length;i++)s+=a[i]; return s/n; }
 function _stdevN(a){ if(a.length<2)return 0; const m=a.reduce((s,x)=>s+x,0)/a.length; let v=0; for(const x of a)v+=(x-m)*(x-m); return Math.sqrt(v/a.length); }
 const _cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 function analyzeStock(sym){
-  const closes=azBars(sym), q=azQuote(sym), ov=azOverview(sym)||{};
+  const closes=azBars(sym), q=azQuote(sym), ov=azOverview(sym)||{}, pk=azPick(sym);
   let price=q?parseFloat(q.last_trade_price||q.adjusted_previous_close||0):0;
   if(!price&&closes.length)price=closes[closes.length-1];
+  if(!price&&pk&&pk.price)price=pk.price;   // pick price keeps recommendations analyzable w/o raw bars
   if(!price) return null;
   const prev=q?parseFloat(q.adjusted_previous_close||q.previous_close||0):0;
   const dayChg=prev>0?(price-prev)/prev*100:null;
@@ -1557,19 +1578,27 @@ function analyzeStock(sym){
   else if(trendUp){ label='Accumulate / Hold'; tone='pos'; conf=_cl(setup,45,75); }
   else if(trendUp===false){ label='Caution — Downtrend'; tone='neg'; conf=_cl(100-setup,40,75); }
   else { label='Hold / Watch'; tone='neu'; conf=_cl(setup,40,70); }
+  // It's one of today's app picks — surface that as the headline even without full price history.
+  let recRsi=rsi!=null?Math.round(rsi):null, recSetup=setup;
+  if(pk){
+    if(recRsi==null&&pk.rsi!=null)recRsi=Math.round(pk.rsi);
+    if(!hasTA){ tone='pos'; label=pk.signal?pk.signal.replace(/\b\w/g,m=>m.toUpperCase()):'Recommended Buy'; conf=pk.confidence||conf;
+      if(pk.composite!=null)recSetup=_cl(Math.round(pk.composite*9),35,92); }
+  }
   const k=vol?Math.max(0.05,vol*2.2):0.08;
   const entryLo=+(price*0.985).toFixed(2), entryHi=+price.toFixed(2);
   const stop=+Math.min(recLo&&recLo<price?recLo*0.99:price*(1-k), price*(1-k)).toFixed(2);
   const r=Math.max(price-stop,price*0.02);
   const tp1=+(recHi&&recHi>price?Math.min(recHi,price+r*1.8):price+r*1.6).toFixed(2);
   const tp2=+Math.max(price+r*2.6, hi52&&hi52>price?Math.min(hi52,price+r*3):price+r*2.6).toFixed(2);
-  return { sym, price:+price.toFixed(2), dayChg, label, tone, conf:Math.round(conf), setup,
+  return { sym, price:+price.toFixed(2), dayChg, label, tone, conf:Math.round(conf), setup:recSetup,
     pattern:Math.round(pattern), signal:Math.round(signal), risk:Math.round(risk),
-    rsi:rsi!=null?Math.round(rsi):null, mom20, ytd, hi52, lo52, pctFromHigh, vol, trendUp, hasTA, sma20,
-    sector:ov.Sector||null, pe:(ov.PERatio&&ov.PERatio!=='None')?ov.PERatio:(ov.TrailingPE||null), fwdPE:(ov.ForwardPE&&ov.ForwardPE!=='None')?ov.ForwardPE:null,
-    revGrowth:ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:null,
+    rsi:recRsi, mom20, ytd, hi52, lo52, pctFromHigh, vol, trendUp, hasTA, sma20,
+    sector:ov.Sector||(pk&&pk.sector)||null, pe:(ov.PERatio&&ov.PERatio!=='None')?ov.PERatio:(ov.TrailingPE||null),
+    fwdPE:(ov.ForwardPE&&ov.ForwardPE!=='None')?ov.ForwardPE:(pk&&pk.fwdPE?parseFloat(pk.fwdPE):null),
+    revGrowth:ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:(pk&&pk.revGrowth?parseFloat(pk.revGrowth):null),
     divYield:ov.DividendYield!=null?parseFloat(ov.DividendYield)*100:null,
-    entryLo, entryHi, stop, tp1, tp2, invalid:+(stop*0.997).toFixed(2) };
+    entryLo, entryHi, stop, tp1, tp2, invalid:+(stop*0.997).toFixed(2), pick:pk };
 }
 function azScoreColor(v){ return v>=66?'#10b981':v>=45?'#f59e0b':'#ef4444'; }
 function azBar(lbl,v,desc){ const c=azScoreColor(v); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>'+lbl+'</span><span style="color:'+c+'">'+v+'</span></div><div class="az-track"><div class="az-fill" style="width:'+v+'%;background:'+c+'"></div></div><div style="font-size:10.5px;color:#9ca3af;margin-top:2px">'+desc+'</div></div>'; }
@@ -1697,6 +1726,36 @@ function azCorr(a){ try{ const P=window.__PORT; if(!P||!P.enriched)return null; 
   if(!cors.length)return null; cors.sort((p,q)=>q.r-p.r); return cors.slice(0,3); }catch(e){return null;} }
 function azNews(sym){ try{ const nw=(window.__DATA&&window.__DATA.news)||{}; return nw[sym]||null; }catch(e){return null;} }
 const _whenTxt={bmo:'before open', amc:'after close', pre:'before open', post:'after close'};
+/* The headline call. Prefers the app's own Pick recommendation (with thesis + levels);
+   otherwise derives a clear verdict from the technical read. */
+function azRec(a){
+  const pk=a.pick; let action, color, note;
+  if(pk){
+    const s=(pk.signal||'BUY').toUpperCase();
+    action = s.indexOf('SELL')>=0?'SELL' : s.indexOf('CAUTIOUS')>=0?'BUY · CAUTIOUS' : s.indexOf('HOLD')>=0?'HOLD' : 'BUY';
+    color = action.indexOf('SELL')>=0?'#ef4444':action.indexOf('HOLD')>=0?'#9ca3af':'#10b981';
+    note = (pk.rank?'⭐ Ranked #'+pk.rank+' in today’s screen':'⭐ On today’s screen')+(pk.composite!=null?' · score '+(+pk.composite).toFixed(1)+'/10':'');
+  } else if(!a.hasTA){ action='DATA-LIMITED'; color='#9ca3af'; note='Not enough price history for a full call yet — shows on the next producer run.'; }
+  else if(a.tone==='pos'&&a.setup>=62){ action='BUY'; color='#10b981'; note='Trend + momentum align; '+a.setup+'/100 setup.'; }
+  else if(a.tone==='pos'){ action='ACCUMULATE'; color='#10b981'; note='Constructive — favor pullbacks toward the entry zone.'; }
+  else if(a.label&&a.label.indexOf('Overbought')>=0){ action='TRIM / WAIT'; color='#f59e0b'; note='Stretched here — wait for a cooldown before adding.'; }
+  else if(a.tone==='neg'){ action='AVOID / REDUCE'; color='#ef4444'; note='Downtrend — stand aside or keep size small until it turns.'; }
+  else { action='HOLD / WATCH'; color='#9ca3af'; note='No edge either way — wait for a clearer setup.'; }
+  const lv=[]; // recommended levels (pick levels if present, else the computed ones)
+  if(pk&&pk.entry)lv.push(['Entry',pk.entry,'#6366f1']); else lv.push(['Entry','$'+a.entryLo+'–$'+a.entryHi,'#6366f1']);
+  if(pk&&pk.sl)lv.push(['Stop','$'+pk.sl.price+(pk.sl.pct?' ('+pk.sl.pct+')':''),'#ef4444']); else lv.push(['Stop','$'+a.stop,'#ef4444']);
+  if(pk&&pk.tp1)lv.push(['Target 1','$'+pk.tp1.price+(pk.tp1.pct?' ('+pk.tp1.pct+')':''),'#10b981']); else lv.push(['Target 1','$'+a.tp1,'#10b981']);
+  if(pk&&pk.tp2)lv.push(['Target 2','$'+pk.tp2.price+(pk.tp2.pct?' ('+pk.tp2.pct+')':''),'#10b981']); else lv.push(['Target 2','$'+a.tp2,'#10b981']);
+  const meta=[]; const conf=(pk&&pk.confidence!=null)?pk.confidence:a.conf; if(conf!=null)meta.push(conf+'% confidence');
+  if(pk&&pk.rr)meta.push('R/R '+pk.rr); if(pk&&pk.timeframe)meta.push(pk.timeframe);
+  let h='<div class="card" style="border-left:5px solid '+color+'"><div class="card-title"><span>✅ Recommendation</span></div>'+
+    '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-size:24px;font-weight:900;color:'+color+'">'+action+'</div><div style="font-size:12px;color:#9ca3af">'+note+'</div></div>'+
+    (meta.length?'<div style="font-size:12px;color:var(--text);opacity:.8;margin-top:4px">'+meta.join(' · ')+'</div>':'')+
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px">'+lv.map(L=>'<div style="background:var(--surface-2);border-radius:9px;padding:8px 10px;border-left:3px solid '+L[2]+'"><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px">'+L[0]+'</div><div style="font-size:14px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+'</div>';
+  if(pk&&Array.isArray(pk.thesis)&&pk.thesis.length)h+='<div style="font-size:11px;font-weight:700;color:#9ca3af;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.4px">Why it’s recommended</div><ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:var(--text);opacity:.9">'+pk.thesis.map(t=>'<li style="margin-bottom:4px">'+t+'</li>').join('')+'</ul>';
+  h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:10px">'+(pk?'From today’s Picks screen — research, not financial advice.':'Algorithmic read — research, not financial advice.')+'</div></div>';
+  return h;
+}
 function runAnalysis(sym){
   _azLast=sym;
   const el=document.getElementById('az-result'); const inp=document.getElementById('az-ticker'); if(inp)inp.value=sym;
@@ -1725,6 +1784,7 @@ function runAnalysis(sym){
   const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   el.innerHTML=
     '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px">'+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'">'+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
+    azRec(a)+
     '<div class="card" style="text-align:center"><div class="az-gauge" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+'</div>':'')+'</div>'+
     (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50 · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div></div>':'')+
@@ -1791,6 +1851,9 @@ async function loadPicksData(){
   }catch(e){ /* fall back to baked-in data */ }
 }
 function initPicks(){ loadPicksData().then(function(){ renderPicksStatic(); fetchPicksLive(); }); }
+/* Preload picks app-wide (not just on the Picks tab) so any pick — e.g. the #1 name —
+   is analyzable and shows its recommendation the moment you open Analyze. */
+try{ loadPicksData(); }catch(e){}
 
 function renderPicksStatic(){
   const app=document.getElementById('picks-app'); if(!app)return;
