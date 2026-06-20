@@ -61,7 +61,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .mb-text { font-size: 13px; color: #991b1b; font-weight: 600; }
 .mb-sub  { font-size: 12px; color: #b91c1c; margin-top: 3px; line-height: 1.4; }
 
-.card { background: white; border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.card { background: white; border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); scroll-margin-top: 92px; }
 .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .card-hint { font-size: 11px; font-weight: 400; color: #9ca3af; }
 
@@ -203,6 +203,14 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 .cmp-tbl td { text-align: right; padding: 6px; border-bottom: 1px solid var(--surface-2); font-weight: 600; }
 .cmp-tbl td.cmp-k { text-align: left; color: #9ca3af; font-weight: 600; }
 .cmp-tbl td.cmp-win { background: rgba(16,185,129,0.14); border-radius: 4px; color: #10b981; font-weight: 800; }
+/* Robinhood deep-link button — hands off to the RH app/site; the dashboard never places orders */
+.rh-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #00c805; color: #05140a; font-weight: 800; font-size: 13px; text-decoration: none; }
+.rh-btn:active { opacity: 0.85; }
+/* Per-page quick-nav: chip row that jumps to each card in the section */
+.card-nav { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 10px; margin-bottom: 2px; scrollbar-width: none; }
+.card-nav::-webkit-scrollbar { display: none; }
+.card-nav-chip { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; padding: 6px 11px; border-radius: 16px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.card-nav-chip:active { background: #6366f1; color: #fff; }
 /* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
 .money { transition: filter .12s; }
 body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-select: none; }
@@ -743,6 +751,12 @@ function toggleSection(bodyId){ const body=document.getElementById(bodyId); cons
 window.toggleSection=toggleSection;
 function copyPrompt(text){ navigator.clipboard.writeText(text).then(()=>{ const t=document.getElementById('toast'); if(!t)return; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }).catch(()=>window.prompt('Copy:',text)); }
 window.copyPrompt=copyPrompt;
+/* Robinhood hand-off. The dashboard is read-only and never holds your login, so it can't
+   place orders — these links just open the ticker in the Robinhood app/site where YOU set
+   size and submit. (RH reliably opens the instrument page; it won't always pre-fill qty/price.) */
+function rhUrl(sym){ return 'https://robinhood.com/stocks/'+encodeURIComponent((sym||'').toUpperCase().trim()); }
+function rhBtn(sym,label){ return '<a class="rh-btn" href="'+rhUrl(sym)+'" target="_blank" rel="noopener">'+(label||('📲 Trade '+sym+' in Robinhood'))+'</a>'; }
+window.rhUrl=rhUrl;
 
 /* ═══ Push to Kyle (mobile portfolio note) ═══ */
 const KYLE='mcp__0127f543-fbd5-4867-ac17-68a49c2e88a0__';
@@ -1262,6 +1276,56 @@ window.switchTab=switchTab;
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
 })();
 
+/* Per-page quick-nav: a chip row at the top of each page listing every card's title.
+   Tap a chip to (expand if collapsed and) smooth-scroll to that card. Rebuilds itself
+   when a page's cards change (debounced), so dynamic pages like Analyze stay in sync. */
+(function(){
+  var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze'];
+  function titleOf(card){
+    var t=card.querySelector(':scope > .card-title'); if(!t)return null;
+    var c=t.cloneNode(true);
+    c.querySelectorAll('.chevron,.card-hint').forEach(function(x){ x.remove(); });
+    var s=(c.textContent||'').replace(/\s+/g,' ').trim();
+    return s||null;
+  }
+  function jump(id){
+    var card=document.getElementById(id); if(!card)return;
+    var body=card.querySelector(':scope > .card-body');
+    if(body&&body.style.display==='none'){ body.style.display=''; var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform=''; }
+    try{ card.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ card.scrollIntoView(); }
+    var prev=card.style.boxShadow; card.style.transition='box-shadow .3s'; card.style.boxShadow='0 0 0 2px #6366f1';
+    setTimeout(function(){ card.style.boxShadow=prev; },700);
+  }
+  window.__navJump=jump;
+  function build(pageEl){
+    var all=pageEl.querySelectorAll('.card'), cards=[], i;
+    for(i=0;i<all.length;i++){ var ti=titleOf(all[i]); if(ti)cards.push({card:all[i],title:ti}); }
+    var sig=cards.map(function(c){ return c.title; }).join('|');
+    if(pageEl.__navSig===sig)return; pageEl.__navSig=sig;
+    var nav=pageEl.querySelector(':scope > .card-nav');
+    if(cards.length<2){ if(nav)nav.remove(); return; } // not worth a nav for 0–1 cards
+    if(!nav){ nav=document.createElement('div'); nav.className='card-nav'; pageEl.insertBefore(nav,pageEl.firstChild); }
+    var html='';
+    for(i=0;i<cards.length;i++){ var c=cards[i]; if(!c.card.id)c.card.id=pageEl.id+'-c'+i;
+      html+='<button class="card-nav-chip" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
+    nav.innerHTML=html;
+  }
+  function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); }); }
+  function start(){
+    buildAll();
+    try{
+      var t=null, schedule=function(){ clearTimeout(t); t=setTimeout(buildAll,200); };
+      var mo=new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){ var tgt=muts[i].target;
+          if(tgt&&tgt.closest&&tgt.closest('.card-nav'))continue; // ignore our own writes
+          schedule(); break; }
+      });
+      PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
+    }catch(e){}
+  }
+  if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+
 /* ═══════════════════════════════════════════
    OPTIONS PAGE  (your contracts · ideas · knowledge)
 ═══════════════════════════════════════════ */
@@ -1333,7 +1397,8 @@ function ideaCard(i,cid){
   return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr az-link" onclick="azConfirm(\''+i.underlying+'\')">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+'</div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
-  (prem!=null?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
+  (prem!=null?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+
+  rhBtn(i.underlying,'📲 Open '+i.underlying+' in Robinhood → Options')+'</div>';
 }
 let _optCharts=[];
 const OPT_KNOWLEDGE=[
@@ -1624,7 +1689,7 @@ function runAnalysis(sym){
     (scen?'<div class="card"><div class="card-title"><span>🎲 Scenarios <span class="card-hint">model-weighted, ~'+'next leg</span></span></div><table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div><div style="font-size:11px;color:#9ca3af;margin-top:4px">Odds are a heuristic from the setup score, trend &amp; RSI — not market-implied.</div></div>':'')+
     '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
       [['Entry Zone','$'+a.entryLo+' – $'+a.entryHi,'#6366f1','Suggested entry area'],['Stop Loss','$'+a.stop,'#ef4444','Exit if price closes below'],['Target 1','$'+a.tp1,'#10b981','First target ('+((a.tp1/a.price-1)*100).toFixed(1)+'%)'],['Target 2','$'+a.tp2,'#10b981','Extended ('+((a.tp2/a.price-1)*100).toFixed(1)+'%)']].map(L=>'<div class="az-level" style="border-left:3px solid '+L[2]+'"><div><div style="font-size:13px;font-weight:700">'+L[0]+'</div><div style="font-size:11px;color:#9ca3af">'+L[3]+'</div></div><div style="font-size:15px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+
-      '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button></div>'+
+      '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button>'+rhBtn(a.sym)+'</div>'+
     (x.sizing?'<div class="card"><div class="card-title"><span>📐 Position Sizing <span class="card-hint">risk to the stop</span></span></div><div style="font-size:12.5px;line-height:1.6">Risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share): <b>~'+x.sizing.risk1+' sh</b> = 1% of your book, <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div></div>':'')+
     (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
       oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
@@ -1833,6 +1898,7 @@ function renderPicksCards(){
       +'<div class="conf2"><div class="conf2-lbl">Confidence</div><div class="conf2-track"><div class="conf2-fill" style="width:'+p.confidence+'%"></div></div><div class="conf2-pct" style="color:#6366f1">'+p.confidence+'%</div></div>'
       +'<ul class="thesis2">'+thesis+'</ul>'
       +'<a class="tv-link" href="https://www.tradingview.com/chart/?symbol='+p.tvSymbol+'&interval=W" target="_blank">📈 View 1Y Chart on TradingView →</a>'
+      +rhBtn(p.ticker)
     +'</div>';
   }).join('');
 }
