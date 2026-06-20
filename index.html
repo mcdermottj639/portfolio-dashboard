@@ -197,6 +197,12 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 .az-track { height: 7px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 3px; }
 .az-fill { height: 100%; border-radius: 4px; }
 .az-level { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 13px; background: var(--surface-2); border-radius: 10px; margin-bottom: 8px; }
+.cmp-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cmp-tbl th { text-align: right; font-size: 11px; color: #9ca3af; font-weight: 700; padding: 4px 6px; border-bottom: 1px solid var(--surface-2); }
+.cmp-tbl th:first-child { text-align: left; }
+.cmp-tbl td { text-align: right; padding: 6px; border-bottom: 1px solid var(--surface-2); font-weight: 600; }
+.cmp-tbl td.cmp-k { text-align: left; color: #9ca3af; font-weight: 600; }
+.cmp-tbl td.cmp-win { background: rgba(16,185,129,0.14); border-radius: 4px; color: #10b981; font-weight: 800; }
 /* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
 .money { transition: filter .12s; }
 body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-select: none; }
@@ -1492,6 +1498,51 @@ function azChart(id,ch,a){ const c=document.getElementById(id); if(!c||typeof Ch
   ds.push({label:'T2',data:lvl(a.tp2),borderColor:'#059669',borderWidth:1,pointRadius:0,borderDash:[2,3]});
   try{ new Chart(c,{type:'line',data:{labels:ch.labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9},filter:i=>['Price','SMA20','SMA50'].indexOf(i.text)>=0}},tooltip:{callbacks:{label:x=>x.dataset.label+': $'+(+x.parsed.y).toFixed(2)}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:9},color:'#9ca3af'},grid:{display:false}},y:{ticks:{font:{size:9},color:'#9ca3af',callback:v=>'$'+v},grid:{color:'rgba(127,127,127,0.12)'}}}}}); }catch(e){}
 }
+/* ── Batch B: historical edge, scenarios, options play, compare ── */
+function _rsiSeries(c,n){ n=n||14; if(c.length<=n)return null; const out=new Array(c.length).fill(null); let g=0,l=0;
+  for(let i=1;i<=n;i++){ const d=c[i]-c[i-1]; if(d>=0)g+=d; else l-=d; } g/=n; l/=n;
+  out[n]=l===0?100:100-100/(1+g/l);
+  for(let i=n+1;i<c.length;i++){ const d=c[i]-c[i-1],up=d>0?d:0,dn=d<0?-d:0; g=(g*(n-1)+up)/n; l=(l*(n-1)+dn)/n; out[i]=l===0?100:100-100/(1+g/l); }
+  return out; }
+// Edge stat from the ticker's OWN history: forward H-session returns after days with a similar RSI to today.
+function azHistEdge(a){ if(a.rsi==null)return null; const c=azSeries(a.sym).map(s=>s.c); if(c.length<60)return null;
+  const rsi=_rsiSeries(c,14); if(!rsi)return null; const H=10, samp=[];
+  for(let i=14;i<c.length-H;i++){ if(rsi[i]==null)continue; if(Math.abs(rsi[i]-a.rsi)<=8)samp.push((c[i+H]/c[i]-1)*100); }
+  if(samp.length<4)return null; const n=samp.length, wins=samp.filter(r=>r>0).length, avg=samp.reduce((s,r)=>s+r,0)/n;
+  return { n, horizon:H, winRate:Math.round(wins/n*100), avg:+avg.toFixed(1), best:+Math.max(...samp).toFixed(1), worst:+Math.min(...samp).toFixed(1) }; }
+// Probability-weighted bull/base/bear table (model estimate from setup score, trend, RSI).
+function azScenarios(a){ const s=(a.setup-50)/100;
+  let pBull=_cl(0.33+s*0.5+(a.trendUp?0.06:a.trendUp===false?-0.08:0),0.12,0.62);
+  let pBear=_cl(0.33-s*0.5+(a.trendUp===false?0.08:a.trendUp?-0.05:0)+(a.rsi!=null&&a.rsi>78?0.06:0),0.12,0.6);
+  let pBase=1-pBull-pBear; if(pBase<0.1){ const k=0.1-pBase, tot=pBull+pBear; pBull-=k*pBull/tot; pBear-=k*pBear/tot; pBase=0.1; }
+  const rows=[{k:'Bull',px:a.tp2,p:pBull,c:'#10b981'},{k:'Base',px:+((a.tp1+a.price)/2).toFixed(2),p:pBase,c:'#9ca3af'},{k:'Bear',px:a.stop,p:pBear,c:'#ef4444'}];
+  const ev=rows.reduce((t,r)=>t+r.p*(r.px/a.price-1)*100,0);
+  return { rows:rows.map(r=>({k:r.k,px:r.px,c:r.c,move:+((r.px/a.price-1)*100).toFixed(1),p:Math.round(r.p*100)})), ev:+ev.toFixed(1) }; }
+function _estPrem(px,strike,dte,cp,iv){ const t=Math.sqrt(Math.max(dte,1)/365), atm=px*iv*t*0.4, otm=cp==='call'?strike-px:px-strike, adj=Math.exp(-Math.max(0,otm)/(px*iv*t+1e-6)); return Math.max(0.05,+(atm*_cl(adj,0.12,1.4)).toFixed(2)); }
+function _monthlyExp(days){ const t=new Date(Date.now()+days*864e5), d=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),1)), fri=1+((5-d.getUTCDay()+7)%7); d.setUTCDate(fri+14); return d.toISOString().slice(0,10); }
+// Concrete (estimated) options structure that fits the read.
+function azOptionPlay(a,x){ const exp=_monthlyExp(35), dte=Math.max(1,Math.round((new Date(exp+'T00:00:00Z')-Date.now())/864e5));
+  const iv=x.atrPct!=null?_cl(x.atrPct/100*Math.sqrt(252),0.25,1.2):0.5, held=x.held&&x.held.qty>=100;
+  if(held&&(a.rsi!=null&&a.rsi>72||a.tone==='neg')){ const strike=Math.round(a.price*1.1), prem=_estPrem(a.price,strike,dte,'call',iv);
+    return {kind:'covered',exp,dte,strike,prem,income:Math.round(prem*100),annYield:Math.round(prem/a.price*(365/dte)*100),cap:Math.round((strike/a.price-1)*100),iv:Math.round(iv*100)}; }
+  if(a.tone==='neg'){ return {kind:'wait',exp,dte}; }
+  const strike=Math.round(a.price*1.05), prem=_estPrem(a.price,strike,dte,'call',iv);
+  return {kind:'call',exp,dte,strike,prem,maxLoss:Math.round(prem*100),be:+(strike+prem).toFixed(2),bePct:+(((strike+prem)/a.price-1)*100).toFixed(1),iv:Math.round(iv*100)}; }
+function _sgn(v,suf){ if(v==null||isNaN(v))return '—'; return (v>=0?'+':'')+(+v).toFixed(1)+(suf||''); }
+function _trendTxt(a){ return a.trendUp?'Up':a.trendUp===false?'Down':'Flat'; }
+function azCompare(other){ other=(other||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); const host=document.getElementById('az-compare'); if(!host)return;
+  if(!other||!_azLast){ return; } if(other===_azLast){ host.innerHTML='<div class="tech-empty" style="margin-top:8px">Pick a different ticker to compare.</div>'; return; }
+  const A=analyzeStock(_azLast), B=analyzeStock(other); if(!A||!B){ host.innerHTML='<div class="tech-empty" style="margin-top:8px">No data for '+(B?_azLast:other)+' in this snapshot.</div>'; return; }
+  const xa=azExtra(A), xb=azExtra(B);
+  const rows=[['Price','$'+A.price,'$'+B.price,null],['Today',_sgn(A.dayChg,'%'),_sgn(B.dayChg,'%'),'hi'],['Setup',A.setup+'/100',B.setup+'/100','hi'],['Signal',A.label,B.label,null],['RSI(14)',A.rsi!=null?A.rsi:'—',B.rsi!=null?B.rsi:'—',null],['YTD',_sgn(A.ytd,'%'),_sgn(B.ytd,'%'),'hi'],['Trend',_trendTxt(A),_trendTxt(B),null],['Beta',xa.beta!=null?xa.beta.toFixed(2):'—',xb.beta!=null?xb.beta.toFixed(2):'—',null],['vs SPY',_sgn(xa.relStr,'%'),_sgn(xb.relStr,'%'),'hi'],['P/E',A.pe?(+A.pe).toFixed(1):'—',B.pe?(+B.pe).toFixed(1):'—',null],['Target ▲',xa.targetUpside!=null?_sgn(xa.targetUpside,'%'):'—',xb.targetUpside!=null?_sgn(xb.targetUpside,'%'):'—','hi']];
+  const numA=v=>parseFloat(String(v).replace(/[^0-9.\-]/g,'')), win=(r)=>{ if(r[3]!=='hi')return 0; const x=numA(r[1]),y=numA(r[2]); if(isNaN(x)||isNaN(y)||x===y)return 0; return x>y?1:2; };
+  host.innerHTML='<div class="card"><div class="card-title"><span>⚖️ '+_azLast+' vs '+other+'</span></div><table class="cmp-tbl"><thead><tr><th></th><th>'+_azLast+'</th><th>'+other+'</th></tr></thead><tbody>'+
+    rows.map(r=>{ const w=win(r); return '<tr><td class="cmp-k">'+r[0]+'</td><td'+(w===1?' class="cmp-win"':'')+'>'+r[1]+'</td><td'+(w===2?' class="cmp-win"':'')+'>'+r[2]+'</td></tr>'; }).join('')+
+    '</tbody></table><div style="font-size:11px;color:#9ca3af;margin-top:8px">Greener cell = stronger on that row. Research only.</div></div>';
+}
+window.azCompare=azCompare;
+function azCmpGo(){ const i=document.getElementById('az-cmp-input'); if(i)azCompare(i.value); }
+window.azCmpGo=azCmpGo;
 function runAnalysis(sym){
   _azLast=sym;
   const el=document.getElementById('az-result'); const inp=document.getElementById('az-ticker'); if(inp)inp.value=sym;
@@ -1515,6 +1566,7 @@ function runAnalysis(sym){
   if(a.sector||a.pe||a.revGrowth!=null) nar.push(['🏛️ Fundamentals', '#6366f1',
     [a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—']);
   const x=azExtra(a);
+  const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a):null, oplay=a.hasTA?azOptionPlay(a,x):null;
   const levels='Entry $'+a.entryLo+'-$'+a.entryHi+'  Stop $'+a.stop+'  TP1 $'+a.tp1+'  TP2 $'+a.tp2+'  Invalid <$'+a.invalid;
   const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   el.innerHTML=
@@ -1525,12 +1577,20 @@ function runAnalysis(sym){
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+'</div>':'')+
+    (edge?'<div class="card"><div class="card-title"><span>🔬 Historical Edge <span class="card-hint">this stock, similar RSI</span></span></div><div style="font-size:12.5px;line-height:1.6">Across <b>'+edge.n+'</b> past day'+(edge.n===1?'':'s')+' this year when '+a.sym+'’s RSI was near <b>'+a.rsi+'</b>, the next <b>'+edge.horizon+' sessions</b> were positive <b style="color:'+(edge.winRate>=55?'#10b981':edge.winRate<=45?'#ef4444':'#9ca3af')+'">'+edge.winRate+'%</b> of the time, averaging <b style="color:'+(edge.avg>=0?'#10b981':'#ef4444')+'">'+(edge.avg>=0?'+':'')+edge.avg+'%</b> (best +'+edge.best+'%, worst '+edge.worst+'%).</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">Small in-sample stat from this year’s history — a tendency, not a guarantee.</div></div>':'')+
     (((x.support&&x.support.length)||(x.resistance&&x.resistance.length))?'<div class="card"><div class="card-title"><span>🧱 Key Levels</span></div><div style="font-size:12.5px;line-height:1.8"><span style="color:#10b981;font-weight:700">Support</span> '+(x.support&&x.support.length?x.support.map(v=>'$'+v).join(' · '):'—')+'<br><span style="color:#ef4444;font-weight:700">Resistance</span> '+(x.resistance&&x.resistance.length?x.resistance.map(v=>'$'+v).join(' · '):'—')+'</div></div>':'')+
+    (scen?'<div class="card"><div class="card-title"><span>🎲 Scenarios <span class="card-hint">model-weighted, ~'+'next leg</span></span></div><table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div><div style="font-size:11px;color:#9ca3af;margin-top:4px">Odds are a heuristic from the setup score, trend &amp; RSI — not market-implied.</div></div>':'')+
     '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
       [['Entry Zone','$'+a.entryLo+' – $'+a.entryHi,'#6366f1','Suggested entry area'],['Stop Loss','$'+a.stop,'#ef4444','Exit if price closes below'],['Target 1','$'+a.tp1,'#10b981','First target ('+((a.tp1/a.price-1)*100).toFixed(1)+'%)'],['Target 2','$'+a.tp2,'#10b981','Extended ('+((a.tp2/a.price-1)*100).toFixed(1)+'%)']].map(L=>'<div class="az-level" style="border-left:3px solid '+L[2]+'"><div><div style="font-size:13px;font-weight:700">'+L[0]+'</div><div style="font-size:11px;color:#9ca3af">'+L[3]+'</div></div><div style="font-size:15px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+
       '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button></div>'+
     (x.sizing?'<div class="card"><div class="card-title"><span>📐 Position Sizing <span class="card-hint">risk to the stop</span></span></div><div style="font-size:12.5px;line-height:1.6">Risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share): <b>~'+x.sizing.risk1+' sh</b> = 1% of your book, <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div></div>':'')+
+    (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
+      oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
+      oplay.kind==='covered'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#6366f1">Income — covered call.</b> Against your '+(x.held?fmt(x.held.qty,0)+' sh':'shares')+', sell the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d) for ~<b>$'+oplay.income+'</b> ('+oplay.annYield+'% annualized). Caps upside at +'+oplay.cap+'%. Est. IV ~'+oplay.iv+'%.</div>':
+      '<div style="font-size:12.5px;line-height:1.6"><b style="color:#9ca3af">No clean options play.</b> The read is cautious/down — wait for a base or trend turn rather than buying calls into weakness. Earliest sensible monthly expiry if you do define risk: '+oplay.exp+'.</div>'
+    )+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Estimated premium (no live chain) — confirm the actual bid/ask &amp; OI before trading. Not advice.</div></div>':'')+
     ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
+    '<div class="card"><div class="card-title"><span>⚖️ Compare <span class="card-hint">side-by-side vs another ticker</span></span></div><div class="az-search"><input id="az-cmp-input" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Compare '+a.sym+' vs… e.g. '+(a.sym==='NVDA'?'AMD':'NVDA')+'" onkeydown="if(event.key===\'Enter\')azCmpGo()"><button class="az-btn" onclick="azCmpGo()">Compare</button></div><div id="az-compare"></div></div>'+
     '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
     '<div class="disclaimer">Algorithmic technical/fundamental read from your latest snapshot — probabilities, not certainty, and not financial advice. ~15-min delayed.</div>';
   if(x.chart)setTimeout(()=>azChart('az-chart',x.chart,a),0);
