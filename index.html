@@ -206,6 +206,9 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 /* Robinhood deep-link button — hands off to the RH app/site; the dashboard never places orders */
 .rh-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #00c805; color: #05140a; font-weight: 800; font-size: 13px; text-decoration: none; }
 .rh-btn:active { opacity: 0.85; }
+/* "Build & place this trade with Claude" — opens a Claude chat with the trade pre-built */
+.chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; }
+.chat-btn:active { opacity: 0.85; }
 /* Per-page quick-nav: chip row that jumps to each card in the section */
 .card-nav { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 10px; margin-bottom: 2px; scrollbar-width: none; }
 .card-nav::-webkit-scrollbar { display: none; }
@@ -749,7 +752,8 @@ function harvestCandidates(enriched){
 function spinEl(id,msg){ const el=document.getElementById(id); if(el)el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span>${msg||'Loading…'}</div>`; }
 function toggleSection(bodyId){ const body=document.getElementById(bodyId); const chev=document.querySelector(`[data-toggle="${bodyId}"] .chevron`); if(!body)return; const hiding=body.style.display!=='none'; body.style.display=hiding?'none':''; if(chev)chev.style.transform=hiding?'rotate(-90deg)':''; }
 window.toggleSection=toggleSection;
-function copyPrompt(text){ navigator.clipboard.writeText(text).then(()=>{ const t=document.getElementById('toast'); if(!t)return; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }).catch(()=>window.prompt('Copy:',text)); }
+function toast(msg){ const t=document.getElementById('toast'); if(!t)return; if(msg)t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2800); }
+function copyPrompt(text){ navigator.clipboard.writeText(text).then(()=>toast('📋 Copied — paste into Claude chat')).catch(()=>window.prompt('Copy:',text)); }
 window.copyPrompt=copyPrompt;
 /* Robinhood hand-off. The dashboard is read-only and never holds your login, so it can't
    place orders — these links just open the ticker in the Robinhood app/site where YOU set
@@ -757,6 +761,38 @@ window.copyPrompt=copyPrompt;
 function rhUrl(sym){ return 'https://robinhood.com/stocks/'+encodeURIComponent((sym||'').toUpperCase().trim()); }
 function rhBtn(sym,label){ return '<a class="rh-btn" href="'+rhUrl(sym)+'" target="_blank" rel="noopener">'+(label||('📲 Trade '+sym+' in Robinhood'))+'</a>'; }
 window.rhUrl=rhUrl;
+/* "Build & place this trade with Claude" hand-off. The static app can't talk to a Claude
+   session directly, so this opens a Claude chat with a fully-structured trade prompt
+   pre-filled (and copies it as a fallback). In a chat that has your Robinhood connector,
+   Claude can then review_*_order and place_*_order — only after you confirm. */
+window.__trades={};
+function eqTradePrompt(p){
+  const L=['I want to place this trade on my Robinhood account. Build it, review it with the broker, and submit ONLY after I confirm the details.','',
+    '• Ticker: '+p.sym+' (equity)','• Direction: '+(p.side||'Buy / long')];
+  if(p.qty)L.push('• Suggested size: ~'+p.qty+' shares (adjust to my buying power)');
+  if(p.entry)L.push('• Entry zone: '+p.entry);
+  if(p.limit!=null)L.push('• Limit price: $'+p.limit);
+  if(p.stop!=null)L.push('• Stop loss: $'+p.stop);
+  if(p.tp1!=null||p.tp2!=null)L.push('• Targets: '+[p.tp1!=null?'$'+p.tp1:null,p.tp2!=null?'$'+p.tp2:null].filter(Boolean).join(' / '));
+  L.push('','Use the Robinhood connector: run review_equity_order first, show me the cost and buying-power impact, then place_equity_order once I say go. Education only — not financial advice.');
+  return L.join('\n');
+}
+function optTradePrompt(o){
+  const L=['Place this options trade on my Robinhood account. Build it, review it, and submit ONLY after I confirm the details.','',
+    '• Underlying: '+o.underlying,'• Strategy: '+(o.strategy||''),
+    '• Contract: '+(o.contracts||1)+'× $'+o.strike+' '+(o.optType||'call')+(o.side?' ('+o.side+')':'')+', expiry '+o.expiration+(o.dte!=null?' (~'+o.dte+' DTE)':'')];
+  if(o.premium!=null)L.push('• Est. premium: ~$'+(+o.premium).toFixed(2)+'/contract');
+  if(o.breakeven!=null)L.push('• Breakeven: $'+o.breakeven);
+  L.push('','Use the Robinhood connector: find the exact contract with get_option_instruments / get_option_quotes, run review_option_order to show me the live mark, greeks and cost, then place_option_order once I confirm. Education only — not advice.');
+  return L.join('\n');
+}
+function chatBtn(id,prompt,label){ window.__trades[id]=prompt; return '<button class="chat-btn" onclick="pushTrade(\''+id+'\')">'+(label||'🤖 Build &amp; place this trade with Claude')+'</button>'; }
+function pushTrade(id){ const txt=window.__trades[id]; if(!txt)return;
+  try{ if(navigator.clipboard)navigator.clipboard.writeText(txt); }catch(e){}
+  toast('🤖 Trade copied — opening Claude (paste if needed)');
+  try{ window.open('https://claude.ai/new?q='+encodeURIComponent(txt),'_blank','noopener'); }catch(e){}
+}
+window.pushTrade=pushTrade;
 
 /* ═══ Push to Kyle (mobile portfolio note) ═══ */
 const KYLE='mcp__0127f543-fbd5-4867-ac17-68a49c2e88a0__';
@@ -1398,6 +1434,7 @@ function ideaCard(i,cid){
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
   (prem!=null?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+
+  chatBtn('opt-'+cid,optTradePrompt({underlying:i.underlying,strategy:i.strategy,optType:i.optType||'call',side:i.optSide,strike:i.strike,expiration:i.expiration,dte:i.dte,premium:prem,breakeven:i.breakeven,contracts:1}))+
   rhBtn(i.underlying,'📲 Open '+i.underlying+' in Robinhood → Options')+'</div>';
 }
 let _optCharts=[];
@@ -1689,7 +1726,7 @@ function runAnalysis(sym){
     (scen?'<div class="card"><div class="card-title"><span>🎲 Scenarios <span class="card-hint">model-weighted, ~'+'next leg</span></span></div><table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div><div style="font-size:11px;color:#9ca3af;margin-top:4px">Odds are a heuristic from the setup score, trend &amp; RSI — not market-implied.</div></div>':'')+
     '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
       [['Entry Zone','$'+a.entryLo+' – $'+a.entryHi,'#6366f1','Suggested entry area'],['Stop Loss','$'+a.stop,'#ef4444','Exit if price closes below'],['Target 1','$'+a.tp1,'#10b981','First target ('+((a.tp1/a.price-1)*100).toFixed(1)+'%)'],['Target 2','$'+a.tp2,'#10b981','Extended ('+((a.tp2/a.price-1)*100).toFixed(1)+'%)']].map(L=>'<div class="az-level" style="border-left:3px solid '+L[2]+'"><div><div style="font-size:13px;font-weight:700">'+L[0]+'</div><div style="font-size:11px;color:#9ca3af">'+L[3]+'</div></div><div style="font-size:15px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+
-      '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button>'+rhBtn(a.sym)+'</div>'+
+      '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button>'+chatBtn('az-'+a.sym,eqTradePrompt({sym:a.sym,side:(a.tone==='neg'?'(read is cautious — confirm direction before buying)':'Buy / long'),entry:'$'+a.entryLo+'–$'+a.entryHi,limit:a.entryHi,stop:a.stop,tp1:a.tp1,tp2:a.tp2,qty:(x.sizing?x.sizing.risk1:null)}))+rhBtn(a.sym)+'</div>'+
     (x.sizing?'<div class="card"><div class="card-title"><span>📐 Position Sizing <span class="card-hint">risk to the stop</span></span></div><div style="font-size:12.5px;line-height:1.6">Risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share): <b>~'+x.sizing.risk1+' sh</b> = 1% of your book, <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div></div>':'')+
     (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
       oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
@@ -1898,6 +1935,7 @@ function renderPicksCards(){
       +'<div class="conf2"><div class="conf2-lbl">Confidence</div><div class="conf2-track"><div class="conf2-fill" style="width:'+p.confidence+'%"></div></div><div class="conf2-pct" style="color:#6366f1">'+p.confidence+'%</div></div>'
       +'<ul class="thesis2">'+thesis+'</ul>'
       +'<a class="tv-link" href="https://www.tradingview.com/chart/?symbol='+p.tvSymbol+'&interval=W" target="_blank">📈 View 1Y Chart on TradingView →</a>'
+      +chatBtn('pk-'+p.ticker,eqTradePrompt({sym:p.ticker,side:'Buy / long',entry:p.entry,limit:(rng?rng.hi:null),stop:p.sl.price,tp1:p.tp1.price,tp2:p.tp2.price,qty:(P&&P.totalVal&&(cur-p.sl.price)>0?Math.max(1,Math.floor(P.totalVal*0.01/(cur-p.sl.price))):null)}))
       +rhBtn(p.ticker)
     +'</div>';
   }).join('');
