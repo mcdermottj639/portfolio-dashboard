@@ -207,7 +207,7 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 .rh-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #00c805; color: #05140a; font-weight: 800; font-size: 13px; text-decoration: none; }
 .rh-btn:active { opacity: 0.85; }
 /* "Build & place this trade with Claude" — opens a Claude chat with the trade pre-built */
-.chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; }
+.chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; text-decoration: none; }
 .chat-btn:active { opacity: 0.85; }
 /* Per-page quick-nav: chip row that jumps to each card in the section */
 .card-nav { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 10px; margin-bottom: 2px; scrollbar-width: none; }
@@ -786,12 +786,20 @@ function optTradePrompt(o){
   L.push('','Use the Robinhood connector: find the exact contract with get_option_instruments / get_option_quotes, run review_option_order to show me the live mark, greeks and cost, then place_option_order once I confirm. Education only — not advice.');
   return L.join('\n');
 }
-function chatBtn(id,prompt,label){ window.__trades[id]=prompt; return '<button class="chat-btn" onclick="pushTrade(\''+id+'\')">'+(label||'🤖 Build &amp; place this trade with Claude')+'</button>'; }
-function pushTrade(id){ const txt=window.__trades[id]; if(!txt)return;
-  try{ if(navigator.clipboard)navigator.clipboard.writeText(txt); }catch(e){}
-  toast('🤖 Trade copied — opening Claude (paste if needed)');
-  try{ window.open('https://claude.ai/new?q='+encodeURIComponent(txt),'_blank','noopener'); }catch(e){}
+function chatBtn(id,prompt,label){ window.__trades[id]=prompt;
+  // Real anchor (universal link) so the OS gets the chance to route to the Claude app, instead
+  // of a scripted window.open that a home-screen PWA traps in its in-window browser. The prompt
+  // is also copied on tap, so you can open the Claude app and paste if it lands in a browser.
+  const href='https://claude.ai/new?q='+encodeURIComponent(prompt);
+  return '<a class="chat-btn" href="'+href+'" target="_blank" rel="noopener" onclick="pushTradeCopy(\''+id+'\')">'+(label||'🤖 Build &amp; place this trade with Claude')+'</a>';
 }
+function pushTradeCopy(id){ const txt=window.__trades[id]; if(!txt)return;
+  try{ if(navigator.clipboard)navigator.clipboard.writeText(txt); }catch(e){}
+  toast('🤖 Prompt copied — open the Claude app & paste if it lands in a browser');
+}
+window.pushTradeCopy=pushTradeCopy;
+// Back-compat for any cached page still calling pushTrade(id).
+function pushTrade(id){ pushTradeCopy(id); const txt=window.__trades[id]; if(txt){ try{ window.open('https://claude.ai/new?q='+encodeURIComponent(txt),'_blank','noopener'); }catch(e){} } }
 window.pushTrade=pushTrade;
 
 /* ═══ Push to Kyle (mobile portfolio note) ═══ */
