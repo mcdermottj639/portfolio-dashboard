@@ -149,6 +149,36 @@ if (picksFile) data.picks = readJSON(picksFile);
 const optionsFile = filesMatching(/^options\.json$/)[0];
 if (optionsFile) data.options = readJSON(optionsFile);
 
+// News sentiment (OPTIONAL — Alpha Vantage NEWS_SENTIMENT). The agent may save a raw AV
+// result to producer/raw/news/<SYM>.json for a few top holdings if AV budget remains (it's
+// rate-limited, so this is opt-in and never required). Aggregated per ticker for the Analyze
+// tab's News card; absent → the card simply hides. data.news = { SYM: {score,label,n,recent[]} }.
+const newsDir = join(RAWDIR, 'news');
+if (existsSync(newsDir)) {
+  const news = {};
+  for (const f of readdirSync(newsDir).filter((x) => x.endsWith('.json'))) {
+    const sym = f.replace(/\.json$/, '').toUpperCase();
+    const d = unwrap(readJSON(join(newsDir, f)));
+    const feed = d.feed ?? d.data?.feed ?? [];
+    if (!Array.isArray(feed) || !feed.length) continue;
+    const recent = [], scores = [];
+    for (const item of feed.slice(0, 12)) {
+      let ts = null, lab = item.overall_sentiment_label;
+      const tk = (item.ticker_sentiment || []).find((t) => (t.ticker || '').toUpperCase() === sym);
+      if (tk) { ts = parseFloat(tk.ticker_sentiment_score); lab = tk.ticker_sentiment_label || lab; }
+      else if (item.overall_sentiment_score != null) ts = parseFloat(item.overall_sentiment_score);
+      if (ts != null && Number.isFinite(ts)) scores.push(ts);
+      if (recent.length < 4) recent.push({ title: item.title, url: item.url, source: item.source || null, sentiment: lab || null });
+    }
+    if (!scores.length) continue;
+    const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
+    const label = avg >= 0.35 ? 'Bullish' : avg >= 0.15 ? 'Somewhat-Bullish'
+      : avg <= -0.35 ? 'Bearish' : avg <= -0.15 ? 'Somewhat-Bearish' : 'Neutral';
+    news[sym] = { score: +avg.toFixed(2), label, n: feed.length, recent };
+  }
+  if (Object.keys(news).length) data.news = news;
+}
+
 // Breadth / Movers (the Markets "Breadth" card → MKTX via data.picks.markets). Computed from
 // data already collected — VIX (Robinhood) + biggest movers in your own book — no extra calls.
 // News sentiment is left out unless AV supplies it (rate-limited); the card degrades gracefully.

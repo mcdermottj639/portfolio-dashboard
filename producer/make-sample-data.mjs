@@ -91,6 +91,9 @@ for (const s of [...POS.map((p) => p.symbol), 'SPY', 'QQQ']) {
   const endPx = s === 'SPY' ? 612.4 : s === 'QQQ' ? 548.9 : POS.find((p) => p.symbol === s).px;
   hist.day[s] = series(s, endPx, drift[s] ?? 0.1).bars;
 }
+// Monthly (5Y) history for holdings too — powers the Analyze tab's Multi-Timeframe card's
+// true monthly row (the producer fetches monthly bars for top holdings, not just markets).
+for (const p of POS) hist.month[p.symbol] = monthSeries(p.symbol, p.px, (drift[p.symbol] ?? 0.1) + 0.6).bars;
 
 // Markets-tab symbols (indexes + risk gauges + sectors): quotes + day + month history,
 // so the Markets tab renders fully in preview just like the real producer output.
@@ -177,6 +180,19 @@ const options = {
   }),
 };
 
+// --- sample news sentiment (Analyze tab News card; real producer fills from AV NEWS_SENTIMENT) ---
+const news = {
+  NVDA: { score: 0.28, label: 'Somewhat-Bullish', n: 42, recent: [
+    { title: 'NVIDIA data-center demand stays strong into next quarter', url: 'https://example.com/nvda1', source: 'Newswire', sentiment: 'Bullish' },
+    { title: 'Analysts nudge NVDA targets higher on AI capex', url: 'https://example.com/nvda2', source: 'MarketDesk', sentiment: 'Somewhat-Bullish' },
+    { title: 'Chip supply normalizing, margins watched', url: 'https://example.com/nvda3', source: 'TechWire', sentiment: 'Neutral' },
+  ] },
+  AAPL: { score: -0.12, label: 'Neutral', n: 31, recent: [
+    { title: 'Apple services growth offsets hardware softness', url: 'https://example.com/aapl1', source: 'Newswire', sentiment: 'Neutral' },
+    { title: 'Regulatory scrutiny continues in EU', url: 'https://example.com/aapl2', source: 'PolicyDesk', sentiment: 'Somewhat-Bearish' },
+  ] },
+};
+
 const now = new Date(); // sample stamp only
 const data = {
   schemaVersion: 1,
@@ -188,6 +204,7 @@ const data = {
   hist,
   picks,
   options,
+  news,
 };
 
 await emit(data);

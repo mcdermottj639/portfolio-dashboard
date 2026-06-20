@@ -34,7 +34,9 @@ XLK XLC XLY XLF XLV XLI XLP XLE XLU XLB XLRE   (SPDR sectors)
 ```
 
 Symbols for **day** history (YTD): top 15 holdings by value + every market symbol above.
-Symbols for **month** history (5Y stats): every market symbol above.
+Symbols for **month** history (5Y stats): every market symbol above **+ your top 15 holdings**
+(the Analyze tab's Multi-Timeframe card uses monthly bars for the holding's monthly trend row;
+without them it falls back to the 200-day daily average).
 
 ## Steps
 
@@ -52,7 +54,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` |
    | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
+   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` |
 
    Notes:
@@ -107,6 +109,12 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - If AV is unavailable or you skip it, those sections simply show "—"; everything else still
      works. `build-data.mjs` maps the saved files to the correct replay keys automatically
      (no hand-keying) and prints how many AV snapshots it embedded.
+   - **News sentiment (OPTIONAL).** If AV budget remains after the required calls, you may
+     fetch `NEWS_SENTIMENT { tickers: "<SYM>" }` for a few **top holdings** and save each raw
+     result to `producer/raw/news/<SYM>.json`. `build-data.mjs` aggregates these into
+     `data.news` for the Analyze tab's News card. It's rate-limited, so this is opt-in and
+     never required — the card hides when absent. The **EARNINGS_CALENDAR** call you already
+     make powers the Analyze tab's per-ticker Earnings countdown (no extra call needed).
 
 3b. **Daily Picks — ONCE PER DAY** (the Picks tab). Like AV, only on the day's first run
    (gate on the same `.fetched` date, or a separate `producer/raw/picks-built` marker). Fully
