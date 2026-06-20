@@ -1317,6 +1317,7 @@ window.switchTab=switchTab;
    when a page's cards change (debounced), so dynamic pages like Analyze stay in sync. */
 (function(){
   var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze'];
+  var NAVSEQ=0; // globally-unique card ids so re-renders never collide with stale ids
   function titleOf(card){
     var t=card.querySelector(':scope > .card-title'); if(!t)return null;
     var c=t.cloneNode(true);
@@ -1324,25 +1325,37 @@ window.switchTab=switchTab;
     var s=(c.textContent||'').replace(/\s+/g,' ').trim();
     return s||null;
   }
+  // Top offset to clear the sticky tab bar (which wraps to 2 rows on mobile) — measured live.
+  function topOffset(){
+    var tb=document.querySelector('.tabbar');
+    if(tb){ var r=tb.getBoundingClientRect(); if(r.height>0)return Math.max(0,r.bottom)+8; }
+    return 96;
+  }
   function jump(id){
     var card=document.getElementById(id); if(!card)return;
     var body=card.querySelector(':scope > .card-body');
     if(body&&body.style.display==='none'){ body.style.display=''; var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform=''; }
-    try{ card.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ card.scrollIntoView(); }
+    var y=card.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-topOffset();
+    if(y<0)y=0;
+    try{ window.scrollTo({top:y,behavior:'smooth'}); }catch(e){ window.scrollTo(0,y); }
     var prev=card.style.boxShadow; card.style.transition='box-shadow .3s'; card.style.boxShadow='0 0 0 2px #6366f1';
-    setTimeout(function(){ card.style.boxShadow=prev; },700);
+    setTimeout(function(){ card.style.boxShadow=prev; },800);
   }
   window.__navJump=jump;
   function build(pageEl){
     var all=pageEl.querySelectorAll('.card'), cards=[], i;
     for(i=0;i<all.length;i++){ var ti=titleOf(all[i]); if(ti)cards.push({card:all[i],title:ti}); }
-    var sig=cards.map(function(c){ return c.title; }).join('|');
-    if(pageEl.__navSig===sig)return; pageEl.__navSig=sig;
+    // Change-detect on the actual card ELEMENTS (not just titles) so a re-render — same
+    // titles, brand-new nodes — still rebuilds the chips and re-points them.
+    var prev=pageEl.__navCards||[], same=(prev.length===cards.length);
+    if(same)for(i=0;i<cards.length;i++){ if(prev[i].card!==cards[i].card||prev[i].title!==cards[i].title){ same=false; break; } }
+    if(same)return;
+    pageEl.__navCards=cards;
     var nav=pageEl.querySelector(':scope > .card-nav');
     if(cards.length<2){ if(nav)nav.remove(); return; } // not worth a nav for 0–1 cards
     if(!nav){ nav=document.createElement('div'); nav.className='card-nav'; pageEl.insertBefore(nav,pageEl.firstChild); }
     var html='';
-    for(i=0;i<cards.length;i++){ var c=cards[i]; if(!c.card.id)c.card.id=pageEl.id+'-c'+i;
+    for(i=0;i<cards.length;i++){ var c=cards[i]; c.card.id='navc-'+(++NAVSEQ); // fresh unique id every build
       html+='<button class="card-nav-chip" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
     nav.innerHTML=html;
   }
@@ -1350,7 +1363,7 @@ window.switchTab=switchTab;
   function start(){
     buildAll();
     try{
-      var t=null, schedule=function(){ clearTimeout(t); t=setTimeout(buildAll,200); };
+      var t=null, schedule=function(){ clearTimeout(t); t=setTimeout(buildAll,150); };
       var mo=new MutationObserver(function(muts){
         for(var i=0;i<muts.length;i++){ var tgt=muts[i].target;
           if(tgt&&tgt.closest&&tgt.closest('.card-nav'))continue; // ignore our own writes
