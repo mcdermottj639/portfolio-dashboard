@@ -1543,6 +1543,45 @@ function azCompare(other){ other=(other||'').trim().toUpperCase().replace(/[^A-Z
 window.azCompare=azCompare;
 function azCmpGo(){ const i=document.getElementById('az-cmp-input'); if(i)azCompare(i.value); }
 window.azCmpGo=azCmpGo;
+/* ── Batch C: multi-timeframe, earnings, book-overlap, news ── */
+function azMonthly(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.month)||{}; return (h[sym]||[]).map(x=>parseFloat(x.close_price!=null?x.close_price:x.c)).filter(c=>c>0); }
+function azMTF(a,x){ const out=[];
+  out.push({tf:'Daily', up:a.trendUp, basis:a.sma20?('vs 20-day $'+a.sma20.toFixed(2)):'short-term'});
+  if(x.sma50!=null)out.push({tf:'Weekly', up:a.price>x.sma50, basis:'vs 50-day $'+x.sma50.toFixed(2)});
+  const m=azMonthly(a.sym);
+  if(m.length>=4){ const k=Math.min(6,m.length), sma=m.slice(-k).reduce((s,v)=>s+v,0)/k; out.push({tf:'Monthly', up:a.price>=sma, basis:'vs ~'+k+'-mo avg $'+sma.toFixed(2)}); }
+  else if(x.sma200!=null)out.push({tf:'Monthly', up:a.price>x.sma200, basis:'vs 200-day $'+x.sma200.toFixed(2)});
+  if(out.length<2)return null;
+  const ups=out.filter(o=>o.up===true).length, downs=out.filter(o=>o.up===false).length;
+  let align; if(ups===out.length)align={t:'All timeframes up — strong alignment',c:'#10b981'};
+  else if(downs===out.length)align={t:'All timeframes down — avoid / wait for a turn',c:'#ef4444'};
+  else align={t:'Mixed timeframes — '+ups+' up / '+downs+' down',c:'#f59e0b'};
+  return {rows:out, align}; }
+let _azEarnMap=null;
+function _earnMap(){ if(_azEarnMap)return _azEarnMap; _azEarnMap={};
+  try{ const k=makeKey(AV,{tool_name:'EARNINGS_CALENDAR',arguments:JSON.stringify({horizon:'3month'})});
+    const raw=parseAV(((window.__DATA&&window.__DATA.recorded)||{})[k]);
+    const rows=typeof raw==='string'?parseCSV(raw):(Array.isArray(raw)?raw:[]);
+    for(const row of rows){ const s=row.symbol, dt=row.reportDate; if(!s||!dt)continue;
+      const ev=parseFloat(row.estimate); if(!_azEarnMap[s]||dt<_azEarnMap[s].date)_azEarnMap[s]={date:dt, eps:isFinite(ev)?ev:null, when:null}; }
+  }catch(e){}
+  return _azEarnMap; }
+function azEarn(sym){ try{
+  const e=(window.__DATA&&window.__DATA.earnings)||{}; let r=e[sym]; // richer producer-supplied form (optional)
+  if(!r||!r.date)r=_earnMap()[sym];
+  if(!r||!r.date)return null;
+  const d=Math.round((new Date(r.date+'T00:00:00Z')-Date.now())/864e5);
+  return {date:r.date, days:d, when:r.when||null, eps:(r.eps_est!=null?r.eps_est:(r.eps!=null?r.eps:null))}; }catch(e){return null;} }
+function azCorr(a){ try{ const P=window.__PORT; if(!P||!P.enriched)return null; const base=azSeries(a.sym).map(s=>s.c); if(base.length<30)return null;
+  const br=[]; for(let i=1;i<base.length;i++)br.push(base[i]/base[i-1]-1); const cors=[];
+  for(const p of P.enriched){ if(p.symbol===a.sym||p.val<=0)continue; const oc=azSeries(p.symbol).map(s=>s.c); if(oc.length<30)continue;
+    const n=Math.min(br.length, oc.length-1); if(n<20)continue; const xs=br.slice(-n), ys=[]; for(let i=oc.length-n;i<oc.length;i++)ys.push(oc[i]/oc[i-1]-1);
+    const mx=xs.reduce((s,v)=>s+v,0)/n, my=ys.reduce((s,v)=>s+v,0)/n; let cov=0,vx=0,vy=0;
+    for(let i=0;i<n;i++){ cov+=(xs[i]-mx)*(ys[i]-my); vx+=(xs[i]-mx)*(xs[i]-mx); vy+=(ys[i]-my)*(ys[i]-my); }
+    const r=(vx>0&&vy>0)?cov/Math.sqrt(vx*vy):null; if(r!=null)cors.push({sym:p.symbol, r:+r.toFixed(2), pct:p.pct}); }
+  if(!cors.length)return null; cors.sort((p,q)=>q.r-p.r); return cors.slice(0,3); }catch(e){return null;} }
+function azNews(sym){ try{ const nw=(window.__DATA&&window.__DATA.news)||{}; return nw[sym]||null; }catch(e){return null;} }
+const _whenTxt={bmo:'before open', amc:'after close', pre:'before open', post:'after close'};
 function runAnalysis(sym){
   _azLast=sym;
   const el=document.getElementById('az-result'); const inp=document.getElementById('az-ticker'); if(inp)inp.value=sym;
@@ -1567,6 +1606,7 @@ function runAnalysis(sym){
     [a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—']);
   const x=azExtra(a);
   const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a):null, oplay=a.hasTA?azOptionPlay(a,x):null;
+  const mtf=a.hasTA?azMTF(a,x):null, earn=azEarn(sym), corr=azCorr(a), news=azNews(sym);
   const levels='Entry $'+a.entryLo+'-$'+a.entryHi+'  Stop $'+a.stop+'  TP1 $'+a.tp1+'  TP2 $'+a.tp2+'  Invalid <$'+a.invalid;
   const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   el.innerHTML=
@@ -1576,8 +1616,10 @@ function runAnalysis(sym){
     (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50 · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div></div>':'')+
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+
+    (earn?'<div class="card" style="border-left:4px solid '+(earn.days>=0&&earn.days<=10?'#f59e0b':'#6366f1')+'"><div class="card-title"><span>📅 Earnings</span></div><div style="font-size:12.5px;line-height:1.6">'+(earn.days<0?('Last reported '+(-earn.days)+'d ago ('+earn.date+').'):earn.days===0?('Reports <b>today</b> ('+earn.date+')'+(earn.when&&_whenTxt[earn.when]?' '+_whenTxt[earn.when]:'')+'.'):('Next earnings in <b>'+earn.days+' days</b> — '+earn.date+(earn.when&&_whenTxt[earn.when]?', '+_whenTxt[earn.when]:'')+'.'))+(earn.eps!=null?' Est. EPS $'+earn.eps+'.':'')+(earn.days>=0&&earn.days<=10?' <b style="color:#f59e0b">Elevated IV / gap risk into the print — size accordingly.</b>':'')+'</div></div>':'')+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+'</div>':'')+
     (edge?'<div class="card"><div class="card-title"><span>🔬 Historical Edge <span class="card-hint">this stock, similar RSI</span></span></div><div style="font-size:12.5px;line-height:1.6">Across <b>'+edge.n+'</b> past day'+(edge.n===1?'':'s')+' this year when '+a.sym+'’s RSI was near <b>'+a.rsi+'</b>, the next <b>'+edge.horizon+' sessions</b> were positive <b style="color:'+(edge.winRate>=55?'#10b981':edge.winRate<=45?'#ef4444':'#9ca3af')+'">'+edge.winRate+'%</b> of the time, averaging <b style="color:'+(edge.avg>=0?'#10b981':'#ef4444')+'">'+(edge.avg>=0?'+':'')+edge.avg+'%</b> (best +'+edge.best+'%, worst '+edge.worst+'%).</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">Small in-sample stat from this year’s history — a tendency, not a guarantee.</div></div>':'')+
+    (mtf?'<div class="card"><div class="card-title"><span>🕒 Multi-Timeframe</span></div>'+mtf.rows.map(o=>'<div class="az-level"><div><div style="font-size:13px;font-weight:700">'+o.tf+'</div><div style="font-size:11px;color:#9ca3af">'+o.basis+'</div></div><div style="font-size:14px;font-weight:800;color:'+(o.up===true?'#10b981':o.up===false?'#ef4444':'#9ca3af')+'">'+(o.up===true?'▲ Up':o.up===false?'▼ Down':'– Flat')+'</div></div>').join('')+'<div style="font-size:12.5px;font-weight:700;color:'+mtf.align.c+';margin-top:6px">'+mtf.align.t+'</div></div>':'')+
     (((x.support&&x.support.length)||(x.resistance&&x.resistance.length))?'<div class="card"><div class="card-title"><span>🧱 Key Levels</span></div><div style="font-size:12.5px;line-height:1.8"><span style="color:#10b981;font-weight:700">Support</span> '+(x.support&&x.support.length?x.support.map(v=>'$'+v).join(' · '):'—')+'<br><span style="color:#ef4444;font-weight:700">Resistance</span> '+(x.resistance&&x.resistance.length?x.resistance.map(v=>'$'+v).join(' · '):'—')+'</div></div>':'')+
     (scen?'<div class="card"><div class="card-title"><span>🎲 Scenarios <span class="card-hint">model-weighted, ~'+'next leg</span></span></div><table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div><div style="font-size:11px;color:#9ca3af;margin-top:4px">Odds are a heuristic from the setup score, trend &amp; RSI — not market-implied.</div></div>':'')+
     '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
@@ -1590,6 +1632,8 @@ function runAnalysis(sym){
       '<div style="font-size:12.5px;line-height:1.6"><b style="color:#9ca3af">No clean options play.</b> The read is cautious/down — wait for a base or trend turn rather than buying calls into weakness. Earliest sensible monthly expiry if you do define risk: '+oplay.exp+'.</div>'
     )+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Estimated premium (no live chain) — confirm the actual bid/ask &amp; OI before trading. Not advice.</div></div>':'')+
     ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
+    (news&&news.label?'<div class="card"><div class="card-title"><span>📰 News Sentiment <span class="card-hint">'+(news.n||0)+' recent</span></span></div><div style="font-size:13.5px;font-weight:800;color:'+(news.score>=0.15?'#10b981':news.score<=-0.15?'#ef4444':'#9ca3af')+'">'+news.label+(news.score!=null?' ('+(news.score>=0?'+':'')+(+news.score).toFixed(2)+')':'')+'</div>'+(Array.isArray(news.recent)&&news.recent.length?'<div style="margin-top:8px">'+news.recent.slice(0,3).map(h=>'<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-bottom:5px;line-height:1.4">• '+(h.url?'<a href="'+h.url+'" target="_blank" rel="noopener" style="color:inherit">'+h.title+'</a>':h.title)+(h.sentiment?' <span style="color:#9ca3af">('+h.sentiment+')</span>':'')+'</div>').join('')+'</div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Aggregated headline sentiment — context, not a signal.</div></div>':'')+
+    (corr?'<div class="card"><div class="card-title"><span>🔗 Overlap With Your Book <span class="card-hint">return correlation</span></span></div><div style="font-size:12.5px;line-height:1.9">'+corr.map(c=>'<div style="display:flex;justify-content:space-between"><span><b>'+c.sym+'</b> <span style="color:#9ca3af">('+fmt(c.pct,1)+'% of book)</span></span><span style="font-weight:800;color:'+(c.r>=0.7?'#ef4444':c.r>=0.4?'#f59e0b':'#10b981')+'">'+(c.r>=0?'+':'')+c.r.toFixed(2)+'</span></div>').join('')+'</div>'+(corr[0].r>=0.7?'<div style="font-size:11px;color:#ef4444;margin-top:6px">Moves closely with '+corr[0].sym+' — adding '+a.sym+' doubles down on the same risk.</div>':'<div style="font-size:11px;color:#9ca3af;margin-top:6px">+1 = move together · 0 = independent · −1 = opposite.</div>')+'</div>':'')+
     '<div class="card"><div class="card-title"><span>⚖️ Compare <span class="card-hint">side-by-side vs another ticker</span></span></div><div class="az-search"><input id="az-cmp-input" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Compare '+a.sym+' vs… e.g. '+(a.sym==='NVDA'?'AMD':'NVDA')+'" onkeydown="if(event.key===\'Enter\')azCmpGo()"><button class="az-btn" onclick="azCmpGo()">Compare</button></div><div id="az-compare"></div></div>'+
     '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
     '<div class="disclaimer">Algorithmic technical/fundamental read from your latest snapshot — probabilities, not certainty, and not financial advice. ~15-min delayed.</div>';
