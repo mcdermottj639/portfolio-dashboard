@@ -1452,6 +1452,46 @@ function analyzeStock(sym){
 }
 function azScoreColor(v){ return v>=66?'#10b981':v>=45?'#f59e0b':'#ef4444'; }
 function azBar(lbl,v,desc){ const c=azScoreColor(v); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>'+lbl+'</span><span style="color:'+c+'">'+v+'</span></div><div class="az-track"><div class="az-fill" style="width:'+v+'%;background:'+c+'"></div></div><div style="font-size:10.5px;color:#9ca3af;margin-top:2px">'+desc+'</div></div>'; }
+function azSeries(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}; const b=h[sym]||[]; const out=[]; for(const x of b){ const c=parseFloat(x.close_price!=null?x.close_price:x.c); if(!(c>0))continue; out.push({c,h:parseFloat(x.high_price||x.h||c),l:parseFloat(x.low_price||x.l||c),v:parseFloat(x.volume||x.v||0),t:x.begins_at||x.t}); } return out; }
+function _smaArr(c,n){ if(c.length<n)return null; const out=new Array(c.length).fill(null); let s=0; for(let i=0;i<c.length;i++){ s+=c[i]; if(i>=n)s-=c[i-n]; if(i>=n-1)out[i]=+(s/n).toFixed(2); } return out; }
+function azExtra(a){
+  const sym=a.sym, ser=azSeries(sym), closes=ser.map(s=>s.c), x={};
+  try{ const P=window.__PORT; if(P){ x.totalVal=P.totalVal; if(P.enriched){ const p=P.enriched.find(e=>e.symbol===sym); if(p)x.held={qty:p.qty,avg:p.avg,val:p.val,pnlD:p.pnlD,pnlP:p.pnlP,pct:p.pct}; } } }catch(e){}
+  if(closes.length>=20){
+    const last=closes.length-1;
+    x.sma20arr=_smaArr(closes,20); x.sma50arr=closes.length>=50?_smaArr(closes,50):null; x.sma200arr=closes.length>=200?_smaArr(closes,200):null;
+    x.sma50=x.sma50arr?x.sma50arr[last]:null; x.sma200=x.sma200arr?x.sma200arr[last]:null;
+    if(x.sma50arr&&x.sma200arr){ const a50=x.sma50arr[last],a200=x.sma200arr[last],p50=x.sma50arr[last-5],p200=x.sma200arr[last-5];
+      x.cross=a50>a200?(p50!=null&&p200!=null&&p50<=p200?'golden':'above'):(p50!=null&&p200!=null&&p50>=p200?'death':'below'); }
+    let atr=0,cnt=0; for(let i=Math.max(1,ser.length-14);i<ser.length;i++){ const tr=Math.max(ser[i].h-ser[i].l,Math.abs(ser[i].h-ser[i-1].c),Math.abs(ser[i].l-ser[i-1].c)); if(tr>0){atr+=tr;cnt++;} } x.atrPct=cnt?(atr/cnt)/a.price*100:null;
+    const vols=ser.map(s=>s.v).filter(v=>v>0); if(vols.length>=20){ const avg=vols.slice(-20).reduce((s,v)=>s+v,0)/20; x.volRatio=avg>0?vols[vols.length-1]/avg:null; }
+    const spy=azSeries('SPY').map(s=>s.c);
+    if(spy.length>=20){ const n=Math.min(spy.length,closes.length,60),sr=[],kr=[]; for(let i=1;i<n;i++){ sr.push(spy[spy.length-n+i]/spy[spy.length-n+i-1]-1); kr.push(closes[closes.length-n+i]/closes[closes.length-n+i-1]-1); }
+      const ms=sr.reduce((s,v)=>s+v,0)/sr.length,mk=kr.reduce((s,v)=>s+v,0)/kr.length; let cov=0,vs=0; for(let i=0;i<sr.length;i++){ cov+=(sr[i]-ms)*(kr[i]-mk); vs+=(sr[i]-ms)*(sr[i]-ms); } x.beta=vs>0?+(cov/vs).toFixed(2):null;
+      const spyYtd=spy[0]>0?(spy[spy.length-1]/spy[0]-1)*100:null; x.relStr=(a.ytd!=null&&spyYtd!=null)?a.ytd-spyYtd:null; }
+    const w=Math.min(40,closes.length),seg=closes.slice(-w),sup=[],res=[];
+    for(let i=2;i<seg.length-2;i++){ if(seg[i]<seg[i-1]&&seg[i]<seg[i-2]&&seg[i]<=seg[i+1]&&seg[i]<=seg[i+2])sup.push(seg[i]); if(seg[i]>seg[i-1]&&seg[i]>seg[i-2]&&seg[i]>=seg[i+1]&&seg[i]>=seg[i+2])res.push(seg[i]); }
+    x.support=[...new Set(sup.map(v=>+v.toFixed(2)))].filter(v=>v<a.price).sort((p,q)=>q-p).slice(0,2);
+    x.resistance=[...new Set(res.map(v=>+v.toFixed(2)))].filter(v=>v>a.price).sort((p,q)=>p-q).slice(0,2);
+    if(a.hi52&&a.hi52>a.price)x.resistance.push(+(+a.hi52).toFixed(2)); if(a.lo52&&a.lo52<a.price)x.support.push(+(+a.lo52).toFixed(2));
+    x.chart={labels:ser.map(s=>s.t),close:closes,sma20:x.sma20arr,sma50:x.sma50arr};
+  }
+  if(x.totalVal&&a.price>a.stop){ const perSh=a.price-a.stop; x.sizing={risk1:Math.floor(x.totalVal*0.01/perSh),risk2:Math.floor(x.totalVal*0.02/perSh),perSh:+perSh.toFixed(2)}; }
+  const ov=azOverview(sym)||{};
+  x.targetPrice=parseFloat(ov.AnalystTargetPrice)||null; x.targetUpside=x.targetPrice?(x.targetPrice/a.price-1)*100:null;
+  x.peg=parseFloat(ov.PEGRatio)||null; x.margin=ov.ProfitMargin!=null?parseFloat(ov.ProfitMargin)*100:null; x.exDiv=ov.ExDividendDate&&ov.ExDividendDate!=='None'?ov.ExDividendDate:null;
+  return x;
+}
+function azChart(id,ch,a){ const c=document.getElementById(id); if(!c||typeof Chart==='undefined'||!ch)return;
+  const n=ch.close.length,lvl=v=>new Array(n).fill(v);
+  const ds=[{label:'Price',data:ch.close,borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15}];
+  if(ch.sma20)ds.push({label:'SMA20',data:ch.sma20,borderColor:'#f59e0b',borderWidth:1,pointRadius:0,borderDash:[4,3]});
+  if(ch.sma50)ds.push({label:'SMA50',data:ch.sma50,borderColor:'#9ca3af',borderWidth:1,pointRadius:0,borderDash:[4,3]});
+  ds.push({label:'Stop',data:lvl(a.stop),borderColor:'#ef4444',borderWidth:1,pointRadius:0,borderDash:[2,3]});
+  ds.push({label:'T1',data:lvl(a.tp1),borderColor:'#10b981',borderWidth:1,pointRadius:0,borderDash:[2,3]});
+  ds.push({label:'T2',data:lvl(a.tp2),borderColor:'#059669',borderWidth:1,pointRadius:0,borderDash:[2,3]});
+  try{ new Chart(c,{type:'line',data:{labels:ch.labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9},filter:i=>['Price','SMA20','SMA50'].indexOf(i.text)>=0}},tooltip:{callbacks:{label:x=>x.dataset.label+': $'+(+x.parsed.y).toFixed(2)}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:9},color:'#9ca3af'},grid:{display:false}},y:{ticks:{font:{size:9},color:'#9ca3af',callback:v=>'$'+v},grid:{color:'rgba(127,127,127,0.12)'}}}}}); }catch(e){}
+}
 function runAnalysis(sym){
   _azLast=sym;
   const el=document.getElementById('az-result'); const inp=document.getElementById('az-ticker'); if(inp)inp.value=sym;
@@ -1474,17 +1514,26 @@ function runAnalysis(sym){
   }
   if(a.sector||a.pe||a.revGrowth!=null) nar.push(['🏛️ Fundamentals', '#6366f1',
     [a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—']);
+  const x=azExtra(a);
   const levels='Entry $'+a.entryLo+'-$'+a.entryHi+'  Stop $'+a.stop+'  TP1 $'+a.tp1+'  TP2 $'+a.tp2+'  Invalid <$'+a.invalid;
+  const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   el.innerHTML=
     '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px">'+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'">'+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
     '<div class="card" style="text-align:center"><div class="az-gauge" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+'</div>':'')+'</div>'+
+    (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50 · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div></div>':'')+
+    (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+
+    (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+'</div>':'')+
+    (((x.support&&x.support.length)||(x.resistance&&x.resistance.length))?'<div class="card"><div class="card-title"><span>🧱 Key Levels</span></div><div style="font-size:12.5px;line-height:1.8"><span style="color:#10b981;font-weight:700">Support</span> '+(x.support&&x.support.length?x.support.map(v=>'$'+v).join(' · '):'—')+'<br><span style="color:#ef4444;font-weight:700">Resistance</span> '+(x.resistance&&x.resistance.length?x.resistance.map(v=>'$'+v).join(' · '):'—')+'</div></div>':'')+
     '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
       [['Entry Zone','$'+a.entryLo+' – $'+a.entryHi,'#6366f1','Suggested entry area'],['Stop Loss','$'+a.stop,'#ef4444','Exit if price closes below'],['Target 1','$'+a.tp1,'#10b981','First target ('+((a.tp1/a.price-1)*100).toFixed(1)+'%)'],['Target 2','$'+a.tp2,'#10b981','Extended ('+((a.tp2/a.price-1)*100).toFixed(1)+'%)']].map(L=>'<div class="az-level" style="border-left:3px solid '+L[2]+'"><div><div style="font-size:13px;font-weight:700">'+L[0]+'</div><div style="font-size:11px;color:#9ca3af">'+L[3]+'</div></div><div style="font-size:15px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+
       '<button class="az-btn" style="width:100%;margin-top:10px" onclick="copyPrompt(\''+levels.replace(/'/g,"")+'\')">📋 Copy All Levels</button></div>'+
+    (x.sizing?'<div class="card"><div class="card-title"><span>📐 Position Sizing <span class="card-hint">risk to the stop</span></span></div><div style="font-size:12.5px;line-height:1.6">Risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share): <b>~'+x.sizing.risk1+' sh</b> = 1% of your book, <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div></div>':'')+
+    ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
     '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
     '<div class="disclaimer">Algorithmic technical/fundamental read from your latest snapshot — probabilities, not certainty, and not financial advice. ~15-min delayed.</div>';
+  if(x.chart)setTimeout(()=>azChart('az-chart',x.chart,a),0);
 }
 window.runAnalysis=runAnalysis;
 function azConfirm(sym){
