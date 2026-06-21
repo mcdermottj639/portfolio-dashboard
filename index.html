@@ -1311,7 +1311,16 @@ function pmCalc(p){
   let days=null; if(p.close)days=Math.round((new Date(p.close+'T00:00:00')-Date.now())/864e5);
   return { cost, value, pnl, pnlPct, prob:cur, maxWin:c*1-cost, maxLoss:cost, days };
 }
-function initPredict(){ pmRender(); }
+function initPredict(){ pmSeed(); pmRender(); }
+/* One-time seed of a known Robinhood event-contract position (from the user). Runs once per
+   device (guarded by a flag), and won't re-add if you later delete it. Edit/remove in-app. */
+function pmSeed(){ try{
+  if(localStorage.getItem('pf_predict_seed1'))return;
+  localStorage.setItem('pf_predict_seed1','1');
+  const arr=pmLoad(); if(arr.some(p=>p.id==='pm-usopen-ss'))return;
+  arr.push({ id:'pm-usopen-ss', title:'U.S. Open Winner — Scottie Scheffler', side:'YES', contracts:137, avg:13, cur:14, close:'2026-06-21', note:'Robinhood event contract' });
+  pmSave(arr);
+}catch(e){} }
 function pmSide(s){ _pmSide=s; const y=document.getElementById('pm-yes'),n=document.getElementById('pm-no'); if(y)y.className=s==='YES'?'on-yes':''; if(n)n.className=s==='NO'?'on-no':''; }
 window.pmSide=pmSide;
 function _pmVal(id){ const e=document.getElementById(id); return e?e.value:''; }
