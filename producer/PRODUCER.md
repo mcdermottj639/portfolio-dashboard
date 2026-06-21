@@ -162,18 +162,26 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       (for ideas) `picks.json`.
 
 3d. **Prediction markets (OPTIONAL — Kalshi public data → the Predict tab).** Robinhood's event
-   contracts are **Kalshi** markets, and Kalshi exposes prices with **no authentication**. For
-   each ticker the user tagged on a Predict position (the `ticker` field), fetch the market and
-   save a combined raw response to `producer/raw/kalshi.json`. `build-data.mjs` normalizes it to
-   `data.predict` (yes ¢ + title + status), and the phone auto-fills those positions' live price.
+   contracts are **Kalshi** markets, and Kalshi exposes prices with **no authentication**. The
+   dashboard owner's open positions are listed in **`producer/predict-watch.json`** (an array of
+   `{ "title": "...", "ticker": "..." }`). For each entry:
+   - If it has a **ticker**, fetch that market directly.
+   - If the ticker is blank, **resolve it first** by searching Kalshi for the title, e.g.
+     `GET /trade-api/v2/events?status=open` or the markets search, pick the best title match,
+     then fetch that market. (Optionally write the resolved ticker back into `predict-watch.json`.)
+
+   Save the combined markets to `producer/raw/kalshi.json` (raw Kalshi response, or a JSON array
+   of market objects). `build-data.mjs` normalizes it to `data.predict` (yes ¢ + title + status);
+   the phone links each position to its live price by ticker, falling back to a title match.
    ```
-   curl -s "https://api.elections.kalshi.com/trade-api/v2/markets?tickers=<TICKER1>,<TICKER2>" \
+   TICKERS=$(node -e "console.log(require('./producer/predict-watch.json').map(x=>x.ticker).filter(Boolean).join(','))")
+   curl -s "https://api.elections.kalshi.com/trade-api/v2/markets?tickers=$TICKERS" \
      -H "User-Agent: Mozilla/5.0" > producer/raw/kalshi.json
    ```
    Requirements: the host **`api.elections.kalshi.com`** (or `external-api.kalshi.com`) must be in
    the environment's **network-egress allowlist**, and Kalshi blocks bot UAs — send a browser
-   `User-Agent`. No key needed. Skip entirely if there are no prediction-market positions — the
-   Predict tab works without it (manual marks).
+   `User-Agent`. No key needed. Skip if `predict-watch.json` is empty — the Predict tab still
+   works with the owner's manually-entered marks.
 
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```
