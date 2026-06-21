@@ -1304,6 +1304,12 @@ let _pmEdit=null, _pmSide='YES';
 function pmEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function pmLoad(){ try{ return JSON.parse(localStorage.getItem('pf_predict')||'[]')||[]; }catch(e){ return []; } }
 function pmSave(a){ try{ localStorage.setItem('pf_predict',JSON.stringify(a)); }catch(e){} }
+/* Live YES price (¢) for a position from Kalshi data the producer embedded as data.predict
+   (Robinhood's event contracts are Kalshi markets). Keyed by the market ticker; null if the
+   position has no ticker or the producer hasn't fetched it. */
+function pmLive(p){ try{ if(!p||!p.ticker)return null; const d=(window.__DATA&&window.__DATA.predict)||{};
+  const m=d[p.ticker]||d[(''+p.ticker).toUpperCase()]; if(!m)return null;
+  const v=m.yes!=null?+m.yes:(m.last!=null?+m.last:null); return (v!=null&&!isNaN(v))?v:null; }catch(e){ return null; } }
 function pmCalc(p){
   const c=Math.max(0,+p.contracts||0), avg=Math.max(0,Math.min(100,+p.avg||0));
   const cur=(p.cur==null||p.cur==='')?avg:Math.max(0,Math.min(100,+p.cur));
@@ -1330,7 +1336,8 @@ function pmAdd(){
   if(contracts<=0){ toast('Enter how many contracts'); return; }
   if(avg<=0||avg>100){ toast('Avg price must be 1–100¢'); return; }
   const curRaw=_pmVal('pm-cur').trim(); const cur=curRaw===''?null:+curRaw;
-  const p={ id:_pmEdit||('pm'+Date.now().toString(36)), title:t, side:_pmSide, contracts, avg, cur, close:_pmVal('pm-close')||null, note:_pmVal('pm-note').trim()||null };
+  const ticker=_pmVal('pm-ticker').trim().toUpperCase()||null;
+  const p={ id:_pmEdit||('pm'+Date.now().toString(36)), title:t, side:_pmSide, contracts, avg, cur, close:_pmVal('pm-close')||null, note:_pmVal('pm-note').trim()||null, ticker };
   const arr=pmLoad(); const i=arr.findIndex(x=>x.id===p.id); const editing=i>=0; if(editing)arr[i]=p; else arr.push(p);
   pmSave(arr); _pmEdit=null; _pmSide='YES'; pmRender(); window.scrollTo(0,0); toast(editing?'Position updated':'Position added');
 }
@@ -1344,11 +1351,11 @@ window.pmDel=pmDel;
 function pmRender(){
   const app=document.getElementById('predict-app'); if(!app)return;
   const arr=pmLoad(); const ed=_pmEdit?arr.find(x=>x.id===_pmEdit):null;
-  let tCost=0,tVal=0,tWin=0; arr.forEach(p=>{ const k=pmCalc(p); tCost+=k.cost; tVal+=k.value; tWin+=k.maxWin; });
+  let tCost=0,tVal=0,tWin=0,nLive=0; arr.forEach(p=>{ const lv=pmLive(p); if(lv!=null)nLive++; const k=pmCalc(lv!=null?Object.assign({},p,{cur:lv}):p); tCost+=k.cost; tVal+=k.value; tWin+=k.maxWin; });
   const tPnl=tVal-tCost, tPnlPct=tCost>0?tPnl/tCost*100:0;
   const M=(rows,cols)=>'<div class="pk-metrics" style="grid-template-columns:repeat('+(cols||3)+',1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
-  const hero='<div class="picks-hero"><div><div class="ph-label">Predict</div><div class="ph-date">Prediction Markets Tracker</div><div class="ph-stale">Manual tracker — Robinhood’s data feed doesn’t expose event contracts yet, so positions are entered here and saved on this device.</div></div></div>';
-  const summary='<div class="card"><div class="card-title"><span>🔮 Summary <span class="card-hint">'+arr.length+' position'+(arr.length===1?'':'s')+'</span></span></div>'+
+  const hero='<div class="picks-hero"><div><div class="ph-label">Predict</div><div class="ph-date">Prediction Markets Tracker</div><div class="ph-stale">Saved on this device. Add a Kalshi ticker to a position to auto-pull its live price (Robinhood event contracts are Kalshi markets).</div></div></div>';
+  const summary='<div class="card"><div class="card-title"><span>🔮 Summary <span class="card-hint">'+arr.length+' position'+(arr.length===1?'':'s')+(nLive?' · '+nLive+' live':'')+'</span></span></div>'+
     (arr.length? M([
       ['Staked','<span class="money">'+fmtD(tCost)+'</span>'],
       ['Value','<span class="money">'+fmtD(tVal)+'</span>'],
@@ -1365,11 +1372,13 @@ function pmRender(){
     '<div class="pm-2"><div class="pm-field"><label>Current price (¢, optional)</label><input id="pm-cur" class="pm-input" type="number" inputmode="decimal" placeholder="68" value="'+(ed&&ed.cur!=null?ed.cur:'')+'"></div>'+
     '<div class="pm-field"><label>Resolves (date, optional)</label><input id="pm-close" class="pm-input" type="date" value="'+(ed&&ed.close?ed.close:'')+'"></div></div>'+
     '<div class="pm-field"><label>Note (optional)</label><input id="pm-note" class="pm-input" placeholder="thesis / why" value="'+pmEsc(ed?ed.note:'')+'"></div>'+
+    '<div class="pm-field"><label>Kalshi ticker (optional — enables live auto-price)</label><input id="pm-ticker" class="pm-input" placeholder="e.g. KXUSOPENGOLF-25-SS" value="'+pmEsc(ed&&ed.ticker?ed.ticker:'')+'"></div>'+
     '<button class="az-btn" style="width:100%" onclick="pmAdd()">'+(_pmEdit?'Save changes':'Add position')+'</button>'+
     (_pmEdit?'<button class="pm-mini" style="width:100%;margin-top:8px" onclick="pmCancel()">Cancel edit</button>':'')+'</div>';
-  const list=arr.map(function(p){ const k=pmCalc(p); const sc=p.side==='YES'?'#10b981':'#ef4444'; const pc=k.pnl>=0?'#10b981':'#ef4444';
+  const list=arr.map(function(p){ const live=pmLive(p); const k=pmCalc(live!=null?Object.assign({},p,{cur:live}):p); const sc=p.side==='YES'?'#10b981':'#ef4444'; const pc=k.pnl>=0?'#10b981':'#ef4444';
+    const priceBadge=live!=null?'<span class="badge" style="background:#d1fae5;color:#065f46">● LIVE '+Math.round(live)+'¢</span>':(p.cur!=null?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">mark '+p.cur+'¢</span>':'');
     return '<div class="card" style="border-left:4px solid '+sc+'"><div class="card-title"><span>'+pmEsc(p.title)+'</span></div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge" style="background:'+sc+'22;color:'+sc+'">'+p.side+'</span><span class="badge" style="background:var(--surface-2);color:#9ca3af">'+p.contracts+' @ '+p.avg+'¢</span>'+(k.days!=null?'<span class="badge" style="background:var(--surface-2);color:'+(k.days<0?'#9ca3af':k.days<=7?'#f59e0b':'#9ca3af')+'">'+(k.days<0?'past resolve':k.days+'d left')+'</span>':'')+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge" style="background:'+sc+'22;color:'+sc+'">'+p.side+'</span><span class="badge" style="background:var(--surface-2);color:#9ca3af">'+p.contracts+' @ '+p.avg+'¢</span>'+priceBadge+(k.days!=null?'<span class="badge" style="background:var(--surface-2);color:'+(k.days<0?'#9ca3af':k.days<=7?'#f59e0b':'#9ca3af')+'">'+(k.days<0?'past resolve':k.days+'d left')+'</span>':'')+'</div>'+
       M([
         ['Stake','<span class="money">'+fmtD(k.cost)+'</span>'],
         ['Value','<span class="money">'+fmtD(k.value)+'</span>'],

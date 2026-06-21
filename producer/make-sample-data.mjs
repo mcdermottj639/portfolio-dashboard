@@ -193,6 +193,10 @@ const news = {
   ] },
 };
 
+// sample prediction-market price (Kalshi public data → data.predict). Keyed by ticker; a Predict
+// position carrying this ticker auto-fills its live YES price.
+const predict = { 'KXUSOPENGOLF-25-SS': { yes: 14, title: 'U.S. Open Winner — Scottie Scheffler', status: 'active', close: '2026-06-21T22:00:00Z' } };
+
 const now = new Date(); // sample stamp only
 const data = {
   schemaVersion: 1,
@@ -205,6 +209,7 @@ const data = {
   picks,
   options,
   news,
+  predict,
 };
 
 await emit(data);
