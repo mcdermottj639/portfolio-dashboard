@@ -161,6 +161,20 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `build-data.mjs` embeds it as `data.options`. Needs `positions.json`, `quotes.json`, and
       (for ideas) `picks.json`.
 
+3d. **Prediction markets (OPTIONAL — Kalshi public data → the Predict tab).** Robinhood's event
+   contracts are **Kalshi** markets, and Kalshi exposes prices with **no authentication**. For
+   each ticker the user tagged on a Predict position (the `ticker` field), fetch the market and
+   save a combined raw response to `producer/raw/kalshi.json`. `build-data.mjs` normalizes it to
+   `data.predict` (yes ¢ + title + status), and the phone auto-fills those positions' live price.
+   ```
+   curl -s "https://api.elections.kalshi.com/trade-api/v2/markets?tickers=<TICKER1>,<TICKER2>" \
+     -H "User-Agent: Mozilla/5.0" > producer/raw/kalshi.json
+   ```
+   Requirements: the host **`api.elections.kalshi.com`** (or `external-api.kalshi.com`) must be in
+   the environment's **network-egress allowlist**, and Kalshi blocks bot UAs — send a browser
+   `User-Agent`. No key needed. Skip entirely if there are no prediction-market positions — the
+   Predict tab works without it (manual marks).
+
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```
    PF_PASSPHRASE="<the dashboard passphrase>" node producer/build-data.mjs "<label>"
