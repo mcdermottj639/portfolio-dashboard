@@ -1305,11 +1305,16 @@ function pmEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</
 function pmLoad(){ try{ return JSON.parse(localStorage.getItem('pf_predict')||'[]')||[]; }catch(e){ return []; } }
 function pmSave(a){ try{ localStorage.setItem('pf_predict',JSON.stringify(a)); }catch(e){} }
 /* Live YES price (¢) for a position from Kalshi data the producer embedded as data.predict
-   (Robinhood's event contracts are Kalshi markets). Keyed by the market ticker; null if the
-   position has no ticker or the producer hasn't fetched it. */
-function pmLive(p){ try{ if(!p||!p.ticker)return null; const d=(window.__DATA&&window.__DATA.predict)||{};
-  const m=d[p.ticker]||d[(''+p.ticker).toUpperCase()]; if(!m)return null;
-  const v=m.yes!=null?+m.yes:(m.last!=null?+m.last:null); return (v!=null&&!isNaN(v))?v:null; }catch(e){ return null; } }
+   (Robinhood's event contracts are Kalshi markets). Matches first by exact ticker, then falls
+   back to a normalized-title match — so a position auto-links to its live price even without a
+   ticker tagged, as long as the producer fetched a market with a matching title. */
+function _pmYes(m){ if(!m)return null; const v=m.yes!=null?+m.yes:(m.last!=null?+m.last:null); return (v!=null&&!isNaN(v))?v:null; }
+function _pmNorm(s){ return (''+(s||'')).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function pmLive(p){ try{ const d=(window.__DATA&&window.__DATA.predict)||{}; if(!d||!Object.keys(d).length||!p)return null;
+  if(p.ticker){ const m=d[p.ticker]||d[(''+p.ticker).toUpperCase()]; if(m)return _pmYes(m); }
+  const nt=_pmNorm(p.title); if(nt.length>=8){ for(const k in d){ const mt=_pmNorm(d[k].title); if(!mt)continue;
+    if(mt===nt||(mt.length>=8&&(mt.indexOf(nt)>=0||nt.indexOf(mt)>=0)))return _pmYes(d[k]); } }
+  return null; }catch(e){ return null; } }
 function pmCalc(p){
   const c=Math.max(0,+p.contracts||0), avg=Math.max(0,Math.min(100,+p.avg||0));
   const cur=(p.cur==null||p.cur==='')?avg:Math.max(0,Math.min(100,+p.cur));
