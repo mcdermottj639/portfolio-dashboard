@@ -198,6 +198,10 @@ if (kFile) {
   }
   if (Object.keys(predict).length) data.predict = predict;
 }
+// Suggested prediction markets (Kalshi notable/active markets → data.predictPicks). Written by
+// producer/predict-picks.mjs from the raw markets feed; embedded verbatim for the Predict tab.
+const ppFile = filesMatching(/^predict-picks\.json$/)[0];
+if (ppFile) { const pp = readJSON(ppFile); if (Array.isArray(pp) && pp.length) data.predictPicks = pp; }
 
 // Breadth / Movers (the Markets "Breadth" card → MKTX via data.picks.markets). Computed from
 // data already collected — VIX (Robinhood) + biggest movers in your own book — no extra calls.
