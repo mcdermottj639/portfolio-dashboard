@@ -183,6 +183,16 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    `User-Agent`. No key needed. Skip if `predict-watch.json` is empty — the Predict tab still
    works with the owner's manually-entered marks.
 
+   **Suggested markets (optional discovery).** To populate the Predict tab's "Suggested Markets"
+   card, also pull a page of active markets and score them:
+   ```
+   curl -s "https://api.elections.kalshi.com/trade-api/v2/markets?status=open&limit=400" \
+     -H "User-Agent: Mozilla/5.0" > producer/raw/kalshi-all.json
+   node producer/predict-picks.mjs   # → producer/raw/predict-picks.json (build-data embeds it)
+   ```
+   `predict-picks.mjs` is honest by design — it surfaces *notable* markets (most-active, closing
+   soon, coin-flips, longshots), not outcome predictions. Skip if egress to Kalshi isn't allowed.
+
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```
    PF_PASSPHRASE="<the dashboard passphrase>" node producer/build-data.mjs "<label>"

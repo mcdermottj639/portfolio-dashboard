@@ -196,6 +196,12 @@ const news = {
 // sample prediction-market price (Kalshi public data → data.predict). Keyed by ticker; a Predict
 // position carrying this ticker auto-fills its live YES price.
 const predict = { 'KXUSOPENGOLF-25-SS': { yes: 14, title: 'U.S. Open Winner — Scottie Scheffler', status: 'active', close: '2026-06-21T22:00:00Z' } };
+// sample suggested markets (Kalshi notable/active → data.predictPicks)
+const predictPicks = [
+  { ticker: 'KXFED-26JUL', title: 'Fed cuts rates at the July meeting?', category: 'Economics', yes: 38, volume: 142000, days: 24, close: '2026-07-29T18:00:00Z', tag: '🔥 Active', reason: '142,000 contracts traded' },
+  { ticker: 'KXCPI-26JUN', title: 'June CPI comes in above 3.0%?', category: 'Economics', yes: 52, volume: 38000, days: 2, close: '2026-06-23T12:30:00Z', tag: '⏳ Closes soon', reason: 'Resolves in 2d' },
+  { ticker: 'KXBTC-26-200K', title: 'Bitcoin above $200k this year?', category: 'Crypto', yes: 11, volume: 51000, days: 193, close: '2026-12-31T23:59:00Z', tag: '🎯 Longshot', reason: '11¢ — ~9x if it resolves YES' },
+];
 
 const now = new Date(); // sample stamp only
 const data = {
@@ -210,6 +216,7 @@ const data = {
   options,
   news,
   predict,
+  predictPicks,
 };
 
 await emit(data);
