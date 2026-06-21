@@ -209,6 +209,16 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 /* "Build & place this trade with Claude" — opens a Claude chat with the trade pre-built */
 .chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; text-decoration: none; }
 .chat-btn:active { opacity: 0.85; }
+/* Predict (prediction-markets) page */
+.pm-field { margin-bottom: 10px; }
+.pm-field label { display: block; font-size: 11px; color: #9ca3af; font-weight: 600; margin-bottom: 4px; }
+.pm-input { width: 100%; padding: 10px 12px; border: 1px solid var(--surface-2); border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 14px; font-family: inherit; }
+.pm-side { display: flex; gap: 8px; }
+.pm-side button { flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--surface-2); background: transparent; color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer; }
+.pm-side button.on-yes { background: #10b981; border-color: #10b981; color: #fff; }
+.pm-side button.on-no { background: #ef4444; border-color: #ef4444; color: #fff; }
+.pm-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pm-mini { flex: 1; padding: 9px; border-radius: 9px; border: 1px solid var(--surface-2); background: var(--surface-2); color: var(--text); font-weight: 600; font-size: 12px; cursor: pointer; }
 /* Per-page quick-nav: chip row that jumps to each card in the section */
 .card-nav { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 10px; margin-bottom: 2px; scrollbar-width: none; }
 .card-nav::-webkit-scrollbar { display: none; }
@@ -348,6 +358,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
   <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Picks<span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
   <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
+  <button class="tab" id="tab-predict" onclick="switchTab('predict')">🔮 Predict</button>
 </div>
 <div id="page-portfolio">
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
@@ -363,6 +374,9 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
 </div>
 <div id="page-analyze" style="display:none">
   <div id="analyze-app"><div class="loading-wrap"><div class="spinner"></div>Loading…</div></div>
+</div>
+<div id="page-predict" style="display:none">
+  <div id="predict-app"></div>
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
@@ -1264,11 +1278,11 @@ let PICK_PICKS=[
     ] },
 ];
 
-let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null;
+let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null,_predictInit=false;
 let PICK_TRIM=[],PICK_ADD=[],PICK_INCOME=[],PICK_HISTORY=[],MKTX=null;
 
 function switchTab(tab){
-  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze'};
+  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze',predict:'page-predict'};
   for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none'; const bt=document.getElementById('tab-'+t); if(bt)bt.classList.toggle('active',t===tab); }
   try{localStorage.setItem('dash_tab',tab);}catch(e){}
   window.scrollTo(0,0);
@@ -1276,8 +1290,94 @@ function switchTab(tab){
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
   if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
   if(tab==='analyze'&&!_analyzeInit){_analyzeInit=true;initAnalyze();}
+  if(tab==='predict'&&!_predictInit){_predictInit=true;initPredict();}
 }
 window.switchTab=switchTab;
+
+/* ═══════════════════════════════════════════
+   PREDICT PAGE — prediction-markets tracker (manual, on-device)
+   Robinhood's MCP connector doesn't expose event contracts, so positions are
+   entered by hand and stored in localStorage. Each contract settles at $1 if
+   your side resolves true, $0 if false; price (¢) ≈ the market-implied odds.
+═══════════════════════════════════════════ */
+let _pmEdit=null, _pmSide='YES';
+function pmEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function pmLoad(){ try{ return JSON.parse(localStorage.getItem('pf_predict')||'[]')||[]; }catch(e){ return []; } }
+function pmSave(a){ try{ localStorage.setItem('pf_predict',JSON.stringify(a)); }catch(e){} }
+function pmCalc(p){
+  const c=Math.max(0,+p.contracts||0), avg=Math.max(0,Math.min(100,+p.avg||0));
+  const cur=(p.cur==null||p.cur==='')?avg:Math.max(0,Math.min(100,+p.cur));
+  const cost=c*avg/100, value=c*cur/100, pnl=value-cost, pnlPct=cost>0?pnl/cost*100:0;
+  let days=null; if(p.close)days=Math.round((new Date(p.close+'T00:00:00')-Date.now())/864e5);
+  return { cost, value, pnl, pnlPct, prob:cur, maxWin:c*1-cost, maxLoss:cost, days };
+}
+function initPredict(){ pmRender(); }
+function pmSide(s){ _pmSide=s; const y=document.getElementById('pm-yes'),n=document.getElementById('pm-no'); if(y)y.className=s==='YES'?'on-yes':''; if(n)n.className=s==='NO'?'on-no':''; }
+window.pmSide=pmSide;
+function _pmVal(id){ const e=document.getElementById(id); return e?e.value:''; }
+function pmAdd(){
+  const t=_pmVal('pm-title').trim(); if(!t){ toast('Add a market / question title'); return; }
+  const contracts=+_pmVal('pm-contracts')||0, avg=+_pmVal('pm-avg')||0;
+  if(contracts<=0){ toast('Enter how many contracts'); return; }
+  if(avg<=0||avg>100){ toast('Avg price must be 1–100¢'); return; }
+  const curRaw=_pmVal('pm-cur').trim(); const cur=curRaw===''?null:+curRaw;
+  const p={ id:_pmEdit||('pm'+Date.now().toString(36)), title:t, side:_pmSide, contracts, avg, cur, close:_pmVal('pm-close')||null, note:_pmVal('pm-note').trim()||null };
+  const arr=pmLoad(); const i=arr.findIndex(x=>x.id===p.id); const editing=i>=0; if(editing)arr[i]=p; else arr.push(p);
+  pmSave(arr); _pmEdit=null; _pmSide='YES'; pmRender(); window.scrollTo(0,0); toast(editing?'Position updated':'Position added');
+}
+window.pmAdd=pmAdd;
+function pmEdit(id){ const p=pmLoad().find(x=>x.id===id); if(!p)return; _pmEdit=id; _pmSide=p.side||'YES'; pmRender(); window.scrollTo(0,0); }
+window.pmEdit=pmEdit;
+function pmCancel(){ _pmEdit=null; _pmSide='YES'; pmRender(); }
+window.pmCancel=pmCancel;
+function pmDel(id){ if(!window.confirm('Remove this prediction-market position?'))return; pmSave(pmLoad().filter(x=>x.id!==id)); if(_pmEdit===id)_pmEdit=null; pmRender(); }
+window.pmDel=pmDel;
+function pmRender(){
+  const app=document.getElementById('predict-app'); if(!app)return;
+  const arr=pmLoad(); const ed=_pmEdit?arr.find(x=>x.id===_pmEdit):null;
+  let tCost=0,tVal=0,tWin=0; arr.forEach(p=>{ const k=pmCalc(p); tCost+=k.cost; tVal+=k.value; tWin+=k.maxWin; });
+  const tPnl=tVal-tCost, tPnlPct=tCost>0?tPnl/tCost*100:0;
+  const M=(rows,cols)=>'<div class="pk-metrics" style="grid-template-columns:repeat('+(cols||3)+',1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
+  const hero='<div class="picks-hero"><div><div class="ph-label">Predict</div><div class="ph-date">Prediction Markets Tracker</div><div class="ph-stale">Manual tracker — Robinhood’s data feed doesn’t expose event contracts yet, so positions are entered here and saved on this device.</div></div></div>';
+  const summary='<div class="card"><div class="card-title"><span>🔮 Summary <span class="card-hint">'+arr.length+' position'+(arr.length===1?'':'s')+'</span></span></div>'+
+    (arr.length? M([
+      ['Staked','<span class="money">'+fmtD(tCost)+'</span>'],
+      ['Value','<span class="money">'+fmtD(tVal)+'</span>'],
+      ['Open P&L','<span class="money" style="color:'+(tPnl>=0?'#10b981':'#ef4444')+'">'+(tPnl>=0?'+':'')+fmtD(tPnl)+'</span>'],
+      ['Return','<span style="color:'+(tPnl>=0?'#10b981':'#ef4444')+'">'+(tPnl>=0?'+':'')+tPnlPct.toFixed(1)+'%</span>'],
+      ['Max win if all hit','<span class="money" style="color:#10b981">+'+fmtD(tWin)+'</span>'],
+      ['At risk','<span class="money" style="color:#ef4444">'+fmtD(tCost)+'</span>']
+    ],3) : '<div class="tech-empty">No positions yet. Add your Robinhood prediction-market picks below to track P&L, implied odds, and payoff.</div>')+'</div>';
+  const form='<div class="card"><div class="card-title"><span>'+(_pmEdit?'✏️ Edit position':'➕ Add a position')+'</span></div>'+
+    '<div class="pm-field"><label>Market / question</label><input id="pm-title" class="pm-input" placeholder="e.g. Will the Fed cut rates in July?" value="'+pmEsc(ed?ed.title:'')+'"></div>'+
+    '<div class="pm-field"><label>Your side</label><div class="pm-side"><button id="pm-yes" class="'+(_pmSide==='YES'?'on-yes':'')+'" onclick="pmSide(\'YES\')">YES</button><button id="pm-no" class="'+(_pmSide==='NO'?'on-no':'')+'" onclick="pmSide(\'NO\')">NO</button></div></div>'+
+    '<div class="pm-2"><div class="pm-field"><label>Contracts</label><input id="pm-contracts" class="pm-input" type="number" inputmode="decimal" placeholder="100" value="'+(ed?ed.contracts:'')+'"></div>'+
+    '<div class="pm-field"><label>Avg price (¢)</label><input id="pm-avg" class="pm-input" type="number" inputmode="decimal" placeholder="62" value="'+(ed?ed.avg:'')+'"></div></div>'+
+    '<div class="pm-2"><div class="pm-field"><label>Current price (¢, optional)</label><input id="pm-cur" class="pm-input" type="number" inputmode="decimal" placeholder="68" value="'+(ed&&ed.cur!=null?ed.cur:'')+'"></div>'+
+    '<div class="pm-field"><label>Resolves (date, optional)</label><input id="pm-close" class="pm-input" type="date" value="'+(ed&&ed.close?ed.close:'')+'"></div></div>'+
+    '<div class="pm-field"><label>Note (optional)</label><input id="pm-note" class="pm-input" placeholder="thesis / why" value="'+pmEsc(ed?ed.note:'')+'"></div>'+
+    '<button class="az-btn" style="width:100%" onclick="pmAdd()">'+(_pmEdit?'Save changes':'Add position')+'</button>'+
+    (_pmEdit?'<button class="pm-mini" style="width:100%;margin-top:8px" onclick="pmCancel()">Cancel edit</button>':'')+'</div>';
+  const list=arr.map(function(p){ const k=pmCalc(p); const sc=p.side==='YES'?'#10b981':'#ef4444'; const pc=k.pnl>=0?'#10b981':'#ef4444';
+    return '<div class="card" style="border-left:4px solid '+sc+'"><div class="card-title"><span>'+pmEsc(p.title)+'</span></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge" style="background:'+sc+'22;color:'+sc+'">'+p.side+'</span><span class="badge" style="background:var(--surface-2);color:#9ca3af">'+p.contracts+' @ '+p.avg+'¢</span>'+(k.days!=null?'<span class="badge" style="background:var(--surface-2);color:'+(k.days<0?'#9ca3af':k.days<=7?'#f59e0b':'#9ca3af')+'">'+(k.days<0?'past resolve':k.days+'d left')+'</span>':'')+'</div>'+
+      M([
+        ['Stake','<span class="money">'+fmtD(k.cost)+'</span>'],
+        ['Value','<span class="money">'+fmtD(k.value)+'</span>'],
+        ['P&L','<span class="money" style="color:'+pc+'">'+(k.pnl>=0?'+':'')+fmtD(k.pnl)+'</span>'],
+        ['Implied chance',Math.round(k.prob)+'%'],
+        ['Max win','<span class="money" style="color:#10b981">+'+fmtD(k.maxWin)+'</span>'],
+        ['Max loss','<span class="money" style="color:#ef4444">-'+fmtD(k.maxLoss)+'</span>']
+      ],3)+
+      (p.note?'<div style="font-size:12px;color:#9ca3af;margin-top:8px">'+pmEsc(p.note)+'</div>':'')+
+      '<div style="display:flex;gap:8px;margin-top:10px"><button class="pm-mini" onclick="pmEdit(\''+p.id+'\')">✏️ Edit / update price</button><button class="pm-mini" onclick="pmDel(\''+p.id+'\')">🗑️ Remove</button></div></div>';
+  }).join('');
+  const edu='<div class="card"><div class="card-title"><span>📖 How prediction markets work</span></div><div style="font-size:12.5px;line-height:1.6;color:var(--text);opacity:.9">'+
+    'Each contract is a bet on a yes/no event and <b>settles at $1.00 if your side is right, $0 if wrong</b>. The price in cents ≈ the market’s implied odds — a <b>62¢ YES</b> means ~62% priced-in chance. Your <b>max win</b> per contract is (100¢ − your price), your <b>max loss</b> is what you paid. Sell before resolution to lock in gains/losses at the current price.</div>'+
+    '<div style="font-size:11px;color:#9ca3af;margin-top:10px">Tracker only — entries are saved on this device (they don’t sync to Robinhood). Not financial advice.</div></div>';
+  app.innerHTML=hero+summary+form+(list||'')+edu;
+}
+window.initPredict=initPredict;
 
 /* Make every card collapsible (cards rendered later are caught via MutationObserver). */
 (function(){
@@ -1314,7 +1414,7 @@ window.switchTab=switchTab;
             if(nd.querySelectorAll)nd.querySelectorAll('.card').forEach(enhance); }
           wrapTables(document); }
       });
-      ['page-portfolio','page-markets','page-picks','page-options'].forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
+      ['page-portfolio','page-markets','page-picks','page-options','page-analyze','page-predict'].forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
     }catch(e){}
   }
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
@@ -1324,7 +1424,7 @@ window.switchTab=switchTab;
    Tap a chip to (expand if collapsed and) smooth-scroll to that card. Rebuilds itself
    when a page's cards change (debounced), so dynamic pages like Analyze stay in sync. */
 (function(){
-  var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze'];
+  var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze','page-predict'];
   var NAVSEQ=0; // globally-unique card ids so re-renders never collide with stale ids
   function titleOf(card){
     var t=card.querySelector(':scope > .card-title'); if(!t)return null;
