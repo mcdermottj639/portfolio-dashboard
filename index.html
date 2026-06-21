@@ -209,16 +209,6 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 /* "Build & place this trade with Claude" — opens a Claude chat with the trade pre-built */
 .chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; text-decoration: none; }
 .chat-btn:active { opacity: 0.85; }
-/* Predict (prediction-markets) page */
-.pm-field { margin-bottom: 10px; }
-.pm-field label { display: block; font-size: 11px; color: #9ca3af; font-weight: 600; margin-bottom: 4px; }
-.pm-input { width: 100%; padding: 10px 12px; border: 1px solid var(--surface-2); border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: 14px; font-family: inherit; }
-.pm-side { display: flex; gap: 8px; }
-.pm-side button { flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--surface-2); background: transparent; color: var(--text); font-weight: 700; font-size: 13px; cursor: pointer; }
-.pm-side button.on-yes { background: #10b981; border-color: #10b981; color: #fff; }
-.pm-side button.on-no { background: #ef4444; border-color: #ef4444; color: #fff; }
-.pm-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pm-mini { flex: 1; padding: 9px; border-radius: 9px; border: 1px solid var(--surface-2); background: var(--surface-2); color: var(--text); font-weight: 600; font-size: 12px; cursor: pointer; }
 /* Per-page quick-nav: chip row that jumps to each card in the section */
 .card-nav { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 10px; margin-bottom: 2px; scrollbar-width: none; }
 .card-nav::-webkit-scrollbar { display: none; }
@@ -358,7 +348,6 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
   <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Picks<span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
   <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
-  <button class="tab" id="tab-predict" onclick="switchTab('predict')">🔮 Predict</button>
 </div>
 <div id="page-portfolio">
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
@@ -374,9 +363,6 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
 </div>
 <div id="page-analyze" style="display:none">
   <div id="analyze-app"><div class="loading-wrap"><div class="spinner"></div>Loading…</div></div>
-</div>
-<div id="page-predict" style="display:none">
-  <div id="predict-app"></div>
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
@@ -472,7 +458,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
     });
   }};
   function boot(){
-    var APP_VERSION='v29'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v30'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -892,7 +878,6 @@ async function pushToKyle(){
 }
 window.pushToKyle=pushToKyle;
 
-
 /* ═══ Snapshot row ═══ */
 function renderSnapshot(stats, betaInfo){
   const el=document.getElementById('snap-content'); if(!el)return;
@@ -1280,11 +1265,11 @@ let PICK_PICKS=[
     ] },
 ];
 
-let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null,_predictInit=false;
+let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null;
 let PICK_TRIM=[],PICK_ADD=[],PICK_INCOME=[],PICK_HISTORY=[],MKTX=null;
 
 function switchTab(tab){
-  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze',predict:'page-predict'};
+  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze'};
   for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none'; const bt=document.getElementById('tab-'+t); if(bt)bt.classList.toggle('active',t===tab); }
   try{localStorage.setItem('dash_tab',tab);}catch(e){}
   window.scrollTo(0,0);
@@ -1292,144 +1277,8 @@ function switchTab(tab){
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
   if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
   if(tab==='analyze'&&!_analyzeInit){_analyzeInit=true;initAnalyze();}
-  if(tab==='predict'&&!_predictInit){_predictInit=true;initPredict();}
 }
 window.switchTab=switchTab;
-
-/* ═══════════════════════════════════════════
-   PREDICT PAGE — prediction-markets tracker (manual, on-device)
-   Robinhood's MCP connector doesn't expose event contracts, so positions are
-   entered by hand and stored in localStorage. Each contract settles at $1 if
-   your side resolves true, $0 if false; price (¢) ≈ the market-implied odds.
-═══════════════════════════════════════════ */
-let _pmEdit=null, _pmSide='YES', _pmPrefill=null;
-function pmEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function pmLoad(){ try{ return JSON.parse(localStorage.getItem('pf_predict')||'[]')||[]; }catch(e){ return []; } }
-function pmSave(a){ try{ localStorage.setItem('pf_predict',JSON.stringify(a)); }catch(e){} }
-/* Live YES price (¢) for a position from Kalshi data the producer embedded as data.predict
-   (Robinhood's event contracts are Kalshi markets). Matches first by exact ticker, then falls
-   back to a normalized-title match — so a position auto-links to its live price even without a
-   ticker tagged, as long as the producer fetched a market with a matching title. */
-function _pmYes(m){ if(!m)return null; const v=m.yes!=null?+m.yes:(m.last!=null?+m.last:null); return (v!=null&&!isNaN(v))?v:null; }
-function _pmNorm(s){ return (''+(s||'')).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
-function pmLive(p){ try{ const d=(window.__DATA&&window.__DATA.predict)||{}; if(!d||!Object.keys(d).length||!p)return null;
-  if(p.ticker){ const m=d[p.ticker]||d[(''+p.ticker).toUpperCase()]; if(m)return _pmYes(m); }
-  const nt=_pmNorm(p.title); if(nt.length>=8){ for(const k in d){ const mt=_pmNorm(d[k].title); if(!mt)continue;
-    if(mt===nt||(mt.length>=8&&(mt.indexOf(nt)>=0||nt.indexOf(mt)>=0)))return _pmYes(d[k]); } }
-  return null; }catch(e){ return null; } }
-function pmCalc(p){
-  const c=Math.max(0,+p.contracts||0), avg=Math.max(0,Math.min(100,+p.avg||0));
-  const cur=(p.cur==null||p.cur==='')?avg:Math.max(0,Math.min(100,+p.cur));
-  const cost=c*avg/100, value=c*cur/100, pnl=value-cost, pnlPct=cost>0?pnl/cost*100:0;
-  let days=null; if(p.close)days=Math.round((new Date(p.close+'T00:00:00')-Date.now())/864e5);
-  return { cost, value, pnl, pnlPct, prob:cur, maxWin:c*1-cost, maxLoss:cost, days };
-}
-function initPredict(){ pmSeed(); pmRender(); }
-/* One-time seed of a known Robinhood event-contract position (from the user). Runs once per
-   device (guarded by a flag), and won't re-add if you later delete it. Edit/remove in-app. */
-function pmSeed(){ try{
-  if(localStorage.getItem('pf_predict_seed1'))return;
-  localStorage.setItem('pf_predict_seed1','1');
-  const arr=pmLoad(); if(arr.some(p=>p.id==='pm-usopen-ss'))return;
-  arr.push({ id:'pm-usopen-ss', title:'U.S. Open Winner — Scottie Scheffler', side:'YES', contracts:137, avg:13, cur:14, close:'2026-06-21', note:'Robinhood event contract' });
-  pmSave(arr);
-}catch(e){} }
-function pmSide(s){ _pmSide=s; const y=document.getElementById('pm-yes'),n=document.getElementById('pm-no'); if(y)y.className=s==='YES'?'on-yes':''; if(n)n.className=s==='NO'?'on-no':''; }
-window.pmSide=pmSide;
-function _pmVal(id){ const e=document.getElementById(id); return e?e.value:''; }
-function pmAdd(){
-  const t=_pmVal('pm-title').trim(); if(!t){ toast('Add a market / question title'); return; }
-  const contracts=+_pmVal('pm-contracts')||0, avg=+_pmVal('pm-avg')||0;
-  if(contracts<=0){ toast('Enter how many contracts'); return; }
-  if(avg<=0||avg>100){ toast('Avg price must be 1–100¢'); return; }
-  const curRaw=_pmVal('pm-cur').trim(); const cur=curRaw===''?null:+curRaw;
-  const ticker=_pmVal('pm-ticker').trim().toUpperCase()||null;
-  const p={ id:_pmEdit||('pm'+Date.now().toString(36)), title:t, side:_pmSide, contracts, avg, cur, close:_pmVal('pm-close')||null, note:_pmVal('pm-note').trim()||null, ticker };
-  const arr=pmLoad(); const i=arr.findIndex(x=>x.id===p.id); const editing=i>=0; if(editing)arr[i]=p; else arr.push(p);
-  pmSave(arr); _pmEdit=null; _pmSide='YES'; pmRender(); window.scrollTo(0,0); toast(editing?'Position updated':'Position added');
-}
-window.pmAdd=pmAdd;
-function pmEdit(id){ const p=pmLoad().find(x=>x.id===id); if(!p)return; _pmEdit=id; _pmSide=p.side||'YES'; pmRender(); window.scrollTo(0,0); }
-window.pmEdit=pmEdit;
-function pmCancel(){ _pmEdit=null; _pmSide='YES'; pmRender(); }
-window.pmCancel=pmCancel;
-function pmDel(id){ if(!window.confirm('Remove this prediction-market position?'))return; pmSave(pmLoad().filter(x=>x.id!==id)); if(_pmEdit===id)_pmEdit=null; pmRender(); }
-window.pmDel=pmDel;
-function pmRender(){
-  const app=document.getElementById('predict-app'); if(!app)return;
-  const arr=pmLoad(); const ed=_pmEdit?arr.find(x=>x.id===_pmEdit):null;
-  let tCost=0,tVal=0,tWin=0,nLive=0; arr.forEach(p=>{ const lv=pmLive(p); if(lv!=null)nLive++; const k=pmCalc(lv!=null?Object.assign({},p,{cur:lv}):p); tCost+=k.cost; tVal+=k.value; tWin+=k.maxWin; });
-  const tPnl=tVal-tCost, tPnlPct=tCost>0?tPnl/tCost*100:0;
-  const M=(rows,cols)=>'<div class="pk-metrics" style="grid-template-columns:repeat('+(cols||3)+',1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
-  const hero='<div class="picks-hero"><div><div class="ph-label">Predict</div><div class="ph-date">Prediction Markets Tracker</div><div class="ph-stale">Saved on this device. Add a Kalshi ticker to a position to auto-pull its live price (Robinhood event contracts are Kalshi markets).</div></div></div>';
-  const summary='<div class="card"><div class="card-title"><span>🔮 Summary <span class="card-hint">'+arr.length+' position'+(arr.length===1?'':'s')+(nLive?' · '+nLive+' live':'')+'</span></span></div>'+
-    (arr.length? M([
-      ['Staked','<span class="money">'+fmtD(tCost)+'</span>'],
-      ['Value','<span class="money">'+fmtD(tVal)+'</span>'],
-      ['Open P&L','<span class="money" style="color:'+(tPnl>=0?'#10b981':'#ef4444')+'">'+(tPnl>=0?'+':'')+fmtD(tPnl)+'</span>'],
-      ['Return','<span style="color:'+(tPnl>=0?'#10b981':'#ef4444')+'">'+(tPnl>=0?'+':'')+tPnlPct.toFixed(1)+'%</span>'],
-      ['Max win if all hit','<span class="money" style="color:#10b981">+'+fmtD(tWin)+'</span>'],
-      ['At risk','<span class="money" style="color:#ef4444">'+fmtD(tCost)+'</span>']
-    ],3) : '<div class="tech-empty">No positions yet. Add your Robinhood prediction-market picks below to track P&L, implied odds, and payoff.</div>')+'</div>';
-  const fv=function(k,def){ if(ed&&ed[k]!=null)return ed[k]; if(_pmPrefill&&_pmPrefill[k]!=null)return _pmPrefill[k]; return def; };
-  const form='<div class="card"><div class="card-title"><span>'+(_pmEdit?'✏️ Edit position':'➕ Add a position')+'</span></div>'+
-    '<div class="pm-field"><label>Market / question</label><input id="pm-title" class="pm-input" placeholder="e.g. Will the Fed cut rates in July?" value="'+pmEsc(fv('title',''))+'"></div>'+
-    '<div class="pm-field"><label>Your side</label><div class="pm-side"><button id="pm-yes" class="'+(_pmSide==='YES'?'on-yes':'')+'" onclick="pmSide(\'YES\')">YES</button><button id="pm-no" class="'+(_pmSide==='NO'?'on-no':'')+'" onclick="pmSide(\'NO\')">NO</button></div></div>'+
-    '<div class="pm-2"><div class="pm-field"><label>Contracts</label><input id="pm-contracts" class="pm-input" type="number" inputmode="decimal" placeholder="100" value="'+pmEsc(fv('contracts',''))+'"></div>'+
-    '<div class="pm-field"><label>Avg price (¢)</label><input id="pm-avg" class="pm-input" type="number" inputmode="decimal" placeholder="62" value="'+pmEsc(fv('avg',''))+'"></div></div>'+
-    '<div class="pm-2"><div class="pm-field"><label>Current price (¢, optional)</label><input id="pm-cur" class="pm-input" type="number" inputmode="decimal" placeholder="68" value="'+pmEsc(fv('cur',''))+'"></div>'+
-    '<div class="pm-field"><label>Resolves (date, optional)</label><input id="pm-close" class="pm-input" type="date" value="'+pmEsc(fv('close',''))+'"></div></div>'+
-    '<div class="pm-field"><label>Note (optional)</label><input id="pm-note" class="pm-input" placeholder="thesis / why" value="'+pmEsc(fv('note',''))+'"></div>'+
-    '<div class="pm-field"><label>Kalshi ticker (optional — enables live auto-price)</label><input id="pm-ticker" class="pm-input" placeholder="e.g. KXUSOPENGOLF-25-SS" value="'+pmEsc(fv('ticker',''))+'"></div>'+
-    '<button class="az-btn" style="width:100%" onclick="pmAdd()">'+(_pmEdit?'Save changes':'Add position')+'</button>'+
-    (_pmEdit?'<button class="pm-mini" style="width:100%;margin-top:8px" onclick="pmCancel()">Cancel edit</button>':'')+'</div>';
-  const list=arr.map(function(p){ const live=pmLive(p); const k=pmCalc(live!=null?Object.assign({},p,{cur:live}):p); const sc=p.side==='YES'?'#10b981':'#ef4444'; const pc=k.pnl>=0?'#10b981':'#ef4444';
-    const priceBadge=live!=null?'<span class="badge" style="background:#d1fae5;color:#065f46">● LIVE '+Math.round(live)+'¢</span>':(p.cur!=null?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">mark '+p.cur+'¢</span>':'');
-    return '<div class="card" style="border-left:4px solid '+sc+'"><div class="card-title"><span>'+pmEsc(p.title)+'</span></div>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="badge" style="background:'+sc+'22;color:'+sc+'">'+p.side+'</span><span class="badge" style="background:var(--surface-2);color:#9ca3af">'+p.contracts+' @ '+p.avg+'¢</span>'+priceBadge+(k.days!=null?'<span class="badge" style="background:var(--surface-2);color:'+(k.days<0?'#9ca3af':k.days<=7?'#f59e0b':'#9ca3af')+'">'+(k.days<0?'past resolve':k.days+'d left')+'</span>':'')+'</div>'+
-      M([
-        ['Stake','<span class="money">'+fmtD(k.cost)+'</span>'],
-        ['Value','<span class="money">'+fmtD(k.value)+'</span>'],
-        ['P&L','<span class="money" style="color:'+pc+'">'+(k.pnl>=0?'+':'')+fmtD(k.pnl)+'</span>'],
-        ['Implied chance',Math.round(k.prob)+'%'],
-        ['Max win','<span class="money" style="color:#10b981">+'+fmtD(k.maxWin)+'</span>'],
-        ['Max loss','<span class="money" style="color:#ef4444">-'+fmtD(k.maxLoss)+'</span>']
-      ],3)+
-      (p.note?'<div style="font-size:12px;color:#9ca3af;margin-top:8px">'+pmEsc(p.note)+'</div>':'')+
-      '<div style="display:flex;gap:8px;margin-top:10px"><button class="pm-mini" onclick="pmEdit(\''+p.id+'\')">✏️ Edit / update price</button><button class="pm-mini" onclick="pmDel(\''+p.id+'\')">🗑️ Remove</button></div></div>';
-  }).join('');
-  // Suggested markets (Kalshi notable/active markets the producer surfaced as data.predictPicks).
-  const sp=(window.__DATA&&window.__DATA.predictPicks)||[];
-  let suggested='';
-  if(sp.length){
-    suggested='<div class="card"><div class="card-title"><span>💡 Suggested Markets <span class="card-hint">notable &amp; active</span></span></div>'+
-      sp.map(function(s,i){ const imp=Math.round(s.yes); const vol=s.volume!=null?(s.volume>=1000?(s.volume/1000).toFixed(s.volume>=10000?0:1)+'k':s.volume):null;
-        return '<div style="border:1px solid var(--surface-2);border-radius:12px;padding:11px 13px;margin-bottom:9px">'+
-          '<div style="font-size:13px;font-weight:700;line-height:1.3">'+pmEsc(s.title)+'</div>'+
-          '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">'+
-            (s.tag?'<span class="badge" style="background:#ede9fe;color:#5b21b6">'+pmEsc(s.tag)+'</span>':'')+
-            '<span class="badge" style="background:var(--surface-2);color:#9ca3af">YES '+imp+'¢ · ~'+imp+'%</span>'+
-            (vol?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">'+vol+' vol</span>':'')+
-            (s.days!=null?'<span class="badge" style="background:var(--surface-2);color:'+(s.days<=3?'#f59e0b':'#9ca3af')+'">'+(s.days<=0?'closing':s.days+'d')+'</span>':'')+
-            (s.category?'<span class="badge" style="background:var(--surface-2);color:#9ca3af">'+pmEsc(s.category)+'</span>':'')+'</div>'+
-          (s.reason?'<div style="font-size:11.5px;color:#9ca3af;margin-top:6px">'+pmEsc(s.reason)+'</div>':'')+
-          '<button class="pm-mini" style="width:100%;margin-top:9px" onclick="pmFromPick('+i+')">➕ Track this market</button></div>';
-      }).join('')+
-      '<div style="font-size:11px;color:#9ca3af;margin-top:4px">Surfaced for liquidity / timeliness — the price already reflects the crowd’s odds, so this is discovery, not a prediction. Not advice.</div></div>';
-  }
-  const edu='<div class="card"><div class="card-title"><span>📖 How prediction markets work</span></div><div style="font-size:12.5px;line-height:1.6;color:var(--text);opacity:.9">'+
-    'Each contract is a bet on a yes/no event and <b>settles at $1.00 if your side is right, $0 if wrong</b>. The price in cents ≈ the market’s implied odds — a <b>62¢ YES</b> means ~62% priced-in chance. Your <b>max win</b> per contract is (100¢ − your price), your <b>max loss</b> is what you paid. Sell before resolution to lock in gains/losses at the current price.</div>'+
-    '<div style="font-size:11px;color:#9ca3af;margin-top:10px">Tracker only — entries are saved on this device (they don’t sync to Robinhood). Not financial advice.</div></div>';
-  app.innerHTML=hero+summary+form+(list||'')+suggested+edu;
-  _pmPrefill=null; // one-shot prefill consumed
-}
-function pmFromPick(i){ const s=((window.__DATA&&window.__DATA.predictPicks)||[])[i]; if(!s)return;
-  _pmEdit=null; _pmSide='YES';
-  _pmPrefill={ title:s.title||'', ticker:s.ticker||'', cur:(s.yes!=null?Math.round(s.yes):''), close:(s.close?(''+s.close).slice(0,10):'') };
-  pmRender(); window.scrollTo(0,0); toast('Filled the form — set your contracts & avg price');
-}
-window.pmFromPick=pmFromPick;
-window.initPredict=initPredict;
 
 /* Make every card collapsible (cards rendered later are caught via MutationObserver). */
 (function(){
@@ -1466,7 +1315,7 @@ window.initPredict=initPredict;
             if(nd.querySelectorAll)nd.querySelectorAll('.card').forEach(enhance); }
           wrapTables(document); }
       });
-      ['page-portfolio','page-markets','page-picks','page-options','page-analyze','page-predict'].forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
+      ['page-portfolio','page-markets','page-picks','page-options','page-analyze'].forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
     }catch(e){}
   }
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
@@ -1476,7 +1325,7 @@ window.initPredict=initPredict;
    Tap a chip to (expand if collapsed and) smooth-scroll to that card. Rebuilds itself
    when a page's cards change (debounced), so dynamic pages like Analyze stay in sync. */
 (function(){
-  var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze','page-predict'];
+  var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze'];
   var NAVSEQ=0; // globally-unique card ids so re-renders never collide with stale ids
   function titleOf(card){
     var t=card.querySelector(':scope > .card-title'); if(!t)return null;
@@ -2189,7 +2038,6 @@ async function fetchPicksLive(){
   }catch(e){}
   renderPicksTable(); renderPicksCards();
 }
-
 
 /* ═══════════════════════════════════════════
    MARKETS PAGE  (page 3)

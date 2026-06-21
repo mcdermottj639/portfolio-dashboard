@@ -161,38 +161,6 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `build-data.mjs` embeds it as `data.options`. Needs `positions.json`, `quotes.json`, and
       (for ideas) `picks.json`.
 
-3d. **Prediction markets (OPTIONAL — Kalshi public data → the Predict tab).** Robinhood's event
-   contracts are **Kalshi** markets, and Kalshi exposes prices with **no authentication**. The
-   dashboard owner's open positions are listed in **`producer/predict-watch.json`** (an array of
-   `{ "title": "...", "ticker": "..." }`). For each entry:
-   - If it has a **ticker**, fetch that market directly.
-   - If the ticker is blank, **resolve it first** by searching Kalshi for the title, e.g.
-     `GET /trade-api/v2/events?status=open` or the markets search, pick the best title match,
-     then fetch that market. (Optionally write the resolved ticker back into `predict-watch.json`.)
-
-   Save the combined markets to `producer/raw/kalshi.json` (raw Kalshi response, or a JSON array
-   of market objects). `build-data.mjs` normalizes it to `data.predict` (yes ¢ + title + status);
-   the phone links each position to its live price by ticker, falling back to a title match.
-   ```
-   TICKERS=$(node -e "console.log(require('./producer/predict-watch.json').map(x=>x.ticker).filter(Boolean).join(','))")
-   curl -s "https://api.elections.kalshi.com/trade-api/v2/markets?tickers=$TICKERS" \
-     -H "User-Agent: Mozilla/5.0" > producer/raw/kalshi.json
-   ```
-   Requirements: the host **`api.elections.kalshi.com`** (or `external-api.kalshi.com`) must be in
-   the environment's **network-egress allowlist**, and Kalshi blocks bot UAs — send a browser
-   `User-Agent`. No key needed. Skip if `predict-watch.json` is empty — the Predict tab still
-   works with the owner's manually-entered marks.
-
-   **Suggested markets (optional discovery).** To populate the Predict tab's "Suggested Markets"
-   card, also pull a page of active markets and score them:
-   ```
-   curl -s "https://api.elections.kalshi.com/trade-api/v2/markets?status=open&limit=400" \
-     -H "User-Agent: Mozilla/5.0" > producer/raw/kalshi-all.json
-   node producer/predict-picks.mjs   # → producer/raw/predict-picks.json (build-data embeds it)
-   ```
-   `predict-picks.mjs` is honest by design — it surfaces *notable* markets (most-active, closing
-   soon, coin-flips, longshots), not outcome predictions. Skip if egress to Kalshi isn't allowed.
-
 4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
    ```
    PF_PASSPHRASE="<the dashboard passphrase>" node producer/build-data.mjs "<label>"
