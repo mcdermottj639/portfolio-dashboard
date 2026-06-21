@@ -179,30 +179,6 @@ if (existsSync(newsDir)) {
   if (Object.keys(news).length) data.news = news;
 }
 
-// Prediction markets (Kalshi public market data → data.predict for the Predict tab). Robinhood's
-// event contracts ARE Kalshi markets, and Kalshi exposes prices with NO auth. The agent saves a
-// raw Kalshi GetMarkets response (or a plain array of market objects) to producer/raw/kalshi.json;
-// here we normalize each to { yes (¢), title, status, close } keyed by uppercased ticker so the
-// Predict page can auto-fill a position's live price when it carries that ticker.
-const kFile = filesMatching(/^kalshi\.json$/)[0];
-if (kFile) {
-  const d = unwrap(readJSON(kFile));
-  const mk = Array.isArray(d) ? d : (d.markets ?? d.data?.markets ?? []);
-  const predict = {};
-  for (const m of (mk || [])) {
-    const tk = m.ticker || m.market_ticker; if (!tk) continue;
-    const yb = m.yes_bid, ya = m.yes_ask, lp = m.last_price;
-    let yes = lp != null ? +lp : (yb != null && ya != null ? (+yb + +ya) / 2 : (yb != null ? +yb : null));
-    if (yes == null || isNaN(yes)) continue;
-    predict[String(tk).toUpperCase()] = { yes: +(+yes).toFixed(1), title: m.title || m.subtitle || tk, status: m.status || null, close: m.close_time || null };
-  }
-  if (Object.keys(predict).length) data.predict = predict;
-}
-// Suggested prediction markets (Kalshi notable/active markets → data.predictPicks). Written by
-// producer/predict-picks.mjs from the raw markets feed; embedded verbatim for the Predict tab.
-const ppFile = filesMatching(/^predict-picks\.json$/)[0];
-if (ppFile) { const pp = readJSON(ppFile); if (Array.isArray(pp) && pp.length) data.predictPicks = pp; }
-
 // Breadth / Movers (the Markets "Breadth" card → MKTX via data.picks.markets). Computed from
 // data already collected — VIX (Robinhood) + biggest movers in your own book — no extra calls.
 // News sentiment is left out unless AV supplies it (rate-limited); the card degrades gracefully.
