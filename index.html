@@ -472,6 +472,8 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
     });
   }};
   function boot(){
+    var APP_VERSION='v29'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
       var lab=(d&&d.generatedAtLabel)||(locked?'locked':'unknown');
@@ -483,7 +485,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
                :          '📡 Snapshot: '+lab;
       var themeIcon=(document.documentElement.getAttribute('data-theme')==='dark')?'☀️':'🌙';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:16px;align-items:center"><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Light / dark">'+themeIcon+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Light / dark">'+themeIcon+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       var rb=document.getElementById('pf-refresh'); if(rb) rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); };
     });
