@@ -17,10 +17,13 @@ environment config — never in git, never in a prompt):
 |---|---|
 | `PF_ACCOUNT` | your real Robinhood account number |
 | `PF_PASSPHRASE` | your dashboard passphrase (same one you type on the phone) |
+| `ALPHAVANTAGE_KEY` | *(optional)* your free Alpha Vantage key — enables the automatic HTTP AV fetch (no MCP). Also add `www.alphavantage.co` to the **Allowed domains** list. |
+| `PF_AV_NEWS` | *(optional)* comma-separated tickers for AV news sentiment, e.g. `NVDA,IREN`. |
 
 The producer reads these automatically (see `PRODUCER.md` → Secrets). `data.json` is encrypted
 with `PF_PASSPHRASE`; the account number is only used for the live Robinhood calls and never
-ships in `data.json`.
+ships in `data.json`. **Social buzz** (ApeWisdom) is keyless — just add `apewisdom.io` to the
+Allowed domains list and it's fetched automatically.
 
 ### 2. Attach the connectors
 Make sure the environment has the **Robinhood** and **Alpha Vantage** MCP connectors enabled
@@ -45,12 +48,17 @@ closed, so the *exact* anchor time is cosmetic — pick whichever is least effor
 ### 4. The trigger prompt
 Use exactly this as the scheduled prompt:
 
-> Run the portfolio dashboard producer by following `producer/PRODUCER.md` exactly. First check
-> whether US equity markets are open right now — if they're closed, stop without pushing. If
-> open: pull the live Robinhood data, do the once-per-day Alpha Vantage refresh only if
-> `producer/raw/av-src/.fetched` isn't today's date, fetch the VIX index quote, build the
-> **encrypted** `data.json` (`PF_PASSPHRASE` is set in the environment), run `validate.mjs`, and
-> commit + push `data.json` to `main`. If any Robinhood call fails, abort without pushing.
+> Run the portfolio dashboard producer by following `producer/PRODUCER.md` exactly. Pull the live
+> Robinhood data (steps 2–3c) and `Write` each raw result into `producer/raw/` — never use
+> `cp`/`mv`/shell variables. If any Robinhood call fails, stop without running the build. Once all
+> raw files are saved, run **`node producer/run.mjs "<label>"`** (label = current time like
+> `Jun 22 2026, 3:45 PM ET`). That one command handles the market-hours gate, optional Alpha
+> Vantage fetch, picks/options, the **encrypted** build, validation, and the commit + push to
+> `main` — don't run those steps by hand.
+
+The orchestrator owns the market-hours decision now (it builds + pushes by default so social/news
+stay fresh; it won't push a plaintext or broken `data.json`), so the agent no longer has to judge
+whether the market is open.
 
 ## Verify it's working
 - **Commits:** `data.json` on `main` should get a new commit roughly hourly during market hours,

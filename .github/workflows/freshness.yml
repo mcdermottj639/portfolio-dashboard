@@ -1,0 +1,57 @@
+name: Data freshness watchdog
+
+# Safety net for the producer: if data.json hasn't been refreshed in a while during US market
+# hours, open (or update) an issue so a missed/stalled producer run never goes unnoticed. This is
+# a PLAIN Action — it only reads the commit timestamp of data.json (the file itself is encrypted),
+# so it needs no Robinhood/Alpha Vantage connectors and no secrets beyond the default token.
+
+on:
+  schedule:
+    # Hourly across the US market window (15:00–21:00 UTC ≈ 10:00–17:00 ET incl. DST), weekdays.
+    - cron: '0 15-21 * * 1-5'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: age
+        run: |
+          last=$(git log -1 --format=%ct -- data.json)
+          now=$(date +%s)
+          mins=$(( (now - last) / 60 ))
+          echo "minutes=$mins" >> "$GITHUB_OUTPUT"
+          echo "data.json last updated $mins minutes ago"
+      - uses: actions/github-script@v7
+        env:
+          STALE_MINUTES: ${{ steps.age.outputs.minutes }}
+        with:
+          script: |
+            const mins = parseInt(process.env.STALE_MINUTES, 10);
+            const THRESHOLD = 180; // 3h with no fresh snapshot during market hours = something's wrong
+            const TITLE = '⚠️ Dashboard data is stale — producer may have stalled';
+            const { owner, repo } = context.repo;
+            const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'producer-watchdog', per_page: 50 });
+            const existing = open.data.find(i => i.title === TITLE);
+            if (mins <= THRESHOLD) {
+              core.info(`Fresh (${mins}m ≤ ${THRESHOLD}m).`);
+              if (existing) { // recovered — close the stale alert
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body: `Recovered ✅ — data.json refreshed ${mins} minutes ago. Closing.` });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+              }
+              return;
+            }
+            const body = `The producer hasn't pushed a fresh \`data.json\` in **${mins} minutes** (threshold ${THRESHOLD}m) during US market hours.\n\nLikely causes: the scheduled Claude Code routine didn't fire, stalled on a permission prompt, or a Robinhood/AV call failed. Check the routine's latest run log (the orchestrator prints \`[run]\`/\`social:\` status lines), then re-run it manually if needed.\n\n_This issue auto-closes when a fresh snapshot lands._`;
+            if (existing) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+              core.warning(`Still stale (${mins}m) — commented on #${existing.number}.`);
+            } else {
+              const created = await github.rest.issues.create({ owner, repo, title: TITLE, body, labels: ['producer-watchdog'] });
+              core.warning(`Stale (${mins}m) — opened #${created.data.number}.`);
+            }
