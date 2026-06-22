@@ -14,7 +14,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
-import { emit } from './emit.mjs';
+import { emit, decryptEnvelope } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
 import { avKey, specForId } from './av.mjs';
 
@@ -158,6 +158,17 @@ if (existsSync(realizedFile)) {
   const r = readJSON(realizedFile);
   if (r && r.total == null) r.total = (r.equity || 0) + (r.options || 0);
   data.realized = r;
+} else {
+  // No fresh figure this run — carry forward the prior snapshot's realized (decrypted) so the
+  // tile persists across the routine's fresh-clone runs without committing the plaintext figure.
+  try {
+    const prevPath = join(__dirname, '..', 'data.json');
+    if (existsSync(prevPath) && process.env.PF_PASSPHRASE) {
+      const prev = readJSON(prevPath);
+      const dec = prev && prev.enc ? await decryptEnvelope(prev, process.env.PF_PASSPHRASE) : prev;
+      if (dec && dec.realized) data.realized = dec.realized;
+    }
+  } catch { /* no carry-forward available */ }
 }
 
 // News sentiment (OPTIONAL — Alpha Vantage NEWS_SENTIMENT). The agent may save a raw AV

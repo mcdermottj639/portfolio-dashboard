@@ -16,3 +16,6 @@ producer/raw/
 
 # Secrets — real account number + passphrase (never commit)
 producer/secret.local.json
+
+# Realized P&L figure (personal $ — embedded encrypted into data.json, never plaintext)
+producer/realized.json
