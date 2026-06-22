@@ -458,7 +458,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
     });
   }};
   function boot(){
-    var APP_VERSION='v30'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v31'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1947,7 +1947,7 @@ function renderPicksTable(){
     const sfg=c.composite>=7?'#065f46':c.composite>=5?'#854d0e':'#991b1b';
     const rsi=_picksRSI[c.ticker]!=null?_picksRSI[c.ticker]:c.rsi;
     const rsiLive=_picksRSI[c.ticker]!=null;
-    const rowBg=c.rank<=3?' style="background:#fafff8"':'';
+    const rowBg=c.rank<=3?' style="background:rgba(16,185,129,0.10)"':'';
     const neg=String(c.revGrowth).indexOf('-')===0;
     h+='<tr'+rowBg+'>'
       +'<td style="color:#9ca3af;font-size:12px">'+c.rank+'</td>'
