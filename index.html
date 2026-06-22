@@ -458,7 +458,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
     });
   }};
   function boot(){
-    var APP_VERSION='v31'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v32'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1941,7 +1941,7 @@ function renderPicksChart(){
 
 function renderPicksTable(){
   const el=document.getElementById('picks-table'); if(!el)return;
-  let h='<table><thead><tr><th>#</th><th>Ticker</th><th class="tr">Live Price</th><th class="tr">RSI</th><th class="tc">Tech</th><th class="tr">Rev Gr</th><th class="tr">Fwd P/E</th><th class="tc">Fund</th><th class="tr">R/R</th><th class="tr">Score</th><th>Status</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th class="tc">Score</th><th>#</th><th>Ticker</th><th class="tr">Live Price</th><th class="tr">RSI</th><th class="tc">Tech</th><th class="tr">Fwd P/E</th><th class="tc">Fund</th><th class="tr">R/R</th><th class="tr">Rev Gr</th><th>Status</th></tr></thead><tbody>';
   for(const c of PICK_CANDIDATES){
     const sbg=c.composite>=7?'#d1fae5':c.composite>=5?'#fef9c3':'#fee2e2';
     const sfg=c.composite>=7?'#065f46':c.composite>=5?'#854d0e':'#991b1b';
@@ -1950,16 +1950,16 @@ function renderPicksTable(){
     const rowBg=c.rank<=3?' style="background:rgba(16,185,129,0.10)"':'';
     const neg=String(c.revGrowth).indexOf('-')===0;
     h+='<tr'+rowBg+'>'
+      +'<td class="tc"><span class="score-pill2" style="background:'+sbg+';color:'+sfg+'">'+c.composite.toFixed(2)+'</span></td>'
       +'<td style="color:#9ca3af;font-size:12px">'+c.rank+'</td>'
       +'<td><span class="sym">'+c.ticker+'</span>'+ownBadge(c.ticker)+'<div style="font-size:10.5px;color:#9ca3af">'+c.company+'</div></td>'
       +'<td class="tr" id="picks-price-'+c.ticker+'"><strong>$'+c.price.toFixed(2)+'</strong><div style="font-size:10px;color:#9ca3af">scan price</div></td>'
       +'<td class="tr"><span style="font-weight:700;color:'+rsiColor(rsi)+'">'+fmt(rsi,0)+'</span>'+(rsiLive?'<div style="font-size:9px;color:#10b981">live</div>':'')+'</td>'
       +'<td class="tc" style="font-weight:600">'+c.tech+'</td>'
-      +'<td class="tr" style="font-weight:600;color:'+(neg?'#ef4444':'#10b981')+'">'+c.revGrowth+'</td>'
       +'<td class="tr">'+c.fwdPE+'</td>'
       +'<td class="tc" style="font-weight:600">'+c.fund+'</td>'
       +'<td class="tr" style="font-size:12px">'+c.rr+'</td>'
-      +'<td class="tr"><span class="score-pill2" style="background:'+sbg+';color:'+sfg+'">'+c.composite.toFixed(2)+'</span></td>'
+      +'<td class="tr" style="font-weight:600;color:'+(neg?'#ef4444':'#10b981')+'">'+c.revGrowth+'</td>'
       +'<td>'+(c.flag==='ok'?'<span style="color:#10b981;font-weight:700">✓</span>':'<span class="drift-flag" style="background:#fee2e2;color:#991b1b">❌ '+c.flag+'</span>')+'</td>'
     +'</tr>';
   }
