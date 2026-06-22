@@ -458,7 +458,7 @@ html[data-theme="dark"] .cross-note{ background:#10241f!important; color:#a7f3d0
     });
   }};
   function boot(){
-    var APP_VERSION='v33'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v34'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1036,6 +1036,7 @@ function renderIncomeTax(income, harvest){
       ${(()=>{ const R=(window.__DATA&&window.__DATA.realized)||null; if(!R||R.total==null)return ''; const c=R.total>=0?'#10b981':'#ef4444'; const parts=[]; if(R.equity!=null)parts.push('stocks '+(R.equity>=0?'+':'')+fmtD(R.equity)); if(R.options!=null)parts.push('options '+(R.options>=0?'+':'')+fmtD(R.options)); return `<div class="inc-tile"><div class="inc-lbl">Realized — ${R.year||'YTD'}</div><div class="inc-val" style="color:${c}">${R.total>=0?'+':''}${fmtD(R.total)}</div><div class="inc-sub">${parts.join(' · ')||'closed trades'}${R.approx?' · approx':''}</div></div>`; })()}
       <div class="inc-tile harvest-tile"><div class="inc-lbl">Harvestable Losses</div><div class="inc-val">${fmtD(totalHarv)}</div><div class="inc-sub">${harvest.length} position${harvest.length===1?'':'s'} in the red ≥ $${SMALL_THR}</div></div>
     </div>
+    ${(()=>{ const R=(window.__DATA&&window.__DATA.realized)||null; if(!R||!R.premiumYTD)return ''; return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">💵 Options premium collected ${R.year||'YTD'}: <b style="color:#10b981">+${fmtD(R.premiumYTD)}</b> <span style="color:#9ca3af">— cash banked from selling calls/puts (e.g. your IREN covered call); counts as realized only once the contract expires or is closed.</span></div>`; })()}
     <div class="two-col no-mb">
       <div><div class="col-title">📅 Upcoming Ex-Dividend Dates</div>${ex.length?ex.map(e=>`<div class="exdiv-line"><span><b>${e.sym}</b> <span style="color:#9ca3af">$${fmt(e.dps,2)}/sh</span></span><span>${e.date} · <b class="pos">${fmtD(e.inc)}</b></span></div>`).join(''):'<div class="tech-empty">No upcoming ex-div dates in covered holdings.</div>'}</div>
       <div><div class="col-title">🧾 Tax-Loss Harvest Candidates</div>${harvTop.length?harvTop.map(p=>`<div class="harv-line"><span><b>${p.symbol}</b> <span style="color:#9ca3af">${fmtD(p.val)}</span></span><span class="neg">${fmtD(p.pnlD)} (${fmtP(p.pnlP)})</span></div>`).join(''):'<div class="tech-empty">No positions in the red above $'+SMALL_THR+'.</div>'}</div>

@@ -147,10 +147,26 @@ const history = Object.values(byChain).filter((c) => c.closed)
   .sort((a, b) => (a.date < b.date ? 1 : -1));
 const realized = +history.reduce((s, h) => s + h.net, 0).toFixed(2);
 
+// Year-to-date views for the Income & Tax widget:
+//  • realizedYTD  — realized option P&L from chains CLOSED this calendar year (expired / bought
+//    back / assigned). An open covered call contributes $0 here until it resolves.
+//  • premiumYTD   — gross premium COLLECTED this year from opening income trades (sell-to-open
+//    credits), e.g. the IREN covered call. Cash in hand, but unrealized until the trade closes.
+const YEAR = String(new Date().getUTCFullYear());
+const realizedYTD = +history.filter((h) => (h.date || '').startsWith(YEAR)).reduce((s, h) => s + h.net, 0).toFixed(2);
+let premiumYTD = 0;
+for (const o of orders) {
+  if (o.state !== 'filled' || o.direction !== 'credit') continue;
+  if (o.closing_strategy && !o.opening_strategy) continue;          // skip pure buy-to-close credits
+  const d = o.last_transaction_at || o.created_at || '';
+  if (d.startsWith(YEAR)) premiumYTD += num(o.processed_premium) || 0;
+}
+premiumYTD = +premiumYTD.toFixed(2);
+
 const out = {
   asOf: new Date().toISOString(),
   pending, positions, ideas,
-  history, realized,
+  history, realized, realizedYTD, premiumYTD,
 };
 writeFileSync(join(RAW, 'options.json'), JSON.stringify(out, null, 2));
 console.log(`options: ${pending.length} pending · ${positions.length} open · ${ideas.ideas.length} ideas (${liveCount} live, ${ideas.ideas.length - liveCount} est)` +

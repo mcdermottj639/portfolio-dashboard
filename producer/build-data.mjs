@@ -170,6 +170,15 @@ if (existsSync(realizedFile)) {
     }
   } catch { /* no carry-forward available */ }
 }
+// Options realized + premium-collected (YTD) come from options.json fresh every run (cheap), and
+// override whatever the equity figure carried. Equity realized stays owner/carry-forward sourced.
+if (data.options && (data.options.realizedYTD != null || data.options.premiumYTD != null)) {
+  data.realized = data.realized || { approx: true };
+  if (data.options.realizedYTD != null) data.realized.options = data.options.realizedYTD;
+  if (data.options.premiumYTD != null) data.realized.premiumYTD = data.options.premiumYTD;
+  data.realized.total = (data.realized.equity || 0) + (data.realized.options || 0);
+  if (data.realized.year == null) data.realized.year = String(new Date().getUTCFullYear()) + ' YTD';
+}
 
 // News sentiment (OPTIONAL — Alpha Vantage NEWS_SENTIMENT). The agent may save a raw AV
 // result to producer/raw/news/<SYM>.json for a few top holdings if AV budget remains (it's
