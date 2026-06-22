@@ -467,7 +467,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v35'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v36'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -943,7 +943,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
       <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span>QQQ</span>
     </div>
     <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.</div>
-    ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #f3f4f6">
+    ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
       <div><div class="snap-lbl">10yr Treasury</div><div style="font-size:16px;font-weight:700">${macroData.tenYrYield?fmt(macroData.tenYrYield,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">Fed Funds</div><div style="font-size:16px;font-weight:700">${macroData.fedFunds?fmt(macroData.fedFunds,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">CPI YoY</div><div style="font-size:16px;font-weight:700;color:${macroData.cpi!=null?(macroData.cpi>3?'#ef4444':macroData.cpi>2?'#f97316':'#10b981'):'#1c1c1e'}">${macroData.cpi!=null?fmt(macroData.cpi,1)+'%':'—'}</div></div>
@@ -1068,13 +1068,13 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo){
     <div class="col-title">1 · Harvest losers — frees ${fmtD(freed)} to redeploy${harv.length?` (banks ${fmtD(loss)} of losses)`:''}</div>
     ${harv.length?`<table><thead><tr><th>Sell</th><th class="tr">Shares</th><th class="tr">Proceeds</th><th class="tr">Loss banked</th></tr></thead><tbody>${rows}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr">${fmtD(freed)}</td><td class="tr neg">${fmtD(loss)}</td></tr></tbody></table><div class="fund-note">Wash-sale: don’t rebuy these (or substantially-identical securities) for 30 days after selling. The tax saved is small (~loss × your rate) — the real win is redeploying the proceeds out of concentrated tech.</div>`:`<div class="tech-empty">No positions in the red above $${SMALL_THR} — nothing to harvest right now.</div>`}
     <div class="col-title" style="margin-top:14px">2 · Redeploy the proceeds <span class="card-hint">(de-risk without selling a winner)</span></div>
-    <div style="font-size:12.5px;color:#374151;line-height:1.5">
+    <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
       <div style="padding:5px 0"><b style="color:#0969da">A · Low-beta ballast</b> — add to BRK.B (held, beta ~0.85). Most direct way to pull portfolio beta down.</div>
-      <div style="padding:5px 0;border-top:1px solid #f3f4f6"><b style="color:#0969da">B · Defensive income</b> — short-Treasury (SCHO, held) or healthcare (LLY, ELV). Ballast + yield, low correlation to the AI book.</div>
-      <div style="padding:5px 0;border-top:1px solid #f3f4f6"><b style="color:#0969da">C · Cash cushion</b> — hold as cash against the margin; lowers effective leverage + dry powder for pullbacks.</div>
+      <div style="padding:5px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">B · Defensive income</b> — short-Treasury (SCHO, held) or healthcare (LLY, ELV). Ballast + yield, low correlation to the AI book.</div>
+      <div style="padding:5px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">C · Cash cushion</b> — hold as cash against the margin; lowers effective leverage + dry powder for pullbacks.</div>
     </div>
     <div class="col-title" style="margin-top:14px">3 · Winner triggers <span class="card-hint">(when to take chips off ${t1.symbol}/${t2.symbol})</span></div>
-    <div style="font-size:12.5px;color:#374151;line-height:1.55">
+    <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
       <div style="padding:4px 0">▸ ${t1.symbol} or ${t2.symbol} tops <b>~35%</b> of equity → trim toward 30% <span style="color:#9ca3af">(now ${fmt(t1p,1)}% / ${fmt(t2p,1)}%)</span>.</div>
       <div style="padding:4px 0">▸ ${t1.symbol} + ${t2.symbol} combined <b>&gt; 60%</b> → take some off <span style="color:#9ca3af">(now ${fmt(t1p+t2p,1)}%)</span>.</div>
       <div style="padding:4px 0">▸ A winner’s <b>RSI &gt; 75</b> → trim into strength (see Technical Signals).</div>
@@ -1901,13 +1901,13 @@ function renderPicksStatic(){
       <div class="card-title"><span>🎯 Top 3 Picks Today</span></div>
       <div class="picks-grid2" id="picks-cards"></div>
     </div>
-    ${(PICK_TRIM.length||PICK_ADD.length)?`<div class="card"><div class="card-title"><span>⚖️ Trim / Add <span class="card-hint">on what you own</span></span></div>${PICK_TRIM.concat(PICK_ADD).map(x=>`<div class="act-item" style="background:${x.cls==='pill-trim'?'#fef2f2':'#f0fdf4'};border-color:${x.cls==='pill-trim'?'#ef4444':'#10b981'};margin-bottom:8px"><div class="act-body"><div class="act-title" style="color:${x.cls==='pill-trim'?'#991b1b':'#065f46'}">${x.t} <span class="act-tag" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'};color:#fff">${x.pill}</span></div><div class="act-detail" style="color:#374151">${x.txt}</div></div></div>`).join('')}<div class="fund-note">Rule-based from your live weights, P&L and RSI. Trim = weight ≥ 8% or RSI ≥ 70; Add = quality names below cost &amp; under-weight.</div></div>`:''}
+    ${(PICK_TRIM.length||PICK_ADD.length)?`<div class="card"><div class="card-title"><span>⚖️ Trim / Add <span class="card-hint">on what you own</span></span></div>${PICK_TRIM.concat(PICK_ADD).map(x=>`<div class="act-item" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'}1f;border-color:${x.cls==='pill-trim'?'#ef4444':'#10b981'};margin-bottom:8px"><div class="act-body"><div class="act-title" style="color:var(--text)">${x.t} <span class="act-tag" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'};color:#fff">${x.pill}</span></div><div class="act-detail" style="color:var(--text);opacity:.82">${x.txt}</div></div></div>`).join('')}<div class="fund-note">Rule-based from your live weights, P&L and RSI. Trim = weight ≥ 8% or RSI ≥ 70; Add = quality names below cost &amp; under-weight.</div></div>`:''}
     ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
-    ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:#374151;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
+    ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
     ${PICK_HISTORY.length?`<div class="card"><div class="card-title"><span>🕐 Pick History &amp; Outcomes</span></div>${PICK_HISTORY.map(x=>`<div class="harv-line"><span style="white-space:nowrap"><b>${(x.picks||'').split(' · ')[0]}</b></span><span style="flex:1;text-align:right;color:#6b7280;font-size:11px;margin-left:8px">${x.date} — ${x.picks}<br>${x.note}</span></div>`).join('')}</div>`:''}
     <div class="card">
       <div class="card-title collapsible" data-toggle="b-nflx" onclick="toggleSection('b-nflx')"><span>📅 Earnings Preview · NFLX <span class="card-hint">(#1 pick · reports Jul 16)</span></span><span class="chevron">▼</span></div>
-      <div id="b-nflx" style="font-size:12.5px;color:#374151;line-height:1.55">
+      <div id="b-nflx" style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
         <div class="box-info" style="border-radius:10px;padding:10px 12px;margin-bottom:12px">Reports <b>Thursday, July 16</b> after the close (~4:01pm ET), with a live exec interview ~4:45pm. NFLX is the day&#39;s top-scored pick — RSI ~28 (deeply oversold), ~45% upside to the ~$114 consensus target.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div class="pk-m"><div class="pk-m-l">Consensus Revenue</div><div class="pk-m-v">$12.57B</div><div style="font-size:10px;color:#9ca3af">+13.5% YoY (guide)</div></div>
@@ -2124,7 +2124,7 @@ function renderBreadth(){
   }
   if(m.news){ const nb=(m.news.bullish+m.news.neutral+m.news.bearish)||1;
     h+=`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">News Sentiment <span style="font-weight:400;color:#9ca3af">(${m.news.bullish} bull · ${m.news.neutral} neu · ${m.news.bearish} bear)</span></div><div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px"><span style="width:${(m.news.bullish/nb*100).toFixed(1)}%;background:#10b981"></span><span style="width:${(m.news.neutral/nb*100).toFixed(1)}%;background:#d1d5db"></span><span style="width:${(m.news.bearish/nb*100).toFixed(1)}%;background:#ef4444"></span></div>`;
-    h+=((m.news.items||[]).map(x=>`<div class="risk-line"><span class="risk-name"><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span class="risk-val" style="font-weight:400;flex:1;text-align:right;color:#374151;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join(''))+'</div>';
+    h+=((m.news.items||[]).map(x=>`<div class="risk-line"><span class="risk-name"><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span class="risk-val" style="font-weight:400;flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join(''))+'</div>';
   }
   el.innerHTML=h||'<div class="tech-empty">No breadth data.</div>';
 }
