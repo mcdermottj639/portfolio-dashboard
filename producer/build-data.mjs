@@ -149,6 +149,17 @@ if (picksFile) data.picks = readJSON(picksFile);
 const optionsFile = filesMatching(/^options\.json$/)[0];
 if (optionsFile) data.options = readJSON(optionsFile);
 
+// Realized P&L for the Income & Tax widget. There is no cost-basis/realized endpoint, so this is
+// an owner-maintained figure (authoritative source: Robinhood's tax center) committed to
+// producer/realized.json as { year, equity, options, total, approx }. Embedded verbatim as
+// data.realized; the widget simply hides the tile when the file is absent.
+const realizedFile = join(__dirname, 'realized.json');
+if (existsSync(realizedFile)) {
+  const r = readJSON(realizedFile);
+  if (r && r.total == null) r.total = (r.equity || 0) + (r.options || 0);
+  data.realized = r;
+}
+
 // News sentiment (OPTIONAL — Alpha Vantage NEWS_SENTIMENT). The agent may save a raw AV
 // result to producer/raw/news/<SYM>.json for a few top holdings if AV budget remains (it's
 // rate-limited, so this is opt-in and never required). Aggregated per ticker for the Analyze
