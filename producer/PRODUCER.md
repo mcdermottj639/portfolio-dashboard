@@ -130,6 +130,18 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      `data.news` for the Analyze tab's News card. It's rate-limited, so this is opt-in and
      never required — the card hides when absent. The **EARNINGS_CALENDAR** call you already
      make powers the Analyze tab's per-ticker Earnings countdown (no extra call needed).
+   - **Social / retail sentiment (AUTOMATIC + OPTIONAL boost).** `build-data.mjs` fetches retail
+     buzz from **ApeWisdom** (`https://apewisdom.io`, free + keyless) in-process every run — no
+     MCP call, no agent action. It powers the Analyze "Social Pulse" card, the Markets "Retail
+     Buzz" card, and Action-Feed buzz/crowding alerts. **Requirement:** `apewisdom.io` must be in
+     the environment's network **egress allowlist**; if it's blocked the fetch returns nothing and
+     all social UI hides gracefully (build still succeeds — it logs `social: ApeWisdom unreachable`).
+     *(Optional boost)* You may also save the Robinhood "100 most popular" watchlist items, in
+     rank order, to `producer/raw/popular.json` so Social Pulse can show a retail-popularity rank:
+     `get_popular_watchlists` → find "100 most popular" (id `e8ef4c1f-244f-4db5-a582-c4c37f3c8e8e`)
+     → `get_watchlist_items { id: "<that id>" }` → save raw to `producer/raw/popular.json`. Optional;
+     omit it and the rank line simply doesn't show. Social is a SIGNAL layer only — it is **not**
+     folded into the Picks composite score.
 
 3b. **Daily Picks — ONCE PER DAY** (the Picks tab). Like AV, only on the day's first run
    (gate on the same `.fetched` date, or a separate `producer/raw/picks-built` marker). Fully

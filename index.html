@@ -467,7 +467,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v36'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v37'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -981,6 +981,19 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
   for(const p of harv.slice(0,2)){ add({pr:5,icon:'🟡',c:'#eab308',bg:'#fef9c3',fg:'#854d0e',tag:'TAX',title:`${p.symbol} down ${fmt(Math.abs(p.pnlP),0)}% — harvest candidate`,detail:`${fmtD(p.pnlD)} unrealized loss you could realize to offset gains (mind the 30-day wash-sale window).`}); }
   const bigCl=Object.entries(clusters).filter(([,c])=>c.pct>20&&c.matched.length>1).sort((a,b)=>b[1].pct-a[1].pct);
   for(const [name,c] of bigCl.slice(0,1)){ add({pr:6,icon:'🟠',c:'#f97316',bg:'#ffedd5',fg:'#9a3412',tag:'CORRELATED',title:`${name} = ${fmt(c.pct,1)}% combined`,detail:`${c.matched.map(p=>p.symbol).join(', ')} move together — effectively one macro bet. A sector hit lands on all of them.`}); }
+  try{
+    const soc=(window.__DATA&&window.__DATA.social)||null;
+    if(soc&&soc.tickers){
+      const heldSet=new Set(enriched.filter(p=>p.val>0).map(p=>p.symbol));
+      const buzz=Object.entries(soc.tickers).filter(([s,t])=>heldSet.has(s)&&t.tracked&&t.rank!=null&&t.rank<=20)
+        .map(([s,t])=>({s,t})).sort((a,b)=>a.t.rank-b.t.rank);
+      for(const {s,t} of buzz.slice(0,1)){ const p=enriched.find(x=>x.symbol===s); const crowd=t.rank<=5;
+        const vel=t.mentionChg!=null?` Mentions ${t.mentionChg>=0?'+':''}${t.mentionChg}% in 24h.`:'';
+        add({pr:crowd?3:6,icon:'🗣️',c:crowd?'#f97316':'#6366f1',bg:crowd?'#ffedd5':'#ede9fe',fg:crowd?'#9a3412':'#4c1d95',tag:crowd?'CROWDED':'RETAIL BUZZ',
+          title:`${s} is #${t.rank} most-talked-about on Reddit`,
+          detail:`${crowd?'Peak retail attention often marks short-term tops — treat strength as a chance to trim into the crowd, not chase.':`Elevated retail chatter on a name you hold (${fmt(p?p.pct:0,1)}% of book). Watch for a momentum pop or a fade.`}${vel}`}); }
+    }
+  }catch(e){}
   A.sort((a,b)=>a.pr-b.pr);
   return A.slice(0,9);
 }
@@ -1745,6 +1758,38 @@ function azCorr(a){ try{ const P=window.__PORT; if(!P||!P.enriched)return null; 
     const r=(vx>0&&vy>0)?cov/Math.sqrt(vx*vy):null; if(r!=null)cors.push({sym:p.symbol, r:+r.toFixed(2), pct:p.pct}); }
   if(!cors.length)return null; cors.sort((p,q)=>q.r-p.r); return cors.slice(0,3); }catch(e){return null;} }
 function azNews(sym){ try{ const nw=(window.__DATA&&window.__DATA.news)||{}; return nw[sym]||null; }catch(e){return null;} }
+/* Retail social signal for a ticker (ApeWisdom buzz + Robinhood popularity + news), from data.social. */
+function azSocial(sym){ try{ const s=(window.__DATA&&window.__DATA.social)||null; if(!s||!s.tickers)return null; const t=s.tickers[sym]; if(!t)return null; return t; }catch(e){return null;} }
+/* Turn raw social fields + the price read into a plain-English retail-attention verdict.
+   This is a SIGNAL layer (confirmation / divergence / crowding / contrarian) — not part of the score. */
+function azSocialRead(a, soc){
+  if(!soc) return null;
+  const aw=soc.tracked?soc:null, rhR=soc.rhRank!=null?soc.rhRank:null;
+  const sent = aw&&aw.sentiment!=null?aw.sentiment : (soc.news&&soc.news.score!=null?soc.news.score:null);
+  const price = a&&a.dayChg!=null?a.dayChg : (a&&a.mom20!=null?a.mom20:null);
+  // Attention level
+  let level,color;
+  if(aw&&aw.rank!=null&&aw.rank<=10){ level='🔥 High retail buzz'; color='#ef4444'; }
+  else if(aw&&aw.rank!=null&&aw.rank<=50){ level='📈 Elevated buzz'; color='#f59e0b'; }
+  else if(aw&&aw.tracked){ level='📡 On the radar'; color='#6366f1'; }
+  else if(rhR!=null&&rhR<=20){ level='⭐ Popular on Robinhood'; color='#6366f1'; }
+  else if(rhR!=null){ level='Mainstream name'; color='#9ca3af'; }
+  else { level='🤫 Quiet — little retail chatter'; color='#9ca3af'; }
+  const lines=[];
+  if(aw&&aw.mentionChg!=null){ const up=aw.mentionChg>=0; lines.push((up?'▲':'▼')+' Mentions '+(up?'+':'')+aw.mentionChg+'% vs 24h ago'+(aw.rank24h!=null&&aw.rank!=null&&aw.rank<aw.rank24h?' (climbing the board)':aw.rank24h!=null&&aw.rank!=null&&aw.rank>aw.rank24h?' (cooling off)':'')+'.'); }
+  // Confirmation / divergence read (sentiment vs price)
+  if(sent!=null&&price!=null){
+    const sB=sent>=0.12, sBear=sent<=-0.12, pUp=price>=0.3, pDn=price<=-0.3;
+    if(sB&&pUp) lines.push('✅ Crowd and tape agree (bullish chatter, price up) — momentum, but watch for crowding if it’s extended.');
+    else if(sB&&pDn) lines.push('⚠️ Divergence — retail is bullish while price slips. Crowd-favored names that fade often disappoint; don’t chase.');
+    else if(sBear&&pUp) lines.push('🔄 Contrarian setup — retail sours while price holds up; bearish bets into strength can fuel a squeeze.');
+    else if(sBear&&pDn) lines.push('🟥 Crowd and tape both negative — capitulation risk, but no edge in catching a falling knife.');
+  }
+  // Crowding / contrarian flag on the very-hot names
+  if(aw&&aw.rank!=null&&aw.rank<=5) lines.push('🧨 Top-'+aw.rank+' most-talked-about stock — peak attention often marks short-term tops. Treat strength as a chance to trim, not chase.');
+  if(!lines.length) lines.push('No meaningful retail-attention edge right now — neutral.');
+  return { level, color, sent, rhR, aw, lines };
+}
 const _whenTxt={bmo:'before open', amc:'after close', pre:'before open', post:'after close'};
 /* The headline call. Prefers the app's own Pick recommendation (with thesis + levels);
    otherwise derives a clear verdict from the technical read. */
@@ -1801,6 +1846,7 @@ function runAnalysis(sym){
   const x=azExtra(a);
   const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a):null, oplay=a.hasTA?azOptionPlay(a,x):null;
   const mtf=a.hasTA?azMTF(a,x):null, earn=azEarn(sym), corr=azCorr(a), news=azNews(sym);
+  const soc=azSocial(sym), socRead=azSocialRead(a,soc);
   const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   el.innerHTML=
     '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px">'+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'">'+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
@@ -1827,6 +1873,16 @@ function runAnalysis(sym){
     )+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Estimated premium (no live chain) — confirm the actual bid/ask &amp; OI before trading. Not advice.</div></div>':'')+
     ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
     (news&&news.label?'<div class="card"><div class="card-title"><span>📰 News Sentiment <span class="card-hint">'+(news.n||0)+' recent</span></span></div><div style="font-size:13.5px;font-weight:800;color:'+(news.score>=0.15?'#10b981':news.score<=-0.15?'#ef4444':'#9ca3af')+'">'+news.label+(news.score!=null?' ('+(news.score>=0?'+':'')+(+news.score).toFixed(2)+')':'')+'</div>'+(Array.isArray(news.recent)&&news.recent.length?'<div style="margin-top:8px">'+news.recent.slice(0,3).map(h=>'<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-bottom:5px;line-height:1.4">• '+(h.url?'<a href="'+h.url+'" target="_blank" rel="noopener" style="color:inherit">'+h.title+'</a>':h.title)+(h.sentiment?' <span style="color:#9ca3af">('+h.sentiment+')</span>':'')+'</div>').join('')+'</div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Aggregated headline sentiment — context, not a signal.</div></div>':'')+
+    (socRead&&(socRead.aw||socRead.rhR!=null)?'<div class="card" style="border-left:4px solid '+socRead.color+'"><div class="card-title"><span>🗣️ Social Pulse <span class="card-hint">retail buzz · ApeWisdom + Robinhood</span></span></div>'+
+      '<div style="font-size:14px;font-weight:800;color:'+socRead.color+'">'+socRead.level+'</div>'+
+      '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin-top:10px">'+
+        [socRead.aw&&socRead.aw.rank!=null?['Reddit rank','#'+socRead.aw.rank]:null,
+         socRead.aw&&socRead.aw.mentions!=null?['Mentions','~'+fmt(socRead.aw.mentions,0)]:null,
+         socRead.rhR!=null?['RH popularity','#'+socRead.rhR]:null,
+         socRead.sent!=null?['Crowd mood',(socRead.sent>=0?'+':'')+(+socRead.sent).toFixed(2)]:null].filter(Boolean)
+         .map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>'+
+      '<div style="margin-top:10px">'+socRead.lines.map(l=>'<div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9;margin-bottom:5px">'+l+'</div>').join('')+'</div>'+
+      '<div style="font-size:10.5px;color:#9ca3af;margin-top:6px">Retail-attention signal (social mentions + Robinhood popularity) — context, deliberately not part of the setup score. Crowded names cut both ways.</div></div>':'')+
     (corr?'<div class="card"><div class="card-title"><span>🔗 Overlap With Your Book <span class="card-hint">return correlation</span></span></div><div style="font-size:12.5px;line-height:1.9">'+corr.map(c=>'<div style="display:flex;justify-content:space-between"><span><b>'+c.sym+'</b> <span style="color:#9ca3af">('+fmt(c.pct,1)+'% of book)</span></span><span style="font-weight:800;color:'+(c.r>=0.7?'#ef4444':c.r>=0.4?'#f59e0b':'#10b981')+'">'+(c.r>=0?'+':'')+c.r.toFixed(2)+'</span></div>').join('')+'</div>'+(corr[0].r>=0.7?'<div style="font-size:11px;color:#ef4444;margin-top:6px">Moves closely with '+corr[0].sym+' — adding '+a.sym+' doubles down on the same risk.</div>':'<div style="font-size:11px;color:#9ca3af;margin-top:6px">+1 = move together · 0 = independent · −1 = opposite.</div>')+'</div>':'')+
     '<div class="card"><div class="card-title"><span>⚖️ Compare <span class="card-hint">side-by-side vs another ticker</span></span></div><div class="az-search"><input id="az-cmp-input" type="text" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Compare '+a.sym+' vs… e.g. '+(a.sym==='NVDA'?'AMD':'NVDA')+'" onkeydown="if(event.key===\'Enter\')azCmpGo()"><button class="az-btn" onclick="azCmpGo()">Compare</button></div><div id="az-compare"></div></div>'+
     '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
@@ -2070,6 +2126,7 @@ function renderMarketsShell(){
     <div class="card"><div class="card-title"><span>📉 SPY vs QQQ <span class="card-hint">(YTD)</span></span></div><div class="chart-wrap" style="height:240px"><canvas id="mkt-chart"></canvas></div></div>
     <div class="card"><div class="card-title"><span>🏦 Macro Signals</span></div><div id="mkt-macro"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching macro…</div></div></div>
     <div class="card"><div class="card-title"><span>📊 Breadth, Movers &amp; News <span class="card-hint">VIX · your book + candidates · sentiment</span></span></div><div id="mkt-breadth"><div class="tech-empty">Loading…</div></div></div>
+    <div class="card"><div class="card-title"><span>🗣️ Retail Buzz <span class="card-hint">most-talked-about on Reddit · ApeWisdom</span></span></div><div id="mkt-social"><div class="tech-empty">Loading…</div></div></div>
     <div class="disclaimer">Live from Robinhood + Alpha Vantage · ~15-min delayed. Not financial advice.</div>`;
 }
 
@@ -2095,6 +2152,16 @@ async function fetchMarkets(){
   try{ const m=await fetchMacro(); renderMktMacro(m,qMap); }catch(e){}
   const t=document.getElementById('mkt-asof'); if(t)t.textContent='Live as of '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   try{ await loadPicksData(); renderBreadth(); }catch(e){}
+  try{ renderRetailBuzz(); }catch(e){}
+}
+function renderRetailBuzz(){
+  const el=document.getElementById('mkt-social'); if(!el)return;
+  const s=(window.__DATA&&window.__DATA.social)||null;
+  if(!s||!Array.isArray(s.trending)||!s.trending.length){ el.innerHTML='<div class="tech-empty">Retail buzz appears once apewisdom.io is reachable (add it to the egress allowlist) on the next producer run.</div>'; return; }
+  const held=new Set(); try{ const P=window.__PORT; if(P&&P.enriched)for(const p of P.enriched)if(p.val>0)held.add(p.symbol); }catch(e){}
+  el.innerHTML='<div style="margin-top:2px">'+s.trending.map((r,i)=>{ const mine=held.has(r.t); const chg=r.chg; const cc=chg==null?'#9ca3af':chg>=0?'#10b981':'#ef4444';
+    return '<div class="risk-line"><span class="risk-name"><b style="color:#9ca3af">#'+(r.rank||i+1)+'</b> '+r.t+(mine?' <span style="font-size:9px;background:#6366f1;color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">HELD</span>':'')+'</span><span class="risk-val">'+(r.mentions!=null?'~'+fmt(r.mentions,0)+' mentions':'')+(chg!=null?' <span style="color:'+cc+';font-weight:700">'+(chg>=0?'+':'')+chg+'%</span>':'')+'</span></div>'; }).join('')+'</div>'+
+    '<div class="cov-note">Most-mentioned stocks across Reddit/social in the last 24h. Heavy retail attention can precede sharp moves — and just as sharp reversals. Names you hold are flagged.</div>';
 }
 
 function mktTile(item,q){ const chg=q&&q.chg; const c=chg==null?'#9ca3af':chg>=0?'#10b981':'#ef4444'; const ytd=q&&q.ytd!=null?q.ytd:null, fv=q&&q.fiveyr!=null?q.fiveyr:null; const pc=v=>v==null?'#9ca3af':v>=0?'#10b981':'#ef4444', pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%'; return `<div class="mkt-tile"><div class="mkt-name">${item.n}</div><div class="mkt-sym">${item.s}</div><div class="mkt-price">${q&&q.px?'$'+fmt(q.px):'—'}</div><div class="mkt-chg" style="color:${c}">${chg==null?'—':(chg>=0?'+':'')+fmt(chg,2)+'%'} <span style="color:#9ca3af;font-weight:400">day</span></div><div style="display:flex;gap:12px;margin-top:6px;font-size:10.5px;color:#6b7280"><span>YTD <b style="color:${pc(ytd)}">${pf(ytd)}</b></span><span>5Y <b style="color:${pc(fv)}">${pf(fv)}</b></span></div></div>`; }
