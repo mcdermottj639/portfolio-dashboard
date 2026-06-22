@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)", "Bash(mv:*)", "Bash(mkdir:*)", "Bash(rm:*)",
+      "Bash(echo:*)", "Bash(printf:*)", "Bash(cat:*)", "Bash(ls:*)",
+      "Bash(date:*)", "Bash(test:*)", "Bash(head:*)", "Bash(tail:*)",
+      "Bash(node:*)",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git push:*)",
+      "Bash(git fetch:*)", "Bash(git status:*)", "Bash(git rm:*)",
+      "Read", "Write", "Edit"
+    ]
+  }
+}
