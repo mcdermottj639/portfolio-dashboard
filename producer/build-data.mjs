@@ -17,6 +17,7 @@ import { makeKey, RH } from './key.mjs';
 import { emit, decryptEnvelope } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
 import { avKey, specForId } from './av.mjs';
+import { fetchSocial } from './social.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -208,6 +209,46 @@ if (existsSync(newsDir)) {
     news[sym] = { score: +avg.toFixed(2), label, n: feed.length, recent };
   }
   if (Object.keys(news).length) data.news = news;
+}
+
+// Social / retail-sentiment signal (data.social). ApeWisdom Reddit/social buzz (fetched
+// in-process every build — keyless, degrades to nothing if apewisdom.io isn't in the egress
+// allowlist), blended with Robinhood retail-popularity rank (raw/popular.json, optional) and our
+// AV news sentiment. Surfaced on Analyze ("Social Pulse") + Markets ("Retail Buzz") as a SIGNAL
+// layer — deliberately NOT folded into the Picks composite score. Absent → the cards just hide.
+{
+  const heldSyms = (positions || []).map((p) => p.symbol).filter(Boolean);
+  const pickSyms = (data.picks && Array.isArray(data.picks.candidates))
+    ? data.picks.candidates.map((c) => c.symbol).filter(Boolean) : [];
+  const wantSet = [...new Set([...heldSyms, ...pickSyms].map((s) => String(s).toUpperCase()))];
+
+  let social = null;
+  try { social = await fetchSocial(wantSet); }
+  catch { social = null; }
+  console.log(social
+    ? `social: ApeWisdom ${social.universe} tracked · ${Object.values(social.tickers).filter((t) => t.tracked).length}/${wantSet.length} of your names trending`
+    : 'social: ApeWisdom unreachable (add apewisdom.io to the egress allowlist) — using RH popularity / news only');
+
+  // Robinhood retail popularity: the "100 most popular" watchlist items in rank order. The agent
+  // optionally saves a get_watchlist_items result to producer/raw/popular.json; rank = list order.
+  const rhRank = {};
+  const popFile = filesMatching(/^popular\.json$/)[0];
+  if (popFile) {
+    const d = unwrap(readJSON(popFile));
+    const items = d.data?.items ?? d.items ?? d.data?.results ?? d.results ?? (Array.isArray(d) ? d : []);
+    items.forEach((it, i) => { const s = (it.symbol || it.ticker || '').toUpperCase(); if (s && !(s in rhRank)) rhRank[s] = i + 1; });
+  }
+
+  if (social || Object.keys(rhRank).length || data.news) {
+    social = social || { asOf: new Date().toISOString(), source: 'rh', universe: 0, tickers: {}, trending: [] };
+    for (const sym of wantSet) {
+      const t = (social.tickers[sym] = social.tickers[sym] || { tracked: false });
+      if (rhRank[sym] != null) t.rhRank = rhRank[sym];
+      const nw = data.news && data.news[sym];
+      if (nw) t.news = { label: nw.label, score: nw.score };
+    }
+    data.social = social;
+  }
 }
 
 // Breadth / Movers (the Markets "Breadth" card → MKTX via data.picks.markets). Computed from
