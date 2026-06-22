@@ -91,7 +91,15 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    without Alpha Vantage** — AV (when not capped) still overrides with richer growth metrics.
 
 3. **Alpha Vantage — ONCE PER DAY only** (powers Macro Signals + Fundamentals + Earnings).
-   No separate API key step: the **Alpha Vantage MCP connector is already authenticated**
+
+   > **Prefer the automatic path.** If `ALPHAVANTAGE_KEY` is set in the environment **and**
+   > `www.alphavantage.co` is in the network egress allowlist, `run.mjs` calls `av-fetch.mjs`
+   > automatically (plain HTTP, no MCP, once per ET day) for macro + company overviews, and you
+   > can **skip the manual AV tool calls below entirely**. It never overwrites a good snapshot on
+   > a throttle/cap, and respects the 25/day limit. The manual MCP steps below remain the fallback
+   > when no key is configured. (Earnings stays on the MCP/agent path — `av-fetch` skips it.)
+
+   No separate API key step (manual path): the **Alpha Vantage MCP connector is already authenticated**
    (same as Robinhood), so you just call the tool. The connector uses a **free** key, capped
    at **25 requests/day**, so AV is *not* fetched on every 15-min run — only on the **first run
    of the trading day**. On every later run, skip this step entirely; the existing
@@ -188,29 +196,40 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `build-data.mjs` embeds it as `data.options`. Needs `positions.json`, `quotes.json`, and
       (for ideas) `picks.json`.
 
-4. **Build** `data.json` — **with the passphrase set** so the output is encrypted:
+4. **Build + validate + publish — ONE command.** Once every raw file from steps 2–3c is in
+   `producer/raw/`, run the orchestrator. It does everything deterministically (optional AV
+   fetch → picks → options → encrypted build → validate → commit → push) with **no improvised
+   shell**, so an unattended run can't stall on a permission prompt:
    ```
-   PF_PASSPHRASE="<the dashboard passphrase>" node producer/build-data.mjs "<label>"
+   node producer/run.mjs "Jun 18 2026, 3:45 PM ET"
    ```
-   where `<label>` is the snapshot time in market terms, e.g. `Jun 18 2026, 3:45 PM ET`
-   (shown in the phone's freshness bar). The repo is public, so **always set PF_PASSPHRASE**
-   on real runs — without it the file is written as plaintext (holdings exposed).
-   The passphrase must match what you type on the phone. Keep it out of git
-   (it lives in the scheduled job's environment, not in any committed file).
+   where the argument is the snapshot label shown in the phone's freshness bar. `PF_PASSPHRASE`
+   must be set in the environment (it is, for scheduled runs) — `run.mjs` **refuses to push** a
+   plaintext `data.json`, so holdings can't leak even if the passphrase is missing. The repo is
+   public; the passphrase lives only in the environment, never in git.
 
-5. **Sanity check** (optional but recommended): `node producer/validate.mjs` — should print
-   "replay contract is valid ✅".
+   What `run.mjs` does, in order (each step guarded — a missing optional input is skipped, a hard
+   failure aborts **before** any commit):
+   - **Market gate** — deterministic US-session check (Mon–Fri 09:30–16:00 ET). By default it
+     builds + pushes anyway so social/news stay fresh; pass `--require-open` to skip when closed.
+   - **Alpha Vantage** (optional) — if `ALPHAVANTAGE_KEY` is set, `av-fetch.mjs` pulls macro +
+     fundamentals over plain HTTP (no MCP call), once per ET day. See step 3's AV note.
+   - **picks-build / options-build** — run only if their raw inputs exist.
+   - **build-data** — writes the encrypted `data.json`.
+   - **validate** — replay-contract sanity check (warn-only).
+   - **commit + push** — only if `data.json` actually changed; retries the push with backoff.
 
-6. **Publish**:
-   ```
-   git add data.json
-   git commit -m "data: snapshot <label>"
-   git push
-   ```
-   Only `data.json` changes on a normal run. GitHub Pages serves the new file within a minute;
-   the PWA's service worker is network-first for `data.json`, so the next open shows it.
+   Useful flags: `--no-push` (dry run / local build), `--no-av` (skip the AV fetch), `--require-open`.
+   Only `data.json` changes on a normal run; GitHub Pages serves it within a minute (the PWA's
+   service worker is network-first for `data.json`, so the next open shows it).
 
 ## Failure handling
-- If a Robinhood call fails, abort without pushing (keep the last good `data.json`). A stale
-  snapshot is better than a broken one — the freshness bar will show the data is old.
-- Markets are closed → either skip the run or push once; prices won't change.
+- `run.mjs` aborts (no commit) if the core `portfolio.json`/`positions.json` are missing, if the
+  build fails, or if `data.json` came out unencrypted while `PF_PASSPHRASE` is set. A stale
+  snapshot is always preferred over a broken one — the freshness bar shows the data is old.
+- If a Robinhood call fails during fetching, stop there (don't run `run.mjs`); keep the last good
+  `data.json`.
+- The **freshness watchdog** (`.github/workflows/freshness.yml`) opens a GitHub issue if
+  `data.json` goes >3h without a refresh during market hours, and auto-closes it on recovery — so
+  a stalled run never goes unnoticed.
+
