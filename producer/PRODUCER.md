@@ -57,15 +57,30 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` |
 
+   > ### ⚠️ CRITICAL — how to save raw files (or the scheduled run hangs)
+   > A scheduled run is unattended: **any command that triggers a permission prompt stalls the
+   > whole run forever.** The one thing that prompts is **`cp` with shell variables** (e.g.
+   > `BASE=…; cp "$BASE/x" "$RAW/y"`) — shell-variable expansion is flagged unsafe and asks for
+   > approval. So:
+   > - **Never use `cp`, `mv`, or shell variables** (`$BASE`, `$RAW`, `TDIR=…`) to place raw files.
+   > - **Save every result with the `Write` tool**, writing the JSON straight to its path (e.g.
+   >   `Write → producer/raw/quotes.json`). Inline-returned results save this way with no prompt.
+   > - **Fetch historicals in ≤3-symbol batches** so each result comes back **inline** (small
+   >   enough to read) instead of being auto-saved to a temp file you'd have to copy. Then `Write`
+   >   each batch to `hist-day-1.json`, `hist-day-2.json`, … / `hist-month-1.json`, …
+   > - If a result is *still* too large to read inline, fetch a smaller batch — do **not** copy a
+   >   temp file. Following this, a scheduled run completes with zero approval prompts.
+
    Notes:
    - "all position symbols" = every `symbol` from the positions response.
    - The VIX instrument id above is stable; if it ever 404s, re-resolve it with
      `get_indexes { symbols: "VIX" }` (or `search` asset_type `market_index`). `build-data.mjs`
      turns this quote into the macro card's VIX value — free, every run (AV's VIX is premium).
    - "all market symbols" = the `MARKET_SYMBOLS` list above (indexes + risk gauges + sectors).
-   - "top 15" = the 15 positions with the largest market value. If you must batch
-     historicals (≤10 symbols/call), save each batch as `hist-day-1.json`, `hist-day-2.json`, …
-     (and `hist-month-1.json`, `hist-month-2.json`, … for the monthly series).
+   - "top 15" = the 15 positions with the largest market value. Batch historicals **≤3 symbols
+     per call** (small → inline → Write, no temp-file copy), saving each as `hist-day-1.json`,
+     `hist-day-2.json`, … (and `hist-month-1.json`, … for the monthly series). `build-data.mjs`
+     merges all `hist-day*.json` / `hist-month*.json` by symbol.
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 
