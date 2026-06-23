@@ -16,7 +16,7 @@
 //   --no-push        build + validate but don't commit/push (dry run).
 //   --no-av          skip the direct Alpha Vantage fetch even if ALPHAVANTAGE_KEY is set.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { isMarketOpen } from './market.mjs';
@@ -76,19 +76,29 @@ if (process.env.PF_PASSPHRASE && parsed.enc !== 1) {
 
 if (flags.has('--no-push')) { log('built OK · --no-push set, stopping (no commit).'); process.exit(0); }
 
-function git(a) { return execFileSync('git', a, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim(); }
-git(['add', 'data.json']);
-const staged = execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: ROOT }).toString().trim();
-if (!staged) { log('data.json unchanged — nothing to commit.'); process.exit(0); }
-git(['commit', '-m', `data: snapshot ${label}`]);
-log('committed. pushing…');
+// Publish the built data.json onto origin/main DETERMINISTICALLY — regardless of the (often
+// upstream-less) scheduled-session branch, and tolerating main moving mid-flight. Hold the file in
+// memory and re-apply it on a fresh branch at the newest origin/main each attempt, so the producer
+// never needs the agent to improvise git. (run.mjs is Node, so the in-memory copy avoids any cp.)
+function git(a, stdio = ['ignore', 'pipe', 'pipe']) { return execFileSync('git', a, { cwd: ROOT, stdio }); }
+function sleep(s) { execFileSync(process.execPath, ['-e', `setTimeout(()=>{}, ${s * 1000})`]); } // blocking, no shell
+const fresh = readFileSync(dataPath);
 let pushed = false;
 for (let i = 1; i <= 4 && !pushed; i++) {
-  try { execFileSync('git', ['push'], { cwd: ROOT, stdio: 'inherit' }); pushed = true; }
-  catch (e) {
-    if (i === 4) { console.error('[run] push failed after 4 attempts:', e.message.split('\n')[0]); process.exit(1); }
-    const wait = 2 ** i; log(`push failed, retrying in ${wait}s…`);
-    execFileSync(process.execPath, ['-e', `setTimeout(()=>{}, ${wait * 1000})`]); // blocking sleep, no shell
+  try {
+    git(['fetch', 'origin', 'main']);
+    git(['checkout', '-f', '-B', 'pf-publish', 'origin/main']); // newest main; -f drops the local data.json
+    writeFileSync(dataPath, fresh);                              // re-apply our snapshot on top
+    git(['add', 'data.json']);
+    const staged = git(['diff', '--cached', '--name-only']).toString().trim();
+    if (!staged) { log('data.json identical to main — nothing to publish.'); process.exit(0); }
+    git(['commit', '-m', `data: snapshot ${label}`]);
+    git(['push', 'origin', 'HEAD:main'], 'inherit');
+    pushed = true;
+  } catch (e) {
+    if (i === 4) { console.error('[run] publish failed after 4 attempts:', e.message.split('\n')[0]); process.exit(1); }
+    const wait = 2 ** i; log(`publish failed (main may have moved), retrying in ${wait}s…`);
+    sleep(wait);
   }
 }
-log('✅ pushed data.json to', git(['rev-parse', '--abbrev-ref', 'HEAD']));
+log('✅ published data.json to origin/main');
