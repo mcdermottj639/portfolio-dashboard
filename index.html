@@ -210,9 +210,8 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 .chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; text-decoration: none; }
 .chat-btn:active { opacity: 0.85; }
 /* Per-page quick-nav: chip row that jumps to each card in the section */
-.card-nav { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 0 10px; margin-bottom: 2px; scrollbar-width: none; }
-.card-nav::-webkit-scrollbar { display: none; }
-.card-nav-chip { flex: 0 0 auto; font-size: 11.5px; font-weight: 600; padding: 6px 11px; border-radius: 16px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.card-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 10px; margin-bottom: 2px; }
+.card-nav-chip { flex: 0 1 auto; font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .card-nav-chip:active { background: #6366f1; color: #fff; }
 /* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
 .money { transition: filter .12s; }
@@ -467,7 +466,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v37'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v38'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1961,33 +1960,45 @@ function renderPicksStatic(){
     ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
     ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
     ${PICK_HISTORY.length?`<div class="card"><div class="card-title"><span>🕐 Pick History &amp; Outcomes</span></div>${PICK_HISTORY.map(x=>`<div class="harv-line"><span style="white-space:nowrap"><b>${(x.picks||'').split(' · ')[0]}</b></span><span style="flex:1;text-align:right;color:#6b7280;font-size:11px;margin-left:8px">${x.date} — ${x.picks}<br>${x.note}</span></div>`).join('')}</div>`:''}
-    <div class="card">
-      <div class="card-title collapsible" data-toggle="b-nflx" onclick="toggleSection('b-nflx')"><span>📅 Earnings Preview · NFLX <span class="card-hint">(#1 pick · reports Jul 16)</span></span><span class="chevron">▼</span></div>
-      <div id="b-nflx" style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
-        <div class="box-info" style="border-radius:10px;padding:10px 12px;margin-bottom:12px">Reports <b>Thursday, July 16</b> after the close (~4:01pm ET), with a live exec interview ~4:45pm. NFLX is the day&#39;s top-scored pick — RSI ~28 (deeply oversold), ~45% upside to the ~$114 consensus target.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="pk-m"><div class="pk-m-l">Consensus Revenue</div><div class="pk-m-v">$12.57B</div><div style="font-size:10px;color:#9ca3af">+13.5% YoY (guide)</div></div>
-          <div class="pk-m"><div class="pk-m-l">Consensus EPS</div><div class="pk-m-v">~$0.78–0.79</div><div style="font-size:10px;color:#9ca3af">+8–10% YoY</div></div>
-        </div>
-        <div style="font-weight:700;margin-bottom:5px">What to watch</div>
-        <ul class="thesis2" style="margin-bottom:12px">
-          <li>Ad tier — 250M+ monthly active viewers, 60%+ of new sign-ups; Street wants ad ARPU and the path to the doubled $3B 2026 ad-revenue target (advertisers +70%).</li>
-          <li>Monetization per user — North America is saturated, so it&#39;s revenue/profit per member, not sub adds. Watch ARPU and operating margin (Q1 ~32%).</li>
-          <li>Guidance — full-year rev growth framed 12–14%; any raise/cut on the H2 ad ramp or pricing moves the stock more than the Q2 print itself.</li>
-          <li>Overhangs — the scrapped Warner Bros. bid, lost Roku deal and Brazil tax dispute drove the ~42% drawdown; tone on capital allocation matters.</li>
-        </ul>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="box-bull" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Bull</b> — beat + ad-revenue acceleration + guide raise reframes growth; oversold RSI and $114 target set up a sharp snap-back. 37 Buy / 12 Hold / 1 Sell.</div>
-          <div class="box-bear" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Bear</b> — another soft guide or an ARPU miss confirms deceleration; the chart already broke down and the 52w low $75.01 is the line that must hold.</div>
-        </div>
-        <div style="font-size:10px;color:#9ca3af;margin-top:10px">Snapshot as of Jun 17, 2026 — public estimates &amp; company guidance (StockTitan, Variety, Simply Wall St). Not financial advice.</div>
-      </div>
-    </div>
+    <div class="card" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
     <div class="disclaimer">⚠️ Not financial advice. Scan generated ${ANALYSIS_DATE}; live prices &amp; RSI via Robinhood + Alpha Vantage. Research independently before entering any position.</div>
   `;
   renderPicksChart();
   renderPicksTable();
   renderPicksCards();
+  renderPicksEarnings();
+}
+/* Dynamic earnings preview — follows whichever top pick reports soonest (was hardcoded to NFLX).
+   Built from the live pick (thesis/levels/RSI) + the earnings calendar; hides if none have a date. */
+function renderPicksEarnings(){
+  const card=document.getElementById('picks-earn-card'), el=document.getElementById('picks-earn'); if(!el)return;
+  const picks=(typeof PICK_PICKS!=='undefined'&&PICK_PICKS)||[];
+  const withE=picks.map((p,i)=>({p,rank:i+1,e:azEarn(p.ticker)})).filter(x=>x.e&&x.e.date);
+  const sel=withE.filter(x=>x.e.days>=0).sort((a,b)=>a.e.days-b.e.days)[0]||withE.sort((a,b)=>b.e.days-a.e.days)[0];
+  if(!sel){ if(card)card.style.display='none'; return; }
+  if(card)card.style.display='';
+  const {p,rank,e}=sel; const dt=new Date(e.date+'T00:00:00Z');
+  const long=dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'});
+  const short=dt.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
+  const whenT=(e.when==='amc'||e.when==='post')?' after the close':(e.when==='bmo'||e.when==='pre')?' before the open':'';
+  const when=e.days<0?`Last reported ${long} (${-e.days}d ago).`:e.days===0?`Reports <b>today</b> (${long})${whenT}.`:`Reports <b>${long}</b>${whenT} — in <b>${e.days} days</b>.`;
+  const sig=(p.signal||'BUY'), su=sig.toUpperCase();
+  const sc=su.indexOf('SELL')>=0?'#ef4444':su.indexOf('CAUT')>=0?'#f59e0b':su.indexOf('HOLD')>=0?'#9ca3af':'#10b981';
+  const thesis=Array.isArray(p.thesis)?p.thesis:[];
+  const risk=thesis.find(t=>/^risk/i.test(t)); const bull=thesis.filter(t=>!/^risk/i.test(t)).slice(0,3);
+  const tile=(l,v)=>`<div class="pk-m"><div class="pk-m-l">${l}</div><div class="pk-m-v">${v}</div></div>`;
+  el.innerHTML=
+    `<div class="card-title collapsible" data-toggle="b-earn" onclick="toggleSection('b-earn')"><span>📅 Earnings Preview · ${p.ticker} <span class="card-hint">(#${rank} pick · ${e.days>=0?'reports '+short:'last report'})</span></span><span class="chevron">▼</span></div>`+
+    `<div id="b-earn" style="font-size:12.5px;color:var(--text);opacity:.9;line-height:1.55">`+
+      `<div class="box-info" style="border-radius:10px;padding:10px 12px;margin:4px 0 12px">${when} <b>${p.ticker}</b> is ranked <b>#${rank}</b> in today’s screen — <b style="color:${sc}">${sig}</b>, RSI ${p.rsi!=null?p.rsi:'—'}${p.confidence!=null?`, ${p.confidence}% confidence`:''}.</div>`+
+      `<div class="pk-metrics" style="grid-template-columns:repeat(2,1fr);margin-bottom:12px">${tile('Next earnings',e.days>=0?short+(e.days===0?' (today)':` (${e.days}d)`):'reported')}${tile('Est. EPS',e.eps!=null?'$'+(+e.eps).toFixed(2):'—')}</div>`+
+      (bull.length?`<div style="font-weight:700;margin-bottom:5px">Why it’s ranked</div><ul class="thesis2" style="margin-bottom:12px">${bull.map(t=>`<li>${t}</li>`).join('')}</ul>`:'')+
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">`+
+        `<div class="box-bull" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Bull</b> — ${sig} setup${p.entry?`; entry ${p.entry}`:''}${p.tp1?`, targets $${p.tp1.price}`:''}${p.tp2?` → $${p.tp2.price}`:''}${p.rr?` (R/R ${p.rr})`:''}. A beat or raise into RSI ${p.rsi!=null?p.rsi:''} can spark a sharp move.</div>`+
+        `<div class="box-bear" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Bear</b> — ${risk?risk.replace(/^risk[:\s-]*/i,''):`a soft print breaks the setup; invalidation below the ${p.sl?'$'+p.sl.price+' stop':'stop'}.`}</div>`+
+      `</div>`+
+      `<div style="font-size:10px;color:#9ca3af;margin-top:10px">Auto-generated from today’s top-ranked pick + the earnings calendar — research, not financial advice.</div>`+
+    `</div>`;
 }
 
 function renderPicksChart(){
@@ -2123,7 +2134,7 @@ function renderMarketsShell(){
     <div class="card"><div class="card-title"><span>📈 Indexes</span></div><div id="mkt-index"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching quotes…</div></div></div>
     <div class="card"><div class="card-title"><span>🌡️ Risk Gauges <span class="card-hint">(gold · bonds · credit · crypto)</span></span></div><div id="mkt-risk"></div></div>
     <div class="card"><div class="card-title"><span>🗺️ Sector Heatmap <span class="card-hint">(today · SPDR sectors)</span></span></div><div id="mkt-sectors"></div></div>
-    <div class="card"><div class="card-title"><span>📉 SPY vs QQQ <span class="card-hint">(YTD)</span></span></div><div class="chart-wrap" style="height:240px"><canvas id="mkt-chart"></canvas></div></div>
+    <div class="card"><div class="card-title"><span>🌍 US vs International <span class="card-hint">(YTD · S&amp;P 500 vs developed &amp; emerging)</span></span></div><div class="chart-wrap" style="height:240px"><canvas id="mkt-chart"></canvas></div></div>
     <div class="card"><div class="card-title"><span>🏦 Macro Signals</span></div><div id="mkt-macro"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching macro…</div></div></div>
     <div class="card"><div class="card-title"><span>📊 Breadth, Movers &amp; News <span class="card-hint">VIX · your book + candidates · sentiment</span></span></div><div id="mkt-breadth"><div class="tech-empty">Loading…</div></div></div>
     <div class="card"><div class="card-title"><span>🗣️ Retail Buzz <span class="card-hint">most-talked-about on Reddit · ApeWisdom</span></span></div><div id="mkt-social"><div class="tech-empty">Loading…</div></div></div>
@@ -2148,7 +2159,7 @@ async function fetchMarkets(){
     for(const sym of tileSyms){ const q=qMap[sym]; if(!q||!(q.px>0))continue; const yd=yH[sym]; if(yd&&yd.length&&yd[0].c>0)q.ytd=(q.px/yd[0].c-1)*100; const fv=fH[sym]; if(fv&&fv.length&&fv[0].c>0)q.fiveyr=(q.px/fv[0].c-1)*100; }
     renderMktTiles(qMap);
   }catch(e){}
-  try{ const h=await fetchHist(['SPY','QQQ']); renderMktChart(h); }catch(e){}
+  try{ const h=await fetchHist(['SPY','EFA','EEM']); renderMktChart(h); }catch(e){}
   try{ const m=await fetchMacro(); renderMktMacro(m,qMap); }catch(e){}
   const t=document.getElementById('mkt-asof'); if(t)t.textContent='Live as of '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   try{ await loadPicksData(); renderBreadth(); }catch(e){}
@@ -2176,7 +2187,7 @@ function renderMktTiles(qMap){
   }
 }
 
-function renderMktChart(h){ const c=document.getElementById('mkt-chart'); if(!c||!h.SPY||h.SPY.length<2)return; const norm=a=>{const c0=a[0].c;return a.map(b=>(b.c/c0-1)*100);}; const ax=h.SPY.map(b=>b.t); const ds=[{label:'SPY',data:norm(h.SPY),borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15}]; if(h.QQQ&&h.QQQ.length>1)ds.push({label:'QQQ',data:norm(h.QQQ),borderColor:'#10b981',borderWidth:2,pointRadius:0,tension:0.15}); new Chart(c,{type:'line',data:{labels:ax,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:x=>' '+x.dataset.label+': '+(x.parsed.y>=0?'+':'')+x.parsed.y.toFixed(1)+'%'}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:'#9ca3af'},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10},color:'#9ca3af'},grid:{color:'#f3f4f6'}}}}}); }
+function renderMktChart(h){ const c=document.getElementById('mkt-chart'); if(!c||!h.SPY||h.SPY.length<2)return; const norm=a=>{const c0=a[0].c;return a.map(b=>(b.c/c0-1)*100);}; const ax=h.SPY.map(b=>b.t); const ds=[{label:'US (S&P 500)',data:norm(h.SPY),borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15}]; if(h.EFA&&h.EFA.length>1)ds.push({label:'Intl Developed (EFA)',data:norm(h.EFA),borderColor:'#10b981',borderWidth:2,pointRadius:0,tension:0.15}); if(h.EEM&&h.EEM.length>1)ds.push({label:'Emerging (EEM)',data:norm(h.EEM),borderColor:'#f59e0b',borderWidth:2,pointRadius:0,tension:0.15}); new Chart(c,{type:'line',data:{labels:ax,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:x=>' '+x.dataset.label+': '+(x.parsed.y>=0?'+':'')+x.parsed.y.toFixed(1)+'%'}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:'#9ca3af'},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10},color:'#9ca3af'},grid:{color:'#f3f4f6'}}}}}); }
 
 function renderMktMacro(m,qMap){ const el=document.getElementById('mkt-macro'); if(!el||!m)return; const vix=m.vix||(qMap&&qMap.VIXY&&null); const vc=m.vix?(m.vix>25?'#ef4444':m.vix>18?'#f97316':'#10b981'):'#374151'; el.innerHTML=`<div class="macro-grid"><div class="macro-tile"><div class="macro-label">10yr Treasury</div><div class="macro-val">${m.tenYrYield?fmt(m.tenYrYield,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">Fed Funds</div><div class="macro-val">${m.fedFunds?fmt(m.fedFunds,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">CPI YoY</div><div class="macro-val" style="color:${m.cpi!=null?(m.cpi>3?'#ef4444':m.cpi>2?'#f97316':'#10b981'):'#374151'}">${m.cpi!=null?fmt(m.cpi,1)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">VIX</div><div class="macro-val" style="color:${vc}">${m.vix?fmt(m.vix,1):'—'}</div></div></div>`; }
 
