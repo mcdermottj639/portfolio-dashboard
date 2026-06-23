@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { scanRows, selectFinalists, buildPicks, N_FINALISTS } from './picks.mjs';
+import { fetchSocial } from './social.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -47,11 +48,21 @@ if (existsSync(avDir)) for (const f of readdirSync(avDir).filter((x) => x.starts
   if (ov && ov.Symbol) ovBySym[ov.Symbol] = ov;
 }
 
-const picks = buildPicks(finalists, fundBySym, ovBySym);
+// Retail-sentiment for the finalists → folded into the composite (20%) by buildPicks. Keyless,
+// in-process; degrades to {} (neutral social for all) if ApeWisdom is unreachable.
+let socialMap = {};
+try {
+  const social = await fetchSocial(finalists.map((f) => f.ticker));
+  if (social && social.tickers) socialMap = social.tickers;
+} catch { socialMap = {}; }
+const socialCovered = Object.values(socialMap).filter((t) => t && t.tracked).length;
+
+const picks = buildPicks(finalists, fundBySym, ovBySym, socialMap);
 writeFileSync(join(RAW, 'picks.json'), JSON.stringify(picks, null, 2));
 
 const avCount = Object.keys(ovBySym).length;
 console.log(`picks: ${picks.candidates.length} candidates · top ${picks.picks.length}: ` +
   picks.picks.map((p) => `${p.ticker}(${p.composite} ${p.signal})`).join(', '));
+console.log(`social: ${socialCovered}/${finalists.length} finalists with ApeWisdom buzz (20% of composite)`);
 console.log(`fundamentals: ${Object.keys(fundBySym).length} RH · ${avCount} AV overview${avCount === 1 ? '' : 's'}` +
   (avCount ? '' : ' (value-only scoring — AV skipped/capped)'));
