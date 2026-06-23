@@ -41,6 +41,22 @@ function filesMatching(re) {
   return readdirSync(RAWDIR).filter((f) => re.test(f)).map((f) => join(RAWDIR, f));
 }
 
+// Prior committed snapshot, decrypted ONCE — the only state that survives the producer's
+// fresh-clone runs. Lets a light intraday run (which skips the heavy historicals/AV/picks fetch)
+// carry that data forward so the snapshot stays visually complete. Null when there's no prior
+// file, no passphrase, or decrypt fails → every merge below falls back to fresh-only, i.e. exactly
+// the original behavior.
+async function loadPrior() {
+  try {
+    const p = join(__dirname, '..', 'data.json');
+    if (!existsSync(p)) return null;
+    const prev = readJSON(p);
+    if (prev && prev.enc) return process.env.PF_PASSPHRASE ? await decryptEnvelope(prev, process.env.PF_PASSPHRASE) : null;
+    return prev; // plaintext dev snapshot
+  } catch { return null; }
+}
+const prior = await loadPrior();
+
 // --- portfolio + positions ---
 const pRaw = unwrap(readJSON(filesMatching(/^portfolio\.json$/)[0]));
 const portfolio = pRaw.data ?? pRaw;
@@ -66,6 +82,11 @@ for (const f of filesMatching(/^hist-(day|week|month).*\.json$/)) {
   const d = unwrap(readJSON(f));
   const results = d.data?.results ?? d.results ?? [];
   for (const res of results) if (res.symbol && Array.isArray(res.bars)) hist[interval][res.symbol] = res.bars;
+}
+// Carry forward prior bars for any interval/symbol not freshly fetched this run, so a light
+// intraday run (no hist-*.json) still ships the full YTD/5Y series. Freshly-fetched bars win.
+if (prior && prior.hist) {
+  for (const iv of Object.keys(prior.hist)) hist[iv] = { ...prior.hist[iv], ...(hist[iv] || {}) };
 }
 
 // --- recorded: stable-key calls ---
@@ -136,19 +157,25 @@ if (idxFile) {
   }
 }
 
+// Carry forward prior recorded entries (AV macro, synthesized COMPANY_OVERVIEW) not regenerated
+// this run; fresh portfolio/positions/VIX win because they share the same key.
+const recordedOut = prior && prior.recorded ? { ...prior.recorded, ...recorded } : recorded;
+
 const data = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   generatedAtLabel: label,
-  recorded, quotes, hist,
+  recorded: recordedOut, quotes, hist,
 };
-// Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks;
-// the dashboard reads it directly (the old Kyle-note path is retired).
+// Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks; the
+// dashboard reads it directly. Fresh when built this run, else carried from the prior snapshot.
 const picksFile = filesMatching(/^picks\.json$/)[0];
 if (picksFile) data.picks = readJSON(picksFile);
+else if (prior && prior.picks) data.picks = prior.picks;
 // Options page (your positions/pending + directional ideas). Embedded as data.options.
 const optionsFile = filesMatching(/^options\.json$/)[0];
 if (optionsFile) data.options = readJSON(optionsFile);
+else if (prior && prior.options) data.options = prior.options;
 
 // Realized P&L for the Income & Tax widget. There is no cost-basis/realized endpoint, so this is
 // an owner-maintained figure (authoritative source: Robinhood's tax center) committed to
@@ -159,17 +186,10 @@ if (existsSync(realizedFile)) {
   const r = readJSON(realizedFile);
   if (r && r.total == null) r.total = (r.equity || 0) + (r.options || 0);
   data.realized = r;
-} else {
-  // No fresh figure this run — carry forward the prior snapshot's realized (decrypted) so the
-  // tile persists across the routine's fresh-clone runs without committing the plaintext figure.
-  try {
-    const prevPath = join(__dirname, '..', 'data.json');
-    if (existsSync(prevPath) && process.env.PF_PASSPHRASE) {
-      const prev = readJSON(prevPath);
-      const dec = prev && prev.enc ? await decryptEnvelope(prev, process.env.PF_PASSPHRASE) : prev;
-      if (dec && dec.realized) data.realized = dec.realized;
-    }
-  } catch { /* no carry-forward available */ }
+} else if (prior && prior.realized) {
+  // No fresh figure this run — carry forward the prior snapshot's realized (already decrypted in
+  // loadPrior) so the tile persists across the routine's fresh-clone runs.
+  data.realized = prior.realized;
 }
 // Options realized + premium-collected (YTD) come from options.json fresh every run (cheap), and
 // override whatever the equity figure carried. Equity realized stays owner/carry-forward sourced.

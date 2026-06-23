@@ -1,9 +1,14 @@
 # Producer runbook (scheduled agent)
 
-This is the job that refreshes the dashboard. A scheduled Claude Code agent runs it every
-~15 minutes during US market hours. It pulls live data through the **Robinhood** (and
-optionally **Alpha Vantage**) MCP connectors, assembles `data.json`, and pushes it to the
-GitHub Pages repo. The phone PWA then loads that `data.json`.
+This is the job that refreshes the dashboard. A scheduled Claude Code agent runs it **3×/day on
+weekdays** (market open ~09:30, midday ~12:30, close ~16:00 ET). It pulls live data through the
+**Robinhood** (and optionally **Alpha Vantage**) MCP connectors, assembles `data.json`, and pushes
+it to the GitHub Pages repo. The phone PWA then loads that `data.json`.
+
+> **Cost discipline (read this).** The expensive part is the price **historicals** (5Y monthly +
+> YTD daily for ~36 symbols ≈ 24 of ~30 calls). They barely change, so they are fetched only on
+> the **day's first run**; later runs carry them forward from the prior `data.json`. **Step 0
+> below (`preflight.mjs`) tells you which mode you're in — always run it first and obey it.**
 
 > **Setting up the schedule?** See [`SCHEDULING.md`](./SCHEDULING.md) for the one-time
 > Claude-Code-on-the-web setup (env vars, connectors, trigger, and the exact prompt).
@@ -42,20 +47,32 @@ without them it falls back to the 200-day daily average).
 
 Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\Portfolio Dashboard`
 
-1. **Create the scratch dir** `producer/raw/` (it is git-ignored). Overwrite the Robinhood
-   files each run, but **leave `producer/raw/av-src/` in place** — that holds the once-a-day
-   Alpha Vantage snapshot (step 3) which is reused across intra-day runs.
+0. **Preflight — run this FIRST, before any MCP call:** `node producer/preflight.mjs`. It prints
+   `PREFLIGHT <MODE>` on the first line and decides how much work this run needs (from the committed
+   `data.json` — `raw/` markers don't persist across the fresh-clone runs). **Obey it:**
+   - **`SKIP`** → stop now. Do nothing, fetch nothing, don't run anything else. (Weekend, or today's
+     closing snapshot is already taken — a stray off-hours fire ends here for ~zero cost.)
+   - **`FETCH_ALL`** → the day's first run. Do the full fetch: steps 1–3c below (historicals,
+     fundamentals, AV, picks, options — everything).
+   - **`FETCH_LIGHT`** → an intraday/close run. Fetch **only the EVERY-RUN items** (portfolio,
+     positions, quotes, VIX, options) and **SKIP the FETCH_ALL-only items** (historicals,
+     fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
+     forward from the prior snapshot automatically. Then go straight to step 4.
 
-2. **Call the Robinhood MCP tools** and save each raw result verbatim into `producer/raw/`:
+1. **Create the scratch dir** `producer/raw/` (it is git-ignored, empty on every fresh run).
 
-   | MCP tool | arguments | save raw output to |
-   |---|---|---|
-   | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` |
-   | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` |
+2. **Call the Robinhood MCP tools** and save each raw result verbatim into `producer/raw/`. The
+   **Mode** column says when each is fetched (`FETCH_ALL` runs do all of them; `FETCH_LIGHT` runs
+   do only the EVERY-RUN rows):
+
+   | MCP tool | arguments | save raw output to | Mode |
+   |---|---|---|---|
+   | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
+   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
+   | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
 
    > ### ⚠️ CRITICAL — how to save raw files (or the scheduled run hangs)
    > A scheduled run is unattended: **any command that triggers a permission prompt stalls the
@@ -84,7 +101,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 
-2c. **Holdings fundamentals (free, every run)** — `mcp__claude_ai_Robinhood__get_equity_fundamentals`
+2c. **Holdings fundamentals (FETCH_ALL only — skip on `FETCH_LIGHT`, it carries forward)** —
+   `mcp__claude_ai_Robinhood__get_equity_fundamentals`
    for the **top 14 holdings by market value** (the same set AV would cover; batch ≤10/call)
    → `producer/raw/holdings-fund.json`. `build-data.mjs` turns these into sector + dividend
    data (synthesized `COMPANY_OVERVIEW`) so **Allocation-by-Sector and Income/Dividends work
@@ -173,7 +191,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       top 3 with thesis). `build-data.mjs` embeds it as `data.picks`; the dashboard reads it
       directly (the old Kyle note is retired).
 
-3c. **Options page** (the Options tab). Fully Robinhood-driven; can run every snapshot
+3c. **Options page** (the Options tab) — **EVERY-RUN** (cheap; run it on `FETCH_LIGHT` too).
+   Fully Robinhood-driven; can run every snapshot
    (cheap) or once/day with picks.
    1. `mcp__claude_ai_Robinhood__get_option_orders { account_number: <account> }`
       → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).

@@ -19,6 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { isMarketOpen } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -36,18 +37,7 @@ function tryNode(script, extra = []) {
   catch (e) { log(`⚠️  ${script} failed (non-fatal): ${e.message.split('\n')[0]}`); return false; }
 }
 
-// --- #3 deterministic market-hours gate -------------------------------------
-// US cash session: Mon–Fri 09:30–16:00 America/New_York. (Market holidays aren't modeled — an
-// off-day fire just produces a harmless duplicate snapshot; widen/ignore as you like.)
-function isMarketOpen(now = new Date()) {
-  const p = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).formatToParts(now).reduce((o, x) => (o[x.type] = x.value, o), {});
-  if (['Sat', 'Sun'].includes(p.weekday)) return false;
-  const mins = (parseInt(p.hour, 10) % 24) * 60 + parseInt(p.minute, 10);
-  return mins >= 570 && mins < 960; // 9:30 .. 16:00
-}
-
+// Deterministic market-hours gate (shared with preflight.mjs via market.mjs).
 const open = isMarketOpen();
 log(`market is ${open ? 'OPEN' : 'CLOSED'} · label "${label}"`);
 if (!open && flags.has('--require-open')) { log('closed + --require-open → nothing to do, exiting clean.'); process.exit(0); }
