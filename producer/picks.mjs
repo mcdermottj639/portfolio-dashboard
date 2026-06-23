@@ -59,33 +59,32 @@ function fundScore({ pe, pb, divYield, revGrowth, fwdPE }) {
   return clamp(Math.round(s), 0, 10);
 }
 
-// Social: retail-sentiment sub-score (0–10), centered on a NEUTRAL 5 so untracked names are
-// unaffected beyond the weight rescale. Sentiment-weighted (bullish crowd/news lifts, bearish
-// drags), amplified by how much real attention a name has (low ApeWisdom rank + rising mentions),
-// and crowding-capped so a top-few euphoric name can't score the max on hype alone.
-//   t = data.social.tickers[TICKER] | undefined  (fields: tracked, rank, mentionChg, sentiment, news{score})
+// Social: retail-BUZZ sub-score (0–10), centered on a NEUTRAL 5 so names with no chatter are
+// unaffected beyond the weight rescale. ApeWisdom's free feed gives attention (mention rank +
+// velocity), not a bullish/bearish sentiment, so this scores ATTENTION: a name climbing the
+// mention board and surging in volume gets lifted (rising retail interest on an oversold pick is a
+// potential bounce catalyst). Velocity is damped when absolute mentions are tiny (low-count % moves
+// are noise), and a top-5 euphoric name is crowding-capped so we don't reward a blow-off peak.
+//   t = data.social.tickers[TICKER] | undefined  (ApeWisdom: tracked, rank, mentions, mentionChg)
 function socialScore(t) {
-  if (!t || t.tracked === false) return 5;                       // no coverage → neutral
-  const parts = [];
-  if (t.sentiment != null && Number.isFinite(t.sentiment)) parts.push(t.sentiment);
-  if (t.news && t.news.score != null && Number.isFinite(t.news.score)) parts.push(t.news.score);
-  if (!parts.length) return 5;                                   // tracked but no sentiment → neutral
-  const s = parts.reduce((a, b) => a + b, 0) / parts.length;     // [-1, 1]
-  const rank = num(t.rank), chg = num(t.mentionChg);
-  const rankAmp = rank == null ? 0 : clamp((200 - rank) / 200, 0, 1);   // buzz: low rank = strong
-  const velAmp = chg == null ? 0 : clamp(chg / 100, -0.5, 1);           // surging mentions amplify
-  const a = clamp(1 + 0.4 * rankAmp + 0.3 * velAmp, 0.6, 1.4);
-  let socialS = clamp(5 + s * 3.5 * a, 0, 10);
-  if (rank != null && rank <= 5 && s > 0) socialS = Math.min(socialS, 7); // crowding cap (blow-off top)
+  if (!t || t.tracked === false) return 5;                       // no retail chatter → neutral
+  const rank = num(t.rank), chg = num(t.mentionChg), mentions = num(t.mentions);
+  // Attention from rank (1 = most-mentioned of the universe → 1.0; rank 200 → 0).
+  const att = rank == null ? 0 : clamp((200 - rank) / 200, 0, 1);
+  // Velocity from mention growth, damped when there are few absolute mentions (noise guard).
+  const volOK = mentions == null ? 0 : clamp(mentions / 20, 0, 1);
+  const vel = chg == null ? 0 : clamp(chg / 300, -0.3, 1) * volOK;
+  let socialS = clamp(5 + att * 3.0 + vel * 1.5, 0, 10);         // attention lifts; absence stays ~5
+  if (rank != null && rank <= 5) socialS = Math.min(socialS, 7); // crowding cap (euphoric peak)
   return +socialS.toFixed(2);
 }
 // Short display flag for the picks table.
 function buzzLabel(t, social) {
-  if (!t || t.tracked === false) return '—';
-  if (social >= 7) return 'Bullish buzz';
-  if (social <= 3) return 'Bearish buzz';
+  if (!t || t.tracked === false) return 'Quiet';
   if (num(t.rank) != null && num(t.rank) <= 5) return 'Crowded';
-  return 'Neutral';
+  if (social >= 7.5) return 'High buzz';
+  if (social >= 6) return 'Rising buzz';
+  return 'On the radar';
 }
 
 // Entry / target / stop from price + 52-week range; risk/reward from those levels.

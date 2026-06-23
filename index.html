@@ -466,7 +466,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v39'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v40'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2043,7 +2043,7 @@ function renderPicksTable(){
     +'</tr>';
   }
   h+='</tbody></table>';
-  h+='<div class="fund-note">Composite = Tech / RSI (33%) · Fundamentals / rev-growth + Fwd P/E (28%) · R/R from entry/target/stop (19%) · <b>Social</b> — retail sentiment, crowding-capped (20%). Social is neutral (5) for names with no buzz; hover it for the read. Live price &amp; RSI refresh on load; other columns are from the '+ANALYSIS_DATE+' scan. ✓ OWN = you already hold it.</div>';
+  h+='<div class="fund-note">Composite = Tech / RSI (33%) · Fundamentals / rev-growth + Fwd P/E (28%) · R/R from entry/target/stop (19%) · <b>Social</b> — retail buzz: mention rank + velocity, crowding-capped (20%). Social is neutral (5) for names with no retail chatter; hover it for the read. Live price &amp; RSI refresh on load; other columns are from the '+ANALYSIS_DATE+' scan. ✓ OWN = you already hold it.</div>';
   el.innerHTML=h;
 }
 
