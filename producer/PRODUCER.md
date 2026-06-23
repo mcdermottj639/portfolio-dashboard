@@ -250,6 +250,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
   snapshot is always preferred over a broken one — the freshness bar shows the data is old.
 - If a Robinhood call fails during fetching, stop there (don't run `run.mjs`); keep the last good
   `data.json`.
+- **If `run.mjs` exits non-zero — including a push failure (403 / proxy / egress) — STOP.** Do not
+  attempt manual git recovery, alternate push methods (GitHub MCP, etc.), branch surgery, or file
+  searches. A failed push is almost always a transient proxy/egress blip; the build is fine and the
+  next scheduled run republishes. Improvising here just stalls the unattended run on permission
+  prompts — exactly what we avoid.
 - The **freshness watchdog** (`.github/workflows/freshness.yml`) opens a GitHub issue if
   `data.json` goes >3h without a refresh during market hours, and auto-closes it on recovery — so
   a stalled run never goes unnoticed.

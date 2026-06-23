@@ -96,7 +96,11 @@ for (let i = 1; i <= 4 && !pushed; i++) {
     git(['push', 'origin', 'HEAD:main'], 'inherit');
     pushed = true;
   } catch (e) {
-    if (i === 4) { console.error('[run] publish failed after 4 attempts:', e.message.split('\n')[0]); process.exit(1); }
+    if (i === 4) {
+      console.error('[run] publish failed after 4 attempts:', e.message.split('\n')[0]);
+      console.error('[run] STOP — do NOT attempt manual git recovery, alternate push methods, or file searches. This is usually a transient proxy/egress (e.g. 403); the data.json build is fine and the NEXT scheduled run will republish it. Ending now.');
+      process.exit(1);
+    }
     const wait = 2 ** i; log(`publish failed (main may have moved), retrying in ${wait}s…`);
     sleep(wait);
   }
