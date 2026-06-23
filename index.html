@@ -466,7 +466,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v40'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v41'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1125,6 +1125,29 @@ function _renderPos(rows){
     const sVal=smallRows.reduce((s,r)=>s+r.val,0), sPnlD=smallRows.reduce((s,r)=>s+r.pnlD,0), sCost=smallRows.reduce((s,r)=>s+r.cost,0);
     const sPnlP=sCost>0?(sPnlD/sCost)*100:0; const syms=smallRows.sort((a,b)=>b.val-a.val).map(r=>r.symbol).join(', ');
     h+=`<tr style="background:var(--surface-2);border-top:2px solid var(--surface-2)" title="${syms}"><td colspan="2" style="color:#9ca3af;font-size:12px;font-weight:600;padding:9px 8px">${smallRows.length} small positions &lt;$${SMALL_THR}<span style="font-weight:400;margin-left:4px;font-size:11px">(${syms.length>60?syms.slice(0,60)+'…':syms})</span></td><td class="tc"><span class="badge" style="background:var(--surface-2);color:#9ca3af;font-size:10px">GROUPED</span></td><td class="tr" colspan="2" style="color:#9ca3af;font-size:12px">combined</td><td class="tr" style="font-weight:600">${fmtD(sVal)}</td><td class="tr"><span class="${sc(sPnlD)}">${fmtD(sPnlD)}</span></td><td class="tr"><span class="badge" style="background:${sPnlP>=0?'#d1fae5':'#fee2e2'};color:${sPnlP>=0?'#065f46':'#991b1b'}">${fmtP(sPnlP)}</span></td><td class="tr">—</td></tr>`;
+  }
+  // Totals row — across ALL shown positions (main + grouped smalls). P&L % is on cost basis;
+  // Day % is value-weighted over positions that have a day move.
+  const allRows=rows.filter(r=>r.val>0);
+  if(allRows.length){
+    const tVal=allRows.reduce((s,r)=>s+r.val,0);
+    const tCost=allRows.reduce((s,r)=>s+(r.cost||0),0);
+    const tPnlD=allRows.reduce((s,r)=>s+(r.pnlD||0),0);
+    const tPnlP=tCost>0?(tPnlD/tCost)*100:0;
+    const tPct=allRows.reduce((s,r)=>s+(r.pct||0),0);
+    let dNum=0,dDen=0; for(const r of allRows){ if(r.dayP!=null){ dNum+=r.val*r.dayP; dDen+=r.val; } }
+    const tDayP=dDen>0?dNum/dDen:null;
+    h+=`<tr style="border-top:2px solid #9ca3af;font-weight:800;background:var(--surface-2)">`
+      +`<td style="padding:10px 8px">TOTAL</td>`
+      +`<td style="text-align:right">${fmt(tPct,1)}%</td>`
+      +`<td></td><td></td>`
+      +`<td style="text-align:right">${fmtD(tCost)}</td>`
+      +`<td></td>`
+      +`<td style="text-align:right">${fmtD(tVal)}</td>`
+      +`<td style="text-align:right"><span class="${sc(tPnlD)}">${fmtD(tPnlD)}</span></td>`
+      +`<td style="text-align:right"><span class="badge" style="background:${tPnlP>=0?'#d1fae5':'#fee2e2'};color:${tPnlP>=0?'#065f46':'#991b1b'}">${fmtP(tPnlP)}</span></td>`
+      +`<td style="text-align:right">${tDayP!=null?`<span class="${sc(tDayP)}">${fmtP(tDayP)}</span>`:'—'}</td>`
+    +`</tr>`;
   }
   h+='</tbody></table>';
   const el=document.getElementById('pos-table'); if(el)el.innerHTML=h;
