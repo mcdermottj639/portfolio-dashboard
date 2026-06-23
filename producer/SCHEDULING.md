@@ -31,34 +31,36 @@ Make sure the environment has the **Robinhood** and **Alpha Vantage** MCP connec
 macro/fundamentals sections degrade to "—" (everything else still works).
 
 ### 3. Create a scheduled trigger
-Add a **schedule** that starts a session on `main` **hourly during US market hours** on weekdays,
-running the prompt below. The producer's market-hours guard skips any fire when the market is
-closed, so the *exact* anchor time is cosmetic — pick whichever is least effort:
+Run **3×/day on weekdays** — market open, midday, and close. Re-fetching the heavy price history
+every hour was the cost sink; now `preflight.mjs` fetches it once (the open run) and carries it
+forward, so three runs/day fully cover the tape cheaply. Set these times in **America/New_York**:
 
-- **Simplest (no CLI):** the web **hourly** preset. It updates every hour the market is open; the
-  first fresh snapshot each day lands on the first fire after the 09:30 ET open.
-- **Pinned to the top of the hour (custom cron via `/schedule update`):** `0 9-16 * * 1-5` in
-  **America/New_York** — first run 09:00 ET, then hourly through the 16:00 close, Mon–Fri. The web
-  preset list can't express a fixed start time, so this needs the CLI's `/schedule update`.
-  Note: the cash market opens at 09:30, so the 09:00 fire no-ops (guard) and the first live
-  snapshot posts at 10:00; use `30 9-16 * * 1-5` instead if you want a push right at the 09:30 open.
-- **UTC-only cron fallback:** `0 13-20 * * 1-5` (09:00 ET in EDT); widen to `0 13-21 * * 1-5` to
-  also cover EST. Off-hours fires no-op via the guard.
+- **Open** `30 9 * * 1-5`  (09:30 ET — full fetch, history refreshed)
+- **Midday** `30 12 * * 1-5`  (12:30 ET — light fetch, history carried forward)
+- **Close** `0 16 * * 1-5`  (16:00 ET — light fetch, captures the closing snapshot)
+
+The web UI can't express all three in one cron (the close run is on minute `0`, the others on `30`),
+so add **two or three triggers** with the same prompt — or use the CLI `/schedule update`. UTC
+fallback (no per-trigger TZ): `30 13 * * 1-5`, `30 16 * * 1-5`, `0 20 * * 1-5` for EDT (add an hour
+in EST). **Stray/extra fires are safe and nearly free:** `preflight.mjs` returns `SKIP` on weekends
+and once the day's closing snapshot is already taken, so the agent stops immediately without fetching.
 
 ### 4. The trigger prompt
 Use exactly this as the scheduled prompt:
 
-> Run the portfolio dashboard producer by following `producer/PRODUCER.md` exactly. Pull the live
-> Robinhood data (steps 2–3c) and `Write` each raw result into `producer/raw/` — never use
-> `cp`/`mv`/shell variables. If any Robinhood call fails, stop without running the build. Once all
-> raw files are saved, run **`node producer/run.mjs "<label>"`** (label = current time like
-> `Jun 22 2026, 3:45 PM ET`). That one command handles the market-hours gate, optional Alpha
-> Vantage fetch, picks/options, the **encrypted** build, validation, and the commit + push to
-> `main` — don't run those steps by hand.
+> Run the portfolio dashboard producer by following `producer/PRODUCER.md` exactly. **First run
+> `node producer/preflight.mjs` and obey its directive:** if it prints `SKIP`, stop immediately and
+> do nothing; if `FETCH_ALL`, do the full fetch (steps 1–3c); if `FETCH_LIGHT`, fetch only the
+> EVERY-RUN items (portfolio, positions, quotes, VIX, options) and skip historicals, fundamentals,
+> the Alpha Vantage refresh and the picks rebuild. `Write` each raw result into `producer/raw/` —
+> never use `cp`/`mv`/shell variables. If any Robinhood call fails, stop without building. Then run
+> **`node producer/run.mjs "<label>"`** (label = current time like `Jun 23 2026, 12:30 PM ET`),
+> which handles the build, encryption, validation and the commit + push to `main`. Don't run those
+> steps by hand.
 
-The orchestrator owns the market-hours decision now (it builds + pushes by default so social/news
-stay fresh; it won't push a plaintext or broken `data.json`), so the agent no longer has to judge
-whether the market is open.
+`preflight.mjs` owns the run-mode decision (deterministic, from the committed `data.json`), and
+`run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
+market hours or how much to fetch.
 
 ## Verify it's working
 - **Commits:** `data.json` on `main` should get a new commit roughly hourly during market hours,
