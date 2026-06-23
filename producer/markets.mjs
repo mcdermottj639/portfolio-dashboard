@@ -15,6 +15,8 @@
 export const MARKET_INDEX   = ['SPY', 'QQQ', 'DIA', 'IWM'];
 export const MARKET_RISK    = ['GLD', 'TLT', 'HYG', 'IBIT'];
 export const MARKET_SECTORS = ['XLK', 'XLC', 'XLY', 'XLF', 'XLV', 'XLI', 'XLP', 'XLE', 'XLU', 'XLB', 'XLRE'];
+// International benchmarks for the "US vs International" chart (developed ex-US + emerging).
+export const MARKET_INTL    = ['EFA', 'EEM'];
 
 // De-duplicated union, in a stable order, for the fetch lists.
-export const MARKET_SYMBOLS = [...new Set([...MARKET_INDEX, ...MARKET_RISK, ...MARKET_SECTORS])];
+export const MARKET_SYMBOLS = [...new Set([...MARKET_INDEX, ...MARKET_RISK, ...MARKET_SECTORS, ...MARKET_INTL])];
