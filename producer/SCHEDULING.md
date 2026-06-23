@@ -56,7 +56,10 @@ Use exactly this as the scheduled prompt:
 > never use `cp`/`mv`/shell variables. If any Robinhood call fails, stop without building. Then run
 > **`node producer/run.mjs "<label>"`** (label = current time like `Jun 23 2026, 12:30 PM ET`),
 > which handles the build, encryption, validation and the commit + push to `main`. Don't run those
-> steps by hand.
+> steps by hand. **If `run.mjs` exits non-zero (e.g. a build error or a push 403), STOP — do NOT
+> attempt any manual git recovery, alternate push methods, branch surgery, or file searches. A
+> failed push is almost always a transient proxy/egress blip; the next scheduled run republishes.
+> End the session.**
 
 `preflight.mjs` owns the run-mode decision (deterministic, from the committed `data.json`), and
 `run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
