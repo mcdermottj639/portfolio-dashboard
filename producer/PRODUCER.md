@@ -36,7 +36,9 @@ positions, otherwise the Markets tab shows "—" for everything you don't hold:
 SPY QQQ DIA IWM            (indexes)
 GLD TLT HYG IBIT           (risk gauges)
 XLK XLC XLY XLF XLV XLI XLP XLE XLU XLB XLRE   (SPDR sectors)
+EFA EEM                    (international: developed ex-US, emerging)
 ```
+(`producer/markets.mjs` `MARKET_SYMBOLS` is the source of truth — keep this list in sync with it.)
 
 Symbols for **day** history (YTD): top 15 holdings by value + every market symbol above.
 Symbols for **month** history (5Y stats): every market symbol above **+ your top 15 holdings**
