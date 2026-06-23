@@ -11,7 +11,7 @@
 //      (+ optional AV COMPANY_OVERVIEW for revenue growth / forward P/E)
 //   3. buildPicks() scores them and emits the candidates[] + picks[] the dashboard renders.
 //
-// Scoring weights match the dashboard: technical 40% · fundamentals 35% · risk/reward 25%.
+// Scoring weights match the dashboard: technical 33% · fundamentals 28% · risk/reward 19% · social 20%.
 
 export const SCAN_ID = '17e8f5a7-395f-4f22-bba8-f287d39b6e57';
 export const N_FINALISTS = 12;   // how many to deep-dive (fundamentals + AV)
@@ -59,6 +59,35 @@ function fundScore({ pe, pb, divYield, revGrowth, fwdPE }) {
   return clamp(Math.round(s), 0, 10);
 }
 
+// Social: retail-sentiment sub-score (0–10), centered on a NEUTRAL 5 so untracked names are
+// unaffected beyond the weight rescale. Sentiment-weighted (bullish crowd/news lifts, bearish
+// drags), amplified by how much real attention a name has (low ApeWisdom rank + rising mentions),
+// and crowding-capped so a top-few euphoric name can't score the max on hype alone.
+//   t = data.social.tickers[TICKER] | undefined  (fields: tracked, rank, mentionChg, sentiment, news{score})
+function socialScore(t) {
+  if (!t || t.tracked === false) return 5;                       // no coverage → neutral
+  const parts = [];
+  if (t.sentiment != null && Number.isFinite(t.sentiment)) parts.push(t.sentiment);
+  if (t.news && t.news.score != null && Number.isFinite(t.news.score)) parts.push(t.news.score);
+  if (!parts.length) return 5;                                   // tracked but no sentiment → neutral
+  const s = parts.reduce((a, b) => a + b, 0) / parts.length;     // [-1, 1]
+  const rank = num(t.rank), chg = num(t.mentionChg);
+  const rankAmp = rank == null ? 0 : clamp((200 - rank) / 200, 0, 1);   // buzz: low rank = strong
+  const velAmp = chg == null ? 0 : clamp(chg / 100, -0.5, 1);           // surging mentions amplify
+  const a = clamp(1 + 0.4 * rankAmp + 0.3 * velAmp, 0.6, 1.4);
+  let socialS = clamp(5 + s * 3.5 * a, 0, 10);
+  if (rank != null && rank <= 5 && s > 0) socialS = Math.min(socialS, 7); // crowding cap (blow-off top)
+  return +socialS.toFixed(2);
+}
+// Short display flag for the picks table.
+function buzzLabel(t, social) {
+  if (!t || t.tracked === false) return '—';
+  if (social >= 7) return 'Bullish buzz';
+  if (social <= 3) return 'Bearish buzz';
+  if (num(t.rank) != null && num(t.rank) <= 5) return 'Crowded';
+  return 'Neutral';
+}
+
 // Entry / target / stop from price + 52-week range; risk/reward from those levels.
 function levels(price, hi52, lo52) {
   const entryLo = +(price * 0.97).toFixed(2), entryHi = +price.toFixed(2);
@@ -82,7 +111,8 @@ const fmtPct = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 //  finalists: [{ticker, name, price, rsi, marketCap}]  (from scanRows, already sliced)
 //  fundBySym: { SYM: <RH get_equity_fundamentals result row> }
 //  ovBySym:   { SYM: <AV COMPANY_OVERVIEW object> }  (optional / may be {})
-export function buildPicks(finalists, fundBySym, ovBySym, label) {
+//  socialMap: { SYM: <data.social.tickers entry> }   (optional / may be {} — neutral when absent)
+export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
   const today = new Date();
   const scored = finalists.map((f) => {
     const fund = fundBySym[f.ticker] || {};
@@ -96,11 +126,14 @@ export function buildPicks(finalists, fundBySym, ovBySym, label) {
     const fundS = fundScore({ pe, pb, divYield, revGrowth, fwdPE });
     const L = levels(f.price, hi52, lo52);
     const rrScore = L.rr == null ? 4 : clamp(Math.round(L.rr * 2.5), 0, 10);
-    const composite = +(tech * 0.4 + fundS * 0.35 + rrScore * 0.25).toFixed(2);
+    const socT = socialMap[f.ticker];
+    const social = socialScore(socT);
+    const buzz = buzzLabel(socT, social);
+    const composite = +(tech * 0.33 + fundS * 0.28 + rrScore * 0.19 + social * 0.20).toFixed(2);
     const pctOffHigh = hi52 && hi52 > 0 ? ((f.price / hi52 - 1) * 100) : null;
     return {
       ticker: f.ticker, company: f.name, sector, price: f.price, rsi: Math.round(f.rsi),
-      tech, fund: fundS, rrScore, composite,
+      tech, fund: fundS, rrScore, social, buzz, composite,
       revGrowth: revGrowth != null ? fmtPct(revGrowth) : '—',
       fwdPE: fwdPE != null ? fwdPE.toFixed(1) : (pe != null ? pe.toFixed(1) + ' (ttm)' : '—'),
       rr: L.rr != null ? L.rr.toFixed(1) + ':1' : '—',
@@ -112,7 +145,7 @@ export function buildPicks(finalists, fundBySym, ovBySym, label) {
   const candidates = scored.slice(0, N_CANDIDATES).map((c, i) => ({
     rank: i + 1, ticker: c.ticker, company: c.company, price: c.price, rsi: c.rsi,
     tech: c.tech, revGrowth: c.revGrowth, fwdPE: c.fwdPE, fund: c.fund,
-    rr: c.rr, rrScore: c.rrScore, composite: c.composite, flag: c.flag,
+    rr: c.rr, rrScore: c.rrScore, social: c.social, buzz: c.buzz, composite: c.composite, flag: c.flag,
   }));
 
   const picks = scored.slice(0, N_PICKS).map((c) => {
@@ -132,7 +165,7 @@ export function buildPicks(finalists, fundBySym, ovBySym, label) {
       tp1: { price: L.tp1, pct: fmtPct(L.tp1pct) }, tp2: { price: L.tp2, pct: fmtPct(L.tp2pct) },
       sl: { price: L.stop, pct: fmtPct(L.slpct) }, rr: c.rr,
       confidence: clamp(Math.round(c.composite * 9), 30, 90),
-      timeframe: '4–8 weeks', rsi: c.rsi, composite: c.composite, tvSymbol: c.ticker, thesis,
+      timeframe: '4–8 weeks', rsi: c.rsi, social: c.social, buzz: c.buzz, composite: c.composite, tvSymbol: c.ticker, thesis,
     };
   });
 

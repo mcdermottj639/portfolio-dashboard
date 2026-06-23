@@ -239,7 +239,7 @@ if (existsSync(newsDir)) {
 {
   const heldSyms = (positions || []).map((p) => p.symbol).filter(Boolean);
   const pickSyms = (data.picks && Array.isArray(data.picks.candidates))
-    ? data.picks.candidates.map((c) => c.symbol).filter(Boolean) : [];
+    ? data.picks.candidates.map((c) => c.ticker).filter(Boolean) : [];
   const wantSet = [...new Set([...heldSyms, ...pickSyms].map((s) => String(s).toUpperCase()))];
 
   let social = null;
