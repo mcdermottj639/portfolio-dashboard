@@ -466,7 +466,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v41'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v42'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2158,7 +2158,7 @@ function renderMarketsShell(){
     <div class="card"><div class="card-title"><span>📈 Indexes</span></div><div id="mkt-index"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching quotes…</div></div></div>
     <div class="card"><div class="card-title"><span>🌡️ Risk Gauges <span class="card-hint">(gold · bonds · credit · crypto)</span></span></div><div id="mkt-risk"></div></div>
     <div class="card"><div class="card-title"><span>🗺️ Sector Heatmap <span class="card-hint">(today · SPDR sectors)</span></span></div><div id="mkt-sectors"></div></div>
-    <div class="card"><div class="card-title"><span>🌍 US vs International <span class="card-hint">(YTD · S&amp;P 500 vs developed &amp; emerging)</span></span></div><div class="chart-wrap" style="height:240px"><canvas id="mkt-chart"></canvas></div></div>
+    <div class="card"><div class="card-title"><span>🌍 US vs International <span class="card-hint">(YTD · S&amp;P 500 vs developed &amp; emerging)</span></span></div><div class="chart-wrap" style="height:240px"><canvas id="mkt-chart"></canvas></div><div id="mkt-vs-stats"></div></div>
     <div class="card"><div class="card-title"><span>🏦 Macro Signals</span></div><div id="mkt-macro"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching macro…</div></div></div>
     <div class="card"><div class="card-title"><span>📊 Breadth, Movers &amp; News <span class="card-hint">VIX · your book + candidates · sentiment</span></span></div><div id="mkt-breadth"><div class="tech-empty">Loading…</div></div></div>
     <div class="card"><div class="card-title"><span>🗣️ Retail Buzz <span class="card-hint">most-talked-about on Reddit · ApeWisdom</span></span></div><div id="mkt-social"><div class="tech-empty">Loading…</div></div></div>
@@ -2183,7 +2183,12 @@ async function fetchMarkets(){
     for(const sym of tileSyms){ const q=qMap[sym]; if(!q||!(q.px>0))continue; const yd=yH[sym]; if(yd&&yd.length&&yd[0].c>0)q.ytd=(q.px/yd[0].c-1)*100; const fv=fH[sym]; if(fv&&fv.length&&fv[0].c>0)q.fiveyr=(q.px/fv[0].c-1)*100; }
     renderMktTiles(qMap);
   }catch(e){}
-  try{ const h=await fetchHist(['SPY','EFA','EEM']); renderMktChart(h); }catch(e){}
+  try{
+    const h=await fetchHist(['SPY','EFA','EEM']); renderMktChart(h);
+    const f=new Date(); f.setFullYear(f.getFullYear()-5);
+    const mo=await fetchHistG(['SPY','EFA','EEM'], f.toISOString().replace(/\.\d+Z$/,'Z'), 'month');
+    renderMktVsStats(h, mo);
+  }catch(e){}
   try{ const m=await fetchMacro(); renderMktMacro(m,qMap); }catch(e){}
   const t=document.getElementById('mkt-asof'); if(t)t.textContent='Live as of '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   try{ await loadPicksData(); renderBreadth(); }catch(e){}
@@ -2212,6 +2217,17 @@ function renderMktTiles(qMap){
 }
 
 function renderMktChart(h){ const c=document.getElementById('mkt-chart'); if(!c||!h.SPY||h.SPY.length<2)return; const norm=a=>{const c0=a[0].c;return a.map(b=>(b.c/c0-1)*100);}; const ax=h.SPY.map(b=>b.t); const ds=[{label:'US (S&P 500)',data:norm(h.SPY),borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15}]; if(h.EFA&&h.EFA.length>1)ds.push({label:'Intl Developed (EFA)',data:norm(h.EFA),borderColor:'#10b981',borderWidth:2,pointRadius:0,tension:0.15}); if(h.EEM&&h.EEM.length>1)ds.push({label:'Emerging (EEM)',data:norm(h.EEM),borderColor:'#f59e0b',borderWidth:2,pointRadius:0,tension:0.15}); new Chart(c,{type:'line',data:{labels:ax,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:x=>' '+x.dataset.label+': '+(x.parsed.y>=0?'+':'')+x.parsed.y.toFixed(1)+'%'}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:'#9ca3af'},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10},color:'#9ca3af'},grid:{color:'#f3f4f6'}}}}}); }
+
+function renderMktVsStats(h,mo){
+  const el=document.getElementById('mkt-vs-stats'); if(!el)return;
+  const series=[{k:'SPY',n:'US (S&P 500)',c:'#6366f1'},{k:'EFA',n:'Intl Developed',c:'#10b981'},{k:'EEM',n:'Emerging',c:'#f59e0b'}];
+  const ret=a=>(a&&a.length>1&&a[0].c>0)?((a[a.length-1].c/a[0].c-1)*100):null;
+  const pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%', pc=v=>v==null?'#9ca3af':v>=0?'#10b981':'#ef4444';
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">'+series.map(s=>{
+    const ytd=ret(h&&h[s.k]), fv=ret(mo&&mo[s.k]);
+    return '<div style="background:var(--surface-2);border-radius:8px;padding:8px 10px;border-left:3px solid '+s.c+'"><div style="font-size:10.5px;color:#9ca3af;font-weight:600">'+s.n+'</div><div style="font-size:11.5px;margin-top:3px">YTD <b style="color:'+pc(ytd)+'">'+pf(ytd)+'</b> <span style="color:#d1d5db">·</span> 5Y <b style="color:'+pc(fv)+'">'+pf(fv)+'</b></div></div>';
+  }).join('')+'</div>';
+}
 
 function renderMktMacro(m,qMap){ const el=document.getElementById('mkt-macro'); if(!el||!m)return; const vix=m.vix||(qMap&&qMap.VIXY&&null); const vc=m.vix?(m.vix>25?'#ef4444':m.vix>18?'#f97316':'#10b981'):'#374151'; el.innerHTML=`<div class="macro-grid"><div class="macro-tile"><div class="macro-label">10yr Treasury</div><div class="macro-val">${m.tenYrYield?fmt(m.tenYrYield,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">Fed Funds</div><div class="macro-val">${m.fedFunds?fmt(m.fedFunds,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">CPI YoY</div><div class="macro-val" style="color:${m.cpi!=null?(m.cpi>3?'#ef4444':m.cpi>2?'#f97316':'#10b981'):'#374151'}">${m.cpi!=null?fmt(m.cpi,1)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">VIX</div><div class="macro-val" style="color:${vc}">${m.vix?fmt(m.vix,1):'—'}</div></div></div>`; }
 
