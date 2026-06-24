@@ -87,7 +87,8 @@ parity with the scheduled Claude agent (modulo the Picks-universe note below + d
    ALPHAVANTAGE_KEY=<key>                       # optional; enables macro + AV overviews
    ```
    Egress allowlist (if your Railway plan restricts it): `api.robinhood.com`, `apewisdom.io`,
-   `www.alphavantage.co`, `github.com`.
+   `www.alphavantage.co`, `github.com`, `query1.finance.yahoo.com`, `stooq.com` (the last two feed the
+   VIX tile).
 
 ### No authenticator option? (passkey/SMS-only accounts)
 Robinhood has moved many accounts to passkey/device security with **no authenticator-app toggle** in

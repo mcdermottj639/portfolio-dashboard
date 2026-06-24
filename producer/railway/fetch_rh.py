@@ -534,20 +534,40 @@ def fetch_picks(rh):
 
 
 def fetch_vix(rh):
-    """Best-effort. RH index marketdata for VIX; on any failure VIX carries forward / shows —."""
-    VIX_ID = "3b912aa2-88f9-4682-8ae3-e39520bdf4db"  # stable; see PRODUCER.md
-    try:
-        from robin_stocks.robinhood.helper import request_get
-        url = f"https://api.robinhood.com/marketdata/quotes/{VIX_ID}/?bounds=trading"
-        q = request_get(url)
-        val = (q or {}).get("last_trade_price") or (q or {}).get("mark_price")
-        if val:
-            write_raw("index-quotes.json", {"quotes": [{"symbol": "VIX", "value": str(val)}]})
-            log(f"VIX: {val}")
-            return
-    except Exception as e:
-        log(f"⚠️  VIX fetch failed (carry forward): {e}")
-    log("VIX: not fetched this run")
+    """VIX (the CBOE volatility index). Robinhood serves index quotes through an endpoint
+    robin_stocks doesn't expose, so pull it from a free, keyless source — Yahoo first, stooq as a
+    fallback. On total failure VIX carries forward / shows —. (If your Railway egress is restricted,
+    allowlist query1.finance.yahoo.com and stooq.com.)"""
+    import requests
+    UA = {"User-Agent": "Mozilla/5.0"}
+
+    def _yahoo():
+        r = requests.get("https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX",
+                         params={"interval": "1d", "range": "1d"}, headers=UA, timeout=12)
+        r.raise_for_status()
+        return r.json()["chart"]["result"][0]["meta"]["regularMarketPrice"]
+
+    def _stooq():
+        r = requests.get("https://stooq.com/q/l/",
+                         params={"s": "^vix", "f": "sd2t2ohlcv", "h": "", "e": "csv"}, headers=UA, timeout=12)
+        r.raise_for_status()
+        rows = [x for x in r.text.strip().splitlines() if x]
+        return float(rows[-1].split(",")[6])  # Symbol,Date,Time,Open,High,Low,Close,Volume
+
+    val = None
+    for name, fn in (("yahoo", _yahoo), ("stooq", _stooq)):
+        try:
+            v = float(fn())
+            if v > 0:
+                val = v
+                log(f"VIX: {val} (via {name})")
+                break
+        except Exception as e:
+            log(f"⚠️  VIX via {name} failed: {e}")
+    if val is not None:
+        write_raw("index-quotes.json", {"quotes": [{"symbol": "VIX", "value": str(val)}]})
+    else:
+        log("VIX: not fetched this run (carry forward)")
 
 
 def main():
