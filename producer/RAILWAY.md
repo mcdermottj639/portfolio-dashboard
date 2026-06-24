@@ -68,6 +68,11 @@ parity with the scheduled Claude agent (modulo the Picks-universe note below + d
    - Settings → **Restart Policy = Never** (it's a cron job, not a server).
    - Settings → **Watch Paths = `producer/railway/**`** so the producer's own `data.json` commits
      don't trigger pointless rebuilds.
+   - **Add a Volume mounted at `/data`** (Settings/Volumes → New Volume). This persists the
+     robin_stocks session pickle (entrypoint points `HOME` there), so Robinhood only does a device
+     approval on the **first** run / after expiry — not every cron tick. Without it the producer
+     re-challenges every run, which hangs unattended runs. Robinhood will re-prompt every few weeks
+     when the session expires; approve it on your phone (you'll see a "new login" alert).
 4. **Service Variables** (Railway → Variables). Set `RH_MFA_SECRET` **or** `RH_SESSION_B64` (not both
    needed):
    ```

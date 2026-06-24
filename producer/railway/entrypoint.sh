@@ -41,7 +41,13 @@ else
 fi
 
 mkdir -p producer/raw
-python3 /app/fetch_rh.py
+# Persist the robin_stocks session across runs: point HOME (where robin_stocks keeps its token
+# pickle, ~/.tokens) at TOKEN_HOME — mount a Railway Volume there so the device-approved login is
+# remembered and Robinhood only challenges on the first run / after expiry. Without a volume it still
+# works, but re-challenges every run (fine for testing, not for the unattended cron).
+export TOKEN_HOME="${TOKEN_HOME:-/data}"
+mkdir -p "$TOKEN_HOME/.tokens" 2>/dev/null || true
+HOME="$TOKEN_HOME" python3 /app/fetch_rh.py
 
 # DRY_RUN test mode: the fetch logged what it WOULD write (no files written) — stop here cleanly,
 # don't build or push anything.
