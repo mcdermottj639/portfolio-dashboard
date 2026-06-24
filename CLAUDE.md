@@ -3,6 +3,14 @@
 Orientation for future Claude sessions. Read this first. Deep producer detail lives in
 `producer/PRODUCER.md` (runbook) and `producer/SCHEDULING.md` (the scheduled job).
 
+> ## 📌 Standing rule — keep this file current
+> **Whenever you change the architecture, build pipeline, data model, scheduling, or add/remove a
+> feature, update the relevant section of this file in the SAME change** (and bump the version note
+> below if `index.html`/`sw.js` changed). Future sessions rely on this file being accurate — don't
+> wait to be asked. If you touch the producer flow, also check `PRODUCER.md`/`SCHEDULING.md` stay in
+> sync. A quick self-check before finishing: did anything here go stale (file paths, the composite
+> weights, the version, the feature list)? Fix it now.
+
 ## What this is
 A personal **portfolio dashboard PWA** served as a **static site on GitHub Pages**
 (`https://mcdermottj639.github.io/portfolio-dashboard/`). The repo is **public**, so all holdings
@@ -62,12 +70,22 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   `ALPHAVANTAGE_KEY` / `PF_AV_NEWS`. Network egress allowlist must include `apewisdom.io` (and
   `www.alphavantage.co` if using direct AV).
 
+## Local dev / preview (no live connectors)
+- `node producer/make-sample-data.mjs` writes a **plaintext** sample `data.json` (fake holdings) so
+  the consumer renders without the real encrypted snapshot or any MCP access.
+- `node producer/serve.mjs` serves the static site locally to eyeball UI changes.
+- `producer/gen-icons.mjs` regenerates the PWA icons. **Never commit a plaintext `data.json`** — restore
+  the real one with `git checkout origin/main -- data.json` before committing.
+
 ## Verify before shipping (no network needed)
 - Inline JS parse: extract `<script>` blocks and `new Function(src)` each (skip block #1 = JSON-LD).
 - Producer dry run: `PF_PASSPHRASE=… node producer/run.mjs --no-push "test"` → expect "replay
   contract is valid ✅"; then `git checkout origin/main -- data.json` to discard the dry-run build.
 - Intraday carry-forward test: move `producer/raw/hist-*.json` aside, build, confirm `data.hist`
   still has full series (carried forward), Markets coverage clean.
+- **Replay-key contract:** the consumer looks up recorded MCP responses by `makeKey()`
+  (`producer/key.mjs`) — args must serialize byte-for-byte identically on both sides, or it's a silent
+  `[replay miss]`. `validate.mjs` checks this; don't reorder keys in AV/recorded arg objects.
 
 ## Gotchas / hard-won lessons (don't relearn these)
 - **`producer/raw/` is gitignored and EMPTY on every scheduled run** (fresh clone). Any "once/day"
