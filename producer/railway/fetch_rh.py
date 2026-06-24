@@ -169,12 +169,15 @@ def fetch_portfolio_positions(rh):
                     pass
         return 0.0
 
-    # Positions market value (excl. cash); equity from RH includes cash, so derive consistently.
     market_value = num(port, "market_value", "extended_hours_market_value")
     cash = num(profile, "portfolio_cash", "cash")
     buying_power = num(profile, "buying_power")
-    equity_value = market_value
-    total_value = equity_value + cash  # cash is negative on margin → total < equity, as expected
+    equity_value = market_value  # gross long equity positions (the dashboard's "Equity" line)
+    # Total account value = RH's own equity figure — it matches the Robinhood app headline and
+    # correctly includes options/crypto/margin that a positions+cash sum misses. Prefer the
+    # extended-hours value pre/post market; fall back to positions+cash only if RH omitted equity.
+    rh_equity = num(port, "extended_hours_equity", "equity")
+    total_value = rh_equity if rh_equity > 0 else (equity_value + cash)
     write_raw("portfolio.json", {
         "total_value": total_value,
         "equity_value": equity_value,
