@@ -160,6 +160,29 @@ def fetch_quotes(rh, symbols):
     log(f"quotes: {len(results)}/{len(symbols)} symbols")
 
 
+def _num(v):
+    try:
+        f = float(v)
+        return f if f == f and f not in (float("inf"), float("-inf")) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def rsi_from_closes(closes, period=14):
+    """14-day Wilder RSI — matches calcRSI() in index.html so screen results line up."""
+    if not closes or len(closes) < period + 2:
+        return None
+    deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+    ag = sum(d for d in deltas[:period] if d > 0) / period
+    al = sum(-d for d in deltas[:period] if d < 0) / period
+    for d in deltas[period:]:
+        ag = (ag * (period - 1) + (d if d > 0 else 0)) / period
+        al = (al * (period - 1) + (-d if d < 0 else 0)) / period
+    if al == 0:
+        return 100.0
+    return 100 - 100 / (1 + ag / al)
+
+
 def _bars_from_historicals(raw, year_filter=None):
     bars = []
     for b in (raw or []):
@@ -348,6 +371,119 @@ def fetch_options(rh):
     return chain_syms
 
 
+# Curated large-cap universe for the Daily Picks screen (a stand-in for the Robinhood saved
+# scanner, which is a connector abstraction not reachable from robin_stocks). All names are
+# comfortably > $10B; the screen below applies the RSI(14) < 45 oversold filter live. Broad
+# sector spread so picks aren't tech-only. Edit freely.
+PICKS_UNIVERSE = [
+    # Tech / semis / comm
+    "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "NFLX", "AVGO", "ORCL",
+    "CRM", "ADBE", "CSCO", "QCOM", "TXN", "INTC", "AMD", "IBM", "MU", "AMAT", "DIS",
+    "CMCSA", "VZ", "T",
+    # Consumer
+    "COST", "WMT", "HD", "MCD", "NKE", "SBUX", "TGT", "LOW", "PG", "KO", "PEP", "PM", "MDLZ",
+    # Health
+    "UNH", "JNJ", "LLY", "PFE", "MRK", "ABBV", "AMGN", "TMO", "ABT", "BMY", "GILD",
+    # Financials
+    "JPM", "BAC", "WFC", "GS", "MS", "C", "AXP", "V", "MA", "BLK", "SCHW",
+    # Industrials / energy / materials
+    "BA", "CAT", "GE", "HON", "UNP", "XOM", "CVX", "COP", "LIN",
+]
+
+
+def fetch_picks(rh):
+    """FETCH_ALL only. Reimplements the saved RH scan (oversold large-caps) client-side, then
+    writes scan.json / picks-fund.json (+ quotes-picks / hist-day-picks so picks are analyzable)
+    in the shapes picks-build.mjs parses. On any hard failure it writes nothing and Picks carries
+    forward."""
+    log("picks: screening oversold large-caps (RSI<45, mcap>$10B) …")
+    try:
+        quotes = rh.get_quotes(PICKS_UNIVERSE) or []
+        funds = rh.get_fundamentals(PICKS_UNIVERSE) or []
+    except Exception as e:
+        log(f"⚠️  picks universe fetch failed — Picks carries forward: {e}")
+        return
+    q_by = {q["symbol"]: q for q in quotes if q and q.get("symbol")}
+
+    info = []
+    for sym, f in zip(PICKS_UNIVERSE, funds):
+        if not f:
+            continue
+        s = f.get("symbol") or sym
+        q = q_by.get(s) or {}
+        last = _num(q.get("last_trade_price") or q.get("adjusted_previous_close"))
+        prev = _num(q.get("adjusted_previous_close") or q.get("previous_close"))
+        mcap = _num(f.get("market_cap"))
+        hi, lo = _num(f.get("high_52_weeks")), _num(f.get("low_52_weeks"))
+        if last is None or mcap is None or mcap < 10e9:
+            continue
+        range_pos = (last - lo) / (hi - lo) if (hi and lo and hi > lo) else 0.5
+        info.append({"sym": s, "last": last, "prev": prev, "mcap": mcap, "f": f, "range_pos": range_pos})
+
+    # Cost control: RSI needs historicals, so only compute it for the ~35 names nearest their
+    # 52-week low (most likely to be oversold). A mid-range name with RSI<45 can be missed — an
+    # accepted tradeoff vs. pulling historicals for the whole universe. Widen the slice to relax it.
+    info.sort(key=lambda x: x["range_pos"])
+    rsi_pool = info[:35]
+    rows = []
+    for it in rsi_pool:
+        try:
+            raw = rh.get_stock_historicals(it["sym"], interval="day", span="3month")
+        except Exception as e:
+            log(f"⚠️  picks historicals {it['sym']} failed: {e}")
+            continue
+        rsi = rsi_from_closes([b["c"] for b in _bars_from_historicals(raw)])
+        if rsi is None or rsi >= 45:
+            continue
+        chg = ((it["last"] - it["prev"]) / it["prev"] * 100) if it["prev"] else None
+        rows.append({"it": it, "rsi": rsi, "chg": chg})
+        time.sleep(0.12)
+
+    if not rows:
+        log("picks: nothing below RSI 45 today — carrying forward prior Picks.")
+        return
+    rows.sort(key=lambda r: r["rsi"])
+    finalists = rows[:12]
+    fin_syms = [r["it"]["sym"] for r in finalists]
+
+    names = {}
+    for s in fin_syms:
+        try:
+            names[s] = rh.get_name_by_symbol(s) or s
+        except Exception:
+            names[s] = s
+
+    # scan.json — exact shape scanRows() reads: data.result.results[].columns
+    results = []
+    for r in rows:
+        s = r["it"]["sym"]
+        results.append({"ticker": s, "columns": {
+            "Symbol": s, "Name": names.get(s, s), "Last": r["it"]["last"],
+            "RSI": round(r["rsi"], 1), "Market cap": r["it"]["mcap"],
+            "% Change": round(r["chg"], 2) if r["chg"] is not None else None,
+        }})
+    write_raw("scan.json", {"data": {"result": {"results": results}}})
+
+    # picks-fund.json — RH fundamentals for the finalists (buildPicks reads pe/pb/yield/52wk/sector)
+    fund_results = []
+    for r in finalists:
+        f, s = r["it"]["f"], r["it"]["sym"]
+        fund_results.append({
+            "symbol": s, "pe_ratio": f.get("pe_ratio"), "pb_ratio": f.get("pb_ratio"),
+            "dividend_yield": f.get("dividend_yield"), "high_52_weeks": f.get("high_52_weeks"),
+            "low_52_weeks": f.get("low_52_weeks"), "sector": f.get("sector"), "industry": f.get("industry"),
+        })
+    write_raw("picks-fund.json", {"data": {"results": fund_results}})
+
+    # Make picks analyzable in the Analyze tab: their quotes + YTD day bars (build-data merges these).
+    fin_quotes = [q_by[s] for s in fin_syms if s in q_by]
+    if fin_quotes:
+        write_raw("quotes-picks.json", {"results": fin_quotes})
+    fetch_historicals(rh, fin_syms, "day", "year", "hist-day-picks", year_filter=THIS_YEAR)
+
+    log(f"picks: {len(results)} oversold (RSI<45) · {len(finalists)} finalists: {', '.join(fin_syms)}")
+
+
 def fetch_vix(rh):
     """Best-effort. RH index marketdata for VIX; on any failure VIX carries forward / shows —."""
     VIX_ID = "3b912aa2-88f9-4682-8ae3-e39520bdf4db"  # stable; see PRODUCER.md
@@ -390,6 +526,7 @@ def main():
         fetch_historicals(rh, hist_syms, "day", "year", "hist-day", year_filter=THIS_YEAR)
         fetch_historicals(rh, hist_syms, "week", "5year", "hist-month")  # 5Y stats; label only
         fetch_fundamentals(rh, top_held)
+        fetch_picks(rh)  # oversold large-cap screen → scan.json/picks-fund.json (once/day)
     else:
         log("FETCH_LIGHT — skipping historicals / fundamentals (build-data carries them forward)")
 

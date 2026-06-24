@@ -42,12 +42,11 @@ Railway cron ─► entrypoint.sh
 | **Options tab** | `robin_stocks` (every run) | orders + open positions + live marks/greeks for your contracts |
 | VIX | best-effort RH index quote | carries forward / shows "—" on failure |
 | Retail buzz (ApeWisdom) | `build-data.mjs` in-process | needs `apewisdom.io` egress |
-| **Daily Picks** | **carried forward** | RH saved-scan not yet ported — see "Follow-ups" |
+| **Daily Picks** | `robin_stocks` (FETCH_ALL) | client-side oversold screen → `scan.json`/`picks-fund.json` |
 | Realized P&L | carried forward / `realized.json` | owner-maintained; options realized/premium YTD refresh live |
 
-So on day one the Portfolio + Markets + Analyze + **Options** tabs refresh live; only **Picks** keeps
-showing the last Claude-agent snapshot until that follow-up lands (or you run the Claude agent
-occasionally).
+So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh live. This path is at
+parity with the scheduled Claude agent (modulo the Picks-universe note below + dividend approximation).
 
 ## One-time setup
 1. **Authenticator MFA on Robinhood.** In the Robinhood app, enable two-factor with an
@@ -97,12 +96,21 @@ A cron that fires a handful of times during market hours costs cents/month on Ra
 the ~$5 base / your $10 budget. `preflight.mjs` SKIPs weekends and already-captured closes, so most
 fires exit in seconds. No always-on server.
 
+## Picks universe note (live as of this version)
+The Robinhood saved scanner (`run_scan`) is a **connector abstraction**, not a native RH endpoint,
+so `robin_stocks` can't replay it. Instead `fetch_picks()` runs the same screen **client-side**
+(once/day, FETCH_ALL): it quotes + pulls fundamentals for the curated `PICKS_UNIVERSE` (~70 large
+caps), keeps `mcap > $10B`, computes RSI(14) from daily historicals for the ~35 names nearest their
+52-week low (cost control — a mid-range name with RSI<45 can be missed; widen the slice in
+`fetch_rh.py` to relax it), keeps RSI<45, and the 12 lowest-RSI become finalists. Then the existing
+`picks-select`/`picks-build` scoring runs unchanged. **Edit `PICKS_UNIVERSE`** in `fetch_rh.py` to
+change the candidate set.
+
 ## Follow-ups (not yet)
-- **Daily Picks:** port the saved RH scan (`run_scan` scan_id `17e8f5a7-…`) to `robin_stocks`
-  (`get_scans` / equivalent) → write `producer/raw/scan.json` + `picks-fund.json`, then the existing
-  `picks-build.mjs` takes over. Until then Picks carries forward.
 - **Dividends per share / ex-date:** RH `get_fundamentals` omits these; pull from the instrument /
   `get_events` if you want exact dividend income instead of the current approximation.
+- **AV growth enrichment for picks:** optional `av-src/overview-<SYM>.json` per finalist adds revenue
+  growth / forward P/E to the score; without it scoring is value-only (graceful, already handled).
 
 > **Options note (live as of this version).** `fetch_rh.py` writes `options-orders.json`,
 > `options-positions.json`, and `option-pos-quotes.json` every run. Leg strike/type/expiry come from
