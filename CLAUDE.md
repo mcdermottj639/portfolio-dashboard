@@ -29,6 +29,13 @@ It is a **producer / consumer split**:
 session. That's *why* there's a scheduled agent and not a plain cron. Don't propose moving the
 producer to a credentialed cron unless the user explicitly accepts storing RH login secrets.
 
+> **Optional credentialed path (Railway).** `producer/railway/` + `producer/RAILWAY.md` document an
+> opt-in alternative: a Python `robin_stocks` fetcher on Railway that writes the same `producer/raw/*`
+> files and then runs the existing `node producer/run.mjs`. It stores RH credentials (the user
+> accepted this tradeoff). It reuses the entire Node tail, so the replay contract can't drift. v1
+> refreshes Portfolio/Markets/Analyze live; Picks/Options carry forward until those RH shapes are
+> ported. The scheduled Claude agent remains the default/blessed path.
+
 ## Data flow (one run)
 1. Scheduled agent runs the prompt in `SCHEDULING.md` → **`node producer/preflight.mjs` first**.
 2. preflight prints `PREFLIGHT <MODE>` (deterministic, from the committed snapshot):
@@ -58,6 +65,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
+| `producer/railway/` · `producer/RAILWAY.md` | Optional credentialed Railway producer (Python `robin_stocks` fetch → existing Node tail). See the runbook. |
 
 ## Conventions
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`

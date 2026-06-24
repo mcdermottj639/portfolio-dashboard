@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""
+fetch_rh.py — the Robinhood fetch layer for the Railway producer.
+
+This replaces the ONE thing the scheduled Claude agent uniquely did: making the
+Robinhood MCP calls. Everything else (encrypt, carry-forward, validate, publish)
+is still the existing Node pipeline — this script only writes the raw/*.json files
+that `producer/build-data.mjs` already knows how to parse, then the entrypoint runs
+`node producer/run.mjs`.
+
+It writes files in the SAME normalized shapes the MCP connector produced, so the
+replay contract is unchanged:
+
+  producer/raw/portfolio.json      { total_value, equity_value, cash, buying_power:{buying_power} }
+  producer/raw/positions.json      { positions: [ {symbol, quantity, average_buy_price}, ... ] }
+  producer/raw/quotes.json         { results: [ <raw RH quote dict>, ... ] }
+  producer/raw/hist-day-N.json     { results: [ {symbol, bars:[{t,c}, ...]}, ... ] }   (FETCH_ALL)
+  producer/raw/hist-month-N.json   { results: [ {symbol, bars:[{t,c}, ...]}, ... ] }   (FETCH_ALL)
+  producer/raw/holdings-fund.json  { results: [ {symbol, sector, pe_ratio, market_cap, ...}, ... ] } (FETCH_ALL)
+  producer/raw/index-quotes.json   { quotes: [ {symbol:"VIX", value:"<n>"} ] }          (best-effort)
+
+Gaps carried forward from the prior snapshot (build-data overlays them): Daily Picks
+(RH saved-scan), the Options tab, AV macro/overviews (those refresh via av-fetch.mjs
+over HTTP when ALPHAVANTAGE_KEY is set), news, realized P&L.
+
+Env:
+  RH_USERNAME, RH_PASSWORD   Robinhood login
+  RH_MFA_SECRET              base32 TOTP secret (authenticator). REQUIRED for unattended login.
+  PF_ACCOUNT                 (optional) account number to read; default = robin_stocks default.
+  FETCH_MODE                 FETCH_ALL | FETCH_LIGHT (set by entrypoint from preflight.mjs).
+  DRY_RUN=1                  log shapes / counts but do not write any files.
+
+Run from the repo root (entrypoint cd's into the cloned repo).
+"""
+import json
+import os
+import sys
+import time
+from datetime import datetime, timezone
+
+RAW = os.path.join("producer", "raw")
+MODE = os.environ.get("FETCH_MODE", "FETCH_ALL").upper()
+DRY = os.environ.get("DRY_RUN") == "1"
+THIS_YEAR = datetime.now(timezone.utc).year
+
+
+def log(*a):
+    print("[fetch_rh]", *a, flush=True)
+
+
+def write_raw(name, obj):
+    path = os.path.join(RAW, name)
+    if DRY:
+        log(f"DRY would write {path} ({_shape(obj)})")
+        return
+    os.makedirs(RAW, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(obj, f)
+    log(f"wrote {path} ({_shape(obj)})")
+
+
+def _shape(obj):
+    if isinstance(obj, dict):
+        if "results" in obj and isinstance(obj["results"], list):
+            return f"{len(obj['results'])} results"
+        if "positions" in obj:
+            return f"{len(obj['positions'])} positions"
+        if "quotes" in obj:
+            return f"{len(obj['quotes'])} quotes"
+        return ", ".join(obj.keys())
+    if isinstance(obj, list):
+        return f"list[{len(obj)}]"
+    return type(obj).__name__
+
+
+def market_symbols():
+    """Read MARKET_SYMBOLS from producer/markets.mjs so the list never drifts."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["node", "-e",
+             "import('./producer/markets.mjs').then(m=>process.stdout.write(JSON.stringify(m.MARKET_SYMBOLS)))"],
+            capture_output=True, text=True, timeout=30, check=True,
+        ).stdout
+        syms = json.loads(out)
+        if isinstance(syms, list) and syms:
+            return [str(s) for s in syms]
+    except Exception as e:
+        log("⚠️  could not read MARKET_SYMBOLS from markets.mjs:", e)
+    # Fallback mirror of markets.mjs (keep in sync if the dynamic read ever fails).
+    return ["SPY", "QQQ", "DIA", "IWM", "GLD", "TLT", "HYG", "IBIT",
+            "XLK", "XLC", "XLY", "XLF", "XLV", "XLI", "XLP", "XLE", "XLU", "XLB", "XLRE",
+            "EFA", "EEM"]
+
+
+def rh_login():
+    import robin_stocks.robinhood as rh
+    user = os.environ.get("RH_USERNAME")
+    pw = os.environ.get("RH_PASSWORD")
+    if not user or not pw:
+        log("FATAL — RH_USERNAME / RH_PASSWORD not set"); sys.exit(1)
+    mfa = None
+    secret = os.environ.get("RH_MFA_SECRET")
+    if secret:
+        import pyotp
+        mfa = pyotp.TOTP(secret.replace(" ", "")).now()
+    # store_session=False: the Railway container is ephemeral, so don't persist a pickle.
+    rh.login(username=user, password=pw, mfa_code=mfa, store_session=False, expiresIn=86400)
+    log("logged in to Robinhood")
+    return rh
+
+
+def fetch_portfolio_positions(rh):
+    """Required. Writes portfolio.json + positions.json; returns held symbols."""
+    acct = os.environ.get("PF_ACCOUNT") or None
+    port = rh.load_portfolio_profile(account_number=acct) if acct else rh.load_portfolio_profile()
+    profile = rh.load_account_profile(account_number=acct) if acct else rh.load_account_profile()
+
+    def num(d, *keys):
+        for k in keys:
+            v = (d or {}).get(k)
+            if v not in (None, ""):
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    pass
+        return 0.0
+
+    # Positions market value (excl. cash); equity from RH includes cash, so derive consistently.
+    market_value = num(port, "market_value", "extended_hours_market_value")
+    cash = num(profile, "portfolio_cash", "cash")
+    buying_power = num(profile, "buying_power")
+    equity_value = market_value
+    total_value = equity_value + cash  # cash is negative on margin → total < equity, as expected
+    write_raw("portfolio.json", {
+        "total_value": total_value,
+        "equity_value": equity_value,
+        "cash": cash,
+        "buying_power": {"buying_power": buying_power},
+    })
+
+    holdings = rh.build_holdings()  # { SYMBOL: { quantity, average_buy_price, ... } }
+    positions = []
+    for sym, h in (holdings or {}).items():
+        positions.append({
+            "symbol": sym,
+            "quantity": h.get("quantity", "0"),
+            "average_buy_price": h.get("average_buy_price", "0"),
+        })
+    write_raw("positions.json", {"positions": positions})
+    log(f"portfolio: total={total_value:.2f} equity={equity_value:.2f} cash={cash:.2f} · {len(positions)} positions")
+    return [p["symbol"] for p in positions]
+
+
+def fetch_quotes(rh, symbols):
+    """Required (EVERY-RUN). Batched single call; raw RH quote dicts pass straight through."""
+    quotes = rh.get_quotes(symbols)
+    results = [q for q in (quotes or []) if q and q.get("symbol")]
+    write_raw("quotes.json", {"results": results})
+    log(f"quotes: {len(results)}/{len(symbols)} symbols")
+
+
+def _bars_from_historicals(raw, year_filter=None):
+    bars = []
+    for b in (raw or []):
+        ts = b.get("begins_at")
+        close = b.get("close_price")
+        if ts is None or close in (None, ""):
+            continue
+        if year_filter is not None and not str(ts).startswith(str(year_filter)):
+            continue
+        try:
+            bars.append({"t": ts, "c": float(close)})
+        except (TypeError, ValueError):
+            continue
+    return bars
+
+
+def fetch_historicals(rh, symbols, interval, span, name_prefix, year_filter=None):
+    """FETCH_ALL only. Per-symbol so each carries its own symbol; batched into files of 3."""
+    batch, idx = [], 0
+    for sym in symbols:
+        try:
+            raw = rh.get_stock_historicals(sym, interval=interval, span=span)
+        except Exception as e:
+            log(f"⚠️  historicals {sym} ({interval}/{span}) failed: {e}")
+            continue
+        bars = _bars_from_historicals(raw, year_filter=year_filter)
+        if bars:
+            batch.append({"symbol": sym, "bars": bars})
+        if len(batch) >= 3:
+            idx += 1
+            write_raw(f"{name_prefix}-{idx}.json", {"results": batch})
+            batch = []
+        time.sleep(0.15)
+    if batch:
+        idx += 1
+        write_raw(f"{name_prefix}-{idx}.json", {"results": batch})
+    log(f"historicals {interval}/{span}: {idx} file(s) written")
+
+
+def fetch_fundamentals(rh, symbols):
+    """FETCH_ALL only. RH fundamentals → sector / P/E / market cap / 52wk / yield."""
+    try:
+        funds = rh.get_fundamentals(symbols)
+    except Exception as e:
+        log(f"⚠️  fundamentals fetch failed (will carry forward): {e}")
+        return
+    results = []
+    for sym, fnd in zip(symbols, funds or []):
+        if not fnd:
+            continue
+        s = fnd.get("symbol") or sym
+        results.append({
+            "symbol": s,
+            "sector": fnd.get("sector"),
+            "industry": fnd.get("industry"),
+            "pe_ratio": fnd.get("pe_ratio"),
+            "market_cap": fnd.get("market_cap"),
+            "high_52_weeks": fnd.get("high_52_weeks"),
+            "low_52_weeks": fnd.get("low_52_weeks"),
+            "dividend_yield": fnd.get("dividend_yield"),
+        })
+    if results:
+        write_raw("holdings-fund.json", {"results": results})
+
+
+def fetch_vix(rh):
+    """Best-effort. RH index marketdata for VIX; on any failure VIX carries forward / shows —."""
+    VIX_ID = "3b912aa2-88f9-4682-8ae3-e39520bdf4db"  # stable; see PRODUCER.md
+    try:
+        from robin_stocks.robinhood.helper import request_get
+        url = f"https://api.robinhood.com/marketdata/quotes/{VIX_ID}/?bounds=trading"
+        q = request_get(url)
+        val = (q or {}).get("last_trade_price") or (q or {}).get("mark_price")
+        if val:
+            write_raw("index-quotes.json", {"quotes": [{"symbol": "VIX", "value": str(val)}]})
+            log(f"VIX: {val}")
+            return
+    except Exception as e:
+        log(f"⚠️  VIX fetch failed (carry forward): {e}")
+    log("VIX: not fetched this run")
+
+
+def main():
+    log(f"mode={MODE} dry_run={DRY} year={THIS_YEAR}")
+    rh = rh_login()
+    held = fetch_portfolio_positions(rh)
+    markets = market_symbols()
+
+    # quotes: every held symbol + every market symbol (EVERY-RUN)
+    all_syms = list(dict.fromkeys(held + markets))
+    fetch_quotes(rh, all_syms)
+
+    # VIX: cheap, every run, best-effort
+    fetch_vix(rh)
+
+    if MODE == "FETCH_ALL":
+        # top 15 holdings by value would need quote math; held order from build_holdings is
+        # roughly value-sorted, but be explicit: cover the top 15 held + all market symbols.
+        top_held = held[:15]
+        hist_syms = list(dict.fromkeys(top_held + markets))
+        fetch_historicals(rh, hist_syms, "day", "year", "hist-day", year_filter=THIS_YEAR)
+        fetch_historicals(rh, hist_syms, "week", "5year", "hist-month")  # 5Y stats; label only
+        fetch_fundamentals(rh, top_held)
+    else:
+        log("FETCH_LIGHT — skipping historicals / fundamentals (build-data carries them forward)")
+
+    log("done.")
+
+
+if __name__ == "__main__":
+    main()
