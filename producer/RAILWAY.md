@@ -60,8 +60,9 @@ parity with the scheduled Claude agent (modulo the Picks-universe note below + d
 2. **GitHub token for publishing.** Create a fine-grained PAT scoped to
    `mcdermottj639/portfolio-dashboard` with **Contents: Read and write**. That's `GITHUB_TOKEN`.
 3. **New Railway project → Deploy from GitHub repo** → pick this repo.
-   - Settings → Build: it should pick up `producer/railway/railway.json` (Dockerfile builder). If
-     not, set **Dockerfile path** = `producer/railway/Dockerfile`.
+   - Build: auto-detected from `railway.json` at the repo root (Dockerfile builder, context = repo
+     root, `dockerfilePath` = `producer/railway/Dockerfile`). If you ever need to set it by hand, use
+     that Dockerfile path with the root directory left at `/`.
    - Settings → **Cron Schedule**: e.g. `0,30 13-21 * * 1-5` (every 30 min, 13:00–21:00 UTC ≈ market
      hours, weekdays). `preflight.mjs` still gates SKIP/light/full, so extra fires are ~free.
    - Settings → **Restart Policy = Never** (it's a cron job, not a server).

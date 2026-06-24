@@ -57,7 +57,7 @@ the robot uses a *session* you create once by logging in yourself.
 
 1. **railway.com** → sign in with GitHub.
 2. **New Project** → **Deploy from GitHub repo** → choose **portfolio-dashboard**. Let the first
-   build finish (it reads `producer/railway/railway.json` automatically).
+   build finish (it auto-detects `railway.json` at the repo root — Dockerfile build).
 3. Open the service → **Variables** tab → **Raw Editor** → paste this, replacing each `PASTE_...`:
    ```
    GITHUB_TOKEN=PASTE_your_github_pat
