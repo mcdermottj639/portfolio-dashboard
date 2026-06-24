@@ -73,6 +73,10 @@ the robot uses a *session* you create once by logging in yourself.
    - **Cron Schedule:** `0,30 13-21 * * 1-5`
    - **Restart Policy:** `Never`
    - **Watch Paths:** `producer/railway/**`
+5. **Add a Volume** (so the login is remembered between runs — without it, Robinhood asks for phone
+   approval *every* run): service → **Volumes** / **+ New Volume** → **Mount path** = `/data`. Done.
+   You'll approve the Robinhood login **once** on the first real run, then it runs on its own;
+   Robinhood will occasionally re-ask (every few weeks) — just approve it on your phone.
 
 ---
 

@@ -100,20 +100,26 @@ def _session_pickle_path():
 def rh_login():
     import robin_stocks.robinhood as rh
 
-    # Preferred when the account has no authenticator-app 2FA (passkey/SMS only): a session created
-    # once on your own computer (see rh_session.py) and pasted into Railway as RH_SESSION_B64. We
-    # drop it where robin_stocks looks, then login() reuses/refreshes it with no MFA prompt.
-    sess = os.environ.get("RH_SESSION_B64")
-    if sess:
-        import base64
-        path = _session_pickle_path()
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        try:
-            with open(path, "wb") as f:
-                f.write(base64.b64decode(sess))
-            log("restored Robinhood session from RH_SESSION_B64")
-        except Exception as e:
-            log(f"⚠️  could not restore RH_SESSION_B64: {e}")
+    # Session persistence. The robust path is a Railway VOLUME mounted at the tokens dir (HOME set by
+    # entrypoint.sh): the pickle robin_stocks writes after a device-approved login survives between
+    # runs, so Robinhood only challenges on the first run / after expiry — not every cron tick.
+    # RH_SESSION_B64 (from rh_session.py) is an optional BOOTSTRAP used only when no pickle exists yet;
+    # we never clobber a persisted pickle with it (a stale/garbled bootstrap must not overwrite a good
+    # live session).
+    path = _session_pickle_path()
+    if os.path.exists(path):
+        log("using persisted Robinhood session (volume)")
+    else:
+        sess = os.environ.get("RH_SESSION_B64")
+        if sess:
+            import base64
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            try:
+                with open(path, "wb") as f:
+                    f.write(base64.b64decode(sess))
+                log("restored Robinhood session from RH_SESSION_B64 (bootstrap)")
+            except Exception as e:
+                log(f"⚠️  could not restore RH_SESSION_B64: {e}")
 
     user = os.environ.get("RH_USERNAME")
     pw = os.environ.get("RH_PASSWORD")
@@ -130,8 +136,8 @@ def rh_login():
         rh.login(username=user, password=pw, mfa_code=mfa, store_session=True, expiresIn=86400)
     except Exception as e:
         log(f"FATAL — Robinhood login failed: {e}")
-        if not sess and not secret:
-            log("       no RH_SESSION_B64 and no RH_MFA_SECRET set — unattended login needs one of them "
+        if not os.path.exists(path) and not os.environ.get("RH_SESSION_B64") and not secret:
+            log("       no persisted session, RH_SESSION_B64, or RH_MFA_SECRET — unattended login needs one of them "
                 "(see producer/RAILWAY.md → 'No authenticator option?').")
         sys.exit(1)
     log("logged in to Robinhood")
