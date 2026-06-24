@@ -347,6 +347,99 @@ html[data-theme="dark"] .box-bull{ background:#0c2417; border-color:#14532d; col
 html[data-theme="dark"] .box-bear{ background:#2a1414; border-color:#7f1d1d; color:#fca5a5; }
 html[data-theme="dark"] .box-info{ background:#171a3a; border-color:#312e81; color:#c7d2fe; }
 html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; color:#fed7aa; }
+
+/* ═══ Holdings heatmap (treemap) — theme-agnostic shell ═══ */
+.heatmap{ position:relative; width:100%; height:340px; border-radius:12px; overflow:hidden; background:var(--surface-2); }
+@media (max-width:760px){ .heatmap{ height:300px; } }
+.hm-tile{ position:absolute; border-radius:6px; overflow:hidden; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:2px; color:#fff; border:1px solid rgba(0,0,0,0.18); cursor:pointer; transition:left .28s ease,top .28s ease,width .28s ease,height .28s ease,background .25s; }
+.hm-tile:hover{ filter:brightness(1.12); }
+.hm-sym{ font-weight:800; line-height:1; letter-spacing:-0.3px; text-shadow:0 1px 2px rgba(0,0,0,0.35); }
+.hm-chg{ font-weight:600; line-height:1.1; margin-top:2px; opacity:0.95; text-shadow:0 1px 2px rgba(0,0,0,0.35); }
+.hm-tg{ font-size:11px; font-weight:700; padding:4px 11px; border-radius:999px; border:none; cursor:pointer; background:var(--surface-2); color:var(--text); font-family:inherit; }
+.hm-tg.active{ background:var(--accent); color:#04140a; }
+html[data-theme="dark"] .hm-tile,html[data-theme="neon"] .hm-tile{ border-color:rgba(255,255,255,0.07); }
+
+/* ═══ NEON theme (HUD) — opt-in third theme; Light/Dark stay untouched ═══ */
+html[data-theme="neon"]{ color-scheme:dark; --accent:#22d3ee; --surface-2:#141d33; --text:#e6f1ff;
+  --nx-cyan:#22d3ee; --nx-mag:#f472b6; --nx-pur:#a855f7; --nx-grn:#34f5c5; --nx-red:#ff5c8a; --nx-bd:rgba(96,165,250,.16); --nx-muted:#8094b8; }
+html[data-theme="neon"] body{ background:#05070f; background-image:
+  radial-gradient(900px 520px at 10% -10%, rgba(168,85,247,.16), transparent 60%),
+  radial-gradient(900px 600px at 100% 0%, rgba(34,211,238,.13), transparent 55%),
+  radial-gradient(760px 720px at 50% 120%, rgba(244,114,182,.10), transparent 60%);
+  background-attachment:fixed; color:var(--text); }
+html[data-theme="neon"] .tabbar{ background:transparent; }
+html[data-theme="neon"] .tab{ background:rgba(18,26,46,.62); color:#8094b8; box-shadow:none; border:1px solid var(--nx-bd); }
+html[data-theme="neon"] .tab:hover{ color:#e6f1ff; }
+html[data-theme="neon"] .tab.active{ background:linear-gradient(140deg,rgba(34,211,238,.22),rgba(168,85,247,.22)); color:#fff; border-color:rgba(34,211,238,.5); box-shadow:0 0 16px rgba(34,211,238,.22); }
+html[data-theme="neon"] .card,
+html[data-theme="neon"] .col-card{ background:rgba(11,16,34,.72); border:1px solid var(--nx-bd); box-shadow:0 8px 28px rgba(0,0,0,.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+html[data-theme="neon"] .col-title,
+html[data-theme="neon"] .card-title,
+html[data-theme="neon"] .macro-val{ color:var(--text); }
+html[data-theme="neon"] .snap,
+html[data-theme="neon"] .mkt-tile,
+html[data-theme="neon"] .macro-tile,
+html[data-theme="neon"] .pk-m{ background:rgba(18,26,46,.6); border:1px solid var(--nx-bd); }
+html[data-theme="neon"] thead th{ border-bottom-color:rgba(96,165,250,.18); color:#7c8aa5; }
+html[data-theme="neon"] thead th.sortable:hover,
+html[data-theme="neon"] thead th.active{ color:#fff; }
+html[data-theme="neon"] tbody tr{ border-bottom-color:rgba(96,165,250,.08); }
+html[data-theme="neon"] tbody tr:hover{ background:rgba(34,211,238,.06); }
+html[data-theme="neon"] .risk-line,
+html[data-theme="neon"] .exdiv-line,
+html[data-theme="neon"] .harv-line{ border-bottom-color:var(--nx-bd); }
+html[data-theme="neon"] .risk-name,
+html[data-theme="neon"] .thesis2 li{ color:#aebbd6; }
+html[data-theme="neon"] .alloc-track,
+html[data-theme="neon"] .conf2-track,
+html[data-theme="neon"] .gauge{ background:#1a2440; }
+html[data-theme="neon"] .scn{ border-color:var(--nx-bd); background:rgba(18,26,46,.4); }
+html[data-theme="neon"] .tv-link{ border-color:var(--nx-bd); }
+/* accent colors + glow on the headline numbers */
+html[data-theme="neon"] .pos{ color:var(--nx-grn); }
+html[data-theme="neon"] .neg{ color:var(--nx-red); }
+html[data-theme="neon"] .neu{ color:var(--nx-muted); }
+html[data-theme="neon"] .h-value{ color:#67e8f9; text-shadow:0 0 18px rgba(34,211,238,.55); }
+html[data-theme="neon"] .snap-val,
+html[data-theme="neon"] .perf-val,
+html[data-theme="neon"] .pm-v,
+html[data-theme="neon"] .stress-big,
+html[data-theme="neon"] .scn-val,
+html[data-theme="neon"] .inc-val,
+html[data-theme="neon"] .macro-val{ text-shadow:0 0 12px rgba(34,211,238,.18); }
+html[data-theme="neon"] .card-hint,
+html[data-theme="neon"] .snap-lbl,
+html[data-theme="neon"] .perf-lbl,
+html[data-theme="neon"] .macro-label{ color:#6f7fa3; }
+/* hero gets a HUD frame + corner brackets */
+html[data-theme="neon"] .header,
+html[data-theme="neon"] .picks-hero{ position:relative; background:linear-gradient(140deg,rgba(34,211,238,.15),rgba(168,85,247,.17)); border:1px solid rgba(34,211,238,.32); box-shadow:0 0 30px rgba(34,211,238,.10), inset 0 0 34px rgba(168,85,247,.08); }
+html[data-theme="neon"] .header::before,
+html[data-theme="neon"] .header::after,
+html[data-theme="neon"] .picks-hero::before,
+html[data-theme="neon"] .picks-hero::after{ content:''; position:absolute; width:16px; height:16px; border:2px solid var(--nx-cyan); pointer-events:none; }
+html[data-theme="neon"] .header::before,
+html[data-theme="neon"] .picks-hero::before{ top:9px; left:9px; border-right:none; border-bottom:none; }
+html[data-theme="neon"] .header::after,
+html[data-theme="neon"] .picks-hero::after{ bottom:9px; right:9px; border-left:none; border-top:none; }
+html[data-theme="neon"] .h-tag{ background:rgba(34,211,238,.16); border:1px solid rgba(34,211,238,.3); }
+/* tinted components — neon variants so they never fall back to light blocks */
+html[data-theme="neon"] .margin-banner{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
+html[data-theme="neon"] .inc-tile{ background:rgba(6,55,31,.4); border-color:#14532d; }
+html[data-theme="neon"] .inc-lbl{ color:#34d399; } html[data-theme="neon"] .inc-val{ color:#a7f3d0; } html[data-theme="neon"] .inc-sub{ color:#6ee7b7; }
+html[data-theme="neon"] .harvest-tile{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
+html[data-theme="neon"] .harvest-tile .inc-lbl{ color:#fca5a5; } html[data-theme="neon"] .harvest-tile .inc-val{ color:#fecaca; } html[data-theme="neon"] .harvest-tile .inc-sub{ color:#fca5a5; }
+html[data-theme="neon"] .small-chip{ background:#2a2407; color:#fde68a; }
+html[data-theme="neon"] .pk-sig.buy{ background:#06371f; color:#34d399; }
+html[data-theme="neon"] .pk-sig.cautious{ background:#3a2f0a; color:#fde68a; }
+html[data-theme="neon"] .teaser-bar{ background:rgba(6,55,31,.35); border-color:#14532d; }
+html[data-theme="neon"] .cross-note{ background:rgba(16,36,31,.6)!important; color:#a7f3d0!important; }
+html[data-theme="neon"] .box-bull{ background:rgba(6,55,31,.4); border-color:#14532d; color:#a7f3d0; }
+html[data-theme="neon"] .box-bear{ background:rgba(127,29,29,.25); border-color:#7f1d1d; color:#fca5a5; }
+html[data-theme="neon"] .box-info{ background:rgba(34,211,238,.08); border-color:rgba(34,211,238,.3); color:#a5f0ff; }
+html[data-theme="neon"] .box-warn{ background:rgba(124,74,3,.25); border-color:#7c4a03; color:#fed7aa; }
+html[data-theme="neon"] .az-gauge-in{ background:#0b1022; }
+html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color:#8094b8!important; border-color:var(--nx-bd)!important; }
 </style>
 </head>
 <body>
@@ -466,7 +559,7 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
     });
   }};
   function boot(){
-    var APP_VERSION='v42'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v43'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -477,9 +570,10 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
       var left = locked ? '🔒 Locked — enter your passphrase to view'
                : err    ? '⚠️ Couldn’t load data ('+err+')'
                :          '📡 Snapshot: '+lab;
-      var themeIcon=(document.documentElement.getAttribute('data-theme')==='dark')?'☀️':'🌙';
+      var _th=document.documentElement.getAttribute('data-theme')||'light';
+      var themeIco=_th==='dark'?'⚡':_th==='neon'?'☀️':'🌙';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Light / dark">'+themeIcon+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light · dark · neon">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       var rb=document.getElementById('pf-refresh'); if(rb) rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); };
     });
@@ -928,6 +1022,11 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const lastV=a=>a&&a.length?a[a.length-1].v:null;
   const portYTD=lastV(portSeries), spyYTD=lastV(spyN), qqqYTD=lastV(qqqN);
   try{ if(window.__SNAP){ const _cv=wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0; window.__SNAP.perf={labels:axis,port:portSeries?portSeries.map(x=>x.v):null,spy:spyN.map(x=>x.v),qqq:qqqN.map(x=>x.v),portYTD,spyYTD,qqqYTD,cov:_cv}; } }catch(e){}
+  const _thm=document.documentElement.getAttribute('data-theme');
+  const C={ port:_thm==='neon'?'#22d3ee':'#6366f1', portBg:_thm==='neon'?'rgba(34,211,238,0.12)':'rgba(99,102,241,0.08)',
+    spy:_thm==='neon'?'#94a3b8':'#9ca3af', qqq:_thm==='neon'?'#f472b6':'#10b981',
+    grid:_thm==='neon'?'rgba(120,160,255,0.10)':_thm==='dark'?'rgba(255,255,255,0.06)':'#f3f4f6',
+    tick:_thm==='neon'?'#7c8aa5':'#9ca3af' };
   el.innerHTML=`
     <div class="perf-head">
       <div class="perf-metric"><div class="pm-l">Your holdings YTD*</div><div class="pm-v ${sc(portYTD)}">${portYTD!=null?fmtP(portYTD):'—'}</div></div>
@@ -937,9 +1036,9 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
     </div>
     <div class="chart-wrap"><canvas id="perf-chart"></canvas></div>
     <div class="legend-row">
-      <span class="legend-item"><span class="legend-dot" style="background:#6366f1"></span>Your holdings*</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#9ca3af"></span>SPY</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span>QQQ</span>
+      <span class="legend-item"><span class="legend-dot" style="background:${C.port}"></span>Your holdings*</span>
+      <span class="legend-item"><span class="legend-dot" style="background:${C.spy}"></span>SPY</span>
+      <span class="legend-item"><span class="legend-dot" style="background:${C.qqq}"></span>QQQ</span>
     </div>
     <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.</div>
     ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
@@ -951,13 +1050,13 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   `;
   const ctx=document.getElementById('perf-chart'); if(!ctx)return;
   const ds=[];
-  if(portSeries) ds.push({label:'Your holdings',data:portSeries.map(x=>x.v),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.08)',borderWidth:2.2,pointRadius:0,fill:true,tension:0.15});
-  ds.push({label:'SPY',data:spyN.map(x=>x.v),borderColor:'#9ca3af',borderWidth:1.5,pointRadius:0,tension:0.15});
-  ds.push({label:'QQQ',data:qqqN.map(x=>x.v),borderColor:'#10b981',borderWidth:1.5,pointRadius:0,tension:0.15});
+  if(portSeries) ds.push({label:'Your holdings',data:portSeries.map(x=>x.v),borderColor:C.port,backgroundColor:C.portBg,borderWidth:2.2,pointRadius:0,fill:true,tension:0.15});
+  ds.push({label:'SPY',data:spyN.map(x=>x.v),borderColor:C.spy,borderWidth:1.5,pointRadius:0,tension:0.15});
+  ds.push({label:'QQQ',data:qqqN.map(x=>x.v),borderColor:C.qqq,borderWidth:1.5,pointRadius:0,tension:0.15});
   new Chart(ctx,{ type:'line', data:{labels:axis,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items[0].label, label:c=>` ${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(1)}%`}}},
-      scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:'#9ca3af'},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:11},color:'#9ca3af'},grid:{color:'#f3f4f6'}}}
+      scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:C.tick},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:11},color:C.tick},grid:{color:C.grid}}}
     }});
 }
 
@@ -1003,7 +1102,7 @@ function renderActionFeed(list){
 }
 
 /* ═══ Risk & Diversification ═══ */
-function renderRisk(enriched, clusters, totalVal, betaInfo){
+function renderRisk(enriched, clusters, totalVal, betaInfo, metrics){
   const el=document.getElementById('risk-content'); if(!el)return;
   const eqVal=enriched.reduce((s,p)=>s+Math.max(p.val,0),0);
   const beta=betaInfo?betaInfo.beta:null;
@@ -1014,7 +1113,23 @@ function renderRisk(enriched, clusters, totalVal, betaInfo){
   let hhi=0; for(const p of enriched){ if(p.val>0&&eqVal>0){ const w=p.val/eqVal; hhi+=w*w; } }
   const effN = hhi>0?1/hhi:0;
   const scn=[{l:'Market −5%',v:beta!=null?-5*beta:null},{l:'Market −10%',v:beta!=null?-10*beta:null},{l:'Market −20%',v:beta!=null?-20*beta:null}];
+  const M=metrics;
+  const spin='<span class="spin-sm"></span>';
+  const sharpeTxt = M&&M.sharpe!=null ? fmt(M.sharpe,2) : (M?'—':spin);
+  const sharpeCol = M&&M.sharpe!=null ? (M.sharpe>=1?'#10b981':M.sharpe>=0?'#f59e0b':'#ef4444') : '#9ca3af';
+  const volTxt = M ? fmt(M.vol,1)+'%' : spin;
+  const volCol = M ? (M.vol>=35?'#ef4444':M.vol>=22?'#f59e0b':'#10b981') : '#9ca3af';
+  const ddTxt = M ? fmt(M.maxDD,1)+'%' : spin;
+  const betaTileTxt = beta!=null ? fmt(beta,2) : spin;
+  const betaTileCol = beta!=null ? (beta>1.2?'#ef4444':beta>1?'#f97316':'#10b981') : '#9ca3af';
   el.innerHTML=`
+    <div style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:7px">Risk-adjusted <span style="font-weight:400;text-transform:none;letter-spacing:0">(YTD, annualized)</span></div>
+    <div class="scn-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="scn"><div class="scn-lbl">Sharpe</div><div class="scn-val" style="color:${sharpeCol}">${sharpeTxt}</div></div>
+      <div class="scn"><div class="scn-lbl">Volatility</div><div class="scn-val" style="color:${volCol}">${volTxt}</div></div>
+      <div class="scn"><div class="scn-lbl">Max Drawdown</div><div class="scn-val ${M&&M.maxDD<0?'neg':''}">${ddTxt}</div></div>
+      <div class="scn"><div class="scn-lbl">Beta</div><div class="scn-val" style="color:${betaTileCol}">${betaTileTxt}</div></div>
+    </div>
     <div class="stress-row"><div class="stress-big ${beta!=null?'neg':''}">${stressTxt}</div><div class="stress-cap">estimated portfolio move if the market drops 10%${beta!=null?` (beta ${fmt(beta,2)})`:''}</div></div>
     <div class="scn-grid">${scn.map(s=>`<div class="scn"><div class="scn-lbl">${s.l}</div><div class="scn-val ${s.v!=null?'neg':''}">${s.v!=null?fmtP(s.v):'—'}</div></div>`).join('')}</div>
     <div style="margin-top:14px">
@@ -1023,7 +1138,7 @@ function renderRisk(enriched, clusters, totalVal, betaInfo){
       <div class="risk-line"><span class="risk-name">Effective # of bets (1/HHI)</span><span class="risk-val">${effN?fmt(effN,1):'—'} <span style="font-weight:400;color:#9ca3af">of ${enriched.filter(p=>p.val>0).length} positions</span></span></div>
       <div class="risk-line"><span class="risk-name">Portfolio beta</span><span class="risk-val">${beta!=null?fmt(beta,2):'<span class=spin-sm></span>'} <span style="font-weight:400;color:#9ca3af">vs 1.00 market</span></span></div>
     </div>
-    <div class="cov-note">Beta-weighted stress assumes each name moves with its historical beta — a rough guide, not a guarantee. ${betaInfo&&betaInfo.coverage?`Beta covers ${fmt(betaInfo.coverage,0)}% of equity.`:''} "Effective # of bets" near your position count = well spread; far below = concentrated.</div>
+    <div class="cov-note">Beta-weighted stress assumes each name moves with its historical beta — a rough guide, not a guarantee. ${betaInfo&&betaInfo.coverage?`Beta covers ${fmt(betaInfo.coverage,0)}% of equity.`:''} "Effective # of bets" near your position count = well spread; far below = concentrated. Sharpe &amp; volatility are annualized from YTD daily returns of your covered top holdings${M?` (${fmt(M.cov,0)}% of equity, risk-free ≈ 10-yr yield)`:''}; Sharpe &gt; 1 is strong.</div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--surface-2)"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:7px">🤖 AI-infrastructure context — why ~70% in one theme is a real bet <span style="font-weight:400;color:#9ca3af">(Jun 2026)</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="box-bull" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Tailwind</b> — hyperscaler AI capex ≈ $725B in 2026 (+~64% YoY), NVDA at the center via the Rubin ramp. Strong demand backdrop for NVDA / TSM / AVGO into 2H26.</div><div class="box-bear" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Sharp risk (miners)</b> — IREN / CIFR / WULF pivot BTC mining → AI HPC on heavy debt (IREN ~$3.7B converts). Sector has delivered only ~25% of leased HPC; VanEck flags a ~$50B near-term funding gap.</div></div><div style="font-size:10.5px;color:#9ca3af;margin-top:7px">NVDA is the quality leg; IREN (beta ~4.2) is the fragile one — size and stops should reflect that. Sources: hyperscaler capex (Yahoo/Dell’Oro), miner pivot &amp; debt (CoinDesk/VanEck).</div></div>
   `;
 }
@@ -1178,6 +1293,79 @@ function renderFundamentals(enriched, ovMap){
   el.innerHTML=h;
 }
 
+/* ═══ Holdings heatmap (treemap) ═══
+   Tiles sized by position value, colored by day move or total P&L. */
+function squarify(items, x, y, w, h){
+  /* items: [{value, ...}] · returns [{d, x, y, w, h}] in the same px coords. */
+  const rects=[]; const data=items.slice().filter(d=>d.value>0).sort((a,b)=>b.value-a.value);
+  const sum=data.reduce((s,d)=>s+d.value,0); if(sum<=0||w<=0||h<=0) return rects;
+  const scale=(w*h)/sum; const nodes=data.map(d=>({d, area:d.value*scale}));
+  let X=x,Y=y,W=w,H=h;
+  function worst(row, side){ let s=0,mn=Infinity,mx=0; for(const r of row){ s+=r.area; if(r.area<mn)mn=r.area; if(r.area>mx)mx=r.area; } return Math.max((side*side*mx)/(s*s),(s*s)/(side*side*mn)); }
+  let i=0;
+  while(i<nodes.length){
+    const side=Math.min(W,H); let row=[nodes[i]]; let j=i+1;
+    while(j<nodes.length){ const test=row.concat(nodes[j]); if(worst(test,side)<=worst(row,side)){ row=test; j++; } else break; }
+    const rowArea=row.reduce((s,r)=>s+r.area,0); const thick=rowArea/side;
+    if(W>=H){ let oy=Y; for(const r of row){ const rh=r.area/thick; rects.push({d:r.d,x:X,y:oy,w:thick,h:rh}); oy+=rh; } X+=thick; W-=thick; }
+    else { let ox=X; for(const r of row){ const rw=r.area/thick; rects.push({d:r.d,x:ox,y:Y,w:rw,h:thick}); ox+=rw; } Y+=thick; H-=thick; }
+    i=j;
+  }
+  return rects;
+}
+function hmColor(pct, div, neon){
+  if(pct==null||isNaN(pct)) return neon?'#1a2440':'#475569';
+  const t=Math.max(-1,Math.min(1,pct/div)); const mag=Math.abs(t);
+  const l=neon?(26+mag*26):(30+mag*22); const s=neon?88:60; const h=pct>=0?(neon?158:152):(neon?342:356);
+  return 'hsl('+h+' '+s+'% '+l+'%)';
+}
+let _hmMode='day';
+function setHeatmap(m){ _hmMode=m; const d=document.getElementById('hm-day'),p=document.getElementById('hm-pnl'),l=document.getElementById('hm-mode-lbl'); if(d)d.classList.toggle('active',m==='day'); if(p)p.classList.toggle('active',m==='pnl'); if(l)l.textContent=m==='day'?'day move':'total P&L'; renderHeatmap(); }
+window.setHeatmap=setHeatmap;
+function renderHeatmap(){
+  const el=document.getElementById('heatmap'); if(!el)return;
+  const src=(window.__PORT&&window.__PORT.enriched)||_enriched||[];
+  const rows=src.filter(p=>p.val>=SMALL_THR);
+  if(!rows.length){ el.innerHTML='<div class="tech-empty" style="padding:18px">No positions to map.</div>'; return; }
+  const W=el.clientWidth, H=el.clientHeight||340; if(W<10)return; /* hidden tab — skip */
+  const items=rows.map(p=>({value:p.val, p})).sort((a,b)=>b.value-a.value).slice(0,30);
+  const rects=squarify(items,0,0,W,H);
+  const neon=document.documentElement.getAttribute('data-theme')==='neon';
+  const div=_hmMode==='day'?3:40;
+  let html='';
+  for(const r of rects){ const p=r.d.p; const pct=_hmMode==='day'?p.dayP:p.pnlP; const bg=hmColor(pct,div,neon);
+    const fs=Math.max(9,Math.min(19,Math.min(r.w,r.h)/3.8)); const showSym=r.w>=30&&r.h>=16; const showChg=r.h>=42&&r.w>=42;
+    const chg=pct==null?'—':((pct>=0?'+':'')+fmt(pct,1)+'%');
+    html+='<div class="hm-tile" style="left:'+r.x+'px;top:'+r.y+'px;width:'+Math.max(0,r.w-2)+'px;height:'+Math.max(0,r.h-2)+'px;background:'+bg+'" onclick="azConfirm(\''+p.symbol+'\')" title="'+p.symbol+' · '+fmtD(p.val)+' · '+chg+'">'
+      +(showSym?'<span class="hm-sym" style="font-size:'+fs+'px">'+p.symbol+'</span>':'')
+      +(showChg?'<span class="hm-chg" style="font-size:'+Math.max(8,fs*0.68)+'px">'+chg+'</span>':'')
+    +'</div>';
+  }
+  el.innerHTML=html;
+}
+let _hmRz=null;
+window.addEventListener('resize',function(){ clearTimeout(_hmRz); _hmRz=setTimeout(renderHeatmap,160); });
+
+/* ═══ Risk-adjusted metrics (volatility · Sharpe · max drawdown), YTD annualized ═══ */
+function computeRiskMetrics(histMap, enriched, syms, macro){
+  const wsyms=syms.filter(s=>histMap[s]&&histMap[s].length>20);
+  const wmap={}; let wsum=0;
+  for(const s of wsyms){ const p=enriched.find(e=>e.symbol===s); if(p&&p.val>0){ wmap[s]=p.val; wsum+=p.val; } }
+  const keys=Object.keys(wmap); if(wsum<=0||!keys.length) return null;
+  let minLen=Infinity; for(const s of keys) minLen=Math.min(minLen,histMap[s].length);
+  if(!isFinite(minLen)||minLen<25) return null;
+  const dr=new Array(minLen-1).fill(0);
+  for(const s of keys){ const ser=histMap[s].slice(-minLen); const w=wmap[s]/wsum; for(let i=1;i<minLen;i++){ dr[i-1]+=w*(ser[i].c/ser[i-1].c-1); } }
+  const N=dr.length; const mean=dr.reduce((a,b)=>a+b,0)/N;
+  let v=0; for(const x of dr)v+=(x-mean)*(x-mean); v/=N; const sd=Math.sqrt(v);
+  const volAnn=sd*Math.sqrt(252)*100, retAnn=mean*252*100;
+  const rf=(macro&&macro.tenYrYield)?macro.tenYrYield:4.3;
+  const sharpe=volAnn>0?(retAnn-rf)/volAnn:null;
+  let cum=1,peak=1,mdd=0; for(const x of dr){ cum*=(1+x); if(cum>peak)peak=cum; const d=cum/peak-1; if(d<mdd)mdd=d; }
+  const eq=enriched.reduce((s,p)=>s+Math.max(p.val,0),0)||1;
+  return { vol:volAnn, sharpe, maxDD:mdd*100, retAnn, cov:wsum/eq*100 };
+}
+
 /* ═══ MAIN LOAD ═══ */
 async function load(){
   const app=document.getElementById('app');
@@ -1212,6 +1400,7 @@ async function load(){
       <div class="header"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="h-label">Total Portfolio Value</div><div class="h-value">${fmtD(totalVal)}</div><div class="h-tag">Robinhood · Individual Margin</div></div><button id="kyle-btn" class="kyle-btn" onclick="pushToKyle()">📲 Push to Kyle</button></div></div>
       <div class="card"><div id="snap-content"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
+      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div></div>
       <div class="card"><div class="card-title"><span>⚡ Action Feed <span class="card-hint">(what to look at, ranked)</span></span></div><div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
@@ -1225,8 +1414,9 @@ async function load(){
       <div class="disclaimer">Live from Robinhood + Alpha Vantage. Research only — not financial advice.</div>`;
 
     renderSnapshot(stats,null);
+    renderHeatmap();
     _renderPos(enriched);
-    renderRisk(enriched,clusters,totalVal,null);
+    renderRisk(enriched,clusters,totalVal,null,null);
     renderActionFeed(buildActionFeed(enriched,port,clusters,totalVal,{},{},{}));
     renderActionPlan(enriched,clusters,totalVal,null);
 
@@ -1239,9 +1429,10 @@ async function load(){
       renderPerformance(histMap, enriched, cover, macro, stats);
       const rsiMap=rsiFromHist(histMap, cover);
       const betaInfo=betaFromHist(histMap, enriched, cover);
-      if(window.__SNAP){ window.__SNAP.betaInfo=betaInfo; }
+      const riskMetrics=computeRiskMetrics(histMap, enriched, cover, macro);
+      if(window.__SNAP){ window.__SNAP.betaInfo=betaInfo; window.__SNAP.riskMetrics=riskMetrics; }
       renderSnapshot(stats,betaInfo);
-      renderRisk(enriched,clusters,totalVal,betaInfo);
+      renderRisk(enriched,clusters,totalVal,betaInfo,riskMetrics);
       renderTechSignals(enriched,rsiMap);
       renderActionPlan(enriched,clusters,totalVal,betaInfo);
       let ovMap=await loadFundFeed().catch(()=>({}));
@@ -2253,7 +2444,11 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
   try{ const _dt=localStorage.getItem('dash_tab'); if(_dt==='picks'||_dt==='markets')switchTab(_dt); }catch(e){}
 })();
 
-function toggleTheme(){ const h=document.documentElement; const t=h.getAttribute('data-theme')==='dark'?'light':'dark'; h.setAttribute('data-theme',t); try{localStorage.setItem('pf_theme',t);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=t==='dark'?'☀️':'🌙'; const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',t==='dark'?'#000000':'#16213e'); }
+/* Theme cycles Light → Dark → Neon → Light. The icon shows the theme you'll switch TO. */
+var THEME_ORDER=['light','dark','neon'];
+function themeIcon(t){ return t==='dark'?'⚡':t==='neon'?'☀️':'🌙'; } /* icon = next theme in the cycle */
+function themeColor(t){ return t==='neon'?'#05070f':t==='dark'?'#000000':'#16213e'; }
+function toggleTheme(){ const h=document.documentElement; const cur=h.getAttribute('data-theme')||'light'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
 
 /* Privacy mode: blur your $ figures on the Portfolio tab (other tabs are market data, untouched). */
 let _moneyMo=null,_moneyT=null;
@@ -2288,7 +2483,7 @@ function togglePrivacy(){ const on=!document.body.classList.contains('pf-private
 window.togglePrivacy=togglePrivacy;
 (function(){ try{ if(localStorage.getItem('pf_private')==='1'){ if(document.body)document.body.classList.add('pf-private'); startMoney(); } }catch(e){} })();
 window.toggleTheme=toggleTheme;
-(function(){ const b=document.getElementById('theme-toggle'); if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙'; })();
+(function(){ const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(document.documentElement.getAttribute('data-theme')||'light'); })();
 
 load();
 </script>

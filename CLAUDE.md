@@ -29,6 +29,14 @@ It is a **producer / consumer split**:
 session. That's *why* there's a scheduled agent and not a plain cron. Don't propose moving the
 producer to a credentialed cron unless the user explicitly accepts storing RH login secrets.
 
+> **Optional credentialed path (Railway).** `producer/railway/` + `producer/RAILWAY.md` document an
+> opt-in alternative: a Python `robin_stocks` fetcher on Railway that writes the same `producer/raw/*`
+> files and then runs the existing `node producer/run.mjs`. It stores RH credentials (the user
+> accepted this tradeoff). It reuses the entire Node tail, so the replay contract can't drift. It
+> refreshes all tabs live — Portfolio/Markets/Analyze/Options/Picks (Picks via a client-side oversold
+> screen over a curated universe, since the RH saved-scan is a connector abstraction). At parity with
+> the scheduled Claude agent, which remains the default/blessed path.
+
 ## Data flow (one run)
 1. Scheduled agent runs the prompt in `SCHEDULING.md` → **`node producer/preflight.mjs` first**.
 2. preflight prints `PREFLIGHT <MODE>` (deterministic, from the committed snapshot):
@@ -58,12 +66,17 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
+| `producer/railway/` · `producer/RAILWAY.md` | Optional credentialed Railway producer (Python `robin_stocks` fetch → existing Node tail). See the runbook. |
 
 ## Conventions
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v42** (`pf-v42`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v43** (`pf-v43`).
+- **Theming:** three themes cycled by the freshness-bar toggle — **Light → Dark → Neon** (`data-theme`
+  on `<html>`, persisted as `pf_theme`). Neon is a "tasteful HUD" dark variant (cyan/magenta accents,
+  glow on headline numbers, corner-bracket hero frame); its CSS is a self-contained
+  `html[data-theme="neon"]` block at the end of the `<style>`. Charts read `data-theme` for palette.
 - **Encryption:** `data.json` is always encrypted on real runs (`PF_PASSPHRASE`). `run.mjs` refuses to
   push plaintext. Never commit the passphrase or real holdings.
 - **Secrets / env (in the web environment, not git):** `PF_ACCOUNT`, `PF_PASSPHRASE`, optional
@@ -109,8 +122,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 
 ## Feature inventory (what's built)
 - **Portfolio:** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %
-  on cost, value-weighted Day %); risk/concentration; allocation; Income & Tax (dividends, realized
-  YTD, options premium); Action Feed + Action Plan.
+  on cost, value-weighted Day %); **Holdings Heatmap** (squarified treemap, sized by value, colored by
+  day move or total P&L, tap-to-Analyze); risk/concentration with a **risk-adjusted metrics row**
+  (Sharpe · annualized volatility · max drawdown · beta, computed YTD from covered holdings'
+  historicals in `computeRiskMetrics`); allocation; Income & Tax (dividends, realized YTD, options
+  premium); Action Feed + Action Plan.
 - **Picks:** scored candidates table incl. a **Social** column (retail buzz, 20% of composite); top-3
   with thesis/levels; dynamic Earnings Preview (follows the soonest-reporting top pick).
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
