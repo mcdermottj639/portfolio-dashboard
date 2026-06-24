@@ -63,7 +63,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v42** (`pf-v42`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v43** (`pf-v43`).
+- **Theming:** three themes cycled by the freshness-bar toggle — **Light → Dark → Neon** (`data-theme`
+  on `<html>`, persisted as `pf_theme`). Neon is a "tasteful HUD" dark variant (cyan/magenta accents,
+  glow on headline numbers, corner-bracket hero frame); its CSS is a self-contained
+  `html[data-theme="neon"]` block at the end of the `<style>`. Charts read `data-theme` for palette.
 - **Encryption:** `data.json` is always encrypted on real runs (`PF_PASSPHRASE`). `run.mjs` refuses to
   push plaintext. Never commit the passphrase or real holdings.
 - **Secrets / env (in the web environment, not git):** `PF_ACCOUNT`, `PF_PASSPHRASE`, optional
@@ -109,8 +113,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 
 ## Feature inventory (what's built)
 - **Portfolio:** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %
-  on cost, value-weighted Day %); risk/concentration; allocation; Income & Tax (dividends, realized
-  YTD, options premium); Action Feed + Action Plan.
+  on cost, value-weighted Day %); **Holdings Heatmap** (squarified treemap, sized by value, colored by
+  day move or total P&L, tap-to-Analyze); risk/concentration with a **risk-adjusted metrics row**
+  (Sharpe · annualized volatility · max drawdown · beta, computed YTD from covered holdings'
+  historicals in `computeRiskMetrics`); allocation; Income & Tax (dividends, realized YTD, options
+  premium); Action Feed + Action Plan.
 - **Picks:** scored candidates table incl. a **Social** column (retail buzz, 20% of composite); top-3
   with thesis/levels; dynamic Earnings Preview (follows the soonest-reporting top pick).
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
