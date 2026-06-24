@@ -75,21 +75,14 @@ parity with the scheduled Claude agent (modulo the Picks-universe note below + d
    `www.alphavantage.co`, `github.com`.
 
 ## Verify it (do this before trusting the cron)
-1. **Dry run the fetch** — Railway shell (or locally with the same env), `DRY_RUN=1`:
-   ```
-   DRY_RUN=1 FETCH_MODE=FETCH_ALL python3 producer/railway/fetch_rh.py
-   ```
-   It logs each file it *would* write and the shape (counts). Confirm portfolio/positions/quotes look
-   sane. **This is the step that catches `robin_stocks` field-name drift** — if a count is 0 or a
-   value is wrong, fix the mapping in `fetch_rh.py` before going live.
-2. **Full local build, no push:**
-   ```
-   FETCH_MODE=FETCH_ALL python3 producer/railway/fetch_rh.py
-   PF_PASSPHRASE=… node producer/run.mjs --no-push "Railway test"
-   ```
-   Expect `replay contract is valid ✅` and a `Markets coverage: ✅` (or a short list of "—" symbols).
-   Then discard the test build: `git checkout origin/main -- data.json`.
-3. **Let one real cron fire** and confirm the phone's freshness bar shows the new snapshot label.
+1. **Dry run, right on Railway** — add two service variables, `DRY_RUN=1` and
+   `FETCH_MODE=FETCH_ALL`, then trigger a run (Deployments → Redeploy). The fetch logs every file it
+   *would* write and the row counts, then `entrypoint.sh` stops cleanly (no build, no push). Read the
+   deploy logs: confirm portfolio/positions/quotes look sane. **This catches `robin_stocks`
+   field-name drift** — a `0 positions` or a wrong portfolio number means a mapping in `fetch_rh.py`
+   needs a fix before going live. When it looks right, **delete the `DRY_RUN` and `FETCH_MODE`
+   variables** so real runs resume (preflight decides the mode).
+2. **Let one real cron fire** and confirm the phone's freshness bar shows the new snapshot label.
 
 ## Cost
 A cron that fires a handful of times during market hours costs cents/month on Railway — well inside

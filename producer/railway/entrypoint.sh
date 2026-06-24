@@ -23,20 +23,32 @@ git config user.email "pf-railway-bot@users.noreply.github.com"
 git config user.name "pf-railway-bot"
 
 # Preflight gate — reads the committed data.json (raw/ markers don't persist across runs).
-set +e
-node producer/preflight.mjs
-code=$?
-set -e
-case "$code" in
-  10) echo "[entrypoint] preflight SKIP — weekend / close already captured. Nothing to do."; exit 0 ;;
-  0)  export FETCH_MODE=FETCH_ALL ;;
-  11) export FETCH_MODE=FETCH_LIGHT ;;
-  *)  echo "[entrypoint] preflight returned unexpected code $code — aborting."; exit 1 ;;
-esac
-echo "[entrypoint] FETCH_MODE=$FETCH_MODE"
+# You can force a mode (e.g. for a DRY_RUN test) by presetting FETCH_MODE; otherwise preflight decides.
+if [ -n "${FETCH_MODE:-}" ]; then
+  echo "[entrypoint] FETCH_MODE override = $FETCH_MODE (skipping preflight)"
+else
+  set +e
+  node producer/preflight.mjs
+  code=$?
+  set -e
+  case "$code" in
+    10) echo "[entrypoint] preflight SKIP — weekend / close already captured. Nothing to do."; exit 0 ;;
+    0)  export FETCH_MODE=FETCH_ALL ;;
+    11) export FETCH_MODE=FETCH_LIGHT ;;
+    *)  echo "[entrypoint] preflight returned unexpected code $code — aborting."; exit 1 ;;
+  esac
+  echo "[entrypoint] FETCH_MODE=$FETCH_MODE"
+fi
 
 mkdir -p producer/raw
 python3 /app/fetch_rh.py
+
+# DRY_RUN test mode: the fetch logged what it WOULD write (no files written) — stop here cleanly,
+# don't build or push anything.
+if [ "${DRY_RUN:-}" = "1" ]; then
+  echo "[entrypoint] DRY_RUN=1 — fetch logged above; not building/publishing. Done."
+  exit 0
+fi
 
 LABEL="$(python3 /app/label.py)"
 echo "[entrypoint] building + publishing snapshot: $LABEL"
