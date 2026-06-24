@@ -49,9 +49,14 @@ So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh 
 parity with the scheduled Claude agent (modulo the Picks-universe note below + dividend approximation).
 
 ## One-time setup
-1. **Authenticator MFA on Robinhood.** In the Robinhood app, enable two-factor with an
-   **authenticator app**. When it shows the QR code, also reveal the **setup key** (base32) — that's
-   your `RH_MFA_SECRET`. (App-prompt/SMS MFA can't be automated; TOTP can.)
+1. **Robinhood auth — pick the one your account supports.** Unattended login needs EITHER:
+   - **(a) Authenticator-app 2FA (TOTP):** if Robinhood (app *or* robinhood.com → Settings → Security
+     and privacy) offers an "Authenticator app" option, enable it and reveal the **setup key**
+     (base32) — that's `RH_MFA_SECRET`. Many accounts no longer expose this (passkey/SMS only).
+   - **(b) Session pickle (works for passkey/SMS accounts):** on your own computer run
+     `pip install robin_stocks` then `python producer/railway/rh_session.py`, approve the one-time
+     login prompt, and paste the printed `RH_SESSION_B64=…` into Railway. Re-run + update it when the
+     producer logs a login failure (every week or two). See "No authenticator option?" below.
 2. **GitHub token for publishing.** Create a fine-grained PAT scoped to
    `mcdermottj639/portfolio-dashboard` with **Contents: Read and write**. That's `GITHUB_TOKEN`.
 3. **New Railway project → Deploy from GitHub repo** → pick this repo.
@@ -59,20 +64,36 @@ parity with the scheduled Claude agent (modulo the Picks-universe note below + d
      not, set **Dockerfile path** = `producer/railway/Dockerfile`.
    - Settings → **Cron Schedule**: e.g. `0,30 13-21 * * 1-5` (every 30 min, 13:00–21:00 UTC ≈ market
      hours, weekdays). `preflight.mjs` still gates SKIP/light/full, so extra fires are ~free.
-   - Set **Restart Policy = Never** (it's a cron job, not a server).
-4. **Service Variables** (Railway → Variables):
+   - Settings → **Restart Policy = Never** (it's a cron job, not a server).
+   - Settings → **Watch Paths = `producer/railway/**`** so the producer's own `data.json` commits
+     don't trigger pointless rebuilds.
+4. **Service Variables** (Railway → Variables). Set `RH_MFA_SECRET` **or** `RH_SESSION_B64` (not both
+   needed):
    ```
    GITHUB_TOKEN=<fine-grained PAT>
    GITHUB_REPO=mcdermottj639/portfolio-dashboard
    RH_USERNAME=<robinhood email>
-   RH_PASSWORD=<robinhood password>
-   RH_MFA_SECRET=<base32 TOTP setup key>
-   PF_PASSPHRASE=<dashboard passphrase>          # same one your phone uses to unlock
-   PF_ACCOUNT=<robinhood account number>         # optional; default account if omitted
-   ALPHAVANTAGE_KEY=<key>                         # optional; enables macro + AV overviews
+   RH_PASSWORD=<robinhood password>            # still required even with a session pickle
+   RH_MFA_SECRET=<base32 TOTP key>             # path (a) — if your account has authenticator 2FA
+   RH_SESSION_B64=<from rh_session.py>         # path (b) — if it doesn't (passkey/SMS)
+   PF_PASSPHRASE=<dashboard passphrase>        # same one your phone uses to unlock
+   PF_ACCOUNT=<robinhood account number>       # optional; default account if omitted
+   ALPHAVANTAGE_KEY=<key>                       # optional; enables macro + AV overviews
    ```
    Egress allowlist (if your Railway plan restricts it): `api.robinhood.com`, `apewisdom.io`,
    `www.alphavantage.co`, `github.com`.
+
+### No authenticator option? (passkey/SMS-only accounts)
+Robinhood has moved many accounts to passkey/device security with **no authenticator-app toggle** in
+the app or on the web. A server can't do passkey or read your SMS, so use the **session pickle**:
+1. On your computer: install Python 3, then `pip install robin_stocks`.
+2. Run `python producer/railway/rh_session.py`. Enter your email/password; **approve the login** in
+   your Robinhood app (or type the texted code) — the one interactive step.
+3. It prints `RH_SESSION_B64=…`. Paste that whole line into Railway → Variables. Leave `RH_USERNAME`
+   and `RH_PASSWORD` set; you don't need `RH_MFA_SECRET`.
+4. The producer reuses that session with no prompts. When it eventually expires the producer logs a
+   login failure (and Picks/everything just carries forward) — re-run the script and update the
+   variable. Nothing here is uploaded; the string only goes where you paste it.
 
 ## Verify it (do this before trusting the cron)
 1. **Dry run, right on Railway** — add two service variables, `DRY_RUN=1` and
