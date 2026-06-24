@@ -93,8 +93,28 @@ def market_symbols():
             "EFA", "EEM"]
 
 
+def _session_pickle_path():
+    return os.path.join(os.path.expanduser("~"), ".tokens", "robinhood.pickle")
+
+
 def rh_login():
     import robin_stocks.robinhood as rh
+
+    # Preferred when the account has no authenticator-app 2FA (passkey/SMS only): a session created
+    # once on your own computer (see rh_session.py) and pasted into Railway as RH_SESSION_B64. We
+    # drop it where robin_stocks looks, then login() reuses/refreshes it with no MFA prompt.
+    sess = os.environ.get("RH_SESSION_B64")
+    if sess:
+        import base64
+        path = _session_pickle_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            with open(path, "wb") as f:
+                f.write(base64.b64decode(sess))
+            log("restored Robinhood session from RH_SESSION_B64")
+        except Exception as e:
+            log(f"⚠️  could not restore RH_SESSION_B64: {e}")
+
     user = os.environ.get("RH_USERNAME")
     pw = os.environ.get("RH_PASSWORD")
     if not user or not pw:
@@ -104,8 +124,16 @@ def rh_login():
     if secret:
         import pyotp
         mfa = pyotp.TOTP(secret.replace(" ", "")).now()
-    # store_session=False: the Railway container is ephemeral, so don't persist a pickle.
-    rh.login(username=user, password=pw, mfa_code=mfa, store_session=False, expiresIn=86400)
+    # store_session=True so a restored RH_SESSION_B64 is loaded; with a valid session robin_stocks
+    # refreshes the token and skips the MFA challenge entirely.
+    try:
+        rh.login(username=user, password=pw, mfa_code=mfa, store_session=True, expiresIn=86400)
+    except Exception as e:
+        log(f"FATAL — Robinhood login failed: {e}")
+        if not sess and not secret:
+            log("       no RH_SESSION_B64 and no RH_MFA_SECRET set — unattended login needs one of them "
+                "(see producer/RAILWAY.md → 'No authenticator option?').")
+        sys.exit(1)
     log("logged in to Robinhood")
     return rh
 
