@@ -39,7 +39,7 @@
 <!-- Live-only controls (write to MCP / trigger scans) are hidden in the offline PWA. -->
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Default: saved choice, else system preference. -->
-<script>(function(){try{var t=localStorage.getItem('pf_theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem('pf_theme');if(t==='dark'){t='neon';localStorage.setItem('pf_theme','neon');}if(!t)t=((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'neon':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -559,7 +559,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v43'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v44'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -571,7 +571,8 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
                : err    ? '⚠️ Couldn’t load data ('+err+')'
                :          '📡 Snapshot: '+lab;
       var _th=document.documentElement.getAttribute('data-theme')||'light';
-      var themeIco=_th==='dark'?'⚡':_th==='neon'?'☀️':'🌙';
+      if(_th==='dark')_th='neon';
+      var themeIco=_th==='neon'?'☀️':'⚡';
       var privOn=document.body&&document.body.classList.contains('pf-private');
       bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light · dark · neon">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
@@ -625,6 +626,12 @@ function fmt(n,d=2){ if(n==null||isNaN(n))return'—'; return new Intl.NumberFor
 function fmtD(n){ if(n==null||isNaN(n))return'—'; return(n<0?'-$':'$')+fmt(Math.abs(n)); }
 function fmtP(n){ if(n==null||isNaN(n))return'—'; return(n>=0?'+':'')+fmt(n)+'%'; }
 function sc(n){ return n>0?'pos':n<0?'neg':'neu'; }
+/* Theme-aware chart colors (Light + Neon). Charts read these so gridlines/labels stay legible. */
+function _isNeon(){ return document.documentElement.getAttribute('data-theme')==='neon'; }
+function chGrid(){ return _isNeon()?'rgba(120,160,255,0.12)':'#f3f4f6'; }
+function chTick(){ return _isNeon()?'#93a6cc':'#9ca3af'; }
+function chLabel(){ return _isNeon()?'#e6f1ff':'#1c1c1e'; }
+function applyChartTheme(){ try{ if(window.Chart){ Chart.defaults.color=chTick(); Chart.defaults.borderColor=chGrid(); } }catch(e){} }
 
 /* ─── Parsers ─── */
 function parse(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; if(r.content?.[0]?.text)return JSON.parse(r.content[0].text);}catch(e){} return null; }
@@ -2226,7 +2233,7 @@ function renderPicksChart(){
     data:{labels,datasets:[{data:scores,backgroundColor:colors,borderRadius:4}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' Score '+ctx.parsed.x.toFixed(2)+' / 10'}}},
-      scales:{x:{min:0,max:10,grid:{color:'#f3f4f6'},ticks:{font:{size:11}}},y:{grid:{display:false},ticks:{font:{size:12,weight:'600'},color:'#1c1c1e'}}}
+      scales:{x:{min:0,max:10,grid:{color:chGrid()},ticks:{font:{size:11},color:chTick()}},y:{grid:{display:false},ticks:{font:{size:12,weight:'600'},color:chLabel()}}}
     }
   });
 }
@@ -2407,7 +2414,7 @@ function renderMktTiles(qMap){
   }
 }
 
-function renderMktChart(h){ const c=document.getElementById('mkt-chart'); if(!c||!h.SPY||h.SPY.length<2)return; const norm=a=>{const c0=a[0].c;return a.map(b=>(b.c/c0-1)*100);}; const ax=h.SPY.map(b=>b.t); const ds=[{label:'US (S&P 500)',data:norm(h.SPY),borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15}]; if(h.EFA&&h.EFA.length>1)ds.push({label:'Intl Developed (EFA)',data:norm(h.EFA),borderColor:'#10b981',borderWidth:2,pointRadius:0,tension:0.15}); if(h.EEM&&h.EEM.length>1)ds.push({label:'Emerging (EEM)',data:norm(h.EEM),borderColor:'#f59e0b',borderWidth:2,pointRadius:0,tension:0.15}); new Chart(c,{type:'line',data:{labels:ax,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11}}},tooltip:{callbacks:{label:x=>' '+x.dataset.label+': '+(x.parsed.y>=0?'+':'')+x.parsed.y.toFixed(1)+'%'}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:'#9ca3af'},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10},color:'#9ca3af'},grid:{color:'#f3f4f6'}}}}}); }
+function renderMktChart(h){ const c=document.getElementById('mkt-chart'); if(!c||!h.SPY||h.SPY.length<2)return; const norm=a=>{const c0=a[0].c;return a.map(b=>(b.c/c0-1)*100);}; const ax=h.SPY.map(b=>b.t); const ds=[{label:'US (S&P 500)',data:norm(h.SPY),borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15}]; if(h.EFA&&h.EFA.length>1)ds.push({label:'Intl Developed (EFA)',data:norm(h.EFA),borderColor:'#10b981',borderWidth:2,pointRadius:0,tension:0.15}); if(h.EEM&&h.EEM.length>1)ds.push({label:'Emerging (EEM)',data:norm(h.EEM),borderColor:'#f59e0b',borderWidth:2,pointRadius:0,tension:0.15}); new Chart(c,{type:'line',data:{labels:ax,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:11},color:chTick()}},tooltip:{callbacks:{label:x=>' '+x.dataset.label+': '+(x.parsed.y>=0?'+':'')+x.parsed.y.toFixed(1)+'%'}}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:chTick()},grid:{display:false}},y:{ticks:{callback:v=>v+'%',font:{size:10},color:chTick()},grid:{color:chGrid()}}}}}); }
 
 function renderMktVsStats(h,mo){
   const el=document.getElementById('mkt-vs-stats'); if(!el)return;
@@ -2445,10 +2452,10 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 })();
 
 /* Theme cycles Light → Dark → Neon → Light. The icon shows the theme you'll switch TO. */
-var THEME_ORDER=['light','dark','neon'];
-function themeIcon(t){ return t==='dark'?'⚡':t==='neon'?'☀️':'🌙'; } /* icon = next theme in the cycle */
-function themeColor(t){ return t==='neon'?'#05070f':t==='dark'?'#000000':'#16213e'; }
-function toggleTheme(){ const h=document.documentElement; const cur=h.getAttribute('data-theme')||'light'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
+var THEME_ORDER=['light','neon']; /* Dark retired — Light ⇄ Neon only */
+function themeIcon(t){ return t==='neon'?'☀️':'⚡'; } /* icon = the theme you'll switch TO */
+function themeColor(t){ return t==='neon'?'#05070f':'#16213e'; }
+function toggleTheme(){ const h=document.documentElement; let cur=h.getAttribute('data-theme')||'light'; if(cur==='dark')cur='neon'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof applyChartTheme==='function') applyChartTheme(); }catch(e){} try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
 
 /* Privacy mode: blur your $ figures on the Portfolio tab (other tabs are market data, untouched). */
 let _moneyMo=null,_moneyT=null;
@@ -2484,6 +2491,7 @@ window.togglePrivacy=togglePrivacy;
 (function(){ try{ if(localStorage.getItem('pf_private')==='1'){ if(document.body)document.body.classList.add('pf-private'); startMoney(); } }catch(e){} })();
 window.toggleTheme=toggleTheme;
 (function(){ const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(document.documentElement.getAttribute('data-theme')||'light'); })();
+applyChartTheme();
 
 load();
 </script>

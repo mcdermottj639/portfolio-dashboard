@@ -330,11 +330,14 @@ def fetch_options(rh):
             open_ids.add(oid)
         if p.get("chain_symbol"):
             chain_syms.add(p["chain_symbol"])
+        # robin_stocks reports option average_price PER CONTRACT (already ×100), but options-build.mjs
+        # expects a per-share figure (it multiplies by 100). Convert so the credit isn't 100× too big.
+        avg = _num(p.get("average_price"))
         positions.append({
             "option_id": oid,
             "chain_symbol": p.get("chain_symbol"),
             "quantity": p.get("quantity"),
-            "average_price": p.get("average_price"),
+            "average_price": (avg / 100.0) if avg is not None else p.get("average_price"),
         })
 
     inst_cache = {}
