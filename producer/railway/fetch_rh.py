@@ -225,6 +225,129 @@ def fetch_fundamentals(rh, symbols):
         write_raw("holdings-fund.json", {"results": results})
 
 
+def _opt_id(url):
+    """Option instrument id is the last path segment of its URL — free, no request."""
+    if not url:
+        return None
+    return url.rstrip("/").split("/")[-1] or None
+
+
+def fetch_options(rh):
+    """EVERY-RUN (cheap). Writes options-orders.json / options-positions.json /
+    option-pos-quotes.json in the shapes options-build.mjs parses. On any hard failure
+    it writes nothing and the prior Options snapshot carries forward.
+    Returns the set of underlying chain symbols (added to the equity quote batch so
+    options-build always has the underlying price)."""
+    from robin_stocks.robinhood.helper import request_get
+    PENDING = {"queued", "confirmed", "partially_filled", "unconfirmed"}
+    chain_syms = set()
+    try:
+        orders_raw = rh.get_all_option_orders() or []
+    except Exception as e:
+        log(f"⚠️  option orders fetch failed — Options carries forward: {e}")
+        return chain_syms
+
+    # Open positions first, so we know which legs actually need strike/type/expiry enrichment.
+    try:
+        opos_raw = rh.get_open_option_positions() or []
+    except Exception as e:
+        log(f"⚠️  open option positions fetch failed (non-fatal): {e}")
+        opos_raw = []
+    open_ids = set()
+    positions = []
+    for p in opos_raw:
+        oid = _opt_id(p.get("option"))
+        if oid:
+            open_ids.add(oid)
+        if p.get("chain_symbol"):
+            chain_syms.add(p["chain_symbol"])
+        positions.append({
+            "option_id": oid,
+            "chain_symbol": p.get("chain_symbol"),
+            "quantity": p.get("quantity"),
+            "average_price": p.get("average_price"),
+        })
+
+    inst_cache = {}
+
+    def instrument(url):
+        oid = _opt_id(url)
+        if oid in inst_cache:
+            return inst_cache[oid]
+        meta = {}
+        try:
+            meta = request_get(url) or {}
+        except Exception as e:
+            log(f"⚠️  option instrument {oid} lookup failed: {e}")
+        inst_cache[oid] = {
+            "type": meta.get("type"),
+            "strike_price": meta.get("strike_price"),
+            "expiration_date": meta.get("expiration_date"),
+        }
+        return inst_cache[oid]
+
+    norm_orders = []
+    pending_ids = set()
+    for o in orders_raw:
+        if o.get("chain_symbol"):
+            chain_syms.add(o["chain_symbol"])
+        is_pending = o.get("state") in PENDING
+        legs = []
+        for l in (o.get("legs") or []):
+            oid = _opt_id(l.get("option"))
+            need_full = is_pending or (oid in open_ids)  # only these legs are analyzed downstream
+            leg = {
+                "option_id": oid,
+                "side": l.get("side"),
+                "option_type": l.get("option_type"),
+                "strike_price": l.get("strike_price"),
+                "expiration_date": l.get("expiration_date"),
+            }
+            if need_full and l.get("option"):
+                m = instrument(l["option"])
+                leg["option_type"] = leg["option_type"] or m["type"]
+                leg["strike_price"] = leg["strike_price"] or m["strike_price"]
+                leg["expiration_date"] = leg["expiration_date"] or m["expiration_date"]
+                if is_pending and oid:
+                    pending_ids.add(oid)
+            legs.append(leg)
+        norm_orders.append({
+            "chain_symbol": o.get("chain_symbol"), "chain_id": o.get("chain_id"),
+            "state": o.get("state"), "direction": o.get("direction"),
+            "quantity": o.get("quantity"), "price": o.get("price"),
+            "premium": o.get("premium"), "processed_premium": o.get("processed_premium"),
+            "opening_strategy": o.get("opening_strategy"), "closing_strategy": o.get("closing_strategy"),
+            "created_at": o.get("created_at"), "updated_at": o.get("updated_at"),
+            "last_transaction_at": o.get("last_transaction_at"),
+            "legs": legs,
+        })
+
+    write_raw("options-orders.json", {"data": {"orders": norm_orders}})
+    write_raw("options-positions.json", {"data": {"positions": positions}})
+
+    # Live marks/greeks for YOUR contracts (pending order legs + open positions).
+    results = []
+    for oid in (pending_ids | open_ids):
+        try:
+            md = rh.get_option_market_data_by_id(oid)
+        except Exception as e:
+            log(f"⚠️  option market data {oid} failed: {e}")
+            continue
+        d = md
+        while isinstance(d, list) and d:  # robin_stocks returns [{...}] or [[{...}]]
+            d = d[0]
+        if not isinstance(d, dict):
+            continue
+        d = dict(d)
+        d["instrument_id"] = oid
+        results.append(d)
+    if results:
+        write_raw("option-pos-quotes.json", {"results": results})
+
+    log(f"options: {len(norm_orders)} orders · {len(positions)} open · {len(results)} live-quoted")
+    return chain_syms
+
+
 def fetch_vix(rh):
     """Best-effort. RH index marketdata for VIX; on any failure VIX carries forward / shows —."""
     VIX_ID = "3b912aa2-88f9-4682-8ae3-e39520bdf4db"  # stable; see PRODUCER.md
@@ -248,8 +371,12 @@ def main():
     held = fetch_portfolio_positions(rh)
     markets = market_symbols()
 
-    # quotes: every held symbol + every market symbol (EVERY-RUN)
-    all_syms = list(dict.fromkeys(held + markets))
+    # Options every run (cheap); returns underlying chain symbols to fold into the quote batch
+    # so options-build.mjs always has the underlying price (even for names you don't hold equity in).
+    opt_syms = fetch_options(rh)
+
+    # quotes: every held symbol + every market symbol + option underlyings (EVERY-RUN)
+    all_syms = list(dict.fromkeys(held + markets + sorted(opt_syms)))
     fetch_quotes(rh, all_syms)
 
     # VIX: cheap, every run, best-effort

@@ -39,14 +39,15 @@ Railway cron ─► entrypoint.sh
 | Day (YTD) + 5Y historicals | `robin_stocks` (FETCH_ALL only) | 5Y uses weekly bars (RH has no monthly interval) |
 | Holdings fundamentals (sector/PE/mktcap/52wk/yield) | `robin_stocks` (FETCH_ALL) | dividends-per-share absent → approximated |
 | Macro signals + AV company overviews | `av-fetch.mjs` over **HTTP** | already keyless of MCP; set `ALPHAVANTAGE_KEY` |
+| **Options tab** | `robin_stocks` (every run) | orders + open positions + live marks/greeks for your contracts |
 | VIX | best-effort RH index quote | carries forward / shows "—" on failure |
 | Retail buzz (ApeWisdom) | `build-data.mjs` in-process | needs `apewisdom.io` egress |
 | **Daily Picks** | **carried forward** | RH saved-scan not yet ported — see "Follow-ups" |
-| **Options tab** | **carried forward** | RH option shapes not yet ported — see "Follow-ups" |
-| Realized P&L | carried forward / `realized.json` | owner-maintained, unchanged |
+| Realized P&L | carried forward / `realized.json` | owner-maintained; options realized/premium YTD refresh live |
 
-So on day one the Portfolio + Markets + Analyze tabs refresh live; Picks/Options keep showing the
-last Claude-agent snapshot until the follow-ups land (or you run the Claude agent occasionally).
+So on day one the Portfolio + Markets + Analyze + **Options** tabs refresh live; only **Picks** keeps
+showing the last Claude-agent snapshot until that follow-up lands (or you run the Claude agent
+occasionally).
 
 ## One-time setup
 1. **Authenticator MFA on Robinhood.** In the Robinhood app, enable two-factor with an
@@ -96,15 +97,19 @@ A cron that fires a handful of times during market hours costs cents/month on Ra
 the ~$5 base / your $10 budget. `preflight.mjs` SKIPs weekends and already-captured closes, so most
 fires exit in seconds. No always-on server.
 
-## Follow-ups (not in v1)
+## Follow-ups (not yet)
 - **Daily Picks:** port the saved RH scan (`run_scan` scan_id `17e8f5a7-…`) to `robin_stocks`
   (`get_scans` / equivalent) → write `producer/raw/scan.json` + `picks-fund.json`, then the existing
   `picks-build.mjs` takes over. Until then Picks carries forward.
-- **Options tab:** map `get_all_option_orders` / `get_all_open_option_positions` /
-  `get_option_market_data` to `options-orders.json` / `options-positions.json` /
-  `option-pos-quotes.json` shapes (see `options-build.mjs`). Until then Options carries forward.
 - **Dividends per share / ex-date:** RH `get_fundamentals` omits these; pull from the instrument /
   `get_events` if you want exact dividend income instead of the current approximation.
+
+> **Options note (live as of this version).** `fetch_rh.py` writes `options-orders.json`,
+> `options-positions.json`, and `option-pos-quotes.json` every run. Leg strike/type/expiry come from
+> the option-instrument URL, fetched only for the legs that are actually analyzed (pending orders +
+> open positions) to keep calls cheap. Directional **idea** premiums still use estimates unless you
+> later add `option-quotes.json` (see `options-plan.mjs`). Verify with the `DRY_RUN` step that your
+> open contracts and pending orders show up before trusting it.
 
 ## If a run fails
 Same rule as the Claude agent: a failed push (e.g. transient 403) is fine — the build is intact and

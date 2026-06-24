@@ -32,9 +32,9 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 > **Optional credentialed path (Railway).** `producer/railway/` + `producer/RAILWAY.md` document an
 > opt-in alternative: a Python `robin_stocks` fetcher on Railway that writes the same `producer/raw/*`
 > files and then runs the existing `node producer/run.mjs`. It stores RH credentials (the user
-> accepted this tradeoff). It reuses the entire Node tail, so the replay contract can't drift. v1
-> refreshes Portfolio/Markets/Analyze live; Picks/Options carry forward until those RH shapes are
-> ported. The scheduled Claude agent remains the default/blessed path.
+> accepted this tradeoff). It reuses the entire Node tail, so the replay contract can't drift. It
+> refreshes Portfolio/Markets/Analyze/**Options** live; only Picks carries forward until the RH
+> saved-scan is ported. The scheduled Claude agent remains the default/blessed path.
 
 ## Data flow (one run)
 1. Scheduled agent runs the prompt in `SCHEDULING.md` → **`node producer/preflight.mjs` first**.
