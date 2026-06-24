@@ -135,10 +135,19 @@ def rh_login():
     try:
         rh.login(username=user, password=pw, mfa_code=mfa, store_session=True, expiresIn=86400)
     except Exception as e:
-        log(f"FATAL — Robinhood login failed: {e}")
-        if not os.path.exists(path) and not os.environ.get("RH_SESSION_B64") and not secret:
-            log("       no persisted session, RH_SESSION_B64, or RH_MFA_SECRET — unattended login needs one of them "
-                "(see producer/RAILWAY.md → 'No authenticator option?').")
+        log(f"FATAL — Robinhood login raised: {e}")
+        sys.exit(1)
+    # robin_stocks can print "Login failed" WITHOUT raising (e.g. a device-approval that timed out),
+    # after which downstream calls blow up with "can only be called when logged in". Probe with a
+    # cheap authenticated call and fail CLEAN (no push, carry-forward) with a clear message instead.
+    try:
+        authed = bool(rh.load_account_profile())
+    except Exception:
+        authed = False
+    if not authed:
+        log("FATAL — login did not authenticate. If a Robinhood device-approval prompt appeared, it "
+            "wasn't tapped in time. Re-run and APPROVE the prompt on your phone within ~30s. Once a "
+            "good session is saved to the /data volume, later runs won't prompt.")
         sys.exit(1)
     log("logged in to Robinhood")
     return rh
