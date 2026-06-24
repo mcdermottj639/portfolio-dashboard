@@ -72,11 +72,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v43** (`pf-v43`).
-- **Theming:** three themes cycled by the freshness-bar toggle — **Light → Dark → Neon** (`data-theme`
-  on `<html>`, persisted as `pf_theme`). Neon is a "tasteful HUD" dark variant (cyan/magenta accents,
-  glow on headline numbers, corner-bracket hero frame); its CSS is a self-contained
-  `html[data-theme="neon"]` block at the end of the `<style>`. Charts read `data-theme` for palette.
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v44** (`pf-v44`).
+- **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
+  `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
+  dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
+  is a self-contained `html[data-theme="neon"]` block at the end of the `<style>`. Charts read the
+  theme via `chGrid()`/`chTick()`/`chLabel()` + `applyChartTheme()` so gridlines/labels stay legible.
+  (The old `html[data-theme="dark"]` rules remain but are unreachable — dark was retired as an option.)
 - **Encryption:** `data.json` is always encrypted on real runs (`PF_PASSPHRASE`). `run.mjs` refuses to
   push plaintext. Never commit the passphrase or real holdings.
 - **Secrets / env (in the web environment, not git):** `PF_ACCOUNT`, `PF_PASSPHRASE`, optional
