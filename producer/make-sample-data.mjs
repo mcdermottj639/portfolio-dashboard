@@ -168,18 +168,24 @@ const optPending = [ analyzeLeg(
   { chain_symbol:'IREN', side:'sell', option_type:'call', strike_price:'70', expiration_date:'2026-07-17' },
   60.02, 174, { quantity:1, premium:340, direction:'credit', chain_symbol:'IREN', costBasis:49.37 }) ];
 optPending[0].state='queued';
-Object.assign(optPending[0], { mark:3.45, bid:3.40, ask:3.50, delta:0.35, theta:-0.114, iv:102, openInterest:10412, assignProb:35, itm:false, costBasis:49.37, limitPrice:3.40, live:true });
+Object.assign(optPending[0], { mark:3.45, bid:3.40, ask:3.50, delta:0.35, theta:-0.114, vega:0.082, gamma:0.0125, iv:102, ivRank:68, openInterest:10412, assignProb:35, itm:false, costBasis:49.37, limitPrice:3.40, live:true });
+const sampleIdeas = buildIdeas(picks.candidates, [
+  { symbol:'IREN', underlying:'IREN', shares:174, px:60.02 },
+  { symbol:'GRAB', underlying:'GRAB', shares:124, px:4.50 },
+], { NFLX:'77.33', PEP:'142.5', KLAC:'261.1', GRAB:'4.50' }, {
+  // sample live quotes so preview shows the LIVE path (real producer fills these from RH)
+  NFLX:{ strike:81, expiration:'2026-07-17', mark:3.45, bid:3.40, ask:3.50, breakeven:84.45, iv:1.02, delta:0.35, theta:-0.118, vega:0.090, gamma:0.011, openInterest:10412, volume:2969, popLong:0.20 },
+  IREN:{ strike:65, expiration:'2026-07-17', mark:4.10, bid:4.00, ask:4.20, breakeven:69.10, iv:0.95, delta:0.42, theta:-0.131, vega:0.077, gamma:0.013, openInterest:8800, volume:1500, popLong:0.30 },
+});
+// sample IV ranks so preview shows the cheap/rich badge
+const sampleIvRank = { NFLX:62, IREN:68, PEP:24, KLAC:55, GRAB:71 };
+sampleIdeas.ideas.forEach((i) => { if (sampleIvRank[i.underlying] != null) i.ivRank = sampleIvRank[i.underlying]; });
 const options = {
   asOf: new Date().toISOString(), pending: optPending, positions: [],
   history: [{ symbol: 'AMC', net: -61, trades: 2, date: '2024-05-17' }], realized: -61,
-  ideas: buildIdeas(picks.candidates, [
-    { symbol:'IREN', underlying:'IREN', shares:174, px:60.02 },
-    { symbol:'GRAB', underlying:'GRAB', shares:124, px:4.50 },
-  ], { NFLX:'77.33', PEP:'142.5', KLAC:'261.1', GRAB:'4.50' }, {
-    // sample live quotes so preview shows the LIVE path (real producer fills these from RH)
-    NFLX:{ strike:81, expiration:'2026-07-17', mark:3.45, bid:3.40, ask:3.50, breakeven:84.45, iv:1.02, delta:0.35, openInterest:10412, volume:2969, popLong:0.20 },
-    IREN:{ strike:65, expiration:'2026-07-17', mark:4.10, bid:4.00, ask:4.20, breakeven:69.10, iv:0.95, delta:0.42, openInterest:8800, volume:1500, popLong:0.30 },
-  }),
+  ideas: sampleIdeas,
+  ivObserved: { NFLX:102, IREN:95, PEP:31, KLAC:48 }, ivRank: sampleIvRank,
+  exposure: { positions:1, contracts:1, netDelta:-35, cspCash:0, sharesCapped:100, openPremium:345 },
 };
 
 // --- sample news sentiment (Analyze tab News card; real producer fills from AV NEWS_SENTIMENT) ---

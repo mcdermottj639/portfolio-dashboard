@@ -2,14 +2,20 @@
 // can fetch live quotes. Run AFTER picks.json + positions.json + quotes.json exist.
 //   node producer/options-plan.mjs
 //
-// For each target: resolve the nearest LISTED strike to targetStrike via
-//   get_option_instruments { chain_symbol, expiration_dates, type }   (pick nearest strike)
-// then get_option_quotes { instrument_ids:[id] }, and append one object to
+// For each target: prefer the contract nearest its `targetDelta` (a defensible, IV-aware strike)
+// among the listed strikes; fall back to the nearest `targetStrike` if deltas aren't handy. Resolve
+// via get_option_instruments { chain_symbol, expiration_dates, type } → pick by delta/strike →
+// get_option_quotes { instrument_ids:[id] }, and append one object to
 //   producer/raw/option-quotes.json  (a JSON array):
-//   { underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, openInterest, volume, popLong }
-// using the quote fields mark_price, bid_price, ask_price, break_even_price,
-// implied_volatility, delta, open_interest, volume, chance_of_profit_long.
+//   { underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega, gamma,
+//     openInterest, volume, popLong }
+// using the quote fields mark_price, bid_price, ask_price, break_even_price, implied_volatility,
+// delta, theta, vega, gamma, open_interest, volume, chance_of_profit_long.
 // options-build.mjs then uses these exact figures (falls back to estimates if absent).
+//
+// NOTE: only the SINGLE-LEG ideas below are priced live. The defined-risk structures (call debit
+// spread, collar) are built estimate-only inside options.mjs to avoid two-leg same-underlying quote
+// collisions — no action needed here for them.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -40,7 +46,7 @@ const holdings100 = Object.entries(sharesBySym).filter(([, s]) => s >= 100)
 const targets = ideaTargets(picks, holdings100);
 console.log(`Option idea contracts to price (${targets.length}) — save quotes to producer/raw/option-quotes.json:\n`);
 for (const t of targets) {
-  console.log(`  ${t.underlying}  ${t.type}  exp ${t.expiration}  ~strike $${t.targetStrike}  (${t.strategy})`);
+  console.log(`  ${t.underlying}  ${t.type}  exp ${t.expiration}  ~Δ${t.targetDelta} (≈strike $${t.targetStrike})  (${t.strategy})`);
 }
 if (!targets.length) console.log('  (no targets — need picks.json and/or 100+ share holdings)');
-console.log('\nFor each: get_option_instruments → nearest listed strike → get_option_quotes → append the normalized object.');
+console.log('\nFor each: get_option_instruments → contract nearest the target delta (or strike) → get_option_quotes → append the normalized object (incl. theta/vega/gamma).');
