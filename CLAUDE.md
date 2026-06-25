@@ -57,13 +57,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/run.mjs` | Orchestrator: build→validate→**publish to `origin/main`** (works from any session branch; retries; refuses to push plaintext). |
 | `producer/preflight.mjs` | Run-mode gate (SKIP / FETCH_ALL / FETCH_LIGHT). |
 | `producer/market.mjs` | Shared `isMarketOpen` / `isWeekday` / `etDate` / `etMinutes`. |
-| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. |
+| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Maintains **`data.options.ivHistory`** too — appends each run's `ivObserved` (one point/UTC-day, cap ~260) and derives **`data.options.ivRank`** (where today's IV sits in its trailing range), decorating each position/idea with `ivRank`. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. |
 | `producer/emit.mjs` | AES-GCM encrypt/decrypt (`encryptEnvelope`/`decryptEnvelope`). |
 | `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. Tech score **blends RSI with 52wk-range position** (so RSI isn't double-counted vs finalist selection). Candidates carry `sector` + `cov` (data-coverage flags); top picks are **sector-diversified** (`MAX_PICKS_PER_SECTOR`, default 2). |
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. |
 | `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz). |
 | `producer/markets.mjs` | `MARKET_SYMBOLS` (indexes/risk/sectors/intl) — source of truth; keep PRODUCER.md's list in sync. |
-| `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. |
+| `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. `options.mjs` builds the ideas — single-leg long-call/covered-call/CSP (live-priced, delta-targeted) **plus estimate-only defined-risk structures (call debit spread, collar)** with a `legs[]` array the consumer draws as a combined payoff; estimate premiums use a **per-symbol realized-vol IV proxy**. `options-build.mjs` analyzes your contracts (full greeks incl. **vega/gamma**, concrete **roll suggestions**, a portfolio **exposure** roll-up, `ivObserved`). |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
 | `producer/railway/` · `producer/RAILWAY.md` | Optional credentialed Railway producer (Python `robin_stocks` fetch → existing Node tail). See the runbook. |
@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v47** (`pf-v47`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v48** (`pf-v48`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -150,7 +150,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   with a YTD+5Y stat row; **breadth = real market movers** (leaders/laggards across the index/sector/risk
   ETFs, not just your book) + news sentiment; Retail Buzz. The "as of" label reads from
   `data.generatedAt` and flags staleness, like the freshness bar.
-- **Options:** positions/pending + directional ideas with live greeks.
+- **Options:** an **exposure roll-up** (net delta · put cash secured · shares capped · open premium at
+  risk) across your open+pending contracts; **Your Options** cards with full live **greeks (Δ Θ Vega Γ)**,
+  P&L, assignment odds, an **IV-rank badge** (cheap/rich), a payoff-at-expiry diagram, and concrete
+  **roll suggestions** (named later expiry + roll-up strike) on short calls; an **Upcoming Expirations**
+  calendar; **Trade Ideas** that are **filterable (by direction) + sortable** — single-leg long calls,
+  covered calls and cash-secured puts (live-priced, delta-targeted) **plus defined-risk call debit
+  spreads and collars** (estimate-only, multi-leg payoff drawn from `legs[]`); **Covered-Call** and
+  **Cash-Secured-Put income rankers** (annualized yield); Options P&L (closed trades); and a Knowledge
+  card. Estimate premiums use a per-symbol realized-vol IV proxy. Research/education only.
 - **Producer hardening:** preflight gating, carry-forward, deterministic publish-to-main, freshness
   watchdog, clean-stop on push failure.
 - **Freshness bar:** shows the snapshot label/age and **tints amber with a "↻ to refresh" nudge when the

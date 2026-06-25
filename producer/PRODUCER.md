@@ -206,17 +206,22 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       and save the raw result to `producer/raw/option-pos-quotes.json`. `options-build.mjs` uses
       these for live mark / P&L / Greeks / assignment odds on your positions.
    3. **Live idea premiums:** `node producer/options-plan.mjs` prints the idea contracts to
-      price. For each, `get_option_instruments { chain_symbol, expiration_dates, type }` → pick
-      the nearest listed strike to the printed target → `get_option_quotes { instrument_ids:[id] }`,
-      and append one normalized object to `producer/raw/option-quotes.json` (a JSON array):
-      `{ underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, openInterest, volume, popLong }`
+      price (each with a **target delta** as well as a strike). For each, `get_option_instruments
+      { chain_symbol, expiration_dates, type }` → pick the contract nearest the target **delta**
+      (fall back to nearest strike) → `get_option_quotes { instrument_ids:[id] }`, and append one
+      normalized object to `producer/raw/option-quotes.json` (a JSON array):
+      `{ underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega, gamma, openInterest, volume, popLong }`
       from the quote's `mark_price / bid_price / ask_price / break_even_price / implied_volatility /
-      delta / open_interest / volume / chance_of_profit_long`. (Skip if you want estimates instead.)
+      delta / theta / vega / gamma / open_interest / volume / chance_of_profit_long`. (Skip if you
+      want estimates instead.) Only the single-leg ideas are priced live — the defined-risk
+      structures (call debit spread, collar) are estimate-only and need nothing here.
    4. `node producer/options-build.mjs` → writes `producer/raw/options.json`
-      (analyzes your contracts — covered/naked, DTE, breakeven, moneyness — and builds the
-      directional ideas, using the live option quotes when present, else estimates).
-      `build-data.mjs` embeds it as `data.options`. Needs `positions.json`, `quotes.json`, and
-      (for ideas) `picks.json`.
+      (analyzes your contracts — covered/naked, DTE, breakeven, moneyness, full greeks, concrete
+      roll suggestions — builds the directional + defined-risk ideas using live quotes when present
+      else estimates, and emits the portfolio `exposure` roll-up + `ivObserved`). `build-data.mjs`
+      embeds it as `data.options` and maintains the rolling `ivHistory` → `ivRank`. Needs
+      `positions.json`, `quotes.json`, and (for ideas) `picks.json`; `hist-day*.json` sharpens
+      estimate premiums via realized vol when present.
 
 4. **Build + validate + publish — ONE command.** Once every raw file from steps 2–3c is in
    `producer/raw/`, run the orchestrator. It does everything deterministically (optional AV

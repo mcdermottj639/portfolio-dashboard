@@ -559,7 +559,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v47'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v48'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -931,11 +931,15 @@ function eqTradePrompt(p){
 }
 function optTradePrompt(o){
   const L=['Place this options trade on my Robinhood account. Build it, review it, and submit ONLY after I confirm the details.','',
-    '• Underlying: '+o.underlying,'• Strategy: '+(o.strategy||''),
-    '• Contract: '+(o.contracts||1)+'× $'+o.strike+' '+(o.optType||'call')+(o.side?' ('+o.side+')':'')+', expiry '+o.expiration+(o.dte!=null?' (~'+o.dte+' DTE)':'')];
-  if(o.premium!=null)L.push('• Est. premium: ~$'+(+o.premium).toFixed(2)+'/contract');
+    '• Underlying: '+o.underlying,'• Strategy: '+(o.strategy||'')];
+  if(Array.isArray(o.legs)&&o.legs.length>1){
+    o.legs.forEach(function(l){ L.push('• Leg: '+(l.side||'')+' '+(o.contracts||1)+'× $'+l.strike+' '+(l.type||'call')+', expiry '+o.expiration+(o.dte!=null?' (~'+o.dte+' DTE)':'')); });
+  } else {
+    L.push('• Contract: '+(o.contracts||1)+'× $'+o.strike+' '+(o.optType||'call')+(o.side?' ('+o.side+')':'')+', expiry '+o.expiration+(o.dte!=null?' (~'+o.dte+' DTE)':''));
+  }
+  if(o.premium!=null)L.push('• Est. net premium: ~$'+(+o.premium).toFixed(2)+'/contract');
   if(o.breakeven!=null)L.push('• Breakeven: $'+o.breakeven);
-  L.push('','Use the Robinhood connector: find the exact contract with get_option_instruments / get_option_quotes, run review_option_order to show me the live mark, greeks and cost, then place_option_order once I confirm. Education only — not advice.');
+  L.push('','Use the Robinhood connector: find the exact contract(s) with get_option_instruments / get_option_quotes, run review_option_order to show me the live mark, greeks and cost, then place_option_order once I confirm. Education only — not advice.');
   return L.join('\n');
 }
 function chatBtn(id,prompt,label){ window.__trades[id]=prompt;
@@ -1719,16 +1723,32 @@ let _optionsInit=false;
 function initOptions(){ const app=document.getElementById('options-app'); if(!app)return; (window.__dataReady||Promise.resolve(window.__DATA||{})).then(function(d){ try{ renderOptions(app,(d&&d.options)||null); }catch(e){ app.innerHTML='<div class="card"><div class="tech-empty">Options data error: '+(e&&e.message)+'</div></div>'; } }); }
 
 function optSideBadge(o){ const isShort=o.side==='short'; const c=isShort?'#f59e0b':'#6366f1'; return '<span class="badge" style="background:'+(isShort?'#fef3c7':'#ede9fe')+';color:'+(isShort?'#92400e':'#5b21b6')+'">'+(o.side||'').toUpperCase()+' '+(o.type||'').toUpperCase()+'</span>'; }
+// IV rank badge — where today's implied vol sits in its trailing range. High = options rich
+// (favors selling premium), low = cheap (favors buying). Builds with history, so it may be absent.
+function ivRankBadge(r){ if(r==null)return ''; const rich=r>=60, cheap=r<=30;
+  const bg=rich?'#fef3c7':cheap?'#d1fae5':'var(--surface-2)', fg=rich?'#92400e':cheap?'#065f46':'#6b7280';
+  return '<span class="badge" title="Implied-vol rank: where IV sits in its ~1y range. High = rich (sell), low = cheap (buy)." style="background:'+bg+';color:'+fg+'">IV rank '+r+'</span>'; }
 /* ── payoff-at-expiration diagram ── */
 function payoffSeries(spec){
-  const type=spec.type, side=spec.side, strike=+spec.strike, prem=+spec.prem||0, mult=100*(spec.contracts||1);
-  const ref=(spec.px&&spec.px>0)?spec.px:strike;
-  const lo=Math.max(0.01,Math.min(strike,ref)*0.55), hi=Math.max(strike,ref)*1.45, N=30;
+  // Normalize any structure to a list of option legs (+ optional stock leg) so one routine draws
+  // single-leg positions, covered calls, debit spreads and collars alike.
+  const contracts=spec.contracts||1; let legs, stock=null;
+  if(Array.isArray(spec.legs)&&spec.legs.length){
+    legs=spec.legs.map(function(l){return {type:l.type,side:l.side,strike:+l.strike,prem:+l.prem||0,qty:l.qty||1};});
+    if(spec.stock&&spec.stock.shares)stock={shares:spec.stock.shares,basis:+spec.stock.basis};
+  } else {
+    legs=[{type:spec.type,side:spec.side,strike:+spec.strike,prem:+spec.prem||0,qty:contracts}];
+    if(spec.covered&&spec.type==='call'&&spec.side==='short'&&spec.costBasis!=null)stock={shares:100*contracts,basis:+spec.costBasis};
+  }
+  const strikes=legs.map(function(l){return l.strike;}).filter(function(s){return s>0;});
+  const ref=(spec.px&&spec.px>0)?spec.px:(strikes[0]||1);
+  const span=strikes.concat(ref);
+  const lo=Math.max(0.01,Math.min.apply(null,span)*0.55), hi=Math.max.apply(null,span)*1.45, N=30;
   const labels=[], data=[];
-  for(let i=0;i<=N;i++){ const S=lo+(hi-lo)*i/N;
-    const intr=type==='call'?Math.max(S-strike,0):Math.max(strike-S,0);
-    let pl=side==='long'?(intr-prem)*mult:(prem-intr)*mult;
-    if(spec.covered&&type==='call'&&side==='short'&&spec.costBasis!=null)pl+=(S-spec.costBasis)*mult;
+  for(let i=0;i<=N;i++){ const S=lo+(hi-lo)*i/N; let pl=0;
+    legs.forEach(function(l){ const intr=l.type==='call'?Math.max(S-l.strike,0):Math.max(l.strike-S,0); const m=100*l.qty;
+      pl+=l.side==='long'?(intr-l.prem)*m:(l.prem-intr)*m; });
+    if(stock)pl+=(S-stock.basis)*stock.shares;
     labels.push('$'+(S>=100?Math.round(S):S.toFixed(1))); data.push(+pl.toFixed(0));
   }
   return {labels,data};
@@ -1753,44 +1773,60 @@ function optCard(o,cid){
   if(!isPending&&o.pnl!=null)m.push(['P&L','<span style="color:'+(o.pnl>=0?'#10b981':'#ef4444')+'">'+(o.pnl>=0?'+':'')+fmtD(o.pnl)+'</span>']);
   if(o.delta!=null)m.push(['Delta',o.delta]);
   if(o.theta!=null)m.push(['Theta',o.theta]);
+  if(o.vega!=null)m.push(['Vega',o.vega]);
+  if(o.gamma!=null)m.push(['Gamma',o.gamma]);
   if(o.iv!=null)m.push(['IV',o.iv+'%']);
   if(o.assignProb!=null)m.push([o.side==='short'?'Assign odds':'ITM odds',o.assignProb+'%']);
   let fill='';
   if(isPending&&o.mark!=null&&o.limitPrice!=null){ const likely=o.side==='short'?o.mark>=o.limitPrice:o.mark<=o.limitPrice; fill='<div style="font-size:11px;color:'+(likely?'#059669':'#9ca3af')+';margin-top:8px">'+(likely?'✓ Limit looks fillable at the current mark.':'⏳ Mark hasn’t reached your limit yet.')+'</div>'; }
   const spec={type:o.type,side:o.side,strike:o.strike,prem:o.perShare,contracts:o.contracts,covered:o.covered,costBasis:o.costBasis,px:o.underlyingPx};
   if(o.strike!=null&&o.perShare!=null)_optCharts.push([cid,spec]);
-  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+dteB+' '+itmB+' '+st+'</div></div></div>'+
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+dteB+' '+itmB+' '+ivRankBadge(o.ivRank)+' '+st+'</div></div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+m.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   (o.summary?'<div class="cross-note" style="background:var(--surface-2);color:var(--text);margin-top:10px;margin-bottom:0">'+o.summary+'</div>':'')+fill+
   (o.rollAlert?'<div class="cross-note" style="background:#fff7ed;color:#92400e;margin:8px 0 0">🔁 '+o.rollAlert+'</div>':'')+
   (o.strike!=null&&o.perShare!=null?'<div style="font-size:10px;color:#9ca3af;margin:10px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:130px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
 }
 function ideaCard(i,cid){
-  const dirC=i.direction==='Bullish'?'#10b981':i.direction==='Income'?'#0ea5e9':'#ef4444';
+  const dirC=i.direction==='Bullish'?'#10b981':i.direction==='Income'?'#0ea5e9':i.direction==='Hedge'?'#8b5cf6':'#ef4444';
   const live=!!i.live; const prem=live?i.premium:i.estPremium;
-  const rows=[['Strike','$'+i.strike],['Expiry',(i.expiration||'')+' · '+i.dte+'d'],[live?'Premium (mark)':'Est. premium','~$'+(prem!=null?(+prem).toFixed(2):'—')]];
-  if(i.breakeven!=null)rows.push(['Breakeven','$'+i.breakeven]);
-  if(i.maxLoss!=null)rows.push(['Max loss','$'+i.maxLoss]);
-  if(i.income!=null)rows.push(['Income','~$'+i.income]);
-  if(i.cashSecured!=null)rows.push(['Cash req','$'+i.cashSecured]);
-  if(i.annYield!=null)rows.push(['Ann. yield',i.annYield+'%']);
-  if(live){ if(i.delta!=null)rows.push(['Delta',i.delta]); if(i.iv!=null)rows.push(['IV',i.iv+'%']); if(i.openInterest!=null)rows.push(['Open int',i.openInterest]); if(i.pop!=null)rows.push(['POP',i.pop+'%']); }
+  const multi=Array.isArray(i.legs)&&i.legs.length>1;
+  let rows;
+  if(i.strategy==='Call debit spread'){
+    rows=[['Long','$'+i.longStrike],['Short','$'+i.shortStrike],['Net debit','~$'+(prem!=null?(+prem).toFixed(2):'—')],
+      ['Max loss','$'+i.maxLoss],['Max profit','$'+i.maxProfit],['Breakeven','$'+i.breakeven]];
+  } else if(i.strategy==='Collar'){
+    rows=[['Floor (put)','$'+i.putStrike],['Ceiling (call)','$'+i.callStrike],
+      [i.netCost>=0?'Net cost':'Net credit','$'+Math.abs(i.netCost)],['Shares',i.shares],['Expiry',(i.expiration||'')+' · '+i.dte+'d']];
+  } else {
+    rows=[['Strike','$'+i.strike],['Expiry',(i.expiration||'')+' · '+i.dte+'d'],[live?'Premium (mark)':'Est. premium','~$'+(prem!=null?(+prem).toFixed(2):'—')]];
+    if(i.breakeven!=null)rows.push(['Breakeven','$'+i.breakeven]);
+    if(i.maxLoss!=null)rows.push(['Max loss','$'+i.maxLoss]);
+    if(i.income!=null)rows.push(['Income','~$'+i.income]);
+    if(i.cashSecured!=null)rows.push(['Cash req','$'+i.cashSecured]);
+    if(i.annYield!=null)rows.push(['Ann. yield',i.annYield+'%']);
+    if(live){ if(i.delta!=null)rows.push(['Delta',i.delta]); if(i.theta!=null)rows.push(['Theta',i.theta]); if(i.vega!=null)rows.push(['Vega',i.vega]); if(i.iv!=null)rows.push(['IV',i.iv+'%']); if(i.openInterest!=null)rows.push(['Open int',i.openInterest]); if(i.pop!=null)rows.push(['POP',i.pop+'%']); }
+  }
   const tag='<span class="badge" style="background:'+(live?'#d1fae5':'var(--surface-2)')+';color:'+(live?'#065f46':'#9ca3af')+'">'+(live?'● LIVE':'EST')+'</span>';
-  const ot=i.optType||'call', os=i.optSide||(i.strategy==='Long call'?'long':'short');
-  const refPx=ot==='put'?i.strike/0.93:(i.covered?i.strike/1.12:i.strike/1.05);
-  const spec={type:ot,side:os,strike:i.strike,prem:prem,contracts:1,covered:!!i.covered,costBasis:i.covered?i.strike/1.12:undefined,px:refPx};
-  if(prem!=null)_optCharts.push([cid,spec]);
-  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr az-link" onclick="azConfirm(\''+i.underlying+'\')">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+'</div></div><div class="pk-sig '+(i.direction==='Income'?'cautious':'buy')+'">'+(i.confidence||'')+'%</div></div>'+
+  // Payoff spec — multi-leg structures carry their own legs[]/stock; single-leg derives a ref price.
+  let spec;
+  if(multi){ spec={legs:i.legs,stock:i.stock,contracts:1,px:i.stock?i.stock.basis:(i.longStrike?i.longStrike/1.03:i.strike)}; }
+  else { const ot=i.optType||'call', os=i.optSide||(i.strategy==='Long call'?'long':'short');
+    const refPx=ot==='put'?i.strike/0.93:(i.covered?i.strike/1.12:i.strike/1.05);
+    spec={type:ot,side:os,strike:i.strike,prem:prem,contracts:1,covered:!!i.covered,costBasis:i.covered?i.strike/1.12:undefined,px:refPx}; }
+  if(prem!=null||multi)_optCharts.push([cid,spec]);
+  const sigCls=(i.direction==='Bullish')?'buy':'cautious';
+  return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr az-link" onclick="azConfirm(\''+i.underlying+'\')">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+' '+ivRankBadge(i.ivRank)+'</div></div><div class="pk-sig '+sigCls+'">'+(i.confidence||'')+'%</div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
   '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
-  (prem!=null?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+
-  chatBtn('opt-'+cid,optTradePrompt({underlying:i.underlying,strategy:i.strategy,optType:i.optType||'call',side:i.optSide,strike:i.strike,expiration:i.expiration,dte:i.dte,premium:prem,breakeven:i.breakeven,contracts:1}))+
+  ((prem!=null||multi)?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+
+  chatBtn('opt-'+cid,optTradePrompt({underlying:i.underlying,strategy:i.strategy,optType:i.optType||'call',side:i.optSide,strike:i.strike,expiration:i.expiration,dte:i.dte,premium:prem,breakeven:i.breakeven,contracts:1,legs:i.legs}))+
   rhBtn(i.underlying,'📲 Open '+i.underlying+' in Robinhood → Options')+'</div>';
 }
 let _optCharts=[];
 const OPT_KNOWLEDGE=[
   ['📈 Calls & Puts','A <b>call</b> profits when the stock rises (right to buy at the strike); a <b>put</b> profits when it falls (right to sell at the strike). Each contract = 100 shares. Buyers risk only the premium paid; sellers collect premium but take on obligation.'],
-  ['🛡️ Covered call','Sell a call against 100+ shares you already own. You collect premium as income and cap your upside at the strike. Low-risk because your shares back it — this is your pending IREN trade.'],
+  ['🛡️ Covered call','Sell a call against 100+ shares you already own. You collect premium as income and cap your upside at the strike. Low-risk because your shares back it — the income shows up under "Covered-Call Income" below.'],
   ['💵 Cash-secured put','Sell a put while holding enough cash to buy 100 shares at the strike. You get paid to potentially buy a stock you want at a lower effective price; if it stays above the strike you just keep the premium.'],
   ['🔤 The Greeks','<b>Delta</b> ≈ how much the option moves per $1 of stock. <b>Theta</b> = daily time decay (works against buyers). <b>Vega</b> = sensitivity to volatility. <b>Gamma</b> = how fast delta changes. Long options lose value as expiry nears, all else equal.'],
   ['⚠️ Key risks','Options expire — they can go to $0. Buying: max loss is the premium. Selling naked: losses can be large/unlimited. Assignment can happen early on ITM short options. Wide bid/ask and low volume hurt fills — check open interest.'],
@@ -1799,24 +1835,84 @@ const OPT_KNOWLEDGE=[
   ['🔁 Rolling','Close an option and reopen a similar one further out (and/or at a new strike). Used to avoid assignment on a short call, buy more time, or collect additional premium.'],
   ['🎡 The Wheel','Sell cash-secured puts on a stock you like; if assigned, you own the shares and sell covered calls against them — a repeatable income loop.'],
 ];
+/* ── options exposure strip — portfolio-level posture across open + pending ── */
+function optExposureStrip(e){
+  if(!e)return '';
+  const tiles=[];
+  const dC=e.netDelta>0?'#10b981':e.netDelta<0?'#ef4444':'#6b7280';
+  tiles.push(['Net delta','<span style="color:'+dC+'">'+(e.netDelta>0?'+':'')+e.netDelta+'</span>','share-equiv. tilt']);
+  if(e.cspCash)tiles.push(['Put cash secured',fmtD(e.cspCash),'tied up on short puts']);
+  if(e.sharesCapped)tiles.push(['Shares capped',e.sharesCapped+'','under short calls']);
+  tiles.push(['Open premium',fmtD(e.openPremium),'at risk · '+e.contracts+' contract'+(e.contracts===1?'':'s')]);
+  return '<div class="card"><div class="card-title"><span>🧮 Options Exposure <span class="card-hint">'+e.positions+' position'+(e.positions===1?'':'s')+' · open + pending</span></span></div>'+
+    '<div class="pk-metrics" style="grid-template-columns:repeat('+Math.min(4,tiles.length)+',1fr)">'+
+    tiles.map(function(t){return '<div class="pk-m"><div class="pk-m-l">'+t[0]+'</div><div class="pk-m-v">'+t[1]+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">'+t[2]+'</div></div>';}).join('')+'</div></div>';
+}
+/* ── upcoming expirations calendar (open + pending short/long contracts) ── */
+function optExpiryCalendar(items){
+  const rows=items.filter(function(a){return a.expiration&&a.dte!=null;})
+    .map(function(a){return {sym:a.underlying,exp:a.expiration,dte:a.dte,strike:a.strike,side:a.side,type:a.type,qty:a.contracts||1,itm:a.itm};})
+    .sort(function(a,b){return a.dte-b.dte;});
+  if(!rows.length)return '';
+  return '<div class="card"><div class="card-title"><span>📅 Upcoming Expirations <span class="card-hint">your open + pending contracts</span></span></div>'+
+    '<div style="overflow-x:auto"><table><thead><tr><th>Date</th><th class="tr">DTE</th><th>Contract</th><th class="tr">Status</th></tr></thead><tbody>'+
+    rows.map(function(r){ const soon=r.dte<=7; const stat=r.itm===true?'<span style="color:#b45309">ITM</span>':r.itm===false?'<span style="color:#9ca3af">OTM</span>':'—';
+      return '<tr><td>'+r.exp+'</td><td class="tr"'+(soon?' style="color:#b91c1c;font-weight:700"':'')+'>'+r.dte+'d</td><td class="sym">'+r.sym+' '+(r.qty>1?r.qty+'× ':'')+'$'+r.strike+' '+(r.side||'').toUpperCase()+' '+(r.type||'').toUpperCase()+'</td><td class="tr">'+stat+'</td></tr>';
+    }).join('')+'</tbody></table></div><div class="fund-note">Sorted by days-to-expiry; rows ≤7d are flagged. ITM short contracts carry assignment risk.</div></div>';
+}
+/* ── filterable + sortable Trade Ideas grid ── */
+let _optIdeaState={dir:'all',sort:'conf'};
+function optIdeaGridHtml(){
+  const f=_optIdeaState; let arr=(window._optIdeas||[]).slice();
+  if(f.dir!=='all')arr=arr.filter(function(i){return i.direction===f.dir;});
+  const keys={conf:function(i){return i.confidence||0;},yield:function(i){return i.annYield||0;},dte:function(i){return -(i.dte||0);}};
+  const kf=keys[f.sort]||keys.conf; arr.sort(function(a,b){return kf(b)-kf(a);});
+  if(!arr.length)return '<div class="tech-empty">No ideas match this filter.</div>';
+  return '<div class="picks-grid2">'+arr.map(function(i,k){return ideaCard(i,'pf-idea-'+k);}).join('')+'</div>';
+}
+function optIdeaApply(){
+  const dir=document.getElementById('opt-idea-dir'), sort=document.getElementById('opt-idea-sort');
+  if(dir)_optIdeaState.dir=dir.value; if(sort)_optIdeaState.sort=sort.value;
+  const g=document.getElementById('opt-idea-grid'); if(!g)return;
+  _optCharts=[]; g.innerHTML=optIdeaGridHtml();
+  const q=_optCharts.slice(); _optCharts=[];
+  setTimeout(function(){ q.forEach(function(x){ drawPayoff(x[0],x[1]); }); },0);
+}
+function optIdeaControls(ideas){
+  const dirs=['all'].concat([...new Set(ideas.map(function(i){return i.direction;}))]);
+  const dopt=dirs.map(function(d){return '<option value="'+d+'"'+(_optIdeaState.dir===d?' selected':'')+'>'+(d==='all'?'All':d)+'</option>';}).join('');
+  const sorts=[['conf','Confidence'],['yield','Ann. yield'],['dte','Soonest expiry']];
+  const sopt=sorts.map(function(s){return '<option value="'+s[0]+'"'+(_optIdeaState.sort===s[0]?' selected':'')+'>'+s[1]+'</option>';}).join('');
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:2px 0 12px;font-size:12px">'+
+    '<label style="color:#9ca3af">Direction <select id="opt-idea-dir" onchange="optIdeaApply()" style="font-size:12px;padding:3px 6px">'+dopt+'</select></label>'+
+    '<label style="color:#9ca3af">Sort <select id="opt-idea-sort" onchange="optIdeaApply()" style="font-size:12px;padding:3px 6px">'+sopt+'</select></label></div>';
+}
 function renderOptions(app,o){
   _optCharts=[];
   let h='<div class="picks-hero"><div><div class="ph-label">Options</div><div class="ph-date">Contracts · Ideas · Knowledge</div><div class="ph-stale">Research &amp; education only — not financial advice.</div></div></div>';
+  const pend=(o&&o.pending)||[], pos=(o&&o.positions)||[];
+  // Exposure roll-up (when you hold/await any contracts)
+  h+=optExposureStrip(o&&o.exposure);
   // Your options
   h+='<div class="card"><div class="card-title"><span>📂 Your Options</span></div>';
-  const pend=(o&&o.pending)||[], pos=(o&&o.positions)||[];
-  if(!pend.length&&!pos.length){ h+='<div class="tech-empty">No open or pending option contracts in the snapshot. Your pending IREN covered call will appear here on the next producer run.</div>'; }
+  if(!pend.length&&!pos.length){ h+='<div class="tech-empty">No open or pending option contracts in the snapshot. Any covered calls, cash-secured puts or long options you place will appear here on the next producer run.</div>'; }
   else { if(pos.length)h+='<div class="picks-grid2">'+pos.map(function(p,k){return optCard(p,'pf-pos-'+k);}).join('')+'</div>'; if(pend.length){ h+='<div style="font-size:12px;font-weight:700;color:#9ca3af;margin:'+(pos.length?'12px':'2px')+' 0 8px">Pending orders</div><div class="picks-grid2">'+pend.map(function(p,k){return optCard(p,'pf-pend-'+k);}).join('')+'</div>'; } }
   h+='</div>';
-  // Ideas
+  // Upcoming expirations
+  h+=optExpiryCalendar([...pos,...pend]);
+  // Ideas (filterable + sortable)
   const ideas=(o&&o.ideas&&o.ideas.ideas)||[];
-  h+='<div class="card"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · data-driven · est. premiums</span></span></div>';
-  if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls from the oversold scan + covered-call income on your 100+ share holdings).</div>';
-  else h+='<div class="picks-grid2">'+ideas.map(function(i,k){return ideaCard(i,'pf-idea-'+k);}).join('')+'</div><div class="fund-note">Estimated premiums — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
+  window._optIdeas=ideas; _optIdeaState={dir:'all',sort:'conf'};
+  h+='<div class="card"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · spreads · collars · est. premiums</span></span></div>';
+  if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls + a defined-risk debit spread from the oversold scan, covered-call income, cash-secured puts, and a collar on your largest holding).</div>';
+  else h+=optIdeaControls(ideas)+'<div id="opt-idea-grid">'+optIdeaGridHtml()+'</div><div class="fund-note">Estimated premiums (spreads/collars are always modeled) — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
   h+='</div>';
   // Covered-call income ranker (your 100+ share holdings, by annualized yield)
   const ccs=ideas.filter(function(i){return i.strategy==='Covered call';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
   if(ccs.length){ h+='<div class="card"><div class="card-title"><span>💰 Covered-Call Income <span class="card-hint">your 100+ share holdings · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+ccs.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr"><b style="color:#10b981">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ price × (365 ÷ days). Caps upside at the strike; the premium is yours to keep.</div></div>'; }
+  // Cash-secured put income ranker (oversold names, by annualized yield)
+  const csps=ideas.filter(function(i){return i.strategy==='Cash-secured put';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
+  if(csps.length){ h+='<div class="card"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
   // Options P&L (closed trades)
   const hist=(o&&o.history)||[];
   h+='<div class="card"><div class="card-title"><span>📒 Options P&amp;L <span class="card-hint">closed trades</span></span></div>';

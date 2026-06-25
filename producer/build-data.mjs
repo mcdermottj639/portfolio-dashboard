@@ -200,6 +200,40 @@ const optionsFile = filesMatching(/^options\.json$/)[0];
 if (optionsFile) data.options = readJSON(optionsFile);
 else if (prior && prior.options) data.options = prior.options;
 
+// IV RANK: maintain a rolling per-symbol implied-vol history (the only options state that must
+// survive the producer's fresh-clone runs — options-build can't see the prior snapshot, build-data
+// can). Append today's observed IVs (one point per UTC day, latest wins), cap to ~1y of points, and
+// derive IV rank = where today's IV sits in its trailing min/max range (0 = cheapest, 100 = richest).
+// Then decorate every position/pending/idea with `ivRank` so the consumer can flag cheap vs. rich
+// options without re-deriving it. Skipped cleanly when options were merely carried forward.
+if (data.options && optionsFile) {
+  const today = data.generatedAt.slice(0, 10);
+  const histPrev = (prior && prior.options && prior.options.ivHistory) || {};
+  const ivHistory = {};
+  for (const sym of Object.keys(histPrev)) ivHistory[sym] = histPrev[sym].slice();
+  const observed = data.options.ivObserved || {};
+  for (const [sym, iv] of Object.entries(observed)) {
+    if (!(iv > 0)) continue;
+    const series = (ivHistory[sym] = ivHistory[sym] || []);
+    if (series.length && series[series.length - 1].d === today) series[series.length - 1].v = iv;
+    else series.push({ d: today, v: iv });
+    if (series.length > 260) ivHistory[sym] = series.slice(-260);
+  }
+  const ivRank = {};
+  for (const [sym, series] of Object.entries(ivHistory)) {
+    if (!series || series.length < 5) continue;            // need a little history to be meaningful
+    const vals = series.map((p) => p.v);
+    const lo = Math.min(...vals), hi = Math.max(...vals), cur = vals[vals.length - 1];
+    ivRank[sym] = hi > lo ? Math.round(((cur - lo) / (hi - lo)) * 100) : 50;
+  }
+  data.options.ivHistory = ivHistory;
+  data.options.ivRank = ivRank;
+  const decorate = (a) => { if (a && a.underlying && ivRank[a.underlying] != null) a.ivRank = ivRank[a.underlying]; };
+  (data.options.positions || []).forEach(decorate);
+  (data.options.pending || []).forEach(decorate);
+  if (data.options.ideas && Array.isArray(data.options.ideas.ideas)) data.options.ideas.ideas.forEach(decorate);
+}
+
 // Realized P&L for the Income & Tax widget. There is no cost-basis/realized endpoint, so this is
 // an owner-maintained figure (authoritative source: Robinhood's tax center) committed to
 // producer/realized.json as { year, equity, options, total, approx }. Embedded verbatim as

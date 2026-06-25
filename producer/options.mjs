@@ -75,33 +75,49 @@ export function analyzeLeg(leg, underlyingPx, sharesOwned = 0, opts = {}) {
 // The contracts the ideas want priced — used by options-plan.mjs to tell the agent
 // exactly which chains to look up, and by buildIdeas to match live quotes.
 //   picks: Daily Picks candidates (oversold, bullish). holdings: [{symbol,shares,px}].
+// Each target carries a `targetDelta` so the agent can pick the contract nearest a target
+// delta (a defensible, IV-aware strike) instead of a naive fixed-% OTM strike; `targetStrike`
+// remains as a fallback hint and for the estimate path. Single-leg only (covered/CSP/long
+// call) — the defined-risk structures (spreads/collars) are estimate-only, built in buildIdeas.
 export function ideaTargets(picks, holdings) {
   const expiration = monthlyExpiry(35), dte = dteFrom(expiration);
   const targets = [];
   for (const c of (picks || []).slice(0, 3)) {
     if (!c.price) continue;
     targets.push({ underlying: c.ticker, kind: 'long_call', type: 'call', direction: 'Bullish',
-      strategy: 'Long call', expiration, dte, targetStrike: Math.round(c.price * 1.05), px: c.price, rsi: c.rsi, composite: c.composite });
+      strategy: 'Long call', expiration, dte, targetStrike: Math.round(c.price * 1.05), targetDelta: 0.45,
+      px: c.price, rsi: c.rsi, composite: c.composite });
   }
   for (const h of (holdings || [])) {
     if (h.shares < 100 || !h.px) continue;
     targets.push({ underlying: h.symbol, kind: 'covered_call', type: 'call', direction: 'Income',
-      strategy: 'Covered call', expiration, dte, targetStrike: Math.round(h.px * 1.12), px: h.px, shares: h.shares });
+      strategy: 'Covered call', expiration, dte, targetStrike: Math.round(h.px * 1.12), targetDelta: 0.30,
+      px: h.px, shares: h.shares });
   }
   // Cash-secured puts on the next oversold names (distinct underlyings from the long calls,
   // so live quotes don't collide) — get paid to potentially own them ~7% cheaper.
   for (const c of (picks || []).slice(3, 5)) {
     if (!c.price) continue;
     targets.push({ underlying: c.ticker, kind: 'csp', type: 'put', direction: 'Income',
-      strategy: 'Cash-secured put', expiration, dte, targetStrike: Math.round(c.price * 0.93), px: c.price, rsi: c.rsi });
+      strategy: 'Cash-secured put', expiration, dte, targetStrike: Math.round(c.price * 0.93), targetDelta: 0.30,
+      px: c.price, rsi: c.rsi });
   }
   return targets;
 }
 
+// Per-symbol IV proxy for the estimate path. Prefers an annualized realized-vol figure
+// (ivBySym, computed from historicals by options-build); falls back to a strategy default.
+function ivProxyFor(ivBySym, sym, kind) {
+  const rv = num(ivBySym && ivBySym[sym]);
+  if (rv != null && rv > 0.05 && rv < 4) return rv;       // sane realized-vol range
+  return kind === 'long_call' ? 0.55 : 0.6;
+}
+
 // Directional trade ideas. `liveBySym[underlying]` (optional) holds a real option quote
-// { strike, expiration, mark, bid, ask, breakeven, iv, delta, openInterest, volume, popLong }
-// from Robinhood; when present the idea uses exact figures (live:true), else an estimate.
-export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
+// { strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega, gamma, openInterest,
+// volume, popLong } from Robinhood; when present the idea uses exact figures (live:true), else an
+// estimate. `ivBySym` (optional) supplies per-symbol annualized realized vol for sharper estimates.
+export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}, ivBySym = {}) {
   const targets = ideaTargets(picks, holdings);
   const expiration = targets[0]?.expiration || monthlyExpiry(35);
   const ideas = targets.map((t) => {
@@ -118,13 +134,16 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
       Object.assign(base, { live: true, expiration: live.expiration || t.expiration, strike, premium: prem,
         iv: live.iv != null ? +(num(live.iv) * 100).toFixed(0) : null,
         delta: live.delta != null ? +num(live.delta).toFixed(2) : null,
+        theta: live.theta != null ? +num(live.theta).toFixed(3) : null,
+        vega: live.vega != null ? +num(live.vega).toFixed(3) : null,
+        gamma: live.gamma != null ? +num(live.gamma).toFixed(4) : null,
         openInterest: live.openInterest != null ? num(live.openInterest) : null,
         volume: live.volume != null ? num(live.volume) : null,
         pop: live.popLong != null ? +(num(live.popLong) * 100).toFixed(0) : null });
     } else {
       strike = t.kind === 'covered_call' ? (Math.round(px * 1.12 / 5) * 5 || Math.round(px * 1.12))
              : t.kind === 'csp' ? Math.round(px * 0.93) : Math.round(px * 1.05);
-      prem = estPremium(px, strike, t.dte, t.type, t.kind === 'long_call' ? 0.55 : 0.6);
+      prem = estPremium(px, strike, t.dte, t.type, ivProxyFor(ivBySym, t.underlying, t.kind));
       Object.assign(base, { live: false, strike, estPremium: prem });
     }
     const L = base.live;
@@ -147,7 +166,7 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
       base.thesis = [
         `You own ${base.shares} sh of ${t.underlying} — sell the $${strike} call (~${t.dte}d) for ~$${base.income} income${L ? ` (live mark $${prem.toFixed(2)})` : ' (est)'}.`,
         `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}. Keep premium + shares if it expires below.`,
-        L ? `Δ${base.delta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}.` : `Defined-risk income — same structure as your IREN call.`,
+        L ? `Δ${base.delta ?? '—'} · Θ${base.theta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}.` : `Defined-risk income — the premium cushions a pullback while you keep the shares below the strike.`,
       ];
     } else { // cash-secured put
       base.income = +(prem * 100).toFixed(0);
@@ -162,5 +181,78 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}) {
     }
     return base;
   });
+  ideas.push(...structuredIdeas(picks, holdings, quotesBySym, ivBySym, expiration));
   return { expiration, ideas };
+}
+
+// Defined-risk, multi-leg educational structures — ESTIMATE-ONLY (premiums modeled, not live,
+// to avoid two-leg same-underlying live-quote collisions). Each carries a `legs` array the
+// consumer uses to draw the combined payoff and to build the trade prompt:
+//   • Call debit spread — the bullish-bounce thesis with capped cost AND capped risk (cheaper
+//     than a naked long call). Built from the top oversold pick.
+//   • Collar — on the largest 100+ share holding: long protective put + short call (financed by
+//     the call), locking a floor and ceiling. A cheap way to protect a big winner.
+function structuredIdeas(picks, holdings, quotesBySym = {}, ivBySym = {}, expiration) {
+  const out = [];
+  const dte = dteFrom(expiration);
+  // Call debit spread off the most-oversold pick.
+  const top = (picks || []).find((c) => c && c.price);
+  if (top) {
+    const px = num(quotesBySym[top.ticker]) || top.price;
+    const longK = Math.round(px * 1.03), shortK = Math.round(px * 1.12);
+    const iv = ivProxyFor(ivBySym, top.ticker, 'long_call');
+    const longPrem = estPremium(px, longK, dte, 'call', iv);
+    const shortPrem = estPremium(px, shortK, dte, 'call', iv);
+    const net = Math.max(0.05, +(longPrem - shortPrem).toFixed(2));
+    const width = shortK - longK;
+    out.push({
+      underlying: top.ticker, direction: 'Bullish', strategy: 'Call debit spread',
+      expiration, dte, optType: 'call', optSide: 'debit_spread', live: false,
+      strike: longK, longStrike: longK, shortStrike: shortK, estPremium: net, netDebit: net,
+      maxLoss: +(net * 100).toFixed(0), maxProfit: +((width - net) * 100).toFixed(0),
+      breakeven: +(longK + net).toFixed(2),
+      confidence: top.composite ? Math.round(top.composite * 9) : 60, rsi: top.rsi,
+      legs: [
+        { type: 'call', side: 'long', strike: longK, prem: longPrem },
+        { type: 'call', side: 'short', strike: shortK, prem: shortPrem },
+      ],
+      thesis: [
+        `${top.ticker} screens oversold (RSI ${top.rsi}) — buy the $${longK} / sell the $${shortK} call (~${dte}d) to play a bounce with capped cost.`,
+        `Net debit ~$${net.toFixed(2)} ($${net * 100 | 0} max loss); max profit ~$${((width - net) * 100).toFixed(0)} if it closes above $${shortK}; breakeven ~$${(longK + net).toFixed(2)}.`,
+        `Defined-risk alternative to a naked long call — cheaper, but upside is capped at the short strike. Estimate; confirm both legs in the chain.`,
+      ],
+    });
+  }
+  // Collar on the largest 100+ share holding.
+  const big = (holdings || []).filter((h) => h.shares >= 100 && h.px)
+    .sort((a, b) => b.shares * b.px - a.shares * a.px)[0];
+  if (big) {
+    const px = num(quotesBySym[big.symbol || big.underlying]) || big.px;
+    const putK = Math.round(px * 0.92), callK = Math.round(px * 1.10);
+    const iv = ivProxyFor(ivBySym, big.symbol || big.underlying, 'covered_call');
+    const putPrem = estPremium(px, putK, dte, 'put', iv);
+    const callPrem = estPremium(px, callK, dte, 'call', iv);
+    const net = +(putPrem - callPrem).toFixed(2); // >0 = net cost, <0 = net credit
+    out.push({
+      underlying: big.symbol || big.underlying, direction: 'Hedge', strategy: 'Collar',
+      expiration, dte, optType: 'collar', optSide: 'collar', live: false,
+      putStrike: putK, callStrike: callK, strike: putK, shares: 100,
+      netCost: +(net * 100).toFixed(0), estPremium: Math.abs(net),
+      floor: putK, ceiling: callK,
+      confidence: 55,
+      legs: [
+        { type: 'put', side: 'long', strike: putK, prem: putPrem },
+        { type: 'call', side: 'short', strike: callK, prem: callPrem },
+      ],
+      stock: { shares: 100, basis: +px.toFixed(2) },
+      thesis: [
+        `You own ${big.shares} sh of ${big.symbol || big.underlying} — buy the $${putK} put, sell the $${callK} call (~${dte}d) to lock a floor and ceiling.`,
+        net >= 0
+          ? `Net cost ~$${(net * 100).toFixed(0)} for 100 sh of downside protection below $${putK}; caps upside at $${callK}.`
+          : `Net credit ~$${(-net * 100).toFixed(0)} — the call more than pays for the put; floor $${putK}, ceiling $${callK}.`,
+        `Protects a big position into events; you keep dividends. Estimate — confirm both legs in the chain.`,
+      ],
+    });
+  }
+  return out;
 }

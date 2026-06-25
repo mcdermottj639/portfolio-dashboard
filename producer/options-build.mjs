@@ -59,6 +59,8 @@ function enrichLive(a, optionId) {
   a.bid = num(q.bid_price); a.ask = num(q.ask_price);
   a.delta = q.delta != null ? +num(q.delta).toFixed(2) : null;
   a.theta = q.theta != null ? +num(q.theta).toFixed(3) : null;
+  a.vega = q.vega != null ? +num(q.vega).toFixed(3) : null;
+  a.gamma = q.gamma != null ? +num(q.gamma).toFixed(4) : null;
   a.iv = q.implied_volatility != null ? +(num(q.implied_volatility) * 100).toFixed(0) : null;
   a.openInterest = num(q.open_interest);
   if (q.break_even_price != null) a.breakeven = num(q.break_even_price);
@@ -69,10 +71,27 @@ function enrichLive(a, optionId) {
   return a;
 }
 
+// 3rd-Friday monthly expiry ~`targetDays` out (mirrors options.mjs.monthlyExpiry, kept local
+// so the roll suggestion can name a concrete later expiry without importing internals).
+function rollExpiry(targetDays = 35, from = new Date()) {
+  const t = new Date(from.getTime() + targetDays * 86400000);
+  const d = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1));
+  const firstFri = 1 + ((5 - d.getUTCDay() + 7) % 7);
+  d.setUTCDate(firstFri + 14);
+  return d.toISOString().slice(0, 10);
+}
+
+// Roll guidance for a short call. When it warrants action, also name a CONCRETE roll target —
+// a later monthly expiry and a strike nudged up out of the money — so the alert is actionable,
+// not just "consider rolling".
 function rollAlert(a) {
   if (!a || a.side !== 'short' || a.type !== 'call') return null;
-  if (a.itm) return 'In-the-money — assignment risk. Consider rolling up/out (buy it back, sell a later/higher call) to defer assignment and collect more premium.';
-  if (a.dte != null && a.dte <= 10) return `Expires in ${a.dte}d — if it stays below $${a.strike} you keep the premium; otherwise roll out for more income.`;
+  const px = a.underlyingPx;
+  const newExp = rollExpiry(35);
+  // Roll-up strike: ~5% OTM from spot (rounded to a clean $5 above price), never below current strike.
+  const rawUp = px != null ? Math.max(a.strike, Math.ceil((px * 1.05) / 5) * 5) : a.strike;
+  if (a.itm) return `In-the-money — assignment risk. Roll up/out: buy this back and sell the $${rawUp} call exp ${newExp} to defer assignment and collect more premium.`;
+  if (a.dte != null && a.dte <= 10) return `Expires in ${a.dte}d — if it holds below $${a.strike} you keep the premium; otherwise roll to the $${rawUp} call exp ${newExp} for more income.`;
   return null;
 }
 
@@ -122,14 +141,61 @@ if (existsSync(join(RAW, 'picks.json'))) picksCands = readJSON(join(RAW, 'picks.
 const holdings100 = Object.entries(sharesBySym).filter(([, sh]) => sh >= 100)
   .map(([symbol, shares]) => ({ symbol, underlying: symbol, shares, px: pxBySym[symbol] }))
   .filter((h) => h.px).sort((a, b) => b.shares * b.px - a.shares * a.px).slice(0, 3);
+
+// Per-symbol annualized realized vol from daily historicals (when present this run) — sharpens
+// the estimate-path premiums vs a flat 0.55/0.60 proxy. On light runs (no hist-day raw) this is
+// empty and buildIdeas falls back to the defaults. Read straight from the raw bars the agent saved.
+const ivBySym = {};
+for (const f of readdirSync(RAW).filter((x) => /^hist-day.*\.json$/.test(x))) {
+  const d = unwrap(readJSON(join(RAW, f)));
+  for (const res of (d.data?.results ?? d.results ?? [])) {
+    if (!res.symbol || !Array.isArray(res.bars) || res.bars.length < 20) continue;
+    const closes = res.bars.map((b) => num(b.close_price ?? b.close)).filter((v) => v != null && v > 0);
+    if (closes.length < 20) continue;
+    const rets = [];
+    for (let i = 1; i < closes.length; i++) rets.push(Math.log(closes[i] / closes[i - 1]));
+    const mean = rets.reduce((s, r) => s + r, 0) / rets.length;
+    const variance = rets.reduce((s, r) => s + (r - mean) ** 2, 0) / (rets.length - 1);
+    ivBySym[res.symbol] = +(Math.sqrt(variance) * Math.sqrt(252)).toFixed(3); // annualized
+  }
+}
+
 // live option quotes for the idea contracts (producer/raw/option-quotes.json), if fetched
 const liveBySym = {};
 if (existsSync(join(RAW, 'option-quotes.json'))) {
   const d = unwrap(readJSON(join(RAW, 'option-quotes.json')));
   for (const q of (Array.isArray(d) ? d : (d.quotes ?? d.results ?? []))) if (q && q.underlying) liveBySym[q.underlying] = q;
 }
-const ideas = buildIdeas(picksCands, holdings100, pxBySym, liveBySym);
+const ideas = buildIdeas(picksCands, holdings100, pxBySym, liveBySym, ivBySym);
 const liveCount = ideas.ideas.filter((i) => i.live).length;
+
+// IV observations (today's live implied vol per underlying) — collected from every contract that
+// carried a live IV: your positions/pending + the idea quotes. build-data.mjs accumulates these
+// into a rolling per-symbol history and derives an IV RANK (where today sits in the trailing range)
+// so the consumer can show whether options are currently cheap or rich.
+const ivObserved = {};
+const noteIv = (sym, ivPct) => { if (sym && ivPct != null && Number.isFinite(ivPct)) ivObserved[sym] = ivPct; };
+for (const a of [...pending, ...positions]) noteIv(a.underlying, a.iv);
+for (const i of ideas.ideas) if (i.live) noteIv(i.underlying, i.iv);
+
+// Portfolio-level options exposure roll-up (across open positions + pending) — the at-a-glance
+// posture the per-card view can't give: net delta (share-equivalent directional tilt), cash tied
+// up securing short puts, shares capped by short calls, and total open premium currently at risk.
+const exposure = (() => {
+  let netDelta = 0, cspCash = 0, sharesCapped = 0, openPremium = 0, contracts = 0, n = 0;
+  for (const a of [...positions, ...pending]) {
+    n++;
+    const qty = a.contracts || 1; contracts += qty;
+    if (a.delta != null) netDelta += a.delta * 100 * qty * (a.side === 'short' ? -1 : 1);
+    if (a.side === 'short' && a.type === 'put' && a.strike != null) cspCash += a.strike * 100 * qty;
+    if (a.side === 'short' && a.type === 'call') sharesCapped += 100 * qty;
+    const prem = a.mark != null ? a.mark : a.perShare;
+    if (prem != null) openPremium += Math.abs(prem) * 100 * qty;
+  }
+  if (!n) return null;
+  return { positions: n, contracts, netDelta: Math.round(netDelta),
+    cspCash: +cspCash.toFixed(0), sharesCapped, openPremium: +openPremium.toFixed(0) };
+})();
 
 // Realized P&L history from filled orders: net per chain that has a closing fill.
 const byChain = {};
@@ -165,7 +231,7 @@ premiumYTD = +premiumYTD.toFixed(2);
 
 const out = {
   asOf: new Date().toISOString(),
-  pending, positions, ideas,
+  pending, positions, ideas, exposure, ivObserved,
   history, realized, realizedYTD, premiumYTD,
 };
 writeFileSync(join(RAW, 'options.json'), JSON.stringify(out, null, 2));
