@@ -236,7 +236,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - **Alpha Vantage** (optional) — if `ALPHAVANTAGE_KEY` is set, `av-fetch.mjs` pulls macro +
      fundamentals over plain HTTP (no MCP call), once per ET day. See step 3's AV note.
    - **picks-build / options-build** — run only if their raw inputs exist.
-   - **build-data** — writes the encrypted `data.json`.
+   - **build-data** — writes the encrypted `data.json`. Optional owner editorial: a hand-maintained
+     `producer/notes.json` (a plain string, or `{ "risk": "…" }`) is embedded as `data.notes` and
+     rendered in the dashboard's Risk card; absent → carried forward from the prior snapshot, so it
+     persists across fresh-clone runs like `realized.json`/picks.
    - **validate** — replay-contract sanity check (warn-only).
    - **commit + push** — only if `data.json` actually changed; retries the push with backoff.
 
