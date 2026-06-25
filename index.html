@@ -559,7 +559,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v51'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v52'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -641,7 +641,7 @@ function applyChartTheme(){ try{ if(window.Chart){ Chart.defaults.color=chTick()
 
 /* ─── Parsers ─── */
 function parse(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; if(r.content?.[0]?.text)return JSON.parse(r.content[0].text);}catch(e){} return null; }
-function parseAV(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; const t=r.content?.[0]?.text; if(t){ try{return JSON.parse(t);}catch(e){return t;} } if(Array.isArray(r))return r; if(typeof r==='object'&&(r.Symbol||r['Time Series (Daily)']))return r; }catch(e){} return null; }
+function parseAV(r){ if(!r||r.isError)return null; try{ if(r.structuredContent)return r.structuredContent; const t=r.content?.[0]?.text; if(t){ try{return JSON.parse(t);}catch(e){return t;} } if(typeof r.result==='string'){ try{return JSON.parse(r.result);}catch(e){return r.result;} } if(Array.isArray(r))return r; if(typeof r==='object'&&(r.Symbol||r['Time Series (Daily)']))return r; }catch(e){} return null; }
 function parseCSV(text){ if(!text||typeof text!=='string')return[]; const lines=text.trim().split('\n'); if(lines.length<2)return[]; const headers=lines[0].split(',').map(h=>h.trim()); return lines.slice(1).filter(l=>l.trim()).map(line=>{ const vals=line.split(','); const obj={}; headers.forEach((h,i)=>{obj[h]=(vals[i]||'').trim();}); return obj; }); }
 
 /* ─── Cache ─── */
