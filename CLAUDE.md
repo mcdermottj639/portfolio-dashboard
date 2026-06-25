@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v50** (`pf-v50`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v51** (`pf-v51`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
