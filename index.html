@@ -559,7 +559,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v49'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v50'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -727,7 +727,7 @@ async function fetchHist(symbols){
       const d=parse(r); const results=(d&&d.data&&d.data.results)||(d&&d.results)||[];
       for(const res of results){
         const bars=(res.bars||[]).filter(b=>!b.interpolated);
-        out[res.symbol]=bars.map(b=>({t:b.begins_at.slice(0,10),c:parseFloat(b.close_price)})).filter(x=>!isNaN(x.c));
+        out[res.symbol]=bars.map(b=>({t:String(b.begins_at||b.t||'').slice(0,10),c:parseFloat(b.close_price!=null?b.close_price:b.c)})).filter(x=>!isNaN(x.c));
       }
     }catch(e){}
   }
@@ -742,7 +742,7 @@ async function fetchHistG(symbols,start,interval){
       const d=parse(r); const results=(d&&d.data&&d.data.results)||(d&&d.results)||[];
       for(const res of results){
         const bars=(res.bars||[]).filter(b=>!b.interpolated);
-        out[res.symbol]=bars.map(b=>({t:b.begins_at.slice(0,10),c:parseFloat(b.close_price)})).filter(x=>!isNaN(x.c));
+        out[res.symbol]=bars.map(b=>({t:String(b.begins_at||b.t||'').slice(0,10),c:parseFloat(b.close_price!=null?b.close_price:b.c)})).filter(x=>!isNaN(x.c));
       }
     }catch(e){}
   }
@@ -1516,28 +1516,32 @@ async function load(){
     const cover=main.slice(0,OVERVIEW_COVER).map(p=>p.symbol);
 
     (async()=>{
+      // Fault isolation: each section renders independently so a single failure (a bad data
+      // shape, a missing series, a chart hiccup) can't cascade and leave every card below it
+      // stuck on its spinner. Guard liberally — this block fans out into ~8 separate sections.
+      const guard=(label,fn)=>{ try{ return fn(); }catch(e){ try{console.warn('[render]',label,e&&e.message);}catch(_){} return undefined; } };
       const [histMap, macro]=await Promise.all([ fetchHist([...cover,'SPY','QQQ']).catch(()=>({})), fetchMacro().catch(()=>null) ]);
-      renderPerformance(histMap, enriched, cover, macro, stats);
-      const rsiMap=rsiFromHist(histMap, cover);
-      const smaMap=smaFromHist(histMap, cover);
-      const betaInfo=betaFromHist(histMap, enriched, cover);
-      const riskMetrics=computeRiskMetrics(histMap, enriched, cover, macro);
-      const corrG=corrGroups(histMap, enriched, cover);
+      guard('performance',()=>renderPerformance(histMap, enriched, cover, macro, stats));
+      const rsiMap=guard('rsi',()=>rsiFromHist(histMap, cover))||{};
+      const smaMap=guard('sma',()=>smaFromHist(histMap, cover))||{};
+      const betaInfo=guard('beta',()=>betaFromHist(histMap, enriched, cover))||null;
+      const riskMetrics=guard('riskMetrics',()=>computeRiskMetrics(histMap, enriched, cover, macro))||null;
+      const corrG=guard('corrGroups',()=>corrGroups(histMap, enriched, cover))||null;
       if(window.__SNAP){ window.__SNAP.betaInfo=betaInfo; window.__SNAP.riskMetrics=riskMetrics; window.__SNAP.corrG=corrG; }
-      renderSnapshot(stats,betaInfo);
-      renderRisk(enriched,clusters,totalVal,betaInfo,riskMetrics,corrG);
-      renderTechSignals(enriched,rsiMap,smaMap);
-      renderActionPlan(enriched,clusters,totalVal,betaInfo);
+      guard('snapshot',()=>renderSnapshot(stats,betaInfo));
+      guard('risk',()=>renderRisk(enriched,clusters,totalVal,betaInfo,riskMetrics,corrG));
+      guard('tech',()=>renderTechSignals(enriched,rsiMap,smaMap));
+      guard('plan',()=>renderActionPlan(enriched,clusters,totalVal,betaInfo));
       let ovMap=await loadFundFeed().catch(()=>({}));
       const ovMissing=cover.filter(s=>!ovMap[s]);
       if(ovMissing.length){ const ovLive=await fetchOverviewBatch(ovMissing).catch(()=>({})); ovMap=Object.assign({},ovMap,ovLive); }
-      const _alloc=computeAllocation(enriched,ovMap,totalVal), _income=computeIncome(enriched,ovMap), _harvest=harvestCandidates(enriched);
+      const _alloc=guard('alloc',()=>computeAllocation(enriched,ovMap,totalVal)), _income=guard('income',()=>computeIncome(enriched,ovMap)), _harvest=guard('harvest',()=>harvestCandidates(enriched))||[];
       if(window.__SNAP){ window.__SNAP.alloc=_alloc; window.__SNAP.income=_income; window.__SNAP.harvest=_harvest; window.__SNAP.ovMap=ovMap; }
-      renderAllocation(_alloc,totalVal);
-      renderIncomeTax(_income, _harvest);
-      renderFundamentals(enriched,ovMap);
+      if(_alloc)guard('allocRender',()=>renderAllocation(_alloc,totalVal));
+      if(_income)guard('incomeRender',()=>renderIncomeTax(_income, _harvest));
+      guard('fundamentals',()=>renderFundamentals(enriched,ovMap));
       const earn=await fetchEarningsCalendar().catch(()=>({}));
-      renderActionFeed(buildActionFeed(enriched,port,clusters,totalVal,rsiMap,ovMap,earn));
+      guard('actionFeed',()=>renderActionFeed(buildActionFeed(enriched,port,clusters,totalVal,rsiMap,ovMap,earn)));
     })();
 
   }catch(err){ app.innerHTML=`<div class="card"><div style="color:#ef4444;font-size:13px">Failed to load: ${err&&err.message}</div></div>`; }
