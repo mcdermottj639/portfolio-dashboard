@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v49** (`pf-v49`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v50** (`pf-v50`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -103,6 +103,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   `[replay miss]`. `validate.mjs` checks this; don't reorder keys in AV/recorded arg objects.
 
 ## Gotchas / hard-won lessons (don't relearn these)
+- **`data.hist` bar shape differs by producer — consumer must accept BOTH.** The scheduled Claude
+  agent (and `make-sample-data.mjs`) store raw Robinhood bars `{begins_at, close_price, interpolated}`;
+  the **Railway** producer normalizes them to compact `{t, c}` (`fetch_rh.py` `_bars_from_historicals`).
+  Any consumer that reads `data.hist[*]` must coalesce — `b.begins_at||b.t`, `b.close_price ?? b.c`
+  (see `fetchHist`/`fetchHistG` and the `az*` helpers in `index.html`). A hard `b.begins_at.slice()`
+  throws on Railway data, gets swallowed by `fetchHist`'s `catch{}`, and silently empties `histMap` →
+  beta/Sharpe/vol/drawdown/correlation/performance/50-DMA all blank at once. (This bit us once; v50.)
+- **The Portfolio background-enrichment block is fault-isolated** (`load()`'s `(async()=>{…})` wraps each
+  render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
+  spinner forever. Don't "simplify" the guards away.
 - **`producer/raw/` is gitignored and EMPTY on every scheduled run** (fresh clone). Any "once/day"
   gating must derive from the committed `data.json`, not raw/ marker files.
 - **No `cp`/`mv`/shell-variables in the agent's fetch step** — shell-var expansion triggers a
