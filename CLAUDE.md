@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v48** (`pf-v48`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v49** (`pf-v49`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -142,7 +142,18 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   TP1/TP2, stopped, or open — with a running hit-rate + avg return (graded client-side from daily bars).
   Dynamic Earnings Preview follows the soonest-reporting top pick.
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
-  chat-to-build-trade + Robinhood deep links.
+  chat-to-build-trade + Robinhood deep links. The ticker box has **native autocomplete** over the
+  analyzable universe (`azUniverse` = holdings ∪ picks ∪ daily-bar symbols ∪ quotes ∪ options book),
+  and a **miss shows clickable suggestions** instead of a dead-end. Every card is collapsible +
+  jump-navigable (shared `.card-nav` / auto-collapse observers). Price chart adds **volume bars + an
+  RSI(14) sub-panel** (30/70 bands); **Scenarios** show a **±1σ implied expected-move band** anchored
+  to live option IV when available (`azIV`, else a realized-vol proxy, labelled market-implied vs
+  est.); **Historical Edge** widens its RSI match band adaptively (±8→±20) for a usable sample;
+  **Options Play** links to the Options tab and flags real greeks when you hold live contracts on the
+  name; **limited-data** tickers get an explicit "locked until next run" card. Colour-coded signals
+  carry redundant **▲/▼/■ glyphs + text labels** (a11y) and the setup gauge has an `aria-label`.
+  Last-analyzed ticker and the compare ticker persist via `localStorage`; `azExtra`/`azCorr` are
+  memoized per snapshot (`data.generatedAt`).
 - **Markets:** index/risk/sector tiles (YTD/5Y) with a **risk-on/off appetite gauge** synthesized from
   the day moves of equities/credit vs gold/long-bonds; **sector heatmap with a Day ⇄ vs-S&P-YTD
   (relative-strength) toggle** that surfaces leaders/laggards; macro signals incl. a **2s10s yield-curve
