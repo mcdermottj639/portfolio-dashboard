@@ -13,6 +13,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { analyzeLeg, buildIdeas } from './options.mjs';
+import { decryptEnvelope } from './emit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -138,6 +139,23 @@ if (existsSync(join(RAW, 'options-positions.json'))) {
 // ideas: bullish calls from picks + covered calls from 100+ share holdings
 let picksCands = [];
 if (existsSync(join(RAW, 'picks.json'))) picksCands = readJSON(join(RAW, 'picks.json')).candidates ?? [];
+else {
+  // Light intraday run: no fresh scan → no raw/picks.json (picks only build on the daily FETCH_ALL).
+  // Fall back to the carried-forward picks in the prior committed snapshot so the picks-derived ideas
+  // (long calls, cash-secured puts, the debit spread) persist across light runs instead of getting
+  // wiped to a covered-calls-only set until the next full run. Decrypt once; ignore any failure.
+  try {
+    const prevPath = join(__dirname, '..', 'data.json');
+    if (existsSync(prevPath) && process.env.PF_PASSPHRASE) {
+      const env = JSON.parse(readFileSync(prevPath, 'utf8'));
+      const prev = env && env.enc ? await decryptEnvelope(env, process.env.PF_PASSPHRASE) : env;
+      if (prev && prev.picks && Array.isArray(prev.picks.candidates)) {
+        picksCands = prev.picks.candidates;
+        console.log(`options: no raw picks — carried ${picksCands.length} picks forward from prior snapshot for ideas`);
+      }
+    }
+  } catch { /* no prior / wrong passphrase → covered-call ideas only, as before */ }
+}
 const holdings100 = Object.entries(sharesBySym).filter(([, sh]) => sh >= 100)
   .map(([symbol, shares]) => ({ symbol, underlying: symbol, shares, px: pxBySym[symbol] }))
   .filter((h) => h.px).sort((a, b) => b.shares * b.px - a.shares * a.px).slice(0, 3);
