@@ -134,8 +134,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       ```
       node producer/av-plan.mjs
       ```
-      It lists the calls and confirms the budget. ~18 calls is typical (3 macro + 1 earnings +
-      up to 14 fundamentals) — comfortably under 25.
+      It lists the calls and confirms the budget. ~19 calls is typical (4 macro — 10yr + 2yr
+      Treasury for the 2s10s curve, CPI, Fed Funds — + 1 earnings + up to 14 fundamentals) —
+      comfortably under 25.
    2. For each printed line, call the Alpha Vantage MCP tool
       `mcp__claude_ai_AlphaVantage__TOOL_CALL` with `{ tool_name: "<tool>", arguments: "<args JSON>" }`
       and save the **verbatim** result object to the printed path

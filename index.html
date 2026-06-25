@@ -559,7 +559,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v45'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v46'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -782,17 +782,18 @@ async function fetchEarningsCalendar(){
   return map;
 }
 async function fetchMacro(){
-  const [y,c,f,v]=await Promise.allSettled([
+  const [y,y2,c,f,v]=await Promise.allSettled([
     avCall('TREASURY_YIELD',{interval:'monthly',maturity:'10year'},'m_y',TTL.MACRO),
+    avCall('TREASURY_YIELD',{interval:'monthly',maturity:'2year'},'m_y2',TTL.MACRO),
     avCall('CPI',{interval:'monthly'},'m_cpi',TTL.MACRO),
     avCall('FEDERAL_FUNDS_RATE',{interval:'monthly'},'m_fed',TTL.MACRO),
     avCall('INDEX_DATA',{symbol:'VIX',interval:'daily'},'m_vix',TTL.MACRO),
   ]);
   function latest(res,col){ if(res.status!=='fulfilled'||!res.value)return null; const d=res.value; if(typeof d==='string'){const rows=parseCSV(d);return rows.length>0?parseFloat(rows[0][col]||rows[0].value)||null:null;} if(Array.isArray(d)&&d.length>0){const x=d[0][col]||d[0].value;return x?parseFloat(x):null;} return null; }
-  const tenYrYield=latest(y,'value'), fedFunds=latest(f,'value');
+  const tenYrYield=latest(y,'value'), twoYrYield=latest(y2,'value'), fedFunds=latest(f,'value');
   let cpi=null; if(c.status==='fulfilled'&&c.value){ const raw=c.value; const rows=typeof raw==='string'?parseCSV(raw):(Array.isArray(raw)?raw:[]); if(rows.length>=13){ const l=parseFloat(rows[0].value||rows[0].Value)||0, a=parseFloat(rows[12].value||rows[12].Value)||0; if(a>0)cpi=(l-a)/a*100; } }
   let vix=null; if(v.status==='fulfilled'&&v.value){ let d=v.value; if(d&&d.preview&&d.sample_data){try{d=JSON.parse(d.sample_data);}catch(e){}} const arr=d&&(d.data||(Array.isArray(d)?d:null)); if(Array.isArray(arr)&&arr.length>0)vix=parseFloat(arr[0].close||arr[0].Close||arr[0]['4. close']||0)||null; }
-  return{tenYrYield,cpi,fedFunds,vix};
+  return{tenYrYield,twoYrYield,cpi,fedFunds,vix};
 }
 
 /* ═══ COMPUTE ═══ */
@@ -2436,10 +2437,10 @@ function renderMarketsShell(){
     <div class="picks-hero"><div><div class="ph-label">Market Overview</div><div class="ph-date">The Tape</div><div class="ph-stale" id="mkt-asof">Loading live quotes…</div></div></div>
     <div class="card"><div class="card-title"><span>📈 Indexes</span></div><div id="mkt-index"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching quotes…</div></div></div>
     <div class="card"><div class="card-title"><span>🌡️ Risk Gauges <span class="card-hint">(gold · bonds · credit · crypto)</span></span></div><div id="mkt-risk"></div></div>
-    <div class="card"><div class="card-title"><span>🗺️ Sector Heatmap <span class="card-hint">(today · SPDR sectors)</span></span></div><div id="mkt-sectors"></div></div>
+    <div class="card"><div class="card-title"><span>🗺️ Sector Heatmap <span class="card-hint" id="sec-hint">(today · SPDR sectors)</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="hm-tg active" id="sec-day" onclick="setSecMode('day')">Day</button><button class="hm-tg" id="sec-rs" onclick="setSecMode('rs')">vs S&amp;P YTD</button></span></div><div id="mkt-sectors"></div></div>
     <div class="card"><div class="card-title"><span>🌍 US vs International <span class="card-hint">(YTD · S&amp;P 500 vs developed &amp; emerging)</span></span></div><div class="chart-wrap" style="height:240px"><canvas id="mkt-chart"></canvas></div><div id="mkt-vs-stats"></div></div>
     <div class="card"><div class="card-title"><span>🏦 Macro Signals</span></div><div id="mkt-macro"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:14px 0"><span class="spin-sm"></span> Fetching macro…</div></div></div>
-    <div class="card"><div class="card-title"><span>📊 Breadth, Movers &amp; News <span class="card-hint">VIX · your book + candidates · sentiment</span></span></div><div id="mkt-breadth"><div class="tech-empty">Loading…</div></div></div>
+    <div class="card"><div class="card-title"><span>📊 Breadth, Movers &amp; News <span class="card-hint">sector &amp; index leaders/laggards · sentiment</span></span></div><div id="mkt-breadth"><div class="tech-empty">Loading…</div></div></div>
     <div class="card"><div class="card-title"><span>🗣️ Retail Buzz <span class="card-hint">most-talked-about on Reddit · ApeWisdom</span></span></div><div id="mkt-social"><div class="tech-empty">Loading…</div></div></div>
     <div class="disclaimer">Live from Robinhood + Alpha Vantage · ~15-min delayed. Not financial advice.</div>`;
 }
@@ -2452,6 +2453,7 @@ async function fetchMarkets(){
     const d=parse(r); const res=(d&&d.data&&d.data.results)||(d&&d.results)||[];
     for(const it of res){ const q=it.quote??it; const sym=q&&q.symbol; if(!sym)continue; const px=parseFloat(q.last_trade_price||q.last_non_reg_trade_price||q.ask_price||0)||0; const pv=parseFloat(q.adjusted_previous_close||q.previous_close||0)||0; if(px>0)qMap[sym]={px,pv,chg:pv>0?(px-pv)/pv*100:null}; }
   }catch(e){}
+  window.__MKTQ=qMap;
   renderMktTiles(qMap);
   try{
     const tileSyms=[...MKT_INDEX,...MKT_RISK,...MKT_SECTORS].map(x=>x.s);
@@ -2469,9 +2471,21 @@ async function fetchMarkets(){
     renderMktVsStats(h, mo);
   }catch(e){}
   try{ const m=await fetchMacro(); renderMktMacro(m,qMap); }catch(e){}
-  const t=document.getElementById('mkt-asof'); if(t)t.textContent='Live as of '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  setMktAsOf();
   try{ await loadPicksData(); renderBreadth(); }catch(e){}
   try{ renderRetailBuzz(); }catch(e){}
+}
+/* Honest "as of" label — the phone serves a snapshot, so show when the DATA was produced
+   (and its age), not the wall-clock time the page was opened. Mirrors the freshness bar. */
+function setMktAsOf(){
+  const t=document.getElementById('mkt-asof'); if(!t)return;
+  const D=window.__DATA||{}; const lab=D.generatedAtLabel||null;
+  let ageH=null; try{ const g=D.generatedAt?new Date(D.generatedAt):null; if(g&&!isNaN(g))ageH=(Date.now()-g.getTime())/3600000; }catch(e){}
+  const ageStr=ageH==null?'':(ageH<1?Math.max(1,Math.round(ageH*60))+'m old':ageH<48?Math.round(ageH)+'h old':Math.round(ageH/24)+'d old');
+  const stale=ageH!=null&&ageH>=3;
+  t.style.color=stale?'#b45309':'';
+  t.textContent=stale?('⚠️ Snapshot '+ageStr+' — tap ↻ to refresh')
+    :(lab?('Snapshot: '+lab+(ageH!=null&&ageH>=1?' · '+ageStr:'')):'Live snapshot');
 }
 function renderRetailBuzz(){
   const el=document.getElementById('mkt-social'); if(!el)return;
@@ -2483,15 +2497,53 @@ function renderRetailBuzz(){
     '<div class="cov-note">Most-mentioned stocks across Reddit/social in the last 24h. Heavy retail attention can precede sharp moves — and just as sharp reversals. Names you hold are flagged.</div>';
 }
 
+/* Risk-on/off composite from the day moves of the gauges we already fetch: equities + high-yield
+   credit (+ crypto) tilt risk-on; gold + long Treasuries tilt risk-off. One read instead of 4 numbers. */
+function riskAppetiteBanner(qMap){
+  const g=s=>(qMap[s]&&qMap[s].chg!=null)?qMap[s].chg:null;
+  const spy=g('SPY'),hyg=g('HYG'),ibit=g('IBIT'),gld=g('GLD'),tlt=g('TLT');
+  let tilt=0,n=0; const add=(v,w)=>{ if(v!=null){ tilt+=w*v; n++; } };
+  add(spy,1); add(hyg,1); add(ibit,0.5); add(gld,-1); add(tlt,-1);
+  if(n<3)return '';
+  const lab=tilt>0.4?'RISK-ON':tilt<-0.4?'RISK-OFF':'NEUTRAL';
+  const col=tilt>0.4?'#10b981':tilt<-0.4?'#ef4444':'#f59e0b';
+  const f=v=>(v>=0?'+':'')+fmt(v,1)+'%'; const parts=[];
+  if(spy!=null)parts.push('S&P '+f(spy)); if(hyg!=null)parts.push('HY credit '+f(hyg));
+  if(gld!=null)parts.push('gold '+f(gld)); if(tlt!=null)parts.push('20Y+ '+f(tlt));
+  const pos=Math.max(-1,Math.min(1,tilt/2)); const pct=((pos+1)/2*100).toFixed(0);
+  return `<div style="background:var(--surface-2);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><span style="font-size:11px;color:#9ca3af;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Risk appetite (today)</span><span style="font-weight:800;color:${col}">${lab}</span></div>
+    <div style="position:relative;height:7px;border-radius:4px;background:linear-gradient(90deg,#ef4444,#f59e0b,#10b981)"><div style="position:absolute;top:-3px;left:calc(${pct}% - 6px);width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid ${col};box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>
+    <div style="font-size:10.5px;color:#9ca3af;margin-top:7px">Tilt from ${parts.join(' · ')} — equities/credit risk-on vs gold/long-bonds risk-off.</div>
+  </div>`;
+}
 function mktTile(item,q){ const chg=q&&q.chg; const c=chg==null?'#9ca3af':chg>=0?'#10b981':'#ef4444'; const ytd=q&&q.ytd!=null?q.ytd:null, fv=q&&q.fiveyr!=null?q.fiveyr:null; const pc=v=>v==null?'#9ca3af':v>=0?'#10b981':'#ef4444', pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%'; return `<div class="mkt-tile"><div class="mkt-name">${item.n}</div><div class="mkt-sym">${item.s}</div><div class="mkt-price">${q&&q.px?'$'+fmt(q.px):'—'}</div><div class="mkt-chg" style="color:${c}">${chg==null?'—':(chg>=0?'+':'')+fmt(chg,2)+'%'} <span style="color:#9ca3af;font-weight:400">day</span></div><div style="display:flex;gap:12px;margin-top:6px;font-size:10.5px;color:#6b7280"><span>YTD <b style="color:${pc(ytd)}">${pf(ytd)}</b></span><span>5Y <b style="color:${pc(fv)}">${pf(fv)}</b></span></div></div>`; }
 
+let _secMode='day';
+function setSecMode(m){ _secMode=m; const a=document.getElementById('sec-day'),b=document.getElementById('sec-rs'); if(a)a.classList.toggle('active',m==='day'); if(b)b.classList.toggle('active',m==='rs'); if(window.__MKTQ)renderMktTiles(window.__MKTQ); }
+window.setSecMode=setSecMode;
 function renderMktTiles(qMap){
   const idx=document.getElementById('mkt-index'); if(idx)idx.innerHTML='<div class="mkt-grid">'+MKT_INDEX.map(i=>mktTile(i,qMap[i.s])).join('')+'</div>';
-  const rk=document.getElementById('mkt-risk'); if(rk)rk.innerHTML='<div class="mkt-grid">'+MKT_RISK.map(i=>mktTile(i,qMap[i.s])).join('')+'</div>';
+  const rk=document.getElementById('mkt-risk'); if(rk)rk.innerHTML=riskAppetiteBanner(qMap)+'<div class="mkt-grid">'+MKT_RISK.map(i=>mktTile(i,qMap[i.s])).join('')+'</div>';
   const sec=document.getElementById('mkt-sectors'); if(sec){
-    const cells=MKT_SECTORS.map(i=>{ const q=qMap[i.s]; const chg=q&&q.chg; const ytd=q&&q.ytd!=null?q.ytd:null, fv=q&&q.fiveyr!=null?q.fiveyr:null; const pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%'; const pcol=v=>v==null?'#6b7280':v>=0?'#10b981':'#ef4444'; const edge=chg==null?'#e5e7eb':chg>=1.5?'#065f46':chg>=0.5?'#10b981':chg>=0?'#86efac':chg>-0.5?'#fca5a5':chg>-1.5?'#ef4444':'#991b1b'; return `<div class="sec-cell" style="background:var(--surface-2);border:2.5px solid ${edge};color:var(--text)"><div style="font-size:11px;font-weight:800">${i.s}</div><div style="font-size:9.5px;color:#6b7280">${i.n}</div><div style="font-size:13px;font-weight:800;margin-top:2px;color:${pcol(chg)}">${chg==null?'—':(chg>=0?'+':'')+fmt(chg,1)+'%'}</div><div style="font-size:8.5px;color:#6b7280;margin-top:3px;line-height:1.3">YTD <b style="color:${pcol(ytd)}">${pf(ytd)}</b> · 5Y <b style="color:${pcol(fv)}">${pf(fv)}</b></div></div>`; }).join('');
-    const green=MKT_SECTORS.filter(i=>qMap[i.s]&&qMap[i.s].chg>0).length;
-    sec.innerHTML=`<div style="font-size:12px;color:#6b7280;margin-bottom:10px"><b>${green} of ${MKT_SECTORS.length}</b> sectors green today — ${green>=8?'broad risk-on':green>=5?'mixed tape':'risk-off / defensive'}.</div><div class="sec-grid">${cells}</div>`;
+    const pf=v=>v==null?'—':(v>=0?'+':'')+fmt(v,1)+'%'; const pcol=v=>v==null?'#6b7280':v>=0?'#10b981':'#ef4444';
+    const spyYtd=(qMap['SPY']&&qMap['SPY'].ytd!=null)?qMap['SPY'].ytd:null;
+    const rsMode=_secMode==='rs'&&spyYtd!=null;  // RS needs YTD historicals; until they load, fall back to Day
+    const cells=MKT_SECTORS.map(i=>{ const q=qMap[i.s]; const chg=q&&q.chg!=null?q.chg:null; const ytd=q&&q.ytd!=null?q.ytd:null, fv=q&&q.fiveyr!=null?q.fiveyr:null;
+      const rs=(rsMode&&ytd!=null)?ytd-spyYtd:null; const metric=rsMode?rs:chg;
+      const hi=rsMode?5:1.5, mid=rsMode?1:0.5, loN=rsMode?-1:-0.5, loNN=rsMode?-5:-1.5;
+      const edge=metric==null?'#e5e7eb':metric>=hi?'#065f46':metric>=mid?'#10b981':metric>=0?'#86efac':metric>loN?'#fca5a5':metric>loNN?'#ef4444':'#991b1b';
+      const big=metric==null?'—':(metric>=0?'+':'')+fmt(metric,1)+'%';
+      const sub=rsMode?`YTD ${pf(ytd)} · day ${chg==null?'—':(chg>=0?'+':'')+fmt(chg,1)+'%'}`:`YTD ${pf(ytd)} · 5Y ${pf(fv)}`;
+      return `<div class="sec-cell" style="background:var(--surface-2);border:2.5px solid ${edge};color:var(--text)"><div style="font-size:11px;font-weight:800">${i.s}</div><div style="font-size:9.5px;color:#6b7280">${i.n}</div><div style="font-size:13px;font-weight:800;margin-top:2px;color:${pcol(metric)}">${big}</div><div style="font-size:8.5px;color:#6b7280;margin-top:3px;line-height:1.3">${sub}</div></div>`; }).join('');
+    let head;
+    if(rsMode){ const ranked=MKT_SECTORS.map(i=>({i,rs:(qMap[i.s]&&qMap[i.s].ytd!=null)?qMap[i.s].ytd-spyYtd:null})).filter(x=>x.rs!=null).sort((a,b)=>b.rs-a.rs);
+      const lead=ranked.slice(0,2).map(x=>x.i.s).join(', '); const lag=ranked.slice(-2).reverse().map(x=>x.i.s).join(', '); const above=ranked.filter(x=>x.rs>0).length;
+      head=`<div style="font-size:12px;color:#6b7280;margin-bottom:10px"><b>${above} of ${ranked.length}</b> sectors beating the S&P YTD (${pf(spyYtd)}) — Leaders <b style="color:#10b981">${lead||'—'}</b> · Laggards <b style="color:#ef4444">${lag||'—'}</b>.</div>`;
+    } else { const green=MKT_SECTORS.filter(i=>qMap[i.s]&&qMap[i.s].chg>0).length;
+      head=`<div style="font-size:12px;color:#6b7280;margin-bottom:10px"><b>${green} of ${MKT_SECTORS.length}</b> sectors green today — ${green>=8?'broad risk-on':green>=5?'mixed tape':'risk-off / defensive'}.</div>`; }
+    sec.innerHTML=head+`<div class="sec-grid">${cells}</div>`;
+    const hint=document.getElementById('sec-hint'); if(hint)hint.textContent=rsMode?'(relative strength vs S&P YTD)':'(today · SPDR sectors)';
   }
 }
 
@@ -2508,16 +2560,36 @@ function renderMktVsStats(h,mo){
   }).join('')+'</div>';
 }
 
-function renderMktMacro(m,qMap){ const el=document.getElementById('mkt-macro'); if(!el||!m)return; const vix=m.vix||(qMap&&qMap.VIXY&&null); const vc=m.vix?(m.vix>25?'#ef4444':m.vix>18?'#f97316':'#10b981'):'#374151'; el.innerHTML=`<div class="macro-grid"><div class="macro-tile"><div class="macro-label">10yr Treasury</div><div class="macro-val">${m.tenYrYield?fmt(m.tenYrYield,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">Fed Funds</div><div class="macro-val">${m.fedFunds?fmt(m.fedFunds,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">CPI YoY</div><div class="macro-val" style="color:${m.cpi!=null?(m.cpi>3?'#ef4444':m.cpi>2?'#f97316':'#10b981'):'#374151'}">${m.cpi!=null?fmt(m.cpi,1)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">VIX</div><div class="macro-val" style="color:${vc}">${m.vix?fmt(m.vix,1):'—'}</div></div></div>`; }
+function renderMktMacro(m,qMap){ const el=document.getElementById('mkt-macro'); if(!el||!m)return; const vix=m.vix||(qMap&&qMap.VIXY&&null); const vc=m.vix?(m.vix>25?'#ef4444':m.vix>18?'#f97316':'#10b981'):'#374151';
+  const haveCurve=m.tenYrYield!=null&&m.twoYrYield!=null; const spread=haveCurve?m.tenYrYield-m.twoYrYield:null;
+  const sc2=spread==null?'#374151':spread<0?'#ef4444':spread<0.5?'#f97316':'#10b981';
+  const curveTile=`<div class="macro-tile"><div class="macro-label">2s10s Curve</div><div class="macro-val" style="color:${sc2}">${spread==null?'—':(spread>=0?'+':'')+fmt(spread,2)+'%'}</div>${spread!=null?`<div style="font-size:9px;color:#9ca3af;margin-top:1px">${spread<0?'inverted ⚠️':'normal'}</div>`:''}</div>`;
+  el.innerHTML=`<div class="macro-grid"><div class="macro-tile"><div class="macro-label">10yr Treasury</div><div class="macro-val">${m.tenYrYield?fmt(m.tenYrYield,2)+'%':'—'}</div></div>${curveTile}<div class="macro-tile"><div class="macro-label">Fed Funds</div><div class="macro-val">${m.fedFunds?fmt(m.fedFunds,2)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">CPI YoY</div><div class="macro-val" style="color:${m.cpi!=null?(m.cpi>3?'#ef4444':m.cpi>2?'#f97316':'#10b981'):'#374151'}">${m.cpi!=null?fmt(m.cpi,1)+'%':'—'}</div></div><div class="macro-tile"><div class="macro-label">VIX</div><div class="macro-val" style="color:${vc}">${m.vix?fmt(m.vix,1):'—'}</div></div></div>`; }
 
+/* Build today's biggest moves from the Markets universe we already fetched (indexes + sectors +
+   risk gauges) — actual market structure, not just the account's holdings. */
+function marketMovers(){
+  const q=window.__MKTQ||{}; const lbl={}; for(const x of [...MKT_INDEX,...MKT_RISK,...MKT_SECTORS])lbl[x.s]=x.n;
+  const rows=Object.keys(lbl).map(s=>({t:s,n:lbl[s],chg:q[s]&&q[s].chg!=null?q[s].chg:null})).filter(r=>r.chg!=null);
+  rows.sort((a,b)=>b.chg-a.chg);
+  return rows;
+}
 function renderBreadth(){
   const el=document.getElementById('mkt-breadth'); if(!el)return;
-  const m=MKTX; if(!m){ el.innerHTML='<div class="tech-empty">Breadth data populates on the next morning run.</div>'; return; }
+  const m=MKTX||{};
+  const rows=marketMovers();
   let h='';
-  if(m.vix){ h+=`<div class="risk-line"><span class="risk-name">VIX (volatility)</span><span class="risk-val">${m.vix.level} <span style="font-weight:400;color:#9ca3af">${m.vix.chg||''}</span></span></div>`; }
-  if(m.movers){ h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">';
-    h+='<div><div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:4px">Gainers</div>'+((m.movers.gainers||[]).map(x=>`<div class="risk-line"><span class="risk-name">${x.t}</span><span class="risk-val pos">${x.chg}</span></div>`).join(''))+'</div>';
-    h+='<div><div style="font-size:11px;font-weight:700;color:#ef4444;margin-bottom:4px">Losers</div>'+((m.movers.losers||[]).map(x=>`<div class="risk-line"><span class="risk-name">${x.t}</span><span class="risk-val neg">${x.chg}</span></div>`).join(''))+'</div></div>';
+  if(rows.length>=4){
+    const fc=v=>(v>=0?'+':'')+fmt(v,2)+'%';
+    const g=rows.slice(0,4), l=rows.slice(-4).reverse();
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">';
+    h+='<div><div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:4px">Leaders</div>'+g.map(x=>`<div class="risk-line"><span class="risk-name">${x.t} <span style="color:#9ca3af;font-weight:400;font-size:10.5px">${x.n}</span></span><span class="risk-val pos">${fc(x.chg)}</span></div>`).join('')+'</div>';
+    h+='<div><div style="font-size:11px;font-weight:700;color:#ef4444;margin-bottom:4px">Laggards</div>'+l.map(x=>`<div class="risk-line"><span class="risk-name">${x.t} <span style="color:#9ca3af;font-weight:400;font-size:10.5px">${x.n}</span></span><span class="risk-val neg">${fc(x.chg)}</span></div>`).join('')+'</div></div>';
+    h+='<div class="cov-note">Biggest moves today across the index, sector &amp; risk-gauge ETFs — the market\'s tape, not your book.</div>';
+  } else if(m.movers){ // fall back to producer-supplied (your-book) movers if market quotes unavailable
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">';
+    h+='<div><div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:4px">Your gainers</div>'+((m.movers.gainers||[]).map(x=>`<div class="risk-line"><span class="risk-name">${x.t}</span><span class="risk-val pos">${x.chg}</span></div>`).join(''))+'</div>';
+    h+='<div><div style="font-size:11px;font-weight:700;color:#ef4444;margin-bottom:4px">Your losers</div>'+((m.movers.losers||[]).map(x=>`<div class="risk-line"><span class="risk-name">${x.t}</span><span class="risk-val neg">${x.chg}</span></div>`).join(''))+'</div></div>';
   }
   if(m.news){ const nb=(m.news.bullish+m.news.neutral+m.news.bearish)||1;
     h+=`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">News Sentiment <span style="font-weight:400;color:#9ca3af">(${m.news.bullish} bull · ${m.news.neutral} neu · ${m.news.bearish} bear)</span></div><div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-bottom:8px"><span style="width:${(m.news.bullish/nb*100).toFixed(1)}%;background:#10b981"></span><span style="width:${(m.news.neutral/nb*100).toFixed(1)}%;background:#d1d5db"></span><span style="width:${(m.news.bearish/nb*100).toFixed(1)}%;background:#ef4444"></span></div>`;

@@ -31,6 +31,7 @@ export const avSym = (s) => s.replace(/\./g, '-');
 // handles; COMPANY_OVERVIEW returns a JSON object with Symbol/Beta/PERatio/etc.
 export const MACRO_CALLS = [
   { id: 'macro-treasury10y', tool: 'TREASURY_YIELD',     args: { interval: 'monthly', maturity: '10year' } },
+  { id: 'macro-treasury2y',  tool: 'TREASURY_YIELD',     args: { interval: 'monthly', maturity: '2year' } },
   { id: 'macro-cpi',         tool: 'CPI',                args: { interval: 'monthly' } },
   { id: 'macro-fedfunds',    tool: 'FEDERAL_FUNDS_RATE', args: { interval: 'monthly' } },
 ];

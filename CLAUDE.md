@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v45** (`pf-v45`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v46** (`pf-v46`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -138,8 +138,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   with thesis/levels; dynamic Earnings Preview (follows the soonest-reporting top pick).
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
   chat-to-build-trade + Robinhood deep links.
-- **Markets:** index/risk/sector tiles (YTD/5Y), macro signals (VIX from Robinhood), **US vs
-  International** chart (SPY/EFA/EEM) with a YTD+5Y stat row, breadth/movers, Retail Buzz.
+- **Markets:** index/risk/sector tiles (YTD/5Y) with a **risk-on/off appetite gauge** synthesized from
+  the day moves of equities/credit vs gold/long-bonds; **sector heatmap with a Day ⇄ vs-S&P-YTD
+  (relative-strength) toggle** that surfaces leaders/laggards; macro signals incl. a **2s10s yield-curve
+  tile** (10yr−2yr, flags inversion; VIX from Robinhood); **US vs International** chart (SPY/EFA/EEM)
+  with a YTD+5Y stat row; **breadth = real market movers** (leaders/laggards across the index/sector/risk
+  ETFs, not just your book) + news sentiment; Retail Buzz. The "as of" label reads from
+  `data.generatedAt` and flags staleness, like the freshness bar.
 - **Options:** positions/pending + directional ideas with live greeks.
 - **Producer hardening:** preflight gating, carry-forward, deterministic publish-to-main, freshness
   watchdog, clean-stop on push failure.

@@ -115,6 +115,8 @@ const avStruct = (obj) => ({ structuredContent: obj });
 const csv = (rows) => 'timestamp,value\n' + rows.map((r) => `${r.t},${r.v}`).join('\n');
 recorded[avKey('TREASURY_YIELD', { interval: 'monthly', maturity: '10year' })] =
   avText(csv([{ t: '2026-06-01', v: '4.32' }, { t: '2026-05-01', v: '4.48' }]));
+recorded[avKey('TREASURY_YIELD', { interval: 'monthly', maturity: '2year' })] =
+  avText(csv([{ t: '2026-06-01', v: '3.95' }, { t: '2026-05-01', v: '4.05' }]));
 recorded[avKey('FEDERAL_FUNDS_RATE', { interval: 'monthly' })] =
   avText(csv([{ t: '2026-06-01', v: '4.33' }, { t: '2026-05-01', v: '4.33' }]));
 recorded[avKey('CPI', { interval: 'monthly' })] =
