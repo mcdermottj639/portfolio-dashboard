@@ -559,7 +559,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v46'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v47'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1591,8 +1591,10 @@ let PICK_PICKS=[
     ] },
 ];
 
-let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null;
+let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null,_picksHistBars={};
 let PICK_TRIM=[],PICK_ADD=[],PICK_INCOME=[],PICK_HISTORY=[],MKTX=null;
+let _pickSort={key:'rank',dir:1};           // table sort (rank asc = the composite ranking)
+let _pickFilter={sector:'all',hideFlagged:false};
 
 function switchTab(tab){
   const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze'};
@@ -2243,32 +2245,34 @@ function renderPicksStatic(){
       <div>
         <div class="ph-label">Daily Large-Cap Scan</div>
         <div class="ph-date">${ANALYSIS_DATE}</div>
-        <div class="ph-stale">Scan <span style="color:${staleColor};font-weight:600">${staleTxt}</span> · 10 candidates scored · top 3 picks · prices &amp; RSI refresh live</div>
+        <div class="ph-stale">Scan <span style="color:${staleColor};font-weight:600">${staleTxt}</span> · ${PICK_CANDIDATES.length} candidates scored · top ${PICK_PICKS.length} picks · prices &amp; RSI refresh live</div>
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
     <div class="card">
-      <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">all 10 candidates · tech 40% · fundamentals 35% · R/R 25%</span></span></div>
+      <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">tech 33% · fundamentals 28% · R/R 19% · social 20%</span></span></div>
       <div class="chart-wrap" style="height:300px"><canvas id="picks-chart"></canvas></div>
     </div>
     <div class="card">
       <div class="card-title collapsible" data-toggle="body-picktable" onclick="toggleSection('body-picktable')"><span>📋 Scoring Breakdown</span><span class="chevron">▼</span></div>
-      <div id="body-picktable"><div id="picks-table"></div></div>
+      <div id="body-picktable"><div id="picks-filters"></div><div id="picks-table"></div></div>
     </div>
     <div class="card">
       <div class="card-title"><span>🎯 Top 3 Picks Today</span></div>
       <div class="picks-grid2" id="picks-cards"></div>
     </div>
+    <div class="card" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
     ${(PICK_TRIM.length||PICK_ADD.length)?`<div class="card"><div class="card-title"><span>⚖️ Trim / Add <span class="card-hint">on what you own</span></span></div>${PICK_TRIM.concat(PICK_ADD).map(x=>`<div class="act-item" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'}1f;border-color:${x.cls==='pill-trim'?'#ef4444':'#10b981'};margin-bottom:8px"><div class="act-body"><div class="act-title" style="color:var(--text)">${x.t} <span class="act-tag" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'};color:#fff">${x.pill}</span></div><div class="act-detail" style="color:var(--text);opacity:.82">${x.txt}</div></div></div>`).join('')}<div class="fund-note">Rule-based from your live weights, P&L and RSI. Trim = weight ≥ 8% or RSI ≥ 70; Add = quality names below cost &amp; under-weight.</div></div>`:''}
     ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
     ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
-    ${PICK_HISTORY.length?`<div class="card"><div class="card-title"><span>🕐 Pick History &amp; Outcomes</span></div>${PICK_HISTORY.map(x=>`<div class="harv-line"><span style="white-space:nowrap"><b>${(x.picks||'').split(' · ')[0]}</b></span><span style="flex:1;text-align:right;color:#6b7280;font-size:11px;margin-left:8px">${x.date} — ${x.picks}<br>${x.note}</span></div>`).join('')}</div>`:''}
     <div class="card" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
     <div class="disclaimer">⚠️ Not financial advice. Scan generated ${ANALYSIS_DATE}; live prices &amp; RSI via Robinhood + Alpha Vantage. Research independently before entering any position.</div>
   `;
   renderPicksChart();
+  renderPicksFilters();
   renderPicksTable();
   renderPicksCards();
+  renderPicksTrack();
   renderPicksEarnings();
 }
 /* Dynamic earnings preview — follows whichever top pick reports soonest (was hardcoded to NFLX).
@@ -2320,16 +2324,84 @@ function renderPicksChart(){
   });
 }
 
+/* Sector for a candidate row, broad theme only (text before the "·"). Falls back to the picks list
+   (the baked-in candidates array carries no sector) so the filter still works on older snapshots. */
+function pickSector(c){
+  let s=c.sector;
+  if(!s){ const p=PICK_PICKS.find(x=>x.ticker===c.ticker); if(p)s=p.sector; }
+  s=String(s||'').split('·')[0].trim();
+  return s||'—';
+}
+/* Filter bar above the scoring table: sector dropdown (derived from the candidates) + hide-flagged. */
+function renderPicksFilters(){
+  const el=document.getElementById('picks-filters'); if(!el)return;
+  const secs=[...new Set(PICK_CANDIDATES.map(pickSector).filter(s=>s&&s!=='—'))].sort();
+  const opt=v=>'<option value="'+v+'"'+(_pickFilter.sector===v?' selected':'')+'>'+(v==='all'?'All sectors':v)+'</option>';
+  el.innerHTML='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:2px 0 10px;font-size:12px">'
+    +'<label style="color:var(--text);opacity:.75">Sector '
+      +'<select onchange="setPickFilter(\'sector\',this.value)" style="font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">'
+      +opt('all')+secs.map(opt).join('')+'</select></label>'
+    +'<label style="color:var(--text);opacity:.75;cursor:pointer;display:flex;align-items:center;gap:5px">'
+      +'<input type="checkbox" onchange="setPickFilter(\'hideFlagged\',this.checked)"'+(_pickFilter.hideFlagged?' checked':'')+'> hide flagged</label>'
+    +'<span style="color:#9ca3af;font-size:11px">tap a column header to sort</span>'
+    +'</div>';
+}
+function setPickFilter(k,v){ _pickFilter[k]=v; renderPicksTable(); }
+function sortPicks(key){
+  if(_pickSort.key===key){ _pickSort.dir*=-1; }
+  else { _pickSort={key,dir:(key==='rank'||key==='ticker')?1:-1}; }
+  renderPicksTable();
+}
+/* Numeric value for a sortable column (parses the formatted strings the row carries). */
+function pickSortVal(c,key){
+  const liveRsi=_picksRSI[c.ticker]!=null?_picksRSI[c.ticker]:c.rsi;
+  const liveP=(_picksLive[c.ticker]&&_picksLive[c.ticker].price)||c.price;
+  switch(key){
+    case 'ticker': return c.ticker;
+    case 'price': return liveP;
+    case 'rsi': return liveRsi;
+    case 'fwdPE': { const n=parseFloat(c.fwdPE); return isFinite(n)?n:1e9; }
+    case 'rr': { const n=parseFloat(c.rr); return isFinite(n)?n:-1; }
+    case 'rev': { const n=parseFloat(String(c.revGrowth).replace('+','')); return isFinite(n)?n:-1e9; }
+    case 'tech': return c.tech; case 'fund': return c.fund; case 'social': return c.social!=null?c.social:5;
+    case 'rank': return c.rank;
+    default: return c.composite;
+  }
+}
 function renderPicksTable(){
   const el=document.getElementById('picks-table'); if(!el)return;
-  let h='<table><thead><tr><th class="tc">Score</th><th>#</th><th>Ticker</th><th class="tr">Live Price</th><th class="tr">RSI</th><th class="tc">Tech</th><th class="tr">Fwd P/E</th><th class="tc">Fund</th><th class="tc">Social</th><th class="tr">R/R</th><th class="tr">Rev Gr</th><th>Status</th></tr></thead><tbody>';
-  for(const c of PICK_CANDIDATES){
+  // filter
+  let rows=PICK_CANDIDATES.filter(c=>{
+    if(_pickFilter.sector!=='all'&&pickSector(c)!==_pickFilter.sector)return false;
+    if(_pickFilter.hideFlagged&&c.flag&&c.flag!=='ok')return false;
+    return true;
+  });
+  // sort
+  const sk=_pickSort.key,dir=_pickSort.dir;
+  rows=rows.slice().sort((a,b)=>{ const va=pickSortVal(a,sk),vb=pickSortVal(b,sk);
+    if(typeof va==='string')return va.localeCompare(vb)*dir; return (va-vb)*dir; });
+  const arrow=k=>_pickSort.key===k?(_pickSort.dir>0?' ▲':' ▼'):'';
+  const th=(k,lbl,cls)=>'<th class="'+(cls||'')+'" style="cursor:pointer;user-select:none" onclick="sortPicks(\''+k+'\')">'+lbl+arrow(k)+'</th>';
+  let h='<table><thead><tr>'
+    +th('composite','Score','tc')+th('rank','#','')+th('ticker','Ticker','')
+    +th('price','Live Price','tr')+th('rsi','RSI','tr')+th('tech','Tech','tc')
+    +th('fwdPE','Fwd P/E','tr')+th('fund','Fund','tc')+th('social','Social','tc')
+    +th('rr','R/R','tr')+th('rev','Rev Gr','tr')+'<th>Status</th></tr></thead><tbody>';
+  if(!rows.length)h+='<tr><td colspan="12" style="text-align:center;color:#9ca3af;padding:14px">No candidates match this filter.</td></tr>';
+  for(const c of rows){
     const sbg=c.composite>=7?'#d1fae5':c.composite>=5?'#fef9c3':'#fee2e2';
     const sfg=c.composite>=7?'#065f46':c.composite>=5?'#854d0e':'#991b1b';
     const rsi=_picksRSI[c.ticker]!=null?_picksRSI[c.ticker]:c.rsi;
     const rsiLive=_picksRSI[c.ticker]!=null;
     const rowBg=c.rank<=3?' style="background:rgba(16,185,129,0.10)"':'';
     const neg=String(c.revGrowth).indexOf('-')===0;
+    const cov=c.cov||{};
+    // coverage: a name AV never enriched is "value-only" fundamentals; an untracked name's social 5 is "no data".
+    const valueOnly=cov.growth===false||(c.cov==null&&c.revGrowth==='—');
+    const socNoData=cov.social===false||(c.cov==null&&(!c.buzz||c.buzz==='Quiet'));
+    const fundTag=valueOnly?'<span title="value-only — AV growth data unavailable for this name" style="font-size:9px;color:#9ca3af">ᵛ</span>':'';
+    const buzz=c.buzz||(socNoData?'Quiet':'');
+    const socColor=socNoData?'#9ca3af':(c.social>=7?'#10b981':c.social<=3?'#ef4444':'#6b7280');
     h+='<tr'+rowBg+'>'
       +'<td class="tc"><span class="score-pill2" style="background:'+sbg+';color:'+sfg+'">'+c.composite.toFixed(2)+'</span></td>'
       +'<td style="color:#9ca3af;font-size:12px">'+c.rank+'</td>'
@@ -2337,16 +2409,16 @@ function renderPicksTable(){
       +'<td class="tr" id="picks-price-'+c.ticker+'"><strong>$'+c.price.toFixed(2)+'</strong><div style="font-size:10px;color:#9ca3af">scan price</div></td>'
       +'<td class="tr"><span style="font-weight:700;color:'+rsiColor(rsi)+'">'+fmt(rsi,0)+'</span>'+(rsiLive?'<div style="font-size:9px;color:#10b981">live</div>':'')+'</td>'
       +'<td class="tc" style="font-weight:600">'+c.tech+'</td>'
-      +'<td class="tr">'+c.fwdPE+'</td>'
+      +'<td class="tr">'+c.fwdPE+' '+fundTag+'</td>'
       +'<td class="tc" style="font-weight:600">'+c.fund+'</td>'
-      +'<td class="tc" style="font-weight:600;color:'+(c.social>=7?'#10b981':c.social<=3?'#ef4444':'#6b7280')+'" title="'+(c.buzz||'retail sentiment')+'">'+(c.social!=null?c.social:5)+'</td>'
+      +'<td class="tc" style="font-weight:600;color:'+socColor+'" title="'+(socNoData?'No retail chatter — neutral 5 (not a real reading)':'Retail buzz: '+buzz)+'">'+(c.social!=null?c.social:5)+(buzz?'<div style="font-size:8.5px;font-weight:600;color:#9ca3af">'+buzz+'</div>':'')+'</td>'
       +'<td class="tr" style="font-size:12px">'+c.rr+'</td>'
       +'<td class="tr" style="font-weight:600;color:'+(neg?'#ef4444':'#10b981')+'">'+c.revGrowth+'</td>'
       +'<td>'+(c.flag==='ok'?'<span style="color:#10b981;font-weight:700">✓</span>':'<span class="drift-flag" style="background:#fee2e2;color:#991b1b">❌ '+c.flag+'</span>')+'</td>'
     +'</tr>';
   }
   h+='</tbody></table>';
-  h+='<div class="fund-note">Composite = Tech / RSI (33%) · Fundamentals / rev-growth + Fwd P/E (28%) · R/R from entry/target/stop (19%) · <b>Social</b> — retail buzz: mention rank + velocity, crowding-capped (20%). Social is neutral (5) for names with no retail chatter; hover it for the read. Live price &amp; RSI refresh on load; other columns are from the '+ANALYSIS_DATE+' scan. ✓ OWN = you already hold it.</div>';
+  h+='<div class="fund-note">Composite = Tech / RSI + 52wk-range position (33%) · Fundamentals / rev-growth + Fwd P/E (28%) · R/R from entry/target/stop (19%) · <b>Social</b> — retail buzz: mention rank + velocity, crowding-capped (20%). Social is neutral (5) for names with no retail chatter (shown grey); <b>ᵛ</b> = value-only fundamentals (AV growth data unavailable). Live price &amp; RSI refresh on load; other columns are from the '+ANALYSIS_DATE+' scan. ✓ OWN = you already hold it.</div>';
   el.innerHTML=h;
 }
 
@@ -2382,6 +2454,12 @@ function renderPicksCards(){
       else if(live<rng.lo*0.995){ notes+='<div class="cross-note" style="background:#ecfdf5;color:#065f46">📉 Now '+fmtD(live)+' — <b>below the '+p.entry+' entry zone</b> (cheaper than planned). Confirm thesis still holds.</div>'; }
       else { notes+='<div class="cross-note" style="background:#ecfdf5;color:#065f46">✅ Now '+fmtD(live)+' — <b>inside the '+p.entry+' entry zone</b>.</div>'; }
     }
+    // Catalyst-aware risk: this is a mechanical swing setup, but if earnings land inside the swing
+    // window (the R/R math is calendar-blind), a binary event can gap straight through the stop.
+    const er=azEarn(p.ticker);
+    if(er&&er.days!=null&&er.days>=0&&er.days<=14){
+      notes+='<div class="cross-note" style="background:#fffbeb;color:#92400e">⚠️ <b>Earnings in '+(er.days===0?'<1 day':er.days+' day'+(er.days===1?'':'s'))+'</b> — a binary catalyst lands inside this swing window. The entry/stop levels are calendar-blind; expect a gap and size for event risk (or wait for the print).</div>';
+    }
     const rsiShown=liveRSI!=null?fmt(liveRSI,0)+' <span style="color:#10b981;font-size:9px">live</span>':p.rsi;
     return '<div class="card" style="margin-bottom:0">'
       +'<div class="pk-head"><div><div class="pk-tkr">'+p.ticker+ownBadge(p.ticker)+'</div><div class="pk-name">'+p.company+'</div><div class="pk-meta">'+p.sector+' · RSI '+rsiShown+' · Score '+p.composite+'</div></div>'
@@ -2407,18 +2485,71 @@ function renderPicksCards(){
   }).join('');
 }
 
+/* Grade one archived pick on a CLOSING basis since its scan date: walk daily closes in order — a
+   close at/above a target counts as a hit (TP2 wins outright; TP1 banks then keeps watching), a
+   close at/below the stop is a stop-out. Current return is planned entry → latest price. */
+function gradePick(pk,bars,live,ts){
+  const entry=pk.entryRef||pk.basePrice, tp1=pk.tp1, tp2=pk.tp2, sl=pk.sl;
+  const series=(bars||[]).filter(b=>!ts||b.t>=ts).map(b=>b.c).filter(c=>c>0);
+  let status='OPEN',hitT1=false;
+  for(const c of series){
+    if(sl!=null&&c<=sl){ status=hitT1?'TP1':'STOPPED'; break; }
+    if(tp2!=null&&c>=tp2){ status='TP2'; break; }
+    if(tp1!=null&&c>=tp1){ hitT1=true; status='TP1'; }
+  }
+  const cur=live||(series.length?series[series.length-1]:null)||pk.basePrice;
+  const ret=entry?((cur-entry)/entry*100):null;
+  return {status,ret,cur,entry};
+}
+function renderPicksTrack(){
+  const el=document.getElementById('picks-track'); if(!el)return;
+  const hist=Array.isArray(PICK_HISTORY)?PICK_HISTORY.filter(h=>h&&Array.isArray(h.picks)&&h.picks.length):[];
+  if(!hist.length){
+    el.innerHTML='<div class="fund-note" style="opacity:.85">Building a track record. Once the next scan replaces today’s picks, the outgoing set is archived here and graded against actual prices — hit TP1/TP2, stopped, or still open — with a running hit-rate.</div>';
+    return;
+  }
+  let wins=0,losses=0,open=0,retSum=0,retN=0;
+  const groups=hist.slice(0,8).map(h=>{
+    const rows=h.picks.map(pk=>{
+      const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts);
+      if(g.status==='TP1'||g.status==='TP2')wins++; else if(g.status==='STOPPED')losses++; else open++;
+      if(g.ret!=null){retSum+=g.ret;retN++;}
+      const badge={TP2:['#065f46','#d1fae5','✅ TP2'],TP1:['#065f46','#d1fae5','✅ TP1'],STOPPED:['#991b1b','#fee2e2','⛔ Stopped'],OPEN:['#475569','#e2e8f0','• Open']}[g.status];
+      const rc=g.ret==null?'#6b7280':g.ret>=0?'#10b981':'#ef4444';
+      return '<div class="harv-line"><span style="white-space:nowrap"><b>'+pk.ticker+'</b> <span style="font-size:10px;color:#9ca3af">'+(pk.signal||'')+'</span></span>'
+        +'<span style="flex:1;text-align:right;margin-left:8px;font-size:11.5px">'
+          +'<span class="drift-flag" style="background:'+badge[1]+';color:'+badge[0]+'">'+badge[2]+'</span> '
+          +'<b style="color:'+rc+'">'+(g.ret==null?'—':(g.ret>=0?'+':'')+fmt(g.ret,1)+'%')+'</b>'
+          +'<div style="font-size:10px;color:#9ca3af">entry ~$'+fmt(g.entry)+' → $'+fmt(g.cur)+' · TP1 $'+(pk.tp1!=null?pk.tp1:'—')+' · stop $'+(pk.sl!=null?pk.sl:'—')+'</div>'
+        +'</span></div>';
+    }).join('');
+    return '<div style="margin-bottom:10px"><div style="font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:3px">'+(h.date||h.ts)+'</div>'+rows+'</div>';
+  }).join('');
+  const hitRate=(wins+losses)>0?Math.round(wins/(wins+losses)*100):null;
+  const avgRet=retN?retSum/retN:null;
+  const stat=(l,v,c)=>'<div class="pk-m"><div class="pk-m-l">'+l+'</div><div class="pk-m-v" style="color:'+(c||'var(--text)')+'">'+v+'</div></div>';
+  el.innerHTML='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin:2px 0 12px">'
+      +stat('Hit rate',hitRate==null?'—':hitRate+'%',hitRate!=null&&hitRate>=50?'#065f46':'#92400e')
+      +stat('Avg return',avgRet==null?'—':(avgRet>=0?'+':'')+fmt(avgRet,1)+'%',avgRet!=null&&avgRet>=0?'#065f46':'#991b1b')
+      +stat('Resolved',wins+'W · '+losses+'L · '+open+' open','var(--text)')
+    +'</div>'+groups
+    +'<div class="fund-note">Graded on a <b>closing basis</b> since each scan date — a target counts if a daily close reached it; stopped if a close hit the stop. Assumes entry at the planned level; current return is entry → latest. Past results don’t guarantee anything.</div>';
+}
+
 async function fetchPicksLive(){
+  const histSyms=[...new Set((PICK_HISTORY||[]).flatMap(h=>(h.picks||[]).map(p=>p.ticker)))];
+  const allSyms=[...new Set([...PICK_CANDIDATES.map(c=>c.ticker),...histSyms])];
   try{
-    const r=await window.cowork.callMcpTool(RH+'get_equity_quotes',{symbols:PICK_CANDIDATES.map(c=>c.ticker)});
+    const r=await window.cowork.callMcpTool(RH+'get_equity_quotes',{symbols:allSyms});
     _picksLive=buildQMap(parse(r));
   }catch(e){}
-  updatePicksPrices(); renderPicksCards();
+  updatePicksPrices(); renderPicksCards(); renderPicksTrack();
   try{
-    const syms=PICK_CANDIDATES.map(c=>c.ticker);
-    const hist=await fetchHist(syms);
-    Object.assign(_picksRSI, rsiFromHist(hist, syms));
+    const hist=await fetchHist(allSyms);
+    _picksHistBars=hist;
+    Object.assign(_picksRSI, rsiFromHist(hist, PICK_CANDIDATES.map(c=>c.ticker)));
   }catch(e){}
-  renderPicksTable(); renderPicksCards();
+  renderPicksTable(); renderPicksCards(); renderPicksTrack();
 }
 
 /* ═══════════════════════════════════════════
@@ -2597,7 +2728,7 @@ function renderBreadth(){
   }
   el.innerHTML=h||'<div class="tech-empty">No breadth data.</div>';
 }
-window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicksCards(); } };
+window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicksCards(); renderPicksTrack(); } };
 
 (function(){
   try{ const d=document.getElementById('tab-picks-date'); if(d)d.textContent='· '+ANALYSIS_DATE.replace(', 2026',''); }catch(e){}

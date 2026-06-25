@@ -17,6 +17,7 @@ export const SCAN_ID = '17e8f5a7-395f-4f22-bba8-f287d39b6e57';
 export const N_FINALISTS = 12;   // how many to deep-dive (fundamentals + AV)
 export const N_CANDIDATES = 10;  // how many to show in the scoring table
 export const N_PICKS = 3;        // top picks with full thesis
+export const MAX_PICKS_PER_SECTOR = 2; // sector-diversification cap on the highlighted picks
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
@@ -44,8 +45,20 @@ export function selectFinalists(scanRaw, n = N_FINALISTS) {
 }
 
 // --- component scores (0–10) ---
-// Technical: more oversold = higher. RSI 25→10, 35→~7, 45→~3.
-const techScore = (rsi) => clamp(Math.round((52 - rsi) / 2.7), 0, 10);
+// Technical: oversold (RSI) BLENDED with position in the 52-week range, so "oversold" isn't the
+// whole story (RSI alone was double-counted — it also picks the finalists). rsiPart: RSI 25→10,
+// 35→~7, 45→~3. rangePart: at the 52wk low → 10, at the high → 0 (deeper in range = more mean-
+// reversion room). 70/30 blend keeps RSI leading but lifts a name pinned near its low and tempers
+// a low-RSI name that's still near its highs. No 52wk data → fall back to RSI alone.
+function techScore(rsi, price, hi52, lo52) {
+  const rsiPart = clamp((52 - rsi) / 2.7, 0, 10);
+  let rangePart = rsiPart;
+  if (price != null && hi52 != null && lo52 != null && hi52 > lo52) {
+    const pos = clamp((price - lo52) / (hi52 - lo52), 0, 1); // 0 = at low, 1 = at high
+    rangePart = clamp((1 - pos) * 10, 0, 10);
+  }
+  return clamp(Math.round(rsiPart * 0.7 + rangePart * 0.3), 0, 10);
+}
 
 // Fundamentals: valuation (trailing P/E, P/B, dividend) from Robinhood, plus growth
 // (revenue growth, forward P/E) from AV when available. Returns 0–10.
@@ -106,6 +119,23 @@ function levels(price, hi52, lo52) {
 
 const fmtPct = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
+// Top-n from a composite-sorted list, capping how many can share one sector (the broad theme before
+// the "·" in our sector strings). Unknown/"—" sectors don't count against each other. If the caps
+// leave us short of n, backfill in rank order so we always return n when enough rows exist.
+function diversifyBySector(sorted, n, maxPerSector) {
+  const theme = (c) => String(c.sector || '—').split('·')[0].trim() || '—';
+  const out = [], count = {};
+  for (const c of sorted) {
+    if (out.length >= n) break;
+    const s = theme(c);
+    if (s !== '—' && (count[s] || 0) >= maxPerSector) continue;
+    count[s] = (count[s] || 0) + 1;
+    out.push(c);
+  }
+  if (out.length < n) for (const c of sorted) { if (out.length >= n) break; if (!out.includes(c)) out.push(c); }
+  return out;
+}
+
 // Build the full picks payload the dashboard reads (data.picks).
 //  finalists: [{ticker, name, price, rsi, marketCap}]  (from scanRows, already sliced)
 //  fundBySym: { SYM: <RH get_equity_fundamentals result row> }
@@ -121,7 +151,7 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     const sector = fund.sector || ov.Sector || '—';
     const revGrowth = ov.QuarterlyRevenueGrowthYOY != null ? num(ov.QuarterlyRevenueGrowthYOY) * 100 : null;
     const fwdPE = num(ov.ForwardPE);
-    const tech = techScore(f.rsi);
+    const tech = techScore(f.rsi, f.price, hi52, lo52);
     const fundS = fundScore({ pe, pb, divYield, revGrowth, fwdPE });
     const L = levels(f.price, hi52, lo52);
     const rrScore = L.rr == null ? 4 : clamp(Math.round(L.rr * 2.5), 0, 10);
@@ -130,9 +160,17 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     const buzz = buzzLabel(socT, social);
     const composite = +(tech * 0.33 + fundS * 0.28 + rrScore * 0.19 + social * 0.20).toFixed(2);
     const pctOffHigh = hi52 && hi52 > 0 ? ((f.price / hi52 - 1) * 100) : null;
+    // Per-row data-coverage flags so the dashboard can tell a real score from a "no data → neutral"
+    // one: growth = AV supplied revenue-growth/forward-P/E (else value-only); social = ApeWisdom
+    // actually tracked this name (else neutral 5); rr = 52wk levels were present for the R/R math.
+    const cov = {
+      growth: revGrowth != null || fwdPE != null,
+      social: !!(socT && socT.tracked),
+      rr: L.rr != null,
+    };
     return {
       ticker: f.ticker, company: f.name, sector, price: f.price, rsi: Math.round(f.rsi),
-      tech, fund: fundS, rrScore, social, buzz, composite,
+      tech, fund: fundS, rrScore, social, buzz, composite, cov,
       revGrowth: revGrowth != null ? fmtPct(revGrowth) : '—',
       fwdPE: fwdPE != null ? fwdPE.toFixed(1) : (pe != null ? pe.toFixed(1) + ' (ttm)' : '—'),
       rr: L.rr != null ? L.rr.toFixed(1) + ':1' : '—',
@@ -142,12 +180,16 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
   }).sort((a, b) => b.composite - a.composite);
 
   const candidates = scored.slice(0, N_CANDIDATES).map((c, i) => ({
-    rank: i + 1, ticker: c.ticker, company: c.company, price: c.price, rsi: c.rsi,
+    rank: i + 1, ticker: c.ticker, company: c.company, sector: c.sector, price: c.price, rsi: c.rsi,
     tech: c.tech, revGrowth: c.revGrowth, fwdPE: c.fwdPE, fund: c.fund,
-    rr: c.rr, rrScore: c.rrScore, social: c.social, buzz: c.buzz, composite: c.composite, flag: c.flag,
+    rr: c.rr, rrScore: c.rrScore, social: c.social, buzz: c.buzz, composite: c.composite, cov: c.cov, flag: c.flag,
   }));
 
-  const picks = scored.slice(0, N_PICKS).map((c) => {
+  // Top picks, sector-diversified: walk the composite ranking but cap how many share one sector so a
+  // single-sector selloff (which fills the oversold screen) can't make all three picks the same theme.
+  // Unknown sectors ("—") aren't capped against each other. Backfill from the ranking if caps fall short.
+  const pickRows = diversifyBySector(scored, N_PICKS, MAX_PICKS_PER_SECTOR);
+  const picks = pickRows.map((c) => {
     const L = c._L;
     const signal = c.composite >= 7 ? 'BUY' : c.composite >= 5.5 ? 'CAUTIOUS BUY' : 'WATCH';
     const signalClass = signal === 'BUY' ? 'sig-buy' : signal === 'CAUTIOUS BUY' ? 'sig-cautious' : 'sig-watch';

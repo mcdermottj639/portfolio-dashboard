@@ -57,9 +57,9 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/run.mjs` | Orchestrator: build→validate→**publish to `origin/main`** (works from any session branch; retries; refuses to push plaintext). |
 | `producer/preflight.mjs` | Run-mode gate (SKIP / FETCH_ALL / FETCH_LIGHT). |
 | `producer/market.mjs` | Shared `isMarketOpen` / `isWeekday` / `etDate` / `etMinutes`. |
-| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. |
+| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. |
 | `producer/emit.mjs` | AES-GCM encrypt/decrypt (`encryptEnvelope`/`decryptEnvelope`). |
-| `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. |
+| `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. Tech score **blends RSI with 52wk-range position** (so RSI isn't double-counted vs finalist selection). Candidates carry `sector` + `cov` (data-coverage flags); top picks are **sector-diversified** (`MAX_PICKS_PER_SECTOR`, default 2). |
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. |
 | `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz). |
 | `producer/markets.mjs` | `MARKET_SYMBOLS` (indexes/risk/sectors/intl) — source of truth; keep PRODUCER.md's list in sync. |
@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v46** (`pf-v46`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v47** (`pf-v47`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -134,8 +134,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   whose redeploy buckets name your actual lowest-β / defensive holdings and size the harvest proceeds
   (50/30/20). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above commentary is
   derived from live data; optional owner editorial can be supplied via `data.notes` (see below).
-- **Picks:** scored candidates table incl. a **Social** column (retail buzz, 20% of composite); top-3
-  with thesis/levels; dynamic Earnings Preview (follows the soonest-reporting top pick).
+- **Picks:** **sortable + sector-filterable** scored candidates table incl. a **Social** column (retail
+  buzz, 20% of composite, with an inline buzz label) and **data-coverage cues** (grey social = "no data,
+  neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable). Top-3 cards with thesis/levels
+  are **sector-diversified** and carry a **catalyst-risk note** when earnings land inside the swing window.
+  **Track Record** card grades archived past picks (`data.picks.history`) on a closing basis — hit
+  TP1/TP2, stopped, or open — with a running hit-rate + avg return (graded client-side from daily bars).
+  Dynamic Earnings Preview follows the soonest-reporting top pick.
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
   chat-to-build-trade + Robinhood deep links.
 - **Markets:** index/risk/sector tiles (YTD/5Y) with a **risk-on/off appetite gauge** synthesized from
