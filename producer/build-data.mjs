@@ -172,6 +172,29 @@ const data = {
 const picksFile = filesMatching(/^picks\.json$/)[0];
 if (picksFile) data.picks = readJSON(picksFile);
 else if (prior && prior.picks) data.picks = prior.picks;
+
+// Pick track-record ledger (data.picks.history). When a FRESH scan is built (new date), archive the
+// OUTGOING (prior) top picks with their entry/target/stop so the consumer can grade them against
+// subsequent prices (closing-basis: hit TP1/TP2, stopped, or still open) and show a real hit-rate.
+// Carried forward unchanged on light runs; capped to the most recent 40 dated entries.
+if (data.picks) {
+  let history = (prior && prior.picks && Array.isArray(prior.picks.history)) ? prior.picks.history.slice() : [];
+  const pp = prior && prior.picks;
+  const replaced = picksFile && pp && Array.isArray(pp.picks) && pp.picks.length && pp.ts && pp.ts !== data.picks.ts;
+  if (replaced && !history.some((h) => h.ts === pp.ts)) {
+    const entryRef = (p) => { const m = /([\d.]+)/.exec(String(p.entry || '')); return m ? +m[1] : p.basePrice; };
+    history.unshift({
+      ts: pp.ts, date: pp.date,
+      picks: pp.picks.map((p) => ({
+        ticker: p.ticker, basePrice: p.basePrice, entry: p.entry, entryRef: entryRef(p),
+        tp1: p.tp1 && p.tp1.price, tp2: p.tp2 && p.tp2.price, sl: p.sl && p.sl.price,
+        composite: p.composite, signal: p.signal,
+      })),
+    });
+    history = history.slice(0, 40);
+  }
+  data.picks.history = history;
+}
 // Options page (your positions/pending + directional ideas). Embedded as data.options.
 const optionsFile = filesMatching(/^options\.json$/)[0];
 if (optionsFile) data.options = readJSON(optionsFile);
