@@ -559,17 +559,23 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v44'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v45'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
       var lab=(d&&d.generatedAtLabel)||(locked?'locked':'unknown');
+      // Staleness — if the snapshot is hours old, warn rather than silently showing old quotes.
+      var ageH=null, stale=false;
+      try{ var gen=d&&d.generatedAt?new Date(d.generatedAt):null; if(gen&&!isNaN(gen)){ ageH=(Date.now()-gen.getTime())/3600000; stale=!locked&&!err&&ageH>=3; } }catch(e){}
+      function ageStr(h){ if(h==null)return''; if(h<1)return Math.max(1,Math.round(h*60))+'m old'; if(h<48)return Math.round(h)+'h old'; return Math.round(h/24)+'d old'; }
+      var warn=locked||err||stale;
       var bar=document.createElement('div');
       bar.id='pf-fresh';
-      bar.style.cssText='font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:'+(locked||err?'#7c2d12':'#475569')+';background:'+(locked||err?'#fff7ed':'#eef2f7')+';border:1px solid '+(locked||err?'#fed7aa':'#dbe2ea')+';border-radius:10px;padding:7px 12px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px';
+      bar.style.cssText='font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:'+(warn?'#7c2d12':'#475569')+';background:'+(warn?'#fff7ed':'#eef2f7')+';border:1px solid '+(warn?'#fed7aa':'#dbe2ea')+';border-radius:10px;padding:7px 12px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px';
       var left = locked ? '🔒 Locked — enter your passphrase to view'
                : err    ? '⚠️ Couldn’t load data ('+err+')'
-               :          '📡 Snapshot: '+lab;
+               : stale  ? '⚠️ Snapshot '+ageStr(ageH)+' — tap ↻ to refresh'
+               :          '📡 Snapshot: '+lab+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
       var _th=document.documentElement.getAttribute('data-theme')||'light';
       if(_th==='dark')_th='neon';
       var themeIco=_th==='neon'?'☀️':'⚡';
@@ -797,12 +803,46 @@ function rsiFromHist(histMap, syms){
   return map;
 }
 function betaFromHist(histMap, enriched, syms){
-  const spy=histMap['SPY']; if(!spy||spy.length<10) return {beta:null,coverage:0};
+  const spy=histMap['SPY']; if(!spy||spy.length<10) return {beta:null,coverage:0,perSym:{}};
   const rets=a=>{const o=[];for(let i=1;i<a.length;i++)o.push(a[i].c/a[i-1].c-1);return o;};
   const sr=rets(spy); const n0=sr.length; const mx=sr.reduce((s,x)=>s+x,0)/n0; let vx=0; for(const x of sr)vx+=(x-mx)*(x-mx); vx/=n0;
-  let wsum=0,bsum=0,covered=0; const eq=enriched.reduce((s,p)=>s+Math.max(p.val,0),0)||1;
-  for(const s of syms){ const ser=histMap[s]; const p=enriched.find(e=>e.symbol===s); if(!ser||ser.length<10||!p||p.val<=0)continue; const r=rets(ser); const n=Math.min(r.length,sr.length); if(n<8)continue; const my=r.slice(-n).reduce((a,x)=>a+x,0)/n; let cov=0; for(let i=0;i<n;i++){ cov+=(sr[sr.length-n+i]-mx)*(r[r.length-n+i]-my); } cov/=n; const b=vx>0?cov/vx:null; if(b!=null){ bsum+=b*p.val; wsum+=p.val; covered+=p.val; } }
-  return { beta: wsum>0?bsum/wsum:null, coverage: eq>0?covered/eq*100:0 };
+  let wsum=0,bsum=0,covered=0; const perSym={}; const eq=enriched.reduce((s,p)=>s+Math.max(p.val,0),0)||1;
+  for(const s of syms){ const ser=histMap[s]; const p=enriched.find(e=>e.symbol===s); if(!ser||ser.length<10||!p||p.val<=0)continue; const r=rets(ser); const n=Math.min(r.length,sr.length); if(n<8)continue; const my=r.slice(-n).reduce((a,x)=>a+x,0)/n; let cov=0; for(let i=0;i<n;i++){ cov+=(sr[sr.length-n+i]-mx)*(r[r.length-n+i]-my); } cov/=n; const b=vx>0?cov/vx:null; if(b!=null){ perSym[s]=b; bsum+=b*p.val; wsum+=p.val; covered+=p.val; } }
+  return { beta: wsum>0?bsum/wsum:null, coverage: eq>0?covered/eq*100:0, perSym };
+}
+
+/* Empirically correlated groups from YTD daily returns — replaces reliance on the static CLUSTERS
+   list for the Risk card. Greedy union-find over pairs with correlation ≥ THRESH; returns groups of
+   ≥2 held names sorted by combined weight, each {members:[{sym,pct}], pct, avgCorr}. */
+function corrGroups(histMap, enriched, syms){
+  const THRESH=0.7;
+  const rets=a=>{const o=[];for(let i=1;i<a.length;i++)o.push(a[i].c/a[i-1].c-1);return o;};
+  const use=syms.filter(s=>{ const ser=histMap[s]; const p=enriched.find(e=>e.symbol===s); return ser&&ser.length>20&&p&&p.val>0; });
+  if(use.length<2) return [];
+  const R={}; for(const s of use) R[s]=rets(histMap[s]);
+  function corr(a,b){ const x=R[a],y=R[b]; const n=Math.min(x.length,y.length); if(n<15)return null;
+    const xs=x.slice(-n),ys=y.slice(-n); const mx=xs.reduce((s,v)=>s+v,0)/n,my=ys.reduce((s,v)=>s+v,0)/n;
+    let cov=0,vx=0,vy=0; for(let i=0;i<n;i++){ cov+=(xs[i]-mx)*(ys[i]-my); vx+=(xs[i]-mx)**2; vy+=(ys[i]-my)**2; }
+    return (vx>0&&vy>0)?cov/Math.sqrt(vx*vy):null; }
+  const parent={}; use.forEach(s=>parent[s]=s);
+  const find=s=>{ while(parent[s]!==s){ parent[s]=parent[parent[s]]; s=parent[s]; } return s; };
+  const edges=[];
+  for(let i=0;i<use.length;i++)for(let j=i+1;j<use.length;j++){ const r=corr(use[i],use[j]); if(r!=null&&r>=THRESH){ edges.push(r); parent[find(use[i])]=find(use[j]); } }
+  const groups={};
+  for(const s of use){ const root=find(s); (groups[root]=groups[root]||[]).push(s); }
+  const eq=enriched.reduce((s,p)=>s+Math.max(p.val,0),0)||1;
+  const avgR=edges.length?edges.reduce((a,b)=>a+b,0)/edges.length:null;
+  return Object.values(groups).filter(g=>g.length>=2).map(g=>{
+    const members=g.map(sym=>{ const p=enriched.find(e=>e.symbol===sym); return {sym,pct:p?p.val/eq*100:0,val:p?p.val:0}; }).sort((a,b)=>b.pct-a.pct);
+    return { members, pct:members.reduce((s,m)=>s+m.pct,0), avgCorr:avgR };
+  }).sort((a,b)=>b.pct-a.pct);
+}
+
+/* 50-day SMA per symbol from daily closes (for the Technical Signals trend column). */
+function smaFromHist(histMap, syms){
+  const map={};
+  for(const s of syms){ const ser=histMap[s]; if(ser&&ser.length>=50){ const last=ser.slice(-50); map[s]=last.reduce((a,b)=>a+b.c,0)/50; } }
+  return map;
 }
 
 function computeBeta(enriched, ovMap){
@@ -1109,7 +1149,7 @@ function renderActionFeed(list){
 }
 
 /* ═══ Risk & Diversification ═══ */
-function renderRisk(enriched, clusters, totalVal, betaInfo, metrics){
+function renderRisk(enriched, clusters, totalVal, betaInfo, metrics, corrG){
   const el=document.getElementById('risk-content'); if(!el)return;
   const eqVal=enriched.reduce((s,p)=>s+Math.max(p.val,0),0);
   const beta=betaInfo?betaInfo.beta:null;
@@ -1146,7 +1186,26 @@ function renderRisk(enriched, clusters, totalVal, betaInfo, metrics){
       <div class="risk-line"><span class="risk-name">Portfolio beta</span><span class="risk-val">${beta!=null?fmt(beta,2):'<span class=spin-sm></span>'} <span style="font-weight:400;color:#9ca3af">vs 1.00 market</span></span></div>
     </div>
     <div class="cov-note">Beta-weighted stress assumes each name moves with its historical beta — a rough guide, not a guarantee. ${betaInfo&&betaInfo.coverage?`Beta covers ${fmt(betaInfo.coverage,0)}% of equity.`:''} "Effective # of bets" near your position count = well spread; far below = concentrated. Sharpe &amp; volatility are annualized from YTD daily returns of your covered top holdings${M?` (${fmt(M.cov,0)}% of equity, risk-free ≈ 10-yr yield)`:''}; Sharpe &gt; 1 is strong.</div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--surface-2)"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:7px">🤖 AI-infrastructure context — why ~70% in one theme is a real bet <span style="font-weight:400;color:#9ca3af">(Jun 2026)</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="box-bull" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Tailwind</b> — hyperscaler AI capex ≈ $725B in 2026 (+~64% YoY), NVDA at the center via the Rubin ramp. Strong demand backdrop for NVDA / TSM / AVGO into 2H26.</div><div class="box-bear" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Sharp risk (miners)</b> — IREN / CIFR / WULF pivot BTC mining → AI HPC on heavy debt (IREN ~$3.7B converts). Sector has delivered only ~25% of leased HPC; VanEck flags a ~$50B near-term funding gap.</div></div><div style="font-size:10.5px;color:#9ca3af;margin-top:7px">NVDA is the quality leg; IREN (beta ~4.2) is the fragile one — size and stops should reflect that. Sources: hyperscaler capex (Yahoo/Dell’Oro), miner pivot &amp; debt (CoinDesk/VanEck).</div></div>
+    ${(()=>{
+      const perSym=betaInfo&&betaInfo.perSym?betaInfo.perSym:null;
+      const blocks=[];
+      // Concentration context — the largest correlated theme, named dynamically.
+      if(topCl&&topCl[1].pct>=20&&topCl[1].matched.length>1){ const mem=topCl[1].matched.sort((a,b)=>b.val-a.val).map(p=>p.symbol).join(' · ');
+        blocks.push(`<div class="box-info" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Largest theme — ${topCl[0]} at ${fmt(topCl[1].pct,1)}%.</b> ${mem} tend to move together, so a sector hit lands on all of them at once. Concentration is the bet here; size new adds with that in mind.</div>`); }
+      // Empirically correlated group (from actual return correlation, not a static list).
+      if(corrG&&corrG.length&&corrG[0].pct>=15){ const g=corrG[0]; const mem=g.members.slice(0,6).map(m=>m.sym).join(', ');
+        blocks.push(`<div class="box-bear" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45"><b>Tightly correlated cluster — ${fmt(g.pct,1)}% of equity${g.avgCorr!=null?`, avg ρ ≈ ${fmt(g.avgCorr,2)}`:''}.</b> ${mem} have been moving as one block in YTD daily returns — effectively a single position for risk purposes.</div>`); }
+      // Fragile leg — the highest-beta meaningful holding, derived from per-symbol beta.
+      if(perSym){ const cand=enriched.filter(p=>p.val>0&&p.pct>=1.5&&perSym[p.symbol]!=null).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>b.b-a.b)[0];
+        if(cand&&cand.b>=1.5){ blocks.push(`<div class="cov-note" style="margin-top:0"><b style="color:var(--text)">Fragile leg:</b> ${cand.p.symbol} (β ≈ ${fmt(cand.b,1)}, ${fmt(cand.p.pct,1)}% of book) is your most market-sensitive position — a 10% market drop implies ≈ ${fmtP(-10*cand.b)} on it alone. Tighter stops and smaller size belong here, not on the low-β names.</div>`); }
+      }
+      // Optional owner editorial, carried in data.notes (string or {risk}). Updates with the snapshot
+      // rather than living in the shell, so context never goes stale silently.
+      const note=(()=>{ try{ const n=window.__DATA&&window.__DATA.notes; if(!n)return null; return typeof n==='string'?n:(n.risk||null);}catch(e){return null;} })();
+      if(note) blocks.push(`<div class="box-info" style="border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45">📝 ${note}</div>`);
+      if(!blocks.length) return '';
+      return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--surface-2)"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:7px">🔎 Concentration &amp; correlation context</div><div style="display:grid;gap:8px">${blocks.join('')}</div></div>`;
+    })()}
   `;
 }
 
@@ -1202,17 +1261,29 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo){
     <div class="col-title">1 · Harvest losers — frees ${fmtD(freed)} to redeploy${harv.length?` (banks ${fmtD(loss)} of losses)`:''}</div>
     ${harv.length?`<table><thead><tr><th>Sell</th><th class="tr">Shares</th><th class="tr">Proceeds</th><th class="tr">Loss banked</th></tr></thead><tbody>${rows}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr">${fmtD(freed)}</td><td class="tr neg">${fmtD(loss)}</td></tr></tbody></table><div class="fund-note">Wash-sale: don’t rebuy these (or substantially-identical securities) for 30 days after selling. The tax saved is small (~loss × your rate) — the real win is redeploying the proceeds out of concentrated tech.</div>`:`<div class="tech-empty">No positions in the red above $${SMALL_THR} — nothing to harvest right now.</div>`}
     <div class="col-title" style="margin-top:14px">2 · Redeploy the proceeds <span class="card-hint">(de-risk without selling a winner)</span></div>
-    <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
-      <div style="padding:5px 0"><b style="color:#0969da">A · Low-beta ballast</b> — add to BRK.B (held, beta ~0.85). Most direct way to pull portfolio beta down.</div>
-      <div style="padding:5px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">B · Defensive income</b> — short-Treasury (SCHO, held) or healthcare (LLY, ELV). Ballast + yield, low correlation to the AI book.</div>
-      <div style="padding:5px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">C · Cash cushion</b> — hold as cash against the margin; lowers effective leverage + dry powder for pullbacks.</div>
-    </div>
+    ${(()=>{
+      const perSym=betaInfo&&betaInfo.perSym?betaInfo.perSym:null;
+      const onMargin=(()=>{ try{ return (window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.cashVal<0); }catch(e){ return false; } })();
+      // Ballast = held names with the lowest measured beta. Defensive = held bonds / gold sleeves.
+      const lowBeta=perSym?enriched.filter(p=>p.val>0&&perSym[p.symbol]!=null&&perSym[p.symbol]<0.9).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>a.b-b.b):[];
+      const defensive=enriched.filter(p=>p.val>0&&(ASSET_MAP[p.symbol]==='Bonds'||ASSET_MAP[p.symbol]==='Gold/Commodities'));
+      const ballastName=lowBeta.length?`${lowBeta[0].p.symbol} (held, β ≈ ${fmt(lowBeta[0].b,2)})${lowBeta[1]?` or ${lowBeta[1].p.symbol}`:''}`:'a broad-market or low-β holding';
+      const defName=defensive.length?defensive.sort((a,b)=>b.val-a.val).slice(0,2).map(p=>p.symbol).join(' / ')+' (held)':'short-duration Treasuries or a defensive sector ETF';
+      // Split harvest proceeds across the three buckets (only meaningful when there's something to redeploy).
+      const size=freed>0?(f=>` <span style="color:#9ca3af">≈ ${fmtD(f)}</span>`):()=>'';
+      return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
+      <div style="padding:5px 0"><b style="color:#0969da">A · Low-beta ballast</b>${size(freed*0.5)} — add to ${ballastName}. Most direct way to pull portfolio beta down.</div>
+      <div style="padding:5px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">B · Defensive income</b>${size(freed*0.3)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>
+      <div style="padding:5px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">C · Cash cushion</b>${size(freed*0.2)} — ${onMargin?'hold as cash against the margin; lowers effective leverage + dry powder for pullbacks.':'keep as dry powder for pullbacks and to stay nimble.'}</div>
+      ${freed>0?`<div class="fund-note">Indicative 50 / 30 / 20 split of the ${fmtD(freed)} freed above — adjust to taste; the point is to land the proceeds outside the concentrated book.</div>`:''}
+    </div>`;
+    })()}
     <div class="col-title" style="margin-top:14px">3 · Winner triggers <span class="card-hint">(when to take chips off ${t1.symbol}/${t2.symbol})</span></div>
     <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
       <div style="padding:4px 0">▸ ${t1.symbol} or ${t2.symbol} tops <b>~35%</b> of equity → trim toward 30% <span style="color:#9ca3af">(now ${fmt(t1p,1)}% / ${fmt(t2p,1)}%)</span>.</div>
       <div style="padding:4px 0">▸ ${t1.symbol} + ${t2.symbol} combined <b>&gt; 60%</b> → take some off <span style="color:#9ca3af">(now ${fmt(t1p+t2p,1)}%)</span>.</div>
       <div style="padding:4px 0">▸ A winner’s <b>RSI &gt; 75</b> → trim into strength (see Technical Signals).</div>
-      <div style="padding:4px 0">▸ <b>IREN</b> (beta ~4.2, miner→AI on heavy debt) is the fragile leg — set a <b>~−20% trailing stop</b>.</div>
+      ${(()=>{ const perSym=betaInfo&&betaInfo.perSym?betaInfo.perSym:null; if(!perSym)return ''; const f=enriched.filter(p=>p.val>0&&p.pct>=1.5&&perSym[p.symbol]!=null).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>b.b-a.b)[0]; if(!f||f.b<1.5)return ''; return `<div style="padding:4px 0">▸ <b>${f.p.symbol}</b> (β ≈ ${fmt(f.b,1)}) is your highest-beta leg — the fragile one — set a <b>~−20% trailing stop</b>.</div>`; })()}
       <div style="padding:4px 0">▸ Reassess around <b>${t1.symbol}/${t2.symbol} earnings</b> — hold-through vs trim.</div>
     </div>`;
 }
@@ -1276,14 +1347,18 @@ function _renderPos(rows){
 }
 
 /* ═══ Technical Signals (kept) ═══ */
-function renderTechSignals(enriched, rsiMap){
+function renderTechSignals(enriched, rsiMap, smaMap){
   const el=document.getElementById('tech-content'); if(!el)return;
   const rows=enriched.filter(p=>p.val>=SMALL_THR&&rsiMap[p.symbol]!=null).sort((a,b)=>b.val-a.val);
   if(!rows.length){ el.innerHTML=`<div class="tech-empty">RSI loading or unavailable.</div>`; return; }
+  smaMap=smaMap||{};
   function sig(rsi){ if(rsi>=75)return{l:'Overbought',bg:'#fee2e2',fg:'#991b1b',i:'🔴'}; if(rsi>=60)return{l:'Bullish',bg:'#d1fae5',fg:'#065f46',i:'🟢'}; if(rsi>=40)return{l:'Neutral',bg:'#f3f4f6',fg:'#6b7280',i:'⚪'}; if(rsi>=25)return{l:'Bearish',bg:'#ffedd5',fg:'#9a3412',i:'🟡'}; return{l:'Oversold',bg:'#dbeafe',fg:'#1e40af',i:'🔵'}; }
-  let h='<table><thead><tr><th>Symbol</th><th class="tr">% Port</th><th class="tr">RSI (14d)</th><th>Signal</th><th class="tr">P&L</th></tr></thead><tbody>';
-  for(const p of rows){ const rsi=rsiMap[p.symbol], s=sig(rsi); h+=`<tr><td><span class="sym">${p.symbol}</span></td><td class="tr" style="font-weight:700;color:${p.r.color}">${fmt(p.pct,1)}%</td><td class="tr"><span style="font-size:15px;font-weight:700;color:${rsi>=70?'#ef4444':rsi<=30?'#3b82f6':'#374151'}">${fmt(rsi,0)}</span></td><td><span class="rsi-pill" style="background:${s.bg};color:${s.fg}">${s.i} ${s.l}</span></td><td class="tr"><span class="${sc(p.pnlP)}">${fmtP(p.pnlP)}</span></td></tr>`; }
-  h+='</tbody></table><div class="fund-note">14-day RSI on daily closes (top holdings). Overbought/oversold alone isn\'t a signal — confirm with thesis and size. ~15-min delayed via Alpha Vantage.</div>';
+  let h='<table><thead><tr><th>Symbol</th><th class="tr">% Port</th><th class="tr">RSI (14d)</th><th>Signal</th><th class="tr">vs 50-DMA</th><th class="tr">P&L</th></tr></thead><tbody>';
+  for(const p of rows){ const rsi=rsiMap[p.symbol], s=sig(rsi);
+    const sma=smaMap[p.symbol]; const vs=(sma&&p.px>0)?((p.px-sma)/sma*100):null;
+    const vsTxt=vs==null?'<span style="color:#9ca3af">—</span>':`<span class="${sc(vs)}" title="50-day SMA ≈ ${fmtD(sma)}">${vs>=0?'▲':'▼'} ${fmtP(vs)}</span>`;
+    h+=`<tr><td><span class="sym">${p.symbol}</span></td><td class="tr" style="font-weight:700;color:${p.r.color}">${fmt(p.pct,1)}%</td><td class="tr"><span style="font-size:15px;font-weight:700;color:${rsi>=70?'#ef4444':rsi<=30?'#3b82f6':'#374151'}">${fmt(rsi,0)}</span></td><td><span class="rsi-pill" style="background:${s.bg};color:${s.fg}">${s.i} ${s.l}</span></td><td class="tr">${vsTxt}</td><td class="tr"><span class="${sc(p.pnlP)}">${fmtP(p.pnlP)}</span></td></tr>`; }
+  h+='</tbody></table><div class="fund-note">14-day RSI + price vs its 50-day moving average (above = uptrend) on daily closes, top holdings. Signals alone aren\'t a trade — confirm with thesis and size. ~15-min delayed.</div>';
   el.innerHTML=h;
 }
 
@@ -1335,7 +1410,11 @@ function renderHeatmap(){
   const rows=src.filter(p=>p.val>=SMALL_THR);
   if(!rows.length){ el.innerHTML='<div class="tech-empty" style="padding:18px">No positions to map.</div>'; return; }
   const W=el.clientWidth, H=el.clientHeight||340; if(W<10)return; /* hidden tab — skip */
-  const items=rows.map(p=>({value:p.val, p})).sort((a,b)=>b.value-a.value).slice(0,30);
+  const CAP=30;
+  const sorted=rows.map(p=>({value:p.val, p})).sort((a,b)=>b.value-a.value);
+  const items=sorted.slice(0,CAP);
+  const note=document.getElementById('hm-note');
+  if(note){ if(sorted.length>CAP){ const shownVal=items.reduce((s,it)=>s+it.value,0); const totVal=sorted.reduce((s,it)=>s+it.value,0); note.textContent=`Showing the ${CAP} largest of ${sorted.length} positions ≥ $${SMALL_THR} (${fmt(totVal>0?shownVal/totVal*100:0,0)}% of mapped value). Smaller names are omitted for legibility.`; } else { note.textContent=''; } }
   const rects=squarify(items,0,0,W,H);
   const neon=document.documentElement.getAttribute('data-theme')==='neon';
   const div=_hmMode==='day'?3:40;
@@ -1407,14 +1486,14 @@ async function load(){
       <div class="header"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="h-label">Total Portfolio Value</div><div class="h-value">${fmtD(totalVal)}</div><div class="h-tag">Robinhood · Individual Margin</div></div><button id="kyle-btn" class="kyle-btn" onclick="pushToKyle()">📲 Push to Kyle</button></div></div>
       <div class="card"><div id="snap-content"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
-      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div></div>
+      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
       <div class="card"><div class="card-title"><span>⚡ Action Feed <span class="card-hint">(what to look at, ranked)</span></span></div><div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-plan" onclick="toggleSection('b-plan')"><span>🧭 Action Plan <span class="card-hint">(harvest · redeploy · winner triggers)</span></span><span class="chevron">▼</span></div><div id="b-plan"><div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · Alpha Vantage)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
+      <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
       ${smalls.length>0?`<div class="card"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
       <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 See today's Daily Picks (S&P 500 / large-cap scan) →</span></div>
@@ -1423,7 +1502,7 @@ async function load(){
     renderSnapshot(stats,null);
     renderHeatmap();
     _renderPos(enriched);
-    renderRisk(enriched,clusters,totalVal,null,null);
+    renderRisk(enriched,clusters,totalVal,null,null,null);
     renderActionFeed(buildActionFeed(enriched,port,clusters,totalVal,{},{},{}));
     renderActionPlan(enriched,clusters,totalVal,null);
 
@@ -1435,12 +1514,14 @@ async function load(){
       const [histMap, macro]=await Promise.all([ fetchHist([...cover,'SPY','QQQ']).catch(()=>({})), fetchMacro().catch(()=>null) ]);
       renderPerformance(histMap, enriched, cover, macro, stats);
       const rsiMap=rsiFromHist(histMap, cover);
+      const smaMap=smaFromHist(histMap, cover);
       const betaInfo=betaFromHist(histMap, enriched, cover);
       const riskMetrics=computeRiskMetrics(histMap, enriched, cover, macro);
-      if(window.__SNAP){ window.__SNAP.betaInfo=betaInfo; window.__SNAP.riskMetrics=riskMetrics; }
+      const corrG=corrGroups(histMap, enriched, cover);
+      if(window.__SNAP){ window.__SNAP.betaInfo=betaInfo; window.__SNAP.riskMetrics=riskMetrics; window.__SNAP.corrG=corrG; }
       renderSnapshot(stats,betaInfo);
-      renderRisk(enriched,clusters,totalVal,betaInfo,riskMetrics);
-      renderTechSignals(enriched,rsiMap);
+      renderRisk(enriched,clusters,totalVal,betaInfo,riskMetrics,corrG);
+      renderTechSignals(enriched,rsiMap,smaMap);
       renderActionPlan(enriched,clusters,totalVal,betaInfo);
       let ovMap=await loadFundFeed().catch(()=>({}));
       const ovMissing=cover.filter(s=>!ovMap[s]);

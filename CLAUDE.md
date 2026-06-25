@@ -57,7 +57,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/run.mjs` | Orchestrator: build→validate→**publish to `origin/main`** (works from any session branch; retries; refuses to push plaintext). |
 | `producer/preflight.mjs` | Run-mode gate (SKIP / FETCH_ALL / FETCH_LIGHT). |
 | `producer/market.mjs` | Shared `isMarketOpen` / `isWeekday` / `etDate` / `etMinutes`. |
-| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized). |
+| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. |
 | `producer/emit.mjs` | AES-GCM encrypt/decrypt (`encryptEnvelope`/`decryptEnvelope`). |
 | `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. |
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. |
@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v44** (`pf-v44`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v45** (`pf-v45`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -125,10 +125,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 ## Feature inventory (what's built)
 - **Portfolio:** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %
   on cost, value-weighted Day %); **Holdings Heatmap** (squarified treemap, sized by value, colored by
-  day move or total P&L, tap-to-Analyze); risk/concentration with a **risk-adjusted metrics row**
-  (Sharpe · annualized volatility · max drawdown · beta, computed YTD from covered holdings'
-  historicals in `computeRiskMetrics`); allocation; Income & Tax (dividends, realized YTD, options
-  premium); Action Feed + Action Plan.
+  day move or total P&L, tap-to-Analyze, with a "top N of M" coverage note when capped); risk/concentration
+  with a **risk-adjusted metrics row** (Sharpe · annualized volatility · max drawdown · beta, computed YTD
+  from covered holdings' historicals in `computeRiskMetrics`) plus a **data-derived concentration &
+  correlation context** block (largest theme, an **empirical correlated cluster** from actual return
+  correlation in `corrGroups`, and the highest-β "fragile leg" from per-symbol betas — no hardcoded
+  tickers); allocation; Income & Tax (dividends, realized YTD, options premium); Action Feed; **Action Plan**
+  whose redeploy buckets name your actual lowest-β / defensive holdings and size the harvest proceeds
+  (50/30/20). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above commentary is
+  derived from live data; optional owner editorial can be supplied via `data.notes` (see below).
 - **Picks:** scored candidates table incl. a **Social** column (retail buzz, 20% of composite); top-3
   with thesis/levels; dynamic Earnings Preview (follows the soonest-reporting top pick).
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
@@ -138,3 +143,6 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Options:** positions/pending + directional ideas with live greeks.
 - **Producer hardening:** preflight gating, carry-forward, deterministic publish-to-main, freshness
   watchdog, clean-stop on push failure.
+- **Freshness bar:** shows the snapshot label/age and **tints amber with a "↻ to refresh" nudge when the
+  snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts the build version,
+  privacy, theme, and refresh controls.

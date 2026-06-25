@@ -201,6 +201,19 @@ if (data.options && (data.options.realizedYTD != null || data.options.premiumYTD
   if (data.realized.year == null) data.realized.year = String(new Date().getUTCFullYear()) + ' YTD';
 }
 
+// Owner editorial notes (OPTIONAL). A small, hand-maintained producer/notes.json lets the owner
+// attach short context that renders in the dashboard (e.g. the Risk card's concentration commentary)
+// WITHOUT baking ticker-/date-specific prose into index.html. Shape: a plain string, or
+// { risk: "…" } for section-targeted notes. Absent → the UI derives everything from live data.
+// Carried forward from the prior snapshot when not re-supplied, like realized/picks.
+const notesFile = join(__dirname, 'notes.json');
+if (existsSync(notesFile)) {
+  const n = readJSON(notesFile);
+  if (n != null && (typeof n === 'string' ? n.trim() : (n.risk || Object.keys(n).length))) data.notes = n;
+} else if (prior && prior.notes) {
+  data.notes = prior.notes;
+}
+
 // News sentiment (OPTIONAL — Alpha Vantage NEWS_SENTIMENT). The agent may save a raw AV
 // result to producer/raw/news/<SYM>.json for a few top holdings if AV budget remains (it's
 // rate-limited, so this is opt-in and never required). Aggregated per ticker for the Analyze
