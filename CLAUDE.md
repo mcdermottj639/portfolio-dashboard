@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v51** (`pf-v51`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v52** (`pf-v52`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -103,6 +103,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   `[replay miss]`. `validate.mjs` checks this; don't reorder keys in AV/recorded arg objects.
 
 ## Gotchas / hard-won lessons (don't relearn these)
+- **AV MCP responses come in THREE shapes — `parseAV()` must accept all of them.** The Alpha Vantage
+  connector returns economic indicators (`CPI`, `FEDERAL_FUNDS_RATE`, `TREASURY_YIELD`,
+  `EARNINGS_CALENDAR`) as `{result:"<CSV string>"}`, but `INDEX_DATA`/some `COMPANY_OVERVIEW` as
+  `{structuredContent:{…}}`, and other overviews as a bare `{Symbol,…}` object. `parseAV` in
+  `index.html` coalesces `structuredContent` → `content[0].text` → **`result` (CSV/JSON string)** →
+  array → `{Symbol|Time Series}`. If the `result` branch is dropped, the Markets **Macro Signals**
+  tiles (10yr Treasury / Fed Funds / CPI) silently go blank while VIX (sourced from Robinhood) still
+  renders — exactly the symptom that bit us at v51. (2s10s curve also needs the **2-year**
+  TREASURY_YIELD recorded; if a run only captures the 10-year, the curve shows "—" until the next
+  FETCH_ALL records both.)
 - **`data.hist` bar shape differs by producer — consumer must accept BOTH.** The scheduled Claude
   agent (and `make-sample-data.mjs`) store raw Robinhood bars `{begins_at, close_price, interpolated}`;
   the **Railway** producer normalizes them to compact `{t, c}` (`fetch_rh.py` `_bars_from_historicals`).
