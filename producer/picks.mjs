@@ -19,6 +19,16 @@ export const N_CANDIDATES = 10;  // how many to show in the scoring table
 export const N_PICKS = 3;        // top picks with full thesis
 export const MAX_PICKS_PER_SECTOR = 2; // sector-diversification cap on the highlighted picks
 
+// The Robinhood watchlist the producer keeps in sync with the composite top-N candidates (the Picks
+// table). On every FETCH_ALL run, picks-build.mjs emits the sidecar producer/raw/picks-watchlist.json
+// and the agent diffs it against the live list (add/remove via MCP — see PRODUCER.md "Sync the Picks
+// watchlist"). The id below is the list created for this account; if it's ever deleted the agent
+// re-creates it by WATCHLIST_NAME.
+export const WATCHLIST_ID = '3f8c0634-f4ac-4265-8824-85e25bae4886';
+export const WATCHLIST_NAME = 'Dashboard Top 10 Picks';
+export const WATCHLIST_EMOJI = '📈';
+export const WATCHLIST_DESC = "Auto-synced daily from the portfolio dashboard's top 10 oversold picks.";
+
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 

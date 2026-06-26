@@ -64,6 +64,11 @@ catch (e) { console.error('[run] ABORT — build-data failed:', e.message.split(
 // 5. Validate the replay contract (warn-only).
 tryNode('validate.mjs');
 
+// 5b. Watchlist reminder — picks-build emits this sidecar only on FETCH_ALL. run.mjs can't do the
+// sync itself (MCP writes are agent-only), so just remind the agent of the post-publish step.
+if (existsSync(join(RAW, 'picks-watchlist.json')))
+  log('NOTE: picks rebuilt → after publishing, sync the "Dashboard Top 10 Picks" Robinhood watchlist (PRODUCER.md → "Sync the Picks watchlist").');
+
 // 6. Safety check, then commit + push.
 const dataPath = join(ROOT, 'data.json');
 let parsed;

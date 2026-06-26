@@ -192,7 +192,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `producer/raw/hist-day-picks.json` (build-data merges all `quotes*.json` / `hist-day*.json`).
    5. `node producer/picks-build.mjs` → writes `producer/raw/picks.json` (scored candidates +
       top 3 with thesis). `build-data.mjs` embeds it as `data.picks`; the dashboard reads it
-      directly (the old Kyle note is retired).
+      directly (the old Kyle note is retired). It **also** emits
+      `producer/raw/picks-watchlist.json` (the composite top-10 tickers) — the target for the
+      Robinhood watchlist sync in step 5 below.
 
 3c. **Options page** (the Options tab) — **EVERY-RUN** (cheap; run it on `FETCH_LIGHT` too).
    Fully Robinhood-driven; can run every snapshot
@@ -252,6 +254,32 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    Useful flags: `--no-push` (dry run / local build), `--no-av` (skip the AV fetch), `--require-open`.
    Only `data.json` changes on a normal run; GitHub Pages serves it within a minute (the PWA's
    service worker is network-first for `data.json`, so the next open shows it).
+
+5. **Sync the Picks watchlist — FETCH_ALL only, best-effort, AFTER `run.mjs` succeeds.** This is the
+   *one* place the producer **writes** to Robinhood (everything else is read-only). It keeps a custom
+   watchlist — **"Dashboard Top 10 Picks"** (`list_id 3f8c0634-f4ac-4265-8824-85e25bae4886`) — in step
+   with the Picks tab's composite top 10. Run it only if `producer/raw/picks-watchlist.json` exists
+   (it's written by `picks-build.mjs`, so present on FETCH_ALL and absent on FETCH_LIGHT — on a light
+   run the picks carried forward and the list is already correct, so do nothing).
+
+   1. Read the live list: `get_watchlist_items { list_id: "3f8c0634-f4ac-4265-8824-85e25bae4886" }`
+      and **`Write` the raw result to `producer/raw/watchlist-current.json`**.
+      - If that call **404s** (the list was deleted), call
+        `create_watchlist { display_name: "Dashboard Top 10 Picks", icon_emoji: "📈", display_description: "Auto-synced daily from the portfolio dashboard's top 10 oversold picks." }`,
+        note the new `list_id`, and `Write` `{"items":[]}` to `producer/raw/watchlist-current.json`.
+        Use the **new** id for the add call below (and update `WATCHLIST_ID` in `picks.mjs` next code change).
+   2. `node producer/sync-watchlist.mjs` → prints the deterministic diff: a `LIST <id>` line plus
+      `ADD <syms…>` / `REMOVE <syms…>` (or `IN SYNC`). It only *prints* — it never calls Robinhood.
+   3. Execute exactly what it printed, using that list_id:
+      - `ADD …`    → `add_to_watchlist { list_id, symbols: [those tickers] }`
+      - `REMOVE …` → `remove_from_watchlist { list_id, symbols: [those tickers] }`
+      - `IN SYNC` / `NO-OP` → nothing to do.
+
+   This step is **best-effort and must never gate the run**: `data.json` is already published by the
+   time it runs, so if a watchlist call fails (e.g. the connector lacks write approval and returns a
+   403/404, or any blip), **just stop — do not retry, do not improvise git/MCP recovery**. The list
+   simply re-syncs on the next FETCH_ALL run. (Writes were verified to go through unattended; a hard
+   403/404 means the Robinhood connector needs write/"always allow" approval re-granted.)
 
 ## Failure handling
 - `run.mjs` aborts (no commit) if the core `portfolio.json`/`positions.json` are missing, if the
