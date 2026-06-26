@@ -355,32 +355,31 @@ function buildLarge(s) {
   }
   w.addSpacer(10);
 
-  // holdings table — symbol pinned left, numeric columns pushed to the right edge so the
-  // row spans the full width (fixed column widths keep the three numbers aligned).
-  const NUM_W = [58, 82, 82]; // WT · DAY · P&L
+  // holdings table — four fixed-width columns separated by flexible spacers so they spread
+  // evenly across the full row (fixed widths + equal leftover keep them aligned row-to-row).
+  const COL = { sym: 58, wt: 44, day: 62, pnl: 62 };
   const hdr = w.addStack();
   hdr.centerAlignContent();
-  const hl = hdr.addText('HOLDINGS');
-  hl.font = Font.semiboldSystemFont(9);
-  hl.textColor = C.dim;
+  cell(hdr, 'HOLDINGS', COL.sym, Font.semiboldSystemFont(9), C.dim, false);
   hdr.addSpacer();
-  cell(hdr, 'WT', NUM_W[0], Font.semiboldSystemFont(9), C.dim, true);
-  cell(hdr, 'DAY', NUM_W[1], Font.semiboldSystemFont(9), C.dim, true);
-  cell(hdr, 'P&L', NUM_W[2], Font.semiboldSystemFont(9), C.dim, true);
+  cell(hdr, 'WT', COL.wt, Font.semiboldSystemFont(9), C.dim, true);
+  hdr.addSpacer();
+  cell(hdr, 'DAY', COL.day, Font.semiboldSystemFont(9), C.dim, true);
+  hdr.addSpacer();
+  cell(hdr, 'P&L', COL.pnl, Font.semiboldSystemFont(9), C.dim, true);
   w.addSpacer(4);
 
   const rows = s.holdings.slice(0, 6);
   for (const hd of rows) {
     const r = w.addStack();
     r.centerAlignContent();
-    const symT = r.addText(hd.sym);
-    symT.font = Font.mediumSystemFont(13);
-    symT.textColor = C.ink;
-    symT.lineLimit = 1;
+    cell(r, hd.sym, COL.sym, Font.mediumSystemFont(13), C.ink, false);
     r.addSpacer();
-    cell(r, hd.weight.toFixed(0) + '%', NUM_W[0], Font.systemFont(13), C.dim, true);
-    cell(r, hd.hasDay ? pct1(hd.dayPct) : '—', NUM_W[1], Font.systemFont(13), hd.dayPct >= 0 ? C.up : C.down, true);
-    cell(r, pct1(hd.totalPct), NUM_W[2], Font.systemFont(13), hd.totalPct >= 0 ? C.up : C.down, true);
+    cell(r, hd.weight.toFixed(0) + '%', COL.wt, Font.systemFont(13), C.dim, true);
+    r.addSpacer();
+    cell(r, hd.hasDay ? pct1(hd.dayPct) : '—', COL.day, Font.systemFont(13), hd.dayPct >= 0 ? C.up : C.down, true);
+    r.addSpacer();
+    cell(r, pct1(hd.totalPct), COL.pnl, Font.systemFont(13), hd.totalPct >= 0 ? C.up : C.down, true);
     w.addSpacer(5);
   }
   if (s.holdings.length > rows.length) {
