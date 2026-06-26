@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v52** (`pf-v52`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v53** (`pf-v53`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -150,10 +150,19 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   from covered holdings' historicals in `computeRiskMetrics`) plus a **data-derived concentration &
   correlation context** block (largest theme, an **empirical correlated cluster** from actual return
   correlation in `corrGroups`, and the highest-β "fragile leg" from per-symbol betas — no hardcoded
-  tickers); allocation; Income & Tax (dividends, realized YTD, options premium); Action Feed; **Action Plan**
-  whose redeploy buckets name your actual lowest-β / defensive holdings and size the harvest proceeds
-  (50/30/20). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above commentary is
-  derived from live data; optional owner editorial can be supplied via `data.notes` (see below).
+  tickers); allocation; Income & Tax (dividends, realized YTD, options premium — the itemized harvest
+  list now lives in the Action Center, only a summary stat + pointer remain here); **Action Center** —
+  one card, two tiers: a **Do-now** tier (the ranked live-signal feed: margin/concentration/earnings/
+  overbought/oversold/correlated/retail-buzz) and a **The-plan** tier (`renderActionPlan`). The plan is
+  **right-sizing, not "sell no winners"**: Step 1 raises cash by harvesting losers **and trimming the
+  excess of any name over a single-name weight cap** (`PLAN_SINGLE_CAP`, 25%; over-weight winners are no
+  longer off-limits — trigger is concentration, RSI/fwd-P/E only flavour the "why now"), with a
+  **tax-netting line** (gains realized by the trims offset by the harvested loss → net taxable). Step 2
+  redeploys the pooled proceeds (pay down margin first if levered, then a beta-tilted ballast / defensive
+  / high-conviction-add-or-cash split; the add never names a ticker we're trimming/harvesting). Step 3 =
+  standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim, fragile-leg
+  trailing stop, earnings reassess). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the
+  above commentary is derived from live data; optional owner editorial can be supplied via `data.notes`.
 - **Picks:** **sortable + sector-filterable** scored candidates table incl. a **Social** column (retail
   buzz, 20% of composite, with an inline buzz label) and **data-coverage cues** (grey social = "no data,
   neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable). Top-3 cards with thesis/levels
