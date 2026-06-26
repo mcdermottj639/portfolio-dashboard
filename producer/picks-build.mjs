@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { scanRows, selectFinalists, buildPicks, N_FINALISTS } from './picks.mjs';
+import { scanRows, selectFinalists, buildPicks, N_FINALISTS, WATCHLIST_ID, WATCHLIST_NAME } from './picks.mjs';
 import { fetchSocial } from './social.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -60,9 +60,17 @@ const socialCovered = Object.values(socialMap).filter((t) => t && t.tracked).len
 const picks = buildPicks(finalists, fundBySym, ovBySym, socialMap);
 writeFileSync(join(RAW, 'picks.json'), JSON.stringify(picks, null, 2));
 
+// Sidecar for the Robinhood watchlist sync (FETCH_ALL only — this file's mere presence is the
+// signal that picks rebuilt this run). The agent reads it after run.mjs and diffs it against the
+// live list via sync-watchlist.mjs (MCP writes are agent-only, so Node can only emit the target).
+const top = picks.candidates.map((c) => c.ticker);
+writeFileSync(join(RAW, 'picks-watchlist.json'), JSON.stringify(
+  { listId: WATCHLIST_ID, listName: WATCHLIST_NAME, date: picks.ts, tickers: top }, null, 2));
+
 const avCount = Object.keys(ovBySym).length;
 console.log(`picks: ${picks.candidates.length} candidates · top ${picks.picks.length}: ` +
   picks.picks.map((p) => `${p.ticker}(${p.composite} ${p.signal})`).join(', '));
+console.log(`watchlist: queued sync of ${top.length} → "${WATCHLIST_NAME}" (${top.join(' ')})`);
 console.log(`social: ${socialCovered}/${finalists.length} finalists with ApeWisdom buzz (20% of composite)`);
 console.log(`fundamentals: ${Object.keys(fundBySym).length} RH · ${avCount} AV overview${avCount === 1 ? '' : 's'}` +
   (avCount ? '' : ' (value-only scoring — AV skipped/capped)'));
