@@ -274,14 +274,9 @@ function buildMedium(s) {
   tpl.textColor = C.dim;
   w.addSpacer(8);
 
-  // sparkline
-  if (s.series.length >= 2) {
-    const sparkColor = s.series[s.series.length - 1] >= s.series[0] ? C.up : C.down;
-    const img = w.addImage(sparkline(s.series, 600, 120, sparkColor));
-    img.imageSize = new Size(300, 42);
-  } else {
-    w.addSpacer(42);
-  }
+  // sparkline (full-width)
+  if (s.series.length >= 2) addSparkRow(w, s.series, 44);
+  else w.addSpacer(44);
   w.addSpacer(6);
 
   // movers
@@ -313,9 +308,19 @@ function cell(row, text, width, font, color, right) {
 }
 const pct1 = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
+// full-width sparkline: a flexible stack (spacer forces full width) with the chart drawn as a
+// stretch-to-fill background, so it spans the whole widget regardless of device width.
+function addSparkRow(w, series, height) {
+  const sparkColor = series[series.length - 1] >= series[0] ? C.up : C.down;
+  const sp = w.addStack();
+  sp.size = new Size(0, height);   // width 0 = flexible; spacer below claims the full width
+  sp.addSpacer();
+  sp.backgroundImage = sparkline(series, 700, height * 2.2, sparkColor);
+}
+
 function buildLarge(s) {
   const w = new ListWidget();
-  w.setPadding(16, 18, 14, 18);
+  w.setPadding(16, 14, 14, 14);
   gradientBg(w);
   const dayColor = s.dayPL >= 0 ? C.up : C.down;
 
@@ -354,14 +359,9 @@ function buildLarge(s) {
   tpl.textColor = C.dim;
   w.addSpacer(9);
 
-  // sparkline (wider/taller than the medium one)
-  if (s.series.length >= 2) {
-    const sparkColor = s.series[s.series.length - 1] >= s.series[0] ? C.up : C.down;
-    const img = w.addImage(sparkline(s.series, 660, 150, sparkColor));
-    img.imageSize = new Size(330, 62);
-  } else {
-    w.addSpacer(62);
-  }
+  // sparkline (full-width)
+  if (s.series.length >= 2) addSparkRow(w, s.series, 64);
+  else w.addSpacer(64);
   w.addSpacer(10);
 
   // holdings table — four fixed-width columns separated by flexible spacers so they spread
