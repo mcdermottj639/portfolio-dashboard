@@ -67,6 +67,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
 | `producer/railway/` · `producer/RAILWAY.md` | Optional credentialed Railway producer (Python `robin_stocks` fetch → existing Node tail). See the runbook. |
+| `scriptable/portfolio-widget.js` · `scriptable/README.md` | iPhone **Scriptable** home/lock-screen widget. A *third consumer* of the same encrypted `data.json`: loads the GitHub Pages origin in an offscreen WebView (secure context → WebCrypto) and same-origin-fetches + decrypts with the identical AES-GCM/PBKDF2 scheme as the PWA, then draws value · day P&L · total P&L · a forward-filled portfolio-value sparkline · movers · snapshot age. Passphrase lives in the device Keychain. Read-only; no MCP/orders. |
 
 ## Conventions
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
