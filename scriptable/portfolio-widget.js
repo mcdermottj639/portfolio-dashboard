@@ -355,24 +355,33 @@ function buildLarge(s) {
   }
   w.addSpacer(10);
 
-  // holdings table — column header
+  // holdings table — symbol pinned left, numeric columns pushed to the right edge so the
+  // row spans the full width (fixed column widths keep the three numbers aligned).
+  const NUM_W = [58, 82, 82]; // WT · DAY · P&L
   const hdr = w.addStack();
   hdr.centerAlignContent();
-  cell(hdr, 'HOLDINGS', 70, Font.semiboldSystemFont(9), C.dim, false);
-  cell(hdr, 'WT', 46, Font.semiboldSystemFont(9), C.dim, true);
-  cell(hdr, 'DAY', 62, Font.semiboldSystemFont(9), C.dim, true);
-  cell(hdr, 'P&L', 64, Font.semiboldSystemFont(9), C.dim, true);
-  w.addSpacer(3);
+  const hl = hdr.addText('HOLDINGS');
+  hl.font = Font.semiboldSystemFont(9);
+  hl.textColor = C.dim;
+  hdr.addSpacer();
+  cell(hdr, 'WT', NUM_W[0], Font.semiboldSystemFont(9), C.dim, true);
+  cell(hdr, 'DAY', NUM_W[1], Font.semiboldSystemFont(9), C.dim, true);
+  cell(hdr, 'P&L', NUM_W[2], Font.semiboldSystemFont(9), C.dim, true);
+  w.addSpacer(4);
 
   const rows = s.holdings.slice(0, 6);
   for (const hd of rows) {
     const r = w.addStack();
     r.centerAlignContent();
-    cell(r, hd.sym, 70, Font.mediumSystemFont(12), C.ink, false);
-    cell(r, hd.weight.toFixed(0) + '%', 46, Font.systemFont(12), C.dim, true);
-    cell(r, hd.hasDay ? pct1(hd.dayPct) : '—', 62, Font.systemFont(12), hd.dayPct >= 0 ? C.up : C.down, true);
-    cell(r, pct1(hd.totalPct), 64, Font.systemFont(12), hd.totalPct >= 0 ? C.up : C.down, true);
-    w.addSpacer(3);
+    const symT = r.addText(hd.sym);
+    symT.font = Font.mediumSystemFont(13);
+    symT.textColor = C.ink;
+    symT.lineLimit = 1;
+    r.addSpacer();
+    cell(r, hd.weight.toFixed(0) + '%', NUM_W[0], Font.systemFont(13), C.dim, true);
+    cell(r, hd.hasDay ? pct1(hd.dayPct) : '—', NUM_W[1], Font.systemFont(13), hd.dayPct >= 0 ? C.up : C.down, true);
+    cell(r, pct1(hd.totalPct), NUM_W[2], Font.systemFont(13), hd.totalPct >= 0 ? C.up : C.down, true);
+    w.addSpacer(5);
   }
   if (s.holdings.length > rows.length) {
     const more = w.addText('+' + (s.holdings.length - rows.length) + ' more positions');
