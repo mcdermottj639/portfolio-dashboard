@@ -299,14 +299,31 @@ function buildSmall(s) {
   return w;
 }
 
-function buildAccessory(s) {
+// Lock-screen widgets. iOS renders these monochrome (it ignores textColor and tints
+// everything one shade), so the ▲/▼ glyphs — not color — signal up vs down.
+function buildAccessory(s, fam) {
   const w = new ListWidget();
-  const dayColor = s.dayPL >= 0 ? C.up : C.down;
-  const v = w.addText(money(s.totalValue));
-  v.font = Font.boldSystemFont(15);
-  const d = w.addText((s.dayPL >= 0 ? '▲ ' : '▼ ') + pct(s.dayPct) + ' today');
-  d.font = Font.systemFont(12);
-  d.textColor = dayColor;
+  const dn = s.dayPL >= 0 ? '▲' : '▼';
+
+  if (fam === 'accessoryInline') {            // one line beside the clock
+    w.addText(dn + ' ' + pct(s.dayPct) + ' today');
+    return w;
+  }
+  if (fam === 'accessoryCircular') {          // tiny — just the day %
+    w.addSpacer();
+    const a = w.addText(dn); a.font = Font.mediumSystemFont(11); a.centerAlignText();
+    const p = w.addText(signed(s.dayPct, 1) + '%'); p.font = Font.boldSystemFont(13); p.centerAlignText();
+    w.addSpacer();
+    return w;
+  }
+  // accessoryRectangular: today's change + biggest winner + biggest loser
+  const day = w.addText(dn + ' ' + pct(s.dayPct) + ' today');
+  day.font = Font.boldSystemFont(15);
+  w.addSpacer(3);
+  if (s.top) { const win = w.addText('▲ ' + s.top.sym + ' ' + pct(s.top.pct)); win.font = Font.systemFont(12); }
+  if (s.bottom && s.bottom !== s.top) {
+    const lose = w.addText('▼ ' + s.bottom.sym + ' ' + pct(s.bottom.pct)); lose.font = Font.systemFont(12);
+  }
   return w;
 }
 
@@ -374,7 +391,7 @@ async function main() {
     const s = computeStats(data);
     const fam = config.widgetFamily;
     if (fam === 'small') widget = buildSmall(s);
-    else if (fam === 'accessoryRectangular' || fam === 'accessoryInline') widget = buildAccessory(s);
+    else if (fam && fam.indexOf('accessory') === 0) widget = buildAccessory(s, fam);
     else widget = buildMedium(s);
   } catch (e) {
     const m = isBadPass(e) ? 'Wrong passphrase — re-run in app'
