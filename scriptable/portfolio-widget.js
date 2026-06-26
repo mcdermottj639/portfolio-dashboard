@@ -60,8 +60,9 @@ async function loadSnapshot(pass) {
   const js = `
     (function(){
       var pass = ${JSON.stringify(pass)};
+      if (!self.crypto || !self.crypto.subtle) { completion('__ERR__no WebCrypto in WebView'); return; }
       fetch('data.json?ts=' + Date.now(), { cache: 'no-store' })
-        .then(function(r){ return r.json(); })
+        .then(function(r){ if (!r.ok) throw new Error('fetch ' + r.status); return r.json(); })
         .then(function(env){
           if (!env || !env.enc) return JSON.stringify(env); // plaintext dev/sample snapshot
           var b64d = function(s){ return Uint8Array.from(atob(s), function(c){ return c.charCodeAt(0); }); };
@@ -327,40 +328,57 @@ function buildError(msg) {
   return w;
 }
 
-// ---- passphrase (Keychain), with a one-time in-app prompt -------------------
-async function getPassphrase() {
-  if (Keychain.contains(PASS_KEY)) return Keychain.get(PASS_KEY);
-  if (config.runsInWidget) return null;     // can't prompt inside a widget
+// ---- passphrase (Keychain), with an in-app prompt ---------------------------
+// forcePrompt=true re-asks even when a value is cached (used to recover from a wrong one).
+async function getPassphrase(forcePrompt) {
+  if (!forcePrompt && Keychain.contains(PASS_KEY)) return Keychain.get(PASS_KEY);
+  if (config.runsInWidget) return Keychain.contains(PASS_KEY) ? Keychain.get(PASS_KEY) : null; // can't prompt in a widget
   const a = new Alert();
-  a.title = 'Portfolio passphrase';
+  a.title = forcePrompt ? 'Re-enter passphrase' : 'Portfolio passphrase';
   a.message = 'Enter the dashboard unlock passphrase. It is stored only in this device\'s Keychain.';
   a.addSecureTextField('passphrase', '');
   a.addAction('Save');
   a.addCancelAction('Cancel');
   const idx = await a.present();
-  if (idx === -1) return null;
-  const pass = a.textFieldValue(0);
+  if (idx === -1) return forcePrompt ? null : (Keychain.contains(PASS_KEY) ? Keychain.get(PASS_KEY) : null);
+  const pass = (a.textFieldValue(0) || '').trim();
   if (pass) Keychain.set(PASS_KEY, pass);
   return pass || null;
 }
 
+const isBadPass = (e) => /operation|decrypt|crypto/i.test(String(e && e.message || e));
+
 // ---- main -------------------------------------------------------------------
+async function loadWithRetry() {
+  let pass = await getPassphrase(false);
+  if (!pass) throw new Error('No passphrase set');
+  try {
+    return await loadSnapshot(pass);
+  } catch (e) {
+    // A decrypt failure usually means a stale/wrong cached passphrase. If we can prompt
+    // (running in-app, not in the widget), clear it and re-ask once, then retry.
+    if (isBadPass(e) && !config.runsInWidget) {
+      Keychain.remove(PASS_KEY);
+      pass = await getPassphrase(true);
+      if (!pass) throw new Error('No passphrase set');
+      return await loadSnapshot(pass);
+    }
+    throw e;
+  }
+}
+
 async function main() {
   let widget;
   try {
-    const pass = await getPassphrase();
-    if (!pass) { widget = buildError('No passphrase set'); }
-    else {
-      const data = await loadSnapshot(pass);
-      const s = computeStats(data);
-      const fam = config.widgetFamily;
-      if (fam === 'small') widget = buildSmall(s);
-      else if (fam === 'accessoryRectangular' || fam === 'accessoryInline') widget = buildAccessory(s);
-      else widget = buildMedium(s);
-    }
+    const data = await loadWithRetry();
+    const s = computeStats(data);
+    const fam = config.widgetFamily;
+    if (fam === 'small') widget = buildSmall(s);
+    else if (fam === 'accessoryRectangular' || fam === 'accessoryInline') widget = buildAccessory(s);
+    else widget = buildMedium(s);
   } catch (e) {
-    const m = /operation/i.test(String(e)) || /decrypt/i.test(String(e))
-      ? 'Wrong passphrase?' : String(e.message || e).slice(0, 60);
+    const m = isBadPass(e) ? 'Wrong passphrase — re-run in app'
+      : String(e.message || e).slice(0, 60);
     widget = buildError(m);
   }
   // refresh roughly every 15 min (the producer publishes a few times per market day)
