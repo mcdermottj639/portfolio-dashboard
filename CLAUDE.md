@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v53** (`pf-v53`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v54** (`pf-v54`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -161,8 +161,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   redeploys the pooled proceeds (pay down margin first if levered, then a beta-tilted ballast / defensive
   / high-conviction-add-or-cash split; the add never names a ticker we're trimming/harvesting). Step 3 =
   standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim, fragile-leg
-  trailing stop, earnings reassess). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the
-  above commentary is derived from live data; optional owner editorial can be supplied via `data.notes`.
+  trailing stop, earnings reassess). **Every line is a concrete order with a price**: sell/trim rows carry
+  a **Limit** column (live price, worked GTC into strength for trims, marketable exit for losers); redeploy
+  buckets become sized **buy tickets** (shares from the bucket $ ÷ live price, an entry zone + starter limit
+  **anchored to the 50-DMA** `smaMap`, and a protective **stop** on the high-conviction add). Step 1 and
+  Step 2 each get a **🤖 hand-off button** (`planOrdersPrompt` → `chatBtn`) that opens a Claude chat with
+  the whole batch of equity orders (side/qty/limit/stop) pre-filled for review-then-place via the RH
+  connector. `renderActionPlan(enriched,clusters,totalVal,betaInfo,rsiMap,ovMap,earningsMap,smaMap)` —
+  the last four args are decorators, so it renders on the first pass and re-renders as they arrive.
+  **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above commentary is derived from
+  live data; optional owner editorial can be supplied via `data.notes`.
 - **Picks:** **sortable + sector-filterable** scored candidates table incl. a **Social** column (retail
   buzz, 20% of composite, with an inline buzz label) and **data-coverage cues** (grey social = "no data,
   neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable). Top-3 cards with thesis/levels
