@@ -4,7 +4,7 @@
 // portfolio-value sparkline · top gainer/laggard · snapshot age (amber when ≥3h old).
 // Large: all of the above + a top-holdings table (weight, day %, total P&L %) + a
 // footer with VIX and the top daily pick. Small: value + day %.
-// Lock screen rectangular: day change + biggest winner + biggest loser.
+// Lock screen rectangular: my day % + SPY day % + QQQ day %.
 //
 // HOW IT WORKS — it reuses the dashboard's own encryption, byte-for-byte.
 // data.json on GitHub Pages is AES-GCM encrypted (PBKDF2-SHA256, 150k iters → AES-256-GCM;
@@ -132,8 +132,17 @@ function computeStats(data) {
   const tp = data.picks && Array.isArray(data.picks.picks) && data.picks.picks[0];
   const topPick = tp ? { ticker: tp.ticker, composite: tp.composite, signal: tp.signal } : null;
 
+  // benchmark day % from quotes (used on the lock-screen widget)
+  const benchDay = (sym) => {
+    const q = quotes[sym];
+    if (!q) return null;
+    const px = qpx(q), prev = qprev(q);
+    return px > 0 && prev > 0 ? (px / prev - 1) * 100 : null;
+  };
+  const spy = benchDay('SPY'), qqq = benchDay('QQQ');
+
   return {
-    totalValue, dayPL, dayPct, totalPL, totalPct, holdings, vix, topPick,
+    totalValue, dayPL, dayPct, totalPL, totalPct, holdings, vix, topPick, spy, qqq,
     top: movers[0] || null, bottom: movers.length ? movers[movers.length - 1] : null,
     series: portfolioSeries(positions, quotes, data.hist && data.hist.day),
     label: data.generatedAtLabel || '', generatedAt: data.generatedAt || null,
@@ -448,14 +457,17 @@ function buildAccessory(s, fam) {
     w.addSpacer();
     return w;
   }
-  // accessoryRectangular: today's change + biggest winner + biggest loser
+  // accessoryRectangular: my day % + SPY day % + QQQ day %
   const day = w.addText(dn + ' ' + pct(s.dayPct) + ' today');
   day.font = Font.boldSystemFont(15);
   w.addSpacer(3);
-  if (s.top) { const win = w.addText('▲ ' + s.top.sym + ' ' + pct(s.top.pct)); win.font = Font.systemFont(12); }
-  if (s.bottom && s.bottom !== s.top) {
-    const lose = w.addText('▼ ' + s.bottom.sym + ' ' + pct(s.bottom.pct)); lose.font = Font.systemFont(12);
-  }
+  const benchLine = (label, v) => {
+    if (v == null) return;
+    const t = w.addText((v >= 0 ? '▲ ' : '▼ ') + label + ' ' + pct(v));
+    t.font = Font.systemFont(12);
+  };
+  benchLine('SPY', s.spy);
+  benchLine('QQQ', s.qqq);
   return w;
 }
 
