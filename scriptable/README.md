@@ -5,9 +5,10 @@ opening the PWA. Built with [Scriptable](https://scriptable.app) (free, App Stor
 
 | Size | Shows |
 |---|---|
+| **Large** | Everything in Medium **+ a top-holdings table** (weight · day % · total P&L %) **+ a footer** with VIX and the top daily pick |
 | **Medium** (recommended) | Total value · day P&L $/% · total P&L $/% on cost · YTD portfolio-value sparkline · top gainer/laggard · snapshot age |
 | **Small** | Total value + day % + age |
-| **Lock screen** (accessory rectangular/inline) | Value + day % |
+| **Lock screen** (rectangular) | Day change + biggest winner + biggest loser (inline/circular: day % only) |
 
 ## How it works
 

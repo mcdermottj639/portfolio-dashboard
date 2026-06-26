@@ -2,7 +2,9 @@
 //
 // What it shows (medium): total value · day P&L $/% · total P&L $/% on cost · a YTD
 // portfolio-value sparkline · top gainer/laggard · snapshot age (amber when ≥3h old).
-// Small: value + day %. Accessory (lock screen): day %.
+// Large: all of the above + a top-holdings table (weight, day %, total P&L %) + a
+// footer with VIX and the top daily pick. Small: value + day %.
+// Lock screen rectangular: day change + biggest winner + biggest loser.
 //
 // HOW IT WORKS — it reuses the dashboard's own encryption, byte-for-byte.
 // data.json on GitHub Pages is AES-GCM encrypted (PBKDF2-SHA256, 150k iters → AES-256-GCM;
@@ -98,15 +100,23 @@ function computeStats(data) {
   const quotes = data.quotes || {};
 
   let equity = 0, cost = 0, dayPL = 0;
+  const holdings = [];
   const movers = [];
   for (const p of positions) {
     const sym = p.symbol, qty = parseFloat(p.quantity || 0), avg = parseFloat(p.average_buy_price || 0);
     const q = quotes[sym];
     if (!q || !(qty > 0)) continue;
     const px = qpx(q), prev = qprev(q);
-    if (px > 0) { equity += px * qty; cost += avg * qty; }
-    if (px > 0 && prev > 0) { dayPL += (px - prev) * qty; movers.push({ sym, pct: (px / prev - 1) * 100 }); }
+    if (!(px > 0)) continue;
+    const value = px * qty;
+    equity += value; cost += avg * qty;
+    const hasDay = prev > 0;
+    const dpct = hasDay ? (px / prev - 1) * 100 : 0;
+    const tpct = avg > 0 ? (px / avg - 1) * 100 : 0;
+    holdings.push({ sym, value, dayPct: dpct, totalPct: tpct, hasDay, weight: 0 });
+    if (hasDay) { dayPL += (px - prev) * qty; movers.push({ sym, pct: dpct }); }
   }
+  holdings.sort((a, b) => b.value - a.value);
   movers.sort((a, b) => b.pct - a.pct);
 
   // Headline = full account value (incl. cash) when the producer recorded it; else equity sum.
@@ -115,9 +125,15 @@ function computeStats(data) {
   const dayPct = prevEquity > 0 ? (dayPL / prevEquity) * 100 : 0;
   const totalPL = equity - cost;
   const totalPct = cost > 0 ? (totalPL / cost) * 100 : 0;
+  for (const h of holdings) h.weight = equity > 0 ? (h.value / equity) * 100 : 0;
+
+  const mk = data.picks && data.picks.markets;
+  const vix = mk && mk.vix && mk.vix.level ? mk.vix.level : null;
+  const tp = data.picks && Array.isArray(data.picks.picks) && data.picks.picks[0];
+  const topPick = tp ? { ticker: tp.ticker, composite: tp.composite, signal: tp.signal } : null;
 
   return {
-    totalValue, dayPL, dayPct, totalPL, totalPct,
+    totalValue, dayPL, dayPct, totalPL, totalPct, holdings, vix, topPick,
     top: movers[0] || null, bottom: movers.length ? movers[movers.length - 1] : null,
     series: portfolioSeries(positions, quotes, data.hist && data.hist.day),
     label: data.generatedAtLabel || '', generatedAt: data.generatedAt || null,
@@ -274,6 +290,114 @@ function addMover(stack, glyph, m, color) {
   t.textColor = color;
 }
 
+// fixed-width table cell (left- or right-aligned) for the large widget's holdings grid
+function cell(row, text, width, font, color, right) {
+  const c = row.addStack();
+  c.size = new Size(width, 16);
+  c.centerAlignContent();
+  if (right) c.addSpacer();
+  const t = c.addText(text);
+  t.font = font; t.lineLimit = 1;
+  if (color) t.textColor = color;
+  if (!right) c.addSpacer();
+  return t;
+}
+const pct1 = (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+
+function buildLarge(s) {
+  const w = new ListWidget();
+  w.setPadding(16, 18, 14, 18);
+  gradientBg(w);
+  const dayColor = s.dayPL >= 0 ? C.up : C.down;
+
+  // header
+  const head = w.addStack();
+  head.centerAlignContent();
+  const title = head.addText(s.sample ? 'PORTFOLIO · SAMPLE' : 'PORTFOLIO');
+  title.font = Font.semiboldSystemFont(11);
+  title.textColor = C.accent;
+  head.addSpacer();
+  const h = ageHours(s.generatedAt);
+  const stale = h != null && h >= STALE_HOURS;
+  const age = head.addText((stale ? '↻ ' : '') + ageLabel(h));
+  age.font = Font.systemFont(10);
+  age.textColor = stale ? C.amber : C.dim;
+  w.addSpacer(8);
+
+  // headline value
+  const val = w.addText(money(s.totalValue));
+  val.font = Font.boldSystemFont(36);
+  val.textColor = C.ink;
+  w.addSpacer(2);
+
+  // day + total P&L
+  const dayRow = w.addStack();
+  dayRow.centerAlignContent();
+  const arrow = dayRow.addText(s.dayPL >= 0 ? '▲' : '▼');
+  arrow.font = Font.systemFont(13);
+  arrow.textColor = dayColor;
+  dayRow.addSpacer(4);
+  const dayTxt = dayRow.addText(money(s.dayPL) + '  ' + pct(s.dayPct) + ' today');
+  dayTxt.font = Font.mediumSystemFont(14);
+  dayTxt.textColor = dayColor;
+  const tpl = w.addText('P&L ' + money(s.totalPL) + '  ' + pct(s.totalPct) + ' on cost');
+  tpl.font = Font.systemFont(12);
+  tpl.textColor = C.dim;
+  w.addSpacer(9);
+
+  // sparkline (wider/taller than the medium one)
+  if (s.series.length >= 2) {
+    const sparkColor = s.series[s.series.length - 1] >= s.series[0] ? C.up : C.down;
+    const img = w.addImage(sparkline(s.series, 660, 150, sparkColor));
+    img.imageSize = new Size(330, 62);
+  } else {
+    w.addSpacer(62);
+  }
+  w.addSpacer(10);
+
+  // holdings table — column header
+  const hdr = w.addStack();
+  hdr.centerAlignContent();
+  cell(hdr, 'HOLDINGS', 70, Font.semiboldSystemFont(9), C.dim, false);
+  cell(hdr, 'WT', 46, Font.semiboldSystemFont(9), C.dim, true);
+  cell(hdr, 'DAY', 62, Font.semiboldSystemFont(9), C.dim, true);
+  cell(hdr, 'P&L', 64, Font.semiboldSystemFont(9), C.dim, true);
+  w.addSpacer(3);
+
+  const rows = s.holdings.slice(0, 6);
+  for (const hd of rows) {
+    const r = w.addStack();
+    r.centerAlignContent();
+    cell(r, hd.sym, 70, Font.mediumSystemFont(12), C.ink, false);
+    cell(r, hd.weight.toFixed(0) + '%', 46, Font.systemFont(12), C.dim, true);
+    cell(r, hd.hasDay ? pct1(hd.dayPct) : '—', 62, Font.systemFont(12), hd.dayPct >= 0 ? C.up : C.down, true);
+    cell(r, pct1(hd.totalPct), 64, Font.systemFont(12), hd.totalPct >= 0 ? C.up : C.down, true);
+    w.addSpacer(3);
+  }
+  if (s.holdings.length > rows.length) {
+    const more = w.addText('+' + (s.holdings.length - rows.length) + ' more positions');
+    more.font = Font.systemFont(9);
+    more.textColor = C.dim;
+  }
+
+  // footer: VIX + top pick
+  w.addSpacer();
+  const foot = w.addStack();
+  foot.centerAlignContent();
+  if (s.vix) {
+    const vx = foot.addText('VIX ' + s.vix);
+    vx.font = Font.mediumSystemFont(10);
+    vx.textColor = C.dim;
+  }
+  foot.addSpacer();
+  if (s.topPick) {
+    const tp = foot.addText('Pick: ' + s.topPick.ticker + (s.topPick.composite != null ? '  ' + s.topPick.composite : ''));
+    tp.font = Font.mediumSystemFont(10);
+    tp.textColor = C.accent;
+  }
+  return w;
+}
+
 function buildSmall(s) {
   const w = new ListWidget();
   w.setPadding(14, 14, 14, 14);
@@ -391,7 +515,9 @@ async function main() {
     const s = computeStats(data);
     const fam = config.widgetFamily;
     if (fam === 'small') widget = buildSmall(s);
+    else if (fam === 'large') widget = buildLarge(s);
     else if (fam && fam.indexOf('accessory') === 0) widget = buildAccessory(s, fam);
+    else if (!fam) widget = buildLarge(s);   // in-app preview shows the richest layout
     else widget = buildMedium(s);
   } catch (e) {
     const m = isBadPass(e) ? 'Wrong passphrase — re-run in app'
@@ -402,7 +528,7 @@ async function main() {
   widget.refreshAfterDate = new Date(Date.now() + 15 * 60 * 1000);
 
   if (config.runsInWidget) Script.setWidget(widget);
-  else await widget.presentMedium();
+  else await widget.presentLarge();
   Script.complete();
 }
 
