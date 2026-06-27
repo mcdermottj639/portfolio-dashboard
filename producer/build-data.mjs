@@ -16,6 +16,7 @@ import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit, decryptEnvelope } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
+import { LEADERS } from './leaders.mjs';
 import { avKey, specForId } from './av.mjs';
 import { fetchSocial } from './social.mjs';
 
@@ -166,6 +167,9 @@ const data = {
   generatedAt: new Date().toISOString(),
   generatedAtLabel: label,
   recorded: recordedOut, quotes, hist,
+  // Mega-cap leaders bench for the Plan-page Ideal Portfolio (Step 4). The consumer reads the bench +
+  // sectors from here and prices each from data.quotes (the producer quotes LEADER_SYMBOLS every run).
+  leaders: LEADERS,
 };
 // Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks; the
 // dashboard reads it directly. Fresh when built this run, else carried from the prior snapshot.

@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
 import { emit } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
+import { LEADERS } from './leaders.mjs';
 import { avKey } from './av.mjs';
 import { buildPicks } from './picks.mjs';
 import { analyzeLeg, buildIdeas } from './options.mjs';
@@ -103,6 +104,13 @@ for (const s of MARKET_SYMBOLS) {
   const d = drift[s] ?? 0.12;
   if (!hist.day[s]) hist.day[s] = series(s, endPx, d).bars;
   hist.month[s] = monthSeries(s, endPx, d + 0.6).bars; // 5Y drift larger than YTD
+}
+
+// Mega-cap leaders bench (Plan-page Ideal Portfolio) — give each a sample quote so the preview can
+// price + bracket them, just like the real producer (which quotes LEADER_SYMBOLS every run).
+const leaderPx = { NVDA:164.3, MSFT:498.2, AAPL:295.9, AVGO:338.1, ORCL:201.4, GOOGL:359.5, META:712.6, NFLX:76.5, AMZN:238.7, HD:412.0, LLY:842.3, UNH:498.6, JPM:289.4, V:357.8, MA:561.2, COST:955.8, WMT:104.6, PG:168.9, XOM:118.3 };
+for (const l of LEADERS) {
+  if (!quotes[l.sym]) { const px = leaderPx[l.sym] || 100; quotes[l.sym] = { last_trade_price: String(px), adjusted_previous_close: (px * 0.996).toFixed(2) }; }
 }
 
 // --- sample Alpha Vantage responses (macro + fundamentals + earnings) -------
@@ -213,6 +221,7 @@ const data = {
   picks,
   options,
   news,
+  leaders: LEADERS,
 };
 
 await emit(data);

@@ -72,6 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/sync-option-watchlist.mjs` | Same pattern for the account's single **options** watchlist. Reads `producer/raw/option-watchlist.json` (the live single-leg Trade-Idea contracts `options-build.mjs` emits on FETCH_ALL) + the agent-saved `get_option_watchlist`, **prints** `ADD`/`REMOVE` option-UUIDs (all `position_type:"long"`); the agent executes the writes. |
 | `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz). |
 | `producer/markets.mjs` | `MARKET_SYMBOLS` (indexes/risk/sectors/intl) — source of truth; keep PRODUCER.md's list in sync. |
+| `producer/leaders.mjs` | `LEADERS`/`LEADER_SYMBOLS` — mega-cap bench (sym+sector) for the Plan-page Ideal Portfolio. `build-data.mjs` emits it as `data.leaders`; the producer quotes `LEADER_SYMBOLS` every run so each has a live price. |
 | `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. `options.mjs` builds the ideas — single-leg long-call/covered-call/CSP (live-priced, delta-targeted) **plus estimate-only defined-risk structures (call debit spread, collar)** with a `legs[]` array the consumer draws as a combined payoff; estimate premiums use a **per-symbol realized-vol IV proxy**. `options-build.mjs` analyzes your contracts (full greeks incl. **vega/gamma**, concrete **roll suggestions**, a portfolio **exposure** roll-up, `ivObserved`) and, on FETCH_ALL, emits `producer/raw/option-watchlist.json` (the single-leg ideas that resolved to a live contract `optionId`) for the options-watchlist sync. The agent records each idea's resolved `optionId` into `option-quotes.json` (see `options-plan.mjs`) so `options.mjs` can carry it onto the live idea. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
@@ -81,7 +82,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v65** (`pf-v65`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v66** (`pf-v66`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -221,13 +222,19 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   shows **Target ($/%) · Now ($/%) · Trade (±shares ≈ ±$) · Stop** with a **Book footer** (book /
   now-invested / net-buy / net-sell), an "exit to zero" line for held names that didn't make the cut, and a
   **🤖 hand-off button** (`ideal.prompt` → `chatBtn`) carrying the sized per-name orders + stops + the
-  leverage base. **It's a continuous portfolio, not a daily reset** (v65): held names get an **incumbency
-  edge** (`sel = score + INCUMBENT` for selection only — weights still use raw conviction, so an incumbent
-  that squeaks in lands at the floor, not an inflated slug) so the core doesn't churn run-to-run. Each kept
-  position carries a **protective GTC stop** (`stopOf` — below the 50-DMA or a fixed % under the live mark,
-  whichever is tighter) shown in the **Stop** column, and any reduce/exit is a **GTC sell limit** (worked
-  into strength, shown inline in Trade and on the exit line). The intent: set it once, then rebalance only
-  when a stop triggers or a weight drifts materially — not every day. **Every line is a concrete order with a price**: sell/trim
+  leverage base. **It's a continuous portfolio, not a daily reset** (v65/v66): **every current holding is an
+  incumbent guaranteed into the target** (`heldArr` is taken first, re-weighted/trimmed but never auto-sold
+  to zero — the single-name cap still trims the over-weight ones); then `ADD_SLOTS` (≈ `max(3, 12−heldCount)`)
+  of the best non-held picks/leaders/index fill remaining slots (sector cap counts held + adds, `TOTAL_CAP`
+  15). So the screen refines what you own and layers big names on top — it never liquidates-and-rebuilds; the
+  "exits" line is now just optional consolidation of the smallest holdings beyond the name cap. **Candidate
+  universe** = holdings ∪ top picks ∪ **a mega-cap LEADERS bench** (`producer/leaders.mjs` → `data.leaders`,
+  read by the consumer with a hardcoded fallback; admitted only when a live price exists, so the producer
+  quotes `LEADER_SYMBOLS` every run) ∪ SPY/QQQ index. Each kept position shows a **bracket** in the **TP /
+  Stop** column: a **take-profit** GTC sell limit above the mark (`tpOf` — a vetted pick's real tp1, else a
+  2R level off the stop, else +20%) and a **protective stop** below (`stopOf` — under the 50-DMA or a fixed
+  % under the mark, whichever is tighter); reduces/exits are GTC sell limits (shown inline in Trade). The
+  intent: set it once with brackets, then rebalance only when a level triggers or a weight drifts — not daily. **Every line is a concrete order with a price**: sell/trim
   rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares risk/cap-clamped at the
   live price, entry zone + starter limit **anchored to the 50-DMA** `smaMap`, protective **stop** on the add).
   On the **Plan page the Top-3 pick cards now sit directly under the Action Center** (v58), ahead of the
