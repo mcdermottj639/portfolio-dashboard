@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v55** (`pf-v55`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v56** (`pf-v56`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -171,7 +171,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   list now lives in the Action Center — which now sits on the **Picks page** (see below) — only a summary
   stat + pointer remain here). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above
   commentary is derived from live data; optional owner editorial can be supplied via `data.notes`.
-- **Picks (the "Plan & Picks" page):** **sortable + sector-filterable** scored candidates table incl. a
+- **Picks (the "🎯 Plan" tab — renamed from "Picks" in v56):** **sortable + sector-filterable** scored candidates table incl. a
   **Social** column (retail buzz, 20% of composite, with an inline buzz label) and **data-coverage cues**
   (grey social = "no data, neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable).
   **Action Center** (moved here from Portfolio in v55 — it's portfolio-derived but conceptually "the plan",
@@ -183,7 +183,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   RSI/fwd-P/E only flavour the "why now"), with a **tax-netting line** (gains realized by the trims offset
   by the harvested loss → net taxable). Step 2 redeploys the pooled proceeds (pay down margin first if
   levered, then a beta-tilted ballast / defensive / high-conviction-add-or-cash split; the add never names
-  a ticker we're trimming/harvesting) — **and the redeploy targets are literally the picks below it**.
+  a ticker we're trimming/harvesting). The **high-conviction sleeve redeploys straight into the Picks list
+  below it** — `renderActionPlan` builds `pickAdd` (top-ranked `PICK_PICKS` entry you're not over-weight in
+  or trimming) and sizes a buy ticket using that pick's own entry zone / `tp1` / `sl.price`, falling back to
+  an oversold held name, then cash. (The old producer-driven **⚖️ Trim/Add** card was retired in v56 — the
+  Do-now feed + this plan own trim/add now; `PICK_TRIM`/`PICK_ADD` still load but aren't rendered.)
   Step 3 = standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim,
   fragile-leg trailing stop, earnings reassess). **Every line is a concrete order with a price**: sell/trim
   rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares from bucket $ ÷ live
