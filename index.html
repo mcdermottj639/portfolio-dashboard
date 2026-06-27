@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v62'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v63'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1438,6 +1438,63 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const fragile=perSym?enriched.filter(p=>p.val>0&&p.pct>=1.5&&perSym[p.symbol]!=null).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>b.b-a.b)[0]:null;
   const earnT=[t1,t2].map(t=>({t,e:earningsMap[t.symbol]})).filter(x=>x.e&&x.e.daysAway!=null&&x.e.daysAway<=21).sort((a,b)=>a.e.daysAway-b.e.daysAway);
 
+  // ── Step 4 · Ideal portfolio ──────────────────────────────────────────────
+  // A from-scratch, long-only TARGET allocation (10–15 names) built from the same analysis the rest of
+  // this card uses: the strongest current holdings (scored on trend vs 50-DMA, RSI regime, valuation,
+  // revenue growth, thesis health) blended with the top scored picks (their composite), sector-diversified
+  // (≤ PER_SEC per sector) and conviction-weighted with a floor + the single-name cap, normalized to 100%.
+  // It's a destination to drift toward — the table shows the per-name gap to today (NEW/ADD/TRIM/HOLD).
+  const ideal=(()=>{
+    const secOf=(sym)=>{ const ov=ovMap[sym]; let s=ov&&ov.Sector?titleCase(ov.Sector):null;
+      if(!s){ const pk=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(x=>x&&x.ticker===sym); if(pk)s=String(pk.sector||'').split('·')[0].trim(); }
+      return s||'—'; };
+    const scoreHeld=(p)=>{ let s=5; const sym=p.symbol, sma=smaMap[sym], rsi=rsiMap[sym], ov=ovMap[sym]||{};
+      if(sma&&p.px>0) s+= p.px>=sma?1.2:-1.2;
+      if(rsi!=null){ if(rsi>=75)s-=1.5; else if(rsi>=40&&rsi<=68)s+=1; else if(rsi<30)s+=0.5; }
+      const fpe=parseFloat(ov.ForwardPE); if(fpe>0){ if(fpe<25)s+=1; else if(fpe>60)s-=1.5; else if(fpe>40)s-=0.5; }
+      const rg=parseFloat(ov.QuarterlyRevenueGrowthYOY); if(!isNaN(rg)){ if(rg>0.15)s+=0.8; else if(rg<0)s-=0.8; }
+      if(p.pnlP>0)s+=0.3; else if(p.pnlP<-30)s-=1;
+      return Math.max(0,Math.min(10,s)); };
+    const pool=new Map(); // ticker -> {sym,sector,score,cur,held,isPick}
+    enriched.filter(p=>p.val>=SMALL_THR&&p.px>0).forEach(p=>{
+      pool.set(p.symbol,{sym:p.symbol,sector:secOf(p.symbol),score:scoreHeld(p),cur:p.pct||0,held:true,isPick:false}); });
+    const pickRows=[...((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]),
+                    ...((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[])];
+    pickRows.forEach(c=>{ const t=c&&c.ticker; if(!t)return;
+      const comp=(typeof c.composite==='number')?c.composite:null;
+      const sec=(typeof pickSector==='function')?pickSector(c):(String(c.sector||'').split('·')[0].trim()||'—');
+      if(pool.has(t)){ const e=pool.get(t); e.isPick=true; if(comp!=null)e.score=Math.min(10,e.score+0.5); }
+      else if(comp!=null){ pool.set(t,{sym:t,sector:sec||'—',score:comp,cur:0,held:false,isPick:true}); } });
+    // Broad-market INDEX core — eligible even if unheld, so the target can anchor on a low-cost index
+    // sleeve where it earns a slot (a natural ballast). Scored modestly so it competes, nudged by trend
+    // when we have the 50-DMA. Held index ETFs already entered above (their held entry wins).
+    [{sym:'SPY',base:6.4},{sym:'QQQ',base:5.9}].forEach(ix=>{ if(pool.has(ix.sym))return;
+      let s=ix.base; const sma=smaMap[ix.sym]; if(sma){ const px=(window.__SNAP&&window.__SNAP.px&&window.__SNAP.px[ix.sym]); if(px>0)s+= px>=sma?0.4:-0.6; }
+      pool.set(ix.sym,{sym:ix.sym,sector:'Index',score:s,cur:0,held:false,isPick:false,isIndex:true}); });
+    const TARGET_MAX=14, PER_SEC=3;
+    const ranked=[...pool.values()].sort((a,b)=>b.score-a.score);
+    const secCount={}, chosen=[];
+    for(const x of ranked){ if(chosen.length>=TARGET_MAX)break; const sec=x.sector||'—';
+      if(sec!=='—'&&(secCount[sec]||0)>=PER_SEC)continue; chosen.push(x); secCount[sec]=(secCount[sec]||0)+1; }
+    if(chosen.length<3) return {chosen:[],exits:[],prompt:''};
+    const sumSc=chosen.reduce((s,x)=>s+x.score,0)||1, FLOOR=0.035;
+    chosen.forEach(x=>{ x.w=Math.min(PLAN_SINGLE_CAP,Math.max(FLOOR,x.score/sumSc)); });
+    const sumW=chosen.reduce((s,x)=>s+x.w,0)||1;
+    chosen.forEach(x=>{ x.tgt=x.w/sumW*100; const d=x.tgt-x.cur;
+      x.act=!x.held?'NEW':(d>1.5?'ADD':(d<-1.5?'TRIM':'HOLD')); });
+    chosen.sort((a,b)=>b.tgt-a.tgt);
+    const chosenSet=new Set(chosen.map(x=>x.sym));
+    const exits=enriched.filter(p=>p.val>=SMALL_THR&&!chosenSet.has(p.symbol)).sort((a,b)=>b.val-a.val);
+    const L=['Help me rebalance my Robinhood portfolio toward this target allocation. For each name, check the live price and my current position, compute the share delta to reach the target weight, review each order with the broker (review_equity_order), and place ONLY after I confirm each one.','','Target portfolio (% of equity):'];
+    chosen.forEach(x=>L.push('• '+x.sym+' — '+fmt(x.tgt,0)+'%'+(x.held?'':' (new position)')));
+    if(exits.length)L.push('','Exit / reduce to zero (held but not in the target): '+exits.map(p=>p.symbol).join(', '));
+    L.push('','Long-only, fully-invested target derived from my dashboard analysis. Snapshot prices are stale — re-check live marks and buying power before each fill. Education only — not financial advice.');
+    return {chosen,exits,prompt:L.join('\n')};
+  })();
+  const actStyle={NEW:'background:#dbeafe;color:#1e40af',ADD:'background:#d1fae5;color:#065f46',TRIM:'background:#ffedd5;color:#9a3412',HOLD:'background:#f3f4f6;color:#6b7280'};
+  const tagOf=x=>x.held?'':(x.isIndex?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.isPick?' <span style="color:#9ca3af;font-size:10px">pick</span>':''));
+  const idealRows=ideal.chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${tagOf(x)}</td><td style="color:#6b7280;font-size:11.5px">${x.sector}</td><td class="tr" style="font-weight:700">${fmt(x.tgt,0)}%</td><td class="tr" style="color:#9ca3af">${x.held?fmt(x.cur,1)+'%':'—'}</td><td class="tc"><span class="badge" style="${actStyle[x.act]||actStyle.HOLD}">${x.act}</span></td></tr>`).join('');
+
   el.innerHTML=`
     <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">A standing playbook — <b>raise cash</b> (harvest losers <i>and</i> right-size any over-weight winner) → <b>redeploy</b> to pull risk down → <b>guardrails</b>. Winners are trimmed only where one name is above <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> of equity: position discipline, not a call to sell a good stock.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}</div>
 
@@ -1535,7 +1592,13 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       <div style="padding:4px 0">▸ A holding’s <b>RSI &gt; 75</b> → trim into strength (see Technical Signals / the Do-now tier).</div>
       ${fragile&&fragile.b>=1.5?`<div style="padding:4px 0">▸ <b>${fragile.p.symbol}</b> (β ≈ ${fmt(fragile.b,1)}) is your highest-beta leg — the fragile one — set a <b>~−20% trailing stop</b>.</div>`:''}
       <div style="padding:4px 0">▸ ${earnT.length?`<b>${earnT[0].t.symbol}</b> reports in ${earnT[0].e.daysAway}d (${earnT[0].e.reportDate||'soon'}) — decide hold-through vs trim before the print.`:`Reassess around <b>${t1.symbol}/${t2.symbol} earnings</b> — hold-through vs trim.`}</div>
-    </div>`;
+    </div>
+
+    <div class="col-title" style="margin-top:14px">4 · Ideal portfolio <span class="card-hint">${ideal.chosen.length?`(target ${ideal.chosen.length}-name allocation)`:'(building…)'}</span></div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:2px 0 6px">A from-scratch, long-only target built from this dashboard's analysis — your strongest current holdings (trend vs 50-DMA · RSI · valuation · growth) blended with the top scored picks and a broad-market index core where it earns a slot, sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> per name. Weights tilt to conviction. A destination to drift toward, not a same-day trade.</div>
+    ${ideal.chosen.length?`<table><thead><tr><th>Ticker</th><th>Sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tc">Action</th></tr></thead><tbody>${idealRows}</tbody></table>`:`<div class="tech-empty">Not enough scored names yet — load picks + fundamentals to build the target.</div>`}
+    ${ideal.exits.length?`<div class="fund-note">Held but <b>not</b> in the target (candidates to exit / redeploy): ${ideal.exits.map(p=>'<b>'+p.symbol+'</b> '+fmt(p.pct,1)+'%').join(' · ')}. These scored below the cut on trend / valuation / momentum — confirm the thesis before selling.</div>`:''}
+    ${ideal.prompt?`<div style="margin-top:8px">${chatBtn('plan-ideal',ideal.prompt,'🤖 Build the rebalance to this target with Claude')}</div>`:''}`;
 }
 
 /* ═══ All Positions (kept) ═══ */
