@@ -7,10 +7,12 @@
 // via get_option_instruments { chain_symbol, expiration_dates, type } → pick by delta/strike →
 // get_option_quotes { instrument_ids:[id] }, and append one object to
 //   producer/raw/option-quotes.json  (a JSON array):
-//   { underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega, gamma,
-//     openInterest, volume, popLong }
+//   { underlying, optionId, strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega,
+//     gamma, openInterest, volume, popLong }
 // using the quote fields mark_price, bid_price, ask_price, break_even_price, implied_volatility,
-// delta, theta, vega, gamma, open_interest, volume, chance_of_profit_long.
+// delta, theta, vega, gamma, open_interest, volume, chance_of_profit_long. **`optionId` is the
+// instrument UUID you just resolved (the same id you passed to get_option_quotes)** — keep it, it's
+// the contract the Robinhood options-watchlist sync adds (see PRODUCER.md "Sync the options watchlist").
 // options-build.mjs then uses these exact figures (falls back to estimates if absent).
 //
 // NOTE: only the SINGLE-LEG ideas below are priced live. The defined-risk structures (call debit
@@ -49,4 +51,4 @@ for (const t of targets) {
   console.log(`  ${t.underlying}  ${t.type}  exp ${t.expiration}  ~Δ${t.targetDelta} (≈strike $${t.targetStrike})  (${t.strategy})`);
 }
 if (!targets.length) console.log('  (no targets — need picks.json and/or 100+ share holdings)');
-console.log('\nFor each: get_option_instruments → contract nearest the target delta (or strike) → get_option_quotes → append the normalized object (incl. theta/vega/gamma).');
+console.log('\nFor each: get_option_instruments → contract nearest the target delta (or strike) → get_option_quotes → append the normalized object (incl. optionId = the resolved instrument UUID, + theta/vega/gamma).');

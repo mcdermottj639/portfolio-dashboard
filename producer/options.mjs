@@ -132,6 +132,8 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}, iv
     if (hasLive) {
       strike = num(live.strike) ?? t.targetStrike; prem = num(live.mark);
       Object.assign(base, { live: true, expiration: live.expiration || t.expiration, strike, premium: prem,
+        optionId: live.optionId || null, // resolved contract UUID → Robinhood options-watchlist sync
+
         iv: live.iv != null ? +(num(live.iv) * 100).toFixed(0) : null,
         delta: live.delta != null ? +num(live.delta).toFixed(2) : null,
         theta: live.theta != null ? +num(live.theta).toFixed(3) : null,

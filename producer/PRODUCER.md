@@ -212,9 +212,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       { chain_symbol, expiration_dates, type }` → pick the contract nearest the target **delta**
       (fall back to nearest strike) → `get_option_quotes { instrument_ids:[id] }`, and append one
       normalized object to `producer/raw/option-quotes.json` (a JSON array):
-      `{ underlying, strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega, gamma, openInterest, volume, popLong }`
+      `{ underlying, optionId, strike, expiration, mark, bid, ask, breakeven, iv, delta, theta, vega, gamma, openInterest, volume, popLong }`
       from the quote's `mark_price / bid_price / ask_price / break_even_price / implied_volatility /
-      delta / theta / vega / gamma / open_interest / volume / chance_of_profit_long`. (Skip if you
+      delta / theta / vega / gamma / open_interest / volume / chance_of_profit_long` — and set
+      **`optionId` to the instrument UUID you just resolved** (the same id passed to
+      `get_option_quotes`); it's the contract the options-watchlist sync (step 6) adds. (Skip if you
       want estimates instead.) Only the single-leg ideas are priced live — the defined-risk
       structures (call debit spread, collar) are estimate-only and need nothing here.
    4. `node producer/options-build.mjs` → writes `producer/raw/options.json`
@@ -280,6 +282,29 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    403/404, or any blip), **just stop — do not retry, do not improvise git/MCP recovery**. The list
    simply re-syncs on the next FETCH_ALL run. (Writes were verified to go through unattended; a hard
    403/404 means the Robinhood connector needs write/"always allow" approval re-granted.)
+
+6. **Sync the options watchlist — FETCH_ALL only, best-effort, AFTER `run.mjs` succeeds.** Same idea
+   as step 5 but for the Options tab's single-leg Trade Ideas (long calls, covered calls, cash-secured
+   puts). The account has **one** options watchlist (the tools take no `list_id`); `options-build.mjs`
+   wrote the desired contracts to `producer/raw/option-watchlist.json` — present only on FETCH_ALL and
+   only for ideas that resolved to a live contract UUID this run (estimate-only and the multi-leg
+   debit-spread/collar structures are excluded — the watchlist holds single-leg contracts). Run this
+   only if that file exists.
+
+   1. Read the live list: `get_option_watchlist` (no args) and **`Write` the raw result to
+      `producer/raw/option-watchlist-current.json`**. (If it errors with "no options watchlist found",
+      options trading isn't enabled — skip this whole step.)
+   2. `node producer/sync-option-watchlist.mjs` → prints `ADD <option_ids…>` / `REMOVE <option_ids…>`
+      (or `IN SYNC`). It only *prints* — it never calls Robinhood.
+   3. Execute what it printed, **always with `position_type: "long"`** (the watchlist read-back doesn't
+      expose side, so the producer adds/removes long-only for a deterministic diff):
+      - `ADD …`    → `add_option_to_watchlist    { option_ids: [those ids], position_type: "long" }`
+      - `REMOVE …` → `remove_option_from_watchlist { option_ids: [those ids], position_type: "long" }`
+      - `IN SYNC` / `NO-OP` → nothing to do.
+
+   Best-effort, same rule as step 5: `data.json` is already published, so on any failure **just stop**
+   — it re-syncs next FETCH_ALL. (Verified end-to-end against the live account: add → read-back →
+   remove all succeed unattended.)
 
 ## Failure handling
 - `run.mjs` aborts (no commit) if the core `portfolio.json`/`positions.json` are missing, if the

@@ -59,11 +59,14 @@ Use exactly this as the scheduled prompt:
 > steps by hand. **If `run.mjs` exits non-zero (e.g. a build error or a push 403), STOP — do NOT
 > attempt any manual git recovery, alternate push methods, branch surgery, or file searches. A
 > failed push is almost always a transient proxy/egress blip; the next scheduled run republishes.
-> End the session.** Finally, if (and only if) `run.mjs` succeeded **and**
-> `producer/raw/picks-watchlist.json` exists (a FETCH_ALL run), **sync the "Dashboard Top 10 Picks"
-> Robinhood watchlist** per `PRODUCER.md` → "Sync the Picks watchlist": read the live list, run
-> `node producer/sync-watchlist.mjs`, and execute the `ADD`/`REMOVE` it prints. This is best-effort —
-> if any watchlist call fails, just end the session (the list re-syncs next FETCH_ALL run).
+> End the session.** Finally, if (and only if) `run.mjs` succeeded **and** the FETCH_ALL sidecars
+> exist, do the two best-effort Robinhood **watchlist syncs** (per `PRODUCER.md` steps 5–6): (a) if
+> `producer/raw/picks-watchlist.json` exists, sync the **"Dashboard Top 10 Picks"** equity list — read
+> it (`get_watchlist_items`), run `node producer/sync-watchlist.mjs`, execute the `ADD`/`REMOVE`; (b)
+> if `producer/raw/option-watchlist.json` exists, sync the **options** watchlist — read it
+> (`get_option_watchlist`), run `node producer/sync-option-watchlist.mjs`, execute the `ADD`/`REMOVE`
+> with `position_type: "long"`. Both are best-effort — if any watchlist call fails, just end the
+> session (each list re-syncs next FETCH_ALL run).
 
 `preflight.mjs` owns the run-mode decision (deterministic, from the committed `data.json`), and
 `run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
