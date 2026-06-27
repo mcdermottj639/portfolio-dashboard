@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v58'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v59'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1301,6 +1301,23 @@ function pickLevels(p){
   const limit=(rng&&rng.hi)?rng.hi:px;
   return {px,zone,limit,stop,tp1,rng,live:!!live};
 }
+/* Build a pick-shaped object from a scored top-10 CANDIDATE row (which carries no hand-built levels)
+   so the Action Plan can backfill its redeploy sleeve when the 3 vetted picks don't fill it. Levels
+   are SYNTHESIZED from the 50-DMA (same pullback/stop machinery as the oversold addCand fallback) and
+   flagged synth:true so the UI labels them "screen backfill", not dressed up as equals to the top 3. */
+function synthPickFromCandidate(c, smaMap){
+  if(!c||!c.ticker)return null;
+  const live=(typeof _picksLive!=='undefined'&&_picksLive[c.ticker]&&_picksLive[c.ticker].price)||0;
+  const px=live||c.price||0; if(!(px>0))return null;
+  const s=smaMap&&smaMap[c.ticker];
+  const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
+  const entryLo=(s!=null&&isFinite(s))?Math.min(px,s*0.98):px*0.97;
+  const tp1=px+2*(px-stop); // a 2R target so the buy ticket carries a level; estimate only
+  const d=v=>+fmt(v,v>=1?2:4);
+  return { ticker:c.ticker, company:c.company, sector:c.sector, signal:'SCREEN', synth:true,
+    basePrice:c.price, entry:'$'+fmt(entryLo,entryLo>=1?2:4)+' – $'+fmt(px,px>=1?2:4),
+    tp1:{price:d(tp1)}, sl:{price:d(stop)}, rr:c.rr, composite:c.composite, rsi:c.rsi };
+}
 /* #5 — deep-link from a plan add to its Top-3 card (and a brief highlight so it's findable). */
 function jumpToPick(t){ try{ const el=document.getElementById('pickcard-'+t); if(!el)return;
   el.scrollIntoView({behavior:'smooth',block:'center'});
@@ -1357,24 +1374,37 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const raiseSet=new Set([...trims.map(t=>t.p.symbol),...harv.map(p=>p.symbol)]);
   const addCand=enriched.filter(p=>p.val>=SMALL_THR&&p.px>0&&!raiseSet.has(p.symbol)&&rsiMap[p.symbol]!=null&&rsiMap[p.symbol]<=33&&p.pnlP>-40).sort((a,b)=>rsiMap[a.symbol]-rsiMap[b.symbol])[0]||null;
   // The redeploy's high-conviction sleeve targets the Plan & Picks list directly — but as a SET, not a
-  // single name. Up to 3 of today's top-ranked ideas you're not already over-weight in (and not
-  // simultaneously trimming/harvesting), diversified by sector AND correlated cluster, skipping any pick
-  // that would pile onto a cluster already over the cap. This is the loop: the cash Step 1 raises flows
-  // into the ideas scored right below the plan. Falls back to an oversold held name (addCand), then cash.
+  // single name. Up to 3 ideas you're not already over-weight in (and not simultaneously trimming/
+  // harvesting), diversified by sector AND correlated cluster, skipping any that would pile onto a cluster
+  // already over the cap. PRIMARY = the 3 vetted picks (hand-built levels); when those don't fill the
+  // sleeve (held at cap / hot cluster / sector collision), BACKFILL from the scored top-10 candidates
+  // (synthesized 50-DMA levels, labelled "screen backfill") rather than dumping the remainder to cash.
   const heldPct={},heldVal={}; enriched.forEach(p=>{ if(p.val>0){ heldPct[p.symbol]=p.pct; heldVal[p.symbol]=p.val; } });
   const clPctOf=(sym)=>{ try{ const c=clusterFor(sym); return c&&clusters[c]?clusters[c].pct:0; }catch(e){ return 0; } };
+  const pickPickTickers=new Set(((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).map(p=>p&&p.ticker).filter(Boolean));
   const pickAdds=(()=>{
-    const list=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]);
     const out=[],usedSec=new Set();
-    for(let i=0;i<list.length&&out.length<3;i++){ const p=list[i]; if(!p||!p.ticker)continue;
-      if(raiseSet.has(p.ticker))continue;                                       // #2 — not a name we're raising from
-      if(heldPct[p.ticker]!=null&&heldPct[p.ticker]>=PLAN_SINGLE_CAP*100)continue; // already at the single-name cap
-      if(clPctOf(p.ticker)>=PLAN_CLUSTER_CAP*100)continue;                       // #2 — would worsen an over-cap cluster
-      const sec=String(p.sector||'').split('·')[0].trim();
-      if(sec&&usedSec.has(sec))continue;                                        // #1 — sector-diversify the set
-      if(sec)usedSec.add(sec);
-      out.push({p,rank:i+1});
-    }
+    const eligible=(ticker,sector)=>{
+      if(!ticker)return false;
+      if(raiseSet.has(ticker))return false;                                     // #2 — not a name we're raising from
+      if(heldPct[ticker]!=null&&heldPct[ticker]>=PLAN_SINGLE_CAP*100)return false; // already at the single-name cap
+      if(clPctOf(ticker)>=PLAN_CLUSTER_CAP*100)return false;                     // #2 — would worsen an over-cap cluster
+      const sec=String(sector||'').split('·')[0].trim();
+      if(sec&&usedSec.has(sec))return false;                                    // #1 — sector-diversify the set
+      return true;
+    };
+    const mark=(sector)=>{ const sec=String(sector||'').split('·')[0].trim(); if(sec)usedSec.add(sec); };
+    // Primary: the 3 vetted picks with full hand-built levels.
+    const picks=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]);
+    for(let i=0;i<picks.length&&out.length<3;i++){ const p=picks[i]; if(!p||!p.ticker)continue;
+      if(!eligible(p.ticker,p.sector))continue; mark(p.sector); out.push({p,rank:i+1,backfill:false}); }
+    // Backfill: only if the vetted picks left the sleeve unfilled — reach into the scored top-10.
+    if(out.length<3){ const cands=((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[]);
+      for(let i=0;i<cands.length&&out.length<3;i++){ const c=cands[i]; if(!c||!c.ticker)continue;
+        if(pickPickTickers.has(c.ticker))continue;                              // already weighed as a top-3 pick
+        if(!eligible(c.ticker,c.sector))continue;
+        const sp=synthPickFromCandidate(c,smaMap); if(!sp)continue;
+        mark(c.sector); out.push({p:sp,rank:c.rank||(i+1),backfill:true}); } }
     return out;
   })();
   // #7 — historical conviction from the graded Track Record, surfaced inline on the redeploy.
@@ -1447,8 +1477,10 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
           const q=Math.max(0,Math.min(bucketSh,capSh,riskSh));                    // #3 — risk-based AND cap-aware AND pool-bounded
           const er=(typeof azEarn==='function')?azEarn(p.ticker):null;           // #4 — earnings inside the swing window
           const erWarn=(er&&er.days!=null&&er.days>=0&&er.days<=14)?` <span style="color:#b45309">⚠️ earnings in ${er.days===0?'<1d':er.days+'d'} — size for the gap or wait for the print</span>`:'';
-          planAdds.push({sym:p.ticker,px,zone:lv.zone,limit:lv.limit,stop:lv.stop,tp1:lv.tp1,rank:x.rank,shares:q,dollars:q*px,erWarn,
-            why:`<b>#${x.rank} pick</b>${p.signal?' · '+p.signal:''} — entry ${lv.zone}${lv.tp1?`, target $${lv.tp1}`:''}, stop ${P(lv.stop)}`});
+          const why=x.backfill
+            ? `<b>#${x.rank} screen</b> <span style="color:#9ca3af">(backfill)</span>${p.rsi!=null?' · RSI '+p.rsi:''} — synth entry ${lv.zone}, stop ${P(lv.stop)}. 50-DMA estimate, not a hand-built setup.`
+            : `<b>#${x.rank} pick</b>${p.signal?' · '+p.signal:''} — entry ${lv.zone}${lv.tp1?`, target $${lv.tp1}`:''}, stop ${P(lv.stop)}`;
+          planAdds.push({sym:p.ticker,px,zone:lv.zone,limit:lv.limit,stop:lv.stop,tp1:lv.tp1,rank:x.rank,backfill:x.backfill,shares:q,dollars:q*px,erWarn,why});
         }
       } else if(addCand){ const px=addCand.px, a=anchor(addCand), s=smaMap[addCand.symbol];
         const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
@@ -1457,17 +1489,20 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
           why:`oversold (RSI ${fmt(rsiMap[addCand.symbol],0)}) · limit ${a.zone}, stop ${P(stop)} — a dip-buy rather than parking it all in cash`});
       }
       const deployed=planAdds.reduce((s,a)=>s+a.dollars,0);
-      // #5 — stash the plan's sized picks so the Top-3 cards can badge "the plan picked this"; repaint them.
-      try{ const m={}; planAdds.forEach(a=>{ if(a.rank&&a.shares>0)m[a.sym]={rank:a.rank,shares:a.shares,dollars:a.dollars}; }); window.__PLAN_ADDS=m;
+      // #5 — stash the plan's sized PRIMARY picks (not synth backfills, which have no Top-3 card) so the
+      // cards can badge "the plan picked this"; repaint them.
+      try{ const m={}; planAdds.forEach(a=>{ if(a.rank&&!a.backfill&&a.shares>0)m[a.sym]={rank:a.rank,shares:a.shares,dollars:a.dollars}; }); window.__PLAN_ADDS=m;
         if(document.getElementById('picks-cards')&&typeof renderPicksCards==='function')renderPicksCards(); }catch(e){}
       if(planAdds.length){
-        const nReal=planAdds.filter(a=>a.rank).length;
+        const nReal=planAdds.filter(a=>a.rank&&!a.backfill).length, nBack=planAdds.filter(a=>a.backfill).length;
         const convL=(trk&&trk.hitRate!=null&&(trk.wins+trk.losses)>=3)?` <span style="color:#9ca3af">· track record: ${trk.hitRate}% hit TP1+${trk.avgRet!=null?', avg '+(trk.avgRet>=0?'+':'')+fmt(trk.avgRet,1)+'%':''} (${trk.wins+trk.losses} resolved)</span>`:'';
-        const hdr=`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add${planAdds.length>1?'s':''}</b>${sz(convBucket)} — ${nReal>1?`split across today's top ${nReal} ideas`:`into today's top idea`}${convL}:</div>`;
-        const items=planAdds.map(a=>{ const lbl=a.rank?`<span class="dp-link" onclick="jumpToPick('${a.sym}')">${a.sym}</span>`:a.sym;
+        const scope=planAdds.length>1?`split across ${planAdds.length} ideas`:`into a single idea`;
+        const backNote=nBack>0?` <span style="color:#9ca3af">(${nReal} vetted pick${nReal===1?'':'s'}${nBack?`, ${nBack} screen backfill from the top 10`:''})</span>`:'';
+        const hdr=`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add${planAdds.length>1?'s':''}</b>${sz(convBucket)} — ${scope}${backNote}${convL}:</div>`;
+        const items=planAdds.map(a=>{ const lbl=(a.rank&&!a.backfill)?`<span class="dp-link" onclick="jumpToPick('${a.sym}')">${a.sym}</span>`:a.sym;
           return `<div style="padding:5px 0 5px 10px;font-size:12px;line-height:1.45;border-top:1px dashed var(--surface-2)">${a.shares>0?`<b>buy ~${a.shares} sh ${lbl}</b> <span style="color:#9ca3af">≈ ${fmtD(a.dollars)}</span>`:`<b>${lbl}</b> <span style="color:#9ca3af">(no size — already at your cap / risk budget)</span>`} · ${a.why}${a.erWarn}</div>`; }).join('');
         rows.push(hdr+items);
-        planAdds.forEach(a=>{ if(a.shares>0)buyOrders.push({side:'BUY',sym:a.sym,qty:a.shares,limit:a.limit,zone:a.zone,stop:a.stop,note:a.rank?('high-conviction add · #'+a.rank+' pick'):'oversold high-conviction add'}); });
+        planAdds.forEach(a=>{ if(a.shares>0)buyOrders.push({side:'BUY',sym:a.sym,qty:a.shares,limit:a.limit,zone:a.zone,stop:a.stop,note:a.backfill?('screen backfill · #'+a.rank+' of top 10'):a.rank?('high-conviction add · #'+a.rank+' pick'):'oversold high-conviction add'}); });
         const leftover=convBucket-deployed;
         if(leftover>convBucket*0.15) rows.push(`<div style="padding:5px 0 5px 10px;font-size:11.5px;color:#9ca3af;border-top:1px dashed var(--surface-2)">Cap/risk limits leave ≈ ${fmtD(leftover)} of this sleeve undeployed — hold as cash for pullbacks.</div>`);
       } else {

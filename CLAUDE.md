@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v58** (`pf-v58`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v59** (`pf-v59`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -186,9 +186,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   a ticker we're trimming/harvesting). The redeploy **pool itself folds in available buying power** (v58 —
   `__SNAP.stats.bpVal`), so the step doesn't collapse to empty on days with nothing to harvest (labelled,
   with a leverage caveat). The **high-conviction sleeve redeploys straight into the Picks list below it** —
-  as a **SET, not one name** (v58): `renderActionPlan` builds `pickAdds` (up to **3** top-ranked `PICK_PICKS`
-  entries you're not over-weight in or trimming, **sector- AND cluster-diversified**, skipping any pick that
-  would worsen an over-`PLAN_CLUSTER_CAP` cluster). Each add is sized **risk-based** (1% of book at its stop)
+  as a **SET, not one name** (v58): `renderActionPlan` builds `pickAdds` (up to **3** ideas you're not
+  over-weight in or trimming, **sector- AND cluster-diversified**, skipping any that would worsen an
+  over-`PLAN_CLUSTER_CAP` cluster). PRIMARY = the 3 vetted `PICK_PICKS`; when those don't fill the sleeve
+  (held at cap / hot cluster / sector collision) it **backfills from the scored top-10 `PICK_CANDIDATES`**
+  (v59) rather than dumping the remainder to cash — backfills get **synthesized 50-DMA levels**
+  (`synthPickFromCandidate`) and are labelled **"screen backfill"** (no Top-3 card badge / deep-link, since
+  only the top 3 have real setups). Each add is sized **risk-based** (1% of book at its stop)
   and **clamped** so it can't push the name past `PLAN_SINGLE_CAP` or outrun its bucket, **flags earnings**
   inside a 14-day swing window (`azEarn`), and reads its levels from the shared **`pickLevels(p)`** helper
   (v58 — single source of truth for px/entry-zone/limit/stop/tp1, so the plan and the Top-3 card never
