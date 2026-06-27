@@ -187,6 +187,24 @@ if (existsSync(join(RAW, 'option-quotes.json'))) {
 const ideas = buildIdeas(picksCands, holdings100, pxBySym, liveBySym, ivBySym);
 const liveCount = ideas.ideas.filter((i) => i.live).length;
 
+// Sidecar for the Robinhood OPTIONS-watchlist sync — the single-leg Trade Ideas that resolved to a
+// real contract this run (live quote → optionId). Multi-leg structures (debit spread, collar) and
+// estimate-only ideas have no contract UUID, so they're excluded. Emitted ONLY on FETCH_ALL (gated on
+// the presence of a fresh raw/picks.json, exactly like the equity picks-watchlist) so the list tracks
+// the daily ideas without intraday churn. All adds use position_type "long" — the options watchlist
+// is a watch list (the read-back doesn't return side), so long-only keeps the daily remove-diff
+// deterministic. The agent diffs this against the live list via sync-option-watchlist.mjs.
+if (existsSync(join(RAW, 'picks.json'))) {
+  const watchContracts = ideas.ideas
+    .filter((i) => i.live && i.optionId)
+    .map((i) => ({ optionId: i.optionId, underlying: i.underlying, strategy: i.strategy,
+      side: i.optSide || 'long', name: `${i.underlying} $${i.strike} ${i.optType === 'put' ? 'Put' : 'Call'}` }));
+  writeFileSync(join(RAW, 'option-watchlist.json'), JSON.stringify(
+    { positionType: 'long', optionIds: watchContracts.map((c) => c.optionId), contracts: watchContracts }, null, 2));
+  console.log(`options-watchlist: queued sync of ${watchContracts.length} live contract(s)` +
+    (watchContracts.length ? ` → ${watchContracts.map((c) => c.name).join(', ')}` : ' (no live single-leg ideas this run)'));
+}
+
 // IV observations (today's live implied vol per underlying) — collected from every contract that
 // carried a live IV: your positions/pending + the idea quotes. build-data.mjs accumulates these
 // into a rolling per-symbol history and derives an IV RANK (where today sits in the trailing range)

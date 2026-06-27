@@ -48,10 +48,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 4. Agent runs **`node producer/run.mjs "<label>"`** — the single deterministic tail: optional AV
    fetch → picks-build → options-build → `build-data.mjs` (encrypted) → `validate.mjs` → publish to
    `main`. No improvised shell, so unattended runs don't stall on permission prompts.
-5. **FETCH_ALL only, after publish:** agent syncs the **"Dashboard Top 10 Picks"** Robinhood watchlist
-   to the new composite top-10 — reads the live list, runs `node producer/sync-watchlist.mjs` (prints
-   the add/remove diff), executes the MCP writes. Best-effort: a failure never gates the run (the list
-   re-syncs next FETCH_ALL). This is the **only** producer write to Robinhood — everything else reads.
+5. **FETCH_ALL only, after publish:** agent syncs **two Robinhood watchlists** to the fresh snapshot —
+   (a) the **"Dashboard Top 10 Picks"** equity list to the composite top-10 (`sync-watchlist.mjs`), and
+   (b) the account's **options watchlist** to the single-leg Trade Ideas that resolved to a live
+   contract (`sync-option-watchlist.mjs`, all added `position_type: "long"`). Each reads the live list,
+   runs its planner (prints the add/remove diff), then executes the MCP writes. Best-effort: a failure
+   never gates the run (each re-syncs next FETCH_ALL). These two writes are the **only** producer writes
+   to Robinhood — everything else reads.
 
 ## Key files
 | File | Role |
@@ -66,9 +69,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. Tech score **blends RSI with 52wk-range position** (so RSI isn't double-counted vs finalist selection). Candidates carry `sector` + `cov` (data-coverage flags); top picks are **sector-diversified** (`MAX_PICKS_PER_SECTOR`, default 2). |
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. Also emits `producer/raw/picks-watchlist.json` (composite top-10 tickers) — the target for the Robinhood watchlist sync. |
 | `producer/sync-watchlist.mjs` | Deterministic diff for the **"Dashboard Top 10 Picks"** Robinhood watchlist. Pure planner (like `av-plan`/`options-plan`): reads the top-10 sidecar + the agent-saved live list, **prints** `ADD`/`REMOVE`; the agent executes the MCP writes. Runs as a post-publish step on FETCH_ALL only. |
+| `producer/sync-option-watchlist.mjs` | Same pattern for the account's single **options** watchlist. Reads `producer/raw/option-watchlist.json` (the live single-leg Trade-Idea contracts `options-build.mjs` emits on FETCH_ALL) + the agent-saved `get_option_watchlist`, **prints** `ADD`/`REMOVE` option-UUIDs (all `position_type:"long"`); the agent executes the writes. |
 | `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz). |
 | `producer/markets.mjs` | `MARKET_SYMBOLS` (indexes/risk/sectors/intl) — source of truth; keep PRODUCER.md's list in sync. |
-| `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. `options.mjs` builds the ideas — single-leg long-call/covered-call/CSP (live-priced, delta-targeted) **plus estimate-only defined-risk structures (call debit spread, collar)** with a `legs[]` array the consumer draws as a combined payoff; estimate premiums use a **per-symbol realized-vol IV proxy**. `options-build.mjs` analyzes your contracts (full greeks incl. **vega/gamma**, concrete **roll suggestions**, a portfolio **exposure** roll-up, `ivObserved`). |
+| `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. `options.mjs` builds the ideas — single-leg long-call/covered-call/CSP (live-priced, delta-targeted) **plus estimate-only defined-risk structures (call debit spread, collar)** with a `legs[]` array the consumer draws as a combined payoff; estimate premiums use a **per-symbol realized-vol IV proxy**. `options-build.mjs` analyzes your contracts (full greeks incl. **vega/gamma**, concrete **roll suggestions**, a portfolio **exposure** roll-up, `ivObserved`) and, on FETCH_ALL, emits `producer/raw/option-watchlist.json` (the single-leg ideas that resolved to a live contract `optionId`) for the options-watchlist sync. The agent records each idea's resolved `optionId` into `option-quotes.json` (see `options-plan.mjs`) so `options.mjs` can carry it onto the live idea. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
 | `producer/railway/` · `producer/RAILWAY.md` | Optional credentialed Railway producer (Python `robin_stocks` fetch → existing Node tail). See the runbook. |
@@ -140,12 +144,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   velocity** (not bullish/bearish), with a noise guard (damp velocity when mentions are tiny) and a
   top-5 crowding cap. Most oversold-large-cap picks aren't on Reddit, so social is a *spotlight on
   the few heating up*, not a full reshuffle (neutral 5 = no buzz).
-- **Robinhood account access:** the producer is READ-ONLY except for **one** write — the daily
-  "Dashboard Top 10 Picks" **watchlist sync** (FETCH_ALL, post-publish, best-effort; see Data flow
-  step 5 / PRODUCER.md "Sync the Picks watchlist"). Reads work regardless of `agentic_allowed`;
-  the watchlist **writes** (`create/add/remove_watchlist`) need connector write approval — verified
-  to go through unattended, but a hard 403/404 there means "always allow" must be re-granted. That
-  write is fault-isolated: it runs only after `data.json` is already published and never gates the run.
+- **Robinhood account access:** the producer is READ-ONLY except for **two** writes, both daily
+  (FETCH_ALL, post-publish, best-effort) — the "Dashboard Top 10 Picks" **equity watchlist sync** and
+  the **options watchlist sync** (single-leg Trade Ideas, added `position_type:"long"`). See Data flow
+  step 5 / PRODUCER.md steps 5–6. Reads work regardless of `agentic_allowed`; the watchlist **writes**
+  (`create/add/remove_watchlist`, `add/remove_option_from_watchlist`) need connector write approval —
+  verified to go through unattended, but a hard 403/404 there means "always allow" must be re-granted.
+  Both writes are fault-isolated: they run only after `data.json` is already published and never gate
+  the run. The options watchlist is a single per-account list (its tools take no `list_id`); only ideas
+  that resolved to a live contract UUID this run are synced (estimate-only/multi-leg are skipped).
   `PF_ACCOUNT` = the default individual account (…0741). A 404 on `get_portfolio` usually means the
   connector needs reconnecting/approval ("always allow"), not a code bug.
 - **Cost discipline:** historicals (5Y monthly + YTD daily for ~36 symbols ≈ 24 of ~30 calls) are the
@@ -219,10 +226,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   covered calls and cash-secured puts (live-priced, delta-targeted) **plus defined-risk call debit
   spreads and collars** (estimate-only, multi-leg payoff drawn from `legs[]`); **Covered-Call** and
   **Cash-Secured-Put income rankers** (annualized yield); Options P&L (closed trades); and a Knowledge
-  card. Estimate premiums use a per-symbol realized-vol IV proxy. Research/education only.
+  card. Estimate premiums use a per-symbol realized-vol IV proxy. Research/education only. **Robinhood
+  options-watchlist sync:** on each FETCH_ALL run the producer mirrors the single-leg Trade Ideas that
+  resolved to a live contract (long calls / covered calls / CSPs) into the account's options watchlist
+  (daily add/remove diff via `sync-option-watchlist.mjs`, all `position_type:"long"`); estimate-only
+  and multi-leg structures are excluded since the list holds single-leg contracts only.
 - **Producer hardening:** preflight gating, carry-forward, deterministic publish-to-main, freshness
-  watchdog, clean-stop on push failure, and the best-effort post-publish **Picks watchlist sync** (the
-  only Robinhood write; fault-isolated so it never gates a run).
+  watchdog, clean-stop on push failure, and the two best-effort post-publish **watchlist syncs** (the
+  equity "Dashboard Top 10 Picks" list + the options watchlist — the only Robinhood writes; both
+  fault-isolated so they never gate a run).
 - **Freshness bar:** shows the snapshot label/age and **tints amber with a "↻ to refresh" nudge when the
   snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts the build version,
   privacy, theme, and refresh controls.
