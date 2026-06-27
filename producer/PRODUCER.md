@@ -40,6 +40,23 @@ EFA EEM                    (international: developed ex-US, emerging)
 ```
 (`producer/markets.mjs` `MARKET_SYMBOLS` is the source of truth — keep this list in sync with it.)
 
+**Leader symbols** — the Plan-page Ideal Portfolio (Action Center · Step 4) can recommend a bench of
+mega-cap "leaders" beyond what you hold or today's Picks screen, but it needs a live price for each, so
+they must also be quoted **every run** (folded into the same `get_equity_quotes` call). These come from
+`producer/leaders.mjs` (`LEADER_SYMBOLS`) and `build-data.mjs` emits the list (with sectors) as
+`data.leaders`:
+
+```
+NVDA MSFT AAPL AVGO ORCL    (Technology)
+GOOGL META NFLX             (Communication Services)
+AMZN HD                     (Consumer Cyclical)
+LLY UNH                     (Healthcare)
+JPM V MA                    (Financial Services)
+COST WMT PG                 (Consumer Defensive)
+XOM                         (Energy)
+```
+(`producer/leaders.mjs` `LEADER_SYMBOLS` is the source of truth. No historicals needed — quotes only.)
+
 Symbols for **day** history (YTD): top 15 holdings by value + every market symbol above.
 Symbols for **month** history (5Y stats): every market symbol above **+ your top 15 holdings**
 (the Analyze tab's Multi-Timeframe card uses monthly bars for the holding's monthly trend row;
@@ -71,7 +88,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    |---|---|---|---|
    | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols] }` | `producer/raw/quotes.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |

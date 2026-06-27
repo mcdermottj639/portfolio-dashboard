@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v65'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v66'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1479,17 +1479,33 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     [{sym:'SPY',base:6.4},{sym:'QQQ',base:5.9}].forEach(ix=>{ if(pool.has(ix.sym))return;
       const px=pxOf(ix.sym); let s=ix.base; const sma=smaMap[ix.sym]; if(sma&&px>0)s+= px>=sma?0.4:-0.6;
       pool.set(ix.sym,{sym:ix.sym,sector:'Index',score:s,cur:0,curVal:0,px,held:false,isPick:false,isIndex:true}); });
-    const TARGET_MAX=14, PER_SEC=3, INCUMBENT=1.3;
-    // Incumbency bias keeps the portfolio FLOWING: names you already own get a selection edge (`sel`) so
-    // the core doesn't churn out from under you for a marginally higher-scoring newcomer. The edge is
-    // applied to SELECTION only — weights still use raw conviction (`score`) so an incumbent that squeaks
-    // in lands at the floor, not an inflated slug. This is a destination you drift toward, held with stops
-    // — not a liquidate-and-rebuild list every run.
-    [...pool.values()].forEach(x=>{ x.sel=x.score+(x.held?INCUMBENT:0); });
-    const ranked=[...pool.values()].sort((a,b)=>b.sel-a.sel);
-    const secCount={}, chosen=[];
-    for(const x of ranked){ if(chosen.length>=TARGET_MAX)break; const sec=x.sector||'—';
-      if(sec!=='—'&&(secCount[sec]||0)>=PER_SEC)continue; chosen.push(x); secCount[sec]=(secCount[sec]||0)+1; }
+    // MEGA-CAP LEADERS — a curated bench of big names with good upside (per owner request), eligible even
+    // when they're neither held nor on the oversold Picks screen, so the target isn't confined to "what I
+    // own + today's top-10". The bench + sectors come from the producer (`data.leaders`, quoted every run
+    // so a live price exists); a small hardcoded list is the fallback for older snapshots / local preview.
+    // Each is admitted ONLY if we have a live price (so it can be sized + bracketed — no dangling rows),
+    // scored at a solid baseline (nudged by trend) so it competes with held names (incumbency-boosted) and
+    // picks (composite) and displaces only the marginal picks. Held / pick entries already in win.
+    const LEADERS=(()=>{ try{ const dl=window.__DATA&&window.__DATA.leaders; if(Array.isArray(dl)&&dl.length)return dl; }catch(e){}
+      return [{sym:'NVDA',sector:'Technology'},{sym:'MSFT',sector:'Technology'},{sym:'AAPL',sector:'Technology'},{sym:'AVGO',sector:'Technology'},{sym:'ORCL',sector:'Technology'},{sym:'GOOGL',sector:'Communication Services'},{sym:'META',sector:'Communication Services'},{sym:'NFLX',sector:'Communication Services'},{sym:'AMZN',sector:'Consumer Cyclical'},{sym:'HD',sector:'Consumer Cyclical'},{sym:'LLY',sector:'Healthcare'},{sym:'UNH',sector:'Healthcare'},{sym:'JPM',sector:'Financial Services'},{sym:'V',sector:'Financial Services'},{sym:'MA',sector:'Financial Services'},{sym:'COST',sector:'Consumer Defensive'},{sym:'WMT',sector:'Consumer Defensive'},{sym:'PG',sector:'Consumer Defensive'},{sym:'XOM',sector:'Energy'}]; })();
+    LEADERS.forEach(ld=>{ const sym=ld&&ld.sym; if(!sym||pool.has(sym))return; const px=pxOf(sym); if(!(px>0))return;
+      let s=6.0; const sma=smaMap[sym]; if(sma)s+= px>=sma?0.4:-0.4;
+      pool.set(sym,{sym,sector:ld.sector||secOf(sym),score:s,cur:0,curVal:0,px,held:false,isPick:false,isLeader:true}); });
+    // Selection that keeps the book CONTINUOUS (the owner's hard rule: don't tell me to sell everything and
+    // start over). Every current holding is an INCUMBENT and is guaranteed into the target — re-weighted,
+    // possibly trimmed, but never auto-sold to zero by the screen. THEN we fill a few slots with the best
+    // non-held picks / leaders / index for diversification (sector cap counts held + adds, so we don't pile
+    // onto a sector you're already heavy in). The plan refines what you own and layers big names on top —
+    // it never liquidates-and-rebuilds. The single-name cap still trims the over-weight incumbents.
+    const TOTAL_CAP=15, PER_SEC=4;
+    const heldArr=[...pool.values()].filter(x=>x.held).sort((a,b)=>b.curVal-a.curVal);
+    const ADD_SLOTS=Math.max(3,12-heldArr.length); // aim ~12 total, but always admit ≥3 fresh big names
+    const chosen=heldArr.slice(0,TOTAL_CAP);       // all holdings stay (largest first if you hold > cap)
+    const secCount={}; chosen.forEach(x=>{ const s=x.sector||'—'; if(s!=='—')secCount[s]=(secCount[s]||0)+1; });
+    const addPool=[...pool.values()].filter(x=>!x.held).sort((a,b)=>b.score-a.score);
+    let added=0;
+    for(const x of addPool){ if(chosen.length>=TOTAL_CAP||added>=ADD_SLOTS)break; const s=x.sector||'—';
+      if(s!=='—'&&(secCount[s]||0)>=PER_SEC)continue; chosen.push(x); secCount[s]=(secCount[s]||0)+1; added++; }
     if(chosen.length<3) return {chosen:[],exits:[],prompt:'',book:0};
     const sumSc=chosen.reduce((s,x)=>s+x.score,0)||1, FLOOR=0.035;
     chosen.forEach(x=>{ x.w=Math.min(PLAN_SINGLE_CAP,Math.max(FLOOR,x.score/sumSc)); });
@@ -1509,9 +1525,16 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     // dump at market). Stop anchors below the 50-DMA / a fixed % under the live mark, whichever is tighter.
     const stopOf=(sym,px)=>{ if(!(px>0))return 0; const s=smaMap[sym];
       return (s&&isFinite(s)&&s<px)?Math.min(s*0.95,px*0.92):px*0.88; };
+    // TAKE-PROFIT target (a standing GTC sell limit ABOVE the mark — where you harvest gains / trim into
+    // strength). Prefer a vetted pick's real first target (tp1); otherwise a 2R level off the stop (so the
+    // reward ≈ 2× the risk you're protecting with the stop), falling back to +20%.
+    const pickOf=(sym)=>((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(p=>p&&p.ticker===sym);
+    const tpOf=(sym,px,stop)=>{ if(!(px>0))return 0; const pk=pickOf(sym);
+      if(pk&&pk.tp1&&pk.tp1.price>px)return pk.tp1.price;
+      return (stop>0&&px>stop)?px+2*(px-stop):px*1.20; };
     chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.delta=x.tgtVal-(x.curVal||0);
       x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD');
-      x.stop=stopOf(x.sym,x.px); x.limit=x.px; });
+      x.stop=stopOf(x.sym,x.px); x.limit=x.px; x.tp=tpOf(x.sym,x.px,x.stop); });
     const chosenSet=new Set(chosen.map(x=>x.sym));
     const exits=enriched.filter(p=>p.val>=SMALL_THR&&!chosenSet.has(p.symbol)).sort((a,b)=>b.val-a.val);
     const netBuy=chosen.reduce((s,x)=>s+(x.delta>0?x.delta:0),0);
@@ -1520,18 +1543,18 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     const shTxt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
     const HT=Math.max(50,book*0.004);
     const PX=v=>'$'+(+v).toFixed(2);
-    const L=['Help me move my Robinhood portfolio toward this TARGET allocation and set the protective stops. This is a destination I hold with stops — not a daily liquidate-and-rebuild, so only trade the gaps below. Share counts are sized to a target book of '+fmtD(book)+' ('+(marginUse>0?('my '+fmtD(equityBase)+' equity + up to '+fmtD(marginUse)+' margin, a '+fmt(PLAN_MAX_LEVERAGE,1)+'× cap'):'my '+fmtD(equityBase)+' equity, no added margin')+'). For each order check the live price + my current position, review with the broker (review_equity_order), and place ONLY after I confirm.','','Target book: '+fmtD(book)+(marginUse>0?(' (≤ '+fmt(PLAN_MAX_LEVERAGE,1)+'× leverage)'):' (unlevered)'),'',"Rebalance orders (≈, snapshot prices — sells as GTC limits, then a protective stop on each kept position):"];
-    chosen.forEach(x=>{ const stp=x.stop>0?('; protective stop '+PX(x.stop)+' (GTC)'):'';
-      if(x.side==='HOLD'||x.shares==null||Math.abs(x.delta)<HT){ L.push('• HOLD '+x.sym+' — already ≈ target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+stp); return; }
+    const L=['Help me move my Robinhood portfolio toward this TARGET allocation and set the protective stops + take-profit limits. This is a destination I hold with brackets (stop below, take-profit above) — not a daily liquidate-and-rebuild, so only trade the gaps below. Share counts are sized to a target book of '+fmtD(book)+' ('+(marginUse>0?('my '+fmtD(equityBase)+' equity + up to '+fmtD(marginUse)+' margin, a '+fmt(PLAN_MAX_LEVERAGE,1)+'× cap'):'my '+fmtD(equityBase)+' equity, no added margin')+'). For each order check the live price + my current position, review with the broker (review_equity_order), and place ONLY after I confirm.','','Target book: '+fmtD(book)+(marginUse>0?(' (≤ '+fmt(PLAN_MAX_LEVERAGE,1)+'× leverage)'):' (unlevered)'),'',"Rebalance orders (≈, snapshot prices — sells as GTC limits, then a protective stop + take-profit on each kept position):"];
+    chosen.forEach(x=>{ const br=(x.stop>0?'; stop '+PX(x.stop)+' (GTC)':'')+(x.tp>0?'; take-profit '+PX(x.tp)+' (GTC limit)':'');
+      if(x.side==='HOLD'||x.shares==null||Math.abs(x.delta)<HT){ L.push('• HOLD '+x.sym+' — already ≈ target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+br); return; }
       const ord=x.side==='SELL'
         ? 'TRIM ~'+shTxt(x.shares)+' sh '+x.sym+' as a GTC limit '+(x.limit>0?PX(x.limit):'at market')+' ≈ '+fmtD(Math.abs(x.delta))
         : 'BUY ~'+shTxt(x.shares)+' sh '+x.sym+(x.px>0?(' near '+PX(x.px)):'')+' ≈ '+fmtD(Math.abs(x.delta));
-      L.push('• '+ord+' → target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+(x.held?'':' [new]')+stp); });
-    if(exits.length)L.push('','Exit fully (held, not in the target — sell to zero as a GTC limit): '+exits.map(p=>'SELL all '+p.symbol+(p.px>0?(' limit '+PX(p.px)):'')+' (~'+fmtD(p.val)+')').join('; '));
-    L.push('','Long-only target derived from my dashboard analysis; weights tilt to conviction, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name, with an incumbency bias so the core stays put run-to-run. After this is set, I rebalance only when a stop triggers or a weight drifts materially — not daily. Snapshot prices are stale — re-check live marks and buying power before each fill. Education only — not financial advice.');
+      L.push('• '+ord+' → target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+(x.held?'':' [new]')+br); });
+    if(exits.length)L.push('','Smallest holdings beyond the '+TOTAL_CAP+'-name target — consolidate (trim or close, your call): '+exits.map(p=>p.symbol+' (~'+fmtD(p.val)+')').join('; '));
+    L.push('','Long-only target derived from my dashboard analysis; EVERY current holding stays in (re-weighted, never auto-sold), with the best picks/leaders layered on for diversification. Weights tilt to conviction, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. After this is set, I rebalance only when a stop/target triggers or a weight drifts materially — not daily. Snapshot prices are stale — re-check live marks and buying power before each fill. Education only — not financial advice.');
     return {chosen,exits,prompt:L.join('\n'),book,nowInvested,netBuy,netSell,levered:marginUse>0};
   })();
-  const tagOf=x=>x.held?'':(x.isIndex?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.isPick?' <span style="color:#9ca3af;font-size:10px">pick</span>':''));
+  const tagOf=x=>x.held?'':(x.isIndex?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.isPick?' <span style="color:#9ca3af;font-size:10px">pick</span>':(x.isLeader?' <span style="color:#9ca3af;font-size:10px">leader</span>':'')));
   const idealShFmt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
   const idealHoldThr=Math.max(50,(ideal.book||0)*0.004);
   const idealTrade=x=>{
@@ -1541,9 +1564,13 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     const lim=x.side==='SELL'&&x.limit>0?` · lim ${P(x.limit)}`:'';
     return `<span style="color:${col};font-weight:700">${x.side==='BUY'?'+':'−'}${idealShFmt(x.shares)} sh</span><br><span style="color:#9ca3af;font-size:11px">≈ ${fmtD(Math.abs(x.delta))}${lim}</span>`;
   };
-  const idealStop=x=> x.stop>0 ? `<span style="font-weight:600">${P(x.stop)}</span><br><span style="color:#9ca3af;font-size:10.5px">${x.px>0?'−'+fmt((1-x.stop/x.px)*100,0)+'%':'GTC'}</span>` : '<span style="color:#9ca3af">—</span>';
-  const idealRows=ideal.chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${tagOf(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${fmtD(x.tgtVal)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(x.tgt,0)}%</span></td><td class="tr">${x.held?fmtD(x.curVal):'<span style="color:#9ca3af">—</span>'}<br><span style="color:#9ca3af;font-size:11px">${x.held?fmt(x.cur,1)+'%':'new'}</span></td><td class="tr">${idealTrade(x)}</td><td class="tr">${idealStop(x)}</td></tr>`).join('');
-  const idealFoot=ideal.chosen.length?`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Book</td><td class="tr">${fmtD(ideal.book)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">100%</span></td><td class="tr">${fmtD(ideal.nowInvested)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">now</span></td><td class="tr"><span style="color:#065f46">+${fmtD(ideal.netBuy)}</span><br><span style="color:#991b1b;font-size:11px;font-weight:400">−${fmtD(ideal.netSell)}</span></td><td class="tr"><span style="color:#9ca3af;font-size:11px;font-weight:400">GTC</span></td></tr>`:'';
+  // Bracket cell: protective stop (down) + take-profit (up) — the two standing GTC orders on each position.
+  const idealBracket=x=>{ if(!(x.px>0)) return '<span style="color:#9ca3af">—</span>';
+    const stop=x.stop>0?`<span style="color:#991b1b;font-weight:600">${P(x.stop)}</span> <span style="color:#9ca3af;font-size:10px">−${fmt((1-x.stop/x.px)*100,0)}%</span>`:'<span style="color:#9ca3af">—</span>';
+    const tp=x.tp>0?`<span style="color:#065f46;font-weight:600">${P(x.tp)}</span> <span style="color:#9ca3af;font-size:10px">+${fmt((x.tp/x.px-1)*100,0)}%</span>`:'<span style="color:#9ca3af">—</span>';
+    return `${tp}<br>${stop}`; };
+  const idealRows=ideal.chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${tagOf(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${fmtD(x.tgtVal)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(x.tgt,0)}%</span></td><td class="tr">${x.held?fmtD(x.curVal):'<span style="color:#9ca3af">—</span>'}<br><span style="color:#9ca3af;font-size:11px">${x.held?fmt(x.cur,1)+'%':'new'}</span></td><td class="tr">${idealTrade(x)}</td><td class="tr">${idealBracket(x)}</td></tr>`).join('');
+  const idealFoot=ideal.chosen.length?`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Book</td><td class="tr">${fmtD(ideal.book)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">100%</span></td><td class="tr">${fmtD(ideal.nowInvested)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">now</span></td><td class="tr"><span style="color:#065f46">+${fmtD(ideal.netBuy)}</span><br><span style="color:#991b1b;font-size:11px;font-weight:400">−${fmtD(ideal.netSell)}</span></td><td class="tr"><span style="color:#9ca3af;font-size:11px;font-weight:400">TP / stop</span></td></tr>`:'';
 
   el.innerHTML=`
     <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">A standing playbook — <b>raise cash</b> (harvest losers <i>and</i> right-size any over-weight winner) → <b>redeploy</b> to pull risk down → <b>guardrails</b>. Winners are trimmed only where one name is above <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> of equity: position discipline, not a call to sell a good stock.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}</div>
@@ -1645,10 +1672,10 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     </div>
 
     <div class="col-title" style="margin-top:14px">4 · Ideal portfolio <span class="card-hint">${ideal.chosen.length?`(target ${ideal.chosen.length}-name allocation)`:'(building…)'}</span></div>
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:2px 0 6px">A long-only target built from this dashboard's analysis — your strongest current holdings (trend vs 50-DMA · RSI · valuation · growth) blended with the top scored picks and a broad-market index core where it earns a slot, sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> per name. <b>It's a continuous portfolio, not a daily reset</b> — names you already own get an incumbency edge so the core stays put run-to-run; you hold each with the <b>stop</b> shown and rebalance only when a stop triggers or a weight drifts materially. <b>Trade</b> = shares + $ to move from today to target (sells worked as GTC limits); <b>Stop</b> = the protective GTC stop to keep on each position.</div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:2px 0 6px">A long-only target built from this dashboard's analysis — your current holdings, the top scored picks, an index core, <b>and a bench of mega-cap leaders with good upside</b> (so it isn't confined to what you own or today's screen), sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> per name. <b>It's a continuous portfolio, not a daily reset</b> — <b>every name you already own stays in</b> (re-weighted, possibly trimmed, never auto-sold to zero); fresh big names just layer on top. You hold each inside a <b>bracket</b> and rebalance only when a level triggers or a weight drifts materially. <b>Trade</b> = shares + $ to move from today to target (sells worked as GTC limits); <b>TP / Stop</b> = the take-profit (sell into strength) and protective stop — both standing GTC orders.</div>
     ${ideal.book>0?`<div class="fund-note" style="margin:0 0 8px">Target book <b>${fmtD(ideal.book)}</b> = ${ideal.levered?`your ${fmtD(equityBase)} equity + up to ${fmtD(marginUse)} margin (the same <b>${fmt(PLAN_MAX_LEVERAGE,1)}×</b> leverage cap as Step 2 — ≤${fmt((PLAN_MAX_LEVERAGE-1)*100,0)}¢ of debt per $1 of equity)`:`your ${fmtD(equityBase)} equity — unlevered${onMargin?`, delevering to 1× (you're currently on ${fmtD(marginAmt)} margin)`:' (no margin headroom used)'}`}.</div>`:''}
-    ${ideal.chosen.length?`<table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">Stop</th></tr></thead><tbody>${idealRows}${idealFoot}</tbody></table>`:`<div class="tech-empty">Not enough scored names yet — load picks + fundamentals to build the target.</div>`}
-    ${ideal.exits.length?`<div class="fund-note">Held but <b>not</b> in the target — <b>sell to zero</b> (GTC limit) and recycle: ${ideal.exits.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.val)+(p.px>0?' lim '+P(p.px):'')).join(' · ')}. These scored below the cut on trend / valuation / momentum — confirm the thesis before selling.</div>`:''}
+    ${ideal.chosen.length?`<table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">TP / Stop</th></tr></thead><tbody>${idealRows}${idealFoot}</tbody></table>`:`<div class="tech-empty">Not enough scored names yet — load picks + fundamentals to build the target.</div>`}
+    ${ideal.exits.length?`<div class="fund-note"><b>Consolidation (optional):</b> your smallest holdings beyond the target's name cap — ${ideal.exits.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.val)).join(' · ')}. Not a forced sell; fold them into the core names above when convenient.</div>`:''}
     ${ideal.prompt?`<div style="margin-top:8px">${chatBtn('plan-ideal',ideal.prompt,'🤖 Build the rebalance to this target with Claude')}</div>`:''}`;
 }
 
