@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v56'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v57'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1758,7 +1758,11 @@ window.switchTab=switchTab;
     card.appendChild(body);
     if(!title.querySelector('.chevron')){ var ch=document.createElement('span'); ch.className='chevron'; ch.textContent='▼'; title.appendChild(ch); }
     title.classList.add('collapsible');
-    title.addEventListener('click',function(){
+    title.addEventListener('click',function(e){
+      // Only a bare-header tap collapses. Ignore taps on interactive controls that live in the
+      // header (e.g. the heatmap "Day / vs S&P YTD" toggles) — otherwise one tap both flips the
+      // toggle AND collapses the card.
+      if(e.target.closest('button, a, select, input, label')) return;
       var hide=body.style.display!=='none'; body.style.display=hide?'none':'';
       var c=title.querySelector('.chevron'); if(c)c.style.transform=hide?'rotate(-90deg)':'';
     });
