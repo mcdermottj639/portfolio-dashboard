@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v61'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v62'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1288,7 +1288,7 @@ function renderIncomeTax(income, harvest){
    cap, not a guess on the stock; RSI/valuation only flavour the "why now". rsiMap/ovMap/earningsMap
    are optional (decorators) so the function renders on the first pass before they're fetched. */
 const PLAN_SINGLE_CAP=0.25, PLAN_CLUSTER_CAP=0.40; // max % of equity for one name / one correlated cluster
-const PLAN_MARGIN_USE=0.50; // redeploy taps up to this fraction of available margin headroom (never all)
+const PLAN_MAX_LEVERAGE=1.5; // redeploy may borrow up to this total leverage (exposure/equity); 1.5× = ≤50¢ debt per $1 equity
 /* #9 — one source of truth for a pick's tradeable levels (live price, entry zone, limit, stop, TP1).
    The Action Plan's redeploy ticket and the Top-3 pick card both read this, so a pick can never show
    one entry zone in the card and a different limit in the plan. */
@@ -1356,20 +1356,22 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
 
   const freed=harvProceeds+trimProceeds;
   const netTaxable=realizedGain+bankedLoss; // gain realized trimming, offset by harvested loss
-  // #6 — deployable pool = cash raised from sells + idle settled cash + a CAPPED slice of available
-  // margin (default 50%, `PLAN_MARGIN_USE`). We use *some* leverage, never all of it, and never when
-  // already levered: when you're flat/positive-cash the plan will put up to half your borrowable
-  // headroom to work; when you're already on margin (cashVal<0) it deleverages instead — pay the loan
-  // down first (below), borrow nothing more, so marginUse is 0 there.
+  // #6 — deployable pool = cash raised from sells + idle settled cash + margin borrowed up to a fixed
+  // LEVERAGE CAP (`PLAN_MAX_LEVERAGE`, 1.5×). The cap is anchored to your own equity, not the broker's
+  // shifting buying-power offer: allowed fresh loan = (lev−1)×equity = 0.5×equity, i.e. ≤ 50¢ of debt per
+  // $1 you own. We only add leverage from a flat start; when already on margin (cashVal<0) the plan
+  // deleverages instead (marginUse 0, pay the loan down first below). Never beyond what the broker lends.
   const cashAvail=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.cashVal)||0); }catch(e){ return 0; } })();
   const bpv=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.bpVal)||0); }catch(e){ return 0; } })();
-  const marginRoom=onMargin?0:Math.max(0,bpv-cashAvail);   // borrowable headroom above settled cash
-  const marginUse=marginRoom*PLAN_MARGIN_USE;              // use only a fraction — keep the rest as buffer
+  const equityBase=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.equityVal)||0); }catch(e){ return 0; } })();
+  const marginCap=onMargin?0:(PLAN_MAX_LEVERAGE-1)*equityBase; // $ we may borrow before hitting the leverage cap
+  const brokerRoom=Math.max(0,bpv-cashAvail);                  // what the broker will actually lend on top of cash
+  const marginUse=Math.min(marginCap,brokerRoom);
   const pool=freed+cashAvail+marginUse;
-  const poolParts=[]; if(cashAvail>0)poolParts.push(fmtD(cashAvail)+' cash'); if(marginUse>0)poolParts.push(fmtD(marginUse)+' margin');
+  const poolParts=[]; if(cashAvail>0)poolParts.push(fmtD(cashAvail)+' cash'); if(marginUse>0)poolParts.push(fmtD(marginUse)+` margin (≤${fmt(PLAN_MAX_LEVERAGE,1)}×)`);
   const poolInclTxt=poolParts.length?` · incl. ${poolParts.join(' + ')}`:'';
   const poolNote=marginUse>0
-    ? ` The pool puts ~${fmt(PLAN_MARGIN_USE*100,0)}% of your available margin (${fmtD(marginUse)}) to work alongside cash — that's leverage; the rest of your margin is left as a buffer, so size to your own risk tolerance.`
+    ? ` The pool borrows up to your ${fmt(PLAN_MAX_LEVERAGE,1)}× leverage cap — ${fmtD(marginUse)} of margin (≤ ${fmt((PLAN_MAX_LEVERAGE-1)*100,0)}¢ of debt per $1 of equity) on top of cash. That's leverage: a 10% market drop hits a ${fmt(PLAN_MAX_LEVERAGE,1)}× book ~${fmt(PLAN_MAX_LEVERAGE*10,0)}%. Size to your own risk tolerance.`
     : (cashAvail>0?' The pool is freed cash + idle settled cash — no margin used here.':'');
 
   // Concrete sell tickets (cash-raising): trims worked into strength, losers exited marketable.
