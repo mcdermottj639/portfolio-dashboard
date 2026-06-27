@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v63'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v64'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1446,7 +1446,9 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   // It's a destination to drift toward — the table shows the per-name gap to today (NEW/ADD/TRIM/HOLD).
   const ideal=(()=>{
     const secOf=(sym)=>{ const ov=ovMap[sym]; let s=ov&&ov.Sector?titleCase(ov.Sector):null;
+      if(s&&/^(N\/?A|None|Trade Commercial)$/i.test(s))s=null;
       if(!s){ const pk=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(x=>x&&x.ticker===sym); if(pk)s=String(pk.sector||'').split('·')[0].trim(); }
+      if(!s&&typeof ASSET_MAP!=='undefined'&&ASSET_MAP[sym]&&ASSET_MAP[sym]!=='Stocks')s=ASSET_MAP[sym]; // ETFs AV won't sector-tag
       return s||'—'; };
     const scoreHeld=(p)=>{ let s=5; const sym=p.symbol, sma=smaMap[sym], rsi=rsiMap[sym], ov=ovMap[sym]||{};
       if(sma&&p.px>0) s+= p.px>=sma?1.2:-1.2;
@@ -1455,45 +1457,73 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       const rg=parseFloat(ov.QuarterlyRevenueGrowthYOY); if(!isNaN(rg)){ if(rg>0.15)s+=0.8; else if(rg<0)s-=0.8; }
       if(p.pnlP>0)s+=0.3; else if(p.pnlP<-30)s-=1;
       return Math.max(0,Math.min(10,s)); };
-    const pool=new Map(); // ticker -> {sym,sector,score,cur,held,isPick}
+    // Live price for ANY symbol: held position px → pick live/base → raw quote → prev close.
+    const pxOf=(sym)=>{ const h=enriched.find(p=>p.symbol===sym); if(h&&h.px>0)return h.px;
+      const pk=(typeof azPick==='function')?azPick(sym):null; if(pk&&pk.price>0)return pk.price;
+      const q=(typeof azQuote==='function')?azQuote(sym):null;
+      if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
+      return 0; };
+    const pool=new Map(); // ticker -> {sym,sector,score,cur,curVal,px,held,isPick,isIndex}
     enriched.filter(p=>p.val>=SMALL_THR&&p.px>0).forEach(p=>{
-      pool.set(p.symbol,{sym:p.symbol,sector:secOf(p.symbol),score:scoreHeld(p),cur:p.pct||0,held:true,isPick:false}); });
+      pool.set(p.symbol,{sym:p.symbol,sector:secOf(p.symbol),score:scoreHeld(p),cur:p.pct||0,curVal:p.val,px:p.px,held:true,isPick:false}); });
     const pickRows=[...((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]),
                     ...((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[])];
     pickRows.forEach(c=>{ const t=c&&c.ticker; if(!t)return;
       const comp=(typeof c.composite==='number')?c.composite:null;
       const sec=(typeof pickSector==='function')?pickSector(c):(String(c.sector||'').split('·')[0].trim()||'—');
       if(pool.has(t)){ const e=pool.get(t); e.isPick=true; if(comp!=null)e.score=Math.min(10,e.score+0.5); }
-      else if(comp!=null){ pool.set(t,{sym:t,sector:sec||'—',score:comp,cur:0,held:false,isPick:true}); } });
+      else if(comp!=null){ pool.set(t,{sym:t,sector:sec||'—',score:comp,cur:0,curVal:0,px:pxOf(t),held:false,isPick:true}); } });
     // Broad-market INDEX core — eligible even if unheld, so the target can anchor on a low-cost index
     // sleeve where it earns a slot (a natural ballast). Scored modestly so it competes, nudged by trend
     // when we have the 50-DMA. Held index ETFs already entered above (their held entry wins).
     [{sym:'SPY',base:6.4},{sym:'QQQ',base:5.9}].forEach(ix=>{ if(pool.has(ix.sym))return;
-      let s=ix.base; const sma=smaMap[ix.sym]; if(sma){ const px=(window.__SNAP&&window.__SNAP.px&&window.__SNAP.px[ix.sym]); if(px>0)s+= px>=sma?0.4:-0.6; }
-      pool.set(ix.sym,{sym:ix.sym,sector:'Index',score:s,cur:0,held:false,isPick:false,isIndex:true}); });
+      const px=pxOf(ix.sym); let s=ix.base; const sma=smaMap[ix.sym]; if(sma&&px>0)s+= px>=sma?0.4:-0.6;
+      pool.set(ix.sym,{sym:ix.sym,sector:'Index',score:s,cur:0,curVal:0,px,held:false,isPick:false,isIndex:true}); });
     const TARGET_MAX=14, PER_SEC=3;
     const ranked=[...pool.values()].sort((a,b)=>b.score-a.score);
     const secCount={}, chosen=[];
     for(const x of ranked){ if(chosen.length>=TARGET_MAX)break; const sec=x.sector||'—';
       if(sec!=='—'&&(secCount[sec]||0)>=PER_SEC)continue; chosen.push(x); secCount[sec]=(secCount[sec]||0)+1; }
-    if(chosen.length<3) return {chosen:[],exits:[],prompt:''};
+    if(chosen.length<3) return {chosen:[],exits:[],prompt:'',book:0};
     const sumSc=chosen.reduce((s,x)=>s+x.score,0)||1, FLOOR=0.035;
     chosen.forEach(x=>{ x.w=Math.min(PLAN_SINGLE_CAP,Math.max(FLOOR,x.score/sumSc)); });
     const sumW=chosen.reduce((s,x)=>s+x.w,0)||1;
     chosen.forEach(x=>{ x.tgt=x.w/sumW*100; const d=x.tgt-x.cur;
       x.act=!x.held?'NEW':(d>1.5?'ADD':(d<-1.5?'TRIM':'HOLD')); });
     chosen.sort((a,b)=>b.tgt-a.tgt);
+    // ── Dollar/share sizing under the 1.5× rule ──
+    // The target BOOK = equity + the same leverage the redeploy step allows: from a flat start, borrow up
+    // to (PLAN_MAX_LEVERAGE−1)×equity, clamped to what the broker lends (= marginUse, computed above).
+    // Already on margin → marginUse is 0, so the book = equity (the ideal delevers to 1×). Each name's
+    // target $ = weight × book; the trade = target $ − current value, converted to shares at the live px.
+    const book=Math.max(0,equityBase+marginUse);
+    const nowInvested=enriched.reduce((s,p)=>s+Math.max(p.val,0),0);
+    chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.delta=x.tgtVal-(x.curVal||0);
+      x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD'); });
     const chosenSet=new Set(chosen.map(x=>x.sym));
     const exits=enriched.filter(p=>p.val>=SMALL_THR&&!chosenSet.has(p.symbol)).sort((a,b)=>b.val-a.val);
-    const L=['Help me rebalance my Robinhood portfolio toward this target allocation. For each name, check the live price and my current position, compute the share delta to reach the target weight, review each order with the broker (review_equity_order), and place ONLY after I confirm each one.','','Target portfolio (% of equity):'];
-    chosen.forEach(x=>L.push('• '+x.sym+' — '+fmt(x.tgt,0)+'%'+(x.held?'':' (new position)')));
-    if(exits.length)L.push('','Exit / reduce to zero (held but not in the target): '+exits.map(p=>p.symbol).join(', '));
-    L.push('','Long-only, fully-invested target derived from my dashboard analysis. Snapshot prices are stale — re-check live marks and buying power before each fill. Education only — not financial advice.');
-    return {chosen,exits,prompt:L.join('\n')};
+    const netBuy=chosen.reduce((s,x)=>s+(x.delta>0?x.delta:0),0);
+    const netSell=chosen.reduce((s,x)=>s+(x.delta<0?-x.delta:0),0)+exits.reduce((s,p)=>s+p.val,0);
+    // Hand-off prompt — now carries the sized share/dollar trade per name + the leverage base.
+    const shTxt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
+    const L=['Help me rebalance my Robinhood portfolio toward this target allocation. The share counts below are sized to a target book of '+fmtD(book)+' ('+(marginUse>0?('my '+fmtD(equityBase)+' equity + up to '+fmtD(marginUse)+' margin, a '+fmt(PLAN_MAX_LEVERAGE,1)+'× cap'):'my '+fmtD(equityBase)+' equity, no added margin')+'). For each name, check the live price + my current position, then review each order with the broker (review_equity_order) and place ONLY after I confirm.','','Target book: '+fmtD(book)+(marginUse>0?(' (≤ '+fmt(PLAN_MAX_LEVERAGE,1)+'× leverage)'):' (unlevered)'),'',"Rebalance orders (≈, snapshot prices):"];
+    chosen.forEach(x=>{ if(x.side==='HOLD'||x.shares==null||Math.abs(x.delta)<Math.max(50,book*0.004)){ L.push('• HOLD '+x.sym+' — already ≈ target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'); return; }
+      L.push('• '+x.side+' ~'+shTxt(x.shares)+' sh '+x.sym+(x.px>0?(' @ ~$'+x.px.toFixed(2)):'')+' ≈ '+fmtD(Math.abs(x.delta))+' → target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+(x.held?'':' [new]')); });
+    if(exits.length)L.push('','Exit fully (held, not in target): '+exits.map(p=>'SELL all '+p.symbol+' (~'+fmtD(p.val)+')').join('; '));
+    L.push('','Long-only target derived from my dashboard analysis; weights tilt to conviction, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Snapshot prices are stale — re-check live marks and buying power before each fill. Education only — not financial advice.');
+    return {chosen,exits,prompt:L.join('\n'),book,nowInvested,netBuy,netSell,levered:marginUse>0};
   })();
-  const actStyle={NEW:'background:#dbeafe;color:#1e40af',ADD:'background:#d1fae5;color:#065f46',TRIM:'background:#ffedd5;color:#9a3412',HOLD:'background:#f3f4f6;color:#6b7280'};
   const tagOf=x=>x.held?'':(x.isIndex?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.isPick?' <span style="color:#9ca3af;font-size:10px">pick</span>':''));
-  const idealRows=ideal.chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${tagOf(x)}</td><td style="color:#6b7280;font-size:11.5px">${x.sector}</td><td class="tr" style="font-weight:700">${fmt(x.tgt,0)}%</td><td class="tr" style="color:#9ca3af">${x.held?fmt(x.cur,1)+'%':'—'}</td><td class="tc"><span class="badge" style="${actStyle[x.act]||actStyle.HOLD}">${x.act}</span></td></tr>`).join('');
+  const idealShFmt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
+  const idealHoldThr=Math.max(50,(ideal.book||0)*0.004);
+  const idealTrade=x=>{
+    if(x.shares==null) return '<span style="color:#9ca3af" title="no live price">—</span>';
+    if(x.side==='HOLD'||Math.abs(x.delta)<idealHoldThr) return '<span class="badge" style="background:#f3f4f6;color:#6b7280">hold</span>';
+    const col=x.side==='BUY'?'#065f46':'#991b1b';
+    return `<span style="color:${col};font-weight:700">${x.side==='BUY'?'+':'−'}${idealShFmt(x.shares)} sh</span><br><span style="color:#9ca3af;font-size:11px">≈ ${fmtD(Math.abs(x.delta))}</span>`;
+  };
+  const idealRows=ideal.chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${tagOf(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${fmtD(x.tgtVal)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(x.tgt,0)}%</span></td><td class="tr">${x.held?fmtD(x.curVal):'<span style="color:#9ca3af">—</span>'}<br><span style="color:#9ca3af;font-size:11px">${x.held?fmt(x.cur,1)+'%':'new'}</span></td><td class="tr">${idealTrade(x)}</td></tr>`).join('');
+  const idealFoot=ideal.chosen.length?`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Book</td><td class="tr">${fmtD(ideal.book)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">100%</span></td><td class="tr">${fmtD(ideal.nowInvested)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">now</span></td><td class="tr"><span style="color:#065f46">+${fmtD(ideal.netBuy)}</span><br><span style="color:#991b1b;font-size:11px;font-weight:400">−${fmtD(ideal.netSell)}</span></td></tr>`:'';
 
   el.innerHTML=`
     <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">A standing playbook — <b>raise cash</b> (harvest losers <i>and</i> right-size any over-weight winner) → <b>redeploy</b> to pull risk down → <b>guardrails</b>. Winners are trimmed only where one name is above <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> of equity: position discipline, not a call to sell a good stock.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}</div>
@@ -1595,9 +1625,10 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     </div>
 
     <div class="col-title" style="margin-top:14px">4 · Ideal portfolio <span class="card-hint">${ideal.chosen.length?`(target ${ideal.chosen.length}-name allocation)`:'(building…)'}</span></div>
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:2px 0 6px">A from-scratch, long-only target built from this dashboard's analysis — your strongest current holdings (trend vs 50-DMA · RSI · valuation · growth) blended with the top scored picks and a broad-market index core where it earns a slot, sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> per name. Weights tilt to conviction. A destination to drift toward, not a same-day trade.</div>
-    ${ideal.chosen.length?`<table><thead><tr><th>Ticker</th><th>Sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tc">Action</th></tr></thead><tbody>${idealRows}</tbody></table>`:`<div class="tech-empty">Not enough scored names yet — load picks + fundamentals to build the target.</div>`}
-    ${ideal.exits.length?`<div class="fund-note">Held but <b>not</b> in the target (candidates to exit / redeploy): ${ideal.exits.map(p=>'<b>'+p.symbol+'</b> '+fmt(p.pct,1)+'%').join(' · ')}. These scored below the cut on trend / valuation / momentum — confirm the thesis before selling.</div>`:''}
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:2px 0 6px">A from-scratch, long-only target built from this dashboard's analysis — your strongest current holdings (trend vs 50-DMA · RSI · valuation · growth) blended with the top scored picks and a broad-market index core where it earns a slot, sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> per name. Weights tilt to conviction. <b>Trade</b> = shares + $ to move from today to target, sized to a ${ideal.book?fmtD(ideal.book):'—'} book.</div>
+    ${ideal.book>0?`<div class="fund-note" style="margin:0 0 8px">Target book <b>${fmtD(ideal.book)}</b> = ${ideal.levered?`your ${fmtD(equityBase)} equity + up to ${fmtD(marginUse)} margin (the same <b>${fmt(PLAN_MAX_LEVERAGE,1)}×</b> leverage cap as Step 2 — ≤${fmt((PLAN_MAX_LEVERAGE-1)*100,0)}¢ of debt per $1 of equity)`:`your ${fmtD(equityBase)} equity — unlevered${onMargin?`, delevering to 1× (you're currently on ${fmtD(marginAmt)} margin)`:' (no margin headroom used)'}`}.</div>`:''}
+    ${ideal.chosen.length?`<table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th></tr></thead><tbody>${idealRows}${idealFoot}</tbody></table>`:`<div class="tech-empty">Not enough scored names yet — load picks + fundamentals to build the target.</div>`}
+    ${ideal.exits.length?`<div class="fund-note">Held but <b>not</b> in the target — <b>sell to zero</b> and recycle: ${ideal.exits.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.val)+' ('+fmt(p.pct,1)+'%)').join(' · ')}. These scored below the cut on trend / valuation / momentum — confirm the thesis before selling.</div>`:''}
     ${ideal.prompt?`<div style="margin-top:8px">${chatBtn('plan-ideal',ideal.prompt,'🤖 Build the rebalance to this target with Claude')}</div>`:''}`;
 }
 

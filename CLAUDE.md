@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v63** (`pf-v63`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v64** (`pf-v64`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -213,10 +213,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   thesis health) ∪ the top scored picks (their `composite`) ∪ a small **broad-market index core**
   (`SPY`/`QQQ`, eligible even if unheld so the target can anchor on an index sleeve where it earns a slot —
   held index ETFs win over the synthetic entry). Sector-diversified (≤3/sector), conviction-weighted with a
-  3.5% floor and the `PLAN_SINGLE_CAP` (25%) ceiling, normalized to 100%. The table shows per-name **Target
-  % / Now % / Action** (NEW/ADD/TRIM/HOLD), an "exit/redeploy" line for held names that didn't make the cut,
-  and a **🤖 hand-off button** (`ideal.prompt` → `chatBtn`) that asks Claude to compute the share deltas and
-  build the rebalance. It's a destination to drift toward, not a same-day trade. **Every line is a concrete order with a price**: sell/trim
+  3.5% floor and the `PLAN_SINGLE_CAP` (25%) ceiling, normalized to 100%. Each name is then **dollar/share
+  sized to a target BOOK** (v64) = `equityBase + marginUse` — i.e. equity plus the *same* `PLAN_MAX_LEVERAGE`
+  (1.5×) headroom Step 2 uses (borrow up to (lev−1)×equity, clamped to broker-lendable; already on margin →
+  `marginUse`=0 so the book delevers to 1×). Per name: target $ = weight×book, **trade = target $ − current
+  value**, shares = trade ÷ live price (`pxOf()` resolves held px → pick live/base → raw quote). The table
+  shows **Target ($/%) · Now ($/%) · Trade (±shares ≈ ±$)** with a **Book footer** (book / now-invested /
+  net-buy / net-sell), an "exit to zero" line for held names that didn't make the cut, and a **🤖 hand-off
+  button** (`ideal.prompt` → `chatBtn`) carrying the sized per-name orders + the leverage base. It's a
+  destination to drift toward, not a same-day trade. **Every line is a concrete order with a price**: sell/trim
   rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares risk/cap-clamped at the
   live price, entry zone + starter limit **anchored to the 50-DMA** `smaMap`, protective **stop** on the add).
   On the **Plan page the Top-3 pick cards now sit directly under the Action Center** (v58), ahead of the
