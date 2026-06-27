@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v60** (`pf-v60`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v61** (`pf-v61`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -183,10 +183,12 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   RSI/fwd-P/E only flavour the "why now"), with a **tax-netting line** (gains realized by the trims offset
   by the harvested loss → net taxable). Step 2 redeploys the pooled proceeds (pay down margin first if
   levered, then a beta-tilted ballast / defensive / high-conviction-add-or-cash split; the add never names
-  a ticker we're trimming/harvesting). The redeploy **pool folds in idle settled cash** (v60 — `max(0, __SNAP.stats.cashVal)`),
-  so the step doesn't collapse to empty on days with nothing to harvest. It deliberately **excludes margin
-  buying power** — the plan puts idle cash to work but never sizes into borrowed leverage (on margin,
-  `cashVal<0`, so the pool is just what Step 1 raises). The **high-conviction sleeve redeploys straight into the Picks list below it** —
+  a ticker we're trimming/harvesting). The redeploy **pool = freed cash + idle settled cash + a capped slice of available margin**
+  (v61 — `PLAN_MARGIN_USE`, default **50%** of borrowable headroom `bpVal−cash`). It uses *some* leverage,
+  never all of it, and **never when already levered**: flat/positive-cash → up to half your margin headroom
+  is put to work; already on margin (`cashVal<0`) → `marginUse=0` and it deleverages instead (the
+  **"After clearing margin"** line carves the loan off the top — that paydown is automatic at the broker
+  when Step 1's sells settle, not a separate order, so it's narration/allocation, never a buy ticket). The **high-conviction sleeve redeploys straight into the Picks list below it** —
   as a **SET, not one name** (v58): `renderActionPlan` builds `pickAdds` (up to **3** ideas you're not
   over-weight in or trimming, **sector- AND cluster-diversified**, skipping any that would worsen an
   over-`PLAN_CLUSTER_CAP` cluster). PRIMARY = the 3 vetted `PICK_PICKS`; when those don't fill the sleeve

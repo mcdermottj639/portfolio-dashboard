@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v60'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v61'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1288,6 +1288,7 @@ function renderIncomeTax(income, harvest){
    cap, not a guess on the stock; RSI/valuation only flavour the "why now". rsiMap/ovMap/earningsMap
    are optional (decorators) so the function renders on the first pass before they're fetched. */
 const PLAN_SINGLE_CAP=0.25, PLAN_CLUSTER_CAP=0.40; // max % of equity for one name / one correlated cluster
+const PLAN_MARGIN_USE=0.50; // redeploy taps up to this fraction of available margin headroom (never all)
 /* #9 — one source of truth for a pick's tradeable levels (live price, entry zone, limit, stop, TP1).
    The Action Plan's redeploy ticket and the Top-3 pick card both read this, so a pick can never show
    one entry zone in the card and a different limit in the plan. */
@@ -1355,12 +1356,21 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
 
   const freed=harvProceeds+trimProceeds;
   const netTaxable=realizedGain+bankedLoss; // gain realized trimming, offset by harvested loss
-  // #6 — idle SETTLED CASH is dry powder too, so the redeploy doesn't collapse to empty on days with
-  // nothing to harvest. Deployable pool = cash raised from sells + positive cash balance. We deliberately
-  // do NOT fold in margin buying power: the plan should put idle cash to work, never lever up. On margin
-  // (cashVal<0) there's no free cash, so the pool is just what Step 1 raises.
+  // #6 — deployable pool = cash raised from sells + idle settled cash + a CAPPED slice of available
+  // margin (default 50%, `PLAN_MARGIN_USE`). We use *some* leverage, never all of it, and never when
+  // already levered: when you're flat/positive-cash the plan will put up to half your borrowable
+  // headroom to work; when you're already on margin (cashVal<0) it deleverages instead — pay the loan
+  // down first (below), borrow nothing more, so marginUse is 0 there.
   const cashAvail=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.cashVal)||0); }catch(e){ return 0; } })();
-  const pool=freed+cashAvail;
+  const bpv=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.bpVal)||0); }catch(e){ return 0; } })();
+  const marginRoom=onMargin?0:Math.max(0,bpv-cashAvail);   // borrowable headroom above settled cash
+  const marginUse=marginRoom*PLAN_MARGIN_USE;              // use only a fraction — keep the rest as buffer
+  const pool=freed+cashAvail+marginUse;
+  const poolParts=[]; if(cashAvail>0)poolParts.push(fmtD(cashAvail)+' cash'); if(marginUse>0)poolParts.push(fmtD(marginUse)+' margin');
+  const poolInclTxt=poolParts.length?` · incl. ${poolParts.join(' + ')}`:'';
+  const poolNote=marginUse>0
+    ? ` The pool puts ~${fmt(PLAN_MARGIN_USE*100,0)}% of your available margin (${fmtD(marginUse)}) to work alongside cash — that's leverage; the rest of your margin is left as a buffer, so size to your own risk tolerance.`
+    : (cashAvail>0?' The pool is freed cash + idle settled cash — no margin used here.':'');
 
   // Concrete sell tickets (cash-raising): trims worked into strength, losers exited marketable.
   const sellOrders=[
@@ -1437,18 +1447,19 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     ${trims.length?`<div class="fund-note">Tax netting: the trims realize ≈ <b>${fmtD(realizedGain)}</b> of gains${harv.length?`, offset by the ${fmtD(bankedLoss)} loss banked above → <b>net taxable ≈ ${fmtD(netTaxable)}</b>`:''}. ${harv.length?(netTaxable<0?'The harvest more than covers the gain — the excess loss carries forward. ':'Harvesting alongside the trim is what keeps the tax bill small. ')+'Mind the 30-day wash-sale window on the harvested names. ':'Gains are taxable — favour long-term lots (held &gt; 1yr) or pair with a loss harvest when one appears. '}Not tax advice.</div>`:(harv.length?`<div class="fund-note">Wash-sale: don’t rebuy the harvested names for 30 days. The real win is redeploying the proceeds out of the concentrated book.</div>`:'')}
     ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Raise cash for the redeploy plan — harvest losers + right-size over-weight winners'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
 
-    <div class="col-title" style="margin-top:14px">2 · Redeploy the pool <span class="card-hint">(≈ ${fmtD(pool)} to put to work${cashAvail>0?` · incl. ${fmtD(cashAvail)} settled cash`:''})</span></div>
+    <div class="col-title" style="margin-top:14px">2 · Redeploy the pool <span class="card-hint">(≈ ${fmtD(pool)} to put to work${poolInclTxt})</span></div>
     ${(()=>{
-      if(pool<=0) return `<div class="tech-empty">Nothing freed above and no idle cash — no redeploy step until Step 1 raises cash.</div>`;
-      // Pay down margin first (cuts leverage directly), then split the remainder. Tilt to ballast when beta is high.
-      const payDown=onMargin?Math.min(freed,marginAmt):0; // margin is retired with realized cash, not by borrowing more
+      if(pool<=0) return `<div class="tech-empty">Nothing freed above and no cash or margin headroom — no redeploy step until Step 1 raises cash.</div>`;
+      // Margin clears automatically when Step 1's sells settle — so carve it off the top as already-spent,
+      // then split the remainder. Tilt to ballast when beta is high.
+      const payDown=onMargin?Math.min(freed,marginAmt):0; // the loan nets down against sale proceeds at the broker
       const rem=pool-payDown;
       const hiBeta=beta!=null&&beta>1.1;
       let wB=hiBeta?0.55:0.45, wD=0.30, wO=hiBeta?0.15:0.25;
       const sz=f=>` <span style="color:#9ca3af">≈ ${fmtD(f)}</span>`;
       const rows=[], buyOrders=[];
       const bar=()=>rows.length?'border-top:1px solid var(--surface-2)':'';
-      if(payDown>0) rows.push(`<div style="padding:6px 0"><b style="color:#0969da">Pay down margin</b>${sz(payDown)} — retires borrowed cash first; lowers effective leverage before adding any risk.</div>`);
+      if(payDown>0) rows.push(`<div style="padding:6px 0"><b style="color:#0969da">After clearing margin</b>${sz(payDown)} — selling above automatically pays your loan down first (it nets against the proceeds at the broker — not a separate order); only the rest below is new buying power.</div>`);
       // Low-beta ballast → concrete buy on the lowest-β held name.
       const bT=lowBeta.length?lowBeta[0].p:null;
       if(bT){ const d=rem*wB, q=Math.floor(d/bT.px), a=anchor(bT); if(q>0){ buyOrders.push({side:'BUY',sym:bT.symbol,qty:q,limit:bT.px,zone:a.zone,note:'low-β ballast'});
@@ -1512,7 +1523,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
         rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Cash cushion</b>${sz(convBucket)} — ${onMargin?'hold against the margin; dry powder for pullbacks.':'dry powder for pullbacks and to stay nimble.'}</div>`);
       }
       const buyBtn=buyOrders.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buyOrders,'Redeploy the freed cash into ballast / defensive / high-conviction names'),'🤖 Build '+(buyOrders.length>1?('these '+buyOrders.length+' buys'):'this buy')+' with Claude')}</div>`:'';
-      return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${rows.join('')}<div class="fund-note">${payDown>0?'Margin paid down first, then a ':'A '}${hiBeta?'beta-tilted':'balanced'} split of the remaining ${fmtD(rem)}. Buys are sized from each bucket at the live price; the 50-day average is the pullback anchor.${cashAvail>0?' The pool is freed cash + idle settled cash — no margin is assumed; the plan never sizes into borrowed buying power.':''} Indicative — re-check the live mark and your buying power before each fill.</div>${buyBtn}</div>`;
+      return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${rows.join('')}<div class="fund-note">${payDown>0?'Margin paid down first, then a ':'A '}${hiBeta?'beta-tilted':'balanced'} split of the remaining ${fmtD(rem)}. Buys are sized from each bucket at the live price; the 50-day average is the pullback anchor.${poolNote} Indicative — re-check the live mark and your buying power before each fill.</div>${buyBtn}</div>`;
     })()}
 
     <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(standing trim &amp; stop rules)</span></div>
