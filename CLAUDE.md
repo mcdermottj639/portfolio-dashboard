@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v59** (`pf-v59`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v60** (`pf-v60`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -183,9 +183,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   RSI/fwd-P/E only flavour the "why now"), with a **tax-netting line** (gains realized by the trims offset
   by the harvested loss → net taxable). Step 2 redeploys the pooled proceeds (pay down margin first if
   levered, then a beta-tilted ballast / defensive / high-conviction-add-or-cash split; the add never names
-  a ticker we're trimming/harvesting). The redeploy **pool itself folds in available buying power** (v58 —
-  `__SNAP.stats.bpVal`), so the step doesn't collapse to empty on days with nothing to harvest (labelled,
-  with a leverage caveat). The **high-conviction sleeve redeploys straight into the Picks list below it** —
+  a ticker we're trimming/harvesting). The redeploy **pool folds in idle settled cash** (v60 — `max(0, __SNAP.stats.cashVal)`),
+  so the step doesn't collapse to empty on days with nothing to harvest. It deliberately **excludes margin
+  buying power** — the plan puts idle cash to work but never sizes into borrowed leverage (on margin,
+  `cashVal<0`, so the pool is just what Step 1 raises). The **high-conviction sleeve redeploys straight into the Picks list below it** —
   as a **SET, not one name** (v58): `renderActionPlan` builds `pickAdds` (up to **3** ideas you're not
   over-weight in or trimming, **sector- AND cluster-diversified**, skipping any that would worsen an
   over-`PLAN_CLUSTER_CAP` cluster). PRIMARY = the 3 vetted `PICK_PICKS`; when those don't fill the sleeve
