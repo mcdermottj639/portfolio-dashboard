@@ -448,7 +448,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
 <div class="tabbar" id="tabbar">
   <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Portfolio</button>
   <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
-  <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Picks<span class="tab-sub" id="tab-picks-date"></span></button>
+  <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Plan<span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
   <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
 </div>
@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v54'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v56'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1167,6 +1167,23 @@ function renderActionFeed(list){
   el.innerHTML='<div class="act-list">'+list.map(a=>`<div class="act-item" style="background:${a.c}1f;border-color:${a.c}"><div class="act-icon">${a.icon}</div><div class="act-body"><div class="act-title" style="color:var(--text)">${a.title}<span class="act-tag" style="background:${a.c};color:#fff">${a.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.82">${a.detail}</div></div></div>`).join('')+'</div>';
 }
 
+/* Paint both tiers of the Action Center from the latest portfolio snapshot (window.__SNAP).
+   The card markup now lives on the Plan & Picks page, but the data is portfolio-derived: the main
+   load() flow stashes each enrichment stage into __SNAP and calls this as the data lands, and the
+   Picks page calls it when it renders — so the card populates whether the Picks tab is opened before
+   or after the portfolio finished loading. No-ops cleanly until both the data and the DOM exist. */
+function paintActionCenter(){
+  const S=window.__SNAP; if(!S||!S.enriched)return;
+  const tv=(S.stats&&S.stats.totalVal)||S.totalVal||0;
+  if(document.getElementById('act-content')){
+    try{ renderActionFeed(buildActionFeed(S.enriched,S.port||{},S.clusters,tv,S.rsiMap||{},S.ovMap||{},S.earn||{})); }catch(e){}
+  }
+  if(document.getElementById('plan-content')){
+    try{ renderActionPlan(S.enriched,S.clusters,tv,S.betaInfo,S.rsiMap,S.ovMap,S.earn,S.smaMap); }catch(e){}
+  }
+}
+window.paintActionCenter=paintActionCenter;
+
 /* ═══ Risk & Diversification ═══ */
 function renderRisk(enriched, clusters, totalVal, betaInfo, metrics, corrG){
   const el=document.getElementById('risk-content'); if(!el)return;
@@ -1260,7 +1277,7 @@ function renderIncomeTax(income, harvest){
     ${(()=>{ const R=(window.__DATA&&window.__DATA.realized)||null; if(!R||!R.premiumYTD)return ''; return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">💵 Options premium collected ${R.year||'YTD'}: <b style="color:#10b981">+${fmtD(R.premiumYTD)}</b> <span style="color:#9ca3af">— cash banked from selling calls/puts (e.g. your IREN covered call); counts as realized only once the contract expires or is closed.</span></div>`; })()}
     <div class="two-col no-mb">
       <div><div class="col-title">📅 Upcoming Ex-Dividend Dates</div>${ex.length?ex.map(e=>`<div class="exdiv-line"><span><b>${e.sym}</b> <span style="color:#9ca3af">$${fmt(e.dps,2)}/sh</span></span><span>${e.date} · <b class="pos">${fmtD(e.inc)}</b></span></div>`).join(''):'<div class="tech-empty">No upcoming ex-div dates in covered holdings.</div>'}</div>
-      <div><div class="col-title">🧾 Tax-Loss Harvest</div>${harvTop.length?`<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${harvest.length} position${harvest.length===1?'':'s'} carrying ${fmtD(totalHarv)} of harvestable loss. The itemized list — and the sized winner-trims those losses offset — now live in the <b>⚡ Action Center</b> above (Step 1 · Raise cash).</div>`:'<div class="tech-empty">No positions in the red above $'+SMALL_THR+'.</div>'}</div>
+      <div><div class="col-title">🧾 Tax-Loss Harvest</div>${harvTop.length?`<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${harvest.length} position${harvest.length===1?'':'s'} carrying ${fmtD(totalHarv)} of harvestable loss. The itemized list — and the sized winner-trims those losses offset — now live in the <b>⚡ Action Center</b> on the <span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab</span> (Step 1 · Raise cash).</div>`:'<div class="tech-empty">No positions in the red above $'+SMALL_THR+'.</div>'}</div>
     </div>
     <div class="cov-note">Dividends/ex-div from covered holdings (top names). ${(window.__DATA&&window.__DATA.realized&&window.__DATA.realized.approx)?'Realized stock gains are an average-cost estimate from order history (no tax-lot/wash-sale adjustment) — confirm against your Robinhood tax documents. ':''}Harvesting realizes a loss to offset gains — avoid rebuying the same security within 30 days (wash-sale rule). Not tax advice.</div>`;
 }
@@ -1316,6 +1333,13 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   // Don't pitch adding to a name we're simultaneously trimming for concentration or harvesting (wash-sale).
   const raiseSet=new Set([...trims.map(t=>t.p.symbol),...harv.map(p=>p.symbol)]);
   const addCand=enriched.filter(p=>p.val>=SMALL_THR&&p.px>0&&!raiseSet.has(p.symbol)&&rsiMap[p.symbol]!=null&&rsiMap[p.symbol]<=33&&p.pnlP>-40).sort((a,b)=>rsiMap[a.symbol]-rsiMap[b.symbol])[0]||null;
+  // The redeploy's high-conviction sleeve targets the Plan & Picks list directly: the top-ranked pick
+  // you're not already over-weight in (and not simultaneously trimming/harvesting). This is the loop —
+  // the cash Step 1 raises flows into the ideas scored right below the plan. Falls back to addCand, then cash.
+  const heldPct={}; enriched.forEach(p=>{ if(p.val>0)heldPct[p.symbol]=p.pct; });
+  const pickAdd=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[])
+    .map((p,i)=>({p,rank:i+1}))
+    .filter(x=>x.p&&x.p.ticker&&!raiseSet.has(x.p.ticker)&&(heldPct[x.p.ticker]==null||heldPct[x.p.ticker]<PLAN_SINGLE_CAP*100))[0]||null;
   // Buy-entry levels anchored to the 50-day average: pullback zone + a starter limit at the live price.
   const anchor=(p)=>{ const s=smaMap[p.symbol]; const px=p.px;
     if(s==null||!isFinite(s)) return {note:`starter limit ≤ ${P(px)}`, zone:`≤ ${P(px)}`};
@@ -1366,12 +1390,25 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
         rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(d)} — <b>buy ~${q} sh ${dT.symbol}</b> · limit ${a.zone}. Ballast + yield, low correlation to the growth book.</div>`); }
         else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(d)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>`); }
       else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(rem*wD)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>`);
-      // High-conviction add → concrete dip-buy with a protective stop, else cash.
-      if(addCand){ const d=rem*wO, q=Math.floor(d/addCand.px), a=anchor(addCand), s=smaMap[addCand.symbol];
-        const stop=(s!=null&&isFinite(s)&&s<addCand.px)?Math.min(s*0.97,addCand.px*0.93):addCand.px*0.90;
-        if(q>0){ buyOrders.push({side:'BUY',sym:addCand.symbol,qty:q,limit:addCand.px,zone:a.zone,stop:stop,note:'oversold high-conviction add'});
-          rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add</b>${sz(d)} — <b>buy ~${q} sh ${addCand.symbol}</b> (RSI ${fmt(rsiMap[addCand.symbol],0)}, oversold) · limit ${a.zone} · stop ${P(stop)}. A dip-buy rather than parking it all in cash.</div>`); }
-        else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add</b>${sz(d)} — ${addCand.symbol} is oversold (RSI ${fmt(rsiMap[addCand.symbol],0)}); a dip-buy rather than cash.</div>`); }
+      // High-conviction add → redeploy straight into today's top pick (with its own entry/stop), else
+      // an oversold held name, else cash. Closes the raise-cash → pick loop on one surface.
+      const addPlan=(()=>{
+        if(pickAdd){ const p=pickAdd.p; const px=((typeof _picksLive!=='undefined'&&_picksLive[p.ticker]&&_picksLive[p.ticker].price))||p.basePrice||0;
+          if(px>0){ const rng=(typeof parseRange==='function'?parseRange(p.entry):null);
+            const stop=(p.sl&&p.sl.price)?p.sl.price:px*0.90;
+            return {sym:p.ticker,px,zone:p.entry||('≤ '+P(px)),limit:(rng&&rng.hi?rng.hi:px),stop,rank:pickAdd.rank,
+              why:`<b>#${pickAdd.rank} pick</b>${p.signal?' · '+p.signal:''} — entry ${p.entry||P(px)}${p.tp1?`, target $${p.tp1.price}`:''}, stop ${P(stop)}. Redeploying into today's top-scored idea.`}; }
+        }
+        if(addCand){ const px=addCand.px, a=anchor(addCand), s=smaMap[addCand.symbol];
+          const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
+          return {sym:addCand.symbol,px,zone:a.zone,limit:px,stop,rank:null,
+            why:`oversold (RSI ${fmt(rsiMap[addCand.symbol],0)}) · limit ${a.zone}, stop ${P(stop)}. A dip-buy rather than parking it all in cash.`}; }
+        return null;
+      })();
+      if(addPlan){ const d=rem*wO, q=Math.floor(d/addPlan.px);
+        if(q>0){ buyOrders.push({side:'BUY',sym:addPlan.sym,qty:q,limit:addPlan.limit,zone:addPlan.zone,stop:addPlan.stop,note:addPlan.rank?('high-conviction add · #'+addPlan.rank+' pick'):'oversold high-conviction add'});
+          rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add</b>${sz(d)} — <b>buy ~${q} sh ${addPlan.sym}</b> · ${addPlan.why}</div>`); }
+        else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add</b>${sz(d)} — ${addPlan.sym}: ${addPlan.why}</div>`); }
       else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Cash cushion</b>${sz(rem*wO)} — ${onMargin?'hold against the margin; dry powder for pullbacks.':'dry powder for pullbacks and to stay nimble.'}</div>`);
       const buyBtn=buyOrders.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buyOrders,'Redeploy the freed cash into ballast / defensive / high-conviction names'),'🤖 Build '+(buyOrders.length>1?('these '+buyOrders.length+' buys'):'this buy')+' with Claude')}</div>`:'';
       return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${rows.join('')}<div class="fund-note">${payDown>0?'Margin paid down first, then a ':'A '}${hiBeta?'beta-tilted':'balanced'} split of the remaining ${fmtD(rem)}. Buys are sized from each bucket at the live price; the 50-day average is the pullback anchor. Indicative — re-check the live mark and your buying power before each fill.</div>${buyBtn}</div>`;
@@ -1577,7 +1614,7 @@ async function load(){
     const marginPct=equityVal>0?(Math.abs(Math.min(cashVal,0))/equityVal)*100:0;
     const stats={totalVal,equityVal,cashVal,bpVal,dayPnL,dayPnLP,totalPnL,totalRet,marginPct};
     const SNAP_DATE=(window.__DATA&&window.__DATA.generatedAtLabel)||new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-    window.__SNAP={stats,clusters,enriched,date:SNAP_DATE,betaInfo:null,alloc:null,income:null,harvest:null,perf:null};
+    window.__SNAP={stats,clusters,enriched,port,date:SNAP_DATE,betaInfo:null,alloc:null,income:null,harvest:null,perf:null,rsiMap:null,smaMap:null,ovMap:null,earn:null};
     const smalls=enriched.filter(p=>p.val>0&&p.val<SMALL_THR);
 
     app.innerHTML=`
@@ -1587,27 +1624,20 @@ async function load(){
       <div class="card"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
       <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
-        <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
-        <div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div>
-        <div class="ac-tier">🧭 The plan <span class="card-hint">(raise · redeploy · guardrails)</span></div>
-        <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
-      </div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
       ${smalls.length>0?`<div class="card"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
-      <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 See today's Daily Picks (S&P 500 / large-cap scan) →</span></div>
+      <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks + ⚡ Action Center (raise cash · redeploy plan) →</span></div>
       <div class="disclaimer">Live from Robinhood + Alpha Vantage. Research only — not financial advice.</div>`;
 
     renderSnapshot(stats,null);
     renderHeatmap();
     _renderPos(enriched);
     renderRisk(enriched,clusters,totalVal,null,null,null);
-    renderActionFeed(buildActionFeed(enriched,port,clusters,totalVal,{},{},{}));
-    renderActionPlan(enriched,clusters,totalVal,null);
+    paintActionCenter();   // Action Center now lives on the Plan & Picks page; paint from __SNAP.
 
     /* background enrichment */
     const main=enriched.filter(p=>p.val>=SMALL_THR).sort((a,b)=>b.val-a.val);
@@ -1629,7 +1659,8 @@ async function load(){
       guard('snapshot',()=>renderSnapshot(stats,betaInfo));
       guard('risk',()=>renderRisk(enriched,clusters,totalVal,betaInfo,riskMetrics,corrG));
       guard('tech',()=>renderTechSignals(enriched,rsiMap,smaMap));
-      guard('plan',()=>renderActionPlan(enriched,clusters,totalVal,betaInfo,rsiMap,undefined,undefined,smaMap));
+      if(window.__SNAP){ window.__SNAP.rsiMap=rsiMap; window.__SNAP.smaMap=smaMap; }
+      guard('plan',()=>paintActionCenter());
       let ovMap=await loadFundFeed().catch(()=>({}));
       const ovMissing=cover.filter(s=>!ovMap[s]);
       if(ovMissing.length){ const ovLive=await fetchOverviewBatch(ovMissing).catch(()=>({})); ovMap=Object.assign({},ovMap,ovLive); }
@@ -1639,8 +1670,8 @@ async function load(){
       if(_income)guard('incomeRender',()=>renderIncomeTax(_income, _harvest));
       guard('fundamentals',()=>renderFundamentals(enriched,ovMap));
       const earn=await fetchEarningsCalendar().catch(()=>({}));
-      guard('actionFeed',()=>renderActionFeed(buildActionFeed(enriched,port,clusters,totalVal,rsiMap,ovMap,earn)));
-      guard('plan',()=>renderActionPlan(enriched,clusters,totalVal,betaInfo,rsiMap,ovMap,earn,smaMap));
+      if(window.__SNAP){ window.__SNAP.earn=earn; }
+      guard('actionCenter',()=>paintActionCenter());
     })();
 
   }catch(err){ app.innerHTML=`<div class="card"><div style="color:#ef4444;font-size:13px">Failed to load: ${err&&err.message}</div></div>`; }
@@ -2517,6 +2548,13 @@ function renderPicksStatic(){
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
+      <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
+      <div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div>
+      <div class="ac-tier">🧭 The plan <span class="card-hint">(raise · redeploy · guardrails)</span></div>
+      <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
+    </div></div>
     <div class="card">
       <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">tech 33% · fundamentals 28% · R/R 19% · social 20%</span></span></div>
       <div class="chart-wrap" style="height:300px"><canvas id="picks-chart"></canvas></div>
@@ -2530,12 +2568,12 @@ function renderPicksStatic(){
       <div class="picks-grid2" id="picks-cards"></div>
     </div>
     <div class="card" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
-    ${(PICK_TRIM.length||PICK_ADD.length)?`<div class="card"><div class="card-title"><span>⚖️ Trim / Add <span class="card-hint">on what you own</span></span></div>${PICK_TRIM.concat(PICK_ADD).map(x=>`<div class="act-item" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'}1f;border-color:${x.cls==='pill-trim'?'#ef4444':'#10b981'};margin-bottom:8px"><div class="act-body"><div class="act-title" style="color:var(--text)">${x.t} <span class="act-tag" style="background:${x.cls==='pill-trim'?'#ef4444':'#10b981'};color:#fff">${x.pill}</span></div><div class="act-detail" style="color:var(--text);opacity:.82">${x.txt}</div></div></div>`).join('')}<div class="fund-note">Rule-based from your live weights, P&L and RSI. Trim = weight ≥ 8% or RSI ≥ 70; Add = quality names below cost &amp; under-weight.</div></div>`:''}
     ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
     ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
     <div class="card" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
     <div class="disclaimer">⚠️ Not financial advice. Scan generated ${ANALYSIS_DATE}; live prices &amp; RSI via Robinhood + Alpha Vantage. Research independently before entering any position.</div>
   `;
+  paintActionCenter();   // portfolio-derived; populates now if __SNAP is ready, else when load() lands.
   renderPicksChart();
   renderPicksFilters();
   renderPicksTable();
