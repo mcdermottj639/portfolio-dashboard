@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v54** (`pf-v54`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v55** (`pf-v55`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -168,29 +168,33 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   correlation context** block (largest theme, an **empirical correlated cluster** from actual return
   correlation in `corrGroups`, and the highest-β "fragile leg" from per-symbol betas — no hardcoded
   tickers); allocation; Income & Tax (dividends, realized YTD, options premium — the itemized harvest
-  list now lives in the Action Center, only a summary stat + pointer remain here); **Action Center** —
-  one card, two tiers: a **Do-now** tier (the ranked live-signal feed: margin/concentration/earnings/
-  overbought/oversold/correlated/retail-buzz) and a **The-plan** tier (`renderActionPlan`). The plan is
-  **right-sizing, not "sell no winners"**: Step 1 raises cash by harvesting losers **and trimming the
-  excess of any name over a single-name weight cap** (`PLAN_SINGLE_CAP`, 25%; over-weight winners are no
-  longer off-limits — trigger is concentration, RSI/fwd-P/E only flavour the "why now"), with a
-  **tax-netting line** (gains realized by the trims offset by the harvested loss → net taxable). Step 2
-  redeploys the pooled proceeds (pay down margin first if levered, then a beta-tilted ballast / defensive
-  / high-conviction-add-or-cash split; the add never names a ticker we're trimming/harvesting). Step 3 =
-  standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim, fragile-leg
-  trailing stop, earnings reassess). **Every line is a concrete order with a price**: sell/trim rows carry
-  a **Limit** column (live price, worked GTC into strength for trims, marketable exit for losers); redeploy
-  buckets become sized **buy tickets** (shares from the bucket $ ÷ live price, an entry zone + starter limit
-  **anchored to the 50-DMA** `smaMap`, and a protective **stop** on the high-conviction add). Step 1 and
-  Step 2 each get a **🤖 hand-off button** (`planOrdersPrompt` → `chatBtn`) that opens a Claude chat with
-  the whole batch of equity orders (side/qty/limit/stop) pre-filled for review-then-place via the RH
-  connector. `renderActionPlan(enriched,clusters,totalVal,betaInfo,rsiMap,ovMap,earningsMap,smaMap)` —
-  the last four args are decorators, so it renders on the first pass and re-renders as they arrive.
-  **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above commentary is derived from
-  live data; optional owner editorial can be supplied via `data.notes`.
-- **Picks:** **sortable + sector-filterable** scored candidates table incl. a **Social** column (retail
-  buzz, 20% of composite, with an inline buzz label) and **data-coverage cues** (grey social = "no data,
-  neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable). Top-3 cards with thesis/levels
+  list now lives in the Action Center — which now sits on the **Picks page** (see below) — only a summary
+  stat + pointer remain here). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above
+  commentary is derived from live data; optional owner editorial can be supplied via `data.notes`.
+- **Picks (the "Plan & Picks" page):** **sortable + sector-filterable** scored candidates table incl. a
+  **Social** column (retail buzz, 20% of composite, with an inline buzz label) and **data-coverage cues**
+  (grey social = "no data, neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable).
+  **Action Center** (moved here from Portfolio in v55 — it's portfolio-derived but conceptually "the plan",
+  so it pairs with Picks as the act/decide surface): one card, two tiers below the hero — a **Do-now** tier
+  (the ranked live-signal feed: margin/concentration/earnings/overbought/oversold/correlated/retail-buzz)
+  and a **The-plan** tier (`renderActionPlan`). The plan is **right-sizing, not "sell no winners"**: Step 1
+  raises cash by harvesting losers **and trimming the excess of any name over a single-name weight cap**
+  (`PLAN_SINGLE_CAP`, 25%; over-weight winners are no longer off-limits — trigger is concentration,
+  RSI/fwd-P/E only flavour the "why now"), with a **tax-netting line** (gains realized by the trims offset
+  by the harvested loss → net taxable). Step 2 redeploys the pooled proceeds (pay down margin first if
+  levered, then a beta-tilted ballast / defensive / high-conviction-add-or-cash split; the add never names
+  a ticker we're trimming/harvesting) — **and the redeploy targets are literally the picks below it**.
+  Step 3 = standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim,
+  fragile-leg trailing stop, earnings reassess). **Every line is a concrete order with a price**: sell/trim
+  rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares from bucket $ ÷ live
+  price, entry zone + starter limit **anchored to the 50-DMA** `smaMap`, protective **stop** on the add).
+  Step 1 / Step 2 each get a **🤖 hand-off button** (`planOrdersPrompt` → `chatBtn`). The Action Center is
+  **portfolio-derived**: `load()` stashes each enrichment stage into `window.__SNAP` and calls
+  `paintActionCenter()`, which `renderPicksStatic()` also calls — so the card populates whether the Picks
+  tab is opened before or after the portfolio finished loading (no-ops cleanly until data + DOM both exist).
+  `renderActionPlan(enriched,clusters,totalVal,betaInfo,rsiMap,ovMap,earningsMap,smaMap)` — the last four
+  args are decorators, so it renders on the first pass and re-renders as they arrive.
+  Top-3 cards with thesis/levels
   are **sector-diversified** and carry a **catalyst-risk note** when earnings land inside the swing window.
   **Track Record** card grades archived past picks (`data.picks.history`) on a closing basis — hit
   TP1/TP2, stopped, or open — with a running hit-rate + avg return (graded client-side from daily bars).
