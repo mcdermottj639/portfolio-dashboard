@@ -81,7 +81,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v56** (`pf-v56`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v58** (`pf-v58`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -183,15 +183,27 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   RSI/fwd-P/E only flavour the "why now"), with a **tax-netting line** (gains realized by the trims offset
   by the harvested loss → net taxable). Step 2 redeploys the pooled proceeds (pay down margin first if
   levered, then a beta-tilted ballast / defensive / high-conviction-add-or-cash split; the add never names
-  a ticker we're trimming/harvesting). The **high-conviction sleeve redeploys straight into the Picks list
-  below it** — `renderActionPlan` builds `pickAdd` (top-ranked `PICK_PICKS` entry you're not over-weight in
-  or trimming) and sizes a buy ticket using that pick's own entry zone / `tp1` / `sl.price`, falling back to
-  an oversold held name, then cash. (The old producer-driven **⚖️ Trim/Add** card was retired in v56 — the
+  a ticker we're trimming/harvesting). The redeploy **pool itself folds in available buying power** (v58 —
+  `__SNAP.stats.bpVal`), so the step doesn't collapse to empty on days with nothing to harvest (labelled,
+  with a leverage caveat). The **high-conviction sleeve redeploys straight into the Picks list below it** —
+  as a **SET, not one name** (v58): `renderActionPlan` builds `pickAdds` (up to **3** top-ranked `PICK_PICKS`
+  entries you're not over-weight in or trimming, **sector- AND cluster-diversified**, skipping any pick that
+  would worsen an over-`PLAN_CLUSTER_CAP` cluster). Each add is sized **risk-based** (1% of book at its stop)
+  and **clamped** so it can't push the name past `PLAN_SINGLE_CAP` or outrun its bucket, **flags earnings**
+  inside a 14-day swing window (`azEarn`), and reads its levels from the shared **`pickLevels(p)`** helper
+  (v58 — single source of truth for px/entry-zone/limit/stop/tp1, so the plan and the Top-3 card never
+  disagree). Falls back to an oversold held name, then cash. A **Track-Record conviction line** (hit-rate /
+  avg-return from `picksTrackStats()`) decorates the sleeve when ≥3 picks have resolved. The chosen picks are
+  stashed in `window.__PLAN_ADDS` so the **Top-3 cards badge "🧭 the plan picked this"** with the sized share
+  count and a deep-link back to the plan, and each plan add deep-links **down to its card** (`jumpToPick`) —
+  two-way linking (v58). (The old producer-driven **⚖️ Trim/Add** card was retired in v56 — the
   Do-now feed + this plan own trim/add now; `PICK_TRIM`/`PICK_ADD` still load but aren't rendered.)
   Step 3 = standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim,
   fragile-leg trailing stop, earnings reassess). **Every line is a concrete order with a price**: sell/trim
-  rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares from bucket $ ÷ live
-  price, entry zone + starter limit **anchored to the 50-DMA** `smaMap`, protective **stop** on the add).
+  rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares risk/cap-clamped at the
+  live price, entry zone + starter limit **anchored to the 50-DMA** `smaMap`, protective **stop** on the add).
+  On the **Plan page the Top-3 pick cards now sit directly under the Action Center** (v58), ahead of the
+  Composite chart / Scoring table, so "the plan → the three ideas it deploys into" reads as one unit.
   Step 1 / Step 2 each get a **🤖 hand-off button** (`planOrdersPrompt` → `chatBtn`). The Action Center is
   **portfolio-derived**: `load()` stashes each enrichment stage into `window.__SNAP` and calls
   `paintActionCenter()`, which `renderPicksStatic()` also calls — so the card populates whether the Picks

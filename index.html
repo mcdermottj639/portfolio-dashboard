@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v57'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v58'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1288,6 +1288,25 @@ function renderIncomeTax(income, harvest){
    cap, not a guess on the stock; RSI/valuation only flavour the "why now". rsiMap/ovMap/earningsMap
    are optional (decorators) so the function renders on the first pass before they're fetched. */
 const PLAN_SINGLE_CAP=0.25, PLAN_CLUSTER_CAP=0.40; // max % of equity for one name / one correlated cluster
+/* #9 — one source of truth for a pick's tradeable levels (live price, entry zone, limit, stop, TP1).
+   The Action Plan's redeploy ticket and the Top-3 pick card both read this, so a pick can never show
+   one entry zone in the card and a different limit in the plan. */
+function pickLevels(p){
+  const live=(typeof _picksLive!=='undefined'&&_picksLive[p.ticker]&&_picksLive[p.ticker].price)||0;
+  const px=live||p.basePrice||0;
+  const rng=(typeof parseRange==='function'?parseRange(p.entry):null);
+  const stop=(p.sl&&p.sl.price)?p.sl.price:(px?px*0.90:0);
+  const tp1=(p.tp1&&p.tp1.price)||null;
+  const zone=p.entry||(px?('≤ $'+fmt(px,px>=1?2:4)):'—');
+  const limit=(rng&&rng.hi)?rng.hi:px;
+  return {px,zone,limit,stop,tp1,rng,live:!!live};
+}
+/* #5 — deep-link from a plan add to its Top-3 card (and a brief highlight so it's findable). */
+function jumpToPick(t){ try{ const el=document.getElementById('pickcard-'+t); if(!el)return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  const o=el.style.boxShadow; el.style.boxShadow='0 0 0 2px #6366f1'; setTimeout(()=>{el.style.boxShadow=o;},1500);
+}catch(e){} }
+window.jumpToPick=jumpToPick;
 function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap, earningsMap, smaMap){
   const el=document.getElementById('plan-content'); if(!el)return;
   rsiMap=rsiMap||{}; ovMap=ovMap||{}; earningsMap=earningsMap||{}; smaMap=smaMap||{};
@@ -1319,6 +1338,10 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
 
   const freed=harvProceeds+trimProceeds;
   const netTaxable=realizedGain+bankedLoss; // gain realized trimming, offset by harvested loss
+  // #6 — buying power is dry powder too, so the redeploy doesn't collapse to empty on days with
+  // nothing to harvest. Deployable pool = cash raised from sells + available buying power.
+  const bpAvail=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.bpVal)||0); }catch(e){ return 0; } })();
+  const pool=freed+bpAvail;
 
   // Concrete sell tickets (cash-raising): trims worked into strength, losers exited marketable.
   const sellOrders=[
@@ -1333,13 +1356,29 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   // Don't pitch adding to a name we're simultaneously trimming for concentration or harvesting (wash-sale).
   const raiseSet=new Set([...trims.map(t=>t.p.symbol),...harv.map(p=>p.symbol)]);
   const addCand=enriched.filter(p=>p.val>=SMALL_THR&&p.px>0&&!raiseSet.has(p.symbol)&&rsiMap[p.symbol]!=null&&rsiMap[p.symbol]<=33&&p.pnlP>-40).sort((a,b)=>rsiMap[a.symbol]-rsiMap[b.symbol])[0]||null;
-  // The redeploy's high-conviction sleeve targets the Plan & Picks list directly: the top-ranked pick
-  // you're not already over-weight in (and not simultaneously trimming/harvesting). This is the loop —
-  // the cash Step 1 raises flows into the ideas scored right below the plan. Falls back to addCand, then cash.
-  const heldPct={}; enriched.forEach(p=>{ if(p.val>0)heldPct[p.symbol]=p.pct; });
-  const pickAdd=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[])
-    .map((p,i)=>({p,rank:i+1}))
-    .filter(x=>x.p&&x.p.ticker&&!raiseSet.has(x.p.ticker)&&(heldPct[x.p.ticker]==null||heldPct[x.p.ticker]<PLAN_SINGLE_CAP*100))[0]||null;
+  // The redeploy's high-conviction sleeve targets the Plan & Picks list directly — but as a SET, not a
+  // single name. Up to 3 of today's top-ranked ideas you're not already over-weight in (and not
+  // simultaneously trimming/harvesting), diversified by sector AND correlated cluster, skipping any pick
+  // that would pile onto a cluster already over the cap. This is the loop: the cash Step 1 raises flows
+  // into the ideas scored right below the plan. Falls back to an oversold held name (addCand), then cash.
+  const heldPct={},heldVal={}; enriched.forEach(p=>{ if(p.val>0){ heldPct[p.symbol]=p.pct; heldVal[p.symbol]=p.val; } });
+  const clPctOf=(sym)=>{ try{ const c=clusterFor(sym); return c&&clusters[c]?clusters[c].pct:0; }catch(e){ return 0; } };
+  const pickAdds=(()=>{
+    const list=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]);
+    const out=[],usedSec=new Set();
+    for(let i=0;i<list.length&&out.length<3;i++){ const p=list[i]; if(!p||!p.ticker)continue;
+      if(raiseSet.has(p.ticker))continue;                                       // #2 — not a name we're raising from
+      if(heldPct[p.ticker]!=null&&heldPct[p.ticker]>=PLAN_SINGLE_CAP*100)continue; // already at the single-name cap
+      if(clPctOf(p.ticker)>=PLAN_CLUSTER_CAP*100)continue;                       // #2 — would worsen an over-cap cluster
+      const sec=String(p.sector||'').split('·')[0].trim();
+      if(sec&&usedSec.has(sec))continue;                                        // #1 — sector-diversify the set
+      if(sec)usedSec.add(sec);
+      out.push({p,rank:i+1});
+    }
+    return out;
+  })();
+  // #7 — historical conviction from the graded Track Record, surfaced inline on the redeploy.
+  const trk=(typeof picksTrackStats==='function')?picksTrackStats():null;
   // Buy-entry levels anchored to the 50-day average: pullback zone + a starter limit at the live price.
   const anchor=(p)=>{ const s=smaMap[p.symbol]; const px=p.px;
     if(s==null||!isFinite(s)) return {note:`starter limit ≤ ${P(px)}`, zone:`≤ ${P(px)}`};
@@ -1366,12 +1405,12 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     ${trims.length?`<div class="fund-note">Tax netting: the trims realize ≈ <b>${fmtD(realizedGain)}</b> of gains${harv.length?`, offset by the ${fmtD(bankedLoss)} loss banked above → <b>net taxable ≈ ${fmtD(netTaxable)}</b>`:''}. ${harv.length?(netTaxable<0?'The harvest more than covers the gain — the excess loss carries forward. ':'Harvesting alongside the trim is what keeps the tax bill small. ')+'Mind the 30-day wash-sale window on the harvested names. ':'Gains are taxable — favour long-term lots (held &gt; 1yr) or pair with a loss harvest when one appears. '}Not tax advice.</div>`:(harv.length?`<div class="fund-note">Wash-sale: don’t rebuy the harvested names for 30 days. The real win is redeploying the proceeds out of the concentrated book.</div>`:'')}
     ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Raise cash for the redeploy plan — harvest losers + right-size over-weight winners'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
 
-    <div class="col-title" style="margin-top:14px">2 · Redeploy the pool <span class="card-hint">(≈ ${fmtD(freed)} to put to work)</span></div>
+    <div class="col-title" style="margin-top:14px">2 · Redeploy the pool <span class="card-hint">(≈ ${fmtD(pool)} to put to work${bpAvail>0?` · incl. ${fmtD(bpAvail)} buying power`:''})</span></div>
     ${(()=>{
-      if(freed<=0) return `<div class="tech-empty">Nothing freed above — no redeploy step until Step 1 raises cash.</div>`;
+      if(pool<=0) return `<div class="tech-empty">Nothing freed above and no buying power — no redeploy step until Step 1 raises cash.</div>`;
       // Pay down margin first (cuts leverage directly), then split the remainder. Tilt to ballast when beta is high.
-      const payDown=onMargin?Math.min(freed,marginAmt):0;
-      const rem=freed-payDown;
+      const payDown=onMargin?Math.min(freed,marginAmt):0; // margin is retired with realized cash, not by borrowing more
+      const rem=pool-payDown;
       const hiBeta=beta!=null&&beta>1.1;
       let wB=hiBeta?0.55:0.45, wD=0.30, wO=hiBeta?0.15:0.25;
       const sz=f=>` <span style="color:#9ca3af">≈ ${fmtD(f)}</span>`;
@@ -1390,28 +1429,53 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
         rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(d)} — <b>buy ~${q} sh ${dT.symbol}</b> · limit ${a.zone}. Ballast + yield, low correlation to the growth book.</div>`); }
         else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(d)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>`); }
       else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(rem*wD)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>`);
-      // High-conviction add → redeploy straight into today's top pick (with its own entry/stop), else
-      // an oversold held name, else cash. Closes the raise-cash → pick loop on one surface.
-      const addPlan=(()=>{
-        if(pickAdd){ const p=pickAdd.p; const px=((typeof _picksLive!=='undefined'&&_picksLive[p.ticker]&&_picksLive[p.ticker].price))||p.basePrice||0;
-          if(px>0){ const rng=(typeof parseRange==='function'?parseRange(p.entry):null);
-            const stop=(p.sl&&p.sl.price)?p.sl.price:px*0.90;
-            return {sym:p.ticker,px,zone:p.entry||('≤ '+P(px)),limit:(rng&&rng.hi?rng.hi:px),stop,rank:pickAdd.rank,
-              why:`<b>#${pickAdd.rank} pick</b>${p.signal?' · '+p.signal:''} — entry ${p.entry||P(px)}${p.tp1?`, target $${p.tp1.price}`:''}, stop ${P(stop)}. Redeploying into today's top-scored idea.`}; }
+      // High-conviction sleeve → redeploy across today's top picks (#1–#3 from pickAdds), each with its
+      // OWN entry/stop (read from pickLevels so the plan and the card never disagree), sized risk-based
+      // (#3, 1% of book at the stop) and clamped so an add can't push a name past the single-name cap and
+      // can't outrun the bucket it draws on. Earnings inside the swing window get flagged (#4). Falls back
+      // to an oversold held name, then cash.
+      const convBucket=rem*wO;
+      const riskBudget=totalVal*0.01; // 1% of book at risk per add — matches the pick-card buy ticket
+      const planAdds=[];              // {sym,px,zone,limit,stop,tp1,rank,shares,dollars,why,erWarn}
+      if(pickAdds.length){
+        const per=convBucket/pickAdds.length;
+        for(const x of pickAdds){ const p=x.p, lv=pickLevels(p), px=lv.px; if(!(px>0))continue;
+          const room=(PLAN_SINGLE_CAP*eq)-(heldVal[p.ticker]||0);                 // $ before this name hits the cap
+          const capSh=Math.floor(Math.max(0,room)/px);
+          const bucketSh=Math.floor(per/px);
+          const riskSh=(lv.stop>0&&px>lv.stop)?Math.floor(riskBudget/(px-lv.stop)):bucketSh;
+          const q=Math.max(0,Math.min(bucketSh,capSh,riskSh));                    // #3 — risk-based AND cap-aware AND pool-bounded
+          const er=(typeof azEarn==='function')?azEarn(p.ticker):null;           // #4 — earnings inside the swing window
+          const erWarn=(er&&er.days!=null&&er.days>=0&&er.days<=14)?` <span style="color:#b45309">⚠️ earnings in ${er.days===0?'<1d':er.days+'d'} — size for the gap or wait for the print</span>`:'';
+          planAdds.push({sym:p.ticker,px,zone:lv.zone,limit:lv.limit,stop:lv.stop,tp1:lv.tp1,rank:x.rank,shares:q,dollars:q*px,erWarn,
+            why:`<b>#${x.rank} pick</b>${p.signal?' · '+p.signal:''} — entry ${lv.zone}${lv.tp1?`, target $${lv.tp1}`:''}, stop ${P(lv.stop)}`});
         }
-        if(addCand){ const px=addCand.px, a=anchor(addCand), s=smaMap[addCand.symbol];
-          const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
-          return {sym:addCand.symbol,px,zone:a.zone,limit:px,stop,rank:null,
-            why:`oversold (RSI ${fmt(rsiMap[addCand.symbol],0)}) · limit ${a.zone}, stop ${P(stop)}. A dip-buy rather than parking it all in cash.`}; }
-        return null;
-      })();
-      if(addPlan){ const d=rem*wO, q=Math.floor(d/addPlan.px);
-        if(q>0){ buyOrders.push({side:'BUY',sym:addPlan.sym,qty:q,limit:addPlan.limit,zone:addPlan.zone,stop:addPlan.stop,note:addPlan.rank?('high-conviction add · #'+addPlan.rank+' pick'):'oversold high-conviction add'});
-          rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add</b>${sz(d)} — <b>buy ~${q} sh ${addPlan.sym}</b> · ${addPlan.why}</div>`); }
-        else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add</b>${sz(d)} — ${addPlan.sym}: ${addPlan.why}</div>`); }
-      else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Cash cushion</b>${sz(rem*wO)} — ${onMargin?'hold against the margin; dry powder for pullbacks.':'dry powder for pullbacks and to stay nimble.'}</div>`);
+      } else if(addCand){ const px=addCand.px, a=anchor(addCand), s=smaMap[addCand.symbol];
+        const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
+        const q=Math.floor(convBucket/px);
+        planAdds.push({sym:addCand.symbol,px,zone:a.zone,limit:px,stop,tp1:null,rank:null,shares:q,dollars:q*px,erWarn:'',
+          why:`oversold (RSI ${fmt(rsiMap[addCand.symbol],0)}) · limit ${a.zone}, stop ${P(stop)} — a dip-buy rather than parking it all in cash`});
+      }
+      const deployed=planAdds.reduce((s,a)=>s+a.dollars,0);
+      // #5 — stash the plan's sized picks so the Top-3 cards can badge "the plan picked this"; repaint them.
+      try{ const m={}; planAdds.forEach(a=>{ if(a.rank&&a.shares>0)m[a.sym]={rank:a.rank,shares:a.shares,dollars:a.dollars}; }); window.__PLAN_ADDS=m;
+        if(document.getElementById('picks-cards')&&typeof renderPicksCards==='function')renderPicksCards(); }catch(e){}
+      if(planAdds.length){
+        const nReal=planAdds.filter(a=>a.rank).length;
+        const convL=(trk&&trk.hitRate!=null&&(trk.wins+trk.losses)>=3)?` <span style="color:#9ca3af">· track record: ${trk.hitRate}% hit TP1+${trk.avgRet!=null?', avg '+(trk.avgRet>=0?'+':'')+fmt(trk.avgRet,1)+'%':''} (${trk.wins+trk.losses} resolved)</span>`:'';
+        const hdr=`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add${planAdds.length>1?'s':''}</b>${sz(convBucket)} — ${nReal>1?`split across today's top ${nReal} ideas`:`into today's top idea`}${convL}:</div>`;
+        const items=planAdds.map(a=>{ const lbl=a.rank?`<span class="dp-link" onclick="jumpToPick('${a.sym}')">${a.sym}</span>`:a.sym;
+          return `<div style="padding:5px 0 5px 10px;font-size:12px;line-height:1.45;border-top:1px dashed var(--surface-2)">${a.shares>0?`<b>buy ~${a.shares} sh ${lbl}</b> <span style="color:#9ca3af">≈ ${fmtD(a.dollars)}</span>`:`<b>${lbl}</b> <span style="color:#9ca3af">(no size — already at your cap / risk budget)</span>`} · ${a.why}${a.erWarn}</div>`; }).join('');
+        rows.push(hdr+items);
+        planAdds.forEach(a=>{ if(a.shares>0)buyOrders.push({side:'BUY',sym:a.sym,qty:a.shares,limit:a.limit,zone:a.zone,stop:a.stop,note:a.rank?('high-conviction add · #'+a.rank+' pick'):'oversold high-conviction add'}); });
+        const leftover=convBucket-deployed;
+        if(leftover>convBucket*0.15) rows.push(`<div style="padding:5px 0 5px 10px;font-size:11.5px;color:#9ca3af;border-top:1px dashed var(--surface-2)">Cap/risk limits leave ≈ ${fmtD(leftover)} of this sleeve undeployed — hold as cash for pullbacks.</div>`);
+      } else {
+        try{ window.__PLAN_ADDS={}; }catch(e){}
+        rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Cash cushion</b>${sz(convBucket)} — ${onMargin?'hold against the margin; dry powder for pullbacks.':'dry powder for pullbacks and to stay nimble.'}</div>`);
+      }
       const buyBtn=buyOrders.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buyOrders,'Redeploy the freed cash into ballast / defensive / high-conviction names'),'🤖 Build '+(buyOrders.length>1?('these '+buyOrders.length+' buys'):'this buy')+' with Claude')}</div>`:'';
-      return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${rows.join('')}<div class="fund-note">${payDown>0?'Margin paid down first, then a ':'A '}${hiBeta?'beta-tilted':'balanced'} split of the remaining ${fmtD(rem)}. Buys are sized from each bucket at the live price; the 50-day average is the pullback anchor. Indicative — re-check the live mark and your buying power before each fill.</div>${buyBtn}</div>`;
+      return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${rows.join('')}<div class="fund-note">${payDown>0?'Margin paid down first, then a ':'A '}${hiBeta?'beta-tilted':'balanced'} split of the remaining ${fmtD(rem)}. Buys are sized from each bucket at the live price; the 50-day average is the pullback anchor.${bpAvail>0?' The pool includes your available buying power — buying on margin adds leverage; size to settled cash if you’d rather not borrow.':''} Indicative — re-check the live mark and your buying power before each fill.</div>${buyBtn}</div>`;
     })()}
 
     <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(standing trim &amp; stop rules)</span></div>
@@ -2560,16 +2624,16 @@ function renderPicksStatic(){
       <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
     </div></div>
     <div class="card">
+      <div class="card-title"><span>🎯 Top 3 Picks Today <span class="card-hint">(the ideas the plan's Step 2 redeploys into)</span></span></div>
+      <div class="picks-grid2" id="picks-cards"></div>
+    </div>
+    <div class="card">
       <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">tech 33% · fundamentals 28% · R/R 19% · social 20%</span></span></div>
       <div class="chart-wrap" style="height:300px"><canvas id="picks-chart"></canvas></div>
     </div>
     <div class="card">
       <div class="card-title collapsible" data-toggle="body-picktable" onclick="toggleSection('body-picktable')"><span>📋 Scoring Breakdown</span><span class="chevron">▼</span></div>
       <div id="body-picktable"><div id="picks-filters"></div><div id="picks-table"></div></div>
-    </div>
-    <div class="card">
-      <div class="card-title"><span>🎯 Top 3 Picks Today</span></div>
-      <div class="picks-grid2" id="picks-cards"></div>
     </div>
     <div class="card" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
     ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
@@ -2753,6 +2817,9 @@ function renderPicksCards(){
     const scale=v=>((v-minP)/(maxP-minP)*72+14).toFixed(1);
     const thesis=p.thesis.map(t=>'<li>'+t+'</li>').join('');
     let notes='';
+    // #5 — if the Action Plan's redeploy selected this pick, badge it and link back up to the plan.
+    const pa=(window.__PLAN_ADDS&&window.__PLAN_ADDS[p.ticker])||null;
+    if(pa){ notes+='<div class="cross-note" style="background:#eef2ff;color:#3730a3">🧭 <b>The plan picked this</b> — Step 2 redeploy sizes <b>~'+pa.shares+' sh</b> (~'+fmtD(pa.dollars)+') into '+p.ticker+' from freed cash. <span class="dp-link" onclick="(document.getElementById(\'plan-content\')||{}).scrollIntoView&&document.getElementById(\'plan-content\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">see the plan ↑</span></div>'; }
     const h=heldInfo(p.ticker);
     if(h){ notes+='<div class="cross-note" style="background:#ede9fe;color:#5b21b6"><b>You already own this</b> — '+fmt(h.pct,1)+'% of portfolio ('+fmtD(h.val)+'). Adding raises single-name concentration.</div>'; }
     if(P&&P.bpVal>0){ const sh=Math.floor(P.bpVal/cur); notes+='<div class="cross-note" style="background:#f0f9ff;color:#075985">💵 With '+fmtD(P.bpVal)+' buying power you could buy <b>~'+sh+' share'+(sh===1?'':'s')+'</b> (~'+fmtD(sh*cur)+') at '+fmtD(cur)+'.</div>'; }
@@ -2771,7 +2838,7 @@ function renderPicksCards(){
       notes+='<div class="cross-note" style="background:#fffbeb;color:#92400e">⚠️ <b>Earnings in '+(er.days===0?'<1 day':er.days+' day'+(er.days===1?'':'s'))+'</b> — a binary catalyst lands inside this swing window. The entry/stop levels are calendar-blind; expect a gap and size for event risk (or wait for the print).</div>';
     }
     const rsiShown=liveRSI!=null?fmt(liveRSI,0)+' <span style="color:#10b981;font-size:9px">live</span>':p.rsi;
-    return '<div class="card" style="margin-bottom:0">'
+    return '<div class="card" id="pickcard-'+p.ticker+'" style="margin-bottom:0">'
       +'<div class="pk-head"><div><div class="pk-tkr">'+p.ticker+ownBadge(p.ticker)+'</div><div class="pk-name">'+p.company+'</div><div class="pk-meta">'+p.sector+' · RSI '+rsiShown+' · Score '+p.composite+'</div></div>'
       +'<span class="pk-sig '+(p.signalClass==='sig-buy'?'buy':'cautious')+'">'+p.signal+'</span></div>'
       +notes
@@ -2810,6 +2877,18 @@ function gradePick(pk,bars,live,ts){
   const cur=live||(series.length?series[series.length-1]:null)||pk.basePrice;
   const ret=entry?((cur-entry)/entry*100):null;
   return {status,ret,cur,entry};
+}
+/* Aggregate grade stats across ALL archived picks (Track Record card's tiles + the Action Plan's
+   conviction line both read this, reusing gradePick so the two surfaces can't diverge). */
+function picksTrackStats(){
+  const hist=Array.isArray(PICK_HISTORY)?PICK_HISTORY.filter(h=>h&&Array.isArray(h.picks)&&h.picks.length):[];
+  let wins=0,losses=0,open=0,retSum=0,retN=0;
+  for(const h of hist)for(const pk of h.picks){
+    const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts);
+    if(g.status==='TP1'||g.status==='TP2')wins++; else if(g.status==='STOPPED')losses++; else open++;
+    if(g.ret!=null){retSum+=g.ret;retN++;}
+  }
+  return {wins,losses,open,hitRate:(wins+losses)>0?Math.round(wins/(wins+losses)*100):null,avgRet:retN?retSum/retN:null};
 }
 function renderPicksTrack(){
   const el=document.getElementById('picks-track'); if(!el)return;
@@ -2860,6 +2939,8 @@ async function fetchPicksLive(){
     Object.assign(_picksRSI, rsiFromHist(hist, PICK_CANDIDATES.map(c=>c.ticker)));
   }catch(e){}
   renderPicksTable(); renderPicksCards(); renderPicksTrack();
+  // Picks levels/track-record feed the Action Plan's redeploy — repaint it now that live data landed.
+  try{ if(typeof paintActionCenter==='function')paintActionCenter(); }catch(e){}
 }
 
 /* ═══════════════════════════════════════════
