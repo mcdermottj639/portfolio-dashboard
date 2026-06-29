@@ -52,6 +52,11 @@ for (const f of ['portfolio.json', 'positions.json']) {
 if (process.env.ALPHAVANTAGE_KEY && !flags.has('--no-av')) tryNode('av-fetch.mjs');
 else log(process.env.ALPHAVANTAGE_KEY ? 'AV fetch skipped (--no-av)' : 'AV direct fetch off (no ALPHAVANTAGE_KEY) — using any agent-saved av-src + RH-synthesized fundamentals');
 
+// 1b. Supplementary fundamentals (Finnhub / FMP) — optional; fills the fields/holdings AV's free
+// daily cap skipped. AV stays primary; runs only when a provider key is configured.
+if ((process.env.FINNHUB_KEY || process.env.FMP_KEY) && !flags.has('--no-extfund')) tryNode('extfund-fetch.mjs');
+else log((process.env.FINNHUB_KEY || process.env.FMP_KEY) ? 'ext-fund fetch skipped (--no-extfund)' : 'ext-fund fetch off (no FINNHUB_KEY / FMP_KEY)');
+
 // 2–3. Picks + options (each optional, gated on its raw input; non-fatal so the snapshot still ships).
 if (existsSync(join(RAW, 'scan.json'))) tryNode('picks-build.mjs'); else log('no scan.json — skipping picks');
 if (existsSync(join(RAW, 'options-orders.json'))) tryNode('options-build.mjs'); else log('no options-orders.json — skipping options');

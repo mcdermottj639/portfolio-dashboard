@@ -49,8 +49,9 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
    (••••3900)** → `agentic-portfolio.json` / `agentic-positions.json`, which `build-data.mjs` turns into
    `data.agentic` for the Agentic Portfolio card. (Account-scoped reads — pass that account_number.)
 4. Agent runs **`node producer/run.mjs "<label>"`** — the single deterministic tail: optional AV
-   fetch → picks-build → options-build → `build-data.mjs` (encrypted) → `validate.mjs` → publish to
-   `main`. No improvised shell, so unattended runs don't stall on permission prompts.
+   fetch → optional **ext-fund fetch** (Finnhub/FMP supplementary fundamentals) → picks-build →
+   options-build → `build-data.mjs` (encrypted) → `validate.mjs` → publish to `main`. No improvised
+   shell, so unattended runs don't stall on permission prompts.
 5. **FETCH_ALL only, after publish:** agent syncs **two Robinhood watchlists** to the fresh snapshot —
    (a) the **"Dashboard Top 10 Picks"** equity list to the composite top-10 (`sync-watchlist.mjs`), and
    (b) the account's **options watchlist** to the single-leg Trade Ideas that resolved to a live
@@ -81,6 +82,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz). |
 | `producer/markets.mjs` | `MARKET_SYMBOLS` (indexes/risk/sectors/intl) — source of truth; keep PRODUCER.md's list in sync. |
 | `producer/leaders.mjs` | `LEADERS`/`LEADER_SYMBOLS` — mega-cap bench (sym+sector) for the Plan-page Ideal Portfolio. `build-data.mjs` emits it as `data.leaders`; the producer quotes `LEADER_SYMBOLS` every run so each has a live price. |
+| `producer/extfund.mjs` · `producer/extfund-fetch.mjs` | **Supplementary fundamentals** (Finnhub + Financial Modeling Prep). `extfund.mjs` = pure normalizers turning each provider's payload into the **same COMPANY_OVERVIEW shape AV uses** (AV's fraction conventions: RevGrowth/Margin/DivYield stored as fractions — Finnhub returns percents, so ÷100; FMP TTM ratios are already fractions; mktcap → whole dollars). `extfund-fetch.mjs` fetches over HTTP (once/day ET gate, like `av-fetch.mjs`), writing `producer/raw/ext-fund/overview-<SYM>.json`. **AV stays PRIMARY** — `build-data.mjs` reads ext-fund *after* av-src and only **fills fields AV is missing** for a name (so AV's ForwardPE/AnalystTargetPrice win) or adds a whole overview for names AV's daily cap skipped (rich, so it beats the RH synth). Both providers independently optional (`FINNHUB_KEY` / `FMP_KEY`); no key → silently skipped. Unit-tested offline (`extfund.test.mjs`). |
 | `producer/av*.mjs`, `options*.mjs` | Alpha Vantage wiring; options analysis. `options.mjs` builds the ideas — single-leg long-call/covered-call/CSP (live-priced, delta-targeted) **plus estimate-only defined-risk structures (call debit spread, collar)** with a `legs[]` array the consumer draws as a combined payoff; estimate premiums use a **per-symbol realized-vol IV proxy**. `options-build.mjs` analyzes your contracts (full greeks incl. **vega/gamma**, concrete **roll suggestions**, a portfolio **exposure** roll-up, `ivObserved`) and, on FETCH_ALL, emits `producer/raw/option-watchlist.json` (the single-leg ideas that resolved to a live contract `optionId`) for the options-watchlist sync. The agent records each idea's resolved `optionId` into `option-quotes.json` (see `options-plan.mjs`) so `options.mjs` can carry it onto the live idea. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
@@ -113,8 +115,9 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Encryption:** `data.json` is always encrypted on real runs (`PF_PASSPHRASE`). `run.mjs` refuses to
   push plaintext. Never commit the passphrase or real holdings.
 - **Secrets / env (in the web environment, not git):** `PF_ACCOUNT`, `PF_PASSPHRASE`, optional
-  `ALPHAVANTAGE_KEY` / `PF_AV_NEWS`. Network egress allowlist must include `apewisdom.io` (and
-  `www.alphavantage.co` if using direct AV).
+  `ALPHAVANTAGE_KEY` / `PF_AV_NEWS`, optional `FINNHUB_KEY` / `FMP_KEY` (supplementary fundamentals —
+  see `extfund.mjs`). Network egress allowlist must include `apewisdom.io` (and `www.alphavantage.co`
+  if using direct AV; `finnhub.io` / `financialmodelingprep.com` if using the supplementary providers).
 
 ## Local dev / preview (no live connectors)
 - `node producer/make-sample-data.mjs` writes a **plaintext** sample `data.json` (fake holdings) so

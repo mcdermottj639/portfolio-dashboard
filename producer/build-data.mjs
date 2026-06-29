@@ -112,6 +112,32 @@ if (existsSync(avSrcDir)) for (const f of readdirSync(avSrcDir).filter((x) => x.
   avCount++;
 }
 
+// Supplementary fundamentals (Finnhub / FMP): producer/raw/ext-fund/overview-<SYM>.json, each a
+// { structuredContent: <AV-shaped overview> } from extfund-fetch.mjs. Alpha Vantage stays PRIMARY —
+// when AV covered a name this run we only FILL the fields AV is missing (so AV's ForwardPE/target win,
+// and ext fills Rev growth / EPS / PEG / margin for names AV's daily cap skipped). When AV didn't
+// cover the name at all, the ext overview stands in (and, being rich, beats the Robinhood synth below).
+const extDir = join(RAWDIR, 'ext-fund');
+let extCount = 0, extFilled = 0;
+if (existsSync(extDir)) for (const f of readdirSync(extDir).filter((x) => x.endsWith('.json'))) {
+  const sym = f.replace(/^overview-/, '').replace(/\.json$/, '');
+  if (!sym) continue;
+  const key = avKey('COMPANY_OVERVIEW', { symbol: sym.replace(/\./g, '-') });
+  const extOv = (readJSON(join(extDir, f)) || {}).structuredContent;
+  if (!extOv || typeof extOv !== 'object') continue;
+  const cur = recorded[key];
+  if (!cur) { recorded[key] = { structuredContent: extOv }; extCount++; continue; }
+  const o = cur.structuredContent && typeof cur.structuredContent === 'object' ? cur.structuredContent : (cur.Symbol ? cur : null);
+  if (!o) continue;
+  let filled = 0;
+  for (const [k, v] of Object.entries(extOv)) {
+    if (v == null || v === '' || v === 'None') continue;
+    if (o[k] == null || o[k] === '' || o[k] === 'None') { o[k] = v; filled++; }
+  }
+  if (filled) extFilled++;
+}
+if (extCount || extFilled) console.log(`fundamentals: ext providers added ${extCount} overview${extCount === 1 ? '' : 's'} + filled gaps on ${extFilled} AV-covered name${extFilled === 1 ? '' : 's'}`);
+
 // Sector + dividends from Robinhood fundamentals (free, every run) → synthesize the AV
 // COMPANY_OVERVIEW the dashboard reads for sector allocation + dividend income, but ONLY
 // where AV didn't already supply one (AV adds revenue growth / forward P/E that RH lacks).
