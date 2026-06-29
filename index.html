@@ -39,7 +39,7 @@
 <!-- Live-only controls (write to MCP / trigger scans) are hidden in the offline PWA. -->
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Default: saved choice, else system preference. -->
-<script>(function(){try{var t=localStorage.getItem('pf_theme');if(t==='dark'){t='neon';localStorage.setItem('pf_theme','neon');}if(!t)t=((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'neon':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>(function(){try{var t=localStorage.getItem('pf_theme');if(t==='dark'||t==='neon'){t='gold';localStorage.setItem('pf_theme','gold');}if(!t)t=((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'gold':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -359,90 +359,98 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
 .hm-chg{ font-weight:600; line-height:1.1; margin-top:2px; opacity:0.95; text-shadow:0 1px 2px rgba(0,0,0,0.35); }
 .hm-tg{ font-size:11px; font-weight:700; padding:4px 11px; border-radius:999px; border:none; cursor:pointer; background:var(--surface-2); color:var(--text); font-family:inherit; }
 .hm-tg.active{ background:var(--accent); color:#04140a; }
-html[data-theme="dark"] .hm-tile,html[data-theme="neon"] .hm-tile{ border-color:rgba(255,255,255,0.07); }
+html[data-theme="dark"] .hm-tile,html[data-theme="gold"] .hm-tile{ border-color:rgba(255,255,255,0.07); }
 
-/* ═══ Dark theme — "Gold" luxe HUD (champagne-on-black). data-theme key stays "neon"
-   for back-compat with persisted prefs + the _isNeon() chart helper. Light stays untouched. ═══ */
-html[data-theme="neon"]{ color-scheme:dark; --accent:#e3c074; --surface-2:#1b1610; --text:#f2ebdc;
+/* ═══ Dark theme — "Gold" luxe HUD (champagne-on-flat-black). data-theme="gold";
+   legacy "dark"/"neon" prefs auto-migrate to it (see boot script + toggleTheme). Light stays untouched. ═══ */
+html[data-theme="gold"]{ color-scheme:dark; --accent:#e3c074; --surface-2:#1b1610; --text:#f2ebdc;
   /* var names are historical (cyan/mag/pur) — repurposed to the gold/jewel palette */
   --nx-cyan:#e3c074; --nx-mag:#c98a3a; --nx-pur:#9a7bd0; --nx-grn:#3fcf94; --nx-red:#ef8278; --nx-bd:rgba(201,168,100,.16); --nx-muted:#9c917b; }
-html[data-theme="neon"] body{ background:#000; color:var(--text); }
-html[data-theme="neon"] .tabbar{ background:transparent; }
-html[data-theme="neon"] .tab{ background:rgba(28,22,15,.62); color:#9c917b; box-shadow:none; border:1px solid var(--nx-bd); }
-html[data-theme="neon"] .tab:hover{ color:var(--text); }
-html[data-theme="neon"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.20),rgba(201,138,58,.16)); color:#fff5e0; border-color:rgba(227,192,116,.5); box-shadow:0 0 16px rgba(227,192,116,.20); }
-html[data-theme="neon"] .card,
-html[data-theme="neon"] .col-card{ background:rgba(24,19,12,.74); border:1px solid var(--nx-bd); box-shadow:0 8px 28px rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
-html[data-theme="neon"] .col-title,
-html[data-theme="neon"] .card-title,
-html[data-theme="neon"] .macro-val{ color:var(--text); }
-html[data-theme="neon"] .snap,
-html[data-theme="neon"] .mkt-tile,
-html[data-theme="neon"] .macro-tile,
-html[data-theme="neon"] .pk-m{ background:rgba(30,24,15,.6); border:1px solid var(--nx-bd); }
-html[data-theme="neon"] thead th{ border-bottom-color:rgba(201,168,100,.20); color:#a89c80; }
-html[data-theme="neon"] thead th.sortable:hover,
-html[data-theme="neon"] thead th.active{ color:#fff5e0; }
-html[data-theme="neon"] tbody tr{ border-bottom-color:rgba(201,168,100,.09); }
-html[data-theme="neon"] tbody tr:hover{ background:rgba(227,192,116,.06); }
-html[data-theme="neon"] .risk-line,
-html[data-theme="neon"] .exdiv-line,
-html[data-theme="neon"] .harv-line{ border-bottom-color:var(--nx-bd); }
-html[data-theme="neon"] .risk-name,
-html[data-theme="neon"] .thesis2 li{ color:#cabfa6; }
-html[data-theme="neon"] .alloc-track,
-html[data-theme="neon"] .conf2-track,
-html[data-theme="neon"] .gauge{ background:#2a2114; }
-html[data-theme="neon"] .scn{ border-color:var(--nx-bd); background:rgba(30,24,15,.4); }
-html[data-theme="neon"] .tv-link{ border-color:var(--nx-bd); }
+html[data-theme="gold"] body{ background:#000; color:var(--text); }
+html[data-theme="gold"] .tabbar{ background:transparent; }
+html[data-theme="gold"] .tab{ background:rgba(28,22,15,.62); color:#9c917b; box-shadow:none; border:1px solid var(--nx-bd); }
+html[data-theme="gold"] .tab:hover{ color:var(--text); }
+html[data-theme="gold"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.20),rgba(201,138,58,.16)); color:#fff5e0; border-color:rgba(227,192,116,.5); box-shadow:0 0 16px rgba(227,192,116,.20); }
+html[data-theme="gold"] .card,
+html[data-theme="gold"] .col-card{ background:rgba(24,19,12,.74); border:1px solid var(--nx-bd); box-shadow:0 8px 28px rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+html[data-theme="gold"] .col-title,
+html[data-theme="gold"] .card-title,
+html[data-theme="gold"] .macro-val{ color:var(--text); }
+html[data-theme="gold"] .snap,
+html[data-theme="gold"] .mkt-tile,
+html[data-theme="gold"] .macro-tile,
+html[data-theme="gold"] .pk-m{ background:rgba(30,24,15,.6); border:1px solid var(--nx-bd); }
+/* jewel-toned hero stat tiles (portfolio .snap-grid only) — emerald · bronze · teal · purple · gold */
+html[data-theme="gold"] .snap-grid .snap{ border-width:1px; box-shadow:0 0 0 transparent; }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+1){ background:linear-gradient(150deg,rgba(63,207,148,.16),rgba(18,28,22,.55)); border-color:rgba(63,207,148,.36); box-shadow:0 0 20px rgba(63,207,148,.07); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+2){ background:linear-gradient(150deg,rgba(201,138,58,.18),rgba(30,22,12,.55)); border-color:rgba(201,138,58,.40); box-shadow:0 0 20px rgba(201,138,58,.07); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+3){ background:linear-gradient(150deg,rgba(55,182,201,.16),rgba(14,26,30,.55)); border-color:rgba(55,182,201,.36); box-shadow:0 0 20px rgba(55,182,201,.07); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+4){ background:linear-gradient(150deg,rgba(154,123,208,.17),rgba(22,16,32,.55)); border-color:rgba(154,123,208,.38); box-shadow:0 0 20px rgba(154,123,208,.07); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+5){ background:linear-gradient(150deg,rgba(227,192,116,.16),rgba(30,24,12,.55)); border-color:rgba(227,192,116,.38); box-shadow:0 0 20px rgba(227,192,116,.07); }
+html[data-theme="gold"] .snap-grid .snap .snap-lbl{ color:#c9bfa6; }
+html[data-theme="gold"] thead th{ border-bottom-color:rgba(201,168,100,.20); color:#a89c80; }
+html[data-theme="gold"] thead th.sortable:hover,
+html[data-theme="gold"] thead th.active{ color:#fff5e0; }
+html[data-theme="gold"] tbody tr{ border-bottom-color:rgba(201,168,100,.09); }
+html[data-theme="gold"] tbody tr:hover{ background:rgba(227,192,116,.06); }
+html[data-theme="gold"] .risk-line,
+html[data-theme="gold"] .exdiv-line,
+html[data-theme="gold"] .harv-line{ border-bottom-color:var(--nx-bd); }
+html[data-theme="gold"] .risk-name,
+html[data-theme="gold"] .thesis2 li{ color:#cabfa6; }
+html[data-theme="gold"] .alloc-track,
+html[data-theme="gold"] .conf2-track,
+html[data-theme="gold"] .gauge{ background:#2a2114; }
+html[data-theme="gold"] .scn{ border-color:var(--nx-bd); background:rgba(30,24,15,.4); }
+html[data-theme="gold"] .tv-link{ border-color:var(--nx-bd); }
 /* accent colors + glow on the headline numbers */
-html[data-theme="neon"] .pos{ color:var(--nx-grn); }
-html[data-theme="neon"] .neg{ color:var(--nx-red); }
-html[data-theme="neon"] .neu{ color:var(--nx-muted); }
+html[data-theme="gold"] .pos{ color:var(--nx-grn); }
+html[data-theme="gold"] .neg{ color:var(--nx-red); }
+html[data-theme="gold"] .neu{ color:var(--nx-muted); }
 /* hero value = champagne-gold gradient text with a warm glow */
-html[data-theme="neon"] .h-value{ background:linear-gradient(180deg,#f6e2a8 0%,#e3c074 48%,#c69a4a 100%);
+html[data-theme="gold"] .h-value{ background:linear-gradient(180deg,#f6e2a8 0%,#e3c074 48%,#c69a4a 100%);
   -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:#e3c074;
   filter:drop-shadow(0 0 16px rgba(227,192,116,.40)); }
-html[data-theme="neon"] .snap-val,
-html[data-theme="neon"] .perf-val,
-html[data-theme="neon"] .pm-v,
-html[data-theme="neon"] .stress-big,
-html[data-theme="neon"] .scn-val,
-html[data-theme="neon"] .inc-val,
-html[data-theme="neon"] .macro-val{ text-shadow:0 0 12px rgba(227,192,116,.18); }
-html[data-theme="neon"] .card-hint,
-html[data-theme="neon"] .snap-lbl,
-html[data-theme="neon"] .perf-lbl,
-html[data-theme="neon"] .macro-label{ color:#8a7f68; }
+html[data-theme="gold"] .snap-val,
+html[data-theme="gold"] .perf-val,
+html[data-theme="gold"] .pm-v,
+html[data-theme="gold"] .stress-big,
+html[data-theme="gold"] .scn-val,
+html[data-theme="gold"] .inc-val,
+html[data-theme="gold"] .macro-val{ text-shadow:0 0 12px rgba(227,192,116,.18); }
+html[data-theme="gold"] .card-hint,
+html[data-theme="gold"] .snap-lbl,
+html[data-theme="gold"] .perf-lbl,
+html[data-theme="gold"] .macro-label{ color:#8a7f68; }
 /* hero gets a HUD frame + corner brackets */
-html[data-theme="neon"] .header,
-html[data-theme="neon"] .picks-hero{ position:relative; background:linear-gradient(140deg,rgba(227,192,116,.14),rgba(201,138,58,.12)); border:1px solid rgba(227,192,116,.30); box-shadow:0 0 30px rgba(227,192,116,.09), inset 0 0 40px rgba(201,138,58,.07); }
-html[data-theme="neon"] .header::before,
-html[data-theme="neon"] .header::after,
-html[data-theme="neon"] .picks-hero::before,
-html[data-theme="neon"] .picks-hero::after{ content:''; position:absolute; width:16px; height:16px; border:2px solid var(--nx-cyan); pointer-events:none; }
-html[data-theme="neon"] .header::before,
-html[data-theme="neon"] .picks-hero::before{ top:9px; left:9px; border-right:none; border-bottom:none; }
-html[data-theme="neon"] .header::after,
-html[data-theme="neon"] .picks-hero::after{ bottom:9px; right:9px; border-left:none; border-top:none; }
-html[data-theme="neon"] .h-tag{ background:rgba(227,192,116,.14); border:1px solid rgba(227,192,116,.32); color:#f0e2c2; }
-/* tinted components — neon variants so they never fall back to light blocks */
-html[data-theme="neon"] .margin-banner{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
-html[data-theme="neon"] .inc-tile{ background:rgba(6,55,31,.4); border-color:#14532d; }
-html[data-theme="neon"] .inc-lbl{ color:#34d399; } html[data-theme="neon"] .inc-val{ color:#a7f3d0; } html[data-theme="neon"] .inc-sub{ color:#6ee7b7; }
-html[data-theme="neon"] .harvest-tile{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
-html[data-theme="neon"] .harvest-tile .inc-lbl{ color:#fca5a5; } html[data-theme="neon"] .harvest-tile .inc-val{ color:#fecaca; } html[data-theme="neon"] .harvest-tile .inc-sub{ color:#fca5a5; }
-html[data-theme="neon"] .small-chip{ background:#322713; color:#f4d98a; }
-html[data-theme="neon"] .pk-sig.buy{ background:#06371f; color:#34d399; }
-html[data-theme="neon"] .pk-sig.cautious{ background:#3a2f0a; color:#fde68a; }
-html[data-theme="neon"] .teaser-bar{ background:rgba(6,55,31,.35); border-color:#14532d; }
-html[data-theme="neon"] .cross-note{ background:rgba(16,36,31,.6)!important; color:#a7f3d0!important; }
-html[data-theme="neon"] .box-bull{ background:rgba(6,55,31,.4); border-color:#14532d; color:#a7f3d0; }
-html[data-theme="neon"] .box-bear{ background:rgba(127,29,29,.25); border-color:#7f1d1d; color:#fca5a5; }
-html[data-theme="neon"] .box-info{ background:rgba(227,192,116,.09); border-color:rgba(227,192,116,.30); color:#f0e2c2; }
-html[data-theme="neon"] .box-warn{ background:rgba(124,74,3,.25); border-color:#7c4a03; color:#fed7aa; }
-html[data-theme="neon"] .az-gauge-in{ background:#161109; }
-html[data-theme="neon"] #pf-fresh{ background:rgba(24,19,12,.82)!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
+html[data-theme="gold"] .header,
+html[data-theme="gold"] .picks-hero{ position:relative; background:linear-gradient(140deg,rgba(227,192,116,.14),rgba(201,138,58,.12)); border:1px solid rgba(227,192,116,.30); box-shadow:0 0 30px rgba(227,192,116,.09), inset 0 0 40px rgba(201,138,58,.07); }
+html[data-theme="gold"] .header::before,
+html[data-theme="gold"] .header::after,
+html[data-theme="gold"] .picks-hero::before,
+html[data-theme="gold"] .picks-hero::after{ content:''; position:absolute; width:16px; height:16px; border:2px solid var(--nx-cyan); pointer-events:none; }
+html[data-theme="gold"] .header::before,
+html[data-theme="gold"] .picks-hero::before{ top:9px; left:9px; border-right:none; border-bottom:none; }
+html[data-theme="gold"] .header::after,
+html[data-theme="gold"] .picks-hero::after{ bottom:9px; right:9px; border-left:none; border-top:none; }
+html[data-theme="gold"] .h-tag{ background:rgba(227,192,116,.14); border:1px solid rgba(227,192,116,.32); color:#f0e2c2; }
+/* tinted components — gold-theme variants so they never fall back to light blocks */
+html[data-theme="gold"] .margin-banner{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
+html[data-theme="gold"] .inc-tile{ background:rgba(6,55,31,.4); border-color:#14532d; }
+html[data-theme="gold"] .inc-lbl{ color:#34d399; } html[data-theme="gold"] .inc-val{ color:#a7f3d0; } html[data-theme="gold"] .inc-sub{ color:#6ee7b7; }
+html[data-theme="gold"] .harvest-tile{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
+html[data-theme="gold"] .harvest-tile .inc-lbl{ color:#fca5a5; } html[data-theme="gold"] .harvest-tile .inc-val{ color:#fecaca; } html[data-theme="gold"] .harvest-tile .inc-sub{ color:#fca5a5; }
+html[data-theme="gold"] .small-chip{ background:#322713; color:#f4d98a; }
+html[data-theme="gold"] .pk-sig.buy{ background:#06371f; color:#34d399; }
+html[data-theme="gold"] .pk-sig.cautious{ background:#3a2f0a; color:#fde68a; }
+html[data-theme="gold"] .teaser-bar{ background:rgba(6,55,31,.35); border-color:#14532d; }
+html[data-theme="gold"] .cross-note{ background:rgba(16,36,31,.6)!important; color:#a7f3d0!important; }
+html[data-theme="gold"] .box-bull{ background:rgba(6,55,31,.4); border-color:#14532d; color:#a7f3d0; }
+html[data-theme="gold"] .box-bear{ background:rgba(127,29,29,.25); border-color:#7f1d1d; color:#fca5a5; }
+html[data-theme="gold"] .box-info{ background:rgba(227,192,116,.09); border-color:rgba(227,192,116,.30); color:#f0e2c2; }
+html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#7c4a03; color:#fed7aa; }
+html[data-theme="gold"] .az-gauge-in{ background:#161109; }
+html[data-theme="gold"] #pf-fresh{ background:rgba(24,19,12,.82)!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
 </head>
 <body>
@@ -562,7 +570,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(24,19,12,.82)!important; colo
     });
   }};
   function boot(){
-    var APP_VERSION='v69'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v70'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -580,8 +588,8 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(24,19,12,.82)!important; colo
                : stale  ? '⚠️ Snapshot '+ageStr(ageH)+' — tap ↻ to refresh'
                :          '📡 Snapshot: '+lab+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
       var _th=document.documentElement.getAttribute('data-theme')||'light';
-      if(_th==='dark')_th='neon';
-      var themeIco=_th==='neon'?'☀️':'⚡';
+      if(_th==='dark'||_th==='neon')_th='gold';
+      var themeIco=_th==='gold'?'☀️':'✨';
       var privOn=document.body&&document.body.classList.contains('pf-private');
       bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
@@ -636,10 +644,10 @@ function fmtD(n){ if(n==null||isNaN(n))return'—'; return(n<0?'-$':'$')+fmt(Mat
 function fmtP(n){ if(n==null||isNaN(n))return'—'; return(n>=0?'+':'')+fmt(n)+'%'; }
 function sc(n){ return n>0?'pos':n<0?'neg':'neu'; }
 /* Theme-aware chart colors (Light + Neon). Charts read these so gridlines/labels stay legible. */
-function _isNeon(){ return document.documentElement.getAttribute('data-theme')==='neon'; }
-function chGrid(){ return _isNeon()?'rgba(210,180,120,0.12)':'#f3f4f6'; }
-function chTick(){ return _isNeon()?'#b9ad92':'#9ca3af'; }
-function chLabel(){ return _isNeon()?'#f2ebdc':'#1c1c1e'; }
+function _isGold(){ return document.documentElement.getAttribute('data-theme')==='gold'; }
+function chGrid(){ return _isGold()?'rgba(210,180,120,0.12)':'#f3f4f6'; }
+function chTick(){ return _isGold()?'#b9ad92':'#9ca3af'; }
+function chLabel(){ return _isGold()?'#f2ebdc':'#1c1c1e'; }
 function applyChartTheme(){ try{ if(window.Chart){ Chart.defaults.color=chTick(); Chart.defaults.borderColor=chGrid(); } }catch(e){} }
 
 /* ─── Parsers ─── */
@@ -1091,10 +1099,10 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const portYTD=lastV(portSeries), spyYTD=lastV(spyN), qqqYTD=lastV(qqqN);
   try{ if(window.__SNAP){ const _cv=wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0; window.__SNAP.perf={labels:axis,port:portSeries?portSeries.map(x=>x.v):null,spy:spyN.map(x=>x.v),qqq:qqqN.map(x=>x.v),portYTD,spyYTD,qqqYTD,cov:_cv}; } }catch(e){}
   const _thm=document.documentElement.getAttribute('data-theme');
-  const C={ port:_thm==='neon'?'#22d3ee':'#6366f1', portBg:_thm==='neon'?'rgba(34,211,238,0.12)':'rgba(99,102,241,0.08)',
-    spy:_thm==='neon'?'#94a3b8':'#9ca3af', qqq:_thm==='neon'?'#f472b6':'#10b981',
-    grid:_thm==='neon'?'rgba(120,160,255,0.10)':_thm==='dark'?'rgba(255,255,255,0.06)':'#f3f4f6',
-    tick:_thm==='neon'?'#7c8aa5':'#9ca3af' };
+  const C={ port:_thm==='gold'?'#e3c074':'#6366f1', portBg:_thm==='gold'?'rgba(227,192,116,0.12)':'rgba(99,102,241,0.08)',
+    spy:_thm==='gold'?'#b9ad92':'#9ca3af', qqq:_thm==='gold'?'#9a7bd0':'#10b981',
+    grid:_thm==='gold'?'rgba(210,180,120,0.10)':_thm==='dark'?'rgba(255,255,255,0.06)':'#f3f4f6',
+    tick:_thm==='gold'?'#b9ad92':'#9ca3af' };
   el.innerHTML=`
     <div class="perf-head">
       <div class="perf-metric"><div class="pm-l">Your holdings YTD*</div><div class="pm-v ${sc(portYTD)}">${portYTD!=null?fmtP(portYTD):'—'}</div></div>
@@ -1775,10 +1783,10 @@ function squarify(items, x, y, w, h){
   }
   return rects;
 }
-function hmColor(pct, div, neon){
-  if(pct==null||isNaN(pct)) return neon?'#1a2440':'#475569';
+function hmColor(pct, div, gold){
+  if(pct==null||isNaN(pct)) return gold?'#2a2114':'#475569';
   const t=Math.max(-1,Math.min(1,pct/div)); const mag=Math.abs(t);
-  const l=neon?(26+mag*26):(30+mag*22); const s=neon?88:60; const h=pct>=0?(neon?158:152):(neon?342:356);
+  const l=gold?(26+mag*26):(30+mag*22); const s=gold?88:60; const h=pct>=0?(gold?158:152):(gold?342:356);
   return 'hsl('+h+' '+s+'% '+l+'%)';
 }
 let _hmMode='day';
@@ -1796,10 +1804,10 @@ function renderHeatmap(){
   const note=document.getElementById('hm-note');
   if(note){ if(sorted.length>CAP){ const shownVal=items.reduce((s,it)=>s+it.value,0); const totVal=sorted.reduce((s,it)=>s+it.value,0); note.textContent=`Showing the ${CAP} largest of ${sorted.length} positions ≥ $${SMALL_THR} (${fmt(totVal>0?shownVal/totVal*100:0,0)}% of mapped value). Smaller names are omitted for legibility.`; } else { note.textContent=''; } }
   const rects=squarify(items,0,0,W,H);
-  const neon=document.documentElement.getAttribute('data-theme')==='neon';
+  const gold=document.documentElement.getAttribute('data-theme')==='gold';
   const div=_hmMode==='day'?3:40;
   let html='';
-  for(const r of rects){ const p=r.d.p; const pct=_hmMode==='day'?p.dayP:p.pnlP; const bg=hmColor(pct,div,neon);
+  for(const r of rects){ const p=r.d.p; const pct=_hmMode==='day'?p.dayP:p.pnlP; const bg=hmColor(pct,div,gold);
     const fs=Math.max(9,Math.min(19,Math.min(r.w,r.h)/3.8)); const showSym=r.w>=30&&r.h>=16; const showChg=r.h>=42&&r.w>=42;
     const chg=pct==null?'—':((pct>=0?'+':'')+fmt(pct,1)+'%');
     html+='<div class="hm-tile" style="left:'+r.x+'px;top:'+r.y+'px;width:'+Math.max(0,r.w-2)+'px;height:'+Math.max(0,r.h-2)+'px;background:'+bg+'" onclick="azConfirm(\''+p.symbol+'\')" title="'+p.symbol+' · '+fmtD(p.val)+' · '+chg+'">'
@@ -3310,10 +3318,10 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 })();
 
 /* Theme cycles Light → Dark → Neon → Light. The icon shows the theme you'll switch TO. */
-var THEME_ORDER=['light','neon']; /* Dark retired — Light ⇄ Neon only */
-function themeIcon(t){ return t==='neon'?'☀️':'✨'; } /* icon = the theme you'll switch TO (✨ = the gold dark theme) */
-function themeColor(t){ return t==='neon'?'#000':'#16213e'; }
-function toggleTheme(){ const h=document.documentElement; let cur=h.getAttribute('data-theme')||'light'; if(cur==='dark')cur='neon'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof applyChartTheme==='function') applyChartTheme(); }catch(e){} try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
+var THEME_ORDER=['light','gold']; /* Light ⇄ Gold (champagne-on-black dark theme) */
+function themeIcon(t){ return t==='gold'?'☀️':'✨'; } /* icon = the theme you'll switch TO (✨ = the gold dark theme) */
+function themeColor(t){ return t==='gold'?'#000':'#16213e'; }
+function toggleTheme(){ const h=document.documentElement; let cur=h.getAttribute('data-theme')||'light'; if(cur==='dark'||cur==='neon')cur='gold'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof applyChartTheme==='function') applyChartTheme(); }catch(e){} try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
 
 /* Privacy mode: blur your $ figures on the Portfolio tab (other tabs are market data, untouched). */
 let _moneyMo=null,_moneyT=null;

@@ -94,15 +94,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v69** (`pf-v69`).
-- **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme` on
-  `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to the dark theme). The dark theme is a
-  **champagne-gold luxe** variant on a **flat black (`#000`) background** — champagne/bronze/jewel accents,
-  a gold-gradient headline number with a warm glow, thin warm-gold card borders, corner-bracket hero frame
-  (recolored from the old cyan/magenta "neon" HUD in v69). **Its `data-theme` key is still `neon`** for
-  back-compat (persisted prefs + the `_isNeon()` chart helper key off that string) — the historical
-  `--nx-cyan/-mag/-pur` CSS vars are repurposed to the gold/jewel palette; its CSS is a self-contained
-  `html[data-theme="neon"]` block at the end of the `<style>`. Charts read the theme via
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v70** (`pf-v70`).
+- **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
+  `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
+  `toggleTheme()`). Gold is a **champagne-gold luxe** dark variant on a **flat black (`#000`) background** —
+  champagne/bronze/jewel accents, a gold-gradient headline number with a warm glow, thin warm-gold card
+  borders, a corner-bracket hero frame, and **per-tile jewel colors on the hero `.snap-grid` stat row**
+  (emerald · bronze · teal · purple · gold via `:nth-child`). Renamed from the old cyan/magenta "neon" HUD
+  in v69–v70: the `data-theme` key, the `_isGold()` chart helper, and `THEME_ORDER` all use `gold` now; the
+  historical `--nx-cyan/-mag/-pur` CSS vars are kept (repurposed to the gold/jewel palette). Its CSS is a
+  self-contained `html[data-theme="gold"]` block at the end of the `<style>`. Charts read the theme via
   `chGrid()`/`chTick()`/`chLabel()` + `applyChartTheme()` so gridlines/labels stay legible. (The old
   `html[data-theme="dark"]` rules remain but are unreachable — dark was retired as an option.)
 - **Encryption:** `data.json` is always encrypted on real runs (`PF_PASSPHRASE`). `run.mjs` refuses to
