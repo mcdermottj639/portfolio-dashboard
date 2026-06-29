@@ -361,61 +361,62 @@ html[data-theme="dark"] .box-warn{ background:#2a1a08; border-color:#7c4a03; col
 .hm-tg.active{ background:var(--accent); color:#04140a; }
 html[data-theme="dark"] .hm-tile,html[data-theme="neon"] .hm-tile{ border-color:rgba(255,255,255,0.07); }
 
-/* ═══ NEON theme (HUD) — opt-in third theme; Light/Dark stay untouched ═══ */
-html[data-theme="neon"]{ color-scheme:dark; --accent:#22d3ee; --surface-2:#141d33; --text:#e6f1ff;
-  --nx-cyan:#22d3ee; --nx-mag:#f472b6; --nx-pur:#a855f7; --nx-grn:#34f5c5; --nx-red:#ff5c8a; --nx-bd:rgba(96,165,250,.16); --nx-muted:#8094b8; }
-html[data-theme="neon"] body{ background:#05070f; background-image:
-  radial-gradient(900px 520px at 10% -10%, rgba(168,85,247,.16), transparent 60%),
-  radial-gradient(900px 600px at 100% 0%, rgba(34,211,238,.13), transparent 55%),
-  radial-gradient(760px 720px at 50% 120%, rgba(244,114,182,.10), transparent 60%);
-  background-attachment:fixed; color:var(--text); }
+/* ═══ Dark theme — "Gold" luxe HUD (champagne-on-black). data-theme key stays "neon"
+   for back-compat with persisted prefs + the _isNeon() chart helper. Light stays untouched. ═══ */
+html[data-theme="neon"]{ color-scheme:dark; --accent:#e3c074; --surface-2:#1b1610; --text:#f2ebdc;
+  /* var names are historical (cyan/mag/pur) — repurposed to the gold/jewel palette */
+  --nx-cyan:#e3c074; --nx-mag:#c98a3a; --nx-pur:#9a7bd0; --nx-grn:#3fcf94; --nx-red:#ef8278; --nx-bd:rgba(201,168,100,.16); --nx-muted:#9c917b; }
+html[data-theme="neon"] body{ background:#000; color:var(--text); }
 html[data-theme="neon"] .tabbar{ background:transparent; }
-html[data-theme="neon"] .tab{ background:rgba(18,26,46,.62); color:#8094b8; box-shadow:none; border:1px solid var(--nx-bd); }
-html[data-theme="neon"] .tab:hover{ color:#e6f1ff; }
-html[data-theme="neon"] .tab.active{ background:linear-gradient(140deg,rgba(34,211,238,.22),rgba(168,85,247,.22)); color:#fff; border-color:rgba(34,211,238,.5); box-shadow:0 0 16px rgba(34,211,238,.22); }
+html[data-theme="neon"] .tab{ background:rgba(28,22,15,.62); color:#9c917b; box-shadow:none; border:1px solid var(--nx-bd); }
+html[data-theme="neon"] .tab:hover{ color:var(--text); }
+html[data-theme="neon"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.20),rgba(201,138,58,.16)); color:#fff5e0; border-color:rgba(227,192,116,.5); box-shadow:0 0 16px rgba(227,192,116,.20); }
 html[data-theme="neon"] .card,
-html[data-theme="neon"] .col-card{ background:rgba(11,16,34,.72); border:1px solid var(--nx-bd); box-shadow:0 8px 28px rgba(0,0,0,.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+html[data-theme="neon"] .col-card{ background:rgba(24,19,12,.74); border:1px solid var(--nx-bd); box-shadow:0 8px 28px rgba(0,0,0,.45); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
 html[data-theme="neon"] .col-title,
 html[data-theme="neon"] .card-title,
 html[data-theme="neon"] .macro-val{ color:var(--text); }
 html[data-theme="neon"] .snap,
 html[data-theme="neon"] .mkt-tile,
 html[data-theme="neon"] .macro-tile,
-html[data-theme="neon"] .pk-m{ background:rgba(18,26,46,.6); border:1px solid var(--nx-bd); }
-html[data-theme="neon"] thead th{ border-bottom-color:rgba(96,165,250,.18); color:#7c8aa5; }
+html[data-theme="neon"] .pk-m{ background:rgba(30,24,15,.6); border:1px solid var(--nx-bd); }
+html[data-theme="neon"] thead th{ border-bottom-color:rgba(201,168,100,.20); color:#a89c80; }
 html[data-theme="neon"] thead th.sortable:hover,
-html[data-theme="neon"] thead th.active{ color:#fff; }
-html[data-theme="neon"] tbody tr{ border-bottom-color:rgba(96,165,250,.08); }
-html[data-theme="neon"] tbody tr:hover{ background:rgba(34,211,238,.06); }
+html[data-theme="neon"] thead th.active{ color:#fff5e0; }
+html[data-theme="neon"] tbody tr{ border-bottom-color:rgba(201,168,100,.09); }
+html[data-theme="neon"] tbody tr:hover{ background:rgba(227,192,116,.06); }
 html[data-theme="neon"] .risk-line,
 html[data-theme="neon"] .exdiv-line,
 html[data-theme="neon"] .harv-line{ border-bottom-color:var(--nx-bd); }
 html[data-theme="neon"] .risk-name,
-html[data-theme="neon"] .thesis2 li{ color:#aebbd6; }
+html[data-theme="neon"] .thesis2 li{ color:#cabfa6; }
 html[data-theme="neon"] .alloc-track,
 html[data-theme="neon"] .conf2-track,
-html[data-theme="neon"] .gauge{ background:#1a2440; }
-html[data-theme="neon"] .scn{ border-color:var(--nx-bd); background:rgba(18,26,46,.4); }
+html[data-theme="neon"] .gauge{ background:#2a2114; }
+html[data-theme="neon"] .scn{ border-color:var(--nx-bd); background:rgba(30,24,15,.4); }
 html[data-theme="neon"] .tv-link{ border-color:var(--nx-bd); }
 /* accent colors + glow on the headline numbers */
 html[data-theme="neon"] .pos{ color:var(--nx-grn); }
 html[data-theme="neon"] .neg{ color:var(--nx-red); }
 html[data-theme="neon"] .neu{ color:var(--nx-muted); }
-html[data-theme="neon"] .h-value{ color:#67e8f9; text-shadow:0 0 18px rgba(34,211,238,.55); }
+/* hero value = champagne-gold gradient text with a warm glow */
+html[data-theme="neon"] .h-value{ background:linear-gradient(180deg,#f6e2a8 0%,#e3c074 48%,#c69a4a 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:#e3c074;
+  filter:drop-shadow(0 0 16px rgba(227,192,116,.40)); }
 html[data-theme="neon"] .snap-val,
 html[data-theme="neon"] .perf-val,
 html[data-theme="neon"] .pm-v,
 html[data-theme="neon"] .stress-big,
 html[data-theme="neon"] .scn-val,
 html[data-theme="neon"] .inc-val,
-html[data-theme="neon"] .macro-val{ text-shadow:0 0 12px rgba(34,211,238,.18); }
+html[data-theme="neon"] .macro-val{ text-shadow:0 0 12px rgba(227,192,116,.18); }
 html[data-theme="neon"] .card-hint,
 html[data-theme="neon"] .snap-lbl,
 html[data-theme="neon"] .perf-lbl,
-html[data-theme="neon"] .macro-label{ color:#6f7fa3; }
+html[data-theme="neon"] .macro-label{ color:#8a7f68; }
 /* hero gets a HUD frame + corner brackets */
 html[data-theme="neon"] .header,
-html[data-theme="neon"] .picks-hero{ position:relative; background:linear-gradient(140deg,rgba(34,211,238,.15),rgba(168,85,247,.17)); border:1px solid rgba(34,211,238,.32); box-shadow:0 0 30px rgba(34,211,238,.10), inset 0 0 34px rgba(168,85,247,.08); }
+html[data-theme="neon"] .picks-hero{ position:relative; background:linear-gradient(140deg,rgba(227,192,116,.14),rgba(201,138,58,.12)); border:1px solid rgba(227,192,116,.30); box-shadow:0 0 30px rgba(227,192,116,.09), inset 0 0 40px rgba(201,138,58,.07); }
 html[data-theme="neon"] .header::before,
 html[data-theme="neon"] .header::after,
 html[data-theme="neon"] .picks-hero::before,
@@ -424,24 +425,24 @@ html[data-theme="neon"] .header::before,
 html[data-theme="neon"] .picks-hero::before{ top:9px; left:9px; border-right:none; border-bottom:none; }
 html[data-theme="neon"] .header::after,
 html[data-theme="neon"] .picks-hero::after{ bottom:9px; right:9px; border-left:none; border-top:none; }
-html[data-theme="neon"] .h-tag{ background:rgba(34,211,238,.16); border:1px solid rgba(34,211,238,.3); }
+html[data-theme="neon"] .h-tag{ background:rgba(227,192,116,.14); border:1px solid rgba(227,192,116,.32); color:#f0e2c2; }
 /* tinted components — neon variants so they never fall back to light blocks */
 html[data-theme="neon"] .margin-banner{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
 html[data-theme="neon"] .inc-tile{ background:rgba(6,55,31,.4); border-color:#14532d; }
 html[data-theme="neon"] .inc-lbl{ color:#34d399; } html[data-theme="neon"] .inc-val{ color:#a7f3d0; } html[data-theme="neon"] .inc-sub{ color:#6ee7b7; }
 html[data-theme="neon"] .harvest-tile{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
 html[data-theme="neon"] .harvest-tile .inc-lbl{ color:#fca5a5; } html[data-theme="neon"] .harvest-tile .inc-val{ color:#fecaca; } html[data-theme="neon"] .harvest-tile .inc-sub{ color:#fca5a5; }
-html[data-theme="neon"] .small-chip{ background:#2a2407; color:#fde68a; }
+html[data-theme="neon"] .small-chip{ background:#322713; color:#f4d98a; }
 html[data-theme="neon"] .pk-sig.buy{ background:#06371f; color:#34d399; }
 html[data-theme="neon"] .pk-sig.cautious{ background:#3a2f0a; color:#fde68a; }
 html[data-theme="neon"] .teaser-bar{ background:rgba(6,55,31,.35); border-color:#14532d; }
 html[data-theme="neon"] .cross-note{ background:rgba(16,36,31,.6)!important; color:#a7f3d0!important; }
 html[data-theme="neon"] .box-bull{ background:rgba(6,55,31,.4); border-color:#14532d; color:#a7f3d0; }
 html[data-theme="neon"] .box-bear{ background:rgba(127,29,29,.25); border-color:#7f1d1d; color:#fca5a5; }
-html[data-theme="neon"] .box-info{ background:rgba(34,211,238,.08); border-color:rgba(34,211,238,.3); color:#a5f0ff; }
+html[data-theme="neon"] .box-info{ background:rgba(227,192,116,.09); border-color:rgba(227,192,116,.30); color:#f0e2c2; }
 html[data-theme="neon"] .box-warn{ background:rgba(124,74,3,.25); border-color:#7c4a03; color:#fed7aa; }
-html[data-theme="neon"] .az-gauge-in{ background:#0b1022; }
-html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color:#8094b8!important; border-color:var(--nx-bd)!important; }
+html[data-theme="neon"] .az-gauge-in{ background:#161109; }
+html[data-theme="neon"] #pf-fresh{ background:rgba(24,19,12,.82)!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
 </head>
 <body>
@@ -561,7 +562,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v68'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v69'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -582,7 +583,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
       if(_th==='dark')_th='neon';
       var themeIco=_th==='neon'?'☀️':'⚡';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light · dark · neon">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       var rb=document.getElementById('pf-refresh'); if(rb) rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); };
     });
@@ -636,9 +637,9 @@ function fmtP(n){ if(n==null||isNaN(n))return'—'; return(n>=0?'+':'')+fmt(n)+'
 function sc(n){ return n>0?'pos':n<0?'neg':'neu'; }
 /* Theme-aware chart colors (Light + Neon). Charts read these so gridlines/labels stay legible. */
 function _isNeon(){ return document.documentElement.getAttribute('data-theme')==='neon'; }
-function chGrid(){ return _isNeon()?'rgba(120,160,255,0.12)':'#f3f4f6'; }
-function chTick(){ return _isNeon()?'#93a6cc':'#9ca3af'; }
-function chLabel(){ return _isNeon()?'#e6f1ff':'#1c1c1e'; }
+function chGrid(){ return _isNeon()?'rgba(210,180,120,0.12)':'#f3f4f6'; }
+function chTick(){ return _isNeon()?'#b9ad92':'#9ca3af'; }
+function chLabel(){ return _isNeon()?'#f2ebdc':'#1c1c1e'; }
 function applyChartTheme(){ try{ if(window.Chart){ Chart.defaults.color=chTick(); Chart.defaults.borderColor=chGrid(); } }catch(e){} }
 
 /* ─── Parsers ─── */
@@ -3310,8 +3311,8 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 
 /* Theme cycles Light → Dark → Neon → Light. The icon shows the theme you'll switch TO. */
 var THEME_ORDER=['light','neon']; /* Dark retired — Light ⇄ Neon only */
-function themeIcon(t){ return t==='neon'?'☀️':'⚡'; } /* icon = the theme you'll switch TO */
-function themeColor(t){ return t==='neon'?'#05070f':'#16213e'; }
+function themeIcon(t){ return t==='neon'?'☀️':'✨'; } /* icon = the theme you'll switch TO (✨ = the gold dark theme) */
+function themeColor(t){ return t==='neon'?'#000':'#16213e'; }
 function toggleTheme(){ const h=document.documentElement; let cur=h.getAttribute('data-theme')||'light'; if(cur==='dark')cur='neon'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof applyChartTheme==='function') applyChartTheme(); }catch(e){} try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
 
 /* Privacy mode: blur your $ figures on the Portfolio tab (other tabs are market data, untouched). */
