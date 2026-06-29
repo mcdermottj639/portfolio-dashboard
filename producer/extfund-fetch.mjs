@@ -62,17 +62,29 @@ async function fromFinnhub(sym) {
 async function fromFMP(sym) {
   const s = encodeURIComponent(avSym(sym));
   const k = encodeURIComponent(FMP_KEY);
-  // v3 fundamentals are broadly available; price-target/estimates are tier-gated → tolerated as absent.
+  // FMP "stable" API (/stable) — the v3/v4 legacy paths return a "Legacy Endpoint" error for keys
+  // created after 2025-08-31. fundamentals are broadly available; price-target/estimates are
+  // tier-gated → tolerated as absent. analyst-estimates returns descending years, so we pull a
+  // window and pick the nearest future fiscal year for a sensible forward P/E.
   const [profile, ratios, quote, target, est] = await Promise.all([
-    getJSON(`https://financialmodelingprep.com/api/v3/profile/${s}?apikey=${k}`),
-    getJSON(`https://financialmodelingprep.com/api/v3/ratios-ttm/${s}?apikey=${k}`),
-    getJSON(`https://financialmodelingprep.com/api/v3/quote/${s}?apikey=${k}`),
-    getJSON(`https://financialmodelingprep.com/api/v4/price-target-consensus?symbol=${s}&apikey=${k}`),
-    getJSON(`https://financialmodelingprep.com/api/v3/analyst-estimates/${s}?limit=1&apikey=${k}`),
+    getJSON(`https://financialmodelingprep.com/stable/profile?symbol=${s}&apikey=${k}`),
+    getJSON(`https://financialmodelingprep.com/stable/ratios-ttm?symbol=${s}&apikey=${k}`),
+    getJSON(`https://financialmodelingprep.com/stable/quote?symbol=${s}&apikey=${k}`),
+    getJSON(`https://financialmodelingprep.com/stable/price-target-consensus?symbol=${s}&apikey=${k}`),
+    getJSON(`https://financialmodelingprep.com/stable/analyst-estimates?symbol=${s}&period=annual&limit=10&apikey=${k}`),
   ]);
   if (!ok(profile) && !ok(ratios) && !ok(quote)) return { _err: (profile._err || ratios._err || quote._err) };
+  const estRow = ok(est) && Array.isArray(est) ? nearestEstimate(est) : null;
   return fmpToOverview(sym, ok(profile) ? profile : null, ok(ratios) ? ratios : null,
-    ok(quote) ? quote : null, ok(target) ? target : null, ok(est) ? est : null);
+    ok(quote) ? quote : null, ok(target) ? target : null, estRow);
+}
+// From a set of dated annual estimates, pick the earliest whose date is in the future (next fiscal
+// year) for a meaningful forward P/E; fall back to the most recent if all are past.
+function nearestEstimate(rows) {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  const dated = rows.filter((r) => r && r.date).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  if (!dated.length) return rows[0] || null;
+  return dated.find((r) => String(r.date) >= today) || dated[dated.length - 1];
 }
 
 const writeJSON = (f, o) => writeFileSync(f, JSON.stringify(o));
