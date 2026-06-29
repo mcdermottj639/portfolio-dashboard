@@ -47,25 +47,26 @@ enough; orders must be explicitly named.) The automation's job is to deliver a *
    stop/target/earnings level triggers — turnover is tax drag.
 5. **Prefer long-term lots** for any necessary trim once lots age past 1 year; harvest losses thoughtfully.
 
-## Weekly job — turnkey scheduled-trigger prompt
-The remote container is ephemeral, so durable scheduling is a **web-UI scheduled trigger** (like the
-producer's — see `SCHEDULING.md` §3), **not** in-session cron. Add **one** trigger, **weekly, ~30 min before
-the Monday open** (e.g. `0 9 * * 1` America/New_York), with this prompt:
+## Weekly job — wired into the existing producer (no separate trigger)
+Rather than a new scheduled trigger, the weekly refresh is **step 7 of the producer** (`PRODUCER.md`),
+which runs on the existing durable triggers. It's **best-effort, post-publish, weekly-gated** — it can
+never disturb the daily `data.json` publish (same isolation as the watchlist syncs). Each FETCH_ALL run:
 
-> Refresh the agentic account target and propose a rebalance. Steps:
-> 1. Assemble a fresh candidate **universe**: run the Robinhood oversold scan (`run_scan` SCAN_ID from
->    `producer/picks.mjs`) for value names + the `producer/leaders.mjs` mega-cap bench + current ••••3900
->    holdings; pull live quotes + fundamentals for sector/PE/52wk. Build the `[{t,sec,px,pe,hi,lo}]` list.
-> 2. Run the **`agentic-research`** workflow with `args:{ universe:<that list>, book:<current ••••3900 equity> }`.
-> 3. Write its `allocation` to **`producer/agentic-target.json`** (shape per AGENTIC.md), commit + push to `main`.
-> 4. Read ••••3900 live (`get_portfolio` + `get_equity_positions`), compute drift vs the new target, and apply
->    the **Tax & regulation rules** above to build a concrete rebalance ticket (buys to underweights first;
->    trims only on drift > trigger and wash-sale/short-term-gain-aware; sells sequenced before buys).
-> 5. **Do NOT place anything.** Send the owner the proposed orders for one-tap confirmation (`PushNotification`
->    + the order list). Place only after they confirm the exact tickers + amounts.
+1. `node producer/agentic-due.mjs` → `AGENTIC_DUE` (target ≥ 7d old / missing) or `AGENTIC_NOT_DUE`
+   (skip; ~zero cost). The gate keys off `agentic-target.json`'s `asOf`, so it fires ~once a week and
+   self-heals if a run is missed.
+2. On DUE: assemble a fresh universe (oversold scan finalists + `leaders.mjs` bench + ••••3900 holdings),
+   run the **`agentic-research`** workflow (`args:{universe, book}`), write the result to
+   `producer/agentic-target.json` (this file's shape) and commit + push it to `main`.
+3. Compute drift vs the new target, apply the **Tax & regulation rules** above, and **`PushNotification`
+   the owner a rebalance proposal** — placing nothing (alert & one-tap-confirm).
 
-On demand (any session), the same flow is one call: run the **`agentic-research`** workflow, commit the new
-`agentic-target.json`, then propose the reviewed rebalance.
+Because the producer's trigger prompt is "follow `producer/PRODUCER.md` exactly", this needs **no web-UI
+change** — the existing schedule picks it up. (If a live trigger uses an older prompt that doesn't defer to
+PRODUCER.md, re-paste the prompt in `SCHEDULING.md` once.)
+
+**On demand (any session):** just ask to "rebalance" — same flow in one go: run the `agentic-research`
+workflow, commit the new `agentic-target.json`, then propose the reviewed rebalance for confirmation.
 
 ## Robinhood writes from this account
 The producer is READ-ONLY on ••••3900 (it only *fetches* for display). The **only** writes are the

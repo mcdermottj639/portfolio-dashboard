@@ -325,6 +325,29 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    — it re-syncs next FETCH_ALL. (Verified end-to-end against the live account: add → read-back →
    remove all succeed unattended.)
 
+7. **Weekly agentic-account research + rebalance alert (best-effort, post-publish, FETCH_ALL only).**
+   The agentic cash account (••••3900) target is the output of the deep multi-factor research, refreshed
+   ~weekly. After the watchlist syncs:
+   1. `node producer/agentic-due.mjs` → `AGENTIC_DUE` (exit 0) or `AGENTIC_NOT_DUE` (exit 20). If NOT_DUE,
+      **skip the rest of this step** — the committed target is still fresh (~zero cost).
+   2. If DUE: assemble a fresh candidate **universe** — the day's oversold scan finalists (`scan.json` via
+      `picks.mjs`) + the `leaders.mjs` mega-cap bench + current ••••3900 holdings (`agentic-positions.json`),
+      with live quotes/fundamentals for sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
+   3. Run the **`agentic-research`** workflow (`.claude/workflows/agentic-research.js`) with
+      `args:{ universe:<that list>, book:<••••3900 equity from agentic-portfolio.json> }`.
+   4. Write its `allocation` to **`producer/agentic-target.json`** (shape per `AGENTIC.md`: names with
+      ticker/sector/weightPct/entry/stop/target/thesis; `asOf` = today ET, `book`, `driftTriggerPp` 5), then
+      `git add producer/agentic-target.json && git commit && git push origin main` (next run's
+      `build-data.mjs` embeds it as `data.agentic.target`).
+   5. Compute drift vs the new target from the live ••••3900 holdings, apply the **Tax & regulation rules**
+      in `AGENTIC.md` (cash-flow-first, wash-sale-safe, short-term-gain-aware, sells-before-buys); if
+      anything is actionable, **`PushNotification`** the owner the proposed rebalance ticket.
+   6. **Place NOTHING** — execution is alert & one-tap-confirm; the owner confirms in a session.
+
+   Best-effort, same rule as steps 5–6: `data.json` is already published, so on ANY failure (workflow
+   error, rate-limit, push blip) **just stop** — the existing target stands and it retries next week. This
+   step NEVER gates the core publish. Full flow + tax/reg rules: `AGENTIC.md`.
+
 ## Failure handling
 - `run.mjs` aborts (no commit) if the core `portfolio.json`/`positions.json` are missing, if the
   build fails, or if `data.json` came out unencrypted while `PF_PASSPHRASE` is set. A stale

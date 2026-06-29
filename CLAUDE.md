@@ -58,6 +58,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
    runs its planner (prints the add/remove diff), then executes the MCP writes. Best-effort: a failure
    never gates the run (each re-syncs next FETCH_ALL). These two writes are the **only** producer writes
    to Robinhood — everything else reads.
+6. **FETCH_ALL only, after publish, ~weekly (best-effort):** `agentic-due.mjs` gates the agentic-account
+   research refresh; when `AGENTIC_DUE`, the agent runs the **`agentic-research`** workflow → writes
+   `producer/agentic-target.json` (commit+push) → computes drift vs ••••3900 → **`PushNotification`s the
+   owner a rebalance proposal** (places nothing — alert & one-tap-confirm). Fault-isolated like step 5;
+   never gates the publish. See `AGENTIC.md` / `PRODUCER.md` step 7. Adds no Robinhood writes (reads only).
 
 ## Key files
 | File | Role |
@@ -81,7 +86,8 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `.github/workflows/freshness.yml` | Watchdog: opens an issue if `data.json` is stale >3h during market hours; auto-closes on recovery. |
 | `producer/agentic-target.json` | **Canonical research-driven target** for the agentic cash account (••••3900): `{asOf,method,book,driftTriggerPp,names[]}`. `build-data.mjs` attaches it as `data.agentic.target`; the Agentic Portfolio card renders drift against it. Refreshed **weekly** by the deep research. |
 | `.claude/workflows/agentic-research.js` | Reusable **named workflow** — the deep multi-factor research (momentum/quality/growth/catalyst sleeves + valuation → adversarial verify → synthesis). Pass a fresh `args.universe`; output drives `agentic-target.json`. |
-| `producer/AGENTIC.md` | **Runbook** for the agentic account: tax/reg rules (taxable, short-term lots, wash-sale, T+1 settlement), the weekly research→target→rebalance-proposal flow, execution policy (**alert & one-tap confirm**), and the turnkey weekly scheduled-trigger prompt. |
+| `producer/AGENTIC.md` | **Runbook** for the agentic account: tax/reg rules (taxable, short-term lots, wash-sale, T+1 settlement), the weekly research→target→rebalance-proposal flow, execution policy (**alert & one-tap confirm**). The weekly job is **wired into the producer** (step 7), not a separate trigger. |
+| `producer/agentic-due.mjs` | Weekly gate (like `preflight.mjs`) for the agentic research refresh — `AGENTIC_DUE` (exit 0) / `AGENTIC_NOT_DUE` (exit 20), keyed off `agentic-target.json` `asOf` ≥ 7d. Producer step 7 runs the deep research only when DUE. |
 | `producer/railway/` · `producer/RAILWAY.md` | Optional credentialed Railway producer (Python `robin_stocks` fetch → existing Node tail). See the runbook. |
 
 ## Conventions
