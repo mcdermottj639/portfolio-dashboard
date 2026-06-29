@@ -275,6 +275,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      builds + pushes anyway so social/news stay fresh; pass `--require-open` to skip when closed.
    - **Alpha Vantage** (optional) — if `ALPHAVANTAGE_KEY` is set, `av-fetch.mjs` pulls macro +
      fundamentals over plain HTTP (no MCP call), once per ET day. See step 3's AV note.
+   - **Supplementary fundamentals** (optional) — if `FINNHUB_KEY` and/or `FMP_KEY` is set,
+     `extfund-fetch.mjs` pulls per-holding fundamentals over plain HTTP (once per ET day) and writes
+     `producer/raw/ext-fund/overview-<SYM>.json` in AV's overview shape. **AV stays primary**:
+     `build-data` only uses these to fill fields AV is missing for a name, or to cover holdings AV's
+     25/day cap skipped. Needs `finnhub.io` / `financialmodelingprep.com` on the egress allowlist.
    - **picks-build / options-build** — run only if their raw inputs exist.
    - **build-data** — writes the encrypted `data.json`. Optional owner editorial: a hand-maintained
      `producer/notes.json` (a plain string, or `{ "risk": "…" }`) is embedded as `data.notes` and
@@ -283,7 +288,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - **validate** — replay-contract sanity check (warn-only).
    - **commit + push** — only if `data.json` actually changed; retries the push with backoff.
 
-   Useful flags: `--no-push` (dry run / local build), `--no-av` (skip the AV fetch), `--require-open`.
+   Useful flags: `--no-push` (dry run / local build), `--no-av` (skip the AV fetch),
+   `--no-extfund` (skip the Finnhub/FMP supplementary fetch), `--require-open`.
    Only `data.json` changes on a normal run; GitHub Pages serves it within a minute (the PWA's
    service worker is network-first for `data.json`, so the next open shows it).
 
