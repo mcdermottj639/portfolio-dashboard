@@ -570,7 +570,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v73'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v74'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1851,20 +1851,36 @@ function hmColor(pct, div, gold){
   const l=gold?(26+mag*26):(30+mag*22); const s=gold?88:60; const h=pct>=0?(gold?158:152):(gold?342:356);
   return 'hsl('+h+' '+s+'% '+l+'%)';
 }
-let _hmMode='day';
+let _hmMode='day', _hmAcct='main';
 function setHeatmap(m){ _hmMode=m; const d=document.getElementById('hm-day'),p=document.getElementById('hm-pnl'),l=document.getElementById('hm-mode-lbl'); if(d)d.classList.toggle('active',m==='day'); if(p)p.classList.toggle('active',m==='pnl'); if(l)l.textContent=m==='day'?'day move':'total P&L'; renderHeatmap(); }
 window.setHeatmap=setHeatmap;
+function setHeatmapAcct(a){ _hmAcct=a; const m=document.getElementById('hm-acct-main'),g=document.getElementById('hm-acct-agentic'); if(m)m.classList.toggle('active',a==='main'); if(g)g.classList.toggle('active',a==='agentic'); renderHeatmap(); }
+window.setHeatmapAcct=setHeatmapAcct;
+// Heatmap rows for the agentic cash account (••••3900) — same {symbol,val,dayP,pnlP} shape the
+// margin account's enriched rows use, derived from data.agentic.positions (priced by the producer).
+function _agenticHeatRows(){
+  const A=(window.__DATA&&window.__DATA.agentic)||null; if(!A||!Array.isArray(A.positions))return [];
+  return A.positions.filter(p=>p&&p.symbol&&(+p.value>0)).map(p=>{
+    const qty=+p.qty||0, avg=+p.avgCost||0, px=+p.px||0, val=Math.max(0,+p.value||0), cost=qty*avg;
+    const pnlP=cost>0?((val-cost)/cost*100):null;
+    const q=azQuote(p.symbol); const prev=q?(parseFloat(q.adjusted_previous_close||q.previous_close||0)||0):0;
+    const dayP=(prev>0&&px>0)?((px-prev)/prev*100):null;
+    return {symbol:p.symbol, val, dayP, pnlP};
+  });
+}
 function renderHeatmap(){
   const el=document.getElementById('heatmap'); if(!el)return;
-  const src=(window.__PORT&&window.__PORT.enriched)||_enriched||[];
-  const rows=src.filter(p=>p.val>=SMALL_THR);
-  if(!rows.length){ el.innerHTML='<div class="tech-empty" style="padding:18px">No positions to map.</div>'; return; }
+  const agentic=_hmAcct==='agentic';
+  const src=agentic?_agenticHeatRows():((window.__PORT&&window.__PORT.enriched)||_enriched||[]);
+  const thr=agentic?0:SMALL_THR;   // the agentic cash account is small/fractional — don't hide its names
+  const rows=src.filter(p=>p.val>thr);
+  const note=document.getElementById('hm-note');
+  if(!rows.length){ el.innerHTML=`<div class="tech-empty" style="padding:18px">${agentic?'The agentic account (••••3900) hasn’t been captured yet — it appears after the next scheduled run.':'No positions to map.'}</div>`; if(note)note.textContent=''; return; }
   const W=el.clientWidth, H=el.clientHeight||340; if(W<10)return; /* hidden tab — skip */
   const CAP=30;
   const sorted=rows.map(p=>({value:p.val, p})).sort((a,b)=>b.value-a.value);
   const items=sorted.slice(0,CAP);
-  const note=document.getElementById('hm-note');
-  if(note){ if(sorted.length>CAP){ const shownVal=items.reduce((s,it)=>s+it.value,0); const totVal=sorted.reduce((s,it)=>s+it.value,0); note.textContent=`Showing the ${CAP} largest of ${sorted.length} positions ≥ $${SMALL_THR} (${fmt(totVal>0?shownVal/totVal*100:0,0)}% of mapped value). Smaller names are omitted for legibility.`; } else { note.textContent=''; } }
+  if(note){ if(sorted.length>CAP){ const shownVal=items.reduce((s,it)=>s+it.value,0); const totVal=sorted.reduce((s,it)=>s+it.value,0); note.textContent=`Showing the ${CAP} largest of ${sorted.length} positions${thr>0?` ≥ $${thr}`:''} (${fmt(totVal>0?shownVal/totVal*100:0,0)}% of mapped value). Smaller names are omitted for legibility.`; } else { note.textContent=agentic?`Agentic cash account (••••3900) · ${sorted.length} holding${sorted.length===1?'':'s'}.`:''; } }
   const rects=squarify(items,0,0,W,H);
   const gold=document.documentElement.getAttribute('data-theme')==='gold';
   const div=_hmMode==='day'?3:40;
@@ -1937,7 +1953,7 @@ async function load(){
       <div class="card"><div id="snap-content"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
-      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
+      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">${(window.__DATA&&window.__DATA.agentic&&(window.__DATA.agentic.positions||[]).some(p=>p&&+p.value>0))?`<span style="display:flex;gap:6px"><button class="hm-tg active" id="hm-acct-main" onclick="setHeatmapAcct('main')">Margin</button><button class="hm-tg" id="hm-acct-agentic" onclick="setHeatmapAcct('agentic')">Agentic</button></span><span style="width:1px;align-self:stretch;background:rgba(148,163,184,.35)"></span>`:''}<button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>

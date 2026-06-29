@@ -94,7 +94,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v73** (`pf-v73`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v74** (`pf-v74`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -186,7 +186,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 ## Feature inventory (what's built)
 - **Portfolio:** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %
   on cost, value-weighted Day %); **Holdings Heatmap** (squarified treemap, sized by value, colored by
-  day move or total P&L, tap-to-Analyze, with a "top N of M" coverage note when capped); risk/concentration
+  day move or total P&L, tap-to-Analyze, with a "top N of M" coverage note when capped; v74 adds an
+  **account toggle — Margin ⇄ Agentic** that re-maps the tiles from the agentic cash account's
+  `data.agentic.positions` instead of the margin book, shown only when that snapshot exists, with a
+  $0 floor since that account is small/fractional); risk/concentration
   with a **risk-adjusted metrics row** (Sharpe · annualized volatility · max drawdown · beta, computed YTD
   from covered holdings' historicals in `computeRiskMetrics`) plus a **data-derived concentration &
   correlation context** block (largest theme, an **empirical correlated cluster** from actual return
