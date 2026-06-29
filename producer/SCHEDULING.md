@@ -66,7 +66,16 @@ Use exactly this as the scheduled prompt:
 > if `producer/raw/option-watchlist.json` exists, sync the **options** watchlist — read it
 > (`get_option_watchlist`), run `node producer/sync-option-watchlist.mjs`, execute the `ADD`/`REMOVE`
 > with `position_type: "long"`. Both are best-effort — if any watchlist call fails, just end the
-> session (each list re-syncs next FETCH_ALL run).
+> session (each list re-syncs next FETCH_ALL run). Lastly, on FETCH_ALL only, do the best-effort
+> **weekly agentic-account step** (`PRODUCER.md` step 7): run `node producer/agentic-due.mjs`; if it
+> prints `AGENTIC_DUE`, refresh `producer/agentic-target.json` via the **`agentic-research`** workflow
+> (commit + push it), then compute drift and **`PushNotification` me a rebalance proposal** for the
+> ••••3900 cash account — but **place no orders** (alert & one-tap-confirm). If `AGENTIC_NOT_DUE` or
+> anything fails, just end the session; it never gates the run and retries next week.
+
+> **Note (existing trigger):** the agentic step lives in `PRODUCER.md`, so any trigger whose prompt says
+> "follow `producer/PRODUCER.md` exactly" picks it up with **no change needed**. If your live trigger
+> uses an older prompt that doesn't, re-paste the prompt above once.
 
 `preflight.mjs` owns the run-mode decision (deterministic, from the committed `data.json`), and
 `run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
