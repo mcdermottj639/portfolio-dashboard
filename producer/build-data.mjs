@@ -211,7 +211,16 @@ const data = {
     data.agentic = { asOf: data.generatedAt, cash, buyingPower: bp, equity: +(cash + posVal).toFixed(2), positions };
     console.log(`agentic: ${positions.length} positions · ${fmtMoney(posVal)} invested · ${fmtMoney(cash)} cash`);
   } else if (prior && prior.agentic) {
-    data.agentic = { ...prior.agentic };
+    // No fresh agentic fetch this run (e.g. a light intraday run) — carry the holdings forward but
+    // RE-PRICE each with THIS run's quotes, so the agentic values + drift track prices on every run
+    // (3×/day), in step with the main account. The holdings are index/leader symbols that are quoted
+    // every run, so a live price is available; falls back to the carried px / avg cost otherwise.
+    const pxOf = (sym) => { const q = quotes[sym]; if (!q) return 0; return parseFloat(q.last_extended_hours_trade_price || q.last_trade_price || q.adjusted_previous_close || q.previous_close || 0) || 0; };
+    const positions = (prior.agentic.positions || []).map((p) => { const px = pxOf(p.symbol) || p.px || p.avgCost || 0; return { ...p, px, value: +(px * (p.qty || 0)).toFixed(2) }; });
+    const posVal = positions.reduce((s, p) => s + p.value, 0);
+    const cash = prior.agentic.cash || 0;
+    data.agentic = { ...prior.agentic, asOf: data.generatedAt, positions, equity: +(cash + posVal).toFixed(2) };
+    console.log(`agentic: re-priced ${positions.length} carried positions · ${fmtMoney(posVal)} invested (no fresh fetch this run)`);
   }
   if (agenticTarget) {
     if (!data.agentic) data.agentic = { asOf: data.generatedAt, cash: 0, buyingPower: 0, equity: 0, positions: [] };
