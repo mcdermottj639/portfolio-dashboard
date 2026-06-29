@@ -94,7 +94,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v74** (`pf-v74`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v75** (`pf-v75`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -258,7 +258,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   Robinhood watchlist (daily add/remove diff via `sync-watchlist.mjs`), so the list in the Robinhood
   app always tracks the Picks table.
 - **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
-  chat-to-build-trade + Robinhood deep links. The ticker box has **native autocomplete** over the
+  chat-to-build-trade + Robinhood deep links. **The setup score is no longer technical-only (v75):**
+  `analyzeStock()` blends a **fundamentals/quality sub-score** (`_fundScore` — forward P/E, revenue
+  growth, PEG, profit margin, analyst-target upside; neutral 50, returns null when <2 inputs so sparse-AV
+  names fall back to the old technical-only weights) into the setup at **15% weight** (pattern 34 / signal
+  30 / risk 21 / fund 15). Two **confidence-only dampeners** (they never move the setup score) also fold
+  in data we already collect: an **imminent earnings print** (≤7d → IV-crush/gap haircut, via `azEarn`)
+  and a **high-VIX regime** on a bullish call (`azVix()` reads the recorded `INDEX_DATA` VIX synchronously;
+  ≥22 elevated / ≥30 high). All three are surfaced transparently — the fundamentals score in the
+  Recommendation meta line + Fundamentals narrative, the dampeners in the "Why This Signal" note + meta
+  chips. The ticker box has **native autocomplete** over the
   analyzable universe (`azUniverse` = holdings ∪ picks ∪ daily-bar symbols ∪ quotes ∪ options book),
   and a **miss shows clickable suggestions** instead of a dead-end. Every card is collapsible +
   jump-navigable (shared `.card-nav` / auto-collapse observers). Price chart adds **volume bars + an

@@ -570,7 +570,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v74'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v75'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2445,6 +2445,30 @@ function azOverview(sym){ try{ const k=makeKey(AV,{tool_name:'COMPANY_OVERVIEW',
 function _smaN(a,n){ if(!a||a.length<n)return null; let s=0; for(let i=a.length-n;i<a.length;i++)s+=a[i]; return s/n; }
 function _stdevN(a){ if(a.length<2)return 0; const m=a.reduce((s,x)=>s+x,0)/a.length; let v=0; for(const x of a)v+=(x-m)*(x-m); return Math.sqrt(v/a.length); }
 const _cl=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+/* Fundamentals/quality sub-score (0–100, neutral 50) from whatever the snapshot has —
+   forward P/E, revenue growth, PEG, profit margin, analyst target upside. Returns null when
+   <2 inputs are present so the technical read isn't swung by a single noisy factor. */
+function _fundScore(o){
+  const num=v=>{ if(v==null||v==='None'||v==='')return null; const n=parseFloat(v); return isFinite(n)?n:null; };
+  const parts=[];
+  const rg=num(o.revGrowth); if(rg!=null) parts.push(['Rev growth',_cl(50+rg*1.6,10,95)]);
+  const fp=num(o.fwdPE);     if(fp!=null&&fp>0&&fp<200) parts.push(['Fwd P/E',_cl(95-fp*1.8,15,92)]);
+  const pg=num(o.peg);       if(pg!=null&&pg>0&&pg<10) parts.push(['PEG',_cl(90-pg*22,12,90)]);
+  const mg=num(o.margin);    if(mg!=null) parts.push(['Margin',_cl(50+mg*1.6,12,90)]);
+  const up=num(o.upside);    if(up!=null) parts.push(['Analyst ▲',_cl(50+up*1.1,12,92)]);
+  if(parts.length<2)return null;
+  return { score:Math.round(parts.reduce((s,p)=>s+p[1],0)/parts.length), n:parts.length, parts };
+}
+/* Synchronous VIX read from the recorded snapshot (same INDEX_DATA key fetchMacro uses) — lets the
+   pure recommendation factor in the volatility regime without waiting on async enrichment. Memoized. */
+let _azVix; // undefined = not yet read; null = unavailable
+function azVix(){ if(_azVix!==undefined)return _azVix; _azVix=null;
+  try{ const k=makeKey(AV,{tool_name:'INDEX_DATA',arguments:JSON.stringify({symbol:'VIX',interval:'daily'})});
+    const d=parseAV(((window.__DATA&&window.__DATA.recorded)||{})[k]);
+    const arr=d&&(d.data||(Array.isArray(d)?d:null));
+    if(Array.isArray(arr)&&arr.length)_azVix=parseFloat(arr[0].close||arr[0].Close||arr[0]['4. close']||0)||null;
+  }catch(e){}
+  return _azVix; }
 /* ── Analyzable universe + snapshot helpers (shared by autocomplete, miss-handling, IV) ── */
 // Every symbol this snapshot can actually analyze: holdings ∪ picks ∪ daily bars ∪ quotes ∪ options book.
 function azUniverse(){
@@ -2493,6 +2517,14 @@ function analyzeStock(sym){
   }
   const hi52=parseFloat(ov['52WeekHigh'])||recHi||null, lo52=parseFloat(ov['52WeekLow'])||recLo||null;
   const pctFromHigh=hi52?(price/hi52-1)*100:null;
+  // Fundamentals/quality read from whatever the snapshot carries (AV overview ∪ Pick fields).
+  const _tgt=parseFloat(ov.AnalystTargetPrice)||null;
+  const fund=_fundScore({
+    revGrowth: ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:(pk&&pk.revGrowth!=null?parseFloat(pk.revGrowth):null),
+    fwdPE: (ov.ForwardPE&&ov.ForwardPE!=='None')?parseFloat(ov.ForwardPE):(pk&&pk.fwdPE?parseFloat(pk.fwdPE):null),
+    peg: parseFloat(ov.PEGRatio)||null,
+    margin: ov.ProfitMargin!=null?parseFloat(ov.ProfitMargin)*100:null,
+    upside: (_tgt&&price>0)?(_tgt/price-1)*100:null });
   let pattern=45,signal=45,risk=50;
   if(hasTA){
     pattern=_cl(50+(trendUp?22:-18)+(sma50&&sma20>sma50?8:-6)+(mom20!=null?_cl(mom20,-15,15):0),5,98);
@@ -2500,7 +2532,9 @@ function analyzeStock(sym){
     signal=_cl(50+(trendUp?16:-14)+rsiGood+(dayChg!=null?_cl(dayChg*2,-10,10):0),5,98);
     risk=_cl(70-_cl((vol||0)*400,0,40)+(pctFromHigh!=null&&pctFromHigh<-10?8:0)-(rsi!=null&&rsi>78?15:0),5,95);
   }
-  const setup=Math.round(hasTA?(pattern*0.4+signal*0.35+risk*0.25):42);
+  // Blend the fundamentals sub-score into the setup when both it and the technicals exist; otherwise
+  // fall back to the technical-only weights so sparse-AV names behave exactly as before.
+  const setup=Math.round(hasTA?(fund?(pattern*0.34+signal*0.30+risk*0.21+fund.score*0.15):(pattern*0.4+signal*0.35+risk*0.25)):42);
   let label,tone,conf;
   if(!hasTA){ label='Limited Data'; tone='neu'; conf=40; }
   else if(rsi<30&&trendUp!==false){ label='Oversold Bounce'; tone='pos'; conf=_cl(setup,45,80); }
@@ -2516,6 +2550,13 @@ function analyzeStock(sym){
     if(!hasTA){ tone='pos'; label=pk.signal?pk.signal.replace(/\b\w/g,m=>m.toUpperCase()):'Recommended Buy'; conf=pk.confidence||conf;
       if(pk.composite!=null)recSetup=_cl(Math.round(pk.composite*9),35,92); }
   }
+  // Conviction dampeners from data we already collect — these haircut CONFIDENCE only, never the setup
+  // score: an imminent earnings print (IV-crush / gap risk) and a high-volatility VIX regime on a
+  // bullish call. Both are surfaced in the recommendation so the haircut is transparent.
+  const _ern=azEarn(sym); let earnRisk=null, regime=null;
+  if(_ern&&_ern.days!=null&&_ern.days>=0&&_ern.days<=7){ earnRisk={days:_ern.days,when:_ern.when}; conf=_cl(conf-9,20,92); }
+  const _vix=azVix();
+  if(_vix!=null&&_vix>=22&&tone==='pos'){ regime={vix:+_vix.toFixed(1),level:_vix>=30?'high':'elevated'}; conf=_cl(conf-(_vix>=30?12:6),20,92); }
   const k=vol?Math.max(0.05,vol*2.2):0.08;
   const entryLo=+(price*0.985).toFixed(2), entryHi=+price.toFixed(2);
   const stop=+Math.min(recLo&&recLo<price?recLo*0.99:price*(1-k), price*(1-k)).toFixed(2);
@@ -2529,6 +2570,7 @@ function analyzeStock(sym){
     fwdPE:(ov.ForwardPE&&ov.ForwardPE!=='None')?ov.ForwardPE:(pk&&pk.fwdPE?parseFloat(pk.fwdPE):null),
     revGrowth:ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:(pk&&pk.revGrowth?parseFloat(pk.revGrowth):null),
     divYield:ov.DividendYield!=null?parseFloat(ov.DividendYield)*100:null,
+    fund, earnRisk, regime,
     entryLo, entryHi, stop, tp1, tp2, invalid:+(stop*0.997).toFixed(2), pick:pk };
 }
 function azScoreColor(v){ return v>=66?'#10b981':v>=45?'#f59e0b':'#ef4444'; }
@@ -2736,6 +2778,9 @@ function azRec(a){
   if(pk&&pk.tp2)lv.push(['Target 2','$'+pk.tp2.price+(pk.tp2.pct?' ('+pk.tp2.pct+')':''),'#10b981']); else lv.push(['Target 2','$'+a.tp2,'#10b981']);
   const meta=[]; const conf=(pk&&pk.confidence!=null)?pk.confidence:a.conf; if(conf!=null)meta.push(conf+'% confidence');
   if(pk&&pk.rr)meta.push('R/R '+pk.rr); if(pk&&pk.timeframe)meta.push(pk.timeframe);
+  if(a.fund)meta.push('fundamentals '+a.fund.score+'/100');
+  if(a.earnRisk)meta.push('⚠️ earnings in '+a.earnRisk.days+'d');
+  if(a.regime)meta.push('🌪 VIX '+a.regime.vix);
   let h='<div class="card" style="border-left:5px solid '+color+'"><div class="card-title"><span>✅ Recommendation</span></div>'+
     '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-size:24px;font-weight:900;color:'+color+'">'+action+'</div><div style="font-size:12px;color:#9ca3af">'+note+'</div></div>'+
     (meta.length?'<div style="font-size:12px;color:var(--text);opacity:.8;margin-top:4px">'+meta.join(' · ')+'</div>':'')+
@@ -2769,12 +2814,12 @@ function runAnalysis(sym){
       (a.trendUp?'Uptrend':a.trendUp===false?'Downtrend':'Sideways')+'. Price '+(a.sma20?(a.price>=a.sma20?'above':'below')+' its 20-day average':'')+(a.mom20!=null?'; '+(a.mom20>=0?'+':'')+a.mom20.toFixed(1)+'% over ~20 sessions.':'.')]);
     nar.push(['🎯 Momentum / RSI', a.rsi==null?'#9ca3af':a.rsi>70?'#ef4444':a.rsi<30?'#3b82f6':'#10b981',
       'RSI '+(a.rsi!=null?a.rsi:'—')+(a.rsi>70?' — overbought, stretched.':a.rsi<30?' — oversold, bounce potential.':' — healthy, room to run.')+(a.pctFromHigh!=null?' Trading '+Math.abs(a.pctFromHigh).toFixed(0)+'% below the 52-week high.':'')]);
-    nar.push(['💡 Why This Signal', tc, a.label+' — '+(a.trendUp?'trend and ':'')+'the indicators net to a '+a.setup+'/100 setup, ~'+a.conf+'% confidence. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':'Favor pullbacks toward the entry zone.')]);
+    nar.push(['💡 Why This Signal', tc, a.label+' — '+(a.trendUp?'trend and ':'')+'the indicators'+(a.fund?' (plus a '+a.fund.score+'/100 fundamentals read)':'')+' net to a '+a.setup+'/100 setup, ~'+a.conf+'% confidence'+((a.earnRisk||a.regime)?' (trimmed for '+[a.earnRisk?'earnings in '+a.earnRisk.days+'d — IV-crush/gap risk':null,a.regime?'a '+a.regime.level+'-vol regime (VIX '+a.regime.vix+')':null].filter(Boolean).join(' and ')+')':'')+'. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':'Favor pullbacks toward the entry zone.')]);
   } else {
     nar.push(['ℹ️ Limited Data', '#9ca3af', 'Not enough price history in this snapshot for a full technical read on '+sym+'. Showing price + fundamentals; full TA appears once it has daily history (holdings & picks get it on the next run).']);
   }
-  if(a.sector||a.pe||a.revGrowth!=null) nar.push(['🏛️ Fundamentals', '#6366f1',
-    [a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—']);
+  if(a.sector||a.pe||a.revGrowth!=null||a.fund){ const _fb=[a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—';
+    nar.push(['🏛️ Fundamentals'+(a.fund?' · '+a.fund.score+'/100':''), '#6366f1', _fb+(a.fund?' — quality blended into the setup score above ('+a.fund.n+' factor'+(a.fund.n===1?'':'s')+', 15% weight)':'')]); }
   const x=azExtra(a);
   const ivInfo=azIV(a,x), liveOpt=azLiveOptions(sym);
   const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a,ivInfo):null, oplay=a.hasTA?azOptionPlay(a,x,ivInfo):null;
