@@ -95,6 +95,16 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
 
+   > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)
+   > The agentic account number is **not** in an env var, so before the two `agentic-portfolio.json` /
+   > `agentic-positions.json` rows, **call `get_accounts` and use the `account_number` of the account
+   > with `agentic_allowed: true`** (the …3900 cash account, nickname "Agentic"). Pass that real number
+   > to `get_portfolio` / `get_equity_positions` for those two rows — do **not** treat `<agentic acct
+   > …3900>` as a literal or skip the rows because the number "looks missing." Only skip them if
+   > `get_accounts` returns **no** `agentic_allowed` account. Also fold that account's holdings into the
+   > `get_equity_quotes` symbol list so each gets a live price. (Without this the Agentic Portfolio card
+   > shows the target with `$0.00` live holdings — exactly the bug this note prevents.)
+
    > ### ⚠️ CRITICAL — how to save raw files (or the scheduled run hangs)
    > A scheduled run is unattended: **any command that triggers a permission prompt stalls the
    > whole run forever.** The one thing that prompts is **`cp` with shell variables** (e.g.
