@@ -31,19 +31,25 @@ Make sure the environment has the **Robinhood** and **Alpha Vantage** MCP connec
 macro/fundamentals sections degrade to "—" (everything else still works).
 
 ### 3. Create a scheduled trigger
-Run **3×/day on weekdays** — market open, midday, and close. Re-fetching the heavy price history
-every hour was the cost sink; now `preflight.mjs` fetches it once (the open run) and carries it
-forward, so three runs/day fully cover the tape cheaply. Set these times in **America/New_York**:
+Run **every ~30 minutes during market hours on weekdays.** This is cheap by design: `preflight.mjs`
+makes the **day's first run** a full fetch (the heavy price history) and **every run after** a *light*
+run that carries the history forward — so only one run/day is expensive and the rest are nearly free.
+The 30-minute cadence keeps prices/values current intraday (including the Agentic Portfolio card, which
+re-prices its holdings on every run). Set this in **America/New_York**:
 
-- **Open** `30 9 * * 1-5`  (09:30 ET — full fetch, history refreshed)
-- **Midday** `30 12 * * 1-5`  (12:30 ET — light fetch, history carried forward)
-- **Close** `0 16 * * 1-5`  (16:00 ET — light fetch, captures the closing snapshot)
+- **`*/30 9-16 * * 1-5`** — every 30 min, ~09:00–16:30 ET, weekdays. The day's first fire is the full
+  fetch; the rest are light. If the UI allows, nudge off the `:00`/`:30` marks (e.g. `2,32 9-16 * * 1-5`)
+  so fleet-wide fires don't cluster.
 
-The web UI can't express all three in one cron (the close run is on minute `0`, the others on `30`),
-so add **two or three triggers** with the same prompt — or use the CLI `/schedule update`. UTC
-fallback (no per-trigger TZ): `30 13 * * 1-5`, `30 16 * * 1-5`, `0 20 * * 1-5` for EDT (add an hour
-in EST). **Stray/extra fires are safe and nearly free:** `preflight.mjs` returns `SKIP` on weekends
-and once the day's closing snapshot is already taken, so the agent stops immediately without fetching.
+UTC fallback (no per-trigger TZ; EDT = ET+4, add an hour in EST): `*/30 13-20 * * 1-5`.
+
+**Stray/extra fires are safe and nearly free:** `preflight.mjs` returns `SKIP` on weekends and once the
+day's closing snapshot is already captured, so the agent stops immediately without fetching — a wide
+window or a few extra fires costs almost nothing.
+
+> **Lighter alternative (3×/day):** if you'd rather minimize runs, open/midday/close also works —
+> `30 9 * * 1-5`, `30 12 * * 1-5`, `0 16 * * 1-5` ET (three triggers) — at the cost of less-frequent
+> intraday price/value updates.
 
 ### 4. The trigger prompt
 Use exactly this as the scheduled prompt:
@@ -82,8 +88,8 @@ Use exactly this as the scheduled prompt:
 market hours or how much to fetch.
 
 ## Verify it's working
-- **Commits:** `data.json` on `main` should get a new commit roughly hourly during market hours,
-  starting ~09:30 ET (GitHub → repo → commits, or `list_commits` filtered to `data.json`).
+- **Commits:** `data.json` on `main` should get a new commit **every ~30 min during market hours**,
+  starting with the day's first run (GitHub → repo → commits, or `list_commits` filtered to `data.json`).
 - **Phone:** open the app and pull-to-refresh — the freshness bar ("📡 Snapshot: …") should show
   a recent time. `data.json` is network-first, so a refresh always pulls the latest.
 - **First run:** trigger the schedule once manually (don't wait for market hours) to confirm the

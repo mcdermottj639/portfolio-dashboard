@@ -170,7 +170,9 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   connector needs reconnecting/approval ("always allow"), not a code bug.
 - **Cost discipline:** historicals (5Y monthly + YTD daily for ~36 symbols ≈ 24 of ~30 calls) are the
   expensive part. They're fetched once/day (FETCH_ALL) and carried forward — never re-fetch them on a
-  light run. Schedule is a few runs/day, not hourly-heavy.
+  light run. The schedule runs **every ~30 min during market hours**, but only the day's first run is
+  heavy; every run after is a cheap light run (historicals/AV/picks carry forward), so the cadence stays
+  inexpensive. (See `SCHEDULING.md` — `*/30 9-16 * * 1-5` ET.)
 
 ## Feature inventory (what's built)
 - **Portfolio:** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %
