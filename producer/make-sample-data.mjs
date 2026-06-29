@@ -235,6 +235,8 @@ const data = {
       { symbol: 'V', qty: 0.416, avgCost: 336.44, px: 338.0, value: 140.61 },
       { symbol: 'GOOGL', qty: 0.381, avgCost: 340.95, px: 341.0, value: 129.92 },
     ],
+    // sample real equity history (~2 trading weeks) so the consumer's REAL agentic line + "since" stat render
+    equityHistory: (() => { const out = []; for (let i = 14; i >= 0; i--) { const d = new Date(now.getTime() - i * 86400000); out.push({ t: d.toISOString().slice(0, 10), equity: +(948 + (14 - i) * 3.7 + (i % 2 ? 1.5 : -1)).toFixed(2) }); } return out; })(),
   },
 };
 

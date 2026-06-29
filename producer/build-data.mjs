@@ -244,6 +244,21 @@ const data = {
     data.agentic = { ...prior.agentic, asOf: data.generatedAt, positions, equity: +(cash + posVal).toFixed(2) };
     console.log(`agentic: re-priced ${positions.length} carried positions · ${fmtMoney(posVal)} invested (no fresh fetch this run)`);
   }
+  // ── Real account equity history (records FORWARD — Robinhood gives no account-equity-history endpoint,
+  // so this can't be backfilled). One point per UTC day, latest wins, cap ~260 (~1y) — same shape as
+  // options.ivHistory. The consumer overlays this as the REAL agentic performance line on the Portfolio
+  // "Performance vs Benchmark" chart, spliced onto a synthetic modeled lead-in (its current holdings
+  // priced back to Jan 1). Carried forward verbatim when there's no positive equity to record.
+  if (data.agentic && data.agentic.equity > 0) {
+    const prevEq = (prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) ? prior.agentic.equityHistory.slice() : [];
+    const day = new Date(data.generatedAt).toISOString().slice(0, 10);
+    const filtered = prevEq.filter((e) => e && e.t !== day);
+    filtered.push({ t: day, equity: data.agentic.equity });
+    filtered.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+    data.agentic.equityHistory = filtered.slice(-260);
+  } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {
+    data.agentic.equityHistory = prior.agentic.equityHistory.slice(-260);
+  }
   if (agenticTarget) {
     if (!data.agentic) data.agentic = { asOf: data.generatedAt, cash: 0, buyingPower: 0, equity: 0, positions: [] };
     data.agentic.target = agenticTarget;
