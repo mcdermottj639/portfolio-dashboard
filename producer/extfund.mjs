@@ -55,29 +55,37 @@ export function finnhubToOverview(sym, profile2, metric) {
 }
 
 // ---- FMP → overview --------------------------------------------------------
-// profile:    GET /api/v3/profile/<SYM>          ([{ companyName, sector, industry, mktCap, beta, range:"lo-hi" }])
-// ratiosTTM:  GET /api/v3/ratios-ttm/<SYM>        ([{ peRatioTTM, pegRatioTTM, netProfitMarginTTM, dividendYieldTTM }]) — fractions
-// quote:      GET /api/v3/quote/<SYM>             ([{ pe, eps, marketCap, yearHigh, yearLow }])
-// priceTarget:GET /api/v4/price-target-consensus  ({ targetConsensus, targetMedian }) — gated on some tiers
-// estimates:  GET /api/v3/analyst-estimates/<SYM> ([{ estimatedEpsAvg }]) — gated on some tiers (for ForwardPE)
+// FMP split into legacy (/api/v3,/api/v4) and "stable" (/stable) tiers on 2025-08-31; keys created
+// after that date ONLY work on /stable, which renamed several fields. This normalizer accepts BOTH
+// shapes (legacy name ?? stable name) so it works regardless of which tier the key/fetcher uses.
+//   profile:    [{ companyName, sector, industry, mktCap|marketCap, beta, range:"lo-hi", price }]
+//   ratiosTTM:  [{ peRatioTTM|priceToEarningsRatioTTM, pegRatioTTM|priceToEarningsGrowthRatioTTM,
+//                  netProfitMarginTTM, dividendYieldTTM }] — fractions
+//   quote:      [{ pe?, eps?, price, marketCap, yearHigh, yearLow }] — stable omits pe/eps
+//   priceTarget:[{ targetConsensus, targetMedian }] — gated on some tiers
+//   estimates:  [{ estimatedEpsAvg|epsAvg }] — single nearest-future-year row (for ForwardPE)
 export function fmpToOverview(sym, profile, ratiosTTM, quote, priceTarget, estimates) {
   const pr = Array.isArray(profile) ? profile[0] : profile;
   const rt = Array.isArray(ratiosTTM) ? ratiosTTM[0] : ratiosTTM;
   const q = Array.isArray(quote) ? quote[0] : quote;
   const pt = Array.isArray(priceTarget) ? priceTarget[0] : priceTarget;
   const est = Array.isArray(estimates) ? estimates[0] : estimates;
+  const pick = (o, ...ks) => { for (const k of ks) { if (o && o[k] != null) return o[k]; } return null; };
   const o = { Symbol: avSym(sym) };
   if (pr && pr.companyName) o.Name = pr.companyName;
   if (pr && pr.sector) o.Sector = pr.sector;
   if (pr && pr.industry) o.Industry = pr.industry;
-  const pe = num((q && q.pe) != null ? q.pe : (rt && rt.peRatioTTM));
-  const eps = num(q && q.eps);
+  const px = num(q && q.price);
+  const pe = num((q && q.pe) != null ? q.pe : pick(rt, 'peRatioTTM', 'priceToEarningsRatioTTM'));
+  let eps = num(q && q.eps);
+  if (eps == null && pe != null && pe !== 0 && px != null) eps = px / pe; // stable /quote omits EPS → derive from price/PE
   put(o, 'PERatio', pe, pe != null ? 4 : null);
   put(o, 'EPS', eps, eps != null ? 4 : null);
-  put(o, 'PEGRatio', num(rt && rt.pegRatioTTM), num(rt && rt.pegRatioTTM) != null ? 3 : null);
+  const peg = num(pick(rt, 'pegRatioTTM', 'priceToEarningsGrowthRatioTTM'));
+  put(o, 'PEGRatio', peg, peg != null ? 3 : null);
   put(o, 'ProfitMargin', num(rt && rt.netProfitMarginTTM), num(rt && rt.netProfitMarginTTM) != null ? 4 : null); // already fraction
   put(o, 'DividendYield', num(rt && rt.dividendYieldTTM), num(rt && rt.dividendYieldTTM) != null ? 4 : null);    // already fraction
-  const mkt = num((pr && pr.mktCap) != null ? pr.mktCap : (q && q.marketCap));
+  const mkt = num(pick(pr, 'mktCap', 'marketCap') != null ? pick(pr, 'mktCap', 'marketCap') : (q && q.marketCap));
   if (mkt != null) put(o, 'MarketCapitalization', Math.round(mkt));
   put(o, 'Beta', num(pr && pr.beta), num(pr && pr.beta) != null ? 3 : null);
   // 52wk: prefer the quote's numeric fields, else parse profile "lo-hi" range string.
@@ -91,7 +99,7 @@ export function fmpToOverview(sym, profile, ratiosTTM, quote, priceTarget, estim
   // Forward-looking (tier-gated; emitted only when present): analyst target + a derived forward P/E.
   const tgt = num(pt && (pt.targetConsensus != null ? pt.targetConsensus : pt.targetMedian));
   put(o, 'AnalystTargetPrice', tgt, tgt != null ? 2 : null);
-  const fwdEps = num(est && est.estimatedEpsAvg), px = num(q && q.price);
+  const fwdEps = num(pick(est, 'estimatedEpsAvg', 'epsAvg'));
   if (fwdEps != null && fwdEps > 0 && px != null) put(o, 'ForwardPE', px / fwdEps, 4);
   return o;
 }
