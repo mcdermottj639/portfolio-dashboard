@@ -570,7 +570,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v72'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v73'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1687,6 +1687,36 @@ function renderAgenticCard(){
     return `${tp}<br>${stop}`; };
   const rows=chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${kindTag(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${book>0?fmtD(x.tgtVal):'—'}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(x.tgt,0)}%</span></td><td class="tr">${x.held?fmtD(x.curVal):'<span style="color:#9ca3af">—</span>'}<br><span style="color:#9ca3af;font-size:11px">${x.held?fmt(x.cur,1)+'%':'new'}</span></td><td class="tr">${tradeCell(x)}</td><td class="tr">${driftCell(x)}</td><td class="tr">${bracketCell(x)}</td></tr>`).join('');
   const foot=book>0?`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Book</td><td class="tr">${fmtD(book)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">100%</span></td><td class="tr">${fmtD(investedNow)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">invested</span></td><td class="tr">${fmtD(cash)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">cash</span></td><td class="tr"></td><td class="tr"><span style="color:#9ca3af;font-size:11px;font-weight:400">TP / stop</span></td></tr>`:'';
+  // ── Your holdings — performance: cost basis · day · YTD · unrealized P&L for what ••••3900 actually
+  //    holds (cost from avgCost×qty; day from the live quote's prev close; YTD off the daily-bar series). ──
+  let perfBlock='';
+  if(heldPos.length){
+    const pctCell=(v,dec=1)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af">—</span>';
+      const col=v>0?'#065f46':(v<0?'#991b1b':'#6b7280'); return `<span style="color:${col};font-weight:600">${v>0?'+':''}${fmt(v,dec)}%</span>`; };
+    const plCell=(pl,cost)=>{ if(!(cost>0))return '<span style="color:#9ca3af">—</span>';
+      const col=pl>=0?'#065f46':'#991b1b', pct=pl/cost*100;
+      return `<span style="color:${col};font-weight:600">${pl>=0?'+':'−'}${fmtD(Math.abs(pl))}</span><br><span style="color:#9ca3af;font-size:11px">${pl>=0?'+':''}${fmt(pct,1)}%</span>`; };
+    let totCost=0,totVal=0,totDayNow=0,totDayPrev=0,totYtdNow=0,totYtdBase=0;
+    const prows=heldPos.map(p=>{
+      const qty=+p.qty||0, avg=+p.avgCost||0, px=+p.px||0;
+      const cost=qty*avg, val=Math.max(0,+p.value||(qty*px)), pl=val-cost;
+      const q=azQuote(p.symbol); const prev=q?(parseFloat(q.adjusted_previous_close||q.previous_close||0)||0):0;
+      const dayPct=(prev>0&&px>0)?((px-prev)/prev*100):null;
+      const bars=azBars(p.symbol); const start=bars.length?bars[0]:0;
+      const ytdPct=(start>0&&px>0)?((px/start-1)*100):null;
+      totCost+=cost; totVal+=val;
+      if(prev>0&&px>0){ totDayNow+=qty*px; totDayPrev+=qty*prev; }
+      if(start>0&&px>0){ totYtdNow+=qty*px; totYtdBase+=qty*start; }
+      return `<tr><td><span class="sym">${p.symbol}</span></td><td class="tr">${fmtD(cost)}<br><span style="color:#9ca3af;font-size:11px">${shFmt(qty)} sh @ ${P(avg)}</span></td><td class="tr">${pctCell(dayPct)}</td><td class="tr">${pctCell(ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td></tr>`;
+    }).join('');
+    const totDay=totDayPrev>0?((totDayNow-totDayPrev)/totDayPrev*100):null;
+    const totYtd=totYtdBase>0?((totYtdNow-totYtdBase)/totYtdBase*100):null;
+    const pfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total</td><td class="tr">${fmtD(totCost)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">${fmtD(totVal)} now</span></td><td class="tr">${pctCell(totDay)}</td><td class="tr">${pctCell(totYtd)}</td><td class="tr">${plCell(totVal-totCost,totCost)}</td></tr>`;
+    perfBlock=`
+    <div style="font-weight:700;font-size:12.5px;margin:14px 0 4px">Your holdings — performance</div>
+    <div style="font-size:11px;color:var(--text);opacity:.7;margin:0 0 8px;line-height:1.5">Cost basis, today's move, YTD, and unrealized P&L for what <b>••••3900</b> actually holds. <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— when bars aren't captured yet).</span></div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Cost basis</th><th class="tr">Day</th><th class="tr">YTD</th><th class="tr">Unrealized P&L</th></tr></thead><tbody>${prows}${pfoot}</tbody></table></div>`;
+  }
   // deploy / rebalance hand-off (targets the agentic cash account; fractional, dollar-market at the open)
   const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr);
   const sells=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='SELL'&&-x.delta>=holdThr);
@@ -1702,6 +1732,7 @@ function renderAgenticCard(){
     <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The recommended portfolio for your <b>agentic cash account (••••3900)</b> — a long-only, <b>unlevered</b> target ${targetSrc==='research'?`from the <b>weekly deep multi-factor research</b> (momentum · quality · growth · catalyst → adversarial verify)${targetAsOf?` · target as of ${targetAsOf}`:''}`:`built on-the-fly from top picks + mega-cap leaders + an SPY/QQQ core + what the account holds (interim, until the research target lands)`}, capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Now</b> = what the account actually holds; <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; <b>TP / Stop</b> are the take-profit / protective levels I monitor (fractional positions can't carry resting stops).</div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (cash account, 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, and drift appear here after the next scheduled run picks it up.</div>`}
     <table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">Drift</th><th class="tr">TP / Stop</th></tr></thead><tbody>${rows}${foot}</tbody></table>
+    ${perfBlock}
     ${orphans.length?`<div class="fund-note"><b>Held but off-target:</b> ${orphans.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.value)).join(' · ')} — review to consolidate into the names above.</div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }
