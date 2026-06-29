@@ -177,11 +177,17 @@ const data = {
 // the agentic cash account, which the consumer renders as its own card (target vs. actual vs. drift).
 // Optional raw inputs the producer fetches every run for that account: agentic-portfolio.json
 // (get_portfolio) + agentic-positions.json (get_equity_positions). Emitted as
-//   data.agentic = { asOf, cash, buyingPower, equity, positions:[{symbol,qty,avgCost,px,value}] }
+//   data.agentic = { asOf, cash, buyingPower, equity, positions:[{symbol,qty,avgCost,px,value}], target }
 // Position values are priced from data.quotes (the producer quotes the agentic holdings each run),
 // falling back to average cost. Carried forward from the prior snapshot when not re-supplied — so the
 // card persists across the producer's fresh-clone runs — exactly like realized/options/picks.
+// `target` is the committed, research-driven canonical allocation (producer/agentic-target.json,
+// refreshed weekly by the deep multi-factor research — see AGENTIC.md). Read EVERY run and attached so
+// the card renders drift against the REAL deployed basket, not the cheap oversold heuristic; present
+// even before the first account snapshot lands (target-only state).
 {
+  let agenticTarget = null;
+  try { const tf = join(__dirname, 'agentic-target.json'); if (existsSync(tf)) agenticTarget = readJSON(tf); } catch { agenticTarget = null; }
   const apFile = filesMatching(/^agentic-portfolio\.json$/)[0];
   if (apFile) {
     const pd = (() => { const r = unwrap(readJSON(apFile)); return r.data ?? r; })();
@@ -205,7 +211,12 @@ const data = {
     data.agentic = { asOf: data.generatedAt, cash, buyingPower: bp, equity: +(cash + posVal).toFixed(2), positions };
     console.log(`agentic: ${positions.length} positions · ${fmtMoney(posVal)} invested · ${fmtMoney(cash)} cash`);
   } else if (prior && prior.agentic) {
-    data.agentic = prior.agentic;
+    data.agentic = { ...prior.agentic };
+  }
+  if (agenticTarget) {
+    if (!data.agentic) data.agentic = { asOf: data.generatedAt, cash: 0, buyingPower: 0, equity: 0, positions: [] };
+    data.agentic.target = agenticTarget;
+    console.log(`agentic target: ${(agenticTarget.names || []).length} names (asOf ${agenticTarget.asOf})`);
   }
 }
 function fmtMoney(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US'); }

@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v67'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v68'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1574,8 +1574,22 @@ function renderAgenticCard(){
     const q=(typeof azQuote==='function')?azQuote(sym):null;
     if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
     return 0; };
-  // ── candidate pool — fully independent of the margin book ──
-  const pool=new Map();
+  // ── target names: prefer the persisted research-driven target (data.agentic.target, refreshed weekly
+  //    by the deep multi-factor research) so the card shows drift vs. the REAL deployed basket; fall back
+  //    to an on-the-fly heuristic pool (top picks + leaders + index + held) only when it's absent. ──
+  const T=(A&&A.target&&Array.isArray(A.target.names)&&A.target.names.length)?A.target.names:null;
+  const heldValOf=(sym)=>{ const h=heldPos.find(p=>p.symbol===sym); return h?Math.max(0,+h.value||0):0; };
+  let chosen, targetSrc, targetAsOf=(A&&A.target&&A.target.asOf)||null;
+  if(T){
+    targetSrc='research';
+    chosen=T.map(n=>{ const sym=n.ticker; if(!sym)return null; const cv=heldValOf(sym);
+      return {sym,sector:n.sector||secOf(sym),tgt:+n.weightPct||0,px:pxOf(sym),curVal:cv,held:cv>0,kind:'',_stop:+n.stop||0,_tp:+n.target||0}; }).filter(Boolean);
+    const tsum=chosen.reduce((s,x)=>s+x.tgt,0)||1; chosen.forEach(x=>{ x.tgt=x.tgt/tsum*100; });
+    chosen.sort((a,b)=>b.tgt-a.tgt);
+  } else {
+    targetSrc='heuristic';
+    // candidate pool — fully independent of the margin book
+    const pool=new Map();
   heldPos.forEach(p=>{ pool.set(p.symbol,{sym:p.symbol,sector:secOf(p.symbol),score:6,curVal:Math.max(0,+p.value||0),px:p.px||pxOf(p.symbol),held:true,kind:''}); });
   const pickRows=[...((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]),
                  ...((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[])];
@@ -1594,7 +1608,7 @@ function renderAgenticCard(){
   const TOTAL_CAP=15, PER_SEC=4;
   const heldArr=[...pool.values()].filter(x=>x.held).sort((a,b)=>b.curVal-a.curVal);
   const ADD_SLOTS=Math.max(3,12-heldArr.length);
-  const chosen=heldArr.slice(0,TOTAL_CAP);
+    chosen=heldArr.slice(0,TOTAL_CAP);
   const secCount={}; chosen.forEach(x=>{ const s=x.sector||'—'; if(s!=='—')secCount[s]=(secCount[s]||0)+1; });
   const addPool=[...pool.values()].filter(x=>!x.held&&x.px>0).sort((a,b)=>b.score-a.score);
   let added=0;
@@ -1605,14 +1619,15 @@ function renderAgenticCard(){
   chosen.forEach(x=>{ x.w=Math.min(PLAN_SINGLE_CAP,Math.max(FLOOR,x.score/sumSc)); });
   const sumW=chosen.reduce((s,x)=>s+x.w,0)||1;
   chosen.forEach(x=>{ x.tgt=x.w/sumW*100; });
-  chosen.sort((a,b)=>b.tgt-a.tgt);
+    chosen.sort((a,b)=>b.tgt-a.tgt);
+  }
   // ── sizing to the unlevered book + brackets + drift ──
   const stopOf=(sym,px)=>{ if(!(px>0))return 0; const s=smaMap[sym]; return (s&&isFinite(s)&&s<px)?Math.min(s*0.95,px*0.92):px*0.88; };
   const pickOf=(sym)=>((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(p=>p&&p.ticker===sym);
   const tpOf=(sym,px,stop)=>{ if(!(px>0))return 0; const pk=pickOf(sym); if(pk&&pk.tp1&&pk.tp1.price>px)return pk.tp1.price; return (stop>0&&px>stop)?px+2*(px-stop):px*1.20; };
   chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.cur=book>0?(x.curVal/book*100):0; x.drift=x.cur-x.tgt;
     x.delta=x.tgtVal-(x.curVal||0); x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD');
-    x.stop=stopOf(x.sym,x.px); x.tp=tpOf(x.sym,x.px,x.stop); });
+    x.stop=(x._stop>0)?x._stop:stopOf(x.sym,x.px); x.tp=(x._tp>0)?x._tp:tpOf(x.sym,x.px,x.stop); });
   const chosenSet=new Set(chosen.map(x=>x.sym));
   const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0);
   // ── render ──
@@ -1640,11 +1655,11 @@ function renderAgenticCard(){
   if(buys.length){ L.push('BUY toward target (≈, dollar-market at the open):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(sells.length){ L.push('TRIM toward target:'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(orphans.length) L.push('Held but not in target — review to exit/consolidate: '+orphans.map(p=>p.symbol+' (~'+fmtD(p.value)+')').join('; '),'');
-  L.push('Long-only target from my dashboard: top scored picks + mega-cap leaders + SPY/QQQ core + what the account already holds, sector-diversified, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
+  L.push((targetSrc==='research'?('Target from the weekly deep multi-factor research (momentum/quality/growth/catalyst → adversarial verify)'+(targetAsOf?', as of '+targetAsOf:'')):'Interim heuristic target (top picks + mega-cap leaders + SPY/QQQ core + held)')+', long-only, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The recommended portfolio for your <b>agentic cash account (••••3900)</b> — a long-only, <b>unlevered</b> target built from a universe independent of your other accounts (top scored picks + mega-cap leaders + an SPY/QQQ core + whatever this account already holds), sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Now</b> = what the account actually holds; <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; <b>TP / Stop</b> are the take-profit / protective levels I monitor (fractional positions can't carry resting stops).</div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The recommended portfolio for your <b>agentic cash account (••••3900)</b> — a long-only, <b>unlevered</b> target ${targetSrc==='research'?`from the <b>weekly deep multi-factor research</b> (momentum · quality · growth · catalyst → adversarial verify)${targetAsOf?` · target as of ${targetAsOf}`:''}`:`built on-the-fly from top picks + mega-cap leaders + an SPY/QQQ core + what the account holds (interim, until the research target lands)`}, capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Now</b> = what the account actually holds; <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; <b>TP / Stop</b> are the take-profit / protective levels I monitor (fractional positions can't carry resting stops).</div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (cash account, 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, and drift appear here after the next scheduled run picks it up.</div>`}
     <table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">Drift</th><th class="tr">TP / Stop</th></tr></thead><tbody>${rows}${foot}</tbody></table>
     ${orphans.length?`<div class="fund-note"><b>Held but off-target:</b> ${orphans.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.value)).join(' · ')} — review to consolidate into the names above.</div>`:''}

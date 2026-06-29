@@ -1,0 +1,17 @@
+{
+  "asOf": "2026-06-29",
+  "method": "deep multi-factor research — momentum/quality/growth/catalyst sleeves + valuation → adversarial verify → synthesis (see producer/AGENTIC.md). Refreshed weekly; this is the canonical target the Agentic Portfolio card + rebalance planner read.",
+  "account": "AGENTIC",
+  "book": 1000,
+  "driftTriggerPp": 5,
+  "names": [
+    { "ticker": "SPY",   "sector": "Index",               "weightPct": 17, "entry": "728-737",   "stop": 672,  "target": 800,  "thesis": "Broad-market ballast — diffuses single-name catalyst risk; core hold." },
+    { "ticker": "LLY",   "sector": "Health Technology",   "weightPct": 15, "entry": "1180-1228", "stop": 1085, "target": 1380, "thesis": "Broadest multi-sleeve leader (momentum 9 / quality 8.5 / growth 9); capped — parabolic entry." },
+    { "ticker": "NVDA",  "sector": "Electronic Technology","weightPct": 15, "entry": "190-196",   "stop": 178,  "target": 230,  "thesis": "Elite quality 9.5 / growth 8.5 with valuation cushion; knife-catch into Aug catalyst, tight stop." },
+    { "ticker": "V",     "sector": "Finance",             "weightPct": 14, "entry": "330-338",   "stop": 302,  "target": 372,  "thesis": "Quality 9.5 + growth 8; the cleanest adversarial 'buy'; interchange/antitrust is the watch-item." },
+    { "ticker": "GOOGL", "sector": "Technology Services", "weightPct": 13, "entry": "335-342",   "stop": 308,  "target": 380,  "thesis": "Quality 9 + deep valuation; 'buy' verdict; momentum into a pullback ahead of 7/22 earnings." },
+    { "ticker": "AMZN",  "sector": "Retail Trade",        "weightPct": 10, "entry": "228-236",   "stop": 208,  "target": 272,  "thesis": "Balanced quality/growth (7.5/7.5) for sector breadth; 'hold' on the 200-DMA into 7/30 — smaller satellite." },
+    { "ticker": "MSFT",  "sector": "Technology Services", "weightPct": 8,  "entry": "370-380",   "stop": 344,  "target": 420,  "thesis": "Best valuation 7.5 + quality 9; soft momentum (prints get sold) → second Tech-Svcs slot, defensive weight." },
+    { "ticker": "JPM",   "sector": "Finance",             "weightPct": 8,  "entry": "325-332",   "stop": 299,  "target": 360,  "thesis": "Quality 7.5 but 'hold' at full valuation near ATHs into 7/14 — smallest financial slot for balance." }
+  ]
+}
