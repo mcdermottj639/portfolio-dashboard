@@ -24,6 +24,8 @@ const FINNHUB_KEY = process.env.FINNHUB_KEY;
 const FMP_KEY = process.env.FMP_KEY;
 
 if (!FINNHUB_KEY && !FMP_KEY) { console.log('[extfund] no FINNHUB_KEY / FMP_KEY — skipping supplementary fundamentals'); process.exit(0); }
+// Clear, secret-free confirmation of what's configured (handy right after adding a key).
+console.log(`[extfund] keys → Finnhub: ${FINNHUB_KEY ? '✅ detected' : '❌ missing'} · FMP: ${FMP_KEY ? '✅ detected' : '❌ missing'}`);
 mkdirSync(EXTDIR, { recursive: true });
 
 // Once/day ET gate (mirrors av-fetch.mjs) so the intraday loop doesn't re-spend provider calls.
@@ -74,19 +76,30 @@ async function fromFMP(sym) {
 }
 
 const writeJSON = (f, o) => writeFileSync(f, JSON.stringify(o));
-let wrote = 0, fail = 0;
+let wrote = 0, fail = 0, firstErr = null;
 for (const sym of coverFromRaw(RAW)) {
   let fh = null, fm = null;
   try { if (FINNHUB_KEY) fh = await fromFinnhub(sym); } catch { /* tolerated */ }
   try { if (FMP_KEY) fm = await fromFMP(sym); } catch { /* tolerated */ }
+  if (!firstErr) firstErr = (fh && fh._err) || (fm && fm._err) || null; // remember why, to hint allowlist vs key
   // FMP first so its forward P/E + analyst target win; Finnhub fills trailing-fundamentals gaps.
   const merged = mergeOverviews(ok(fm) ? fm : {}, ok(fh) ? fh : {});
-  if (!merged.Symbol || Object.keys(merged).length <= 1) { fail++; console.warn(`[extfund] ${sym}: no usable data — keeping prior`); continue; }
-  if (!isRich(merged)) { /* still useful (sector/mktcap), but won't override a carried-forward AV-rich one */ }
+  if (!merged.Symbol || Object.keys(merged).length <= 1) { fail++; console.warn(`[extfund] ${sym}: no usable data${firstErr ? ` (${firstErr})` : ''} — keeping prior`); continue; }
   writeJSON(join(EXTDIR, `overview-${sym}.json`), { structuredContent: merged });
   wrote++;
 }
 
 if (wrote > 0) writeFileSync(fetchedFile, todayET); // only claim "fetched today" if something landed
 const src = [FINNHUB_KEY && 'Finnhub', FMP_KEY && 'FMP'].filter(Boolean).join('+');
-console.log(`[extfund] ${src} fetch: ${wrote} written · ${fail} skipped${wrote ? ` · marked ${todayET}` : ' — nothing written (cap/host blocked?), prior kept'}`);
+if (wrote > 0) {
+  console.log(`[extfund] ${src} fetch: ${wrote} written · ${fail} skipped · marked ${todayET}`);
+} else {
+  // Distinguish the two common setup mistakes from the captured error.
+  const e = (firstErr || '').toLowerCase();
+  const hint = /403|407|enotfound|eai_again|denied|blocked|timeout/.test(e)
+    ? `looks like ${'finnhub.io'}/${'financialmodelingprep.com'} is NOT on the egress allowlist (err: ${firstErr})`
+    : /401|invalid|api key|apikey|unauthor|limit/.test(e)
+    ? `looks like a key problem (err: ${firstErr})`
+    : firstErr ? `err: ${firstErr}` : 'no covered holdings to fetch';
+  console.log(`[extfund] ${src} fetch: nothing written — ${hint}. Prior fundamentals kept.`);
+}
