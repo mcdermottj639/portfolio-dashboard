@@ -72,7 +72,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/run.mjs` | Orchestrator: build→validate→**publish to `origin/main`** (works from any session branch; retries; refuses to push plaintext). |
 | `producer/preflight.mjs` | Run-mode gate (SKIP / FETCH_ALL / FETCH_LIGHT). |
 | `producer/market.mjs` | Shared `isMarketOpen` / `isWeekday` / `etDate` / `etMinutes`. |
-| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Maintains **`data.options.ivHistory`** too — appends each run's `ivObserved` (one point/UTC-day, cap ~260) and derives **`data.options.ivRank`** (where today's IV sits in its trailing range), decorating each position/idea with `ivRank`. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. **COMPANY_OVERVIEW accumulation guard:** the free AV tier (25/day + burst throttle) only covers a rotating subset of holdings per run; this run's 11-field Robinhood-synth overview (P/E·MktCap·DivYld only) is NOT allowed to clobber a carried-forward AV-rich overview (one with `ForwardPE`/`EPS`/`QuarterlyRevenueGrowthYOY`) for the same symbol — genuine AV refreshes (also rich) still win — so Fwd P/E / Rev Growth / EPS coverage **accumulates across days** instead of flickering blank for whichever names missed today's cap. Also emits **`data.agentic`** (v67) = the agentic cash account's `{asOf,cash,buyingPower,equity,positions[]}` from optional `agentic-portfolio.json`/`agentic-positions.json` (priced from `data.quotes`, carry-forward) — the actual holdings the **Agentic Portfolio** card renders its target against. |
+| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Maintains **`data.options.ivHistory`** too — appends each run's `ivObserved` (one point/UTC-day, cap ~260) and derives **`data.options.ivRank`** (where today's IV sits in its trailing range), decorating each position/idea with `ivRank`. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. **COMPANY_OVERVIEW accumulation guard:** the free AV tier (25/day + burst throttle) only covers a rotating subset of holdings per run; this run's 11-field Robinhood-synth overview (P/E·MktCap·DivYld only) is NOT allowed to clobber a carried-forward AV-rich overview (one with `ForwardPE`/`EPS`/`QuarterlyRevenueGrowthYOY`) for the same symbol — genuine AV refreshes (also rich) still win — so Fwd P/E / Rev Growth / EPS coverage **accumulates across days** instead of flickering blank for whichever names missed today's cap. Also emits **`data.agentic`** (v67) = the agentic cash account's `{asOf,cash,buyingPower,equity,positions[]}` from optional `agentic-portfolio.json`/`agentic-positions.json` (priced from `data.quotes`, carry-forward) — the actual holdings the **Agentic Portfolio** card renders its target against. Maintains **`data.agentic.equityHistory`** too (v72 — same shape as `ivHistory`: one `{t,equity}` point/UTC-day, latest wins, cap ~260) — the account's **real** equity recorded **forward** (Robinhood has no account-equity-history endpoint, so it can't be backfilled); the Portfolio Performance chart overlays it. |
 | `producer/emit.mjs` | AES-GCM encrypt/decrypt (`encryptEnvelope`/`decryptEnvelope`). |
 | `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. Tech score **blends RSI with 52wk-range position** (so RSI isn't double-counted vs finalist selection). Candidates carry `sector` + `cov` (data-coverage flags); top picks are **sector-diversified** (`MAX_PICKS_PER_SECTOR`, default 2). |
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. Also emits `producer/raw/picks-watchlist.json` (composite top-10 tickers) — the target for the Robinhood watchlist sync. |
@@ -94,7 +94,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v71** (`pf-v71`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v72** (`pf-v72`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -102,7 +102,9 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   translucent gradients that read as "neon"), with thin warm-gold borders, a gold-gradient headline number,
   and a corner-bracket hero frame that's true black with a single soft gold corner-glow. The hero `.snap-grid`
   stat tiles carry **warm per-tile edges** (emerald · bronze · gold · copper · champagne via `:nth-child` —
-  no cyan/purple). Renamed from the old cyan/magenta "neon" HUD
+  no cyan/purple). Cards carry a **soft gold halo** (outer glow + 1px inset top highlight) for emphasis on
+  the black bg, and the jewel tiles a faint matching per-tile glow (v72 — re-added after v71 stripped all
+  glow). Renamed from the old cyan/magenta "neon" HUD
   in v69–v70: the `data-theme` key, the `_isGold()` chart helper, and `THEME_ORDER` all use `gold` now; the
   historical `--nx-cyan/-mag/-pur` CSS vars are kept (repurposed to the gold/jewel palette). Its CSS is a
   self-contained `html[data-theme="gold"]` block at the end of the `<style>`. Charts read the theme via
@@ -191,8 +193,14 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   correlation in `corrGroups`, and the highest-β "fragile leg" from per-symbol betas — no hardcoded
   tickers); allocation; Income & Tax (dividends, realized YTD, options premium — the itemized harvest
   list now lives in the Action Center — which now sits on the **Picks page** (see below) — only a summary
-  stat + pointer remain here). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. All the above
-  commentary is derived from live data; optional owner editorial can be supplied via `data.notes`.
+  stat + pointer remain here). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. **Performance vs
+  Benchmark** plots YTD % return (your holdings vs SPY/QQQ, all indexed to Jan 1) and now **overlays the
+  agentic cash account** (v72): a faint **dotted "modeled"** line (its current holdings priced back to Jan 1,
+  same synthetic method as the "Your holdings" line) spliced into a **solid "real"** line from
+  `data.agentic.equityHistory` (recorded forward), plus an **"Agentic since {date}"** stat that rebases SPY
+  over that same window (`renderPerformance` reads `window.__DATA.agentic`; aligns equity points to the SPY
+  axis by calendar day). All the above commentary is derived from live data; optional owner editorial can be
+  supplied via `data.notes`.
 - **Picks (the "🎯 Plan" tab — renamed from "Picks" in v56):** **sortable + sector-filterable** scored candidates table incl. a
   **Social** column (retail buzz, 20% of composite, with an inline buzz label) and **data-coverage cues**
   (grey social = "no data, neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable).

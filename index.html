@@ -372,7 +372,7 @@ html[data-theme="gold"] .tab{ background:#0c0c0d; color:#9c917b; box-shadow:none
 html[data-theme="gold"] .tab:hover{ color:var(--text); }
 html[data-theme="gold"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; border-color:rgba(227,192,116,.55); box-shadow:none; }
 html[data-theme="gold"] .card,
-html[data-theme="gold"] .col-card{ background:#0b0b0c; border:1px solid var(--nx-bd); box-shadow:0 6px 22px rgba(0,0,0,.6); -webkit-backdrop-filter:none; backdrop-filter:none; }
+html[data-theme="gold"] .col-card{ background:#0b0b0c; border:1px solid var(--nx-bd); box-shadow:0 8px 26px rgba(0,0,0,.65), 0 0 22px rgba(227,192,116,.07), inset 0 1px 0 rgba(227,192,116,.05); -webkit-backdrop-filter:none; backdrop-filter:none; }
 html[data-theme="gold"] .col-title,
 html[data-theme="gold"] .card-title,
 html[data-theme="gold"] .macro-val{ color:var(--text); }
@@ -381,12 +381,12 @@ html[data-theme="gold"] .mkt-tile,
 html[data-theme="gold"] .macro-tile,
 html[data-theme="gold"] .pk-m{ background:#0e0e0f; border:1px solid var(--nx-bd); }
 /* hero stat tiles (portfolio .snap-grid only) — true black with warm rich-gold/jewel edges, no glow */
-html[data-theme="gold"] .snap-grid .snap{ border-width:1px; box-shadow:none; background:#0c0c0d; }
-html[data-theme="gold"] .snap-grid .snap:nth-child(5n+1){ background:linear-gradient(160deg,rgba(46,160,110,.10),#080a09 62%); border-color:rgba(70,190,140,.30); }
-html[data-theme="gold"] .snap-grid .snap:nth-child(5n+2){ background:linear-gradient(160deg,rgba(196,135,55,.12),#0c0a07 62%); border-color:rgba(214,150,70,.34); }
-html[data-theme="gold"] .snap-grid .snap:nth-child(5n+3){ background:linear-gradient(160deg,rgba(214,175,90,.11),#0c0b07 62%); border-color:rgba(227,192,116,.34); }
-html[data-theme="gold"] .snap-grid .snap:nth-child(5n+4){ background:linear-gradient(160deg,rgba(176,96,72,.11),#0c0908 62%); border-color:rgba(198,122,92,.32); }
-html[data-theme="gold"] .snap-grid .snap:nth-child(5n+5){ background:linear-gradient(160deg,rgba(227,192,116,.12),#0c0b07 62%); border-color:rgba(227,192,116,.36); }
+html[data-theme="gold"] .snap-grid .snap{ border-width:1px; background:#0c0c0d; }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+1){ background:linear-gradient(160deg,rgba(46,160,110,.10),#080a09 62%); border-color:rgba(70,190,140,.30); box-shadow:0 0 18px rgba(63,200,140,.06); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+2){ background:linear-gradient(160deg,rgba(196,135,55,.12),#0c0a07 62%); border-color:rgba(214,150,70,.34); box-shadow:0 0 18px rgba(206,142,62,.06); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+3){ background:linear-gradient(160deg,rgba(214,175,90,.11),#0c0b07 62%); border-color:rgba(227,192,116,.34); box-shadow:0 0 18px rgba(227,192,116,.06); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+4){ background:linear-gradient(160deg,rgba(176,96,72,.11),#0c0908 62%); border-color:rgba(198,122,92,.32); box-shadow:0 0 18px rgba(188,108,82,.06); }
+html[data-theme="gold"] .snap-grid .snap:nth-child(5n+5){ background:linear-gradient(160deg,rgba(227,192,116,.12),#0c0b07 62%); border-color:rgba(227,192,116,.36); box-shadow:0 0 18px rgba(227,192,116,.07); }
 html[data-theme="gold"] .snap-grid .snap .snap-lbl{ color:#b3a98f; }
 html[data-theme="gold"] thead th{ border-bottom-color:rgba(201,168,100,.20); color:#a89c80; }
 html[data-theme="gold"] thead th.sortable:hover,
@@ -424,7 +424,7 @@ html[data-theme="gold"] .perf-lbl,
 html[data-theme="gold"] .macro-label{ color:#8a7f68; }
 /* hero gets a HUD frame + corner brackets */
 html[data-theme="gold"] .header,
-html[data-theme="gold"] .picks-hero{ position:relative; background:radial-gradient(130% 130% at 0% 0%, rgba(227,192,116,.10), transparent 52%), #070707; border:1px solid rgba(227,192,116,.32); box-shadow:0 0 0 1px rgba(0,0,0,.4) inset; }
+html[data-theme="gold"] .picks-hero{ position:relative; background:radial-gradient(130% 130% at 0% 0%, rgba(227,192,116,.10), transparent 52%), #070707; border:1px solid rgba(227,192,116,.32); box-shadow:0 0 30px rgba(227,192,116,.09), inset 0 1px 0 rgba(227,192,116,.06); }
 html[data-theme="gold"] .header::before,
 html[data-theme="gold"] .header::after,
 html[data-theme="gold"] .picks-hero::before,
@@ -570,7 +570,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v71'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v72'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1097,26 +1097,55 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const spyN=buildNorm(spy), qqqN=buildNorm(qqq);
   const lastV=a=>a&&a.length?a[a.length-1].v:null;
   const portYTD=lastV(portSeries), spyYTD=lastV(spyN), qqqYTD=lastV(qqqN);
+  // ── Agentic cash account (••••3900) overlay: a faint dotted MODELED lead-in (its current holdings
+  // priced back to Jan 1, same trick as portSeries) spliced into the REAL recorded equity line
+  // (data.agentic.equityHistory, recorded forward by the producer). dkey() aligns by calendar day so
+  // the equity points map onto the SPY axis regardless of timestamp shape.
+  const AG=(window.__DATA&&window.__DATA.agentic)||null;
+  const dkey=t=>String(t).slice(0,10);
+  let agModeled=null, agReal=null, agSince=null;
+  if(AG&&Array.isArray(AG.positions)&&AG.positions.length){
+    const aw={}; let asum=0;
+    for(const p of AG.positions){ const s=p.symbol; if(histMap[s]&&histMap[s].length>1&&p.value>0){ aw[s]=p.value; asum+=p.value; } }
+    if(asum>0){
+      const idx={}; for(const s of Object.keys(aw)){ const m={}; for(const b of histMap[s])m[b.t]=b.c; idx[s]={m,c0:histMap[s][0].c,last:histMap[s][0].c}; }
+      agModeled=axis.map(t=>{ let acc=0; for(const s of Object.keys(aw)){ const o=idx[s]; if(o.m[t]!=null)o.last=o.m[t]; acc+=(aw[s]/asum)*(o.last/o.c0); } return (acc-1)*100; });
+    }
+    const EH=Array.isArray(AG.equityHistory)?AG.equityHistory.slice().filter(e=>e&&e.equity>0).sort((a,b)=>a.t<b.t?-1:1):[];
+    if(EH.length>=2&&agModeled){
+      const firstT=dkey(EH[0].t), e0=EH[0].equity;
+      let hi=axis.findIndex(t=>dkey(t)>=firstT); if(hi<0)hi=0;
+      const baseMult=1+agModeled[hi]/100;
+      agReal=axis.map((t,i)=>{ if(i<hi)return null; const k=dkey(t); let ev=null; for(const e of EH){ if(dkey(e.t)<=k)ev=e.equity; else break; } if(ev==null)ev=e0; return (baseMult*(ev/e0)-1)*100; });
+      const eLast=EH[EH.length-1].equity, realRet=(eLast/e0-1)*100;
+      const sFirst=spy.find(b=>dkey(b.t)>=firstT), sLast=spy[spy.length-1];
+      const spySince=(sFirst&&sLast)?((sLast.c/sFirst.c-1)*100):null;
+      agSince={ ret:realRet, spy:spySince, since:EH[0].t };
+    }
+  }
   try{ if(window.__SNAP){ const _cv=wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0; window.__SNAP.perf={labels:axis,port:portSeries?portSeries.map(x=>x.v):null,spy:spyN.map(x=>x.v),qqq:qqqN.map(x=>x.v),portYTD,spyYTD,qqqYTD,cov:_cv}; } }catch(e){}
   const _thm=document.documentElement.getAttribute('data-theme');
   const C={ port:_thm==='gold'?'#e3c074':'#6366f1', portBg:_thm==='gold'?'rgba(227,192,116,0.12)':'rgba(99,102,241,0.08)',
     spy:_thm==='gold'?'#8a8170':'#9ca3af', qqq:_thm==='gold'?'#c98a3a':'#10b981',
     grid:_thm==='gold'?'rgba(210,180,120,0.10)':_thm==='dark'?'rgba(255,255,255,0.06)':'#f3f4f6',
-    tick:_thm==='gold'?'#b9ad92':'#9ca3af' };
+    tick:_thm==='gold'?'#b9ad92':'#9ca3af', ag:_thm==='gold'?'#3fcf94':'#0891b2' };
+  const agDateLbl=agSince?(()=>{ try{ return new Date(dkey(agSince.since)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return dkey(agSince.since); } })():'';
   el.innerHTML=`
     <div class="perf-head">
       <div class="perf-metric"><div class="pm-l">Your holdings YTD*</div><div class="pm-v ${sc(portYTD)}">${portYTD!=null?fmtP(portYTD):'—'}</div></div>
       <div class="perf-metric"><div class="pm-l">S&P 500 (SPY)</div><div class="pm-v ${sc(spyYTD)}">${fmtP(spyYTD)}</div></div>
       <div class="perf-metric"><div class="pm-l">Nasdaq-100 (QQQ)</div><div class="pm-v ${sc(qqqYTD)}">${fmtP(qqqYTD)}</div></div>
       <div class="perf-metric"><div class="pm-l">Total return since cost</div><div class="pm-v ${sc(stats.totalPnL)}">${fmtP(stats.totalRet)}</div></div>
+      ${agSince?`<div class="perf-metric"><div class="pm-l">Agentic since ${agDateLbl}</div><div class="pm-v ${sc(agSince.ret)}">${fmtP(agSince.ret)}</div>${agSince.spy!=null?`<div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">SPY ${fmtP(agSince.spy)} same window</div>`:''}</div>`:''}
     </div>
     <div class="chart-wrap"><canvas id="perf-chart"></canvas></div>
     <div class="legend-row">
       <span class="legend-item"><span class="legend-dot" style="background:${C.port}"></span>Your holdings*</span>
       <span class="legend-item"><span class="legend-dot" style="background:${C.spy}"></span>SPY</span>
       <span class="legend-item"><span class="legend-dot" style="background:${C.qqq}"></span>QQQ</span>
+      ${agModeled?`<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Agentic${agReal?' (— real · ⋯ modeled)':' (⋯ modeled)'}</span>`:''}
     </div>
-    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.</div>
+    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the cash account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked equity since ${agDateLbl}.`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
     ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
       <div><div class="snap-lbl">10yr Treasury</div><div style="font-size:16px;font-weight:700">${macroData.tenYrYield?fmt(macroData.tenYrYield,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">Fed Funds</div><div style="font-size:16px;font-weight:700">${macroData.fedFunds?fmt(macroData.fedFunds,2)+'%':'—'}</div></div>
@@ -1129,6 +1158,8 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   if(portSeries) ds.push({label:'Your holdings',data:portSeries.map(x=>x.v),borderColor:C.port,backgroundColor:C.portBg,borderWidth:2.2,pointRadius:0,fill:true,tension:0.15});
   ds.push({label:'SPY',data:spyN.map(x=>x.v),borderColor:C.spy,borderWidth:1.5,pointRadius:0,tension:0.15});
   ds.push({label:'QQQ',data:qqqN.map(x=>x.v),borderColor:C.qqq,borderWidth:1.5,pointRadius:0,tension:0.15});
+  if(agModeled) ds.push({label:'Agentic (modeled)',data:agModeled,borderColor:C.ag,borderWidth:1.4,borderDash:[3,3],pointRadius:0,tension:0.15});
+  if(agReal) ds.push({label:'Agentic',data:agReal,borderColor:C.ag,borderWidth:2,pointRadius:0,spanGaps:false,tension:0.15});
   new Chart(ctx,{ type:'line', data:{labels:axis,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items[0].label, label:c=>` ${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(1)}%`}}},
