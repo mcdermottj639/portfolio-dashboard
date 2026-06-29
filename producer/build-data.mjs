@@ -162,6 +162,28 @@ if (idxFile) {
 // this run; fresh portfolio/positions/VIX win because they share the same key.
 const recordedOut = prior && prior.recorded ? { ...prior.recorded, ...recorded } : recorded;
 
+// COMPANY_OVERVIEW accumulation guard. The free Alpha Vantage tier (25 calls/day, plus burst
+// throttling) only covers a rotating subset of holdings each run, so any holding the budget skipped
+// falls back to the 11-field Robinhood synth above (PERatio/MarketCap/DividendYield only — no
+// ForwardPE/EPS/RevGrowth). Without this guard that thin synth would CLOBBER a richer AV overview
+// captured on a PRIOR day (this run's `recorded` wins the spread above), so AV fundamentals coverage
+// could never accumulate past a single day's cap — Fwd P/E / Rev Growth / EPS would flicker blank for
+// whichever names missed today's fetch. Fix: when this run only produced the thin synth for an overview
+// the prior snapshot already holds AV-rich, KEEP the prior. Genuine AV refreshes (also rich) still win,
+// so the 25/day cap becomes a refresh cadence, not a hard coverage ceiling.
+if (prior && prior.recorded) {
+  const ovObj = (e) => (e && typeof e === 'object')
+    ? (e.structuredContent && typeof e.structuredContent === 'object' ? e.structuredContent : (e.Symbol ? e : null))
+    : null;
+  const ovRich = (e) => { const o = ovObj(e); return !!(o && ('ForwardPE' in o || 'EPS' in o || 'QuarterlyRevenueGrowthYOY' in o)); };
+  let keptOv = 0;
+  for (const k of Object.keys(recorded)) {
+    const cur = recorded[k], pri = prior.recorded[k];
+    if (ovObj(cur) && ovObj(pri) && !ovRich(cur) && ovRich(pri)) { recordedOut[k] = pri; keptOv++; }
+  }
+  if (keptOv) console.log(`fundamentals: preserved ${keptOv} carried-forward AV overview${keptOv === 1 ? '' : 's'} over this run's Robinhood synth (free-tier accumulation)`);
+}
+
 const data = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
