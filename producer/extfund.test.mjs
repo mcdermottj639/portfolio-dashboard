@@ -37,6 +37,19 @@ eq('fmp AnalystTargetPrice', fmp.AnalystTargetPrice, '190.00');
 eq('fmp sector', fmp.Sector, 'Technology');
 eq('fmp 52wk from quote', fmp['52WeekHigh'], '175.00');
 
+// --- FMP: stable field names + ADR/currency-mismatch ForwardPE guard ---
+const fmpStable = fmpToOverview('TSM',
+  [{ companyName: 'Taiwan Semiconductor', sector: 'Technology', marketCap: 1.1e12, beta: 1.1, range: '133.57-317.40' }],
+  [{ priceToEarningsRatioTTM: 31.86, priceToEarningsGrowthRatioTTM: 0.67, netProfitMarginTTM: 0.47 }],
+  [{ price: 455, marketCap: 1.1e12, yearHigh: 317.4, yearLow: 199.26 }],
+  [{ targetConsensus: 566 }],
+  [{ epsAvg: 500.78 }]); // TWD-denominated estimate vs USD ADR price → fwd P/E 0.91, must be dropped
+eq('fmp stable PERatio (priceToEarningsRatioTTM)', fmpStable.PERatio, '31.8600');
+eq('fmp stable PEG (priceToEarningsGrowthRatioTTM)', fmpStable.PEGRatio, '0.670');
+eq('fmp stable EPS derived from price/PE', fmpStable.EPS, '14.2812');
+eq('fmp ForwardPE dropped on currency mismatch', 'ForwardPE' in fmpStable, false);
+eq('fmp stable AnalystTargetPrice', fmpStable.AnalystTargetPrice, '566.00');
+
 // --- missing/garbage fields degrade to absent, not garbage ---
 const sparse = finnhubToOverview('XYZ', null, { metric: { peTTM: 'n/a', epsTTM: 1.2 } });
 eq('sparse: bad PE omitted', 'PERatio' in sparse, false);

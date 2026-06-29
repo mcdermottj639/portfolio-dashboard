@@ -100,7 +100,16 @@ export function fmpToOverview(sym, profile, ratiosTTM, quote, priceTarget, estim
   const tgt = num(pt && (pt.targetConsensus != null ? pt.targetConsensus : pt.targetMedian));
   put(o, 'AnalystTargetPrice', tgt, tgt != null ? 2 : null);
   const fwdEps = num(pick(est, 'estimatedEpsAvg', 'epsAvg'));
-  if (fwdEps != null && fwdEps > 0 && px != null) put(o, 'ForwardPE', px / fwdEps, 4);
+  if (fwdEps != null && fwdEps > 0 && px != null) {
+    // Guard against ADR/currency scale mismatches: FMP sometimes returns the estimate EPS in the
+    // company's local currency (e.g. TSM's fwd EPS in TWD) while px is the USD ADR — yielding a
+    // nonsense sub-1 forward P/E. Emit only when the result sits in a sane absolute band AND, when
+    // a trailing P/E is known, in the same ballpark as it (a 1yr-out fwd P/E never diverges ~30×).
+    const fwdPE = px / fwdEps;
+    const saneAbs = fwdPE >= 1 && fwdPE <= 600;
+    const saneVsTrailing = pe == null || pe <= 0 || (fwdPE >= pe * 0.15 && fwdPE <= pe * 6);
+    if (saneAbs && saneVsTrailing) put(o, 'ForwardPE', fwdPE, 4);
+  }
   return o;
 }
 
