@@ -167,10 +167,48 @@ const data = {
   generatedAt: new Date().toISOString(),
   generatedAtLabel: label,
   recorded: recordedOut, quotes, hist,
-  // Mega-cap leaders bench for the Plan-page Ideal Portfolio (Step 4). The consumer reads the bench +
+  // Mega-cap leaders bench for the Agentic Portfolio card's target. The consumer reads the bench +
   // sectors from here and prices each from data.quotes (the producer quotes LEADER_SYMBOLS every run).
   leaders: LEADERS,
 };
+
+// --- Agentic cash account (the "Agentic Portfolio" card's ACTUAL holdings + cash) ---
+// The recommended portfolio is no longer a restructuring of the margin book — it's the blueprint for
+// the agentic cash account, which the consumer renders as its own card (target vs. actual vs. drift).
+// Optional raw inputs the producer fetches every run for that account: agentic-portfolio.json
+// (get_portfolio) + agentic-positions.json (get_equity_positions). Emitted as
+//   data.agentic = { asOf, cash, buyingPower, equity, positions:[{symbol,qty,avgCost,px,value}] }
+// Position values are priced from data.quotes (the producer quotes the agentic holdings each run),
+// falling back to average cost. Carried forward from the prior snapshot when not re-supplied — so the
+// card persists across the producer's fresh-clone runs — exactly like realized/options/picks.
+{
+  const apFile = filesMatching(/^agentic-portfolio\.json$/)[0];
+  if (apFile) {
+    const pd = (() => { const r = unwrap(readJSON(apFile)); return r.data ?? r; })();
+    const aposFile = filesMatching(/^agentic-positions\.json$/)[0];
+    const aposRaw = aposFile ? unwrap(readJSON(aposFile)) : null;
+    const aPositions = aposRaw ? (aposRaw.data?.positions ?? aposRaw.positions ?? aposRaw) : [];
+    const pxOf = (sym) => {
+      const q = quotes[sym]; if (!q) return 0;
+      return parseFloat(q.last_extended_hours_trade_price || q.last_trade_price || q.adjusted_previous_close || q.previous_close || 0) || 0;
+    };
+    const positions = (Array.isArray(aPositions) ? aPositions : []).map((p) => {
+      const symbol = p.symbol || p.ticker;
+      const qty = parseFloat(p.quantity ?? p.qty ?? 0) || 0;
+      const avgCost = parseFloat(p.average_buy_price ?? p.average_cost ?? p.avg_cost ?? 0) || 0;
+      const px = pxOf(symbol) || avgCost;
+      return { symbol, qty, avgCost, px, value: +(qty * px).toFixed(2) };
+    }).filter((p) => p.symbol && p.qty > 0);
+    const cash = parseFloat(pd.cash ?? 0) || 0;
+    const bp = parseFloat((pd.buying_power && pd.buying_power.buying_power) ?? pd.buying_power ?? 0) || 0;
+    const posVal = positions.reduce((s, p) => s + p.value, 0);
+    data.agentic = { asOf: data.generatedAt, cash, buyingPower: bp, equity: +(cash + posVal).toFixed(2), positions };
+    console.log(`agentic: ${positions.length} positions · ${fmtMoney(posVal)} invested · ${fmtMoney(cash)} cash`);
+  } else if (prior && prior.agentic) {
+    data.agentic = prior.agentic;
+  }
+}
+function fmtMoney(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US'); }
 // Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks; the
 // dashboard reads it directly. Fresh when built this run, else carried from the prior snapshot.
 const picksFile = filesMatching(/^picks\.json$/)[0];

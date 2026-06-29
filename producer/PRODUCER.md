@@ -88,7 +88,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    |---|---|---|---|
    | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings] }` | `producer/raw/quotes.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |

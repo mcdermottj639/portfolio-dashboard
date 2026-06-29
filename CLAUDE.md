@@ -44,7 +44,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
    - **FETCH_ALL** (exit 0): day's first run → full fetch incl. heavy historicals + AV + picks.
    - **FETCH_LIGHT** (exit 11): intraday → fetch only portfolio/positions/quotes/VIX/options;
      historicals/AV/picks **carry forward** from the prior snapshot.
-3. Agent makes the Robinhood MCP calls and `Write`s raw JSON into `producer/raw/` (gitignored).
+3. Agent makes the Robinhood MCP calls and `Write`s raw JSON into `producer/raw/` (gitignored). This
+   includes (every run) `get_portfolio` + `get_equity_positions` for the **agentic cash account
+   (••••3900)** → `agentic-portfolio.json` / `agentic-positions.json`, which `build-data.mjs` turns into
+   `data.agentic` for the Agentic Portfolio card. (Account-scoped reads — pass that account_number.)
 4. Agent runs **`node producer/run.mjs "<label>"`** — the single deterministic tail: optional AV
    fetch → picks-build → options-build → `build-data.mjs` (encrypted) → `validate.mjs` → publish to
    `main`. No improvised shell, so unattended runs don't stall on permission prompts.
@@ -64,7 +67,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/run.mjs` | Orchestrator: build→validate→**publish to `origin/main`** (works from any session branch; retries; refuses to push plaintext). |
 | `producer/preflight.mjs` | Run-mode gate (SKIP / FETCH_ALL / FETCH_LIGHT). |
 | `producer/market.mjs` | Shared `isMarketOpen` / `isWeekday` / `etDate` / `etMinutes`. |
-| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Maintains **`data.options.ivHistory`** too — appends each run's `ivObserved` (one point/UTC-day, cap ~260) and derives **`data.options.ivRank`** (where today's IV sits in its trailing range), decorating each position/idea with `ivRank`. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. |
+| `producer/build-data.mjs` | Assembles + encrypts `data.json`; **carry-forward overlay** (decrypts prior snapshot once, overlays fresh on hist/recorded/picks/options/realized/**notes**). Also maintains **`data.picks.history`** — when a fresh scan replaces the prior picks (new date), the outgoing picks (entry/TP1/TP2/stop) are archived (cap 40) so the consumer can grade the Track Record. Maintains **`data.options.ivHistory`** too — appends each run's `ivObserved` (one point/UTC-day, cap ~260) and derives **`data.options.ivRank`** (where today's IV sits in its trailing range), decorating each position/idea with `ivRank`. Optional `producer/notes.json` (a string or `{risk:"…"}`) → `data.notes` for owner editorial that renders in the Risk card without baking prose into `index.html`. Also emits **`data.agentic`** (v67) = the agentic cash account's `{asOf,cash,buyingPower,equity,positions[]}` from optional `agentic-portfolio.json`/`agentic-positions.json` (priced from `data.quotes`, carry-forward) — the actual holdings the **Agentic Portfolio** card renders its target against. |
 | `producer/emit.mjs` | AES-GCM encrypt/decrypt (`encryptEnvelope`/`decryptEnvelope`). |
 | `producer/picks.mjs` | Daily Picks scoring engine. Composite = **33% tech / 28% fundamentals / 19% R/R / 20% social**. Tech score **blends RSI with 52wk-range position** (so RSI isn't double-counted vs finalist selection). Candidates carry `sector` + `cov` (data-coverage flags); top picks are **sector-diversified** (`MAX_PICKS_PER_SECTOR`, default 2). |
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. Also emits `producer/raw/picks-watchlist.json` (composite top-10 tickers) — the target for the Robinhood watchlist sync. |
@@ -82,7 +85,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v66** (`pf-v66`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v67** (`pf-v67`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Neon** (`data-theme` on
   `<html>`, persisted as `pf_theme`; legacy `dark` auto-migrates to `neon`). Neon is a "tasteful HUD"
   dark variant (cyan/magenta accents, glow on headline numbers, corner-bracket hero frame); its CSS
@@ -208,35 +211,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   two-way linking (v58). (The old producer-driven **⚖️ Trim/Add** card was retired in v56 — the
   Do-now feed + this plan own trim/add now; `PICK_TRIM`/`PICK_ADD` still load but aren't rendered.)
   Step 3 = standing guardrails (single-name cap, cluster cap `PLAN_CLUSTER_CAP` 40%, RSI>75 trim,
-  fragile-leg trailing stop, earnings reassess). **Step 4 = "Ideal portfolio"** (v63) — a from-scratch,
-  long-only **target allocation** (up to 14 names) built inline in `renderActionPlan`: the candidate pool =
-  current holdings (scored by a quality heuristic — trend vs 50-DMA, RSI regime, fwd P/E, rev growth,
-  thesis health) ∪ the top scored picks (their `composite`) ∪ a small **broad-market index core**
-  (`SPY`/`QQQ`, eligible even if unheld so the target can anchor on an index sleeve where it earns a slot —
-  held index ETFs win over the synthetic entry). Sector-diversified (≤3/sector), conviction-weighted with a
-  3.5% floor and the `PLAN_SINGLE_CAP` (25%) ceiling, normalized to 100%. Each name is then **dollar/share
-  sized to a target BOOK** (v64) = `equityBase + marginUse` — i.e. equity plus the *same* `PLAN_MAX_LEVERAGE`
-  (1.5×) headroom Step 2 uses (borrow up to (lev−1)×equity, clamped to broker-lendable; already on margin →
-  `marginUse`=0 so the book delevers to 1×). Per name: target $ = weight×book, **trade = target $ − current
-  value**, shares = trade ÷ live price (`pxOf()` resolves held px → pick live/base → raw quote). The table
-  shows **Target ($/%) · Now ($/%) · Trade (±shares ≈ ±$) · Stop** with a **Book footer** (book /
-  now-invested / net-buy / net-sell), an "exit to zero" line for held names that didn't make the cut, and a
-  **🤖 hand-off button** (`ideal.prompt` → `chatBtn`) carrying the sized per-name orders + stops + the
-  leverage base. **It's a continuous portfolio, not a daily reset** (v65/v66): **every current holding is an
-  incumbent guaranteed into the target** (`heldArr` is taken first, re-weighted/trimmed but never auto-sold
-  to zero — the single-name cap still trims the over-weight ones); then `ADD_SLOTS` (≈ `max(3, 12−heldCount)`)
-  of the best non-held picks/leaders/index fill remaining slots (sector cap counts held + adds, `TOTAL_CAP`
-  15). So the screen refines what you own and layers big names on top — it never liquidates-and-rebuilds; the
-  "exits" line is now just optional consolidation of the smallest holdings beyond the name cap. **Candidate
-  universe** = holdings ∪ top picks ∪ **a mega-cap LEADERS bench** (`producer/leaders.mjs` → `data.leaders`,
-  read by the consumer with a hardcoded fallback; admitted only when a live price exists, so the producer
-  quotes `LEADER_SYMBOLS` every run) ∪ SPY/QQQ index. Each kept position shows a **bracket** in the **TP /
-  Stop** column: a **take-profit** GTC sell limit above the mark (`tpOf` — a vetted pick's real tp1, else a
-  2R level off the stop, else +20%) and a **protective stop** below (`stopOf` — under the 50-DMA or a fixed
-  % under the mark, whichever is tighter); reduces/exits are GTC sell limits (shown inline in Trade). The
-  intent: set it once with brackets, then rebalance only when a level triggers or a weight drifts — not daily. **Every line is a concrete order with a price**: sell/trim
-  rows carry a **Limit** column; redeploy buckets become sized **buy tickets** (shares risk/cap-clamped at the
-  live price, entry zone + starter limit **anchored to the 50-DMA** `smaMap`, protective **stop** on the add).
+  fragile-leg trailing stop, earnings reassess). **The recommended portfolio is now a standalone _Agentic Portfolio_ card** (v67 — formerly Step 4 of the Action Center; built by `renderAgenticCard()`, mounted as the lead card on the Plan/Picks page). It is the blueprint for the **agentic cash account (••••3900)**, no longer a restructuring of the margin book. A from-scratch, long-only, **UNLEVERED** target from a **fully-independent universe** — top scored picks ∪ a mega-cap **LEADERS** bench (`producer/leaders.mjs` → `data.leaders`, hardcoded fallback) ∪ an SPY/QQQ index core ∪ **whatever ••••3900 already holds** (the margin account is ignored). Sector-diversified (≤4/sector, `TOTAL_CAP` 15, `ADD_SLOTS` ≈ `max(3,12−heldCount)`), conviction-weighted (3.5% floor, `PLAN_SINGLE_CAP` 25% ceiling), normalized to 100%, and **sized to the account's own equity** (`data.agentic.equity` = cash + positions; book = equity, i.e. 1× — no leverage, since it is a cash account). The table shows **Target ($/%) · Now ($/%) · Trade (±sh ≈ ±$) · Drift · TP/Stop** with a Book footer (book / invested / cash); **Now** is the account's ACTUAL holdings and **Drift** flags any held name past the **`AGENTIC_DRIFT` (5pp)** rebalance trigger (the user's drift-triggered cadence). It reads **`data.agentic`** (the account's real cash + positions — emitted by `build-data.mjs` from the producer's `agentic-portfolio.json` / `agentic-positions.json`, carry-forward like realized/options); until that snapshot lands it shows **target weights only**. Brackets (`tpOf`/`stopOf`) are **monitor-only** — fractional cash-account positions can't carry resting GTC stops. The **🤖 hand-off button** carries a deploy/rebalance prompt that targets ••••3900 with **fractional dollar-market** orders (review_equity_order → confirm → place). (The old margin Step 4 — leveraged to `equityBase + marginUse`, anchored to current margin holdings — was removed from `renderActionPlan`, which is now Steps 1–3 only.)
   On the **Plan page the Top-3 pick cards now sit directly under the Action Center** (v58), ahead of the
   Composite chart / Scoring table, so "the plan → the three ideas it deploys into" reads as one unit.
   Step 1 / Step 2 each get a **🤖 hand-off button** (`planOrdersPrompt` → `chatBtn`). The Action Center is

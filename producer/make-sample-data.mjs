@@ -222,6 +222,20 @@ const data = {
   options,
   news,
   leaders: LEADERS,
+  // Sample agentic cash account so the Agentic Portfolio card renders populated in local preview
+  // (real runs emit this from agentic-portfolio.json/agentic-positions.json in build-data.mjs).
+  agentic: {
+    asOf: now.toISOString(),
+    cash: 196.0,
+    buyingPower: 196.0,
+    equity: 1000.0,
+    positions: [
+      { symbol: 'SPY', qty: 0.231, avgCost: 735.92, px: 740.0, value: 170.94 },
+      { symbol: 'NVDA', qty: 0.770, avgCost: 194.66, px: 196.0, value: 150.92 },
+      { symbol: 'V', qty: 0.416, avgCost: 336.44, px: 338.0, value: 140.61 },
+      { symbol: 'GOOGL', qty: 0.381, avgCost: 340.95, px: 341.0, value: 129.92 },
+    ],
+  },
 };
 
 await emit(data);

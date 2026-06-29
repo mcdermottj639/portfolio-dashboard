@@ -561,7 +561,7 @@ html[data-theme="neon"] #pf-fresh{ background:rgba(11,16,34,.8)!important; color
     });
   }};
   function boot(){
-    var APP_VERSION='v66'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v67'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -1173,6 +1173,10 @@ function renderActionFeed(list){
    Picks page calls it when it renders — so the card populates whether the Picks tab is opened before
    or after the portfolio finished loading. No-ops cleanly until both the data and the DOM exist. */
 function paintActionCenter(){
+  // Agentic Portfolio card renders independently of the margin book (it reads data.agentic + picks),
+  // so paint it BEFORE the margin-data early-return below — it must show even if the margin
+  // portfolio hasn't loaded. Re-runs as ovMap/smaMap land to upgrade sectors/stops.
+  if(document.getElementById('agentic-content')){ try{ renderAgenticCard(); }catch(e){} }
   const S=window.__SNAP; if(!S||!S.enriched)return;
   const tv=(S.stats&&S.stats.totalVal)||S.totalVal||0;
   if(document.getElementById('act-content')){
@@ -1438,140 +1442,6 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const fragile=perSym?enriched.filter(p=>p.val>0&&p.pct>=1.5&&perSym[p.symbol]!=null).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>b.b-a.b)[0]:null;
   const earnT=[t1,t2].map(t=>({t,e:earningsMap[t.symbol]})).filter(x=>x.e&&x.e.daysAway!=null&&x.e.daysAway<=21).sort((a,b)=>a.e.daysAway-b.e.daysAway);
 
-  // ── Step 4 · Ideal portfolio ──────────────────────────────────────────────
-  // A from-scratch, long-only TARGET allocation (10–15 names) built from the same analysis the rest of
-  // this card uses: the strongest current holdings (scored on trend vs 50-DMA, RSI regime, valuation,
-  // revenue growth, thesis health) blended with the top scored picks (their composite), sector-diversified
-  // (≤ PER_SEC per sector) and conviction-weighted with a floor + the single-name cap, normalized to 100%.
-  // It's a destination to drift toward — the table shows the per-name gap to today (NEW/ADD/TRIM/HOLD).
-  const ideal=(()=>{
-    const secOf=(sym)=>{ const ov=ovMap[sym]; let s=ov&&ov.Sector?titleCase(ov.Sector):null;
-      if(s&&/^(N\/?A|None|Trade Commercial)$/i.test(s))s=null;
-      if(!s){ const pk=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(x=>x&&x.ticker===sym); if(pk)s=String(pk.sector||'').split('·')[0].trim(); }
-      if(!s&&typeof ASSET_MAP!=='undefined'&&ASSET_MAP[sym]&&ASSET_MAP[sym]!=='Stocks')s=ASSET_MAP[sym]; // ETFs AV won't sector-tag
-      return s||'—'; };
-    const scoreHeld=(p)=>{ let s=5; const sym=p.symbol, sma=smaMap[sym], rsi=rsiMap[sym], ov=ovMap[sym]||{};
-      if(sma&&p.px>0) s+= p.px>=sma?1.2:-1.2;
-      if(rsi!=null){ if(rsi>=75)s-=1.5; else if(rsi>=40&&rsi<=68)s+=1; else if(rsi<30)s+=0.5; }
-      const fpe=parseFloat(ov.ForwardPE); if(fpe>0){ if(fpe<25)s+=1; else if(fpe>60)s-=1.5; else if(fpe>40)s-=0.5; }
-      const rg=parseFloat(ov.QuarterlyRevenueGrowthYOY); if(!isNaN(rg)){ if(rg>0.15)s+=0.8; else if(rg<0)s-=0.8; }
-      if(p.pnlP>0)s+=0.3; else if(p.pnlP<-30)s-=1;
-      return Math.max(0,Math.min(10,s)); };
-    // Live price for ANY symbol: held position px → pick live/base → raw quote → prev close.
-    const pxOf=(sym)=>{ const h=enriched.find(p=>p.symbol===sym); if(h&&h.px>0)return h.px;
-      const pk=(typeof azPick==='function')?azPick(sym):null; if(pk&&pk.price>0)return pk.price;
-      const q=(typeof azQuote==='function')?azQuote(sym):null;
-      if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
-      return 0; };
-    const pool=new Map(); // ticker -> {sym,sector,score,cur,curVal,px,held,isPick,isIndex}
-    enriched.filter(p=>p.val>=SMALL_THR&&p.px>0).forEach(p=>{
-      pool.set(p.symbol,{sym:p.symbol,sector:secOf(p.symbol),score:scoreHeld(p),cur:p.pct||0,curVal:p.val,px:p.px,held:true,isPick:false}); });
-    const pickRows=[...((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]),
-                    ...((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[])];
-    pickRows.forEach(c=>{ const t=c&&c.ticker; if(!t)return;
-      const comp=(typeof c.composite==='number')?c.composite:null;
-      const sec=(typeof pickSector==='function')?pickSector(c):(String(c.sector||'').split('·')[0].trim()||'—');
-      if(pool.has(t)){ const e=pool.get(t); e.isPick=true; if(comp!=null)e.score=Math.min(10,e.score+0.5); }
-      else if(comp!=null){ pool.set(t,{sym:t,sector:sec||'—',score:comp,cur:0,curVal:0,px:pxOf(t),held:false,isPick:true}); } });
-    // Broad-market INDEX core — eligible even if unheld, so the target can anchor on a low-cost index
-    // sleeve where it earns a slot (a natural ballast). Scored modestly so it competes, nudged by trend
-    // when we have the 50-DMA. Held index ETFs already entered above (their held entry wins).
-    [{sym:'SPY',base:6.4},{sym:'QQQ',base:5.9}].forEach(ix=>{ if(pool.has(ix.sym))return;
-      const px=pxOf(ix.sym); let s=ix.base; const sma=smaMap[ix.sym]; if(sma&&px>0)s+= px>=sma?0.4:-0.6;
-      pool.set(ix.sym,{sym:ix.sym,sector:'Index',score:s,cur:0,curVal:0,px,held:false,isPick:false,isIndex:true}); });
-    // MEGA-CAP LEADERS — a curated bench of big names with good upside (per owner request), eligible even
-    // when they're neither held nor on the oversold Picks screen, so the target isn't confined to "what I
-    // own + today's top-10". The bench + sectors come from the producer (`data.leaders`, quoted every run
-    // so a live price exists); a small hardcoded list is the fallback for older snapshots / local preview.
-    // Each is admitted ONLY if we have a live price (so it can be sized + bracketed — no dangling rows),
-    // scored at a solid baseline (nudged by trend) so it competes with held names (incumbency-boosted) and
-    // picks (composite) and displaces only the marginal picks. Held / pick entries already in win.
-    const LEADERS=(()=>{ try{ const dl=window.__DATA&&window.__DATA.leaders; if(Array.isArray(dl)&&dl.length)return dl; }catch(e){}
-      return [{sym:'NVDA',sector:'Technology'},{sym:'MSFT',sector:'Technology'},{sym:'AAPL',sector:'Technology'},{sym:'AVGO',sector:'Technology'},{sym:'ORCL',sector:'Technology'},{sym:'GOOGL',sector:'Communication Services'},{sym:'META',sector:'Communication Services'},{sym:'NFLX',sector:'Communication Services'},{sym:'AMZN',sector:'Consumer Cyclical'},{sym:'HD',sector:'Consumer Cyclical'},{sym:'LLY',sector:'Healthcare'},{sym:'UNH',sector:'Healthcare'},{sym:'JPM',sector:'Financial Services'},{sym:'V',sector:'Financial Services'},{sym:'MA',sector:'Financial Services'},{sym:'COST',sector:'Consumer Defensive'},{sym:'WMT',sector:'Consumer Defensive'},{sym:'PG',sector:'Consumer Defensive'},{sym:'XOM',sector:'Energy'}]; })();
-    LEADERS.forEach(ld=>{ const sym=ld&&ld.sym; if(!sym||pool.has(sym))return; const px=pxOf(sym); if(!(px>0))return;
-      let s=6.0; const sma=smaMap[sym]; if(sma)s+= px>=sma?0.4:-0.4;
-      pool.set(sym,{sym,sector:ld.sector||secOf(sym),score:s,cur:0,curVal:0,px,held:false,isPick:false,isLeader:true}); });
-    // Selection that keeps the book CONTINUOUS (the owner's hard rule: don't tell me to sell everything and
-    // start over). Every current holding is an INCUMBENT and is guaranteed into the target — re-weighted,
-    // possibly trimmed, but never auto-sold to zero by the screen. THEN we fill a few slots with the best
-    // non-held picks / leaders / index for diversification (sector cap counts held + adds, so we don't pile
-    // onto a sector you're already heavy in). The plan refines what you own and layers big names on top —
-    // it never liquidates-and-rebuilds. The single-name cap still trims the over-weight incumbents.
-    const TOTAL_CAP=15, PER_SEC=4;
-    const heldArr=[...pool.values()].filter(x=>x.held).sort((a,b)=>b.curVal-a.curVal);
-    const ADD_SLOTS=Math.max(3,12-heldArr.length); // aim ~12 total, but always admit ≥3 fresh big names
-    const chosen=heldArr.slice(0,TOTAL_CAP);       // all holdings stay (largest first if you hold > cap)
-    const secCount={}; chosen.forEach(x=>{ const s=x.sector||'—'; if(s!=='—')secCount[s]=(secCount[s]||0)+1; });
-    const addPool=[...pool.values()].filter(x=>!x.held).sort((a,b)=>b.score-a.score);
-    let added=0;
-    for(const x of addPool){ if(chosen.length>=TOTAL_CAP||added>=ADD_SLOTS)break; const s=x.sector||'—';
-      if(s!=='—'&&(secCount[s]||0)>=PER_SEC)continue; chosen.push(x); secCount[s]=(secCount[s]||0)+1; added++; }
-    if(chosen.length<3) return {chosen:[],exits:[],prompt:'',book:0};
-    const sumSc=chosen.reduce((s,x)=>s+x.score,0)||1, FLOOR=0.035;
-    chosen.forEach(x=>{ x.w=Math.min(PLAN_SINGLE_CAP,Math.max(FLOOR,x.score/sumSc)); });
-    const sumW=chosen.reduce((s,x)=>s+x.w,0)||1;
-    chosen.forEach(x=>{ x.tgt=x.w/sumW*100; const d=x.tgt-x.cur;
-      x.act=!x.held?'NEW':(d>1.5?'ADD':(d<-1.5?'TRIM':'HOLD')); });
-    chosen.sort((a,b)=>b.tgt-a.tgt);
-    // ── Dollar/share sizing under the 1.5× rule ──
-    // The target BOOK = equity + the same leverage the redeploy step allows: from a flat start, borrow up
-    // to (PLAN_MAX_LEVERAGE−1)×equity, clamped to what the broker lends (= marginUse, computed above).
-    // Already on margin → marginUse is 0, so the book = equity (the ideal delevers to 1×). Each name's
-    // target $ = weight × book; the trade = target $ − current value, converted to shares at the live px.
-    const book=Math.max(0,equityBase+marginUse);
-    const nowInvested=enriched.reduce((s,p)=>s+Math.max(p.val,0),0);
-    // Per-name protective STOP (a standing GTC stop you keep on the position — this is what lets the book
-    // flow without daily churn) and a sell LIMIT for any reduce/exit (work the sale into strength, don't
-    // dump at market). Stop anchors below the 50-DMA / a fixed % under the live mark, whichever is tighter.
-    const stopOf=(sym,px)=>{ if(!(px>0))return 0; const s=smaMap[sym];
-      return (s&&isFinite(s)&&s<px)?Math.min(s*0.95,px*0.92):px*0.88; };
-    // TAKE-PROFIT target (a standing GTC sell limit ABOVE the mark — where you harvest gains / trim into
-    // strength). Prefer a vetted pick's real first target (tp1); otherwise a 2R level off the stop (so the
-    // reward ≈ 2× the risk you're protecting with the stop), falling back to +20%.
-    const pickOf=(sym)=>((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(p=>p&&p.ticker===sym);
-    const tpOf=(sym,px,stop)=>{ if(!(px>0))return 0; const pk=pickOf(sym);
-      if(pk&&pk.tp1&&pk.tp1.price>px)return pk.tp1.price;
-      return (stop>0&&px>stop)?px+2*(px-stop):px*1.20; };
-    chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.delta=x.tgtVal-(x.curVal||0);
-      x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD');
-      x.stop=stopOf(x.sym,x.px); x.limit=x.px; x.tp=tpOf(x.sym,x.px,x.stop); });
-    const chosenSet=new Set(chosen.map(x=>x.sym));
-    const exits=enriched.filter(p=>p.val>=SMALL_THR&&!chosenSet.has(p.symbol)).sort((a,b)=>b.val-a.val);
-    const netBuy=chosen.reduce((s,x)=>s+(x.delta>0?x.delta:0),0);
-    const netSell=chosen.reduce((s,x)=>s+(x.delta<0?-x.delta:0),0)+exits.reduce((s,p)=>s+p.val,0);
-    // Hand-off prompt — now carries the sized share/dollar trade per name + the leverage base.
-    const shTxt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
-    const HT=Math.max(50,book*0.004);
-    const PX=v=>'$'+(+v).toFixed(2);
-    const L=['Help me move my Robinhood portfolio toward this TARGET allocation and set the protective stops + take-profit limits. This is a destination I hold with brackets (stop below, take-profit above) — not a daily liquidate-and-rebuild, so only trade the gaps below. Share counts are sized to a target book of '+fmtD(book)+' ('+(marginUse>0?('my '+fmtD(equityBase)+' equity + up to '+fmtD(marginUse)+' margin, a '+fmt(PLAN_MAX_LEVERAGE,1)+'× cap'):'my '+fmtD(equityBase)+' equity, no added margin')+'). For each order check the live price + my current position, review with the broker (review_equity_order), and place ONLY after I confirm.','','Target book: '+fmtD(book)+(marginUse>0?(' (≤ '+fmt(PLAN_MAX_LEVERAGE,1)+'× leverage)'):' (unlevered)'),'',"Rebalance orders (≈, snapshot prices — sells as GTC limits, then a protective stop + take-profit on each kept position):"];
-    chosen.forEach(x=>{ const br=(x.stop>0?'; stop '+PX(x.stop)+' (GTC)':'')+(x.tp>0?'; take-profit '+PX(x.tp)+' (GTC limit)':'');
-      if(x.side==='HOLD'||x.shares==null||Math.abs(x.delta)<HT){ L.push('• HOLD '+x.sym+' — already ≈ target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+br); return; }
-      const ord=x.side==='SELL'
-        ? 'TRIM ~'+shTxt(x.shares)+' sh '+x.sym+' as a GTC limit '+(x.limit>0?PX(x.limit):'at market')+' ≈ '+fmtD(Math.abs(x.delta))
-        : 'BUY ~'+shTxt(x.shares)+' sh '+x.sym+(x.px>0?(' near '+PX(x.px)):'')+' ≈ '+fmtD(Math.abs(x.delta));
-      L.push('• '+ord+' → target '+fmt(x.tgt,0)+'% ('+fmtD(x.tgtVal)+')'+(x.held?'':' [new]')+br); });
-    if(exits.length)L.push('','Smallest holdings beyond the '+TOTAL_CAP+'-name target — consolidate (trim or close, your call): '+exits.map(p=>p.symbol+' (~'+fmtD(p.val)+')').join('; '));
-    L.push('','Long-only target derived from my dashboard analysis; EVERY current holding stays in (re-weighted, never auto-sold), with the best picks/leaders layered on for diversification. Weights tilt to conviction, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. After this is set, I rebalance only when a stop/target triggers or a weight drifts materially — not daily. Snapshot prices are stale — re-check live marks and buying power before each fill. Education only — not financial advice.');
-    return {chosen,exits,prompt:L.join('\n'),book,nowInvested,netBuy,netSell,levered:marginUse>0};
-  })();
-  const tagOf=x=>x.held?'':(x.isIndex?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.isPick?' <span style="color:#9ca3af;font-size:10px">pick</span>':(x.isLeader?' <span style="color:#9ca3af;font-size:10px">leader</span>':'')));
-  const idealShFmt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
-  const idealHoldThr=Math.max(50,(ideal.book||0)*0.004);
-  const idealTrade=x=>{
-    if(x.shares==null) return '<span style="color:#9ca3af" title="no live price">—</span>';
-    if(x.side==='HOLD'||Math.abs(x.delta)<idealHoldThr) return '<span class="badge" style="background:#f3f4f6;color:#6b7280">hold</span>';
-    const col=x.side==='BUY'?'#065f46':'#991b1b';
-    const lim=x.side==='SELL'&&x.limit>0?` · lim ${P(x.limit)}`:'';
-    return `<span style="color:${col};font-weight:700">${x.side==='BUY'?'+':'−'}${idealShFmt(x.shares)} sh</span><br><span style="color:#9ca3af;font-size:11px">≈ ${fmtD(Math.abs(x.delta))}${lim}</span>`;
-  };
-  // Bracket cell: protective stop (down) + take-profit (up) — the two standing GTC orders on each position.
-  const idealBracket=x=>{ if(!(x.px>0)) return '<span style="color:#9ca3af">—</span>';
-    const stop=x.stop>0?`<span style="color:#991b1b;font-weight:600">${P(x.stop)}</span> <span style="color:#9ca3af;font-size:10px">−${fmt((1-x.stop/x.px)*100,0)}%</span>`:'<span style="color:#9ca3af">—</span>';
-    const tp=x.tp>0?`<span style="color:#065f46;font-weight:600">${P(x.tp)}</span> <span style="color:#9ca3af;font-size:10px">+${fmt((x.tp/x.px-1)*100,0)}%</span>`:'<span style="color:#9ca3af">—</span>';
-    return `${tp}<br>${stop}`; };
-  const idealRows=ideal.chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${tagOf(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${fmtD(x.tgtVal)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(x.tgt,0)}%</span></td><td class="tr">${x.held?fmtD(x.curVal):'<span style="color:#9ca3af">—</span>'}<br><span style="color:#9ca3af;font-size:11px">${x.held?fmt(x.cur,1)+'%':'new'}</span></td><td class="tr">${idealTrade(x)}</td><td class="tr">${idealBracket(x)}</td></tr>`).join('');
-  const idealFoot=ideal.chosen.length?`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Book</td><td class="tr">${fmtD(ideal.book)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">100%</span></td><td class="tr">${fmtD(ideal.nowInvested)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">now</span></td><td class="tr"><span style="color:#065f46">+${fmtD(ideal.netBuy)}</span><br><span style="color:#991b1b;font-size:11px;font-weight:400">−${fmtD(ideal.netSell)}</span></td><td class="tr"><span style="color:#9ca3af;font-size:11px;font-weight:400">TP / stop</span></td></tr>`:'';
-
   el.innerHTML=`
     <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">A standing playbook — <b>raise cash</b> (harvest losers <i>and</i> right-size any over-weight winner) → <b>redeploy</b> to pull risk down → <b>guardrails</b>. Winners are trimmed only where one name is above <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> of equity: position discipline, not a call to sell a good stock.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}</div>
 
@@ -1669,15 +1539,118 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       <div style="padding:4px 0">▸ A holding’s <b>RSI &gt; 75</b> → trim into strength (see Technical Signals / the Do-now tier).</div>
       ${fragile&&fragile.b>=1.5?`<div style="padding:4px 0">▸ <b>${fragile.p.symbol}</b> (β ≈ ${fmt(fragile.b,1)}) is your highest-beta leg — the fragile one — set a <b>~−20% trailing stop</b>.</div>`:''}
       <div style="padding:4px 0">▸ ${earnT.length?`<b>${earnT[0].t.symbol}</b> reports in ${earnT[0].e.daysAway}d (${earnT[0].e.reportDate||'soon'}) — decide hold-through vs trim before the print.`:`Reassess around <b>${t1.symbol}/${t2.symbol} earnings</b> — hold-through vs trim.`}</div>
-    </div>
-
-    <div class="col-title" style="margin-top:14px">4 · Ideal portfolio <span class="card-hint">${ideal.chosen.length?`(target ${ideal.chosen.length}-name allocation)`:'(building…)'}</span></div>
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:2px 0 6px">A long-only target built from this dashboard's analysis — your current holdings, the top scored picks, an index core, <b>and a bench of mega-cap leaders with good upside</b> (so it isn't confined to what you own or today's screen), sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> per name. <b>It's a continuous portfolio, not a daily reset</b> — <b>every name you already own stays in</b> (re-weighted, possibly trimmed, never auto-sold to zero); fresh big names just layer on top. You hold each inside a <b>bracket</b> and rebalance only when a level triggers or a weight drifts materially. <b>Trade</b> = shares + $ to move from today to target (sells worked as GTC limits); <b>TP / Stop</b> = the take-profit (sell into strength) and protective stop — both standing GTC orders.</div>
-    ${ideal.book>0?`<div class="fund-note" style="margin:0 0 8px">Target book <b>${fmtD(ideal.book)}</b> = ${ideal.levered?`your ${fmtD(equityBase)} equity + up to ${fmtD(marginUse)} margin (the same <b>${fmt(PLAN_MAX_LEVERAGE,1)}×</b> leverage cap as Step 2 — ≤${fmt((PLAN_MAX_LEVERAGE-1)*100,0)}¢ of debt per $1 of equity)`:`your ${fmtD(equityBase)} equity — unlevered${onMargin?`, delevering to 1× (you're currently on ${fmtD(marginAmt)} margin)`:' (no margin headroom used)'}`}.</div>`:''}
-    ${ideal.chosen.length?`<table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">TP / Stop</th></tr></thead><tbody>${idealRows}${idealFoot}</tbody></table>`:`<div class="tech-empty">Not enough scored names yet — load picks + fundamentals to build the target.</div>`}
-    ${ideal.exits.length?`<div class="fund-note"><b>Consolidation (optional):</b> your smallest holdings beyond the target's name cap — ${ideal.exits.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.val)).join(' · ')}. Not a forced sell; fold them into the core names above when convenient.</div>`:''}
-    ${ideal.prompt?`<div style="margin-top:8px">${chatBtn('plan-ideal',ideal.prompt,'🤖 Build the rebalance to this target with Claude')}</div>`:''}`;
+    </div>`;
 }
+
+/* ═══ Agentic Portfolio (the recommended portfolio for the ••••3900 cash account) ═══
+   Standalone card — formerly Step 4 of the Action Center, split out because the recommended
+   portfolio is now the blueprint for the agentic cash account, not a restructuring of the margin
+   book. Builds a from-scratch, long-only, UNLEVERED target from a FULLY-INDEPENDENT universe
+   (top scored picks ∪ mega-cap leaders ∪ SPY/QQQ index core ∪ whatever ••••3900 already holds —
+   the margin account is ignored), sector-diversified + conviction-weighted, capped at
+   PLAN_SINGLE_CAP/name, sized to the account's own equity (cash + positions). Renders the target vs.
+   the account's ACTUAL holdings vs. per-name drift, with a deploy/rebalance hand-off. Reads
+   data.agentic (the account's real cash + positions, emitted by the producer); no-ops cleanly until
+   picks + DOM exist, and shows target weights only until the first agentic snapshot lands. */
+const AGENTIC_DRIFT=5; // pp — rebalance a name once it drifts this far from target (drift-triggered)
+function renderAgenticCard(){
+  const el=document.getElementById('agentic-content'); if(!el)return;
+  const A=(window.__DATA&&window.__DATA.agentic)||null;
+  const cash=A?Math.max(0,+A.cash||0):0;
+  const heldPos=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
+  const investedNow=heldPos.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
+  const equity=A?(+A.equity||(cash+investedNow)):0;
+  const book=Math.max(0,equity);            // unlevered: the account's own equity IS the book (1×)
+  const P=(v)=>'$'+(+v).toFixed(2);
+  const ovMap=(window.__SNAP&&window.__SNAP.ovMap)||{};
+  const smaMap=(window.__SNAP&&window.__SNAP.smaMap)||{};
+  const secOfPick=(c)=>(typeof pickSector==='function')?pickSector(c):(String(c.sector||'').split('·')[0].trim()||'—');
+  const secOf=(sym)=>{ const o=ovMap[sym]; let s=o&&o.Sector?titleCase(o.Sector):null;
+    if(s&&/^(N\/?A|None|Trade Commercial)$/i.test(s))s=null;
+    if(!s&&typeof ASSET_MAP!=='undefined'&&ASSET_MAP[sym]&&ASSET_MAP[sym]!=='Stocks')s=ASSET_MAP[sym];
+    return s||'—'; };
+  const pxOf=(sym)=>{ const h=heldPos.find(p=>p.symbol===sym); if(h&&h.px>0)return h.px;
+    const pk=(typeof azPick==='function')?azPick(sym):null; if(pk&&pk.price>0)return pk.price;
+    const q=(typeof azQuote==='function')?azQuote(sym):null;
+    if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
+    return 0; };
+  // ── candidate pool — fully independent of the margin book ──
+  const pool=new Map();
+  heldPos.forEach(p=>{ pool.set(p.symbol,{sym:p.symbol,sector:secOf(p.symbol),score:6,curVal:Math.max(0,+p.value||0),px:p.px||pxOf(p.symbol),held:true,kind:''}); });
+  const pickRows=[...((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]),
+                 ...((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[])];
+  pickRows.forEach(c=>{ const t=c&&c.ticker; if(!t)return; const comp=(typeof c.composite==='number')?c.composite:null;
+    if(pool.has(t)){ const e=pool.get(t); if(!e.kind)e.kind='pick'; if(comp!=null)e.score=Math.max(e.score,comp); }
+    else if(comp!=null){ pool.set(t,{sym:t,sector:secOfPick(c)||'—',score:comp,curVal:0,px:pxOf(t),held:false,kind:'pick'}); } });
+  [{sym:'SPY',base:6.4},{sym:'QQQ',base:5.9}].forEach(ix=>{ if(pool.has(ix.sym))return; const px=pxOf(ix.sym);
+    let s=ix.base; const sm=smaMap[ix.sym]; if(sm&&px>0)s+= px>=sm?0.4:-0.6;
+    pool.set(ix.sym,{sym:ix.sym,sector:'Index',score:s,curVal:0,px,held:false,kind:'index'}); });
+  const LEADERS=(()=>{ try{ const dl=window.__DATA&&window.__DATA.leaders; if(Array.isArray(dl)&&dl.length)return dl; }catch(e){}
+    return [{sym:'NVDA',sector:'Technology'},{sym:'MSFT',sector:'Technology'},{sym:'AAPL',sector:'Technology'},{sym:'AVGO',sector:'Technology'},{sym:'GOOGL',sector:'Communication Services'},{sym:'META',sector:'Communication Services'},{sym:'AMZN',sector:'Consumer Cyclical'},{sym:'LLY',sector:'Healthcare'},{sym:'UNH',sector:'Healthcare'},{sym:'JPM',sector:'Financial Services'},{sym:'V',sector:'Financial Services'},{sym:'COST',sector:'Consumer Defensive'},{sym:'WMT',sector:'Consumer Defensive'},{sym:'XOM',sector:'Energy'}]; })();
+  LEADERS.forEach(ld=>{ const sym=ld&&ld.sym; if(!sym||pool.has(sym))return; const px=pxOf(sym); if(!(px>0))return;
+    let s=6; const sm=smaMap[sym]; if(sm)s+= px>=sm?0.4:-0.4;
+    pool.set(sym,{sym,sector:ld.sector||secOf(sym),score:s,curVal:0,px,held:false,kind:'leader'}); });
+  // ── selection: incumbents (current agentic holdings) guaranteed in, best non-held fill, sector-capped ──
+  const TOTAL_CAP=15, PER_SEC=4;
+  const heldArr=[...pool.values()].filter(x=>x.held).sort((a,b)=>b.curVal-a.curVal);
+  const ADD_SLOTS=Math.max(3,12-heldArr.length);
+  const chosen=heldArr.slice(0,TOTAL_CAP);
+  const secCount={}; chosen.forEach(x=>{ const s=x.sector||'—'; if(s!=='—')secCount[s]=(secCount[s]||0)+1; });
+  const addPool=[...pool.values()].filter(x=>!x.held&&x.px>0).sort((a,b)=>b.score-a.score);
+  let added=0;
+  for(const x of addPool){ if(chosen.length>=TOTAL_CAP||added>=ADD_SLOTS)break; const s=x.sector||'—';
+    if(s!=='—'&&(secCount[s]||0)>=PER_SEC)continue; chosen.push(x); secCount[s]=(secCount[s]||0)+1; added++; }
+  if(chosen.length<3){ el.innerHTML=`<div class="tech-empty">Not enough scored names yet — load today's picks to build the target.</div>`; return; }
+  const sumSc=chosen.reduce((s,x)=>s+x.score,0)||1, FLOOR=0.035;
+  chosen.forEach(x=>{ x.w=Math.min(PLAN_SINGLE_CAP,Math.max(FLOOR,x.score/sumSc)); });
+  const sumW=chosen.reduce((s,x)=>s+x.w,0)||1;
+  chosen.forEach(x=>{ x.tgt=x.w/sumW*100; });
+  chosen.sort((a,b)=>b.tgt-a.tgt);
+  // ── sizing to the unlevered book + brackets + drift ──
+  const stopOf=(sym,px)=>{ if(!(px>0))return 0; const s=smaMap[sym]; return (s&&isFinite(s)&&s<px)?Math.min(s*0.95,px*0.92):px*0.88; };
+  const pickOf=(sym)=>((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(p=>p&&p.ticker===sym);
+  const tpOf=(sym,px,stop)=>{ if(!(px>0))return 0; const pk=pickOf(sym); if(pk&&pk.tp1&&pk.tp1.price>px)return pk.tp1.price; return (stop>0&&px>stop)?px+2*(px-stop):px*1.20; };
+  chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.cur=book>0?(x.curVal/book*100):0; x.drift=x.cur-x.tgt;
+    x.delta=x.tgtVal-(x.curVal||0); x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD');
+    x.stop=stopOf(x.sym,x.px); x.tp=tpOf(x.sym,x.px,x.stop); });
+  const chosenSet=new Set(chosen.map(x=>x.sym));
+  const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0);
+  // ── render ──
+  const shFmt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
+  const holdThr=Math.max(5,(book||0)*0.01);
+  const kindTag=x=>x.held?'':(x.kind==='index'?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.kind==='pick'?' <span style="color:#9ca3af;font-size:10px">pick</span>':(x.kind==='leader'?' <span style="color:#9ca3af;font-size:10px">leader</span>':'')));
+  const tradeCell=x=>{ if(book<=0||x.shares==null) return '<span style="color:#9ca3af">—</span>';
+    if(x.side==='HOLD'||Math.abs(x.delta)<holdThr) return '<span class="badge" style="background:#f3f4f6;color:#6b7280">hold</span>';
+    const col=x.side==='BUY'?'#065f46':'#991b1b';
+    return `<span style="color:${col};font-weight:700">${x.side==='BUY'?'+':'−'}${shFmt(x.shares)} sh</span><br><span style="color:#9ca3af;font-size:11px">≈ ${fmtD(Math.abs(x.delta))}</span>`; };
+  const driftCell=x=>{ if(!x.held||book<=0) return '<span style="color:#9ca3af">—</span>';
+    const hot=Math.abs(x.drift)>=AGENTIC_DRIFT; const col=hot?(x.drift>0?'#991b1b':'#0969da'):'#9ca3af';
+    return `<span style="color:${col};font-weight:${hot?700:400}">${x.drift>0?'+':''}${fmt(x.drift,1)}pp</span>${hot?' <span title="past drift trigger">⚠️</span>':''}`; };
+  const bracketCell=x=>{ if(!(x.px>0)) return '<span style="color:#9ca3af">—</span>';
+    const tp=x.tp>0?`<span style="color:#065f46;font-weight:600">${P(x.tp)}</span>`:'<span style="color:#9ca3af">—</span>';
+    const stop=x.stop>0?`<span style="color:#991b1b;font-weight:600">${P(x.stop)}</span>`:'<span style="color:#9ca3af">—</span>';
+    return `${tp}<br>${stop}`; };
+  const rows=chosen.map(x=>`<tr><td><span class="sym">${x.sym}</span>${kindTag(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${book>0?fmtD(x.tgtVal):'—'}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(x.tgt,0)}%</span></td><td class="tr">${x.held?fmtD(x.curVal):'<span style="color:#9ca3af">—</span>'}<br><span style="color:#9ca3af;font-size:11px">${x.held?fmt(x.cur,1)+'%':'new'}</span></td><td class="tr">${tradeCell(x)}</td><td class="tr">${driftCell(x)}</td><td class="tr">${bracketCell(x)}</td></tr>`).join('');
+  const foot=book>0?`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Book</td><td class="tr">${fmtD(book)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">100%</span></td><td class="tr">${fmtD(investedNow)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">invested</span></td><td class="tr">${fmtD(cash)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">cash</span></td><td class="tr"></td><td class="tr"><span style="color:#9ca3af;font-size:11px;font-weight:400">TP / stop</span></td></tr>`:'';
+  // deploy / rebalance hand-off (targets the agentic cash account; fractional, dollar-market at the open)
+  const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr);
+  const sells=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='SELL'&&-x.delta>=holdThr);
+  const L=['Help me move my Robinhood AGENTIC cash account (the ••••3900 "Agentic" individual account — agentic_allowed) toward this target allocation. Cash account: fractional, dollar-based market orders only, in regular hours, fully funded by settled cash. Review each with review_equity_order and place ONLY after I confirm. This is a destination held with brackets, rebalanced when a name drifts past '+AGENTIC_DRIFT+'pp or hits a level — not daily.','',
+    'Account equity (book): '+fmtD(book)+' = '+fmtD(investedNow)+' invested + '+fmtD(cash)+' cash (unlevered, 1×).',''];
+  if(buys.length){ L.push('BUY toward target (≈, dollar-market at the open):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
+  if(sells.length){ L.push('TRIM toward target:'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
+  if(orphans.length) L.push('Held but not in target — review to exit/consolidate: '+orphans.map(p=>p.symbol+' (~'+fmtD(p.value)+')').join('; '),'');
+  L.push('Long-only target from my dashboard: top scored picks + mega-cap leaders + SPY/QQQ core + what the account already holds, sector-diversified, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
+  const handoff=L.join('\n');
+  const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
+  el.innerHTML=`
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The recommended portfolio for your <b>agentic cash account (••••3900)</b> — a long-only, <b>unlevered</b> target built from a universe independent of your other accounts (top scored picks + mega-cap leaders + an SPY/QQQ core + whatever this account already holds), sector-diversified and capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Now</b> = what the account actually holds; <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; <b>TP / Stop</b> are the take-profit / protective levels I monitor (fractional positions can't carry resting stops).</div>
+    ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (cash account, 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, and drift appear here after the next scheduled run picks it up.</div>`}
+    <table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">Drift</th><th class="tr">TP / Stop</th></tr></thead><tbody>${rows}${foot}</tbody></table>
+    ${orphans.length?`<div class="fund-note"><b>Held but off-target:</b> ${orphans.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.value)).join(' · ')} — review to consolidate into the names above.</div>`:''}
+    <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
+}
+window.renderAgenticCard=renderAgenticCard;
 
 /* ═══ All Positions (kept) ═══ */
 let _sc='val',_sd=1,_enriched=[];
@@ -2807,6 +2780,9 @@ function renderPicksStatic(){
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(••••3900 · target vs. actual)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
+      <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
+    </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
