@@ -605,6 +605,11 @@ const ACCOUNT   = 'ACCT';  // placeholder used only as a replay-lookup key; the 
 const SMALL_THR = 250;
 const RH = 'mcp__1ad8dd47-cf57-427a-8a28-facba69504fb__';
 const AV = 'mcp__4ae6f0d3-5112-4955-94dc-c6bea90e45dd__TOOL_CALL';
+// The replay key builder lives inside the boot IIFE (exposed as window.__pfKey). Alias it into the
+// global app scope so direct recorded-snapshot reads — azOverview / _earnMap / azVix — can key into
+// data.recorded. Without this they throw ReferenceError (caught → null), silently blanking the
+// Analyze fundamentals/valuation/earnings cards. The IIFE has already run by the time this evaluates.
+const makeKey = window.__pfKey;
 const OVERVIEW_COVER = 14;   // # of top holdings to pull fundamentals/beta/sector for
 
 const TTL = {
@@ -2469,6 +2474,31 @@ function azVix(){ if(_azVix!==undefined)return _azVix; _azVix=null;
     if(Array.isArray(arr)&&arr.length)_azVix=parseFloat(arr[0].close||arr[0].Close||arr[0]['4. close']||0)||null;
   }catch(e){}
   return _azVix; }
+/* Beta of a close series vs a benchmark close series over the last `win` daily returns. Shared by
+   the recommendation (systematic-risk fold) and azExtra (Indicators card) so both report one number. */
+function _betaSeries(closes, bench, win){ win=win||60;
+  if(!closes||!bench||closes.length<21||bench.length<21)return null;
+  const n=Math.min(closes.length,bench.length,win); if(n<21)return null;
+  const sr=[],kr=[];
+  for(let i=1;i<n;i++){ sr.push(bench[bench.length-n+i]/bench[bench.length-n+i-1]-1); kr.push(closes[closes.length-n+i]/closes[closes.length-n+i-1]-1); }
+  const ms=sr.reduce((s,v)=>s+v,0)/sr.length, mk=kr.reduce((s,v)=>s+v,0)/kr.length;
+  let cov=0,vs=0; for(let i=0;i<sr.length;i++){ cov+=(sr[i]-ms)*(kr[i]-mk); vs+=(sr[i]-ms)*(sr[i]-ms); }
+  return vs>0?cov/vs:null; }
+/* Return correlation of a symbol vs each held book position (sorted tightest-first). Memoized per
+   snapshot; null when the portfolio isn't loaded or there's too little overlapping history. Shared by
+   the recommendation's correlation-drag dampener and the Analyze "Overlap With Your Book" card. */
+function _bookCorrAll(sym){ _azMemoCheck(); if(sym in _azMemo.bookCorr)return _azMemo.bookCorr[sym];
+  let out=null;
+  try{ const P=window.__PORT; if(P&&P.enriched){ const base=azSeries(sym).map(s=>s.c);
+    if(base.length>=30){ const br=[]; for(let i=1;i<base.length;i++)br.push(base[i]/base[i-1]-1); const cors=[];
+      for(const p of P.enriched){ if(p.symbol===sym||p.val<=0)continue; const oc=azSeries(p.symbol).map(s=>s.c); if(oc.length<30)continue;
+        const n=Math.min(br.length,oc.length-1); if(n<20)continue; const xs=br.slice(-n),ys=[]; for(let i=oc.length-n;i<oc.length;i++)ys.push(oc[i]/oc[i-1]-1);
+        const mx=xs.reduce((s,v)=>s+v,0)/n, my=ys.reduce((s,v)=>s+v,0)/n; let cov=0,vx=0,vy=0;
+        for(let i=0;i<n;i++){ cov+=(xs[i]-mx)*(ys[i]-my); vx+=(xs[i]-mx)*(xs[i]-mx); vy+=(ys[i]-my)*(ys[i]-my); }
+        const r=(vx>0&&vy>0)?cov/Math.sqrt(vx*vy):null; if(r!=null)cors.push({sym:p.symbol,r:+r.toFixed(2),pct:p.pct}); }
+      if(cors.length){ cors.sort((p,q)=>q.r-p.r); out=cors; } } }
+  }catch(e){}
+  _azMemo.bookCorr[sym]=out; return out; }
 /* ── Analyzable universe + snapshot helpers (shared by autocomplete, miss-handling, IV) ── */
 // Every symbol this snapshot can actually analyze: holdings ∪ picks ∪ daily bars ∪ quotes ∪ options book.
 function azUniverse(){
@@ -2482,8 +2512,8 @@ function azUniverse(){
   return [...set.entries()].map(([sym,label])=>({sym,label})).sort((a,b)=>a.sym<b.sym?-1:1);
 }
 // Snapshot-scoped memo (beta/correlation loops are the expensive part) — keyed to data.generatedAt.
-let _azMemo={gen:'__init__',extra:{},corr:{}};
-function _azMemoCheck(){ let g=''; try{ g=(window.__DATA&&window.__DATA.generatedAt)||''; }catch(e){} if(_azMemo.gen!==g)_azMemo={gen:g,extra:{},corr:{}}; }
+let _azMemo={gen:'__init__',extra:{},corr:{},bookCorr:{}};
+function _azMemoCheck(){ let g=''; try{ g=(window.__DATA&&window.__DATA.generatedAt)||''; }catch(e){} if(_azMemo.gen!==g)_azMemo={gen:g,extra:{},corr:{},bookCorr:{}}; }
 // Implied vol for a symbol: prefer the live options book's IV, else an ATR-based realized-vol proxy.
 function azIV(a,x){
   let iv=null,src=null;
@@ -2525,12 +2555,15 @@ function analyzeStock(sym){
     peg: parseFloat(ov.PEGRatio)||null,
     margin: ov.ProfitMargin!=null?parseFloat(ov.ProfitMargin)*100:null,
     upside: (_tgt&&price>0)?(_tgt/price-1)*100:null });
+  // Beta (systematic risk) from the same 60-day window the Indicators card uses — folded into the risk
+  // score so a high-beta name reads as riskier than its idiosyncratic vol alone implies.
+  const beta=hasTA?_betaSeries(closes,azBars('SPY'),60):null;
   let pattern=45,signal=45,risk=50;
   if(hasTA){
     pattern=_cl(50+(trendUp?22:-18)+(sma50&&sma20>sma50?8:-6)+(mom20!=null?_cl(mom20,-15,15):0),5,98);
     const rsiGood=rsi==null?0:(rsi>=40&&rsi<=68?18:rsi<30?10:rsi>75?-15:0);
     signal=_cl(50+(trendUp?16:-14)+rsiGood+(dayChg!=null?_cl(dayChg*2,-10,10):0),5,98);
-    risk=_cl(70-_cl((vol||0)*400,0,40)+(pctFromHigh!=null&&pctFromHigh<-10?8:0)-(rsi!=null&&rsi>78?15:0),5,95);
+    risk=_cl(70-_cl((vol||0)*400,0,40)+(pctFromHigh!=null&&pctFromHigh<-10?8:0)-(rsi!=null&&rsi>78?15:0)-(beta!=null?_cl((beta-1)*12,-6,16):0),5,95);
   }
   // Blend the fundamentals sub-score into the setup when both it and the technicals exist; otherwise
   // fall back to the technical-only weights so sparse-AV names behave exactly as before.
@@ -2557,6 +2590,10 @@ function analyzeStock(sym){
   if(_ern&&_ern.days!=null&&_ern.days>=0&&_ern.days<=7){ earnRisk={days:_ern.days,when:_ern.when}; conf=_cl(conf-9,20,92); }
   const _vix=azVix();
   if(_vix!=null&&_vix>=22&&tone==='pos'){ regime={vix:+_vix.toFixed(1),level:_vix>=30?'high':'elevated'}; conf=_cl(conf-(_vix>=30?12:6),20,92); }
+  // Correlation drag: adding a name that's tightly correlated with a meaningful book position doubles
+  // down on the same risk — haircut conviction on a constructive call (no drag when we're not adding).
+  let corrDrag=null; const _bc=_bookCorrAll(sym);
+  if(_bc&&_bc[0]&&_bc[0].r>=0.7&&_bc[0].pct>=3&&tone!=='neg'){ corrDrag={sym:_bc[0].sym,r:_bc[0].r,pct:_bc[0].pct}; conf=_cl(conf-7,20,92); }
   const k=vol?Math.max(0.05,vol*2.2):0.08;
   const entryLo=+(price*0.985).toFixed(2), entryHi=+price.toFixed(2);
   const stop=+Math.min(recLo&&recLo<price?recLo*0.99:price*(1-k), price*(1-k)).toFixed(2);
@@ -2570,7 +2607,7 @@ function analyzeStock(sym){
     fwdPE:(ov.ForwardPE&&ov.ForwardPE!=='None')?ov.ForwardPE:(pk&&pk.fwdPE?parseFloat(pk.fwdPE):null),
     revGrowth:ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:(pk&&pk.revGrowth?parseFloat(pk.revGrowth):null),
     divYield:ov.DividendYield!=null?parseFloat(ov.DividendYield)*100:null,
-    fund, earnRisk, regime,
+    fund, earnRisk, regime, beta:beta!=null?+beta.toFixed(2):null, corrDrag,
     entryLo, entryHi, stop, tp1, tp2, invalid:+(stop*0.997).toFixed(2), pick:pk };
 }
 function azScoreColor(v){ return v>=66?'#10b981':v>=45?'#f59e0b':'#ef4444'; }
@@ -2590,8 +2627,7 @@ function _azExtraRaw(a){
     let atr=0,cnt=0; for(let i=Math.max(1,ser.length-14);i<ser.length;i++){ const tr=Math.max(ser[i].h-ser[i].l,Math.abs(ser[i].h-ser[i-1].c),Math.abs(ser[i].l-ser[i-1].c)); if(tr>0){atr+=tr;cnt++;} } x.atrPct=cnt?(atr/cnt)/a.price*100:null;
     const vols=ser.map(s=>s.v).filter(v=>v>0); if(vols.length>=20){ const avg=vols.slice(-20).reduce((s,v)=>s+v,0)/20; x.volRatio=avg>0?vols[vols.length-1]/avg:null; }
     const spy=azSeries('SPY').map(s=>s.c);
-    if(spy.length>=20){ const n=Math.min(spy.length,closes.length,60),sr=[],kr=[]; for(let i=1;i<n;i++){ sr.push(spy[spy.length-n+i]/spy[spy.length-n+i-1]-1); kr.push(closes[closes.length-n+i]/closes[closes.length-n+i-1]-1); }
-      const ms=sr.reduce((s,v)=>s+v,0)/sr.length,mk=kr.reduce((s,v)=>s+v,0)/kr.length; let cov=0,vs=0; for(let i=0;i<sr.length;i++){ cov+=(sr[i]-ms)*(kr[i]-mk); vs+=(sr[i]-ms)*(sr[i]-ms); } x.beta=vs>0?+(cov/vs).toFixed(2):null;
+    if(spy.length>=20){ const b=_betaSeries(closes,spy,60); x.beta=b!=null?+b.toFixed(2):null;
       const spyYtd=spy[0]>0?(spy[spy.length-1]/spy[0]-1)*100:null; x.relStr=(a.ytd!=null&&spyYtd!=null)?a.ytd-spyYtd:null; }
     const w=Math.min(40,closes.length),seg=closes.slice(-w),sup=[],res=[];
     for(let i=2;i<seg.length-2;i++){ if(seg[i]<seg[i-1]&&seg[i]<seg[i-2]&&seg[i]<=seg[i+1]&&seg[i]<=seg[i+2])sup.push(seg[i]); if(seg[i]>seg[i-1]&&seg[i]>seg[i-2]&&seg[i]>=seg[i+1]&&seg[i]>=seg[i+2])res.push(seg[i]); }
@@ -2714,14 +2750,7 @@ function azEarn(sym){ try{
   const d=Math.round((new Date(r.date+'T00:00:00Z')-Date.now())/864e5);
   return {date:r.date, days:d, when:r.when||null, eps:(r.eps_est!=null?r.eps_est:(r.eps!=null?r.eps:null))}; }catch(e){return null;} }
 function azCorr(a){ _azMemoCheck(); if(a&&a.sym&&(a.sym in _azMemo.corr))return _azMemo.corr[a.sym]; const r=_azCorrRaw(a); if(a&&a.sym)_azMemo.corr[a.sym]=r; return r; }
-function _azCorrRaw(a){ try{ const P=window.__PORT; if(!P||!P.enriched)return null; const base=azSeries(a.sym).map(s=>s.c); if(base.length<30)return null;
-  const br=[]; for(let i=1;i<base.length;i++)br.push(base[i]/base[i-1]-1); const cors=[];
-  for(const p of P.enriched){ if(p.symbol===a.sym||p.val<=0)continue; const oc=azSeries(p.symbol).map(s=>s.c); if(oc.length<30)continue;
-    const n=Math.min(br.length, oc.length-1); if(n<20)continue; const xs=br.slice(-n), ys=[]; for(let i=oc.length-n;i<oc.length;i++)ys.push(oc[i]/oc[i-1]-1);
-    const mx=xs.reduce((s,v)=>s+v,0)/n, my=ys.reduce((s,v)=>s+v,0)/n; let cov=0,vx=0,vy=0;
-    for(let i=0;i<n;i++){ cov+=(xs[i]-mx)*(ys[i]-my); vx+=(xs[i]-mx)*(xs[i]-mx); vy+=(ys[i]-my)*(ys[i]-my); }
-    const r=(vx>0&&vy>0)?cov/Math.sqrt(vx*vy):null; if(r!=null)cors.push({sym:p.symbol, r:+r.toFixed(2), pct:p.pct}); }
-  if(!cors.length)return null; cors.sort((p,q)=>q.r-p.r); return cors.slice(0,3); }catch(e){return null;} }
+function _azCorrRaw(a){ const all=_bookCorrAll(a.sym); return all?all.slice(0,3):null; }
 function azNews(sym){ try{ const nw=(window.__DATA&&window.__DATA.news)||{}; return nw[sym]||null; }catch(e){return null;} }
 /* Retail social signal for a ticker (ApeWisdom buzz + Robinhood popularity + news), from data.social. */
 function azSocial(sym){ try{ const s=(window.__DATA&&window.__DATA.social)||null; if(!s||!s.tickers)return null; const t=s.tickers[sym]; if(!t)return null; return t; }catch(e){return null;} }
@@ -2779,8 +2808,10 @@ function azRec(a){
   const meta=[]; const conf=(pk&&pk.confidence!=null)?pk.confidence:a.conf; if(conf!=null)meta.push(conf+'% confidence');
   if(pk&&pk.rr)meta.push('R/R '+pk.rr); if(pk&&pk.timeframe)meta.push(pk.timeframe);
   if(a.fund)meta.push('fundamentals '+a.fund.score+'/100');
+  if(a.beta!=null)meta.push('β '+a.beta.toFixed(2));
   if(a.earnRisk)meta.push('⚠️ earnings in '+a.earnRisk.days+'d');
   if(a.regime)meta.push('🌪 VIX '+a.regime.vix);
+  if(a.corrDrag)meta.push('🔗 correlated w/ '+a.corrDrag.sym);
   let h='<div class="card" style="border-left:5px solid '+color+'"><div class="card-title"><span>✅ Recommendation</span></div>'+
     '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-size:24px;font-weight:900;color:'+color+'">'+action+'</div><div style="font-size:12px;color:#9ca3af">'+note+'</div></div>'+
     (meta.length?'<div style="font-size:12px;color:var(--text);opacity:.8;margin-top:4px">'+meta.join(' · ')+'</div>':'')+
@@ -2814,7 +2845,7 @@ function runAnalysis(sym){
       (a.trendUp?'Uptrend':a.trendUp===false?'Downtrend':'Sideways')+'. Price '+(a.sma20?(a.price>=a.sma20?'above':'below')+' its 20-day average':'')+(a.mom20!=null?'; '+(a.mom20>=0?'+':'')+a.mom20.toFixed(1)+'% over ~20 sessions.':'.')]);
     nar.push(['🎯 Momentum / RSI', a.rsi==null?'#9ca3af':a.rsi>70?'#ef4444':a.rsi<30?'#3b82f6':'#10b981',
       'RSI '+(a.rsi!=null?a.rsi:'—')+(a.rsi>70?' — overbought, stretched.':a.rsi<30?' — oversold, bounce potential.':' — healthy, room to run.')+(a.pctFromHigh!=null?' Trading '+Math.abs(a.pctFromHigh).toFixed(0)+'% below the 52-week high.':'')]);
-    nar.push(['💡 Why This Signal', tc, a.label+' — '+(a.trendUp?'trend and ':'')+'the indicators'+(a.fund?' (plus a '+a.fund.score+'/100 fundamentals read)':'')+' net to a '+a.setup+'/100 setup, ~'+a.conf+'% confidence'+((a.earnRisk||a.regime)?' (trimmed for '+[a.earnRisk?'earnings in '+a.earnRisk.days+'d — IV-crush/gap risk':null,a.regime?'a '+a.regime.level+'-vol regime (VIX '+a.regime.vix+')':null].filter(Boolean).join(' and ')+')':'')+'. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':'Favor pullbacks toward the entry zone.')]);
+    nar.push(['💡 Why This Signal', tc, a.label+' — '+(a.trendUp?'trend and ':'')+'the indicators'+(a.fund?' (plus a '+a.fund.score+'/100 fundamentals read)':'')+' net to a '+a.setup+'/100 setup, ~'+a.conf+'% confidence'+((a.earnRisk||a.regime||a.corrDrag)?' (trimmed for '+[a.earnRisk?'earnings in '+a.earnRisk.days+'d — IV-crush/gap risk':null,a.regime?'a '+a.regime.level+'-vol regime (VIX '+a.regime.vix+')':null,a.corrDrag?'tight correlation (+'+a.corrDrag.r.toFixed(2)+') with '+a.corrDrag.sym+' already in your book':null].filter(Boolean).join('; ')+')':'')+'. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':'Favor pullbacks toward the entry zone.')]);
   } else {
     nar.push(['ℹ️ Limited Data', '#9ca3af', 'Not enough price history in this snapshot for a full technical read on '+sym+'. Showing price + fundamentals; full TA appears once it has daily history (holdings & picks get it on the next run).']);
   }
@@ -2831,7 +2862,7 @@ function runAnalysis(sym){
     '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
     azRec(a)+
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
-      (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+'</div>':'')+'</div>'+
+      (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+(a.beta!=null?' · β '+a.beta.toFixed(2):''))+'</div>':'')+'</div>'+
     (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50 · volume · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div>'+(x.chart.rsi&&x.chart.rsi.some(v=>v!=null)?'<div class="chart-wrap" style="height:80px;margin-top:6px"><canvas id="az-chart-rsi"></canvas></div><div style="font-size:10px;color:#9ca3af;margin-top:2px;text-align:center">RSI(14) · 70 = overbought · 30 = oversold</div>':'')+'</div>':'')+
     (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
