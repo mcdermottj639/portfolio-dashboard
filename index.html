@@ -215,6 +215,27 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 .card-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 10px; margin-bottom: 2px; }
 .card-nav-chip { flex: 0 1 auto; font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .card-nav-chip:active { background: #6366f1; color: #fff; }
+/* ── Card help popovers: a "?" in each card header opens a teaching modal ── */
+.help-btn { flex: 0 0 auto; margin-left: auto; width: 19px; height: 19px; padding: 0; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: #9ca3af; font-size: 11px; font-weight: 800; line-height: 17px; text-align: center; cursor: pointer; opacity: .65; font-family: inherit; -webkit-appearance: none; }
+.help-btn:hover { opacity: 1; color: var(--accent); }
+.card-title.collapsible .help-btn { margin-left: auto; }
+.card-title.collapsible .chevron { margin-left: 8px; }
+.help-modal { position: fixed; inset: 0; z-index: 100000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); padding: 18px; }
+.help-modal.open { display: flex; }
+.help-box { background: var(--hb-bg, #fff); color: var(--text); width: 100%; max-width: 460px; max-height: 84vh; overflow-y: auto; border-radius: 16px; padding: 20px 20px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.4); -webkit-overflow-scrolling: touch; }
+.help-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.help-tag { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: #9ca3af; margin-bottom: 3px; }
+.help-title { font-size: 17px; font-weight: 800; line-height: 1.3; }
+.help-x { flex: 0 0 auto; border: none; background: var(--surface-2); color: var(--text); width: 30px; height: 30px; border-radius: 50%; font-size: 18px; line-height: 1; cursor: pointer; }
+.help-body { font-size: 13.5px; line-height: 1.55; }
+.help-body p { margin: 9px 0; }
+.help-body ul { margin: 8px 0; padding-left: 17px; }
+.help-body li { margin: 5px 0; }
+.help-body b { font-weight: 700; }
+.help-body .hk { color: var(--accent); font-weight: 700; }
+.help-body .hsub { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #9ca3af; margin: 14px 0 4px; }
+html[data-theme="dark"] .help-box { --hb-bg: #161617; border: 1px solid #2a2a2c; }
+html[data-theme="gold"] .help-box { --hb-bg: #0b0b0c; border: 1px solid var(--nx-bd); box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 30px rgba(227,192,116,.08); }
 /* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
 .money { transition: filter .12s; }
 body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-select: none; }
@@ -570,7 +591,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v75'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v76'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2135,7 +2156,7 @@ window.switchTab=switchTab;
   function titleOf(card){
     var t=card.querySelector(':scope > .card-title'); if(!t)return null;
     var c=t.cloneNode(true);
-    c.querySelectorAll('.chevron,.card-hint').forEach(function(x){ x.remove(); });
+    c.querySelectorAll('.chevron,.card-hint,.help-btn').forEach(function(x){ x.remove(); });
     var s=(c.textContent||'').replace(/\s+/g,' ').trim();
     return s||null;
   }
@@ -2187,6 +2208,558 @@ window.switchTab=switchTab;
     }catch(e){}
   }
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+
+/* ── Card help popovers ──────────────────────────────────────────────────────
+   Every card header gets a small "?" button; tapping it opens a teaching modal
+   that explains what the card shows, what each stat/number means, and what to
+   look for. Content is keyed by a normalized signature of the card title, so the
+   same MutationObserver that catches late-rendered cards keeps help in sync.
+   This is a pure UI overlay — it reads nothing from data.json and never blocks. */
+(function(){
+  var HELP = {
+  /* ════════ PORTFOLIO TAB ════════ */
+  'all positions': { tag:'Portfolio', t:'All Positions', h:`
+    <p>Every equity you hold, sortable by any column. Tap a row's ticker to jump to its full <b>Analyze</b> breakdown.</p>
+    <div class="hsub">What the columns mean</div>
+    <ul>
+      <li><span class="hk">Value</span> — current market value (shares × live price).</li>
+      <li><span class="hk">Cost</span> — what you paid (your average cost × shares).</li>
+      <li><span class="hk">P&amp;L $ / %</span> — unrealized gain or loss. The % is measured against your <b>cost</b>, so it's your actual return on that position.</li>
+      <li><span class="hk">Day %</span> — today's move vs yesterday's close.</li>
+      <li><span class="hk">Weight</span> — this position as a share of total equity. This is the number that drives concentration risk.</li>
+    </ul>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>The <b>TOTAL footer</b> aggregates the book — note the value-weighted Day %, which is your real one-day P&amp;L, not a simple average.</li>
+      <li>Any single name above ~20–25% weight is a concentration flag — see the Risk card.</li>
+      <li>Sort by P&amp;L % to spot harvest candidates (deep losers) and trim candidates (outsized winners).</li>
+    </ul>` },
+  'performance vs benchmark': { tag:'Portfolio', t:'Performance vs Benchmark', h:`
+    <p>Your holdings' return this year versus the two benchmarks most growth/AI books are measured against — <b>SPY</b> (S&amp;P 500) and <b>QQQ</b> (Nasdaq-100). All three lines are indexed to <b>0% on Jan 1</b> so they're directly comparable.</p>
+    <div class="hsub">How your line is built</div>
+    <ul>
+      <li>It's a <b>price return of your current holdings at today's weights</b>, priced back to Jan 1 — a like-for-like comparison vs the index, <i>not</i> a time-weighted account return (the broker doesn't expose full purchase history).</li>
+      <li>The <b>coverage %</b> in the note is how much of your equity the line actually reflects (names with daily history).</li>
+      <li>The faint <b>dotted "Agentic"</b> line (when present) models the agentic cash account back to Jan 1; it splices into a <b>solid</b> line once real tracked equity accumulates.</li>
+    </ul>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>Beating QQQ means your stock-picking added value over just buying the Nasdaq. Trailing it means a low-cost index would have done better — useful honesty.</li>
+      <li>Watch the <b>shape</b>, not just the endpoint: a line that's more volatile than SPY is taking more risk for its return.</li>
+    </ul>` },
+  'holdings heatmap': { tag:'Portfolio', t:'Holdings Heatmap', h:`
+    <p>A <b>treemap</b> of your book: each tile is a holding, <b>sized by dollar value</b> and <b>colored by performance</b>. It's the fastest way to see where your money actually sits and what's moving it today. Tap any tile to Analyze that name.</p>
+    <div class="hsub">Reading it</div>
+    <ul>
+      <li><b>Tile size</b> = position value. The biggest tiles are your biggest bets — if one dominates the grid, that's concentration you can <i>see</i>.</li>
+      <li><b>Color</b> = green up / red down. Use the toggle to switch between <span class="hk">Day move</span> (today) and <span class="hk">Total P&amp;L</span> (since you bought).</li>
+      <li>The <b>account toggle</b> (Margin ⇄ Agentic), when shown, re-maps the tiles to the agentic cash account's holdings instead of the margin book.</li>
+    </ul>
+    <p>A "top N of M" note appears when there are more positions than tiles shown.</p>` },
+  'risk diversification': { tag:'Portfolio', t:'Risk &amp; Diversification', h:`
+    <p>How much the whole book could move if the market drops, plus how concentrated you are. This is the "what could go wrong" card.</p>
+    <div class="hsub">What the numbers mean</div>
+    <ul>
+      <li><span class="hk">Stress scenarios (−5/−10/−20%)</span> — your estimated loss if the market fell that much, scaled by your portfolio <b>beta</b>.</li>
+      <li><span class="hk">Beta</span> — sensitivity to the market. Beta 1.3 means you tend to move ~1.3× the market, up <i>and</i> down. Above 1 = more volatile than the index.</li>
+      <li><span class="hk">Sharpe ratio</span> — return earned per unit of volatility (risk-adjusted return). Higher is better; ~1+ is solid.</li>
+      <li><span class="hk">Annualized volatility</span> — how much your book swings in a typical year.</li>
+      <li><span class="hk">Max drawdown</span> — the worst peak-to-trough fall over the period. The pain test.</li>
+      <li><span class="hk">Effective # of bets (1/HHI)</span> — how many <i>independent</i> positions you effectively hold. Far below your position count means a few names dominate.</li>
+    </ul>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>A <b>correlated cluster</b> (names that move together) is hidden concentration — three "different" stocks that are really one AI bet.</li>
+      <li>The <b>fragile leg</b> is your highest-beta name — first to fall hardest in a selloff.</li>
+    </ul>` },
+  'allocation': { tag:'Portfolio', t:'Allocation', h:`
+    <p>Your equity split by <b>theme</b> (e.g. AI infrastructure, software, consumer), as a share of total value. Where your conviction actually sits, grouped by what these companies <i>do</i> rather than by ticker.</p>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>Themes that <b>overlap economically</b> (e.g. two AI sleeves) should be read as <i>one</i> larger position — they'll rise and fall together.</li>
+      <li>A single theme above ~40% is a thematic concentration risk even if no single stock is oversized.</li>
+      <li>Compare this to your conviction: are your biggest weights the themes you most believe in, or just the ones that ran up?</li>
+    </ul>` },
+  'income tax': { tag:'Portfolio', t:'Income &amp; Tax', h:`
+    <p>The cash-and-tax side of the book: dividends, realized gains/losses for the year, options premium collected, and — the actionable part — <b>tax-loss harvesting</b> opportunities.</p>
+    <div class="hsub">Key idea — loss harvesting</div>
+    <ul>
+      <li>Selling a position at a loss <b>realizes</b> that loss, which offsets realized <b>gains</b> elsewhere and lowers your taxable total.</li>
+      <li><span class="hk">Wash-sale rule</span> — if you rebuy the same (or "substantially identical") security within <b>30 days</b>, the IRS disallows the loss. Wait the window or buy a different name.</li>
+      <li>The itemized harvest list and the winner-trims those losses offset now live in the <b>Action Center</b> on the Plan tab.</li>
+    </ul>
+    <p>Dividend income is typically small for a growth/AI book — the tax lever here is harvesting, not yield. <i>Not tax advice.</i></p>` },
+  'technical signals': { tag:'Portfolio', t:'Technical Signals', h:`
+    <p>A quick momentum read on each holding using two classic indicators, so you can spot what's stretched or rolling over without opening every chart.</p>
+    <div class="hsub">The two signals</div>
+    <ul>
+      <li><span class="hk">RSI (Relative Strength Index, 0–100)</span> — measures recent up- vs down-moves. <b>Above 70</b> = overbought (ran hot, may pull back); <b>below 30</b> = oversold (beaten down, may bounce); ~40–60 is neutral.</li>
+      <li><span class="hk">Price vs 50-day SMA</span> — is the stock above or below its 50-day average price? <b>Above</b> = uptrend intact; <b>below</b> = trend weakening. The 50-DMA often acts as support/resistance.</li>
+    </ul>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>RSI is a <i>context</i> tool, not a trigger — strong stocks can stay overbought for weeks. Use it with the trend.</li>
+      <li>A name above 70 RSI <i>and</i> far above its 50-DMA is extended — a candidate to trim, not chase.</li>
+    </ul>` },
+  'fundamentals': { tag:'Portfolio', t:'Fundamentals', h:`
+    <p>The business behind each ticker: valuation and growth metrics, so a position is judged on the company, not just the chart.</p>
+    <div class="hsub">What the metrics mean</div>
+    <ul>
+      <li><span class="hk">P/E (price/earnings)</span> — price per $1 of annual earnings. Higher = more growth priced in (and more downside if growth disappoints).</li>
+      <li><span class="hk">Forward P/E</span> — same, but on <i>next</i> year's expected earnings. Lower than trailing P/E means analysts expect earnings to grow.</li>
+      <li><span class="hk">Revenue growth (YoY)</span> — how fast sales are expanding. The engine of a growth stock.</li>
+      <li><span class="hk">Profit margin</span> — how much of each sales dollar becomes profit.</li>
+      <li><span class="hk">Market cap</span> — total company value; <span class="hk">Div yield</span> — annual dividend as a % of price.</li>
+    </ul>
+    <p>Coverage accumulates across days as the data provider rotates through holdings, so a blank field usually fills in on a later run rather than meaning "no data."</p>` },
+  'positions under': { tag:'Portfolio', t:'Small Positions', h:`
+    <p>Holdings worth less than the small-position threshold, grouped together. Individually they're <b>too small to move the needle</b> on returns, but they add clutter and each one still needs monitoring.</p>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>The total tells you how much capital is scattered across odd-lots — often worth <b>consolidating</b> into your core convictions.</li>
+      <li>Many of these are leftovers from trims, fractional dividends, or positions that fell hard. Decide: add to a real size, or close.</li>
+    </ul>` },
+
+  /* ════════ PLAN / PICKS TAB ════════ */
+  'agentic portfolio': { tag:'Plan', t:'Agentic Portfolio', h:`
+    <p>The <b>target blueprint</b> for the agentic cash account (••••3900) — a separate, unlevered cash account, distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
+    <div class="hsub">Where the target comes from</div>
+    <ul>
+      <li>Primarily the <b>weekly deep-research output</b> — a multi-factor screen (momentum / quality / growth / catalyst + valuation) that's adversarially verified before it lands.</li>
+      <li>If that's absent, a fallback builds a sector-diversified, long-only, unlevered target from your top picks, a mega-cap bench, an index core, and whatever the account already holds.</li>
+    </ul>
+    <div class="hsub">Reading the table</div>
+    <ul>
+      <li><span class="hk">Target $ / %</span> — the recommended weight. <span class="hk">Now $ / %</span> — what the account actually holds today.</li>
+      <li><span class="hk">Trade (±sh ≈ ±$)</span> — the buy/sell to close the gap. <span class="hk">Drift</span> flags any name past the <b>5pp</b> rebalance trigger.</li>
+      <li><span class="hk">TP / Stop</span> — monitor-only bracket levels (a fractional cash account can't hold resting stops).</li>
+    </ul>
+    <p>The <b>🤖 hand-off button</b> carries a deploy/rebalance prompt that places fractional dollar orders after your review. Below the target sits a <b>per-holding performance</b> table (cost basis, Day %, YTD %, unrealized P&amp;L).</p>` },
+  'action center': { tag:'Plan', t:'Action Center', h:`
+    <p>The decide-and-act surface: a ranked feed of live signals, then a concrete cash-raising-and-redeploying plan. It's portfolio-derived, so it populates whether you open this tab before or after the portfolio finishes loading.</p>
+    <div class="hsub">Two tiers</div>
+    <ul>
+      <li><span class="hk">Do-now</span> — the ranked live-signal feed (margin, concentration, earnings, overbought/oversold, correlated cluster, retail buzz).</li>
+      <li><span class="hk">The-plan</span> — a structured 3-step plan.</li>
+    </ul>
+    <div class="hsub">The plan steps</div>
+    <ul>
+      <li><b>Step 1 — Raise cash:</b> harvest losers and <b>trim the excess</b> of any name over the single-name cap (25%). Includes a tax-netting line (gains from trims offset by harvested losses → net taxable).</li>
+      <li><b>Step 2 — Redeploy:</b> pay down margin first if levered, then split the pool into ballast / defensive / high-conviction adds. The high-conviction sleeve flows into the Picks below — a diversified <i>set</i>, each sized risk-based (1% of book at its stop).</li>
+      <li><b>Step 3 — Guardrails:</b> standing rules — single-name cap, cluster cap (40%), trim above RSI 75, fragile-leg trailing stop, reassess into earnings.</li>
+    </ul>
+    <p>Each step has a <b>🤖 hand-off button</b> that builds the order prompt. It's a framework, not advice.</p>` },
+  'top picks today': { tag:'Plan', t:'Top 3 Picks Today', h:`
+    <p>The three highest-conviction ideas from today's scan, each with a full setup: thesis, entry zone, stop, and profit targets. These are the names the plan's high-conviction sleeve deploys into.</p>
+    <div class="hsub">What each card gives you</div>
+    <ul>
+      <li><span class="hk">Entry zone</span> — the price range to buy in; <span class="hk">Stop</span> — where the thesis is wrong, so you exit.</li>
+      <li><span class="hk">TP1 / TP2</span> — first and second profit targets to scale out.</li>
+      <li><span class="hk">Risk/reward</span> — the ratio of potential gain (to target) vs potential loss (to stop). Look for ≥ 2:1.</li>
+      <li>A <b>catalyst-risk note</b> appears when earnings land inside the trade's swing window — a print can blow through your stop on a gap.</li>
+    </ul>
+    <p>The picks are <b>sector-diversified</b>, and a "🧭 the plan picked this" badge links a card back to its slot in the Action Center.</p>` },
+  'composite scores': { tag:'Plan', t:'Composite Scores', h:`
+    <p>The single 0–100 score that ranks every candidate, and the chart of how the top names stack up. It blends four independent angles so no one factor dominates.</p>
+    <div class="hsub">The four components</div>
+    <ul>
+      <li><span class="hk">Technical — 33%</span> — momentum/setup, blending RSI with where price sits in its 52-week range.</li>
+      <li><span class="hk">Fundamentals — 28%</span> — valuation and growth quality.</li>
+      <li><span class="hk">Risk/Reward — 19%</span> — upside to target vs downside to stop.</li>
+      <li><span class="hk">Social — 20%</span> — retail buzz (mention rank + velocity), a spotlight on names heating up.</li>
+    </ul>
+    <p>Finalists are <b>sector-diversified</b> (capped per sector) so the list isn't five flavors of the same trade. A higher composite = a more complete setup, not a guarantee.</p>` },
+  'scoring breakdown': { tag:'Plan', t:'Scoring Breakdown', h:`
+    <p>The full, sortable and sector-filterable table behind the composite — every candidate with its component scores exposed, so you can see <i>why</i> a name ranks where it does.</p>
+    <div class="hsub">Reading the cues</div>
+    <ul>
+      <li><span class="hk">Social column</span> — retail buzz, 20% of the composite, with an inline label. <b>Grey</b> = no data (scored a neutral 5), not bearish.</li>
+      <li><span class="hk">ᵛ marker</span> — value-only fundamentals (growth data unavailable from the provider that day).</li>
+      <li>Sort by any component to find, say, the best <i>fundamental</i> names regardless of momentum, or vice-versa.</li>
+    </ul>
+    <p>Use the sector filter to screen within a theme you already understand.</p>` },
+  'track record': { tag:'Plan', t:'Track Record', h:`
+    <p>Honest scorekeeping: past picks graded on a closing basis, so the engine's accuracy is visible rather than assumed.</p>
+    <div class="hsub">How picks are graded</div>
+    <ul>
+      <li>Each archived pick is marked <b>hit TP1</b>, <b>hit TP2</b>, <b>stopped out</b>, or <b>still open</b>, judged from daily closing prices.</li>
+      <li><span class="hk">Hit-rate</span> — share of resolved picks that reached a target before stopping. <span class="hk">Avg return</span> — the mean outcome.</li>
+    </ul>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>A hit-rate around or above 50% with risk/reward ≥ 2:1 is mathematically profitable even with plenty of losers.</li>
+      <li>Small samples are noisy — weight this more as the resolved count grows.</li>
+    </ul>` },
+  'pick-earn': { tag:'Plan', t:'Earnings Preview', h:`
+    <p>The next earnings report for the soonest-reporting top pick. Earnings are the single biggest scheduled catalyst — and the biggest scheduled <b>risk</b> — for a swing trade.</p>
+    <div class="hsub">Why it matters</div>
+    <ul>
+      <li>A report can <b>gap</b> the stock through your stop overnight, so a normal stop won't protect you.</li>
+      <li>Options often price in a big <b>implied move</b> beforehand and lose value (IV crush) right after.</li>
+    </ul>
+    <p>If a pick reports inside your intended holding window, size smaller or wait until after the print to enter.</p>` },
+  'income ideas': { tag:'Plan', t:'Income Ideas', h:`
+    <p>Covered-call opportunities on holdings where you own <b>≥ 100 shares</b> (one option contract = 100 shares). A way to generate cash income from stock you already hold.</p>
+    <div class="hsub">How a covered call works</div>
+    <ul>
+      <li>You <b>sell</b> a call against your shares and keep the <b>premium</b> immediately.</li>
+      <li>The suggested strike is the nearest <b>~30-delta monthly</b> call — roughly a 30% chance of finishing in-the-money.</li>
+      <li>Trade-off: if the stock rockets past the strike, your shares get <b>called away</b> (sold) at that strike — you cap your upside in exchange for the income.</li>
+    </ul>
+    <p>Best on names you're neutral-to-mildly-bullish on and would be content to sell at the strike.</p>` },
+  'catalysts news': { tag:'Plan', t:'Catalysts &amp; News', h:`
+    <p>Recent headlines for your top picks, gathered during the morning research scan, color-coded by sentiment. Context for <i>why</i> a name is moving or being talked about.</p>
+    <div class="hsub">Reading it</div>
+    <ul>
+      <li>Ticker color: <span style="color:#10b981;font-weight:700">green</span> = bullish, <span style="color:#ef4444;font-weight:700">red</span> = bearish, grey = neutral.</li>
+      <li>News explains catalysts the score can't — an upgrade, a product launch, a regulatory headline.</li>
+    </ul>
+    <p>Headlines are a snapshot from scan time; confirm anything time-sensitive before acting.</p>` },
+
+  /* ════════ OPTIONS TAB ════════ */
+  'options exposure': { tag:'Options', t:'Options Exposure', h:`
+    <p>A roll-up of the risk across all your open and pending option contracts — the "how exposed am I?" summary before you read individual positions.</p>
+    <div class="hsub">What the figures mean</div>
+    <ul>
+      <li><span class="hk">Net delta</span> — your total directional exposure expressed in share-equivalents. Positive = net long (you profit if prices rise).</li>
+      <li><span class="hk">Put cash secured</span> — cash you'd need if every short put were assigned (you'd be forced to buy the shares).</li>
+      <li><span class="hk">Shares capped</span> — shares that could be called away by short calls.</li>
+      <li><span class="hk">Open premium at risk</span> — net premium currently exposed in open positions.</li>
+    </ul>
+    <p>This is the single screen that tells you whether your options book is leaning bullish, bearish, or income-neutral.</p>` },
+  'upcoming expirations': { tag:'Options', t:'Upcoming Expirations', h:`
+    <p>A calendar of when your contracts expire. Expiration is a hard deadline — options decay fastest in their final weeks and become all-or-nothing at the end.</p>
+    <div class="hsub">Why watch this</div>
+    <ul>
+      <li>Contracts near expiry need a decision: <b>close</b>, <b>roll</b> (move to a later date), or <b>let expire</b>.</li>
+      <li>Short options near expiry that are in-the-money risk <b>assignment</b> — plan before the last day, not on it.</li>
+      <li><span class="hk">Theta (time decay)</span> accelerates in the final ~2 weeks: good if you're the seller, painful if you're the buyer.</li>
+    </ul>` },
+  'your options': { tag:'Options', t:'Your Options', h:`
+    <p>Each option you hold, with full live <b>greeks</b>, P&amp;L, assignment odds, and a payoff diagram. The greeks tell you how the position will react to what the stock does next.</p>
+    <div class="hsub">The greeks</div>
+    <ul>
+      <li><span class="hk">Delta (Δ)</span> — change in option price per $1 move in the stock; also ≈ probability of finishing in-the-money.</li>
+      <li><span class="hk">Theta (Θ)</span> — value lost per day to time decay. Negative for buyers, positive for sellers.</li>
+      <li><span class="hk">Vega</span> — sensitivity to implied volatility. High vega = the position swings when fear/IV changes.</li>
+      <li><span class="hk">Gamma (Γ)</span> — how fast delta itself changes; biggest near the strike and near expiry.</li>
+    </ul>
+    <div class="hsub">Other cues</div>
+    <ul>
+      <li><span class="hk">IV-rank badge</span> — whether the option is cheap or rich vs its own recent volatility range.</li>
+      <li><span class="hk">Roll suggestions</span> on short calls — a named later expiry / higher strike to extend the trade.</li>
+    </ul>` },
+  'trade ideas': { tag:'Options', t:'Trade Ideas', h:`
+    <p>Generated, filterable option setups that fit your holdings and the current read — research and education only, not recommendations.</p>
+    <div class="hsub">The structures</div>
+    <ul>
+      <li><span class="hk">Long call</span> — leveraged bullish bet; defined risk (the premium), unlimited upside.</li>
+      <li><span class="hk">Covered call</span> — income against shares you own; caps upside.</li>
+      <li><span class="hk">Cash-secured put</span> — get paid to potentially buy a stock lower.</li>
+      <li><span class="hk">Call debit spread / collar</span> — <b>defined-risk, multi-leg</b> structures (estimate-only); the payoff diagram is drawn from the combined legs.</li>
+    </ul>
+    <p>Single-leg ideas are <b>live-priced and delta-targeted</b>; multi-leg ones use a per-symbol volatility estimate. Always confirm the real bid/ask and open interest before trading.</p>` },
+  'covered call income': { tag:'Options', t:'Covered-Call Income', h:`
+    <p>An income ranker for your 100+ share holdings, sorted by <b>annualized yield</b> — so you can compare premium income across names on equal footing.</p>
+    <div class="hsub">The math</div>
+    <ul>
+      <li><span class="hk">Annualized yield</span> = premium ÷ price × (365 ÷ days to expiry). It scales a one-off premium into a yearly rate for comparison.</li>
+      <li><span class="hk">Income</span> — actual dollars you'd collect for selling the call now.</li>
+    </ul>
+    <div class="hsub">The trade-off</div>
+    <p>You keep the premium no matter what, but you <b>cap your upside</b> at the strike — if the stock blows past it, the shares are called away. Best on names you're neutral on and happy to sell at the strike.</p>` },
+  'cash secured put income': { tag:'Options', t:'Cash-Secured Put Income', h:`
+    <p>An income ranker for <b>selling puts</b> — getting paid premium for agreeing to buy a stock at a lower price if it falls there.</p>
+    <div class="hsub">How it works</div>
+    <ul>
+      <li>You set aside cash to cover the purchase (<b>cash-secured</b>) and sell a put below the current price.</li>
+      <li>If the stock stays up, you keep the premium and never buy. If it falls below the strike, you buy the shares — at a net cost reduced by the premium.</li>
+      <li><span class="hk">Annualized yield</span> lets you rank opportunities like any income stream.</li>
+    </ul>
+    <p>Only sell puts on names you'd genuinely be happy to <b>own</b> at the strike — assignment is the point, not a failure.</p>` },
+  'options p l': { tag:'Options', t:'Options P&amp;L', h:`
+    <p>Your <b>closed</b> option trades and what they actually made or lost — the realized scoreboard for your options activity.</p>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>Separates options results from your stock P&amp;L so you can see whether the options program is adding value on its own.</li>
+      <li>Look at the <b>pattern</b>: are losses small and wins larger (healthy), or the reverse (selling premium and getting run over)?</li>
+    </ul>` },
+  'options knowledge': { tag:'Options', t:'Options Knowledge', h:`
+    <p>A built-in primer on the options concepts used throughout this tab — keep it open as a glossary while you read the other cards.</p>
+    <p>Covers the greeks, intrinsic vs extrinsic value, implied volatility and IV rank, assignment, and the common strategies (calls, puts, spreads, covered calls, cash-secured puts). Education only.</p>` },
+
+  /* ════════ ANALYZE TAB ════════ */
+  'cmp-head': { tag:'Analyze', t:'Comparison', h:`
+    <p>A side-by-side of the two tickers you're comparing — valuation, momentum, and quality metrics in one table so relative strengths and weaknesses jump out.</p>
+    <div class="hsub">How to use it</div>
+    <ul>
+      <li>Compare names in the <b>same theme</b> to decide which is the better expression of a trade (e.g. one chip-maker vs another).</li>
+      <li>Lower P/E with similar growth = the cheaper bet; higher RSI = more extended near-term.</li>
+      <li>No single column wins — weigh valuation against growth and momentum together.</li>
+    </ul>` },
+  'recommendation': { tag:'Analyze', t:'Recommendation', h:`
+    <p>The headline verdict for this ticker — a setup score and a plain-English read that blends the technical picture with the fundamentals.</p>
+    <div class="hsub">What feeds the score</div>
+    <ul>
+      <li><span class="hk">Pattern 34% · Signal 30% · Risk 21% · Fundamentals 15%</span> — the setup combines chart structure, momentum, risk/reward, and a fundamentals/quality sub-score.</li>
+      <li>Two <b>confidence dampeners</b> (they don't move the score, only your confidence): an <b>imminent earnings print</b> (≤7 days → gap/IV-crush risk) and a <b>high-VIX regime</b> on a bullish call.</li>
+    </ul>
+    <p>The meta line shows the fundamentals score and any dampeners transparently, so you see exactly what's driving the call. It's a structured read, not advice.</p>` },
+  'price levels': { tag:'Analyze', t:'Price &amp; Levels', h:`
+    <p>The price chart with the levels that matter for a trade, plus a volume panel and an RSI sub-panel.</p>
+    <div class="hsub">Reading the panels</div>
+    <ul>
+      <li><span class="hk">Volume bars</span> — confirm moves: a breakout on heavy volume is more trustworthy than one on light volume.</li>
+      <li><span class="hk">RSI(14) sub-panel</span> — the 30/70 bands flag oversold/overbought (see the Technical Signals help for RSI basics).</li>
+      <li><span class="hk">Key levels</span> overlaid on price are where buyers/sellers have reacted before — likely support and resistance.</li>
+    </ul>` },
+  'limited snapshot data': { tag:'Analyze', t:'Limited Snapshot Data', h:`
+    <p>This name doesn't have enough captured history yet for the full analysis, so some cards are locked.</p>
+    <p>The producer fetches heavy historical data once per day. A ticker outside your holdings/picks may only get partial coverage until the <b>next full run</b> records its daily bars. Nothing is broken — check back after the next morning scan.</p>` },
+  'your position': { tag:'Analyze', t:'Your Position', h:`
+    <p>If you already hold this ticker, this card grounds the analysis in <i>your</i> actual position — shares, average cost, current value, and unrealized P&amp;L.</p>
+    <p>It changes the question from "is this a good stock?" to "what should <b>I</b> do with what I hold?" — add, trim, hold, or exit — and makes the levels below personally relevant.</p>` },
+  'understanding this analysis': { tag:'Analyze', t:'Understanding This Analysis', h:`
+    <p>A guide to how the Analyze tab is built and how to read it well — open this first if the other cards feel dense.</p>
+    <p>It explains the setup score's components, why the dampeners are confidence-only, what "market-implied vs estimated" means on the scenario band, and the limits of any single-stock read. The goal is to teach the method, not just hand you a verdict.</p>` },
+  'earnings': { tag:'Analyze', t:'Earnings', h:`
+    <p>This ticker's next earnings date and recent history. Earnings are the biggest scheduled catalyst — and risk — for a single name.</p>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li><b>Days until the report</b> — inside ~1–2 weeks, expect elevated option premiums and gap risk.</li>
+      <li>Trading <i>through</i> a print is a coin-flip on the reaction; many traders size down or wait until after.</li>
+    </ul>` },
+  'indicators': { tag:'Analyze', t:'Indicators', h:`
+    <p>The full technical indicator panel for this ticker — the momentum, trend, and volatility readings that build the setup score.</p>
+    <div class="hsub">Common reads</div>
+    <ul>
+      <li><span class="hk">RSI</span> — overbought above 70 / oversold below 30.</li>
+      <li><span class="hk">Moving averages (50/200-day)</span> — price above = uptrend; a "golden cross" (50 over 200) is a bullish trend signal, a "death cross" the opposite.</li>
+      <li><span class="hk">Trend vs the averages</span> tells you whether momentum agrees with the thesis.</li>
+    </ul>
+    <p>No single indicator is a trigger — they're strongest when several line up.</p>` },
+  'historical edge': { tag:'Analyze', t:'Historical Edge', h:`
+    <p>A back-test of what <i>usually</i> happened next when this stock was in a similar condition (e.g. a similar RSI). It answers "is this setup actually favorable, historically?"</p>
+    <div class="hsub">Reading it</div>
+    <ul>
+      <li>The <b>match band</b> widens automatically (RSI ±8 up to ±20) until there's a usable sample size — a bigger sample is more reliable.</li>
+      <li>It shows the average forward return and how often the move was positive after similar setups.</li>
+    </ul>
+    <p>History is a guide, not a guarantee — regime changes (rates, sentiment) can break past patterns.</p>` },
+  'multi timeframe': { tag:'Analyze', t:'Multi-Timeframe', h:`
+    <p>The trend on several horizons at once — short, medium, and long. A setup is strongest when the timeframes <b>agree</b>.</p>
+    <div class="hsub">Why it matters</div>
+    <ul>
+      <li>A stock can be up on the day but in a longer downtrend — a "dead-cat bounce." Multi-timeframe catches that conflict.</li>
+      <li><b>Alignment</b> (all timeframes up) = trend with the wind at your back. <b>Divergence</b> = wait for clarity or trade smaller.</li>
+    </ul>` },
+  'key levels': { tag:'Analyze', t:'Key Levels', h:`
+    <p>The specific prices where this stock has repeatedly found <b>support</b> (buyers step in) or <b>resistance</b> (sellers step in). The map for entries, stops, and targets.</p>
+    <div class="hsub">How to use them</div>
+    <ul>
+      <li><span class="hk">Support</span> — a logical place to buy and to set a stop just below.</li>
+      <li><span class="hk">Resistance</span> — a logical place to take profit; a clean break above it on volume can become new support.</li>
+    </ul>
+    <p>Levels are zones, not exact lines — expect some overshoot.</p>` },
+  'scenarios': { tag:'Analyze', t:'Scenarios', h:`
+    <p>A bull / base / bear projection for the stock, anchored to an <b>expected-move band</b> rather than guesswork.</p>
+    <div class="hsub">The expected-move band</div>
+    <ul>
+      <li>It's a <b>±1σ (one standard deviation)</b> range — statistically, the stock stays inside it about <b>~68%</b> of the time over the window.</li>
+      <li>Labeled <span class="hk">market-implied</span> when built from live option IV (the market's own forecast), or <span class="hk">estimated</span> when using a realized-volatility proxy.</li>
+    </ul>
+    <p>Use it to sanity-check targets and stops: a target outside the ±1σ band is an aggressive ask.</p>` },
+  'exact trade levels': { tag:'Analyze', t:'Exact Trade Levels', h:`
+    <p>A concrete, ready-to-use plan: where to enter, where to stop out, and where to take profit — the four numbers that turn a thesis into a trade.</p>
+    <div class="hsub">The levels</div>
+    <ul>
+      <li><span class="hk">Entry zone</span> — the price range to buy.</li>
+      <li><span class="hk">Stop</span> — where the idea is invalidated; exit to cap the loss.</li>
+      <li><span class="hk">TP1 / TP2</span> — scale-out targets to lock in gains in stages.</li>
+    </ul>
+    <p>The distance from entry to stop vs entry to target is your <b>risk/reward</b> — aim for ≥ 2:1. These share one source with the Picks levels, so the plan and the cards never disagree.</p>` },
+  'position sizing': { tag:'Analyze', t:'Position Sizing', h:`
+    <p>How <b>many shares</b> to buy — derived from your risk, not a round-number guess. The most overlooked half of a trade plan.</p>
+    <div class="hsub">The method</div>
+    <ul>
+      <li>Risk a fixed slice of the book (≈ <b>1%</b>) on the distance from <b>entry to stop</b>. A tight stop → more shares; a wide stop → fewer.</li>
+      <li>This keeps every loss roughly the same size regardless of the stock's price or volatility.</li>
+      <li>The size is also <b>clamped</b> so no single name breaches the concentration cap.</li>
+    </ul>
+    <p>Good sizing means being right less than half the time and still coming out ahead.</p>` },
+  'options play': { tag:'Analyze', t:'Options Play', h:`
+    <p>An options expression of this stock's setup — a way to trade the same thesis with defined risk or leverage instead of shares.</p>
+    <div class="hsub">Notes</div>
+    <ul>
+      <li>It's an <b>estimate</b> unless you already hold live contracts on the name (then it flags your real greeks instead).</li>
+      <li>Links over to the full <b>Options</b> tab to build it out.</li>
+      <li>Confirm the actual bid/ask and open interest before trading — thin chains can erase the edge.</li>
+    </ul>` },
+  'valuation catalysts': { tag:'Analyze', t:'Valuation &amp; Catalysts', h:`
+    <p>The fundamental case: is the stock cheap or expensive for its growth, and what upcoming events could move it?</p>
+    <div class="hsub">What it covers</div>
+    <ul>
+      <li><span class="hk">Valuation</span> — forward P/E, PEG, analyst target upside; whether the price already bakes in the growth.</li>
+      <li><span class="hk">Catalysts</span> — earnings, product cycles, or news that could re-rate the stock.</li>
+    </ul>
+    <p>Valuation tells you the <i>odds</i>; catalysts tell you the <i>timing</i>. A great business at a stretched price can still be a poor near-term entry.</p>` },
+  'news sentiment': { tag:'Analyze', t:'News Sentiment', h:`
+    <p>Recent headlines for this ticker, scored bullish / neutral / bearish, to give qualitative context the numbers miss.</p>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>A cluster of bullish headlines into a rising price = narrative and momentum agreeing.</li>
+      <li>Bearish news while the stock holds up can signal resilience — or a delayed reaction. Read the actual headlines, not just the color.</li>
+    </ul>
+    <p>Sentiment is a snapshot from research time; it lags fast-breaking events.</p>` },
+  'social pulse': { tag:'Analyze', t:'Social Pulse', h:`
+    <p>Retail <b>buzz</b> for this name from social/Reddit mention data — a measure of attention, not opinion.</p>
+    <div class="hsub">Important nuance</div>
+    <ul>
+      <li>The source has <b>no bull/bear sentiment</b> — buzz is built from <b>mention rank + velocity</b> (how much it's being talked about and how fast that's rising).</li>
+      <li>Rising buzz can precede volatility in <i>either</i> direction — it's a spotlight, not a signal of which way.</li>
+      <li>Most quality large-caps barely register here; a neutral reading just means "not a meme right now."</li>
+    </ul>` },
+  'overlap with your book': { tag:'Analyze', t:'Overlap With Your Book', h:`
+    <p>How this ticker relates to what you <b>already own</b> — so you don't accidentally double down on the same bet.</p>
+    <div class="hsub">Why it matters</div>
+    <ul>
+      <li>Buying a name that's <b>highly correlated</b> with your big holdings adds concentration, not diversification — they'll fall together.</li>
+      <li>Low or negative correlation to your book is what genuinely <b>diversifies</b> risk.</li>
+    </ul>
+    <p>Check this before adding: a "new" idea that moves with your top position isn't really new exposure.</p>` },
+  'compare': { tag:'Analyze', t:'Compare', h:`
+    <p>Type a second ticker to put it head-to-head with the one you're analyzing. The fastest way to choose between two candidates.</p>
+    <p>Enter a symbol and the comparison table below fills in — valuation, momentum, and quality side by side. Great for "which chipmaker?" or "is my holding still the best name in its theme?"</p>` },
+  'when this analysis is wrong': { tag:'Analyze', t:'When This Analysis Is Wrong', h:`
+    <p>The pre-mortem: the specific conditions that would <b>break</b> this thesis. The most valuable card on the page, because it's where discipline lives.</p>
+    <div class="hsub">How to use it</div>
+    <ul>
+      <li>It names the levels and events that invalidate the setup — your <b>exit triggers</b>, decided in advance while you're calm.</li>
+      <li>Knowing your "I'm wrong" line <i>before</i> entering is what keeps a small planned loss from becoming a big emotional one.</li>
+    </ul>
+    <p>If you can't articulate what would make you wrong, the position is too speculative to size up.</p>` },
+
+  /* ════════ MARKETS TAB ════════ */
+  'indexes': { tag:'Markets', t:'Indexes', h:`
+    <p>The major market benchmarks at a glance, with YTD and 5-year context — the backdrop every individual stock trades against.</p>
+    <div class="hsub">What to look for</div>
+    <ul>
+      <li>A stock fighting a falling market needs a strong reason; most names follow the index.</li>
+      <li>Compare <b>YTD vs 5Y</b> to gauge whether the current year is normal or stretched relative to the longer trend.</li>
+    </ul>` },
+  'risk gauges': { tag:'Markets', t:'Risk Gauges', h:`
+    <p>A <b>risk-on / risk-off</b> read on market mood, synthesized from how risk assets are moving versus safe havens today.</p>
+    <div class="hsub">The logic</div>
+    <ul>
+      <li><span class="hk">Risk-on</span> — equities and credit outperforming gold and long bonds; appetite for risk is high.</li>
+      <li><span class="hk">Risk-off</span> — money fleeing to gold and Treasuries; defensive, fearful tape.</li>
+    </ul>
+    <p>It frames your day: adding aggressive longs into a hard risk-off tape is fighting the current.</p>` },
+  'sector heatmap': { tag:'Markets', t:'Sector Heatmap', h:`
+    <p>All eleven market sectors colored by performance — where money is flowing today and over the year. Tap the toggle to switch views.</p>
+    <div class="hsub">The two views</div>
+    <ul>
+      <li><span class="hk">Day</span> — today's move per sector; the short-term rotation.</li>
+      <li><span class="hk">vs S&amp;P YTD (relative strength)</span> — each sector's return <i>minus</i> the S&amp;P's, surfacing true <b>leaders and laggards</b> rather than just what's up.</li>
+    </ul>
+    <p>Leadership rotation is a tell: defensives leading often signals caution; cyclicals/tech leading signals appetite.</p>` },
+  'us vs international': { tag:'Markets', t:'US vs International', h:`
+    <p>US stocks (SPY) against developed-international (EFA) and emerging markets (EEM), all indexed to compare returns directly.</p>
+    <div class="hsub">Why it matters</div>
+    <ul>
+      <li>Leadership rotates between regions over multi-year cycles; a US-heavy book is a bet that US outperformance continues.</li>
+      <li>Persistent international strength can be an early sign of a weakening dollar or shifting growth — a diversification cue.</li>
+    </ul>` },
+  'macro signals': { tag:'Markets', t:'Macro Signals', h:`
+    <p>The big-picture economic gauges that set the weather for all stocks — rates, inflation, volatility, and the yield curve.</p>
+    <div class="hsub">The signals</div>
+    <ul>
+      <li><span class="hk">10-yr Treasury yield</span> — the "risk-free" rate; rising yields pressure high-growth valuations.</li>
+      <li><span class="hk">Fed Funds rate</span> — the policy rate; sets the cost of money.</li>
+      <li><span class="hk">CPI</span> — inflation; hotter prints can mean higher-for-longer rates.</li>
+      <li><span class="hk">2s10s yield curve (10yr − 2yr)</span> — when <b>negative (inverted)</b>, it has historically preceded recessions. The tile flags inversion.</li>
+      <li><span class="hk">VIX</span> — the market's "fear gauge"; above ~20 is elevated, above ~30 is stressed.</li>
+    </ul>` },
+  'breadth movers news': { tag:'Markets', t:'Breadth, Movers &amp; News', h:`
+    <p>Market <b>breadth</b> — the real leaders and laggards across the index, sector, and risk ETFs (not just your book) — alongside news sentiment.</p>
+    <div class="hsub">Why breadth matters</div>
+    <ul>
+      <li>A rally led by <b>many</b> names is healthier than one carried by a handful of mega-caps (narrow breadth often precedes pullbacks).</li>
+      <li>The movers show where today's energy actually is; the news adds the "why."</li>
+    </ul>` },
+  'retail buzz': { tag:'Markets', t:'Retail Buzz', h:`
+    <p>What retail traders are talking about most, from social/Reddit mention data — a read on <b>crowd attention</b>.</p>
+    <div class="hsub">How to read it</div>
+    <ul>
+      <li>Buzz measures <b>volume of mentions and how fast it's rising</b>, not bullish/bearish opinion (the source has no sentiment).</li>
+      <li>Surging buzz can mean a name is about to get volatile — useful as a heads-up, not a buy signal.</li>
+      <li>Contrarian use: peak retail euphoria has often marked short-term tops.</li>
+    </ul>` }
+  };
+
+  /* dynamic titles whose text varies → match by prefix */
+  var PREFIX = [['earnings preview','pick-earn']];
+
+  function sig(title){
+    var c=title.cloneNode(true);
+    c.querySelectorAll('.chevron,.card-hint,.badge,.help-btn,button,a,select,input,label').forEach(function(x){ x.remove(); });
+    return (c.textContent||'').toLowerCase().replace(/[^a-z]+/g,' ').trim();
+  }
+  function keyFor(title){
+    if(title.dataset.help) return title.dataset.help;
+    var s=sig(title); if(!s) return null;
+    if(HELP[s]) return s;
+    for(var i=0;i<PREFIX.length;i++){ if(s.indexOf(PREFIX[i][0])===0) return PREFIX[i][1]; }
+    return null;
+  }
+  function decorate(card){
+    var title=card.querySelector(':scope > .card-title');
+    if(!title || title.dataset.helpDone) return;
+    title.dataset.helpDone='1';
+    var key=keyFor(title);
+    if(!key || !HELP[key]) return;
+    var b=document.createElement('button');
+    b.type='button'; b.className='help-btn'; b.textContent='?';
+    b.setAttribute('aria-label','What is this card?');
+    b.addEventListener('click',function(e){ e.stopPropagation(); e.preventDefault(); openHelp(key); });
+    var chev=title.querySelector(':scope > .chevron');
+    if(chev) title.insertBefore(b,chev); else title.appendChild(b);
+  }
+
+  var modal,elTag,elTitle,elBody;
+  function buildModal(){
+    modal=document.createElement('div'); modal.className='help-modal'; modal.id='help-modal';
+    modal.innerHTML='<div class="help-box" role="dialog" aria-modal="true"><div class="help-head"><div style="min-width:0"><div class="help-tag" id="help-tag"></div><div class="help-title" id="help-title"></div></div><button class="help-x" type="button" aria-label="Close">×</button></div><div class="help-body" id="help-body"></div></div>';
+    document.body.appendChild(modal);
+    elTag=modal.querySelector('#help-tag'); elTitle=modal.querySelector('#help-title'); elBody=modal.querySelector('#help-body');
+    modal.addEventListener('click',function(e){ if(e.target===modal) closeHelp(); });
+    modal.querySelector('.help-x').addEventListener('click',closeHelp);
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeHelp(); });
+  }
+  function openHelp(key){
+    var d=HELP[key]; if(!d) return; if(!modal) buildModal();
+    elTag.textContent=d.tag||''; elTitle.innerHTML=d.t; elBody.innerHTML=d.h;
+    modal.classList.add('open');
+    var box=modal.querySelector('.help-box'); if(box) box.scrollTop=0;
+  }
+  function closeHelp(){ if(modal) modal.classList.remove('open'); }
+  window.openHelp=openHelp;
+
+  function scan(root){ try{ (root||document).querySelectorAll('.card').forEach(decorate); }catch(e){} }
+  function start(){
+    scan(document);
+    try{
+      var mo=new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){ var a=muts[i].addedNodes;
+          for(var j=0;j<a.length;j++){ var nd=a[j]; if(!nd||nd.nodeType!==1) continue;
+            if(nd.classList&&nd.classList.contains('card')) decorate(nd);
+            if(nd.querySelectorAll) nd.querySelectorAll('.card').forEach(decorate); } }
+      });
+      ['page-portfolio','page-markets','page-picks','page-options','page-analyze'].forEach(function(id){ var el=document.getElementById(id); if(el) mo.observe(el,{childList:true,subtree:true}); });
+    }catch(e){}
+  }
+  if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
 })();
 
 /* ═══════════════════════════════════════════
@@ -2713,7 +3286,7 @@ function azCompare(other){ other=(other||'').trim().toUpperCase().replace(/[^A-Z
   const xa=azExtra(A), xb=azExtra(B);
   const rows=[['Price','$'+A.price,'$'+B.price,null],['Today',_sgn(A.dayChg,'%'),_sgn(B.dayChg,'%'),'hi'],['Setup',A.setup+'/100',B.setup+'/100','hi'],['Signal',A.label,B.label,null],['RSI(14)',A.rsi!=null?A.rsi:'—',B.rsi!=null?B.rsi:'—',null],['YTD',_sgn(A.ytd,'%'),_sgn(B.ytd,'%'),'hi'],['Trend',_trendTxt(A),_trendTxt(B),null],['Beta',xa.beta!=null?xa.beta.toFixed(2):'—',xb.beta!=null?xb.beta.toFixed(2):'—',null],['vs SPY',_sgn(xa.relStr,'%'),_sgn(xb.relStr,'%'),'hi'],['P/E',A.pe?(+A.pe).toFixed(1):'—',B.pe?(+B.pe).toFixed(1):'—',null],['Target ▲',xa.targetUpside!=null?_sgn(xa.targetUpside,'%'):'—',xb.targetUpside!=null?_sgn(xb.targetUpside,'%'):'—','hi']];
   const numA=v=>parseFloat(String(v).replace(/[^0-9.\-]/g,'')), win=(r)=>{ if(r[3]!=='hi')return 0; const x=numA(r[1]),y=numA(r[2]); if(isNaN(x)||isNaN(y)||x===y)return 0; return x>y?1:2; };
-  host.innerHTML='<div class="card"><div class="card-title"><span>⚖️ '+_azLast+' vs '+other+'</span></div><table class="cmp-tbl"><thead><tr><th></th><th>'+_azLast+'</th><th>'+other+'</th></tr></thead><tbody>'+
+  host.innerHTML='<div class="card"><div class="card-title" data-help="cmp-head"><span>⚖️ '+_azLast+' vs '+other+'</span></div><table class="cmp-tbl"><thead><tr><th></th><th>'+_azLast+'</th><th>'+other+'</th></tr></thead><tbody>'+
     rows.map(r=>{ const w=win(r); return '<tr><td class="cmp-k">'+r[0]+'</td><td'+(w===1?' class="cmp-win"':'')+'>'+r[1]+'</td><td'+(w===2?' class="cmp-win"':'')+'>'+r[2]+'</td></tr>'; }).join('')+
     '</tbody></table><div style="font-size:11px;color:#9ca3af;margin-top:8px">Greener cell = stronger on that row. Research only.</div></div>';
 }

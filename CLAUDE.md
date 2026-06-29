@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v75** (`pf-v75`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v76** (`pf-v76`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -309,3 +309,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Freshness bar:** shows the snapshot label/age and **tints amber with a "↻ to refresh" nudge when the
   snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts the build version,
   privacy, theme, and refresh controls.
+- **Card help popovers (v76):** every card header carries a small **"?" button**; tapping it opens a
+  teaching modal that explains what the card shows, what each stat/number means, and what to look for
+  (e.g. RSI bands, beta/Sharpe/drawdown, the composite weights, the greeks, expected-move ±1σ, the
+  2s10s curve). Implemented as a **pure UI overlay** in a self-contained IIFE near the collapsible/nav
+  enhancers in `index.html`: a `HELP` registry keyed by a normalized signature of the card title (chevron/
+  hint/badge/buttons stripped) + a tiny `PREFIX` list for dynamic titles (e.g. "Earnings Preview · {tkr}"),
+  a `decorate()` that injects the button into each `.card-title`, and a single shared `#help-modal`
+  (`openHelp(key)`). A MutationObserver over all five page roots catches late-rendered/dynamic cards
+  (Analyze especially). The 2 ambiguous/dynamic headers carry an explicit `data-help` (the Analyze compare
+  result header → `cmp-head`); everything else resolves by signature. Reads nothing from `data.json`,
+  never blocks a render. Theme-aware (`.help-box` gets `--hb-bg`/border overrides for dark + gold). To
+  add/edit content, edit the `HELP` object; to cover a NEW card, add an entry keyed by its title signature
+  (lowercase, non-letters → spaces) — no per-card markup needed since the decorator auto-injects.
