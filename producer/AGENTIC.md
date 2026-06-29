@@ -25,7 +25,8 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 ## Cadence (who updates what, when)
 | Item | Cadence | Mechanism |
 |---|---|---|
-| Account **holdings / cash / drift** (card `Now`) | **3×/day** (09:30 / 12:30 / 16:00 ET) | the **producer** now fetches ••••3900 every run (`agentic-portfolio.json` / `agentic-positions.json` → `data.agentic`) |
+| Account **values / drift** (card `Now`) | **3×/day** (09:30 / 12:30 / 16:00 ET) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
+| Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
 | **Rebalance proposal** | weekly + on any drift > trigger | the weekly job builds it; you confirm (see Execution policy) |
 
