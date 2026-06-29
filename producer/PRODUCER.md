@@ -1,7 +1,8 @@
 # Producer runbook (scheduled agent)
 
-This is the job that refreshes the dashboard. A scheduled Claude Code agent runs it **3×/day on
-weekdays** (market open ~09:30, midday ~12:30, close ~16:00 ET). It pulls live data through the
+This is the job that refreshes the dashboard. A scheduled Claude Code agent runs it **every ~30 min
+during market hours on weekdays** (the day's first run is a full fetch; the rest are cheap light runs —
+see `SCHEDULING.md`). It pulls live data through the
 **Robinhood** (and optionally **Alpha Vantage**) MCP connectors, assembles `data.json`, and pushes
 it to the GitHub Pages repo. The phone PWA then loads that `data.json`.
 
