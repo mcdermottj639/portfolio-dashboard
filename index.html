@@ -610,7 +610,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v78'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v79'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2525,14 +2525,16 @@ window.switchTab=switchTab;
       <li>Two <b>confidence dampeners</b> (they don't move the score, only your confidence): an <b>imminent earnings print</b> (≤7 days → gap/IV-crush risk) and a <b>high-VIX regime</b> on a bullish call.</li>
     </ul>
     <p>The meta line shows the fundamentals score and any dampeners transparently, so you see exactly what's driving the call. It's a structured read, not advice.</p>` },
-  'price levels': { tag:'Analyze', t:'Price &amp; Levels', h:`
-    <p>The price chart with the levels that matter for a trade, plus a volume panel and an RSI sub-panel.</p>
-    <div class="hsub">Reading the panels</div>
+  'interactive chart': { tag:'Analyze', t:'Interactive Chart', h:`
+    <p>Opens the full <b>Chart Analyzer</b> — one large price chart you can actually work with.</p>
+    <div class="hsub">What it does</div>
     <ul>
-      <li><span class="hk">Volume bars</span> — confirm moves: a breakout on heavy volume is more trustworthy than one on light volume.</li>
-      <li><span class="hk">RSI(14) sub-panel</span> — the 30/70 bands flag oversold/overbought (see the Technical Signals help for RSI basics).</li>
-      <li><span class="hk">Key levels</span> overlaid on price are where buyers/sellers have reacted before — likely support and resistance.</li>
-    </ul>` },
+      <li><span class="hk">Timeframes</span> — 1M / 3M / 6M / YTD (daily) and 1Y / 5Y (monthly). Moving averages are computed over full history so they span the whole view.</li>
+      <li><span class="hk">Line or Candles</span>, plus a volume overlay and an RSI(14) sub-panel.</li>
+      <li><span class="hk">Pattern scanner</span> — tap a filter to detect head &amp; shoulders (and inverse), cup &amp; handle, double bottom, bull flag, ascending/descending triangles, falling/rising wedges, or to draw trendlines and support/resistance zones.</li>
+      <li>Each detected pattern marks its swing points, draws the neckline/rim &amp; a measured target, and adds a volume/RSI confirmation check plus a historical hit-rate for that pattern on that name.</li>
+    </ul>
+    <p>Heuristic and for research only — a read is a tendency, not a signal.</p>` },
   'limited snapshot data': { tag:'Analyze', t:'Limited Snapshot Data', h:`
     <p>This name doesn't have enough captured history yet for the full analysis, so some cards are locked.</p>
     <p>The producer fetches heavy historical data once per day. A ticker outside your holdings/picks may only get partial coverage until the <b>next full run</b> records its daily bars. Nothing is broken — check back after the next morning scan.</p>` },
@@ -3011,7 +3013,7 @@ function renderAzShell(){
   let dl=''; try{ const u=azUniverse(); if(u.length)dl='<datalist id="az-tickers">'+u.map(o=>'<option value="'+o.sym+'">'+(o.label?String(o.label).replace(/"/g,'&quot;').replace(/</g,'&lt;'):o.sym)+'</option>').join('')+'</datalist>'; }catch(e){}
   app.innerHTML=
     '<div class="picks-hero"><div><div class="ph-label">Analyze</div><div class="ph-date">Single-Stock Deep Dive</div><div class="ph-stale">Technical + fundamental read from the latest snapshot · research only.</div></div></div>'+
-    '<div class="card"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'</div>'+
+    '<div class="card"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
     '<div id="az-result"></div>';
 }
 function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(s)runAnalysis(s); }
@@ -3226,7 +3228,6 @@ function _azExtraRaw(a){
     x.support=[...new Set(sup.map(v=>+v.toFixed(2)))].filter(v=>v<a.price).sort((p,q)=>q-p).slice(0,2);
     x.resistance=[...new Set(res.map(v=>+v.toFixed(2)))].filter(v=>v>a.price).sort((p,q)=>p-q).slice(0,2);
     if(a.hi52&&a.hi52>a.price)x.resistance.push(+(+a.hi52).toFixed(2)); if(a.lo52&&a.lo52<a.price)x.support.push(+(+a.lo52).toFixed(2));
-    x.chart={labels:ser.map(s=>s.t),close:closes,sma20:x.sma20arr,sma50:x.sma50arr,vol:ser.map(s=>s.v||0),rsi:_rsiSeries(closes,14)};
   }
   if(x.totalVal&&a.price>a.stop){ const perSh=a.price-a.stop; x.sizing={risk1:Math.floor(x.totalVal*0.01/perSh),risk2:Math.floor(x.totalVal*0.02/perSh),perSh:+perSh.toFixed(2)}; }
   const ov=azOverview(sym)||{};
@@ -3237,33 +3238,6 @@ function _azExtraRaw(a){
 // Compact a bar timestamp ("2026-06-12T00:00:00Z" / "2026-06-12") to a short axis/tooltip label.
 function azDateLbl(s,withYear){ if(s==null)return ''; const d=new Date(s); if(isNaN(d))return String(s).slice(0,10);
   return d.toLocaleDateString('en-US',Object.assign({month:'short',day:'numeric'},withYear?{year:'numeric'}:{},{timeZone:'UTC'})); }
-function azChart(id,ch,a){ const c=document.getElementById(id); if(!c||typeof Chart==='undefined'||!ch)return;
-  const n=ch.close.length,lvl=v=>new Array(n).fill(v);
-  const lbls=ch.labels.map(s=>azDateLbl(s)), lblsLong=ch.labels.map(s=>azDateLbl(s,true));
-  const ds=[{label:'Price',data:ch.close,borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15,order:1}];
-  if(ch.sma20)ds.push({label:'SMA20',data:ch.sma20,borderColor:'#f59e0b',borderWidth:1,pointRadius:0,borderDash:[4,3],order:1});
-  if(ch.sma50)ds.push({label:'SMA50',data:ch.sma50,borderColor:'#9ca3af',borderWidth:1,pointRadius:0,borderDash:[4,3],order:1});
-  ds.push({label:'Stop',data:lvl(a.stop),borderColor:'#ef4444',borderWidth:1,pointRadius:0,borderDash:[2,3],order:1});
-  ds.push({label:'T1',data:lvl(a.tp1),borderColor:'#10b981',borderWidth:1,pointRadius:0,borderDash:[2,3],order:1});
-  ds.push({label:'T2',data:lvl(a.tp2),borderColor:'#059669',borderWidth:1,pointRadius:0,borderDash:[2,3],order:1});
-  const scales={x:{ticks:{maxTicksLimit:6,font:{size:9},color:'#9ca3af'},grid:{display:false}},y:{ticks:{font:{size:9},color:'#9ca3af',callback:v=>'$'+v},grid:{color:'rgba(127,127,127,0.12)'}}};
-  // Volume bars confined to the lower band (secondary, hidden axis) so they don't crowd price.
-  const hasVol=ch.vol&&ch.vol.some(v=>v>0);
-  if(hasVol){ const vmax=Math.max.apply(null,ch.vol);
-    ds.push({type:'bar',label:'Vol',data:ch.vol,yAxisID:'yVol',backgroundColor:'rgba(99,102,241,0.32)',borderWidth:0,order:99});
-    scales.yVol={display:false,position:'right',min:0,max:vmax*3,grid:{display:false}}; }
-  const legendKeep=['Price','SMA20','SMA50'].concat(hasVol?['Vol']:[]);
-  try{ new Chart(c,{type:'line',data:{labels:lbls,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9},filter:i=>legendKeep.indexOf(i.text)>=0}},tooltip:{callbacks:{title:items=>items.length?lblsLong[items[0].dataIndex]:'',label:x=>x.dataset.label==='Vol'?'Vol: '+fmt(x.parsed.y,0):x.dataset.label+': $'+(+x.parsed.y).toFixed(2)}}},scales:scales}}); }catch(e){}
-}
-// RSI(14) sub-panel under the price chart — 30/70 reference bands so momentum extremes read at a glance.
-function azRsiChart(id,labels,rsi){ const c=document.getElementById(id); if(!c||typeof Chart==='undefined'||!Array.isArray(rsi))return;
-  const n=rsi.length,lvl=v=>new Array(n).fill(v);
-  try{ new Chart(c,{type:'line',data:{labels:labels,datasets:[
-    {label:'RSI',data:rsi,borderColor:'#8b5cf6',borderWidth:1.5,pointRadius:0,tension:0.15,spanGaps:true,order:1},
-    {label:'70',data:lvl(70),borderColor:'rgba(239,68,68,0.5)',borderWidth:1,pointRadius:0,borderDash:[3,3],order:2},
-    {label:'30',data:lvl(30),borderColor:'rgba(59,130,246,0.5)',borderWidth:1,pointRadius:0,borderDash:[3,3],order:2}]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items.length?azDateLbl(labels[items[0].dataIndex],true):'',label:x=>x.dataset.label==='RSI'?'RSI: '+(+x.parsed.y).toFixed(0):null,labelColor:()=>({})}}},scales:{x:{display:false,grid:{display:false}},y:{min:0,max:100,ticks:{stepSize:50,font:{size:8},color:'#9ca3af'},grid:{color:'rgba(127,127,127,0.12)'}}}}}); }catch(e){}
-}
 /* ═══════════════════════════════════════════════════════════════════════
    Chart Analyzer (v78) — a large, timeframe-switchable price chart with
    classic chart-pattern detection. Opened by the "📊 Chart" button beside
@@ -3272,14 +3246,23 @@ function azRsiChart(id,labels,rsi){ const c=document.getElementById(id); if(!c||
    Patterns: Head & Shoulders (+ Inverse), Cup with Handle, Double Bottom,
    Bull Flag. Research/education only — pattern reads are tendencies, not
    guarantees, and detection is heuristic (it can miss or over-fit). ═══ */
-var _azCM={sym:null,tf:'YTD',pattern:'none'}, _azCMObj=null;
+var _azCM={sym:null,tf:'YTD',pattern:'none',ctype:'line'}, _azCMObj=null, _azCMRsiObj=null;
 // Monthly OHLC bars (5Y series) — same coalescing as azSeries (Claude-agent vs Railway bar shapes).
 function azSeriesMonthly(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.month)||{}; const b=h[sym]||[]; const out=[]; for(const x of b){ const c=parseFloat(x.close_price!=null?x.close_price:x.c); if(!(c>0))continue; out.push({c,h:parseFloat(x.high_price||x.h||c),l:parseFloat(x.low_price||x.l||c),v:parseFloat(x.volume||x.v||0),t:x.begins_at||x.t}); } return out; }
 // Bars for a timeframe: 1M/3M/6M/YTD slice the YTD daily series; 1Y/5Y use the monthly series.
-function azCMSeries(sym,tf){ if(tf==='1Y'||tf==='5Y'){ const m=azSeriesMonthly(sym); if(m.length>2)return tf==='1Y'?m.slice(-13):m; }
-  const d=azSeries(sym); const map={'1M':22,'3M':66,'6M':132,'YTD':9999}; return d.slice(-(map[tf]||9999)); }
+// Full-resolution series behind a timeframe (daily for ≤YTD, monthly for 1Y/5Y).
+function azCMFull(sym,tf){ if(tf==='1Y'||tf==='5Y'){ const m=azSeriesMonthly(sym); if(m.length>2)return m; } return azSeries(sym); }
+// Visible window + indicators computed over the FULL series then sliced — so SMA20/50 & RSI
+// span the entire view (instead of restarting, blank, at the window's left edge).
+function azCMWindow(sym,tf){ const F=azCMFull(sym,tf); if(!F.length)return {bars:[],full:F,s:0};
+  const c=F.map(b=>b.c); const sma20=c.length>=20?_smaArr(c,20):null, sma50=c.length>=50?_smaArr(c,50):null, rsi=_rsiSeries(c,14);
+  let n; if(tf==='1Y')n=13; else if(tf==='5Y')n=F.length; else n={'1M':22,'3M':66,'6M':132,'YTD':9999}[tf]||9999;
+  const k=Math.min(n,F.length), s=F.length-k;
+  return { bars:F.slice(s), sma20:sma20?sma20.slice(s):null, sma50:sma50?sma50.slice(s):null, rsi:rsi?rsi.slice(s):null, full:F, s }; }
+function azCMSeries(sym,tf){ return azCMWindow(sym,tf).bars; }
 function azCMTFs(sym){ const tfs=[]; if(azSeries(sym).length)tfs.push('1M','3M','6M','YTD'); if(azSeriesMonthly(sym).length>2)tfs.push('1Y','5Y'); return tfs; }
-var _azCMPats=[['none','Price & Levels'],['hs','Head & Shoulders'],['ihs','Inverse H&S'],['cup','Cup with Handle'],['double','Double Bottom'],['flag','Bull Flag']];
+var _azCMPats=[['none','Price & Levels'],['hs','Head & Shoulders'],['ihs','Inverse H&S'],['cup','Cup with Handle'],['double','Double Bottom'],['flag','Bull Flag'],
+  ['asctri','Ascending Triangle'],['desctri','Descending Triangle'],['fallwedge','Falling Wedge'],['risewedge','Rising Wedge'],['trend','Trendlines'],['sr','Support / Resistance']];
 
 function azChartGo(){ const i=document.getElementById('az-ticker'); let s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(!s)s=_azLast; if(s)azCMOpen(s); }
 window.azChartGo=azChartGo;
@@ -3293,8 +3276,11 @@ function azCMOpen(sym){ if(!sym)return; const tfs=azCMTFs(sym);
     '<div class="cm-head"><div><div style="font-size:20px;font-weight:800">'+sym+' <span style="font-size:13px;font-weight:600;color:#9ca3af">· Chart Analyzer</span></div>'+
       (px!=null?'<div style="font-size:14px;font-weight:700;margin-top:2px">$'+px.toFixed(2)+'</div>':'')+'</div>'+
       '<button class="cm-x" onclick="azCMClose()" aria-label="Close">✕</button></div>'+
-    '<div class="cm-lbl">Timeframe</div><div class="cm-row" id="cm-tf"></div>'+
-    '<div class="cm-canvas-wrap"><canvas id="cm-canvas"></canvas></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div class="cm-lbl">Timeframe</div><div class="cm-row" id="cm-tf" style="margin-bottom:0"></div></div>'+
+      '<div id="cm-type" class="cm-row" style="margin-bottom:0"></div></div>'+
+    '<div class="cm-canvas-wrap" style="margin-top:10px"><canvas id="cm-canvas"></canvas></div>'+
+    '<div class="cm-rsi-wrap" id="cm-rsi-wrap" style="position:relative;width:100%;height:74px;margin-top:6px"><canvas id="cm-rsi"></canvas></div>'+
+    '<div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:1px">RSI(14) · 70 overbought · 30 oversold</div>'+
     '<div class="cm-lbl" style="margin-top:12px">Pattern scanner</div><div class="cm-row" id="cm-pat"></div>'+
     '<div class="cm-verdict" id="cm-verdict"></div>'+
     '<div style="font-size:10.5px;color:#9ca3af;margin-top:12px;line-height:1.5">Pattern detection is an automated heuristic over '+sym+'’s price bars — it can miss real patterns or flag noisy ones. A read is a tendency, not a signal. Research only · ~15-min delayed.</div>'+
@@ -3306,19 +3292,24 @@ function azCMClose(){ const ov=document.getElementById('az-cm'); if(ov)ov.style.
 window.azCMClose=azCMClose;
 function azCMSetTF(tf){ _azCM.tf=tf; azCMRender(); } window.azCMSetTF=azCMSetTF;
 function azCMSetPattern(p){ _azCM.pattern=p; azCMRender(); } window.azCMSetPattern=azCMSetPattern;
+function azCMSetType(t){ _azCM.ctype=t; azCMRender(); } window.azCMSetType=azCMSetType;
 function azCMRender(){ const sym=_azCM.sym; if(!sym)return;
-  // timeframe chips
   const tfs=azCMTFs(sym), tfHost=document.getElementById('cm-tf');
   if(tfHost)tfHost.innerHTML=tfs.map(t=>'<button class="cm-chip'+(t===_azCM.tf?' on':'')+'" onclick="azCMSetTF(\''+t+'\')">'+t+'</button>').join('')||'<span style="font-size:12px;color:#9ca3af">No price history captured for this name yet.</span>';
-  // pattern chips
+  const tyHost=document.getElementById('cm-type');
+  if(tyHost)tyHost.innerHTML=[['line','Line'],['candle','Candles']].map(t=>'<button class="cm-chip'+(t[0]===_azCM.ctype?' on':'')+'" onclick="azCMSetType(\''+t[0]+'\')">'+t[1]+'</button>').join('');
   const pHost=document.getElementById('cm-pat');
   if(pHost)pHost.innerHTML=_azCMPats.map(p=>'<button class="cm-chip'+(p[0]===_azCM.pattern?' on':'')+'" onclick="azCMSetPattern(\''+p[0]+'\')">'+p[1]+'</button>').join('');
-  const S=azCMSeries(sym,_azCM.tf);
-  const det=(_azCM.pattern!=='none'&&S.length>=12)?azCMDetect(S,_azCM.pattern):null;
-  azCMDrawChart(S,det);
-  azCMVerdict(S,det);
+  const W=azCMWindow(sym,_azCM.tf), S=W.bars;
+  const det=(_azCM.pattern!=='none'&&S.length>=10)?azCMDetect(S,_azCM.pattern):null;
+  azCMDrawChart(W,det);
+  azCMDrawRsi(W);
+  azCMVerdict(W,det);
 }
-function azCMDetect(S,pat){ switch(pat){ case 'hs':return azCMHS(S,false); case 'ihs':return azCMHS(S,true); case 'cup':return azCMCup(S); case 'double':return azCMDouble(S); case 'flag':return azCMFlag(S); default:return null; } }
+function azCMDetect(S,pat){ switch(pat){
+  case 'hs':return azCMHS(S,false); case 'ihs':return azCMHS(S,true); case 'cup':return azCMCup(S); case 'double':return azCMDouble(S); case 'flag':return azCMFlag(S);
+  case 'asctri':return azCMTriWedge(S,'asctri'); case 'desctri':return azCMTriWedge(S,'desctri'); case 'fallwedge':return azCMTriWedge(S,'fallwedge'); case 'risewedge':return azCMTriWedge(S,'risewedge');
+  case 'trend':return azCMTrend(S); case 'sr':return azCMSR(S); default:return null; } }
 
 /* ── pattern math ─────────────────────────────────────────────────── */
 // ZigZag swing pivots: alternating H/L swings, each confirmed only after an adaptive %
@@ -3446,44 +3437,178 @@ function azCMFlag(S){ const title='Bull Flag'; const c=S.map(b=>b.c), n=S.length
     summary:'Bullish continuation — a +'+(pole*100).toFixed(0)+'% pole then a shallow consolidation that held above support. A breakout over the flag top ($'+fmax.toFixed(2)+') projects the pole height to about $'+tgt.toFixed(2)+'.',
     how:'Enter on the flag-top breakout, ideally on a volume expansion after the pullback’s volume faded. Invalidated if it breaks below the flag low (the consolidation’s bottom).' }; }
 
+// Least-squares fit over pivot points → {m:slope per bar, b:intercept}.
+function _cmFit(pts){ const n=pts.length; if(n<2)return null; let sx=0,sy=0,sxx=0,sxy=0; for(const p of pts){ sx+=p.i; sy+=p.price; sxx+=p.i*p.i; sxy+=p.i*p.price; } const d=n*sxx-sx*sx; if(!d)return null; const m=(n*sxy-sx*sy)/d; return {m,b:(sy-m*sx)/n}; }
+// Converging trendline geometry from recent swing highs/lows — drives triangles & wedges.
+function _cmGeom(S){ const piv=azCMPivots(S); const H=piv.filter(p=>p.type==='H'), L=piv.filter(p=>p.type==='L'); if(H.length<2||L.length<2)return null;
+  const hh=H.slice(-3), ll=L.slice(-3), fh=_cmFit(hh), fl=_cmFit(ll); if(!fh||!fl)return null;
+  const avg=S.reduce((a,b)=>a+b.c,0)/S.length, i0=Math.min(hh[0].i,ll[0].i), iL=Math.max(hh[hh.length-1].i,ll[ll.length-1].i), i1=S.length-1;
+  const res=i=>fh.m*i+fh.b, sup=i=>fl.m*i+fl.b, wStart=res(i0)-sup(i0), wEnd=res(iL)-sup(iL);
+  // convergence measured over the pivot span (not extrapolated past the data, where lines cross at the apex)
+  const apex=(fh.m-fl.m)!==0?(fl.b-fh.b)/(fh.m-fl.m):1e9;
+  return { H:hh, L:ll, fh, fl, avg, i0, iL, i1, apex, mhN:fh.m/avg, mlN:fl.m/avg, wStart, wEnd, converging:wEnd>0&&wEnd<wStart*0.85 }; }
+// Triangles (flat side + sloping side) and wedges (both sides sloping, converging).
+function azCMTriWedge(S,kind){ const titles={asctri:'Ascending Triangle',desctri:'Descending Triangle',fallwedge:'Falling Wedge',risewedge:'Rising Wedge'};
+  const g=_cmGeom(S), title=titles[kind]; if(!g)return _cmNF(title,'Needs at least two swing highs and two swing lows forming converging trendlines — not present here.');
+  // triangle = one side flat + the other clearly sloped; wedge = both sides sloped the same way + converging.
+  const FLAT=0.0018, SLOPE=0.0025; const up=v=>v>SLOPE, dn=v=>v<-SLOPE, flat=v=>Math.abs(v)<=FLAT, dnAny=v=>v<-FLAT, upAny=v=>v>FLAT;
+  const minH=Math.abs(g.wStart)/g.avg>=0.03; let ok=false, bias='neutral';
+  if(kind==='asctri'){ ok=flat(g.mhN)&&up(g.mlN); bias='bullish'; }       // flat ceiling + rising lows
+  else if(kind==='desctri'){ ok=flat(g.mlN)&&dn(g.mhN); bias='bearish'; } // flat floor + falling highs
+  else if(kind==='fallwedge'){ ok=dnAny(g.mhN)&&dnAny(g.mlN)&&g.converging; bias='bullish'; }
+  else if(kind==='risewedge'){ ok=upAny(g.mhN)&&upAny(g.mlN)&&g.converging; bias='bearish'; }
+  ok=ok&&minH;
+  if(!ok)return _cmNF(title,'Found swing structure but the trendline slopes don’t match a '+title.toLowerCase()+' (highs '+(g.mhN>FLAT?'rising':g.mhN<-FLAT?'falling':'flat')+', lows '+(g.mlN>FLAT?'rising':g.mlN<-FLAT?'falling':'flat')+(minH?'':'; range too tight')+').');
+  const n=S.length, resAt=i=>g.fh.m*i+g.fh.b, supAt=i=>g.fl.m*i+g.fl.b, height=Math.abs(g.wStart);
+  // draw the converging lines out to the apex (or the last bar, whichever comes first) so they don't cross visually
+  const iEnd=(g.apex>g.iL&&g.apex<n-1)?Math.round(g.apex):n-1;
+  const bullBreak=bias==='bullish', bk=bullBreak?resAt(iEnd):supAt(iEnd), tgt=bullBreak?bk+height:bk-height;
+  const pts=g.H.map(p=>({i:p.i,price:p.price,color:'#ef4444',label:'Swing high'})).concat(g.L.map(p=>({i:p.i,price:p.price,color:'#10b981',label:'Swing low'})));
+  const conf=Math.max(40,Math.min(90,Math.round(58+(g.converging?12:0)+Math.min(g.H.length+g.L.length,6)*3+(height/g.avg>0.05?6:0))));
+  return { found:true, conf, title, bias, points:pts,
+    lines:[{i0:g.i0,p0:resAt(g.i0),i1:iEnd,p1:resAt(iEnd),color:'#ef4444',dash:[6,4],width:1.5,label:'Resistance'},
+           {i0:g.i0,p0:supAt(g.i0),i1:iEnd,p1:supAt(iEnd),color:'#10b981',dash:[6,4],width:1.5,label:'Support'},
+           {i0:Math.floor((g.i0+n-1)/2),p0:tgt,i1:n-1,p1:tgt,color:bullBreak?'#10b981':'#ef4444',dash:[3,4],width:1.2,label:'Target'}],
+    breakout:+bk.toFixed(2), target:tgt,
+    summary:(bias==='bullish'?'Bullish':'Bearish')+' — '+(kind==='asctri'?'a flat resistance ceiling with higher lows pressing into it':kind==='desctri'?'a flat support floor with lower highs pressing down':kind==='fallwedge'?'two down-sloping lines converging (a falling wedge typically resolves up)':'two up-sloping lines converging (a rising wedge typically resolves down)')+'. A '+(bullBreak?'break above resistance':'break below support')+' (~$'+bk.toFixed(2)+') projects the pattern height to about $'+tgt.toFixed(2)+'.',
+    how:'Wait for a decisive close '+(bullBreak?'above the upper line':'below the lower line')+' — ideally on expanding volume. Until it breaks, price can keep ping-ponging inside the lines; the apex is where it must resolve. Invalidated on a close back through the opposite line.' }; }
+// Auto trendlines — regression channel through recent swing highs and lows.
+function azCMTrend(S){ const g=_cmGeom(S), title='Trendlines'; if(!g)return _cmNF(title,'Not enough swing highs/lows to fit trendlines yet.');
+  const n=S.length, resAt=i=>g.fh.m*i+g.fh.b, supAt=i=>g.fl.m*i+g.fl.b, px=S[n-1].c;
+  const dir=Math.abs(g.mlN)>Math.abs(g.mhN)?g.mlN:g.mhN, slope=(g.mhN+g.mlN)/2;
+  const bias=slope>0.001?'bullish':slope<-0.001?'bearish':'neutral';
+  const toRes=(resAt(n-1)/px-1)*100, toSup=(px/supAt(n-1)-1)*100;
+  return { found:true, info:true, title, bias, points:[],
+    lines:[{i0:g.i0,p0:resAt(g.i0),i1:n-1,p1:resAt(n-1),color:'#ef4444',dash:[6,4],width:1.5,label:'Resistance'},
+           {i0:g.i0,p0:supAt(g.i0),i1:n-1,p1:supAt(n-1),color:'#10b981',dash:[6,4],width:1.5,label:'Support'}],
+    levelsList:[{label:'Upper line (now)',price:+resAt(n-1).toFixed(2)},{label:'Lower line (now)',price:+supAt(n-1).toFixed(2)}],
+    summary:'The channel is '+(bias==='bullish'?'rising':bias==='bearish'?'falling':'roughly sideways')+'. Price sits ~'+Math.abs(toSup).toFixed(1)+'% above the lower line and ~'+Math.abs(toRes).toFixed(1)+'% below the upper line.',
+    how:'Trendlines connect the swing '+'highs (resistance) and lows (support). Buys near the lower line with a stop just under it / sells or trims near the upper line are the classic plays; a clean break of either line often starts the next move.' }; }
+// Support/Resistance zones — cluster pivots into horizontal levels, rank by touch count.
+function azCMSR(S){ const title='Support / Resistance', piv=azCMPivots(S); const px=S[S.length-1].c; if(piv.length<2)return _cmNF(title,'Not enough swing points to map support/resistance zones.');
+  const tol=0.018, zones=[]; piv.slice().sort((a,b)=>a.price-b.price).forEach(p=>{ const z=zones.find(z=>Math.abs(z.price-p.price)/z.price<=tol); if(z){ z.price=(z.price*z.touches+p.price)/(z.touches+1); z.touches++; z.lastI=Math.max(z.lastI,p.i); } else zones.push({price:p.price,touches:1,lastI:p.i}); });
+  const sup=zones.filter(z=>z.price<px).sort((a,b)=>b.touches-a.touches||b.price-a.price).slice(0,3);
+  const res=zones.filter(z=>z.price>=px).sort((a,b)=>b.touches-a.touches||a.price-b.price).slice(0,3);
+  const n=S.length, mk=(z,c,lab)=>({i0:0,p0:z.price,i1:n-1,p1:z.price,color:c,dash:[2,4],width:1+Math.min(z.touches-1,3)*0.4,label:lab});
+  const lines=sup.map(z=>mk(z,'#10b981','S')).concat(res.map(z=>mk(z,'#ef4444','R')));
+  const levelsList=res.sort((a,b)=>a.price-b.price).map(z=>({label:'Resistance',price:+z.price.toFixed(2),touches:z.touches})).concat(sup.sort((a,b)=>b.price-a.price).map(z=>({label:'Support',price:+z.price.toFixed(2),touches:z.touches})));
+  return { found:true, info:true, title, bias:'neutral', points:[], lines, levelsList,
+    summary:'Mapped '+sup.length+' support and '+res.length+' resistance zone'+((sup.length+res.length)===1?'':'s')+' from where price repeatedly turned. Thicker lines = more touches = a level the market respects more.',
+    how:'Zones with more touches matter more. Expect reactions (bounces/rejections) as price approaches them; a high-volume break and hold through a level often flips it (old resistance becomes support, and vice-versa).' }; }
+
 /* ── draw + verdict ───────────────────────────────────────────────── */
-function azCMDrawChart(S,det){ const cv=document.getElementById('cm-canvas'); if(!cv||typeof Chart==='undefined')return;
-  if(_azCMObj){ try{_azCMObj.destroy();}catch(e){} _azCMObj=null; } if(!S.length)return;
+function azCMDrawChart(W,det){ const cv=document.getElementById('cm-canvas'); if(!cv||typeof Chart==='undefined')return;
+  if(_azCMObj){ try{_azCMObj.destroy();}catch(e){} _azCMObj=null; } const S=W.bars; if(!S.length)return;
   const c=S.map(b=>b.c), labels=S.map(b=>azDateLbl(b.t)), labelsLong=S.map(b=>azDateLbl(b.t,true)), vol=S.map(b=>b.v||0);
-  const sma20=c.length>=20?_smaArr(c,20):null, sma50=c.length>=50?_smaArr(c,50):null;
-  const ds=[{label:'Price',data:c,borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.12,order:2}];
-  if(sma20)ds.push({label:'SMA20',data:sma20,borderColor:'#f59e0b',borderWidth:1,pointRadius:0,borderDash:[4,3],order:2});
-  if(sma50)ds.push({label:'SMA50',data:sma50,borderColor:'#9ca3af',borderWidth:1,pointRadius:0,borderDash:[4,3],order:2});
+  const sma20=W.sma20, sma50=W.sma50, candle=_azCM.ctype==='candle';
   const scales={x:{ticks:{maxTicksLimit:7,font:{size:9},color:chTick()},grid:{display:false}},y:{position:'right',ticks:{font:{size:9},color:chTick(),callback:v=>'$'+v},grid:{color:chGrid()}}};
+  const ds=[]; const keep=[];
+  const hi=S.map(b=>b.h!=null?b.h:b.c), lo=S.map(b=>b.l!=null?b.l:b.c), open=c.map((cl,i)=>i>0?c[i-1]:cl);
+  if(candle){ const up='rgba(16,185,129,0.92)', dn='rgba(239,68,68,0.92)', col=c.map((cl,i)=>cl>=open[i]?up:dn);
+    ds.push({type:'bar',label:'_wick',data:hi.map((h,i)=>[lo[i],h]),backgroundColor:col,barPercentage:0.16,categoryPercentage:0.96,grouped:false,order:3});
+    ds.push({type:'bar',label:'_body',data:c.map((cl,i)=>[Math.min(open[i],cl),Math.max(open[i],cl)]),backgroundColor:col,barPercentage:0.66,categoryPercentage:0.96,grouped:false,order:3}); }
+  else { ds.push({label:'Price',data:c,borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.12,order:2}); keep.push('Price'); }
+  if(sma20){ ds.push({label:'SMA20',data:sma20,borderColor:'#f59e0b',borderWidth:1,pointRadius:0,borderDash:[4,3],spanGaps:true,order:2}); keep.push('SMA20'); }
+  if(sma50){ ds.push({label:'SMA50',data:sma50,borderColor:'#9ca3af',borderWidth:1,pointRadius:0,borderDash:[4,3],spanGaps:true,order:2}); keep.push('SMA50'); }
   const hasVol=vol.some(v=>v>0);
-  if(hasVol){ const vmax=Math.max.apply(null,vol); ds.push({type:'bar',label:'Vol',data:vol,yAxisID:'yVol',backgroundColor:'rgba(99,102,241,0.22)',borderWidth:0,order:5}); scales.yVol={display:false,min:0,max:vmax*3.2,grid:{display:false}}; }
-  const keep=['Price','SMA20','SMA50'].concat(hasVol?['Vol']:[]);
+  if(hasVol){ const vmax=Math.max.apply(null,vol); ds.push({type:'bar',label:'Vol',data:vol,yAxisID:'yVol',backgroundColor:'rgba(99,102,241,0.20)',borderWidth:0,grouped:false,order:6}); scales.yVol={display:false,min:0,max:vmax*3.2,grid:{display:false}}; keep.push('Vol'); }
   if(det&&det.found){ const N=c.length;
-    (det.lines||[]).forEach(L=>{ const arr=new Array(N).fill(null); const lo=Math.min(L.i0,L.i1),hi=Math.max(L.i0,L.i1); for(let i=lo;i<=hi;i++){ const t=(i-L.i0)/((L.i1-L.i0)||1); arr[i]=L.p0+(L.p1-L.p0)*t; }
-      ds.push({label:L.label,data:arr,borderColor:L.color,borderWidth:L.width||1.4,borderDash:L.dash||[5,4],pointRadius:0,spanGaps:false,tension:0,order:1}); if(L.label)keep.push(L.label); });
+    (det.lines||[]).forEach(L=>{ const arr=new Array(N).fill(null); const a=Math.max(0,Math.min(L.i0,L.i1)),b=Math.min(N-1,Math.max(L.i0,L.i1)); for(let i=a;i<=b;i++){ const t=(i-L.i0)/((L.i1-L.i0)||1); arr[i]=L.p0+(L.p1-L.p0)*t; }
+      ds.push({label:L.label,data:arr,borderColor:L.color,borderWidth:L.width||1.4,borderDash:L.dash||[5,4],pointRadius:0,spanGaps:false,tension:0,order:1}); if(L.label&&keep.indexOf(L.label)<0)keep.push(L.label); });
     const mr=new Array(N).fill(0), mc=new Array(N).fill('#000'), md=new Array(N).fill(null);
     (det.points||[]).forEach(p=>{ if(p.i<0||p.i>=N)return; md[p.i]=p.price; mr[p.i]=5; mc[p.i]=p.color||'#f59e0b'; });
     ds.push({label:'_pts',data:md,showLine:false,pointRadius:mr,pointBackgroundColor:mc,pointBorderColor:'#fff',pointBorderWidth:1.4,order:0}); }
+  const tip=x=>{ const L=x.dataset.label; if(L==='_pts'||L==='_wick')return null;
+    if(L==='_body'){ const i=x.dataIndex; return 'O '+open[i].toFixed(2)+' H '+hi[i].toFixed(2)+' L '+lo[i].toFixed(2)+' C '+c[i].toFixed(2); }
+    if(L==='Vol')return 'Vol: '+fmt(x.parsed.y,0); return L+': $'+(+x.parsed.y).toFixed(2); };
   try{ _azCMObj=new Chart(cv,{type:'line',data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
     plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9},color:chTick(),filter:i=>keep.indexOf(i.text)>=0}},
-      tooltip:{callbacks:{title:it=>it.length?labelsLong[it[0].dataIndex]:'',label:x=>x.dataset.label==='_pts'?null:x.dataset.label==='Vol'?'Vol: '+fmt(x.parsed.y,0):x.dataset.label+': $'+(+x.parsed.y).toFixed(2)}}},scales}}); }catch(e){}
+      tooltip:{callbacks:{title:it=>it.length?labelsLong[it[0].dataIndex]:'',label:tip}}},scales}}); }catch(e){}
 }
-function azCMVerdict(S,det){ const host=document.getElementById('cm-verdict'); if(!host)return;
-  if(!det){ host.innerHTML='<div class="cm-note">Pick a pattern above to scan '+_azCM.sym+'’s '+_azCM.tf+' chart. Each filter highlights the swing points it found, draws the neckline/rim &amp; measured target, and explains how to read it.</div>'; return; }
+// RSI(14) sub-panel under the main chart (uses the window's full-history RSI).
+function azCMDrawRsi(W){ const cv=document.getElementById('cm-rsi'), wrap=document.getElementById('cm-rsi-wrap'); if(!cv)return;
+  if(_azCMRsiObj){ try{_azCMRsiObj.destroy();}catch(e){} _azCMRsiObj=null; }
+  const rsi=W.rsi, has=rsi&&rsi.some(v=>v!=null), note=wrap&&wrap.nextElementSibling;
+  if(wrap)wrap.style.display=has?'block':'none'; if(note)note.style.display=has?'block':'none';
+  if(!has||typeof Chart==='undefined')return; const n=rsi.length, lvl=v=>new Array(n).fill(v), labels=W.bars.map(b=>azDateLbl(b.t));
+  try{ _azCMRsiObj=new Chart(cv,{type:'line',data:{labels,datasets:[
+    {label:'RSI',data:rsi,borderColor:'#8b5cf6',borderWidth:1.4,pointRadius:0,tension:0.12,spanGaps:true,order:1},
+    {label:'70',data:lvl(70),borderColor:'rgba(239,68,68,0.45)',borderWidth:1,pointRadius:0,borderDash:[3,3],order:2},
+    {label:'30',data:lvl(30),borderColor:'rgba(59,130,246,0.45)',borderWidth:1,pointRadius:0,borderDash:[3,3],order:2}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{title:it=>it.length?azDateLbl(labels[it[0].dataIndex],true):'',label:x=>x.dataset.label==='RSI'?'RSI: '+(+x.parsed.y).toFixed(0):null}}},scales:{x:{display:false,grid:{display:false}},y:{min:0,max:100,ticks:{stepSize:50,font:{size:8},color:chTick()},grid:{color:chGrid()}}}}}); }catch(e){}
+}
+function azCMVerdict(W,det){ const host=document.getElementById('cm-verdict'), S=W.bars; if(!host)return;
+  if(!det){ host.innerHTML='<div class="cm-note">Pick a pattern above to scan '+_azCM.sym+'’s '+_azCM.tf+' chart. Each filter highlights the structure it found, draws the key levels &amp; measured target, and explains how to read it — with a volume/RSI confirmation check and a historical hit-rate where available.</div>'; return; }
   if(!det.found){ host.innerHTML='<div class="cm-banner" style="background:rgba(127,127,127,0.12);color:var(--text)"><span>➖</span><span>No clean '+det.title+' in the '+_azCM.tf+' window</span></div><div class="cm-note">'+det.summary+' Try a different timeframe — patterns are scale-dependent.</div>'; return; }
   const bias=det.bias==='bullish'?'#10b981':det.bias==='bearish'?'#ef4444':'#9ca3af';
-  const confC=det.conf>=72?'#10b981':det.conf>=55?'#f59e0b':'#9ca3af';
-  const ptRows=det.points.map(p=>'<div class="cm-pt"><span><span class="cm-dot" style="background:'+p.color+'"></span>'+p.label+'</span><span style="font-weight:700">$'+p.price.toFixed(2)+' <span style="color:#9ca3af;font-weight:600">· '+azDateLbl(S[p.i]&&S[p.i].t,true)+'</span></span></div>').join('');
-  const lvls=[];
-  if(det.neckline!=null)lvls.push(['Neckline',det.neckline]); if(det.breakout!=null)lvls.push(['Breakout',det.breakout]); if(det.target!=null)lvls.push(['Measured target',+det.target.toFixed(2)]);
+  const ptRows=(det.points||[]).map(p=>'<div class="cm-pt"><span><span class="cm-dot" style="background:'+p.color+'"></span>'+p.label+'</span><span style="font-weight:700">$'+p.price.toFixed(2)+(S[p.i]?' <span style="color:#9ca3af;font-weight:600">· '+azDateLbl(S[p.i].t,true)+'</span>':'')+'</span></div>').join('');
+  let lvls=[]; if(det.neckline!=null)lvls.push(['Neckline',det.neckline]); if(det.breakout!=null)lvls.push(['Breakout',det.breakout]); if(det.target!=null)lvls.push(['Measured target',+(+det.target).toFixed(2)]);
+  if(det.levelsList)lvls=lvls.concat(det.levelsList.map(l=>[l.label+(l.touches?' ('+l.touches+' touches)':''),l.price]));
   const lvlRows=lvls.map(l=>'<div class="cm-pt"><span>'+l[0]+'</span><span style="font-weight:700">$'+(+l[1]).toFixed(2)+'</span></div>').join('');
-  host.innerHTML='<div class="cm-banner" style="background:'+bias+'1f;color:'+bias+'"><span>✅</span><span>'+det.title+' detected'+
-      ' <span style="font-weight:700;color:'+confC+'">· '+det.conf+'% match</span></span></div>'+
+  let head;
+  if(det.info){ head='<div class="cm-banner" style="background:'+bias+'1f;color:'+bias+'"><span>📐</span><span>'+det.title+'</span></div>'; }
+  else { const confC=det.conf>=72?'#10b981':det.conf>=55?'#f59e0b':'#9ca3af';
+    head='<div class="cm-banner" style="background:'+bias+'1f;color:'+bias+'"><span>✅</span><span>'+det.title+' detected <span style="font-weight:700;color:'+confC+'">· '+det.conf+'% match</span></span></div>'; }
+  // confirmation + backtest (skip for info-only overlays)
+  let confHtml='', btHtml='';
+  if(!det.info){ const cf=azCMConfirm(W,det);
+    if(cf){ const row=(ok,txt)=>'<div class="cm-pt"><span><span class="cm-dot" style="background:'+(ok===true?'#10b981':ok===false?'#ef4444':'#9ca3af')+'"></span>'+txt+'</span><span style="font-weight:800;color:'+(ok===true?'#10b981':ok===false?'#ef4444':'#9ca3af')+'">'+(ok===true?'✓':ok===false?'✕':'–')+'</span></div>';
+      const rows=[cf.rsiNote?row(cf.rsiGood,cf.rsiNote):'', cf.volNote?row(cf.volGood,cf.volNote):'', cf.divNote?row(cf.divGood,cf.divNote):''].filter(Boolean).join('');
+      if(rows)confHtml='<div class="cm-lbl" style="margin-top:11px">Confirmation</div>'+rows; }
+    const bt=azCMBacktest(_azCM.sym,_azCM.pattern,det.bias);
+    if(bt)btHtml='<div class="cm-note" style="margin-top:9px;padding:9px 11px;background:'+bias+'14;border-radius:9px">🧪 <b>On '+_azCM.sym+'’s own history</b>, this pattern set up <b>'+bt.n+'×</b>; '+bt.horizon+' sessions later it had moved in the expected direction <b style="color:'+(bt.hitRate>=55?'#10b981':bt.hitRate<=45?'#ef4444':'var(--text)')+'">'+bt.hitRate+'%</b> of the time (avg <b style="color:'+(bt.avg>=0?'#10b981':'#ef4444')+'">'+(bt.avg>=0?'+':'')+bt.avg+'%</b>). Small in-sample tendency, not a guarantee.</div>'; }
+  host.innerHTML=head+
     '<div class="cm-note" style="opacity:1;font-weight:600">'+det.summary+'</div>'+
-    '<div class="cm-lbl" style="margin-top:11px">Key points</div>'+ptRows+
+    (ptRows?'<div class="cm-lbl" style="margin-top:11px">Key points</div>'+ptRows:'')+
     (lvlRows?'<div class="cm-lbl" style="margin-top:9px">Levels</div>'+lvlRows:'')+
+    confHtml+btHtml+
     '<div class="cm-note">📘 <b>How to read it:</b> '+det.how+'</div>';
 }
+// Volume / RSI / divergence confirmation for a detected pattern.
+function azCMConfirm(W,det){ const S=W.bars, rsiArr=W.rsi||[], n=S.length; if(!n)return null; const bull=det.bias==='bullish', bear=det.bias==='bearish';
+  let rsiNow=null; for(let i=n-1;i>=0;i--){ if(rsiArr[i]!=null){rsiNow=rsiArr[i];break;} }
+  const out={}; if(rsiNow!=null){ out.rsiGood=bull?rsiNow<70:bear?rsiNow>30:null;
+    out.rsiNote='RSI '+rsiNow.toFixed(0)+(rsiNow>=70?' — overbought':rsiNow<=30?' — oversold':'')+(bull?(rsiNow>=70?' (stretched for a long)':' (room to run)'):bear?(rsiNow<=30?' (stretched for a short)':' (room to fall)'):''); }
+  const vols=S.map(b=>b.v||0); if(vols.some(v=>v>0)){ const last=vols.slice(-5).filter(v=>v>0), base=vols.slice(-25,-5).filter(v=>v>0);
+    if(last.length&&base.length){ const la=last.reduce((a,b)=>a+b,0)/last.length, ba=base.reduce((a,b)=>a+b,0)/base.length, r=ba>0?la/ba:1;
+      out.volGood=(bull||bear)?(r>=1.1?true:r<=0.85?false:null):null;
+      out.volNote='Volume '+(r>=1.1?'rising':r<=0.85?'fading':'steady')+' ('+r.toFixed(2)+'× prior-20 avg)'+((bull||bear)?(r>=1.1?' — a breakout on rising volume confirms':' — a breakout wants heavier volume'):''); } }
+  if((bull||bear)&&rsiArr.length){ const sep=Math.max(3,Math.floor(n*0.15));
+    const cand=S.map((b,i)=>[bull?(b.l!=null?b.l:b.c):(b.h!=null?b.h:b.c),i]).sort((a,b)=>bull?a[0]-b[0]:b[0]-a[0]);
+    const e1=cand[0]; let e2=null; for(const e of cand){ if(Math.abs(e[1]-e1[1])>=sep){e2=e;break;} }
+    if(e2){ const a=e1[1]<e2[1]?e1:e2, b=e1[1]<e2[1]?e2:e1; const ra=rsiArr[a[1]], rb=rsiArr[b[1]];
+      if(ra!=null&&rb!=null){ const pxDir=b[0]-a[0], rsiDir=rb-ra;
+        if(bull){ if(pxDir<0&&rsiDir>0){ out.divGood=true; out.divNote='Bullish RSI divergence — a lower low in price but a higher RSI low'; } else if(pxDir<0&&rsiDir<=0){ out.divGood=false; out.divNote='No bullish divergence — RSI confirmed the lower low (momentum still soft)'; } }
+        else { if(pxDir>0&&rsiDir<0){ out.divGood=true; out.divNote='Bearish RSI divergence — a higher high in price but a lower RSI high'; } else if(pxDir>0&&rsiDir>=0){ out.divGood=false; out.divNote='No bearish divergence — RSI confirmed the higher high'; } } } } }
+  return (out.rsiNote||out.volNote||out.divNote)?out:null; }
+// Slide the same detector across the symbol's full daily history → forward-return hit-rate in the pattern's bias.
+function azCMBacktest(sym,pat,bias){ if(bias!=='bullish'&&bias!=='bearish')return null; const F=azSeries(sym), n=F.length; if(n<70)return null;
+  const H=10, WIN=Math.min(80,Math.max(45,Math.floor(n*0.5))), fwd=[]; let last=-99;
+  for(let end=WIN; end<n-H; end+=2){ if(end-last<5)continue; let d=null; try{ d=azCMDetect(F.slice(end-WIN,end),pat); }catch(e){} if(d&&d.found){ last=end; fwd.push((F[end+H].c/F[end].c-1)*100*(bias==='bullish'?1:-1)); } }
+  if(fwd.length<3)return null; const wins=fwd.filter(r=>r>0).length;
+  return { n:fwd.length, horizon:H, hitRate:Math.round(wins/fwd.length*100), avg:+(fwd.reduce((a,b)=>a+b,0)/fwd.length).toFixed(1) }; }
+
+/* ── Pattern Radar — scan holdings + picks for any of the named patterns ── */
+function azScanSyms(){ const set=new Set();
+  try{ const P=window.__PORT; if(P&&P.enriched)P.enriched.filter(p=>p.val>0).forEach(p=>set.add(p.symbol)); }catch(e){}
+  try{ (typeof PICK_PICKS!=='undefined'?PICK_PICKS:[]).forEach(p=>p&&p.ticker&&set.add(p.ticker)); }catch(e){}
+  try{ (typeof PICK_CANDIDATES!=='undefined'?PICK_CANDIDATES:[]).forEach(c=>c&&c.ticker&&set.add(c.ticker)); }catch(e){}
+  return [...set].slice(0,50); }
+function azPatternScan(){ const pats=[['hs','Head & Shoulders'],['ihs','Inverse H&S'],['cup','Cup with Handle'],['double','Double Bottom'],['flag','Bull Flag'],['asctri','Ascending Triangle'],['desctri','Descending Triangle'],['fallwedge','Falling Wedge'],['risewedge','Rising Wedge']];
+  const hits=[]; azScanSyms().forEach(sym=>{ const S=azSeries(sym); if(S.length<25)return;
+    pats.forEach(p=>{ let d=null; try{ d=azCMDetect(S,p[0]); }catch(e){} if(d&&d.found&&d.conf>=62)hits.push({sym,pat:p[0],name:p[1],conf:d.conf,bias:d.bias}); }); });
+  hits.sort((a,b)=>b.conf-a.conf); return hits; }
+function azPatternRadarOpen(){ const hits=azPatternScan();
+  let ov=document.getElementById('az-radar'); if(!ov){ ov=document.createElement('div'); ov.id='az-radar'; ov.className='cm-ov'; document.body.appendChild(ov); ov.addEventListener('click',function(e){ if(e.target===ov)azRadarClose(); }); }
+  const seen={}, rows=hits.filter(h=>{ seen[h.sym]=(seen[h.sym]||0)+1; return seen[h.sym]<=2; }).slice(0,25).map(h=>{ const bc=h.bias==='bullish'?'#10b981':h.bias==='bearish'?'#ef4444':'#9ca3af';
+    return '<div class="cm-pt" style="cursor:pointer" onclick="azRadarGo(\''+h.sym+'\',\''+h.pat+'\')"><span><b>'+h.sym+'</b> <span style="color:#9ca3af">· '+h.name+'</span></span><span style="font-weight:800;color:'+bc+'">'+(h.bias==='bullish'?'▲':h.bias==='bearish'?'▼':'■')+' '+h.conf+'%</span></div>'; }).join('');
+  ov.innerHTML='<div class="cm-sheet"><div class="cm-head"><div><div style="font-size:19px;font-weight:800">📡 Pattern Radar</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+hits.length+' setup'+(hits.length===1?'':'s')+' across your holdings &amp; picks</div></div><button class="cm-x" onclick="azRadarClose()" aria-label="Close">✕</button></div>'+
+    (rows||'<div class="cm-note">No clean patterns across your holdings &amp; picks right now — patterns come and go. Check back after the next data refresh.</div>')+
+    '<div style="font-size:10.5px;color:#9ca3af;margin-top:12px;line-height:1.5">Heuristic scan over each name’s daily bars (max 2 per ticker) · tap a row to open its chart with the pattern drawn. Research only.</div></div>';
+  ov.style.display='flex'; }
+function azRadarClose(){ const ov=document.getElementById('az-radar'); if(ov)ov.style.display='none'; }
+function azRadarGo(sym,pat){ azRadarClose(); azCMOpen(sym); _azCM.pattern=pat; azCMRender(); }
+window.azPatternRadarOpen=azPatternRadarOpen; window.azRadarClose=azRadarClose; window.azRadarGo=azRadarGo;
 
 /* ── Batch B: historical edge, scenarios, options play, compare ── */
 function _rsiSeries(c,n){ n=n||14; if(c.length<=n)return null; const out=new Array(c.length).fill(null); let g=0,l=0;
@@ -3682,7 +3807,7 @@ function runAnalysis(sym){
     azRec(a)+
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+(a.beta!=null?' · β '+a.beta.toFixed(2):''))+'</div>':'')+'</div>'+
-    (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50'+((x.chart.vol&&x.chart.vol.some(v=>v>0))?' · volume':'')+' · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div>'+(x.chart.rsi&&x.chart.rsi.some(v=>v!=null)?'<div class="chart-wrap" style="height:80px;margin-top:6px"><canvas id="az-chart-rsi"></canvas></div><div style="font-size:10px;color:#9ca3af;margin-top:2px;text-align:center">RSI(14) · 70 = overbought · 30 = oversold</div>':'')+'</div>':'')+
+    (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Interactive Chart</span></div><div style="font-size:12.5px;line-height:1.5;color:var(--text);opacity:.85;margin-bottom:11px">Full price chart with switchable timeframes, candlesticks, a volume + RSI panel, and a pattern scanner — head &amp; shoulders, cup &amp; handle, double bottom, flags, triangles, wedges, trendlines &amp; support/resistance.</div><button class="az-btn" style="width:100%" onclick="azCMOpen(\''+a.sym+'\')">📊 Open chart &amp; pattern analyzer</button></div>':'')+
     (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+
@@ -3717,7 +3842,6 @@ function runAnalysis(sym){
     '<div class="card"><div class="card-title"><span>⚖️ Compare <span class="card-hint">side-by-side vs another ticker</span></span></div><div class="az-search"><input id="az-cmp-input" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Compare '+a.sym+' vs… e.g. '+(a.sym==='NVDA'?'AMD':'NVDA')+'" onkeydown="if(event.key===\'Enter\')azCmpGo()"><button class="az-btn" onclick="azCmpGo()">Compare</button></div><div id="az-compare"></div></div>'+
     '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
     '<div class="disclaimer">Algorithmic technical/fundamental read from your latest snapshot — probabilities, not certainty, and not financial advice. ~15-min delayed.</div>';
-  if(x.chart)setTimeout(()=>{ azChart('az-chart',x.chart,a); if(x.chart.rsi&&x.chart.rsi.some(v=>v!=null))azRsiChart('az-chart-rsi',x.chart.labels,x.chart.rsi); },0);
   // Restore a persisted comparison ticker (skip if it's the symbol we're already viewing).
   try{ const cmp=localStorage.getItem('pf_az_cmp'); if(cmp&&cmp!==sym){ const ci=document.getElementById('az-cmp-input'); if(ci)ci.value=cmp; setTimeout(()=>azCompare(cmp),0); } }catch(e){}
 }
