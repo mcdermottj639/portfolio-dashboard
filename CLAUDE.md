@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v76** (`pf-v76`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v77** (`pf-v77`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -150,10 +150,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **`data.hist` bar shape differs by producer — consumer must accept BOTH.** The scheduled Claude
   agent (and `make-sample-data.mjs`) store raw Robinhood bars `{begins_at, close_price, interpolated}`;
   the **Railway** producer normalizes them to compact `{t, c}` (`fetch_rh.py` `_bars_from_historicals`).
-  Any consumer that reads `data.hist[*]` must coalesce — `b.begins_at||b.t`, `b.close_price ?? b.c`
-  (see `fetchHist`/`fetchHistG` and the `az*` helpers in `index.html`). A hard `b.begins_at.slice()`
-  throws on Railway data, gets swallowed by `fetchHist`'s `catch{}`, and silently empties `histMap` →
-  beta/Sharpe/vol/drawdown/correlation/performance/50-DMA all blank at once. (This bit us once; v50.)
+  Any consumer that reads `data.hist[*]` must coalesce — `b.begins_at||b.t`, `b.close_price ?? b.c`,
+  **`b.volume ?? b.v`** (see `fetchHist`/`fetchHistG` and the `az*` helpers in `index.html`). A hard
+  `b.begins_at.slice()` throws on Railway data, gets swallowed by `fetchHist`'s `catch{}`, and silently
+  empties `histMap` → beta/Sharpe/vol/drawdown/correlation/performance/50-DMA all blank at once. (This
+  bit us once; v50.) **Volume:** the Claude-agent path keeps raw RH bars (incl. `volume`); the Railway
+  path now carries `v` too (`_bars_from_historicals`, v77 — it previously dropped volume, so the Analyze
+  price chart's volume bars silently never drew for Railway-refreshed names). The Analyze **"Price &amp;
+  Levels"** volume bars are data-gated: they draw (and the header lists "· volume") only when the symbol's
+  bars actually carry volume — older `{t,c}` snapshots show none until a fresh run repopulates it.
 - **The Portfolio background-enrichment block is fault-isolated** (`load()`'s `(async()=>{…})` wraps each
   render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
   spinner forever. Don't "simplify" the guards away.
@@ -273,8 +278,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   chips. The ticker box has **native autocomplete** over the
   analyzable universe (`azUniverse` = holdings ∪ picks ∪ daily-bar symbols ∪ quotes ∪ options book),
   and a **miss shows clickable suggestions** instead of a dead-end. Every card is collapsible +
-  jump-navigable (shared `.card-nav` / auto-collapse observers). Price chart adds **volume bars + an
-  RSI(14) sub-panel** (30/70 bands); **Scenarios** show a **±1σ implied expected-move band** anchored
+  jump-navigable (shared `.card-nav` / auto-collapse observers). Price chart adds **volume bars
+  (data-gated — only when the bars carry volume; the header drops "· volume" otherwise) + an
+  RSI(14) sub-panel** (30/70 bands); axis/tooltip dates are compacted via `azDateLbl` (e.g. "Jun 12",
+  not the raw ISO timestamp). **Scenarios** show a **±1σ implied expected-move band** anchored
   to live option IV when available (`azIV`, else a realized-vol proxy, labelled market-implied vs
   est.); **Historical Edge** widens its RSI match band adaptively (±8→±20) for a usable sample;
   **Options Play** links to the Options tab and flags real greeks when you hold live contracts on the

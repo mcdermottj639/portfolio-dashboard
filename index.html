@@ -591,7 +591,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v76'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v77'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -3215,8 +3215,12 @@ function _azExtraRaw(a){
   x.peg=parseFloat(ov.PEGRatio)||null; x.margin=ov.ProfitMargin!=null?parseFloat(ov.ProfitMargin)*100:null; x.exDiv=ov.ExDividendDate&&ov.ExDividendDate!=='None'?ov.ExDividendDate:null;
   return x;
 }
+// Compact a bar timestamp ("2026-06-12T00:00:00Z" / "2026-06-12") to a short axis/tooltip label.
+function azDateLbl(s,withYear){ if(s==null)return ''; const d=new Date(s); if(isNaN(d))return String(s).slice(0,10);
+  return d.toLocaleDateString('en-US',Object.assign({month:'short',day:'numeric'},withYear?{year:'numeric'}:{},{timeZone:'UTC'})); }
 function azChart(id,ch,a){ const c=document.getElementById(id); if(!c||typeof Chart==='undefined'||!ch)return;
   const n=ch.close.length,lvl=v=>new Array(n).fill(v);
+  const lbls=ch.labels.map(s=>azDateLbl(s)), lblsLong=ch.labels.map(s=>azDateLbl(s,true));
   const ds=[{label:'Price',data:ch.close,borderColor:'#6366f1',borderWidth:2,pointRadius:0,tension:0.15,order:1}];
   if(ch.sma20)ds.push({label:'SMA20',data:ch.sma20,borderColor:'#f59e0b',borderWidth:1,pointRadius:0,borderDash:[4,3],order:1});
   if(ch.sma50)ds.push({label:'SMA50',data:ch.sma50,borderColor:'#9ca3af',borderWidth:1,pointRadius:0,borderDash:[4,3],order:1});
@@ -3225,10 +3229,12 @@ function azChart(id,ch,a){ const c=document.getElementById(id); if(!c||typeof Ch
   ds.push({label:'T2',data:lvl(a.tp2),borderColor:'#059669',borderWidth:1,pointRadius:0,borderDash:[2,3],order:1});
   const scales={x:{ticks:{maxTicksLimit:6,font:{size:9},color:'#9ca3af'},grid:{display:false}},y:{ticks:{font:{size:9},color:'#9ca3af',callback:v=>'$'+v},grid:{color:'rgba(127,127,127,0.12)'}}};
   // Volume bars confined to the lower band (secondary, hidden axis) so they don't crowd price.
-  if(ch.vol&&ch.vol.some(v=>v>0)){ const vmax=Math.max.apply(null,ch.vol);
-    ds.push({type:'bar',label:'Vol',data:ch.vol,yAxisID:'yVol',backgroundColor:'rgba(99,102,241,0.16)',borderWidth:0,order:99});
-    scales.yVol={display:false,position:'right',min:0,max:vmax*4,grid:{display:false}}; }
-  try{ new Chart(c,{type:'line',data:{labels:ch.labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9},filter:i=>['Price','SMA20','SMA50'].indexOf(i.text)>=0}},tooltip:{callbacks:{label:x=>x.dataset.label==='Vol'?'Vol: '+fmt(x.parsed.y,0):x.dataset.label+': $'+(+x.parsed.y).toFixed(2)}}},scales:scales}}); }catch(e){}
+  const hasVol=ch.vol&&ch.vol.some(v=>v>0);
+  if(hasVol){ const vmax=Math.max.apply(null,ch.vol);
+    ds.push({type:'bar',label:'Vol',data:ch.vol,yAxisID:'yVol',backgroundColor:'rgba(99,102,241,0.32)',borderWidth:0,order:99});
+    scales.yVol={display:false,position:'right',min:0,max:vmax*3,grid:{display:false}}; }
+  const legendKeep=['Price','SMA20','SMA50'].concat(hasVol?['Vol']:[]);
+  try{ new Chart(c,{type:'line',data:{labels:lbls,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9},filter:i=>legendKeep.indexOf(i.text)>=0}},tooltip:{callbacks:{title:items=>items.length?lblsLong[items[0].dataIndex]:'',label:x=>x.dataset.label==='Vol'?'Vol: '+fmt(x.parsed.y,0):x.dataset.label+': $'+(+x.parsed.y).toFixed(2)}}},scales:scales}}); }catch(e){}
 }
 // RSI(14) sub-panel under the price chart — 30/70 reference bands so momentum extremes read at a glance.
 function azRsiChart(id,labels,rsi){ const c=document.getElementById(id); if(!c||typeof Chart==='undefined'||!Array.isArray(rsi))return;
@@ -3237,7 +3243,7 @@ function azRsiChart(id,labels,rsi){ const c=document.getElementById(id); if(!c||
     {label:'RSI',data:rsi,borderColor:'#8b5cf6',borderWidth:1.5,pointRadius:0,tension:0.15,spanGaps:true,order:1},
     {label:'70',data:lvl(70),borderColor:'rgba(239,68,68,0.5)',borderWidth:1,pointRadius:0,borderDash:[3,3],order:2},
     {label:'30',data:lvl(30),borderColor:'rgba(59,130,246,0.5)',borderWidth:1,pointRadius:0,borderDash:[3,3],order:2}]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:x=>x.dataset.label==='RSI'?'RSI: '+(+x.parsed.y).toFixed(0):null,labelColor:()=>({})}}},scales:{x:{display:false,grid:{display:false}},y:{min:0,max:100,ticks:{stepSize:50,font:{size:8},color:'#9ca3af'},grid:{color:'rgba(127,127,127,0.12)'}}}}}); }catch(e){}
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>items.length?azDateLbl(labels[items[0].dataIndex],true):'',label:x=>x.dataset.label==='RSI'?'RSI: '+(+x.parsed.y).toFixed(0):null,labelColor:()=>({})}}},scales:{x:{display:false,grid:{display:false}},y:{min:0,max:100,ticks:{stepSize:50,font:{size:8},color:'#9ca3af'},grid:{color:'rgba(127,127,127,0.12)'}}}}}); }catch(e){}
 }
 /* ── Batch B: historical edge, scenarios, options play, compare ── */
 function _rsiSeries(c,n){ n=n||14; if(c.length<=n)return null; const out=new Array(c.length).fill(null); let g=0,l=0;
@@ -3436,7 +3442,7 @@ function runAnalysis(sym){
     azRec(a)+
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+(a.beta!=null?' · β '+a.beta.toFixed(2):''))+'</div>':'')+'</div>'+
-    (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50 · volume · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div>'+(x.chart.rsi&&x.chart.rsi.some(v=>v!=null)?'<div class="chart-wrap" style="height:80px;margin-top:6px"><canvas id="az-chart-rsi"></canvas></div><div style="font-size:10px;color:#9ca3af;margin-top:2px;text-align:center">RSI(14) · 70 = overbought · 30 = oversold</div>':'')+'</div>':'')+
+    (x.chart?'<div class="card"><div class="card-title"><span>📉 Price &amp; Levels <span class="card-hint">YTD · SMA20/50'+((x.chart.vol&&x.chart.vol.some(v=>v>0))?' · volume':'')+' · stop &amp; targets</span></span></div><div class="chart-wrap" style="height:220px"><canvas id="az-chart"></canvas></div>'+(x.chart.rsi&&x.chart.rsi.some(v=>v!=null)?'<div class="chart-wrap" style="height:80px;margin-top:6px"><canvas id="az-chart-rsi"></canvas></div><div style="font-size:10px;color:#9ca3af;margin-top:2px;text-align:center">RSI(14) · 70 = overbought · 30 = oversold</div>':'')+'</div>':'')+
     (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+

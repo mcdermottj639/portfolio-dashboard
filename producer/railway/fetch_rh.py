@@ -239,9 +239,18 @@ def _bars_from_historicals(raw, year_filter=None):
         if year_filter is not None and not str(ts).startswith(str(year_filter)):
             continue
         try:
-            bars.append({"t": ts, "c": float(close)})
+            bar = {"t": ts, "c": float(close)}
         except (TypeError, ValueError):
             continue
+        # Carry volume when present so the consumer's Analyze price chart can draw volume bars
+        # (the Claude-agent path keeps raw RH bars incl. volume; keep parity here). Optional/best-effort.
+        vol = b.get("volume")
+        if vol not in (None, ""):
+            try:
+                bar["v"] = float(vol)
+            except (TypeError, ValueError):
+                pass
+        bars.append(bar)
     return bars
 
 
