@@ -620,7 +620,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v82'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v83'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2535,6 +2535,21 @@ window.switchTab=switchTab;
       <li>Two <b>confidence dampeners</b> (they don't move the score, only your confidence): an <b>imminent earnings print</b> (≤7 days → gap/IV-crush risk) and a <b>high-VIX regime</b> on a bullish call.</li>
     </ul>
     <p>The meta line shows the fundamentals score and any dampeners transparently, so you see exactly what's driving the call. It's a structured read, not advice.</p>` },
+  'chart pattern verdict': { tag:'Analyze', t:'Chart Pattern Verdict', h:`
+    <p>A <b>second opinion</b> built from price <b>structure alone</b> — completely independent of the recommendation above it (which blends RSI, trend, momentum and fundamentals). This one only reads chart patterns.</p>
+    <div class="hsub">How it's built</div>
+    <ul>
+      <li>Every directional pattern (head &amp; shoulders, cup, double bottom, flags, triangles, wedges) is scanned across <b>every timeframe</b>.</li>
+      <li>Each hit votes bull or bear, weighted by its <span class="hk">confidence</span> × <span class="hk">volume/RSI confirmation</span> × the pattern's own <span class="hk">historical hit-rate</span> on this name × the <span class="hk">timeframe</span> (longer = heavier).</li>
+      <li>The votes net out to <b>Bullish / Bearish / Mixed / No structure</b> with a conviction %.</li>
+    </ul>
+    <div class="hsub">The point is agree vs diverge</div>
+    <ul>
+      <li><span class="hk">Agrees</span> with the Analyze call → two independent reads lining up = higher conviction.</li>
+      <li><span class="hk">Diverges</span> → a clean pattern is fighting the blended/fundamental read; size down or wait for them to align.</li>
+      <li><span class="hk">No structure</span> → nothing to confirm or contradict; the Analyze call stands alone.</li>
+    </ul>
+    <p>Heuristic and for research only.</p>` },
   'interactive chart': { tag:'Analyze', t:'Interactive Chart', h:`
     <p>Opens the full <b>Chart Analyzer</b> — one large price chart you can actually work with.</p>
     <div class="hsub">What it does</div>
@@ -3309,6 +3324,7 @@ function azCMOpen(sym){ if(!sym)return; const tfs=azCMTFs(sym);
     '<div class="cm-canvas-wrap" style="margin-top:10px"><canvas id="cm-canvas"></canvas></div>'+
     '<div class="cm-rsi-wrap" id="cm-rsi-wrap" style="position:relative;width:100%;height:74px;margin-top:6px"><canvas id="cm-rsi"></canvas></div>'+
     '<div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:1px">RSI(14) · 70 overbought · 30 oversold</div>'+
+    '<div class="cm-lbl" style="margin-top:12px">Overall chart read <span style="text-transform:none;letter-spacing:0;color:#9ca3af;font-weight:600">· structure only, independent of the Analyze call</span></div><div id="cm-overall"></div>'+
     '<div class="cm-lbl" style="margin-top:12px">Pattern scanner</div><div class="cm-row" id="cm-pat"></div>'+
     '<div class="cm-verdict" id="cm-verdict"></div>'+
     '<details class="cm-tfhelp"><summary>📐 How the timeframe changes your read</summary><div class="cm-tfhelp-body">'+
@@ -3355,6 +3371,13 @@ function azCMRender(){ const sym=_azCM.sym; if(!sym)return;
   if(tyHost)tyHost.innerHTML=[['line','Line'],['candle','Candles']].map(t=>'<button class="cm-chip'+(t[0]===_azCM.ctype?' on':'')+'" onclick="azCMSetType(\''+t[0]+'\')">'+t[1]+'</button>').join('');
   const pHost=document.getElementById('cm-pat');
   if(pHost)pHost.innerHTML=_azCMPats.map(p=>'<button class="cm-chip'+(p[0]===_azCM.pattern?' on':'')+'" onclick="azCMSetPattern(\''+p[0]+'\')">'+p[1]+'</button>').join('');
+  // Overall structural verdict (independent of the Analyze call) + how it lines up against it.
+  const ovHost=document.getElementById('cm-overall');
+  if(ovHost){ const v=azChartVerdict(sym); const dirl=(v.dir==='bullish'||v.dir==='bearish');
+    let h='<div class="cm-banner" style="background:'+v.color+'1f;color:'+v.color+'"><span>'+v.icon+'</span><span>'+v.label+(dirl?' <span style="font-weight:700">· '+v.conf+'% conviction</span>':'')+'</span></div>';
+    try{ const a=analyzeStock(sym); if(a){ const cmp=azVerdictVsAnalyze(v,a.tone); h+='<div class="cm-note" style="margin-top:7px"><b style="color:'+cmp.color+'">'+cmp.icon+'</b> '+cmp.txt+'</div>'; } }catch(e){}
+    if(v.drivers.length)h+='<div class="cm-row" style="margin-top:8px">'+v.drivers.map(d=>'<button class="cm-chip" onclick="azCMGoDriver(\''+d.tf+'\',\''+d.pat+'\')" title="Show this on the chart">'+(d.bias==='bullish'?'▲':'▼')+' '+d.name+' · '+d.tf+'</button>').join('')+'</div>';
+    ovHost.innerHTML=h; }
   const W=azCMWindow(sym,_azCM.tf), S=W.bars;
   const det=(_azCM.pattern!=='none'&&S.length>=10)?azCMDetect(S,_azCM.pattern):null;
   azCMDrawChart(W,det);
@@ -3649,6 +3672,42 @@ function azCMBacktest(sym,pat,bias){ if(bias!=='bullish'&&bias!=='bearish')retur
   if(fwd.length<3)return null; const wins=fwd.filter(r=>r>0).length;
   return { n:fwd.length, horizon:H, hitRate:Math.round(wins/fwd.length*100), avg:+(fwd.reduce((a,b)=>a+b,0)/fwd.length).toFixed(1) }; }
 
+/* ── Chart Pattern Verdict — an aggregate directional read from price structure ALONE
+   (every directional pattern across every timeframe, weighted by confidence × volume/RSI
+   confirmation × historical hit-rate × timeframe). Independent of analyzeStock's blended
+   setup score, so it reads as a second opinion: agreement = conviction, divergence = caution. */
+var _azVerdMemo={gen:null,m:{}};
+function azChartVerdict(sym){ const gen=(window.__DATA&&window.__DATA.generatedAt)||''; if(_azVerdMemo.gen!==gen)_azVerdMemo={gen,m:{}}; if(_azVerdMemo.m[sym])return _azVerdMemo.m[sym]; const r=_azChartVerdictRaw(sym); _azVerdMemo.m[sym]=r; return r; }
+function _azChartVerdictRaw(sym){
+  const pats=['hs','ihs','cup','double','flag','asctri','desctri','fallwedge','risewedge'];
+  const tfs=azCMTFs(sym), tfW={'1M':0.6,'3M':0.85,'6M':1.1,'YTD':1.1,'1Y':1.3,'5Y':1.45};
+  let bull=0, bear=0; const drivers=[], btCache={};
+  tfs.forEach(tf=>{ const W=azCMWindow(sym,tf); if(!W.bars||W.bars.length<12)return;
+    pats.forEach(p=>{ let d; try{ d=azCMDetect(W.bars,p); }catch(e){ return; } if(!d||!d.found||(d.bias!=='bullish'&&d.bias!=='bearish'))return;
+      // confirmation multiplier (volume/RSI/divergence agreement)
+      let cm=1; const cf=azCMConfirm(W,d); if(cf){ const s=[cf.rsiGood,cf.volGood,cf.divGood].filter(v=>v!=null); if(s.length){ const g=s.filter(v=>v===true).length, b=s.filter(v=>v===false).length; cm=Math.max(0.5,0.78+0.34*(g-b)/s.length); } }
+      // historical-hit-rate multiplier (deduped per pattern+bias — independent of timeframe)
+      const bk=p+d.bias; if(btCache[bk]===undefined){ try{ btCache[bk]=azCMBacktest(sym,p,d.bias); }catch(e){ btCache[bk]=null; } } const bt=btCache[bk]; const bm=bt?0.6+0.85*(bt.hitRate/100):1;
+      const w=(d.conf/100)*(tfW[tf]||1)*cm*bm;
+      if(d.bias==='bullish')bull+=w; else bear+=w;
+      drivers.push({tf,pat:p,name:_patName(p),bias:d.bias,conf:d.conf,w:+w.toFixed(3),bt:bt?bt.hitRate:null}); }); });
+  const net=bull-bear, total=bull+bear; drivers.sort((a,b)=>b.w-a.w);
+  let dir='none', conf=0;
+  if(total>=0.35){ const lop=Math.abs(net)/total, ev=Math.min(1,total/2.2);
+    if(lop<0.22){ dir='mixed'; conf=Math.round(45*ev); }
+    else { dir=net>0?'bullish':'bearish'; conf=Math.round(100*lop*(0.55+0.45*ev)); } }
+  const meta={ none:{label:'No clear pattern structure',color:'#9ca3af',icon:'➖'}, mixed:{label:'Mixed / conflicting structure',color:'#f59e0b',icon:'⚖️'}, bullish:{label:'Bullish structure',color:'#10b981',icon:'▲'}, bearish:{label:'Bearish structure',color:'#ef4444',icon:'▼'} }[dir];
+  return { sym, dir, conf:Math.max(0,Math.min(100,conf)), bull:+bull.toFixed(2), bear:+bear.toFixed(2), nPat:drivers.length, drivers:drivers.slice(0,4), label:meta.label, color:meta.color, icon:meta.icon }; }
+// How the structural verdict lines up against analyzeStock's tone — the agree/diverge read is the point.
+function azVerdictVsAnalyze(v,tone){ const vb=v.dir==='bullish', vr=v.dir==='bearish';
+  if(v.dir==='none')return { icon:'➖', color:'#9ca3af', txt:'No clean chart pattern right now — nothing structural to confirm or contradict the call above; it stands on its own.' };
+  if(v.dir==='mixed')return { icon:'⚖️', color:'#f59e0b', txt:'Conflicting patterns across timeframes — no clean structural edge. Defer to the Analyze call and wait for the chart to resolve.' };
+  const tonePos=tone==='pos', toneNeg=tone==='neg';
+  if((vb&&tonePos)||(vr&&toneNeg))return { icon:'✅', color:'#10b981', txt:'Agrees with the Analyze recommendation (both '+(vb?'bullish':'bearish')+') — two independent reads pointing the same way is higher conviction.' };
+  if((vb&&toneNeg)||(vr&&tonePos))return { icon:'⚠️', color:'#ef4444', txt:'Diverges from the Analyze call — the chart structure is '+(vb?'bullish':'bearish')+' but the blended setup/fundamental read is '+(vb?'cautious':'constructive')+'. A clean pattern fighting the other read means size down or wait for them to align.' };
+  return { icon:'•', color:v.color, txt:'The chart leans '+(vb?'bullish':'bearish')+' while the Analyze call is neutral — here the pattern is the more directional read; treat it as the tiebreaker, but confirm on the breakout.' }; }
+function azCMGoDriver(tf,pat){ _azCM.tf=tf; _azCM.pattern=pat; azCMRender(); } window.azCMGoDriver=azCMGoDriver;
+
 /* ── Pattern Radar — scan holdings + picks for any of the named patterns ── */
 function azScanSyms(){ const set=new Set();
   try{ const P=window.__PORT; if(P&&P.enriched)P.enriched.filter(p=>p.val>0).forEach(p=>set.add(p.symbol)); }catch(e){}
@@ -3869,6 +3928,13 @@ function runAnalysis(sym){
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+(a.beta!=null?' · β '+a.beta.toFixed(2):''))+'</div>':'')+'</div>'+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Interactive Chart</span></div><div style="font-size:12.5px;line-height:1.5;color:var(--text);opacity:.85;margin-bottom:11px">Full price chart with switchable timeframes, candlesticks, a volume + RSI panel, and a pattern scanner — head &amp; shoulders, cup &amp; handle, double bottom, flags, triangles, wedges, trendlines &amp; support/resistance.</div><button class="az-btn" style="width:100%" onclick="azCMOpen(\''+a.sym+'\')">📊 Open chart &amp; pattern analyzer</button></div>':'')+
+    (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
+      return '<div class="card" style="border-left:4px solid '+v.color+'"><div class="card-title"><span>🔭 Chart Pattern Verdict <span class="card-hint">price structure · independent of the call above</span></span></div>'+
+        '<div style="font-size:17px;font-weight:800;color:'+v.color+'">'+v.icon+' '+v.label+(dirl?' <span style="font-size:13px;font-weight:700">· '+v.conf+'% conviction</span>':'')+'</div>'+
+        (v.drivers.length?'<div style="font-size:12px;color:#9ca3af;margin-top:5px">Driven by '+v.drivers.map(d=>(d.bias==='bullish'?'▲':'▼')+' '+d.name+' ('+d.tf+(d.bt!=null?', '+d.bt+'% hist':'')+')').join(' · ')+'</div>':'<div style="font-size:12px;color:#9ca3af;margin-top:5px">No clean classic pattern across timeframes right now.</div>')+
+        '<div style="margin-top:11px;padding:10px 12px;background:var(--surface-2);border-radius:10px;font-size:12.5px;line-height:1.5;border-left:3px solid '+cmp.color+'"><b style="color:'+cmp.color+'">'+cmp.icon+'</b> '+cmp.txt+'</div>'+
+        '<button class="az-btn" style="width:100%;margin-top:11px" onclick="azCMOpen(\''+a.sym+'\')">📊 Open chart &amp; pattern analyzer</button>'+
+        '<div style="font-size:10.5px;color:#9ca3af;margin-top:8px;line-height:1.5">A second opinion from chart structure alone — heuristic pattern detection across timeframes, weighted by confidence, volume/RSI confirmation &amp; each pattern’s own historical hit-rate. Research only.</div></div>'; })():'')+
     (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     '<div class="card"><div class="card-title"><span>📖 Understanding This Analysis</span></div>'+nar.map(n=>'<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px;margin-bottom:8px;border-left:3px solid '+n[1]+'"><div style="font-size:13px;font-weight:700">'+n[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.85;line-height:1.5;margin-top:3px">'+n[2]+'</div></div>').join('')+'</div>'+

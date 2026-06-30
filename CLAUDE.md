@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v82** (`pf-v82`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v83** (`pf-v83`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -316,9 +316,17 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   found (stashed in `_azCM._foundTFs`); the verdict adds a **confluence note** (which other frames agree, or a
   single-timeframe/lower-conviction caveat), and a collapsible **"How the timeframe changes your read"**
   explainer (short=tactical / medium=swing / long=structural; longer frame wins on disagreement) lives in the
-  modal + the `interactive chart` help entry. Research/education only — reads are tendencies, detection is
-  heuristic and can miss/over-fit. Reads `azSeries`/`azSeriesMonthly`; nothing from the producer changed (pure
-  consumer-side).
+  modal + the `interactive chart` help entry. **Chart Pattern Verdict (v83):** `azChartVerdict(sym)` (memoized
+  per snapshot) aggregates EVERY directional pattern across EVERY timeframe into one bull/bear/mixed/none read
+  — each hit weighted by `confidence × volume-RSI-confirmation × its own historical hit-rate × timeframe`
+  (longer = heavier; backtest deduped per pattern+bias). It's **independent of `analyzeStock`** (which blends
+  RSI/trend/momentum/fundamentals), so `azVerdictVsAnalyze` frames it as a second opinion — **agree** = higher
+  conviction, **diverge** = a clean pattern fighting the blended read (size down/wait). Surfaced as an
+  "Overall chart read" banner in the modal (above the pattern chips, with clickable driver chips →
+  `azCMGoDriver` jumps to that pattern+timeframe) and a **🔭 Chart Pattern Verdict** card on the Analyze page
+  (below the Interactive Chart card; help key `chart pattern verdict`). Research/education only — reads are
+  tendencies, detection is heuristic and can miss/over-fit. Reads `azSeries`/`azSeriesMonthly`; nothing from
+  the producer changed (pure consumer-side).
 - **Markets:** index/risk/sector tiles (YTD/5Y) with a **risk-on/off appetite gauge** synthesized from
   the day moves of equities/credit vs gold/long-bonds; **sector heatmap with a Day ⇄ vs-S&P-YTD
   (relative-strength) toggle** that surfaces leaders/laggards; macro signals incl. a **2s10s yield-curve
