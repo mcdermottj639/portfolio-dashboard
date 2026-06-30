@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v84** (`pf-v84`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v85** (`pf-v85`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -265,8 +265,17 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   each FETCH_ALL run the producer mirrors the composite top 10 into the **"Dashboard Top 10 Picks"**
   Robinhood watchlist (daily add/remove diff via `sync-watchlist.mjs`), so the list in the Robinhood
   app always tracks the Picks table.
-- **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Social Pulse card,
-  chat-to-build-trade + Robinhood deep links. **The setup score is no longer technical-only (v75):**
+- **Analyze:** per-ticker technical+fundamental breakdown, Recommendation card, Sentiment & Buzz card,
+  chat-to-build-trade + Robinhood deep links. **Card de-dup (v85):** the deep dive was slimmed by folding
+  redundant cards into their natural home — the standalone **Exact Trade Levels** + **Position Sizing** cards
+  are gone, their Entry/Stop/TP1·TP2 (now with target %), the risk-based share-size line, and the hand-off/RH
+  buttons all live in the **Recommendation** card so the whole trade plan reads as one unit (`azRec(a,x)` —
+  takes `x` for sizing/held); **News Sentiment + Social Pulse merged** into one **🗣️ Sentiment & Buzz** card
+  (news block + retail-buzz block, divider between; help key `sentiment buzz`); the Understanding-This-Analysis
+  **Fundamentals narrative no longer repeats P/E·Fwd P/E·Rev-growth·yield** (Valuation & Catalysts owns those —
+  the line keeps sector + the quality-blend note + a pointer); and **β is shown once** (Indicators), dropped
+  from the setup-gauge subtitle and the Recommendation meta line. No producer/data change — pure consumer
+  consolidation; chart cards (Interactive Chart, Chart Pattern Verdict) untouched. **The setup score is no longer technical-only (v75):**
   `analyzeStock()` blends a **fundamentals/quality sub-score** (`_fundScore` — forward P/E, revenue
   growth, PEG, profit margin, analyst-target upside; neutral 50, returns null when <2 inputs so sparse-AV
   names fall back to the old technical-only weights) into the setup at **15% weight** (pattern 34 / signal
