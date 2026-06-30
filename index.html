@@ -208,7 +208,7 @@ html[data-theme="dark"] .az-gauge-in { background: #161616; }
 /* Chart Analyzer modal — large timeframe-switchable chart + pattern detection */
 .az-btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid #d1d5db; }
 html[data-theme="gold"] .az-btn-ghost { border-color: var(--nx-bd); }
-.cm-ov { position: fixed; inset: 0; z-index: 99997; background: rgba(0,0,0,0.66); display: flex; align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.cm-ov { position: fixed; inset: 0; z-index: 99997; background: rgba(0,0,0,0.66); display: flex; align-items: flex-start; justify-content: center; padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 12px) calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 12px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .cm-sheet { background: var(--surface-2); color: var(--text); border-radius: 16px; padding: 16px; width: 100%; max-width: 780px; margin: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
 html[data-theme="gold"] .cm-sheet { border: 1px solid var(--nx-bd); }
 .cm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
@@ -620,7 +620,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v80'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v81'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
