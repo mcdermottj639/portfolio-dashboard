@@ -217,6 +217,16 @@ html[data-theme="gold"] .cm-sheet { border: 1px solid var(--nx-bd); }
 .cm-chip { font-size: 12px; font-weight: 700; padding: 6px 11px; border-radius: 999px; border: 1px solid transparent; background: rgba(127,127,127,0.13); color: var(--text); cursor: pointer; font-family: inherit; }
 .cm-chip.on { background: var(--accent); color: #fff; }
 html[data-theme="gold"] .cm-chip.on { color: #1a1408; }
+.cm-chip.cm-found { box-shadow: 0 0 0 1.6px #10b981, 0 0 9px rgba(16,185,129,0.55); }
+.cm-chip.cm-found::after { content: " ●"; color: #10b981; font-size: 9px; vertical-align: middle; }
+.cm-chip.on.cm-found::after { color: #fff; }
+.cm-tfhelp { margin-top: 12px; border: 1px solid var(--surface-2); border-radius: 10px; padding: 0; overflow: hidden; }
+html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
+.cm-tfhelp > summary { cursor: pointer; padding: 10px 13px; font-size: 12.5px; font-weight: 700; list-style: none; background: rgba(127,127,127,0.06); }
+.cm-tfhelp > summary::-webkit-details-marker { display: none; }
+.cm-tfhelp[open] > summary { border-bottom: 1px solid var(--surface-2); }
+.cm-tfhelp .cm-tfhelp-body { padding: 11px 13px; font-size: 12px; line-height: 1.55; }
+.cm-tfhelp .cm-tfhelp-body li { margin-bottom: 6px; }
 .cm-lbl { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9ca3af; margin: 2px 0 5px; }
 .cm-canvas-wrap { position: relative; width: 100%; height: 330px; background: var(--surface-2); border-radius: 10px; }
 .cm-verdict { margin-top: 12px; }
@@ -610,7 +620,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v79'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v80'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2533,6 +2543,14 @@ window.switchTab=switchTab;
       <li><span class="hk">Line or Candles</span>, plus a volume overlay and an RSI(14) sub-panel.</li>
       <li><span class="hk">Pattern scanner</span> — tap a filter to detect head &amp; shoulders (and inverse), cup &amp; handle, double bottom, bull flag, ascending/descending triangles, falling/rising wedges, or to draw trendlines and support/resistance zones.</li>
       <li>Each detected pattern marks its swing points, draws the neckline/rim &amp; a measured target, and adds a volume/RSI confirmation check plus a historical hit-rate for that pattern on that name.</li>
+      <li>When a pattern is selected, the <b>timeframe chips glow</b> (●) for every timeframe that also shows it — your at-a-glance confluence map.</li>
+    </ul>
+    <div class="hsub">Timeframes change the read</div>
+    <ul>
+      <li><span class="hk">Short (1M/3M)</span> — a quick, smaller move (days–2 weeks); tighter target/stop, noisier. Tactical.</li>
+      <li><span class="hk">Medium (6M/YTD)</span> — a swing move over weeks; larger target, the level matters more. Size like a real position.</li>
+      <li><span class="hk">Long (1Y/5Y)</span> — a major structural move over months; slowest but most significant.</li>
+      <li><span class="hk">Confluence</span> — the same pattern glowing on several frames is the strongest setup. If frames disagree, the <b>longer</b> one usually wins the bigger picture.</li>
     </ul>
     <p>Heuristic and for research only — a read is a tendency, not a signal.</p>` },
   'limited snapshot data': { tag:'Analyze', t:'Limited Snapshot Data', h:`
@@ -3263,6 +3281,7 @@ function azCMSeries(sym,tf){ return azCMWindow(sym,tf).bars; }
 function azCMTFs(sym){ const tfs=[]; if(azSeries(sym).length)tfs.push('1M','3M','6M','YTD'); if(azSeriesMonthly(sym).length>2)tfs.push('1Y','5Y'); return tfs; }
 var _azCMPats=[['none','Price & Levels'],['hs','Head & Shoulders'],['ihs','Inverse H&S'],['cup','Cup with Handle'],['double','Double Bottom'],['flag','Bull Flag'],
   ['asctri','Ascending Triangle'],['desctri','Descending Triangle'],['fallwedge','Falling Wedge'],['risewedge','Rising Wedge'],['trend','Trendlines'],['sr','Support / Resistance']];
+function _patName(p){ const e=_azCMPats.find(x=>x[0]===p); return e?e[1]:p; }
 
 function azChartGo(){ const i=document.getElementById('az-ticker'); let s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(!s)s=_azLast; if(s)azCMOpen(s); }
 window.azChartGo=azChartGo;
@@ -3276,13 +3295,23 @@ function azCMOpen(sym){ if(!sym)return; const tfs=azCMTFs(sym);
     '<div class="cm-head"><div><div style="font-size:20px;font-weight:800">'+sym+' <span style="font-size:13px;font-weight:600;color:#9ca3af">· Chart Analyzer</span></div>'+
       (px!=null?'<div style="font-size:14px;font-weight:700;margin-top:2px">$'+px.toFixed(2)+'</div>':'')+'</div>'+
       '<button class="cm-x" onclick="azCMClose()" aria-label="Close">✕</button></div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div class="cm-lbl">Timeframe</div><div class="cm-row" id="cm-tf" style="margin-bottom:0"></div></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div class="cm-lbl">Timeframe <span id="cm-tf-hint" style="text-transform:none;letter-spacing:0;color:#10b981;font-weight:700"></span></div><div class="cm-row" id="cm-tf" style="margin-bottom:0"></div></div>'+
       '<div id="cm-type" class="cm-row" style="margin-bottom:0"></div></div>'+
     '<div class="cm-canvas-wrap" style="margin-top:10px"><canvas id="cm-canvas"></canvas></div>'+
     '<div class="cm-rsi-wrap" id="cm-rsi-wrap" style="position:relative;width:100%;height:74px;margin-top:6px"><canvas id="cm-rsi"></canvas></div>'+
     '<div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:1px">RSI(14) · 70 overbought · 30 oversold</div>'+
     '<div class="cm-lbl" style="margin-top:12px">Pattern scanner</div><div class="cm-row" id="cm-pat"></div>'+
     '<div class="cm-verdict" id="cm-verdict"></div>'+
+    '<details class="cm-tfhelp"><summary>📐 How the timeframe changes your read</summary><div class="cm-tfhelp-body">'+
+      '<p style="margin:0 0 8px"><b>Bigger timeframe = bigger, slower, more reliable move.</b> The same pattern means different things depending on the chart it forms on:</p>'+
+      '<ul style="margin:0 0 8px;padding-left:18px">'+
+        '<li><b>1M / 3M (short):</b> a quick, smaller move — days to ~2 weeks. Tighter target &amp; stop, more noise, more false breaks. Good for a tactical trade, not a thesis.</li>'+
+        '<li><b>6M / YTD (medium):</b> a swing move over weeks. The measured target is larger and the level matters more — size it like a real position.</li>'+
+        '<li><b>1Y / 5Y (long):</b> a major structural move over months. Slowest to play out but the most significant — these drive the big trend.</li>'+
+      '</ul>'+
+      '<p style="margin:0 0 8px"><b>Confluence is the edge:</b> when the <span style="color:#10b981;font-weight:700">●</span> glow shows the same pattern on several timeframes, that’s the highest-conviction setup — the short frame can time the entry while the longer frame confirms the direction and the bigger target.</p>'+
+      '<p style="margin:0"><b>When they disagree</b> (bullish on 1M, bearish on 6M), the <b>longer</b> timeframe usually wins the bigger picture — trade the shorter one only tactically and keep size small, because you’re fighting the dominant trend.</p>'+
+    '</div></details>'+
     '<div style="font-size:10.5px;color:#9ca3af;margin-top:12px;line-height:1.5">Pattern detection is an automated heuristic over '+sym+'’s price bars — it can miss real patterns or flag noisy ones. A read is a tendency, not a signal. Research only · ~15-min delayed.</div>'+
     '</div>';
   ov.style.display='flex'; azCMRender();
@@ -3295,7 +3324,12 @@ function azCMSetPattern(p){ _azCM.pattern=p; azCMRender(); } window.azCMSetPatte
 function azCMSetType(t){ _azCM.ctype=t; azCMRender(); } window.azCMSetType=azCMSetType;
 function azCMRender(){ const sym=_azCM.sym; if(!sym)return;
   const tfs=azCMTFs(sym), tfHost=document.getElementById('cm-tf');
-  if(tfHost)tfHost.innerHTML=tfs.map(t=>'<button class="cm-chip'+(t===_azCM.tf?' on':'')+'" onclick="azCMSetTF(\''+t+'\')">'+t+'</button>').join('')||'<span style="font-size:12px;color:#9ca3af">No price history captured for this name yet.</span>';
+  // Which timeframes show the SELECTED pattern? (skip the always-on info overlays + 'none')
+  const realPat=['none','trend','sr'].indexOf(_azCM.pattern)<0; const foundTFs={};
+  if(realPat)tfs.forEach(t=>{ try{ const w=azCMWindow(sym,t); if(w.bars.length>=10){ const d=azCMDetect(w.bars,_azCM.pattern); if(d&&d.found)foundTFs[t]=d.conf; } }catch(e){} });
+  _azCM._foundTFs=foundTFs;
+  if(tfHost)tfHost.innerHTML=tfs.map(t=>'<button class="cm-chip'+(t===_azCM.tf?' on':'')+(foundTFs[t]!=null?' cm-found':'')+'" onclick="azCMSetTF(\''+t+'\')"'+(foundTFs[t]!=null?' title="'+_patName(_azCM.pattern)+' detected here ('+foundTFs[t]+'%)"':'')+'>'+t+'</button>').join('')||'<span style="font-size:12px;color:#9ca3af">No price history captured for this name yet.</span>';
+  const tfHint=document.getElementById('cm-tf-hint'); if(tfHint)tfHint.textContent=realPat&&Object.keys(foundTFs).length?'· ● = pattern found':'';
   const tyHost=document.getElementById('cm-type');
   if(tyHost)tyHost.innerHTML=[['line','Line'],['candle','Candles']].map(t=>'<button class="cm-chip'+(t[0]===_azCM.ctype?' on':'')+'" onclick="azCMSetType(\''+t[0]+'\')">'+t[1]+'</button>').join('');
   const pHost=document.getElementById('cm-pat');
@@ -3557,11 +3591,17 @@ function azCMVerdict(W,det){ const host=document.getElementById('cm-verdict'), S
       if(rows)confHtml='<div class="cm-lbl" style="margin-top:11px">Confirmation</div>'+rows; }
     const bt=azCMBacktest(_azCM.sym,_azCM.pattern,det.bias);
     if(bt)btHtml='<div class="cm-note" style="margin-top:9px;padding:9px 11px;background:'+bias+'14;border-radius:9px">🧪 <b>On '+_azCM.sym+'’s own history</b>, this pattern set up <b>'+bt.n+'×</b>; '+bt.horizon+' sessions later it had moved in the expected direction <b style="color:'+(bt.hitRate>=55?'#10b981':bt.hitRate<=45?'#ef4444':'var(--text)')+'">'+bt.hitRate+'%</b> of the time (avg <b style="color:'+(bt.avg>=0?'#10b981':'#ef4444')+'">'+(bt.avg>=0?'+':'')+bt.avg+'%</b>). Small in-sample tendency, not a guarantee.</div>'; }
+  // multi-timeframe confluence (which other timeframes also show this pattern)
+  let cflHtml='';
+  if(!det.info){ const ft=_azCM._foundTFs||{}, order=['1M','3M','6M','YTD','1Y','5Y'], others=order.filter(t=>t!==_azCM.tf&&ft[t]!=null);
+    cflHtml=others.length
+      ? '<div class="cm-note" style="margin-top:9px;padding:9px 11px;background:rgba(16,185,129,0.12);border-radius:9px">📊 <b>Multi-timeframe confluence</b> — also detected on <b>'+others.join(', ')+'</b>. Agreement across timeframes is the higher-conviction signal: a longer frame confirms the direction &amp; the bigger target, while a shorter one can time the entry. Bigger frame = bigger, slower move.</div>'
+      : '<div class="cm-note" style="margin-top:9px;padding:9px 11px;background:rgba(127,127,127,0.08);border-radius:9px">📊 <b>Single-timeframe</b> — only the '+_azCM.tf+' chart shows this right now, so treat it as lower-conviction / tactical until a longer frame agrees. (Open “How the timeframe changes your read” below.)</div>'; }
   host.innerHTML=head+
     '<div class="cm-note" style="opacity:1;font-weight:600">'+det.summary+'</div>'+
     (ptRows?'<div class="cm-lbl" style="margin-top:11px">Key points</div>'+ptRows:'')+
     (lvlRows?'<div class="cm-lbl" style="margin-top:9px">Levels</div>'+lvlRows:'')+
-    confHtml+btHtml+
+    confHtml+btHtml+cflHtml+
     '<div class="cm-note">📘 <b>How to read it:</b> '+det.how+'</div>';
 }
 // Volume / RSI / divergence confirmation for a detected pattern.

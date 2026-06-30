@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v79** (`pf-v79`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v80** (`pf-v80`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -311,8 +311,14 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   (`azPatternRadarOpen`→`azPatternScan`) scans holdings + picks for any pattern and lists hits (tap → opens
   that name's chart with the pattern drawn). All overlays are plain Chart.js datasets (markers/lines as
   `_pts`/named line datasets; candle bars use `grouped:false` so wick/body/volume overlay instead of dodging).
-  Research/education only — reads are tendencies, detection is heuristic and can miss/over-fit. Reads
-  `azSeries`/`azSeriesMonthly`; nothing from the producer changed (pure consumer-side).
+  **Multi-timeframe confluence (v80):** when a pattern is selected, `azCMRender` re-runs the detector across
+  every available timeframe and **glows the timeframe chips** (`.cm-found` — green ● + ring) where it's also
+  found (stashed in `_azCM._foundTFs`); the verdict adds a **confluence note** (which other frames agree, or a
+  single-timeframe/lower-conviction caveat), and a collapsible **"How the timeframe changes your read"**
+  explainer (short=tactical / medium=swing / long=structural; longer frame wins on disagreement) lives in the
+  modal + the `interactive chart` help entry. Research/education only — reads are tendencies, detection is
+  heuristic and can miss/over-fit. Reads `azSeries`/`azSeriesMonthly`; nothing from the producer changed (pure
+  consumer-side).
 - **Markets:** index/risk/sector tiles (YTD/5Y) with a **risk-on/off appetite gauge** synthesized from
   the day moves of equities/credit vs gold/long-bonds; **sector heatmap with a Day ⇄ vs-S&P-YTD
   (relative-strength) toggle** that surfaces leaders/laggards; macro signals incl. a **2s10s yield-curve
