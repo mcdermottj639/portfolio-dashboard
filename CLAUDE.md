@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v85** (`pf-v85`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v86** (`pf-v86`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -271,10 +271,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   are gone, their Entry/Stop/TP1·TP2 (now with target %), the risk-based share-size line, and the hand-off/RH
   buttons all live in the **Recommendation** card so the whole trade plan reads as one unit (`azRec(a,x)` —
   takes `x` for sizing/held); **News Sentiment + Social Pulse merged** into one **🗣️ Sentiment & Buzz** card
-  (news block + retail-buzz block, divider between; help key `sentiment buzz`); the Understanding-This-Analysis
-  **Fundamentals narrative no longer repeats P/E·Fwd P/E·Rev-growth·yield** (Valuation & Catalysts owns those —
-  the line keeps sector + the quality-blend note + a pointer); and **β is shown once** (Indicators), dropped
-  from the setup-gauge subtitle and the Recommendation meta line. No producer/data change — pure consumer
+  (news block + retail-buzz block, divider between; help key `sentiment buzz`); fundamentals
+  **stopped being repeated** in the narrative (Valuation & Catalysts owns P/E·Fwd P/E·Rev-growth·yield, and now
+  the **Sector** tile too); and **β is shown once** (Indicators), dropped
+  from the setup-gauge subtitle and the Recommendation meta line. **Round 2 (v86):** the standalone
+  **📖 Understanding This Analysis** card was retired — its Trend/Momentum-RSI rows just re-stated the Indicators
+  grid + gauge bars; the one teaching blurb that carried weight (**💡 Why this signal** — the plain-English read
+  of the call + dampeners, built as `whyTxt`) now renders **under the Setup gauge**. **🕒 Multi-Timeframe** folded
+  into the **Indicators** card as a compact "Timeframes" line (D/W/M ▲▼ glyphs + alignment). **🧱 Key Levels merged
+  into Scenarios** → one **🎲 Levels & Scenarios** card (support/resistance block above the bull/base/bear table;
+  help key `levels scenarios`). Net Analyze deep dive ≈ 15 cards. No producer/data change — pure consumer
   consolidation; chart cards (Interactive Chart, Chart Pattern Verdict) untouched. **The setup score is no longer technical-only (v75):**
   `analyzeStock()` blends a **fundamentals/quality sub-score** (`_fundScore` — forward P/E, revenue
   growth, PEG, profit margin, analyst-target upside; neutral 50, returns null when <2 inputs so sparse-AV
