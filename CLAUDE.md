@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v86** (`pf-v86`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v87** (`pf-v87`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -280,8 +280,12 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   of the call + dampeners, built as `whyTxt`) now renders **under the Setup gauge**. **🕒 Multi-Timeframe** folded
   into the **Indicators** card as a compact "Timeframes" line (D/W/M ▲▼ glyphs + alignment). **🧱 Key Levels merged
   into Scenarios** → one **🎲 Levels & Scenarios** card (support/resistance block above the bull/base/bear table;
-  help key `levels scenarios`). Net Analyze deep dive ≈ 15 cards. No producer/data change — pure consumer
-  consolidation; chart cards (Interactive Chart, Chart Pattern Verdict) untouched. **The setup score is no longer technical-only (v75):**
+  help key `levels scenarios`). **Round 3 (v87):** the two big chart cards left the Analyze stack — the verbose
+  **🔭 Chart Pattern Verdict** card became a small subtle **🔭 Chart read** pill above the Recommendation, and the
+  **📊 Interactive Chart** launcher card was dropped (chart opens from the pill / the 📊 Chart button by the input;
+  its help moved into the analyzer modal). See the Chart Pattern Verdict entry below for detail. Net Analyze deep
+  dive ≈ 13 cards. All pure consumer-side — no producer/data change; the chart **internals** (detection, modal)
+  are unchanged, only their placement. **The setup score is no longer technical-only (v75):**
   `analyzeStock()` blends a **fundamentals/quality sub-score** (`_fundScore` — forward P/E, revenue
   growth, PEG, profit margin, analyst-target upside; neutral 50, returns null when <2 inputs so sparse-AV
   names fall back to the old technical-only weights) into the setup at **15% weight** (pattern 34 / signal
@@ -340,8 +344,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   collapses every recognized pattern → the timeframes it shows on, for a **compact, non-clickable** summary.
   Surfaced as a compact "Chart read" line near the **top** of the modal (a pill + short agree/diverge tag +
   the grouped recognized-pattern list — phone-friendly; the timeframe row + pattern scanner are grouped
-  together below the chart so the glow stays visible while filtering) and a fuller **🔭 Chart Pattern
-  Verdict** card on the Analyze page (below the Interactive Chart card; help key `chart pattern verdict`).
+  together below the chart so the glow stays visible while filtering). **On the Analyze page (v87)** it's a
+  small, subtle **🔭 Chart read** pill placed **above the Recommendation** — `icon · label · conviction%` + a
+  one-line agree/diverge tag (`azVerdictVsAnalyze().short`) + a 📊 Chart button; `data-help="chart pattern
+  verdict"` keeps the popup. The old verbose **🔭 Chart Pattern Verdict** card AND the **📊 Interactive Chart**
+  launcher card were **removed from the Analyze stack** — the full pattern/driver detail lives in the analyzer
+  modal (`azCMOpen`, opened by the pill, the **📊 Chart** button beside the ticker box, or Pattern Radar), and
+  the `interactive chart` help moved into the modal header (a **?** button → `openHelp('interactive chart')`).
   Research/education only — reads are
   tendencies, detection is heuristic and can miss/over-fit. Reads `azSeries`/`azSeriesMonthly`; nothing from
   the producer changed (pure consumer-side).
