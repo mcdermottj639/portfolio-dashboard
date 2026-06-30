@@ -621,7 +621,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v84'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v85'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2535,6 +2535,12 @@ window.switchTab=switchTab;
       <li><span class="hk">Pattern 34% · Signal 30% · Risk 21% · Fundamentals 15%</span> — the setup combines chart structure, momentum, risk/reward, and a fundamentals/quality sub-score.</li>
       <li>Two <b>confidence dampeners</b> (they don't move the score, only your confidence): an <b>imminent earnings print</b> (≤7 days → gap/IV-crush risk) and a <b>high-VIX regime</b> on a bullish call.</li>
     </ul>
+    <div class="hsub">The whole trade plan lives here</div>
+    <ul>
+      <li><span class="hk">Entry / Stop / Target 1 / Target 2</span> — the four levels that turn the thesis into a trade (entry-to-stop vs entry-to-target is your <b>risk/reward</b>; aim ≥ 2:1). Pick levels when it's a screened name, otherwise computed swing levels.</li>
+      <li><span class="hk">Size</span> — how many shares to risk ≈1% / 2% of your book on the distance to the stop (a tight stop → more shares).</li>
+      <li>The <b>hand-off</b> + Robinhood buttons carry these levels straight into an order ticket — review/confirm before placing.</li>
+    </ul>
     <p>The meta line shows the fundamentals score and any dampeners transparently, so you see exactly what's driving the call. It's a structured read, not advice.</p>` },
   'chart pattern verdict': { tag:'Analyze', t:'Chart Pattern Verdict', h:`
     <p>A <b>second opinion</b> built from price <b>structure alone</b> — completely independent of the recommendation above it (which blends RSI, trend, momentum and fundamentals). This one only reads chart patterns.</p>
@@ -2634,24 +2640,6 @@ window.switchTab=switchTab;
       <li>Labeled <span class="hk">market-implied</span> when built from live option IV (the market's own forecast), or <span class="hk">estimated</span> when using a realized-volatility proxy.</li>
     </ul>
     <p>Use it to sanity-check targets and stops: a target outside the ±1σ band is an aggressive ask.</p>` },
-  'exact trade levels': { tag:'Analyze', t:'Exact Trade Levels', h:`
-    <p>A concrete, ready-to-use plan: where to enter, where to stop out, and where to take profit — the four numbers that turn a thesis into a trade.</p>
-    <div class="hsub">The levels</div>
-    <ul>
-      <li><span class="hk">Entry zone</span> — the price range to buy.</li>
-      <li><span class="hk">Stop</span> — where the idea is invalidated; exit to cap the loss.</li>
-      <li><span class="hk">TP1 / TP2</span> — scale-out targets to lock in gains in stages.</li>
-    </ul>
-    <p>The distance from entry to stop vs entry to target is your <b>risk/reward</b> — aim for ≥ 2:1. These share one source with the Picks levels, so the plan and the cards never disagree.</p>` },
-  'position sizing': { tag:'Analyze', t:'Position Sizing', h:`
-    <p>How <b>many shares</b> to buy — derived from your risk, not a round-number guess. The most overlooked half of a trade plan.</p>
-    <div class="hsub">The method</div>
-    <ul>
-      <li>Risk a fixed slice of the book (≈ <b>1%</b>) on the distance from <b>entry to stop</b>. A tight stop → more shares; a wide stop → fewer.</li>
-      <li>This keeps every loss roughly the same size regardless of the stock's price or volatility.</li>
-      <li>The size is also <b>clamped</b> so no single name breaches the concentration cap.</li>
-    </ul>
-    <p>Good sizing means being right less than half the time and still coming out ahead.</p>` },
   'options play': { tag:'Analyze', t:'Options Play', h:`
     <p>An options expression of this stock's setup — a way to trade the same thesis with defined risk or leverage instead of shares.</p>
     <div class="hsub">Notes</div>
@@ -2668,21 +2656,17 @@ window.switchTab=switchTab;
       <li><span class="hk">Catalysts</span> — earnings, product cycles, or news that could re-rate the stock.</li>
     </ul>
     <p>Valuation tells you the <i>odds</i>; catalysts tell you the <i>timing</i>. A great business at a stretched price can still be a poor near-term entry.</p>` },
-  'news sentiment': { tag:'Analyze', t:'News Sentiment', h:`
-    <p>Recent headlines for this ticker, scored bullish / neutral / bearish, to give qualitative context the numbers miss.</p>
-    <div class="hsub">What to look for</div>
+  'sentiment buzz': { tag:'Analyze', t:'Sentiment & Buzz', h:`
+    <p>Two qualitative context signals in one card — neither feeds the setup score, both add color the numbers miss.</p>
+    <div class="hsub">📰 News</div>
     <ul>
-      <li>A cluster of bullish headlines into a rising price = narrative and momentum agreeing.</li>
-      <li>Bearish news while the stock holds up can signal resilience — or a delayed reaction. Read the actual headlines, not just the color.</li>
+      <li>Recent headlines scored bullish / neutral / bearish. A cluster of bullish headlines into a rising price = narrative and momentum agreeing.</li>
+      <li>Bearish news while the stock holds up can signal resilience — or a delayed reaction. Read the actual headlines, not just the color. Sentiment lags fast-breaking events.</li>
     </ul>
-    <p>Sentiment is a snapshot from research time; it lags fast-breaking events.</p>` },
-  'social pulse': { tag:'Analyze', t:'Social Pulse', h:`
-    <p>Retail <b>buzz</b> for this name from social/Reddit mention data — a measure of attention, not opinion.</p>
-    <div class="hsub">Important nuance</div>
+    <div class="hsub">🗣️ Retail buzz</div>
     <ul>
-      <li>The source has <b>no bull/bear sentiment</b> — buzz is built from <b>mention rank + velocity</b> (how much it's being talked about and how fast that's rising).</li>
-      <li>Rising buzz can precede volatility in <i>either</i> direction — it's a spotlight, not a signal of which way.</li>
-      <li>Most quality large-caps barely register here; a neutral reading just means "not a meme right now."</li>
+      <li>Attention, not opinion — the source has <b>no bull/bear sentiment</b>. Buzz is built from <b>mention rank + velocity</b> (how much it's talked about and how fast that's rising) plus Robinhood popularity.</li>
+      <li>Rising buzz can precede volatility in <i>either</i> direction — a spotlight, not a direction. Most quality large-caps barely register; a neutral reading just means "not a meme right now."</li>
     </ul>` },
   'overlap with your book': { tag:'Analyze', t:'Overlap With Your Book', h:`
     <p>How this ticker relates to what you <b>already own</b> — so you don't accidentally double down on the same bet.</p>
@@ -3856,7 +3840,7 @@ function azSocialRead(a, soc){
 const _whenTxt={bmo:'before open', amc:'after close', pre:'before open', post:'after close'};
 /* The headline call. Prefers the app's own Pick recommendation (with thesis + levels);
    otherwise derives a clear verdict from the technical read. */
-function azRec(a){
+function azRec(a,x){
   const pk=a.pick; let action, color, note;
   if(pk){
     const s=(pk.signal||'BUY').toUpperCase();
@@ -3872,12 +3856,11 @@ function azRec(a){
   const lv=[]; // recommended levels (pick levels if present, else the computed ones)
   if(pk&&pk.entry)lv.push(['Entry',pk.entry,'#6366f1']); else lv.push(['Entry','$'+a.entryLo+'–$'+a.entryHi,'#6366f1']);
   if(pk&&pk.sl)lv.push(['Stop','$'+pk.sl.price+(pk.sl.pct?' ('+pk.sl.pct+')':''),'#ef4444']); else lv.push(['Stop','$'+a.stop,'#ef4444']);
-  if(pk&&pk.tp1)lv.push(['Target 1','$'+pk.tp1.price+(pk.tp1.pct?' ('+pk.tp1.pct+')':''),'#10b981']); else lv.push(['Target 1','$'+a.tp1,'#10b981']);
-  if(pk&&pk.tp2)lv.push(['Target 2','$'+pk.tp2.price+(pk.tp2.pct?' ('+pk.tp2.pct+')':''),'#10b981']); else lv.push(['Target 2','$'+a.tp2,'#10b981']);
+  if(pk&&pk.tp1)lv.push(['Target 1','$'+pk.tp1.price+(pk.tp1.pct?' ('+pk.tp1.pct+')':''),'#10b981']); else lv.push(['Target 1','$'+a.tp1+' ('+(a.tp1>=a.price?'+':'')+((a.tp1/a.price-1)*100).toFixed(1)+'%)','#10b981']);
+  if(pk&&pk.tp2)lv.push(['Target 2','$'+pk.tp2.price+(pk.tp2.pct?' ('+pk.tp2.pct+')':''),'#10b981']); else lv.push(['Target 2','$'+a.tp2+' ('+(a.tp2>=a.price?'+':'')+((a.tp2/a.price-1)*100).toFixed(1)+'%)','#10b981']);
   const meta=[]; const conf=(pk&&pk.confidence!=null)?pk.confidence:a.conf; if(conf!=null)meta.push(conf+'% confidence');
   if(pk&&pk.rr)meta.push('R/R '+pk.rr); if(pk&&pk.timeframe)meta.push(pk.timeframe);
   if(a.fund)meta.push('fundamentals '+a.fund.score+'/100');
-  if(a.beta!=null)meta.push('β '+a.beta.toFixed(2));
   if(a.earnRisk)meta.push('⚠️ earnings in '+a.earnRisk.days+'d');
   if(a.regime)meta.push('🌪 VIX '+a.regime.vix);
   if(a.corrDrag)meta.push('🔗 correlated w/ '+a.corrDrag.sym);
@@ -3886,6 +3869,10 @@ function azRec(a){
     (meta.length?'<div style="font-size:12px;color:var(--text);opacity:.8;margin-top:4px">'+meta.join(' · ')+'</div>':'')+
     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px">'+lv.map(L=>'<div style="background:var(--surface-2);border-radius:9px;padding:8px 10px;border-left:3px solid '+L[2]+'"><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px">'+L[0]+'</div><div style="font-size:14px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+'</div>';
   if(pk&&Array.isArray(pk.thesis)&&pk.thesis.length)h+='<div style="font-size:11px;font-weight:700;color:#9ca3af;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.4px">Why it’s recommended</div><ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:var(--text);opacity:.9">'+pk.thesis.map(t=>'<li style="margin-bottom:4px">'+t+'</li>').join('')+'</ul>';
+  // Position sizing (risk to the stop) — folded in from the old standalone card so the whole trade plan lives here.
+  if(x&&x.sizing)h+='<div style="font-size:12px;line-height:1.55;color:var(--text);opacity:.85;margin-top:12px;padding:9px 11px;background:var(--surface-2);border-radius:9px">📐 <b>Size:</b> risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share) → <b>~'+x.sizing.risk1+' sh</b> = 1% of book · <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div>';
+  // Hand-off + Robinhood deep link (folded in from the old Exact Trade Levels card; uses the canonical computed swing levels).
+  h+='<div style="margin-top:11px">'+chatBtn('az-'+a.sym,eqTradePrompt({sym:a.sym,side:(a.tone==='neg'?'(read is cautious — confirm direction before buying)':'Buy / long'),entry:'$'+a.entryLo+'–$'+a.entryHi,limit:a.entryHi,stop:a.stop,tp1:a.tp1,tp2:a.tp2,qty:((x&&x.sizing)?x.sizing.risk1:null)}))+rhBtn(a.sym)+'</div>';
   h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:10px">'+(pk?'From today’s Picks screen — research, not financial advice.':'Algorithmic read — research, not financial advice.')+'</div></div>';
   return h;
 }
@@ -3918,8 +3905,8 @@ function runAnalysis(sym){
   } else {
     nar.push(['ℹ️ Limited Data', '#9ca3af', 'Not enough price history in this snapshot for a full technical read on '+sym+'. Showing price + fundamentals; full TA appears once it has daily history (holdings & picks get it on the next run).']);
   }
-  if(a.sector||a.pe||a.revGrowth!=null||a.fund){ const _fb=[a.sector?'Sector: '+titleCase(a.sector):null, a.pe?'P/E '+(+a.pe).toFixed(1):null, a.fwdPE?'Fwd P/E '+(+a.fwdPE).toFixed(1):null, a.revGrowth!=null?'Rev growth '+(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%':null, a.divYield?'Yield '+a.divYield.toFixed(2)+'%':null].filter(Boolean).join(' · ')||'—';
-    nar.push(['🏛️ Fundamentals'+(a.fund?' · '+a.fund.score+'/100':''), '#6366f1', _fb+(a.fund?' — quality blended into the setup score above ('+a.fund.n+' factor'+(a.fund.n===1?'':'s')+', 15% weight)':'')]); }
+  if(a.sector||a.fund){ const _fb=a.sector?'Sector: '+titleCase(a.sector)+'. ':'';
+    nar.push(['🏛️ Fundamentals'+(a.fund?' · '+a.fund.score+'/100':''), '#6366f1', _fb+(a.fund?'Quality blended into the setup score above ('+a.fund.n+' factor'+(a.fund.n===1?'':'s')+', 15% weight). ':'')+'Full valuation — P/E, growth, analyst target — in the Valuation & Catalysts card below.']); }
   const x=azExtra(a);
   const ivInfo=azIV(a,x), liveOpt=azLiveOptions(sym);
   const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a,ivInfo):null, oplay=a.hasTA?azOptionPlay(a,x,ivInfo):null;
@@ -3929,9 +3916,9 @@ function runAnalysis(sym){
   const tg=a.tone==='pos'?'▲':a.tone==='neg'?'▼':'■'; // glyph so the call reads without relying on colour
   el.innerHTML=
     '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
-    azRec(a)+
+    azRec(a,x)+
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
-      (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely')+(a.beta!=null?' · β '+a.beta.toFixed(2):''))+'</div>':'')+'</div>'+
+      (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>':'')+'</div>'+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Interactive Chart</span></div><div style="font-size:12.5px;line-height:1.5;color:var(--text);opacity:.85;margin-bottom:11px">Full price chart with switchable timeframes, candlesticks, a volume + RSI panel, and a pattern scanner — head &amp; shoulders, cup &amp; handle, double bottom, flags, triangles, wedges, trendlines &amp; support/resistance.</div><button class="az-btn" style="width:100%" onclick="azCMOpen(\''+a.sym+'\')">📊 Open chart &amp; pattern analyzer</button></div>':'')+
     (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
       return '<div class="card" style="border-left:4px solid '+v.color+'"><div class="card-title"><span>🔭 Chart Pattern Verdict <span class="card-hint">price structure · independent of the call above</span></span></div>'+
@@ -3949,27 +3936,33 @@ function runAnalysis(sym){
     (mtf?'<div class="card"><div class="card-title"><span>🕒 Multi-Timeframe</span></div>'+mtf.rows.map(o=>'<div class="az-level"><div><div style="font-size:13px;font-weight:700">'+o.tf+'</div><div style="font-size:11px;color:#9ca3af">'+o.basis+'</div></div><div style="font-size:14px;font-weight:800;color:'+(o.up===true?'#10b981':o.up===false?'#ef4444':'#9ca3af')+'">'+(o.up===true?'▲ Up':o.up===false?'▼ Down':'– Flat')+'</div></div>').join('')+'<div style="font-size:12.5px;font-weight:700;color:'+mtf.align.c+';margin-top:6px">'+mtf.align.t+'</div></div>':'')+
     (((x.support&&x.support.length)||(x.resistance&&x.resistance.length))?'<div class="card"><div class="card-title"><span>🧱 Key Levels</span></div><div style="font-size:12.5px;line-height:1.8"><span style="color:#10b981;font-weight:700">Support</span> '+(x.support&&x.support.length?x.support.map(v=>'$'+v).join(' · '):'—')+'<br><span style="color:#ef4444;font-weight:700">Resistance</span> '+(x.resistance&&x.resistance.length?x.resistance.map(v=>'$'+v).join(' · '):'—')+'</div></div>':'')+
     (scen?'<div class="card"><div class="card-title"><span>🎲 Scenarios <span class="card-hint">model-weighted, ~'+'next leg</span></span></div><table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div>'+(scen.em?'<div style="font-size:12px;margin-top:7px;padding:8px 10px;background:var(--surface-2);border-radius:8px;line-height:1.5">Implied <b>±1σ</b> move (~'+scen.em.dte+'d): <b>±'+scen.em.pct+'%</b> → <b>$'+scen.em.lo+'</b> – <b>$'+scen.em.hi+'</b> <span style="color:#9ca3af">('+(scen.em.src==='market'?'market-implied · IV '+scen.em.iv+'%':'est. from realized vol · ~'+scen.em.iv+'%')+')</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:4px">Case <b>odds</b> are a heuristic from the setup score, trend &amp; RSI (not market-implied); the <b>±1σ band</b> is '+(scen.em&&scen.em.src==='market'?'from live option IV':'a realized-vol estimate')+'.</div></div>':'')+
-    '<div class="card"><div class="card-title"><span>🎯 Exact Trade Levels <span class="card-hint">suggested · not advice</span></span></div>'+
-      [['Entry Zone','$'+a.entryLo+' – $'+a.entryHi,'#6366f1','Suggested entry area'],['Stop Loss','$'+a.stop,'#ef4444','Exit if price closes below'],['Target 1','$'+a.tp1,'#10b981','First target ('+((a.tp1/a.price-1)*100).toFixed(1)+'%)'],['Target 2','$'+a.tp2,'#10b981','Extended ('+((a.tp2/a.price-1)*100).toFixed(1)+'%)']].map(L=>'<div class="az-level" style="border-left:3px solid '+L[2]+'"><div><div style="font-size:13px;font-weight:700">'+L[0]+'</div><div style="font-size:11px;color:#9ca3af">'+L[3]+'</div></div><div style="font-size:15px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+
-      chatBtn('az-'+a.sym,eqTradePrompt({sym:a.sym,side:(a.tone==='neg'?'(read is cautious — confirm direction before buying)':'Buy / long'),entry:'$'+a.entryLo+'–$'+a.entryHi,limit:a.entryHi,stop:a.stop,tp1:a.tp1,tp2:a.tp2,qty:(x.sizing?x.sizing.risk1:null)}))+rhBtn(a.sym)+'</div>'+
-    (x.sizing?'<div class="card"><div class="card-title"><span>📐 Position Sizing <span class="card-hint">risk to the stop</span></span></div><div style="font-size:12.5px;line-height:1.6">Risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share): <b>~'+x.sizing.risk1+' sh</b> = 1% of your book, <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div></div>':'')+
     (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
       oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
       oplay.kind==='covered'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#6366f1">Income — covered call.</b> Against your '+(x.held?fmt(x.held.qty,0)+' sh':'shares')+', sell the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d) for ~<b>$'+oplay.income+'</b> ('+oplay.annYield+'% annualized). Caps upside at +'+oplay.cap+'%. Est. IV ~'+oplay.iv+'%.</div>':
       '<div style="font-size:12.5px;line-height:1.6"><b style="color:#9ca3af">No clean options play.</b> The read is cautious/down — wait for a base or trend turn rather than buying calls into weakness. Earliest sensible monthly expiry if you do define risk: '+oplay.exp+'.</div>'
     )+(liveOpt?'<div style="margin-top:10px;padding:9px 11px;background:var(--surface-2);border-radius:9px;border-left:3px solid #6366f1;font-size:12px;line-height:1.5">📌 You already hold <b>'+liveOpt.length+'</b> live '+a.sym+' contract'+(liveOpt.length>1?'s':'')+' ('+liveOpt.map(p=>(p.side||'').toUpperCase()+' '+(p.type||'').toUpperCase()+' $'+p.strike).slice(0,3).join(' · ')+') with real greeks &amp; IV — those beat this estimate. <span class="az-link" onclick="switchTab(\'options\')" style="color:#6366f1;font-weight:700">Open Options →</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Estimated premium (no live chain) — confirm the actual bid/ask &amp; OI before trading. Not advice.</div></div>':'')+
     ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
-    (news&&news.label?'<div class="card"><div class="card-title"><span>📰 News Sentiment <span class="card-hint">'+(news.n||0)+' recent</span></span></div><div style="font-size:13.5px;font-weight:800;color:'+(news.score>=0.15?'#10b981':news.score<=-0.15?'#ef4444':'#9ca3af')+'">'+news.label+(news.score!=null?' ('+(news.score>=0?'+':'')+(+news.score).toFixed(2)+')':'')+'</div>'+(Array.isArray(news.recent)&&news.recent.length?'<div style="margin-top:8px">'+news.recent.slice(0,3).map(h=>'<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-bottom:5px;line-height:1.4">• '+(h.url?'<a href="'+h.url+'" target="_blank" rel="noopener" style="color:inherit">'+h.title+'</a>':h.title)+(h.sentiment?' <span style="color:#9ca3af">('+h.sentiment+')</span>':'')+'</div>').join('')+'</div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Aggregated headline sentiment — context, not a signal.</div></div>':'')+
-    (socRead&&(socRead.aw||socRead.rhR!=null)?'<div class="card" style="border-left:4px solid '+socRead.color+'"><div class="card-title"><span>🗣️ Social Pulse <span class="card-hint">retail buzz · ApeWisdom + Robinhood</span></span></div>'+
-      '<div style="font-size:14px;font-weight:800;color:'+socRead.color+'">'+socRead.level+'</div>'+
-      '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin-top:10px">'+
-        [socRead.aw&&socRead.aw.rank!=null?['Reddit rank','#'+socRead.aw.rank]:null,
-         socRead.aw&&socRead.aw.mentions!=null?['Mentions','~'+fmt(socRead.aw.mentions,0)]:null,
-         socRead.rhR!=null?['RH popularity','#'+socRead.rhR]:null,
-         socRead.sent!=null?['Crowd mood',(socRead.sent>=0?'+':'')+(+socRead.sent).toFixed(2)]:null].filter(Boolean)
-         .map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>'+
-      '<div style="margin-top:10px">'+socRead.lines.map(l=>'<div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9;margin-bottom:5px">'+l+'</div>').join('')+'</div>'+
-      '<div style="font-size:10.5px;color:#9ca3af;margin-top:6px">Retail-attention signal (social mentions + Robinhood popularity) — context, deliberately not part of the setup score. Crowded names cut both ways.</div></div>':'')+
+    (function(){  // 🗣️ Sentiment & Buzz — news headlines + retail buzz merged into one card (v85; was two stacked cards)
+      const hasN=news&&news.label, hasS=socRead&&(socRead.aw||socRead.rhR!=null);
+      if(!hasN&&!hasS)return '';
+      let inner='';
+      if(hasN)inner+='<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">📰 News <span style="font-weight:400;text-transform:none">· '+(news.n||0)+' recent</span></div>'+
+        '<div style="font-size:13.5px;font-weight:800;color:'+(news.score>=0.15?'#10b981':news.score<=-0.15?'#ef4444':'#9ca3af')+'">'+news.label+(news.score!=null?' ('+(news.score>=0?'+':'')+(+news.score).toFixed(2)+')':'')+'</div>'+
+        (Array.isArray(news.recent)&&news.recent.length?'<div style="margin-top:8px">'+news.recent.slice(0,3).map(h=>'<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-bottom:5px;line-height:1.4">• '+(h.url?'<a href="'+h.url+'" target="_blank" rel="noopener" style="color:inherit">'+h.title+'</a>':h.title)+(h.sentiment?' <span style="color:#9ca3af">('+h.sentiment+')</span>':'')+'</div>').join('')+'</div>':'')+
+        '<div style="font-size:11px;color:#9ca3af;margin-top:6px">Aggregated headline sentiment — context, not a signal.</div>';
+      if(hasS){ if(hasN)inner+='<div style="height:1px;background:var(--border);opacity:.6;margin:13px 0"></div>';
+        inner+='<div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">🗣️ Retail buzz <span style="font-weight:400;text-transform:none">· ApeWisdom + Robinhood</span></div>'+
+          '<div style="font-size:14px;font-weight:800;color:'+socRead.color+'">'+socRead.level+'</div>'+
+          '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin-top:10px">'+
+            [socRead.aw&&socRead.aw.rank!=null?['Reddit rank','#'+socRead.aw.rank]:null,
+             socRead.aw&&socRead.aw.mentions!=null?['Mentions','~'+fmt(socRead.aw.mentions,0)]:null,
+             socRead.rhR!=null?['RH popularity','#'+socRead.rhR]:null,
+             socRead.sent!=null?['Crowd mood',(socRead.sent>=0?'+':'')+(+socRead.sent).toFixed(2)]:null].filter(Boolean)
+             .map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>'+
+          '<div style="margin-top:10px">'+socRead.lines.map(l=>'<div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9;margin-bottom:5px">'+l+'</div>').join('')+'</div>'+
+          '<div style="font-size:10.5px;color:#9ca3af;margin-top:6px">Retail-attention signal (mentions + Robinhood popularity) — context, deliberately not part of the setup score. Crowded names cut both ways.</div>'; }
+      return '<div class="card" style="border-left:4px solid '+(hasS?socRead.color:'#6366f1')+'"><div class="card-title"><span>🗣️ Sentiment &amp; Buzz <span class="card-hint">news + retail</span></span></div>'+inner+'</div>';
+    })()+
     (corr?'<div class="card"><div class="card-title"><span>🔗 Overlap With Your Book <span class="card-hint">return correlation</span></span></div><div style="font-size:12.5px;line-height:1.9">'+corr.map(c=>'<div style="display:flex;justify-content:space-between"><span><b>'+c.sym+'</b> <span style="color:#9ca3af">('+fmt(c.pct,1)+'% of book)</span></span><span style="font-weight:800;color:'+(c.r>=0.7?'#ef4444':c.r>=0.4?'#f59e0b':'#10b981')+'">'+(c.r>=0?'+':'')+c.r.toFixed(2)+' <span style="font-size:10px;font-weight:700;opacity:.85">'+(c.r>=0.7?'tight':c.r>=0.4?'moderate':'loose')+'</span></span></div>').join('')+'</div>'+(corr[0].r>=0.7?'<div style="font-size:11px;color:#ef4444;margin-top:6px">Moves closely with '+corr[0].sym+' — adding '+a.sym+' doubles down on the same risk.</div>':'<div style="font-size:11px;color:#9ca3af;margin-top:6px">+1 = move together · 0 = independent · −1 = opposite.</div>')+'</div>':'')+
     '<div class="card"><div class="card-title"><span>⚖️ Compare <span class="card-hint">side-by-side vs another ticker</span></span></div><div class="az-search"><input id="az-cmp-input" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Compare '+a.sym+' vs… e.g. '+(a.sym==='NVDA'?'AMD':'NVDA')+'" onkeydown="if(event.key===\'Enter\')azCmpGo()"><button class="az-btn" onclick="azCmpGo()">Compare</button></div><div id="az-compare"></div></div>'+
     '<div class="card" style="border-left:4px solid #ef4444"><div class="card-title"><span>⚠️ When This Analysis Is Wrong</span></div><div style="font-size:12.5px;line-height:1.5"><b style="color:#ef4444">Price invalidation:</b> this read is invalid if '+a.sym+' breaks below <b>$'+a.invalid+'</b> (loss of the stop / recent support). '+(a.rsi!=null&&a.rsi>78?'RSI is already overbought — chasing here adds risk. ':'')+'Manage size and honor the stop.</div></div>'+
