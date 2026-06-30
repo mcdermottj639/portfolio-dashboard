@@ -96,7 +96,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v77** (`pf-v77`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v78** (`pf-v78`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -288,7 +288,19 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   name; **limited-data** tickers get an explicit "locked until next run" card. Colour-coded signals
   carry redundant **▲/▼/■ glyphs + text labels** (a11y) and the setup gauge has an `aria-label`.
   Last-analyzed ticker and the compare ticker persist via `localStorage`; `azExtra`/`azCorr` are
-  memoized per snapshot (`data.generatedAt`).
+  memoized per snapshot (`data.generatedAt`). **Chart Analyzer (v78):** a **📊 Chart** button beside the
+  Analyze input opens a large, full-screen **`azCMOpen()`** modal — a single big price chart with
+  **switchable timeframes** (1M/3M/6M/YTD from the YTD daily bars; 1Y/5Y from `hist.month`) that starts as a
+  Price-&-Levels-style view (price + SMA20/50 + volume) and adds a **pattern scanner**: tap a chip to run
+  client-side detection for **Head & Shoulders (+ Inverse), Cup with Handle, Double Bottom, or Bull Flag**.
+  Detection is a self-contained heuristic module (no deps beyond Chart.js): **`azCMPivots`** is an adaptive
+  **ZigZag** swing-pivot detector (≈4× median-bar-move reversal threshold, clamped 2.5–8%), and each pattern
+  matcher (`azCMHS`/`azCMCup`/`azCMDouble`/`azCMFlag`) returns a `{found,conf,points,lines,target,…}` shape
+  that **`azCMDrawChart`** overlays on the chart (swing-point dots, neckline/rim line, measured-move target)
+  and **`azCMVerdict`** renders as a teaching panel (confidence %, key points w/ dates, levels, how-to-read).
+  All overlays are drawn as plain Chart.js datasets (no annotation plugin). Research/education only — reads
+  are tendencies, detection is heuristic and can miss/over-fit. Reads `azSeries`/`azSeriesMonthly`; nothing
+  from the producer changed (pure consumer-side).
 - **Markets:** index/risk/sector tiles (YTD/5Y) with a **risk-on/off appetite gauge** synthesized from
   the day moves of equities/credit vs gold/long-bonds; **sector heatmap with a Day ⇄ vs-S&P-YTD
   (relative-strength) toggle** that surfaces leaders/laggards; macro signals incl. a **2s10s yield-curve
