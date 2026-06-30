@@ -621,7 +621,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v86'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v87'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -2556,9 +2556,9 @@ window.switchTab=switchTab;
       <li><span class="hk">Diverges</span> → a clean pattern is fighting the blended/fundamental read; size down or wait for them to align.</li>
       <li><span class="hk">No structure</span> → nothing to confirm or contradict; the Analyze call stands alone.</li>
     </ul>
-    <p>Heuristic and for research only.</p>` },
+    <p>This pill is the short version — tap <b>📊 Chart</b> to open the analyzer, where the patterns driving it are drawn on the chart with their timeframes, confirmation and hit-rates. Heuristic and for research only.</p>` },
   'interactive chart': { tag:'Analyze', t:'Interactive Chart', h:`
-    <p>Opens the full <b>Chart Analyzer</b> — one large price chart you can actually work with.</p>
+    <p>The full <b>Chart Analyzer</b> — one large price chart you can actually work with (open it with the <b>📊 Chart</b> button by the ticker box or the Chart-read pill).</p>
     <div class="hsub">What it does</div>
     <ul>
       <li><span class="hk">Timeframes</span> — 1M / 3M / 6M / YTD (daily) and 1Y / 5Y (monthly). Moving averages are computed over full history so they span the whole view.</li>
@@ -3291,7 +3291,7 @@ function azCMOpen(sym){ if(!sym)return; const tfs=azCMTFs(sym);
   ov.innerHTML='<div class="cm-sheet" role="dialog" aria-label="Chart analyzer for '+sym+'">'+
     '<div class="cm-head"><div><div style="font-size:20px;font-weight:800">'+sym+' <span style="font-size:13px;font-weight:600;color:#9ca3af">· Chart Analyzer</span></div>'+
       (px!=null?'<div style="font-size:14px;font-weight:700;margin-top:2px">$'+px.toFixed(2)+'</div>':'')+'</div>'+
-      '<button class="cm-x" onclick="azCMClose()" aria-label="Close">✕</button></div>'+
+      '<div style="display:flex;gap:8px;align-items:center;flex:none"><button class="cm-x" onclick="if(window.openHelp)openHelp(\'interactive chart\')" aria-label="What is this chart?" title="What is this chart?" style="font-weight:800">?</button><button class="cm-x" onclick="azCMClose()" aria-label="Close">✕</button></div></div>'+
     '<div id="cm-overall"></div>'+
     '<div class="cm-canvas-wrap" style="margin-top:10px"><canvas id="cm-canvas"></canvas></div>'+
     '<div class="cm-rsi-wrap" id="cm-rsi-wrap" style="position:relative;width:100%;height:74px;margin-top:6px"><canvas id="cm-rsi"></canvas></div>'+
@@ -3896,18 +3896,19 @@ function runAnalysis(sym){
   const tg=a.tone==='pos'?'▲':a.tone==='neg'?'▼':'■'; // glyph so the call reads without relying on colour
   el.innerHTML=
     '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
+    // 🔭 Chart read — small, subtle verdict pill above the Recommendation (v87). Full detail + the interactive
+    // chart live in the analyzer modal (tap 📊 Chart). Keeps the "chart pattern verdict" help popup via data-help.
+    (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
+      return '<div class="card" style="border-left:4px solid '+v.color+';padding:11px 14px"><div class="card-title" data-help="chart pattern verdict" style="margin-bottom:7px"><span style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">🔭 Chart read <span style="text-transform:none;letter-spacing:0;font-weight:400">· price structure</span></span></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">'+
+          '<div style="min-width:0"><div style="font-size:15px;font-weight:800;color:'+v.color+'">'+v.icon+' '+v.label+(dirl?' · '+v.conf+'%':'')+'</div>'+
+          '<div style="font-size:11px;color:#9ca3af;margin-top:2px">'+cmp.icon+' '+cmp.short+'</div></div>'+
+          '<button class="az-btn az-btn-ghost" style="padding:6px 11px;font-size:12px;white-space:nowrap;flex:none" onclick="azCMOpen(\''+a.sym+'\')">📊 Chart</button>'+
+        '</div></div>'; })():'')+
     azRec(a,x)+
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
         '<div style="text-align:left;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:10px;border-left:3px solid '+tc+'"><div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">💡 Why this signal</div><div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9">'+whyTxt+'</div></div>':'')+'</div>'+
-    (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Interactive Chart</span></div><div style="font-size:12.5px;line-height:1.5;color:var(--text);opacity:.85;margin-bottom:11px">Full price chart with switchable timeframes, candlesticks, a volume + RSI panel, and a pattern scanner — head &amp; shoulders, cup &amp; handle, double bottom, flags, triangles, wedges, trendlines &amp; support/resistance.</div><button class="az-btn" style="width:100%" onclick="azCMOpen(\''+a.sym+'\')">📊 Open chart &amp; pattern analyzer</button></div>':'')+
-    (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
-      return '<div class="card" style="border-left:4px solid '+v.color+'"><div class="card-title"><span>🔭 Chart Pattern Verdict <span class="card-hint">price structure · independent of the call above</span></span></div>'+
-        '<div style="font-size:17px;font-weight:800;color:'+v.color+'">'+v.icon+' '+v.label+(dirl?' <span style="font-size:13px;font-weight:700">· '+v.conf+'% conviction</span>':'')+'</div>'+
-        (v.drivers.length?'<div style="font-size:12px;color:#9ca3af;margin-top:5px">Driven by '+v.drivers.map(d=>(d.bias==='bullish'?'▲':'▼')+' '+d.name+' ('+d.tf+(d.bt!=null?', '+d.bt+'% hist':'')+')').join(' · ')+'</div>':'<div style="font-size:12px;color:#9ca3af;margin-top:5px">No clean classic pattern across timeframes right now.</div>')+
-        '<div style="margin-top:11px;padding:10px 12px;background:var(--surface-2);border-radius:10px;font-size:12.5px;line-height:1.5;border-left:3px solid '+cmp.color+'"><b style="color:'+cmp.color+'">'+cmp.icon+'</b> '+cmp.txt+'</div>'+
-        '<button class="az-btn" style="width:100%;margin-top:11px" onclick="azCMOpen(\''+a.sym+'\')">📊 Open chart &amp; pattern analyzer</button>'+
-        '<div style="font-size:10.5px;color:#9ca3af;margin-top:8px;line-height:1.5">A second opinion from chart structure alone — heuristic pattern detection across timeframes, weighted by confidence, volume/RSI confirmation &amp; each pattern’s own historical hit-rate. Research only.</div></div>'; })():'')+
     (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
     (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     (earn?'<div class="card" style="border-left:4px solid '+(earn.days>=0&&earn.days<=10?'#f59e0b':'#6366f1')+'"><div class="card-title"><span>📅 Earnings</span></div><div style="font-size:12.5px;line-height:1.6">'+(earn.days<0?('Last reported '+(-earn.days)+'d ago ('+earn.date+').'):earn.days===0?('Reports <b>today</b> ('+earn.date+')'+(earn.when&&_whenTxt[earn.when]?' '+_whenTxt[earn.when]:'')+'.'):('Next earnings in <b>'+earn.days+' days</b> — '+earn.date+(earn.when&&_whenTxt[earn.when]?', '+_whenTxt[earn.when]:'')+'.'))+(earn.eps!=null?' Est. EPS $'+earn.eps+'.':'')+(earn.days>=0&&earn.days<=10?' <b style="color:#f59e0b">Elevated IV / gap risk into the print — size accordingly.</b>':'')+'</div></div>':'')+
