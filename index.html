@@ -229,6 +229,7 @@ html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
 .cm-tfhelp .cm-tfhelp-body li { margin-bottom: 6px; }
 .cm-lbl { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9ca3af; margin: 2px 0 5px; }
 .cm-canvas-wrap { position: relative; width: 100%; height: 330px; background: var(--surface-2); border-radius: 10px; }
+@media (max-width:760px){ .cm-canvas-wrap { height: 250px; } .cm-rsi-wrap { height: 60px !important; } .cm-sheet { padding: 13px; } }
 .cm-verdict { margin-top: 12px; }
 .cm-banner { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border-radius: 11px; font-weight: 800; font-size: 14px; }
 .cm-pt { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 10px; background: rgba(127,127,127,0.08); border-radius: 8px; margin-bottom: 5px; font-size: 12.5px; }
@@ -620,7 +621,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v83'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v84'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
@@ -3319,12 +3320,12 @@ function azCMOpen(sym){ if(!sym)return; const tfs=azCMTFs(sym);
     '<div class="cm-head"><div><div style="font-size:20px;font-weight:800">'+sym+' <span style="font-size:13px;font-weight:600;color:#9ca3af">· Chart Analyzer</span></div>'+
       (px!=null?'<div style="font-size:14px;font-weight:700;margin-top:2px">$'+px.toFixed(2)+'</div>':'')+'</div>'+
       '<button class="cm-x" onclick="azCMClose()" aria-label="Close">✕</button></div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:0"><div class="cm-lbl">Timeframe <span id="cm-tf-hint" style="text-transform:none;letter-spacing:0;color:#10b981;font-weight:700"></span></div><div class="cm-row" id="cm-tf" style="margin-bottom:0"></div></div>'+
-      '<div id="cm-type" class="cm-row" style="margin-bottom:0"></div></div>'+
+    '<div id="cm-overall"></div>'+
     '<div class="cm-canvas-wrap" style="margin-top:10px"><canvas id="cm-canvas"></canvas></div>'+
     '<div class="cm-rsi-wrap" id="cm-rsi-wrap" style="position:relative;width:100%;height:74px;margin-top:6px"><canvas id="cm-rsi"></canvas></div>'+
     '<div style="font-size:10px;color:#9ca3af;text-align:center;margin-top:1px">RSI(14) · 70 overbought · 30 oversold</div>'+
-    '<div class="cm-lbl" style="margin-top:12px">Overall chart read <span style="text-transform:none;letter-spacing:0;color:#9ca3af;font-weight:600">· structure only, independent of the Analyze call</span></div><div id="cm-overall"></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-top:12px"><div style="flex:1;min-width:0"><div class="cm-lbl">Timeframe <span id="cm-tf-hint" style="text-transform:none;letter-spacing:0;color:#10b981;font-weight:700"></span></div><div class="cm-row" id="cm-tf" style="margin-bottom:0"></div></div>'+
+      '<div id="cm-type" class="cm-row" style="margin-bottom:0"></div></div>'+
     '<div class="cm-lbl" style="margin-top:12px">Pattern scanner</div><div class="cm-row" id="cm-pat"></div>'+
     '<div class="cm-verdict" id="cm-verdict"></div>'+
     '<details class="cm-tfhelp"><summary>📐 How the timeframe changes your read</summary><div class="cm-tfhelp-body">'+
@@ -3371,12 +3372,13 @@ function azCMRender(){ const sym=_azCM.sym; if(!sym)return;
   if(tyHost)tyHost.innerHTML=[['line','Line'],['candle','Candles']].map(t=>'<button class="cm-chip'+(t[0]===_azCM.ctype?' on':'')+'" onclick="azCMSetType(\''+t[0]+'\')">'+t[1]+'</button>').join('');
   const pHost=document.getElementById('cm-pat');
   if(pHost)pHost.innerHTML=_azCMPats.map(p=>'<button class="cm-chip'+(p[0]===_azCM.pattern?' on':'')+'" onclick="azCMSetPattern(\''+p[0]+'\')">'+p[1]+'</button>').join('');
-  // Overall structural verdict (independent of the Analyze call) + how it lines up against it.
+  // Overall structural verdict (compact, non-clickable) — independent of the Analyze call.
   const ovHost=document.getElementById('cm-overall');
   if(ovHost){ const v=azChartVerdict(sym); const dirl=(v.dir==='bullish'||v.dir==='bearish');
-    let h='<div class="cm-banner" style="background:'+v.color+'1f;color:'+v.color+'"><span>'+v.icon+'</span><span>'+v.label+(dirl?' <span style="font-weight:700">· '+v.conf+'% conviction</span>':'')+'</span></div>';
-    try{ const a=analyzeStock(sym); if(a){ const cmp=azVerdictVsAnalyze(v,a.tone); h+='<div class="cm-note" style="margin-top:7px"><b style="color:'+cmp.color+'">'+cmp.icon+'</b> '+cmp.txt+'</div>'; } }catch(e){}
-    if(v.drivers.length)h+='<div class="cm-row" style="margin-top:8px">'+v.drivers.map(d=>'<button class="cm-chip" onclick="azCMGoDriver(\''+d.tf+'\',\''+d.pat+'\')" title="Show this on the chart">'+(d.bias==='bullish'?'▲':'▼')+' '+d.name+' · '+d.tf+'</button>').join('')+'</div>';
+    let tag=''; try{ const a=analyzeStock(sym); if(a){ const cmp=azVerdictVsAnalyze(v,a.tone); tag='<span style="font-size:11px;font-weight:700;color:'+cmp.color+'">'+cmp.icon+' '+cmp.short+'</span>'; } }catch(e){}
+    let h='<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span style="font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#9ca3af">Chart read</span>'+
+      '<span style="padding:2px 9px;border-radius:999px;font-size:12px;font-weight:800;background:'+v.color+'1f;color:'+v.color+'">'+v.icon+' '+v.label.replace(' structure','')+(dirl?' · '+v.conf+'%':'')+'</span>'+tag+'</div>';
+    if(v.groups.length)h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:5px;line-height:1.5">'+v.groups.map(g=>(g.bias==='bullish'?'▲':'▼')+' '+g.name+' <span style="opacity:.75">'+g.tfs.join('·')+'</span>').join('   ')+'</div>';
     ovHost.innerHTML=h; }
   const W=azCMWindow(sym,_azCM.tf), S=W.bars;
   const det=(_azCM.pattern!=='none'&&S.length>=10)?azCMDetect(S,_azCM.pattern):null;
@@ -3697,16 +3699,19 @@ function _azChartVerdictRaw(sym){
     if(lop<0.22){ dir='mixed'; conf=Math.round(45*ev); }
     else { dir=net>0?'bullish':'bearish'; conf=Math.round(100*lop*(0.55+0.45*ev)); } }
   const meta={ none:{label:'No clear pattern structure',color:'#9ca3af',icon:'➖'}, mixed:{label:'Mixed / conflicting structure',color:'#f59e0b',icon:'⚖️'}, bullish:{label:'Bullish structure',color:'#10b981',icon:'▲'}, bearish:{label:'Bearish structure',color:'#ef4444',icon:'▼'} }[dir];
-  return { sym, dir, conf:Math.max(0,Math.min(100,conf)), bull:+bull.toFixed(2), bear:+bear.toFixed(2), nPat:drivers.length, drivers:drivers.slice(0,4), label:meta.label, color:meta.color, icon:meta.icon }; }
+  // group every recognized pattern by name → the timeframes it shows on (for a compact, non-clickable summary)
+  const tfOrder=['1M','3M','6M','YTD','1Y','5Y'], gmap={};
+  drivers.forEach(d=>{ const g=gmap[d.pat]||(gmap[d.pat]={name:d.name,bias:d.bias,tfs:[],conf:0}); if(g.tfs.indexOf(d.tf)<0)g.tfs.push(d.tf); g.conf=Math.max(g.conf,d.conf); });
+  const groups=Object.keys(gmap).map(k=>{ const g=gmap[k]; g.tfs.sort((a,b)=>tfOrder.indexOf(a)-tfOrder.indexOf(b)); return g; }).sort((a,b)=>b.conf-a.conf);
+  return { sym, dir, conf:Math.max(0,Math.min(100,conf)), bull:+bull.toFixed(2), bear:+bear.toFixed(2), nPat:drivers.length, drivers:drivers.slice(0,4), groups, label:meta.label, color:meta.color, icon:meta.icon }; }
 // How the structural verdict lines up against analyzeStock's tone — the agree/diverge read is the point.
 function azVerdictVsAnalyze(v,tone){ const vb=v.dir==='bullish', vr=v.dir==='bearish';
-  if(v.dir==='none')return { icon:'➖', color:'#9ca3af', txt:'No clean chart pattern right now — nothing structural to confirm or contradict the call above; it stands on its own.' };
-  if(v.dir==='mixed')return { icon:'⚖️', color:'#f59e0b', txt:'Conflicting patterns across timeframes — no clean structural edge. Defer to the Analyze call and wait for the chart to resolve.' };
+  if(v.dir==='none')return { icon:'➖', color:'#9ca3af', short:'No structure', txt:'No clean chart pattern right now — nothing structural to confirm or contradict the call above; it stands on its own.' };
+  if(v.dir==='mixed')return { icon:'⚖️', color:'#f59e0b', short:'Mixed — defer to Analyze', txt:'Conflicting patterns across timeframes — no clean structural edge. Defer to the Analyze call and wait for the chart to resolve.' };
   const tonePos=tone==='pos', toneNeg=tone==='neg';
-  if((vb&&tonePos)||(vr&&toneNeg))return { icon:'✅', color:'#10b981', txt:'Agrees with the Analyze recommendation (both '+(vb?'bullish':'bearish')+') — two independent reads pointing the same way is higher conviction.' };
-  if((vb&&toneNeg)||(vr&&tonePos))return { icon:'⚠️', color:'#ef4444', txt:'Diverges from the Analyze call — the chart structure is '+(vb?'bullish':'bearish')+' but the blended setup/fundamental read is '+(vb?'cautious':'constructive')+'. A clean pattern fighting the other read means size down or wait for them to align.' };
-  return { icon:'•', color:v.color, txt:'The chart leans '+(vb?'bullish':'bearish')+' while the Analyze call is neutral — here the pattern is the more directional read; treat it as the tiebreaker, but confirm on the breakout.' }; }
-function azCMGoDriver(tf,pat){ _azCM.tf=tf; _azCM.pattern=pat; azCMRender(); } window.azCMGoDriver=azCMGoDriver;
+  if((vb&&tonePos)||(vr&&toneNeg))return { icon:'✅', color:'#10b981', short:'Agrees with Analyze', txt:'Agrees with the Analyze recommendation (both '+(vb?'bullish':'bearish')+') — two independent reads pointing the same way is higher conviction.' };
+  if((vb&&toneNeg)||(vr&&tonePos))return { icon:'⚠️', color:'#ef4444', short:'Diverges from Analyze', txt:'Diverges from the Analyze call — the chart structure is '+(vb?'bullish':'bearish')+' but the blended setup/fundamental read is '+(vb?'cautious':'constructive')+'. A clean pattern fighting the other read means size down or wait for them to align.' };
+  return { icon:'•', color:v.color, short:'Analyze neutral', txt:'The chart leans '+(vb?'bullish':'bearish')+' while the Analyze call is neutral — here the pattern is the more directional read; treat it as the tiebreaker, but confirm on the breakout.' }; }
 
 /* ── Pattern Radar — scan holdings + picks for any of the named patterns ── */
 function azScanSyms(){ const set=new Set();
