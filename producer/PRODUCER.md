@@ -199,8 +199,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      rank order, to `producer/raw/popular.json` so Social Pulse can show a retail-popularity rank:
      `get_popular_watchlists` → find "100 most popular" (id `e8ef4c1f-244f-4db5-a582-c4c37f3c8e8e`)
      → `get_watchlist_items { id: "<that id>" }` → save raw to `producer/raw/popular.json`. Optional;
-     omit it and the rank line simply doesn't show. Social is a SIGNAL layer only — it is **not**
-     folded into the Picks composite score.
+     omit it and the rank line simply doesn't show. Note: this `data.social` block is the DISPLAY
+     layer (Analyze/Markets cards); the Picks composite separately folds its own social/buzz score
+     in at **20%** (`picks.mjs`, fed by `picks-build.mjs`'s own `fetchSocial` call).
 
 3b. **Daily Picks — ONCE PER DAY** (the Picks tab). Like AV, only on the day's first run
    (gate on the same `.fetched` date, or a separate `producer/raw/picks-built` marker). Fully

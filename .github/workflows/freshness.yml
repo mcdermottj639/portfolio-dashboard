@@ -4,6 +4,12 @@ name: Data freshness watchdog
 # hours, open (or update) an issue so a missed/stalled producer run never goes unnoticed. This is
 # a PLAIN Action — it only reads the commit timestamp of data.json (the file itself is encrypted),
 # so it needs no Robinhood/Alpha Vantage connectors and no secrets beyond the default token.
+#
+# Second job (deploy-health): the commit-age check above is blind to "committed but never
+# DEPLOYED" — on 2026-07-02 two consecutive branch Pages deploys sat in deployment_queued until
+# the 10-min timeout, so the live site served a stale data.json while this watchdog stayed green.
+# deploy-health checks the Pages build status + compares the LIVE data.json blob against HEAD,
+# auto-retriggers a Pages build when the deploy is stuck, and opens/closes its own issue.
 
 on:
   schedule:
@@ -14,6 +20,7 @@ on:
 permissions:
   contents: read
   issues: write
+  pages: write   # deploy-health: POST /pages/builds to self-heal a stuck deploy
 
 jobs:
   check:
@@ -54,4 +61,86 @@ jobs:
             } else {
               const created = await github.rest.issues.create({ owner, repo, title: TITLE, body, labels: ['producer-watchdog'] });
               core.warning(`Stale (${mins}m) — opened #${created.data.number}.`);
+            }
+
+  # Is the DEPLOYED site actually serving what the producer committed? (see header comment)
+  deploy-health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      # Live-vs-committed blob check. data.json is re-encrypted with a fresh random salt/IV every
+      # build, so live ALWAYS differs from HEAD for a minute or two while a normal deploy is in
+      # flight — that's why the verdict below also requires the newest commit to be older than a
+      # grace window before it counts a mismatch as "stuck".
+      - id: live
+        run: |
+          committed=$(git rev-parse HEAD:data.json)
+          commit_age=$(( ( $(date +%s) - $(git log -1 --format=%ct -- data.json) ) / 60 ))
+          if curl -fsS --max-time 30 -o live.json "https://mcdermottj639.github.io/portfolio-dashboard/data.json?cb=$(date +%s)"; then
+            live=$(git hash-object live.json)
+          else
+            live=fetch-failed
+          fi
+          {
+            echo "committed=$committed"
+            echo "live=$live"
+            echo "commit_age=$commit_age"
+          } >> "$GITHUB_OUTPUT"
+          echo "committed=$committed live=$live commit_age=${commit_age}m"
+      - uses: actions/github-script@v7
+        env:
+          COMMITTED: ${{ steps.live.outputs.committed }}
+          LIVE: ${{ steps.live.outputs.live }}
+          COMMIT_AGE: ${{ steps.live.outputs.commit_age }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const GRACE = 15; // min — lets a normal deploy finish before the mismatch counts
+            const commitAge = parseInt(process.env.COMMIT_AGE, 10);
+            const mismatch = process.env.LIVE !== process.env.COMMITTED;
+
+            // 1. Authoritative signal: the latest branch Pages build status.
+            let build = null;
+            try { build = (await github.rest.repos.getLatestPagesBuild({ owner, repo })).data; } catch (e) {}
+            const staleBuilding = build && build.status === 'building'
+              && (Date.now() - Date.parse(build.updated_at)) > GRACE * 60000;
+            const errored = build && (build.status === 'errored' || staleBuilding);
+
+            // 2. Catch-all: deployed bytes still behind HEAD after the grace window. (A
+            //    fetch-failed live read only alarms via signal 1 — Pages being unreachable from
+            //    a runner is usually transient and shouldn't page on its own.)
+            const deployLag = mismatch && process.env.LIVE !== 'fetch-failed' && commitAge > GRACE;
+
+            const unhealthy = errored || deployLag;
+            const TITLE = '⚠️ Dashboard deploy is stale — Pages is serving an old data.json';
+            const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'pages-watchdog', per_page: 50 });
+            const existing = open.data.find(i => i.title === TITLE);
+
+            if (!unhealthy) {
+              if (existing) {
+                await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body: `Recovered ✅ — live data.json matches HEAD (Pages build status \`${build?.status || 'unknown'}\`). Closing.` });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+              }
+              core.info(`Deploy healthy (status=${build?.status || 'unknown'}, mismatch=${mismatch}, commit age ${commitAge}m).`);
+              return;
+            }
+
+            // Self-heal: request a fresh branch Pages build (the same thing a new push triggers).
+            let retried = 'skipped';
+            try { await github.rest.repos.requestPagesBuild({ owner, repo }); retried = 'requested ✅'; }
+            catch (e) { retried = 'FAILED: ' + e.message; }
+
+            const body = `Live \`data.json\` on GitHub Pages is behind \`main\`.\n\n` +
+              `- latest Pages build status: **${build?.status || 'unknown'}**${build?.error?.message ? ` (${build.error.message})` : ''}\n` +
+              `- committed blob: \`${process.env.COMMITTED}\` · live blob: \`${process.env.LIVE}\`\n` +
+              `- newest data.json commit age: **${commitAge}m** (grace ${GRACE}m)\n\n` +
+              `Auto-retrigger of \`POST /pages/builds\`: **${retried}**.\n\n` +
+              `If this keeps recurring, check the repo's "pages build and deployment" runs — the failure mode this catches is the deploy sitting in \`deployment_queued\` until timeout while the producer keeps committing fine.\n\n_This issue auto-closes when the live file matches \`main\` again._`;
+            if (existing) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body });
+              core.warning(`Deploy still unhealthy — commented on #${existing.number}; rebuild ${retried}.`);
+            } else {
+              const created = await github.rest.issues.create({ owner, repo, title: TITLE, body, labels: ['pages-watchdog'] });
+              core.warning(`Deploy unhealthy — opened #${created.data.number}; rebuild ${retried}.`);
             }

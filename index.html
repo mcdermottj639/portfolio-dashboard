@@ -557,7 +557,16 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   function loadData(){
     return fetch('./data.json',{cache:'no-store'}).then(function(r){ if(!r.ok)throw new Error('data.json '+r.status); return r.json(); })
       .then(function(raw){
+        // Fingerprint of the raw snapshot (pre-decrypt) so the resume handler in boot() can tell
+        // whether the server has a NEWER data.json than the one we rendered from.
+        try{ window.__PF_SNAP_FP = raw&&raw.ct ? String(raw.ct).slice(0,64) : JSON.stringify((raw&&raw.generatedAt)||null); }catch(e){}
         if(!raw||!raw.enc) return raw;                       // plaintext (dev / sample)
+        // A malformed envelope (truncated/corrupt download) must NOT present as a wrong
+        // passphrase — AES-GCM can't tell them apart, but un-decodable base64 fields can only
+        // mean corruption. Bail with an honest message instead of blaming the passphrase.
+        function b64ok(s){ if(!s)return false; try{ return atob(String(s)).length>0; }catch(e){ return false; } }
+        if(!(b64ok(raw.salt)&&b64ok(raw.iv)&&b64ok(raw.ct)))
+          return Object.assign({error:'snapshot looks corrupt — tap ↻ to re-download'},EMPTY);
         // Normalize: trim, and convert "smart" dashes/minus back to a plain hyphen so a
         // mobile keyboard can't silently break an otherwise-correct passphrase.
         function norm(p){ return p==null?p:String(p).trim().replace(/[‐-―−⁃]/g,'-'); }
@@ -585,7 +594,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
         }
         function closeAsk(){ var ov=document.getElementById('pf-unlock'); if(ov)ov.remove(); }
         function attempt(n){
-          if(n>10) return Object.assign({error:'bad passphrase'},EMPTY);
+          // Too many failures: dismiss the overlay (it would otherwise cover the page forever
+          // with a dead button) and surface the bar's Locked state, whose Unlock control clears
+          // the stored passphrase before reloading.
+          if(n>10){ closeAsk(); return Object.assign({error:'bad passphrase',locked:true},EMPTY); }
           var get = pass!=null ? Promise.resolve(pass) : askPass(n>0);
           return get.then(function(entered){
             var p=norm(entered);
@@ -599,6 +611,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
       .catch(function(e){ return Object.assign({error:String(e&&e.message||e)},EMPTY); });
   }
   window.__dataReady=loadData().then(function(d){ window.__DATA=d; return d; });
+  // Record whether a REAL MCP bridge existed before we install the replay shim. Callers that
+  // rate-limit out of courtesy to live APIs (fetchOverviewBatch) skip their throttle when every
+  // call is just a local snapshot lookup — i.e. always, in the static PWA.
+  window.__PF_LIVE = !!(window.cowork && window.cowork.callMcpTool);
   window.cowork={ callMcpTool: function(server, args){
     return window.__dataReady.then(function(d){
       args=args||{};
@@ -621,32 +637,82 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v87'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
-    window.pfForceUpdate=function(){ try{ if(window.caches&&caches.keys){ caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); }).then(function(){ location.reload(); },function(){ location.reload(); }); return; } }catch(e){} location.reload(); };
+    var APP_VERSION='v88'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
+    // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
+    // while offline and reload into a blank page.
+    window.pfForceUpdate=function(){
+      fetch('./index.html',{cache:'reload'}).then(function(r){
+        if(!r.ok) throw new Error('http '+r.status);
+        if(window.caches&&caches.keys) return caches.keys().then(function(ks){ return Promise.all(ks.map(function(k){ return caches.delete(k); })); });
+      }).then(function(){ location.reload(); }, function(){ location.reload(); });
+    };
     window.__dataReady.then(function(d){
       var locked=d&&d.locked, err=d&&d.error;
       var lab=(d&&d.generatedAtLabel)||(locked?'locked':'unknown');
-      // Staleness — if the snapshot is hours old, warn rather than silently showing old quotes.
-      var ageH=null, stale=false;
-      try{ var gen=d&&d.generatedAt?new Date(d.generatedAt):null; if(gen&&!isNaN(gen)){ ageH=(Date.now()-gen.getTime())/3600000; stale=!locked&&!err&&ageH>=3; } }catch(e){}
       function ageStr(h){ if(h==null)return''; if(h<1)return Math.max(1,Math.round(h*60))+'m old'; if(h<48)return Math.round(h)+'h old'; return Math.round(h/24)+'d old'; }
-      var warn=locked||err||stale;
+      function snapAge(){ try{ var gen=d&&d.generatedAt?new Date(d.generatedAt):null; if(gen&&!isNaN(gen)) return (Date.now()-gen.getTime())/3600000; }catch(e){} return null; }
       var bar=document.createElement('div');
       bar.id='pf-fresh';
-      bar.style.cssText='font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:'+(warn?'#7c2d12':'#475569')+';background:'+(warn?'#fff7ed':'#eef2f7')+';border:1px solid '+(warn?'#fed7aa':'#dbe2ea')+';border-radius:10px;padding:7px 12px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px';
-      var left = locked ? '🔒 Locked — enter your passphrase to view'
-               : err    ? '⚠️ Couldn’t load data ('+err+')'
-               : stale  ? '⚠️ Snapshot '+ageStr(ageH)+' — tap ↻ to refresh'
-               :          '📡 Snapshot: '+lab+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
+      bar.style.cssText='font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;border:1px solid;border-radius:10px;padding:7px 12px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px';
       var _th=document.documentElement.getAttribute('data-theme')||'light';
       if(_th==='dark'||_th==='neon')_th='gold';
       var themeIco=_th==='gold'?'☀️':'✨';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span>'+left+'</span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span id="pf-fresh-left"></span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
+      // Staleness — recomputed on every repaint (not just once at boot) so a snapshot that ages
+      // past 3h while the PWA stays resident tints amber instead of silently looking fresh.
+      var nudge=null; // when set (new version / new snapshot), it overrides the left text
+      function paintBar(){
+        var ageH=snapAge(), stale=!locked&&!err&&ageH!=null&&ageH>=3;
+        var warn=locked||err||stale||!!nudge;
+        bar.style.color=warn?'#7c2d12':'#475569'; bar.style.background=warn?'#fff7ed':'#eef2f7'; bar.style.borderColor=warn?'#fed7aa':'#dbe2ea';
+        var l=document.getElementById('pf-fresh-left'); if(!l) return;
+        l.innerHTML = nudge ? nudge
+          : locked ? '🔒 Locked — enter your passphrase to view'
+          : err    ? '⚠️ Couldn’t load data ('+err+')'
+          : stale  ? '⚠️ Snapshot '+ageStr(ageH)+' — tap ↻ to refresh'
+          :          '📡 Snapshot: '+lab+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
+      }
+      paintBar();
+      window.__pfNudge=function(html){ nudge=html; paintBar(); };
+      setInterval(paintBar, 5*60000);
       var rb=document.getElementById('pf-refresh'); if(rb) rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); };
+      // Resume: re-check age immediately, and after ≥5 min away peek at data.json — if the
+      // producer published a newer snapshot while we were backgrounded, reload straight into it
+      // (the stored passphrase makes that seamless) instead of waiting for a manual ↻.
+      var hiddenAt=null;
+      document.addEventListener('visibilitychange', function(){
+        if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); return; }
+        paintBar();
+        var away=hiddenAt?(Date.now()-hiddenAt):0;
+        if(away>=5*60000 && navigator.onLine!==false && !locked && !err){
+          fetch('./data.json',{cache:'no-store'}).then(function(r){ return r.ok?r.json():null; }).then(function(raw){
+            if(!raw) return;
+            var fp=raw.ct?String(raw.ct).slice(0,64):JSON.stringify(raw.generatedAt||null);
+            if(window.__PF_SNAP_FP && fp!==window.__PF_SNAP_FP) location.reload();
+          }).catch(function(){});
+        }
+      });
     });
-    if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(function(){}); }
+    // SW: register, then actively LOOK for updates (on load and every foregrounding) instead of
+    // waiting for the browser's own schedule. A newly-installed version nudges via the freshness
+    // bar rather than auto-reloading, so a mid-session update never yanks the page away.
+    if('serviceWorker' in navigator){
+      var showUpd=function(){ if(window.__pfNudge) window.__pfNudge('⬆️ New app version ready — <span style="text-decoration:underline;cursor:pointer" onclick="location.reload()">tap to update</span>'); };
+      navigator.serviceWorker.register('./sw.js').then(function(reg){
+        function watch(w){ if(w) w.addEventListener('statechange', function(){ if(w.state==='installed'&&navigator.serviceWorker.controller) showUpd(); }); }
+        watch(reg.installing);
+        reg.addEventListener('updatefound', function(){ watch(reg.installing); });
+        try{ reg.update(); }catch(e){}
+        document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible'){ try{ reg.update(); }catch(e){} } });
+      }).catch(function(){});
+      // controllerchange also fires when the FIRST-ever SW claims the page — only a change from
+      // an existing controller means "a newer version took over".
+      var hadCtl=!!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', function(){ if(hadCtl) showUpd(); hadCtl=true; });
+    }
   }
   if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded', boot);
 })();
@@ -817,19 +883,14 @@ async function fetchHistG(symbols,start,interval){
 }
 
 /* ═══ AV FETCHERS ═══ */
-async function fetchRSIBatch(symbols){
-  const map={};
-  for(const sym of symbols){
-    try{ const raw=await avCall('TIME_SERIES_DAILY',{symbol:avSym(sym),outputsize:'compact'},`ts_${sym}`,TTL.TECH); const rsi=calcRSI(parseDailyCloses(raw)); if(rsi!==null)map[sym]=rsi; }catch(e){}
-    await new Promise(r=>setTimeout(r,800));
-  }
-  return map;
-}
 async function fetchOverviewBatch(symbols){
   const map={};
   for(const sym of symbols){
     try{ const v=await avCall('COMPANY_OVERVIEW',{symbol:avSym(sym)},`ov5_${sym}`,TTL.FUND); if(v&&typeof v==='object'&&v.Symbol)map[sym]=v; }catch(e){}
-    await new Promise(r=>setTimeout(r,800));
+    // The 800ms pause is an AV rate-limit courtesy for LIVE calls only. In the static PWA every
+    // avCall resolves instantly from the replay shim, and this loop used to burn ~11s of pure
+    // sleep before Allocation / Income & Tax / Fundamentals could render.
+    if(window.__PF_LIVE) await new Promise(r=>setTimeout(r,800));
   }
   return map;
 }

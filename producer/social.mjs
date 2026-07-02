@@ -19,7 +19,7 @@ function pctChg(now, prev) {
   return +(((a - b) / b) * 100).toFixed(0);
 }
 
-async function awPage(filter, page) {
+async function awPageOnce(filter, page) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -32,6 +32,16 @@ async function awPage(filter, page) {
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; } finally { clearTimeout(timer); }
+}
+
+// One retry with a short backoff: the fetch is keyless/free, and picks-build calls it exactly once
+// per day (FETCH_ALL) — a single transient blip there would otherwise neutralize the entire 20%
+// social weight in every pick's composite for the whole day (carried forward on light runs).
+async function awPage(filter, page) {
+  const first = await awPageOnce(filter, page);
+  if (first) return first;
+  await new Promise((r) => setTimeout(r, 2000));
+  return awPageOnce(filter, page);
 }
 
 // One ApeWisdom row → our compact shape. ApeWisdom returns sentiment as a 0..1 ratio on some

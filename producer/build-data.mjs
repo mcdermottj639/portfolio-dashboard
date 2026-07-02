@@ -74,6 +74,12 @@ for (const f of filesMatching(/^quotes.*\.json$/)) {
     if (sym) quotes[sym] = q;
   }
 }
+// Carry forward prior quotes for any symbol missing from this run's fetch (same policy as hist/
+// recorded): a transiently unquotable name keeps its last known price instead of dropping to $0
+// in the positions table and the agentic re-pricer. Freshly-fetched quotes always win.
+if (prior && prior.quotes) {
+  for (const [sym, q] of Object.entries(prior.quotes)) if (!quotes[sym]) quotes[sym] = q;
+}
 
 // --- historicals (per-symbol bars, by interval) ---
 const hist = {};
@@ -82,7 +88,9 @@ for (const f of filesMatching(/^hist-(day|week|month).*\.json$/)) {
   hist[interval] = hist[interval] || {};
   const d = unwrap(readJSON(f));
   const results = d.data?.results ?? d.results ?? [];
-  for (const res of results) if (res.symbol && Array.isArray(res.bars)) hist[interval][res.symbol] = res.bars;
+  // Require CONTENT, not just an array: a transient empty-bars fetch ([] is still an array)
+  // must fall through to carry-forward below, not wipe the good prior series for that symbol.
+  for (const res of results) if (res.symbol && Array.isArray(res.bars) && res.bars.length) hist[interval][res.symbol] = res.bars;
 }
 // Carry forward prior bars for any interval/symbol not freshly fetched this run, so a light
 // intraday run (no hist-*.json) still ships the full YTD/5Y series. Freshly-fetched bars win.
@@ -429,8 +437,9 @@ if (existsSync(newsDir)) {
 // Social / retail-sentiment signal (data.social). ApeWisdom Reddit/social buzz (fetched
 // in-process every build — keyless, degrades to nothing if apewisdom.io isn't in the egress
 // allowlist), blended with Robinhood retail-popularity rank (raw/popular.json, optional) and our
-// AV news sentiment. Surfaced on Analyze ("Social Pulse") + Markets ("Retail Buzz") as a SIGNAL
-// layer — deliberately NOT folded into the Picks composite score. Absent → the cards just hide.
+// AV news sentiment. Surfaced on Analyze ("Social Pulse") + Markets ("Retail Buzz"). NOTE: this
+// block is the DISPLAY layer only — the Picks composite DOES fold a social/buzz score in at 20%
+// (picks.mjs, from its own fetchSocial call in picks-build.mjs). Absent → the cards just hide.
 {
   const heldSyms = (positions || []).map((p) => p.symbol).filter(Boolean);
   const pickSyms = (data.picks && Array.isArray(data.picks.candidates))
@@ -492,7 +501,7 @@ console.log('built:',
   Object.entries(hist).map(([k, v]) => Object.keys(v).length + ' ' + k).join(' · ') || 'no hist',
   '·', Object.keys(recorded).length, 'recorded ·', avCount, 'AV ·', rhOvCount, 'RH-overview',
   '·', vix != null ? 'VIX ' + vix : 'no VIX',
-  '·', data.picks ? data.picks.candidates.length + ' picks' : 'no picks',
+  '·', data.picks && Array.isArray(data.picks.candidates) ? data.picks.candidates.length + ' picks' : 'no picks',
   avCount ? '' : '(macro/fundamentals will show "—" until av-src is populated)');
 
 // --- Markets-tab coverage check ---------------------------------------------
