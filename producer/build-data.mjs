@@ -18,7 +18,8 @@ import { emit, decryptEnvelope } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
 import { LEADERS } from './leaders.mjs';
 import { avKey, specForId } from './av.mjs';
-import { fetchSocial } from './social.mjs';
+import { fetchSocialPages, shapeSocial } from './social.mjs';
+import { computeAlerts } from './alerts.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -446,11 +447,17 @@ if (existsSync(newsDir)) {
     ? data.picks.candidates.map((c) => c.ticker).filter(Boolean) : [];
   const wantSet = [...new Set([...heldSyms, ...pickSyms].map((s) => String(s).toUpperCase()))];
 
-  let social = null;
-  try { social = await fetchSocial(wantSet); }
-  catch { social = null; }
+  // Reuse the raw pages picks-build already fetched this run (FETCH_ALL sidecar) — one ApeWisdom
+  // trip per run, and picks + data.social see identical data. Light runs (no sidecar) fetch live.
+  let social = null, socialSrc = 'fresh fetch';
+  try {
+    const pagesFile = filesMatching(/^social-pages\.json$/)[0];
+    const pages = pagesFile ? unwrap(readJSON(pagesFile)) : await fetchSocialPages();
+    if (pagesFile) socialSrc = 'reused picks-build fetch';
+    social = shapeSocial(pages, wantSet);
+  } catch { social = null; }
   console.log(social
-    ? `social: ApeWisdom ${social.universe} tracked · ${Object.values(social.tickers).filter((t) => t.tracked).length}/${wantSet.length} of your names trending`
+    ? `social: ApeWisdom ${social.universe} tracked (${socialSrc}) · ${Object.values(social.tickers).filter((t) => t.tracked).length}/${wantSet.length} of your names trending`
     : 'social: ApeWisdom unreachable (add apewisdom.io to the egress allowlist) — using RH popularity / news only');
 
   // Robinhood retail popularity: the "100 most popular" watchlist items in rank order. The agent
@@ -494,6 +501,23 @@ if (existsSync(newsDir)) {
   if (moves.length) markets.movers = { gainers: top(moves), losers: top([...moves].reverse()) };
   if (Object.keys(markets).length) { data.picks = data.picks || {}; data.picks.markets = markets; }
 })();
+
+// --- Alerts: level crossings since the prior snapshot (alerts.mjs — pure transition detection,
+// no sent-state to persist). Written to a raw sidecar; the AGENT delivers post-publish via
+// PushNotification (best-effort, like the watchlist syncs — see PRODUCER.md step 8). The Railway
+// entrypoint just logs them (no push channel there).
+try {
+  const heldSyms = [...new Set([
+    ...(positions || []).map((p) => p.symbol),
+    ...((data.agentic && data.agentic.positions) || []).map((p) => p.symbol),
+  ])].filter(Boolean);
+  const alerts = computeAlerts(prior, data, heldSyms);
+  writeFileSync(join(RAWDIR, 'alerts.json'), JSON.stringify({ asOf: data.generatedAt, alerts }, null, 2));
+  if (alerts.length) {
+    console.log(`[alerts] ${alerts.length} crossing${alerts.length === 1 ? '' : 's'} since the prior snapshot:`);
+    for (const a of alerts) console.log('[alerts]   ' + a.msg);
+  } else console.log('[alerts] none');
+} catch (e) { console.warn('[alerts] skipped:', e && e.message); }
 
 await emit(data);
 console.log('built:',

@@ -48,6 +48,13 @@ Railway cron ─► entrypoint.sh
 So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh live. This path is at
 parity with the scheduled Claude agent (modulo the Picks-universe note below + dividend approximation).
 
+**Known gaps vs the agent path (post-publish, best-effort extras only):** the Railway producer cannot
+do the two Robinhood **watchlist syncs**, the weekly **agentic research refresh**, or deliver the
+**level-crossing push alerts** (`PRODUCER.md` steps 5–8 — all need MCP / `PushNotification`, which only
+exist in a Claude session). The alert *detection* still runs here (`build-data.mjs` writes
+`producer/raw/alerts.json` and logs each `[alerts] …` line, visible in Railway logs) — only the phone
+push is agent-only. None of these gate the publish.
+
 ## One-time setup
 1. **Robinhood auth — pick the one your account supports.** Unattended login needs EITHER:
    - **(a) Authenticator-app 2FA (TOTP):** if Robinhood (app *or* robinhood.com → Settings → Security

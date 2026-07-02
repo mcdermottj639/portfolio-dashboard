@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { scanRows, selectFinalists, buildPicks, N_FINALISTS, WATCHLIST_ID, WATCHLIST_NAME } from './picks.mjs';
-import { fetchSocial } from './social.mjs';
+import { fetchSocialPages, shapeSocial } from './social.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -49,11 +49,17 @@ if (existsSync(avDir)) for (const f of readdirSync(avDir).filter((x) => x.starts
 }
 
 // Retail-sentiment for the finalists → folded into the composite (20%) by buildPicks. Keyless,
-// in-process; degrades to {} (neutral social for all) if ApeWisdom is unreachable.
+// in-process; degrades to {} (neutral social for all) if ApeWisdom is unreachable. The raw pages
+// are saved as a sidecar so build-data (which runs seconds later with a wider symbol set) reuses
+// this exact fetch instead of hitting ApeWisdom a second time — and both see identical data.
 let socialMap = {};
 try {
-  const social = await fetchSocial(finalists.map((f) => f.ticker));
-  if (social && social.tickers) socialMap = social.tickers;
+  const pages = await fetchSocialPages();
+  if (pages) {
+    writeFileSync(join(RAW, 'social-pages.json'), JSON.stringify(pages));
+    const social = shapeSocial(pages, finalists.map((f) => f.ticker));
+    if (social && social.tickers) socialMap = social.tickers;
+  }
 } catch { socialMap = {}; }
 const socialCovered = Object.values(socialMap).filter((t) => t && t.tracked).length;
 

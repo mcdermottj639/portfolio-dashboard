@@ -1,0 +1,33 @@
+name: Producer tests
+
+# Offline unit + integration tests for the producer pipeline (producer/*.test.mjs). No network,
+# no MCP, no secrets — the build-data integration test runs against fixtures and restores the
+# workspace copy of data.json afterward.
+
+on:
+  pull_request:
+    paths: ['producer/**', '.github/workflows/tests.yml']
+  push:
+    branches: [main]
+    paths: ['producer/**', '.github/workflows/tests.yml']
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run producer test suites
+        run: |
+          rc=0
+          for t in producer/*.test.mjs; do
+            echo "::group::$t"
+            node "$t" || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc
