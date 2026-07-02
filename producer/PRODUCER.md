@@ -367,6 +367,18 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    error, rate-limit, push blip) **just stop** — the existing target stands and it retries next week. This
    step NEVER gates the core publish. Full flow + tax/reg rules: `AGENTIC.md`.
 
+8. **Level-crossing alerts (EVERY run, best-effort, post-publish, ~zero cost).** `build-data.mjs`
+   already computed these during the build (`alerts.mjs` — transitions between the prior snapshot and
+   this one: an agentic holding crossing its research **stop/target**, a top pick hitting its published
+   **TP1/TP2/stop**, a held name crossing **±7% on the day**) and wrote them to
+   `producer/raw/alerts.json`. After `run.mjs` succeeds:
+   1. Read `producer/raw/alerts.json`. If `alerts` is empty (the usual case) — done, skip this step.
+   2. Otherwise **`PushNotification`** the owner ONE message: each alert's `msg` on its own line.
+      These brackets are monitor-only (no resting stops at the broker), so the push IS the stop.
+   Best-effort like steps 5–7: the crossing detection is transition-based so nothing needs retrying —
+   if delivery fails, the moment has passed; just end the session. Never gates the publish. (The
+   Railway producer has no push channel — its runs only log alerts, so pushes fire on agent runs.)
+
 ## Failure handling
 - `run.mjs` aborts (no commit) if the core `portfolio.json`/`positions.json` are missing, if the
   build fails, or if `data.json` came out unencrypted while `PF_PASSPHRASE` is set. A stale

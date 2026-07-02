@@ -78,7 +78,10 @@ Use exactly this as the scheduled prompt:
 > prints `AGENTIC_DUE`, refresh `producer/agentic-target.json` via the **`agentic-research`** workflow
 > (commit + push it), then compute drift and **`PushNotification` me a rebalance proposal** for the
 > ••••3900 cash account — but **place no orders** (alert & one-tap-confirm). If `AGENTIC_NOT_DUE` or
-> anything fails, just end the session; it never gates the run and retries next week.
+> anything fails, just end the session; it never gates the run and retries next week. Also, on EVERY
+> run where `run.mjs` succeeded: read `producer/raw/alerts.json` (written by the build) and, if its
+> `alerts` array is non-empty, **`PushNotification` me one message** with each alert's `msg` on its
+> own line (level crossings — stop/target/TP/big day move; see `PRODUCER.md` step 8). Empty → skip.
 
 > **Note (existing trigger):** the agentic step lives in `PRODUCER.md`, so any trigger whose prompt says
 > "follow `producer/PRODUCER.md` exactly" picks it up with **no change needed**. If your live trigger

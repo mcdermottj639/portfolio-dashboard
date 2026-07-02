@@ -59,6 +59,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
    runs its planner (prints the add/remove diff), then executes the MCP writes. Best-effort: a failure
    never gates the run (each re-syncs next FETCH_ALL). These two writes are the **only** producer writes
    to Robinhood — everything else reads.
+5b. **Every run, after publish (best-effort):** the build wrote `producer/raw/alerts.json`
+   (`alerts.mjs` — stop/target/TP/day-move crossings since the prior snapshot); if non-empty, the
+   agent `PushNotification`s the owner one combined message (PRODUCER.md step 8). Railway runs only
+   log these (no push channel).
 6. **FETCH_ALL only, after publish, ~weekly (best-effort):** `agentic-due.mjs` gates the agentic-account
    research refresh; when `AGENTIC_DUE`, the agent runs the **`agentic-research`** workflow → writes
    `producer/agentic-target.json` (commit+push) → computes drift vs ••••3900 → **`PushNotification`s the
@@ -79,7 +83,8 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 | `producer/picks-build.mjs` | Runs the scan→finalists, fetches ApeWisdom buzz, calls `buildPicks`. Also emits `producer/raw/picks-watchlist.json` (composite top-10 tickers) — the target for the Robinhood watchlist sync. |
 | `producer/sync-watchlist.mjs` | Deterministic diff for the **"Dashboard Top 10 Picks"** Robinhood watchlist. Pure planner (like `av-plan`/`options-plan`): reads the top-10 sidecar + the agent-saved live list, **prints** `ADD`/`REMOVE`; the agent executes the MCP writes. Runs as a post-publish step on FETCH_ALL only. |
 | `producer/sync-option-watchlist.mjs` | Same pattern for the account's single **options** watchlist. Reads `producer/raw/option-watchlist.json` (the live single-leg Trade-Idea contracts `options-build.mjs` emits on FETCH_ALL) + the agent-saved `get_option_watchlist`, **prints** `ADD`/`REMOVE` option-UUIDs (all `position_type:"long"`); the agent executes the writes. |
-| `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz). |
+| `producer/social.mjs` | Keyless ApeWisdom fetch (retail buzz), with one retry. Split into `fetchSocialPages` (network, once) + pure `shapeSocial(pages, symbols)` so one fetch serves both callers: `picks-build` saves the raw pages to `raw/social-pages.json` and `build-data` reuses that sidecar (light runs, which have no sidecar, fetch live) — previously each FETCH_ALL hit ApeWisdom twice with potentially different results. |
+| `producer/alerts.mjs` | **Pure level-crossing detection** between the prior snapshot and the one being built (no I/O, unit-tested): agentic holding crosses its research **stop/target**, a top pick hits its published **TP1/TP2/stop**, a held name crosses **±7% on the day**. Transition-based (prior on one side, fresh through the other) so a crossing fires exactly once with no sent-state. `build-data` writes the result to `producer/raw/alerts.json`; the **agent** delivers post-publish via `PushNotification` (PRODUCER.md step 8, best-effort, every run); the Railway path only logs them. |
 | `producer/markets.mjs` | `MARKET_SYMBOLS` (indexes/risk/sectors/intl) — source of truth; keep PRODUCER.md's list in sync. |
 | `producer/leaders.mjs` | `LEADERS`/`LEADER_SYMBOLS` — mega-cap bench (sym+sector) for the Plan-page Ideal Portfolio. `build-data.mjs` emits it as `data.leaders`; the producer quotes `LEADER_SYMBOLS` every run so each has a live price. |
 | `producer/extfund.mjs` · `producer/extfund-fetch.mjs` | **Supplementary fundamentals** (Finnhub + Financial Modeling Prep). `extfund.mjs` = pure normalizers turning each provider's payload into the **same COMPANY_OVERVIEW shape AV uses** (AV's fraction conventions: RevGrowth/Margin/DivYield stored as fractions — Finnhub returns percents, so ÷100; FMP TTM ratios are already fractions; mktcap → whole dollars). `extfund-fetch.mjs` fetches over HTTP (once/day ET gate, like `av-fetch.mjs`), writing `producer/raw/ext-fund/overview-<SYM>.json`. **AV stays PRIMARY** — `build-data.mjs` reads ext-fund *after* av-src and only **fills fields AV is missing** for a name (so AV's ForwardPE/AnalystTargetPrice win) or adds a whole overview for names AV's daily cap skipped (rich, so it beats the RH synth). Both providers independently optional (`FINNHUB_KEY` / `FMP_KEY`); no key → silently skipped. Unit-tested offline (`extfund.test.mjs`). |
@@ -127,6 +132,12 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the real one with `git checkout origin/main -- data.json` before committing.
 
 ## Verify before shipping (no network needed)
+- **Unit + integration tests:** `for t in producer/*.test.mjs; do node "$t"; done` — covers the
+  extfund normalizers, the picks scoring engine (weights/sector cap/social/coverage flags),
+  `shapeSocial`, `computeAlerts`, and a full `build-data.mjs` fixture run (empty-bars guard, quotes
+  carry-forward, no-picks log guard, social-sidecar reuse, day-move alert). CI runs these on every
+  PR touching `producer/**` (`.github/workflows/tests.yml`). The build-data test temporarily writes
+  a plaintext `data.json` and restores it — don't commit mid-test.
 - Inline JS parse: extract `<script>` blocks and `new Function(src)` each (skip block #1 = JSON-LD).
 - Producer dry run: `PF_PASSPHRASE=… node producer/run.mjs --no-push "test"` → expect "replay
   contract is valid ✅"; then `git checkout origin/main -- data.json` to discard the dry-run build.

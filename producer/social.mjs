@@ -63,11 +63,11 @@ function shapeRow(r) {
   };
 }
 
-// Fetch retail buzz for the requested tickers + an overall trending list.
-//   symbols: array of tickers to look up (held + picks).
-// Returns { asOf, source, universe, tickers:{SYM:{tracked,...}}, trending:[...] } or null.
-export async function fetchSocial(symbols = [], { pages = 2 } = {}) {
-  const want = new Set(symbols.map((s) => String(s).toUpperCase()).filter(Boolean));
+// Fetch the raw ApeWisdom pages ONCE (deduped by ticker, page/rank order preserved). Returns
+// { asOf, source, rows:[<raw ApeWisdom rows>] } or null when the host is unreachable/blocked.
+// picks-build saves this to producer/raw/social-pages.json so build-data can reshape the SAME
+// fetch for its own (wider) symbol set instead of hitting ApeWisdom a second time seconds later.
+export async function fetchSocialPages({ pages = 2 } = {}) {
   const byTicker = {};
   let pagesGot = 0;
   for (let p = 1; p <= pages; p++) {
@@ -81,7 +81,20 @@ export async function fetchSocial(symbols = [], { pages = 2 } = {}) {
     if (d.pages && p >= d.pages) break;
   }
   if (!pagesGot) return null; // host unreachable / blocked — caller leaves data.social unset
+  return { asOf: new Date().toISOString(), source: 'apewisdom', rows: Object.values(byTicker) };
+}
 
+// PURE: shape a fetchSocialPages() result for a symbol list (no network — unit-testable, and
+// reusable across callers with different want-lists off one fetch). Returns the classic
+// { asOf, source, universe, tickers:{SYM:{tracked,...}}, trending:[...] } shape, or null.
+export function shapeSocial(pagesResult, symbols = []) {
+  if (!pagesResult || !Array.isArray(pagesResult.rows) || !pagesResult.rows.length) return null;
+  const want = new Set(symbols.map((s) => String(s).toUpperCase()).filter(Boolean));
+  const byTicker = {};
+  for (const r of pagesResult.rows) {
+    const t = (r.ticker || '').toUpperCase();
+    if (t && !byTicker[t]) byTicker[t] = r;
+  }
   const all = Object.values(byTicker).sort((a, b) => (num(a.rank) ?? 999) - (num(b.rank) ?? 999));
   const trending = all.slice(0, 8).map((r) => ({
     t: (r.ticker || '').toUpperCase(),
@@ -96,5 +109,12 @@ export async function fetchSocial(symbols = [], { pages = 2 } = {}) {
     const r = byTicker[sym];
     tickers[sym] = r ? { tracked: true, ...shapeRow(r) } : { tracked: false };
   }
-  return { asOf: new Date().toISOString(), source: 'apewisdom', universe: all.length, tickers, trending };
+  return { asOf: pagesResult.asOf || new Date().toISOString(), source: 'apewisdom', universe: all.length, tickers, trending };
+}
+
+// Fetch retail buzz for the requested tickers + an overall trending list (fetch + shape in one).
+//   symbols: array of tickers to look up (held + picks).
+// Returns { asOf, source, universe, tickers:{SYM:{tracked,...}}, trending:[...] } or null.
+export async function fetchSocial(symbols = [], opts = {}) {
+  return shapeSocial(await fetchSocialPages(opts), symbols);
 }
