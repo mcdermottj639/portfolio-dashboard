@@ -47,7 +47,7 @@ jobs:
         with:
           script: |
             const mins = parseInt(process.env.STALE_MINUTES, 10);
-            const open = process.env.MARKET_OPEN === '1';
+            const marketOpen = process.env.MARKET_OPEN === '1';
             // Producer cadence is ~30 min, so 3 consecutive missed slots = something's wrong. (Was
             // 180m, which let real 60–105m scheduler gaps sail through unflagged.)
             const THRESHOLD = 90;
@@ -63,7 +63,7 @@ jobs:
               }
               return;
             }
-            if (!open) { // holiday / half-day afternoon / after close — the producer is SUPPOSED to be idle
+            if (!marketOpen) { // holiday / half-day afternoon / after close — the producer is SUPPOSED to be idle
               core.info(`Stale (${mins}m) but the market is closed — not alarming. (Any open alert closes on the next fresh snapshot.)`);
               return;
             }
