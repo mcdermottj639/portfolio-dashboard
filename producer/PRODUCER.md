@@ -272,7 +272,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
 
    What `run.mjs` does, in order (each step guarded — a missing optional input is skipped, a hard
    failure aborts **before** any commit):
-   - **Market gate** — deterministic US-session check (Mon–Fri 09:30–16:00 ET). By default it
+   - **Market gate** — deterministic US-session check (Mon–Fri 09:30–16:00 ET, minus the NYSE
+     holidays/half-days hardcoded in `market.mjs`; half-days close 13:00). By default it
      builds + pushes anyway so social/news stay fresh; pass `--require-open` to skip when closed.
    - **Alpha Vantage** (optional) — if `ALPHAVANTAGE_KEY` is set, `av-fetch.mjs` pulls macro +
      fundamentals over plain HTTP (no MCP call), once per ET day. See step 3's AV note.

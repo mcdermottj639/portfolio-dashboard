@@ -43,9 +43,10 @@ re-prices its holdings on every run). Set this in **America/New_York**:
 
 UTC fallback (no per-trigger TZ; EDT = ET+4, add an hour in EST): `*/30 13-20 * * 1-5`.
 
-**Stray/extra fires are safe and nearly free:** `preflight.mjs` returns `SKIP` on weekends and once the
-day's closing snapshot is already captured, so the agent stops immediately without fetching — a wide
-window or a few extra fires costs almost nothing.
+**Stray/extra fires are safe and nearly free:** `preflight.mjs` returns `SKIP` on weekends, on NYSE
+full-closure holidays (hardcoded calendar in `market.mjs` — extend it annually), and once the day's
+closing snapshot is already captured (13:00 on half-days), so the agent stops immediately without
+fetching — a wide window or a few extra fires costs almost nothing.
 
 > **Lighter alternative (3×/day):** if you'd rather minimize runs, open/midday/close also works —
 > `30 9 * * 1-5`, `30 12 * * 1-5`, `0 16 * * 1-5` ET (three triggers) — at the cost of less-frequent

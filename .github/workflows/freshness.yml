@@ -33,15 +33,24 @@ jobs:
           last=$(git log -1 --format=%ct -- data.json)
           now=$(date +%s)
           mins=$(( (now - last) / 60 ))
+          # Holiday/half-day-aware session check (producer/market.mjs) — after a 13:00 close or on
+          # a full-closure holiday the producer CORRECTLY stops pushing, so staleness only counts
+          # while the market is actually open.
+          open=$(node -e "import('./producer/market.mjs').then(m=>console.log(m.isMarketOpen()?'1':'0'))")
           echo "minutes=$mins" >> "$GITHUB_OUTPUT"
-          echo "data.json last updated $mins minutes ago"
+          echo "open=$open"    >> "$GITHUB_OUTPUT"
+          echo "data.json last updated $mins minutes ago · market open: $open"
       - uses: actions/github-script@v7
         env:
           STALE_MINUTES: ${{ steps.age.outputs.minutes }}
+          MARKET_OPEN: ${{ steps.age.outputs.open }}
         with:
           script: |
             const mins = parseInt(process.env.STALE_MINUTES, 10);
-            const THRESHOLD = 180; // 3h with no fresh snapshot during market hours = something's wrong
+            const open = process.env.MARKET_OPEN === '1';
+            // Producer cadence is ~30 min, so 3 consecutive missed slots = something's wrong. (Was
+            // 180m, which let real 60–105m scheduler gaps sail through unflagged.)
+            const THRESHOLD = 90;
             const TITLE = '⚠️ Dashboard data is stale — producer may have stalled';
             const { owner, repo } = context.repo;
             const open = await github.rest.issues.listForRepo({ owner, repo, state: 'open', labels: 'producer-watchdog', per_page: 50 });
@@ -52,6 +61,10 @@ jobs:
                 await github.rest.issues.createComment({ owner, repo, issue_number: existing.number, body: `Recovered ✅ — data.json refreshed ${mins} minutes ago. Closing.` });
                 await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
               }
+              return;
+            }
+            if (!open) { // holiday / half-day afternoon / after close — the producer is SUPPOSED to be idle
+              core.info(`Stale (${mins}m) but the market is closed — not alarming. (Any open alert closes on the next fresh snapshot.)`);
               return;
             }
             const body = `The producer hasn't pushed a fresh \`data.json\` in **${mins} minutes** (threshold ${THRESHOLD}m) during US market hours.\n\nLikely causes: the scheduled Claude Code routine didn't fire, stalled on a permission prompt, or a Robinhood/AV call failed. Check the routine's latest run log (the orchestrator prints \`[run]\`/\`social:\` status lines), then re-run it manually if needed.\n\n_This issue auto-closes when a fresh snapshot lands._`;
