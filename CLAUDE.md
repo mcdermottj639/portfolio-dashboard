@@ -272,6 +272,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   are **sector-diversified** and carry a **catalyst-risk note** when earnings land inside the swing window.
   **Track Record** card grades archived past picks (`data.picks.history`) on a closing basis — hit
   TP1/TP2, stopped, or open — with a running hit-rate + avg return (graded client-side from daily bars).
+  **Compact by default (v89):** the card leads with the 3 headline stats (Hit rate · Avg return ·
+  **Record** = W·L) + a one-line **resolved-vs-open** clarifier (resolved = a close hit a target=win or
+  stop=loss; open = still running, excluded from the hit-rate) + a **compact recent-outcomes chip strip**
+  (last 12, most-recent first: ✅ win · ⛔ loss · • open). The full per-scan breakdown (entry/exit levels,
+  recent 8 scans) is tucked behind a native **`<details>` "View graded detail"** expander (`.trk-detail`)
+  so the card no longer grows unbounded as history accrues. Headline stats now reuse `picksTrackStats()`
+  over the FULL history (previously recomputed inline over only the 8 shown scans, so they could diverge).
   Dynamic Earnings Preview follows the soonest-reporting top pick. **Robinhood watchlist sync:** on
   each FETCH_ALL run the producer mirrors the composite top 10 into the **"Dashboard Top 10 Picks"**
   Robinhood watchlist (daily add/remove diff via `sync-watchlist.mjs`), so the list in the Robinhood
