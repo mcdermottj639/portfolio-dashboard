@@ -13,8 +13,13 @@ name: Data freshness watchdog
 
 on:
   schedule:
-    # Hourly across the US market window (15:00–21:00 UTC ≈ 10:00–17:00 ET incl. DST), weekdays.
-    - cron: '0 15-21 * * 1-5'
+    # Hourly across (and just before) the US market window — 13:00–21:00 UTC, weekdays. Starts at
+    # 13:00 UTC (= 9:00 AM ET in EDT, the producer's first FETCH_ALL slot) so a deploy that fails
+    # right at the 9:30 open is auto-healed within the hour. The old 15:00 UTC start was ~10:00 ET
+    # in EST but 11:00 ET in EDT, leaving the whole summer morning (open → 11:00 ET) uncovered —
+    # exactly the gap that let the 2026-07-06 open-time deploy failure sit stale. Extra pre-open
+    # runs no-op via the market-closed guard, so widening the window is free.
+    - cron: '0 13-21 * * 1-5'
   workflow_dispatch: {}
 
 permissions:
