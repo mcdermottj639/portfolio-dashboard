@@ -304,6 +304,15 @@ body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-sele
 .pk-m { background:#f9fafb; border-radius:8px; padding:8px 10px; }
 .pk-m-l { font-size:9px; text-transform:uppercase; letter-spacing:0.05em; color:#9ca3af; font-weight:700; margin-bottom:3px; }
 .pk-m-v { font-size:13px; font-weight:700; }
+/* Track Record — compact recent-outcomes strip + tap-to-expand detail */
+.trk-strip { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:4px; }
+.trk-chip { font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:6px; white-space:nowrap; }
+.trk-chip.trk-more { background:transparent; color:#9ca3af; padding-left:2px; }
+.trk-detail { margin-top:8px; }
+.trk-detail > summary { cursor:pointer; font-size:12px; font-weight:700; color:#2563eb; list-style:none; padding:5px 0; user-select:none; }
+.trk-detail > summary::-webkit-details-marker { display:none; }
+.trk-detail > summary::before { content:'▸ '; font-size:10px; }
+.trk-detail[open] > summary::before { content:'▾ '; }
 .conf2 { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
 .conf2-lbl { font-size:11px; color:#9ca3af; width:74px; }
 .conf2-track { flex:1; height:6px; background:#f3f4f6; border-radius:3px; }
@@ -637,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v88'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v89'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2475,10 +2484,12 @@ window.switchTab=switchTab;
     <div class="hsub">How picks are graded</div>
     <ul>
       <li>Each archived pick is marked <b>hit TP1</b>, <b>hit TP2</b>, <b>stopped out</b>, or <b>still open</b>, judged from daily closing prices.</li>
-      <li><span class="hk">Hit-rate</span> — share of resolved picks that reached a target before stopping. <span class="hk">Avg return</span> — the mean outcome.</li>
+      <li><span class="hk">Resolved vs open</span> — a pick is <b>resolved</b> once a close reaches a target (a <b>win</b>) or its stop (a <b>loss</b>). Until then it's <b>open</b> (still running) and is excluded from the hit-rate.</li>
+      <li><span class="hk">Hit-rate</span> — share of <i>resolved</i> picks that reached a target before stopping. <span class="hk">Record</span> — wins·losses. <span class="hk">Avg return</span> — the mean outcome.</li>
     </ul>
-    <div class="hsub">What to look for</div>
+    <div class="hsub">Reading the card</div>
     <ul>
+      <li>The strip of chips is the most-recent outcomes at a glance (✅ win · ⛔ loss · • open). Tap <b>View graded detail</b> to expand the full per-scan breakdown with entry/exit levels.</li>
       <li>A hit-rate around or above 50% with risk/reward ≥ 2:1 is mathematically profitable even with plenty of losers.</li>
       <li>Small samples are noisy — weight this more as the resolved count grows.</li>
     </ul>` },
@@ -4353,12 +4364,29 @@ function renderPicksTrack(){
     el.innerHTML='<div class="fund-note" style="opacity:.85">Building a track record. Once the next scan replaces today’s picks, the outgoing set is archived here and graded against actual prices — hit TP1/TP2, stopped, or still open — with a running hit-rate.</div>';
     return;
   }
-  let wins=0,losses=0,open=0,retSum=0,retN=0;
+  // Headline stats over the FULL archived history — reuse picksTrackStats() so this card and the
+  // Action Plan's conviction line can never diverge (was: recomputed here over only the shown 8).
+  const st=(typeof picksTrackStats==='function')?picksTrackStats():{wins:0,losses:0,open:0,hitRate:null,avgRet:null};
+  const wins=st.wins,losses=st.losses,open=st.open,hitRate=st.hitRate,avgRet=st.avgRet,resolved=wins+losses;
+  const stat=(l,v,c)=>'<div class="pk-m"><div class="pk-m-l">'+l+'</div><div class="pk-m-v" style="color:'+(c||'var(--text)')+'">'+v+'</div></div>';
+  const metrics='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin:2px 0 8px">'
+      +stat('Hit rate',hitRate==null?'—':hitRate+'%',hitRate!=null&&hitRate>=50?'#065f46':'#92400e')
+      +stat('Avg return',avgRet==null?'—':(avgRet>=0?'+':'')+fmt(avgRet,1)+'%',avgRet!=null&&avgRet>=0?'#065f46':'#991b1b')
+      +stat('Record',resolved?wins+'W · '+losses+'L':'—',resolved?(wins>=losses?'#065f46':'#991b1b'):'var(--text)')
+    +'</div>';
+  // One-line clarifier so "resolved vs open" is never ambiguous.
+  const sub='<div style="font-size:11px;color:#9ca3af;margin:-4px 0 9px;line-height:1.45"><b>'+resolved+'</b> resolved '
+      +'<span style="opacity:.8">(hit a target = win, or a stop = loss)</span> · <b>'+open+'</b> still open '
+      +'<span style="opacity:.8">(running — not yet at a target or stop, so not in the hit-rate)</span>.</div>';
+  // Compact recent-outcomes strip — most-recent scans first, one glyph chip per pick.
+  const flat=[]; for(const h of hist)for(const pk of h.picks){ const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts); flat.push({pk,g}); }
+  const CHIP={TP2:['#065f46','#d1fae5','✅'],TP1:['#065f46','#d1fae5','✅'],STOPPED:['#991b1b','#fee2e2','⛔'],OPEN:['#475569','#e2e8f0','•']};
+  const N=12; const strip='<div class="trk-strip">'+flat.slice(0,N).map(o=>{ const m=CHIP[o.g.status]||CHIP.OPEN; return '<span class="trk-chip" style="background:'+m[1]+';color:'+m[0]+'">'+m[2]+' '+o.pk.ticker+'</span>'; }).join('')
+      +(flat.length>N?'<span class="trk-chip trk-more">+'+(flat.length-N)+' more</span>':'')+'</div>';
+  // Full per-scan breakdown — collapsed by default (tap to expand), recent 8 scans, unchanged detail.
   const groups=hist.slice(0,8).map(h=>{
     const rows=h.picks.map(pk=>{
       const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts);
-      if(g.status==='TP1'||g.status==='TP2')wins++; else if(g.status==='STOPPED')losses++; else open++;
-      if(g.ret!=null){retSum+=g.ret;retN++;}
       const badge={TP2:['#065f46','#d1fae5','✅ TP2'],TP1:['#065f46','#d1fae5','✅ TP1'],STOPPED:['#991b1b','#fee2e2','⛔ Stopped'],OPEN:['#475569','#e2e8f0','• Open']}[g.status];
       const rc=g.ret==null?'#6b7280':g.ret>=0?'#10b981':'#ef4444';
       return '<div class="harv-line"><span style="white-space:nowrap"><b>'+pk.ticker+'</b> <span style="font-size:10px;color:#9ca3af">'+(pk.signal||'')+'</span></span>'
@@ -4370,15 +4398,10 @@ function renderPicksTrack(){
     }).join('');
     return '<div style="margin-bottom:10px"><div style="font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:3px">'+(h.date||h.ts)+'</div>'+rows+'</div>';
   }).join('');
-  const hitRate=(wins+losses)>0?Math.round(wins/(wins+losses)*100):null;
-  const avgRet=retN?retSum/retN:null;
-  const stat=(l,v,c)=>'<div class="pk-m"><div class="pk-m-l">'+l+'</div><div class="pk-m-v" style="color:'+(c||'var(--text)')+'">'+v+'</div></div>';
-  el.innerHTML='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin:2px 0 12px">'
-      +stat('Hit rate',hitRate==null?'—':hitRate+'%',hitRate!=null&&hitRate>=50?'#065f46':'#92400e')
-      +stat('Avg return',avgRet==null?'—':(avgRet>=0?'+':'')+fmt(avgRet,1)+'%',avgRet!=null&&avgRet>=0?'#065f46':'#991b1b')
-      +stat('Resolved',wins+'W · '+losses+'L · '+open+' open','var(--text)')
-    +'</div>'+groups
-    +'<div class="fund-note">Graded on a <b>closing basis</b> since each scan date — a target counts if a daily close reached it; stopped if a close hit the stop. Assumes entry at the planned level; current return is entry → latest. Past results don’t guarantee anything.</div>';
+  const detail='<details class="trk-detail"><summary>View graded detail'+(hist.length>8?' · recent 8 of '+hist.length+' scans':'')+'</summary>'
+      +'<div style="margin-top:10px">'+groups
+      +'<div class="fund-note">Graded on a <b>closing basis</b> since each scan date — a target counts if a daily close reached it; stopped if a close hit the stop. Assumes entry at the planned level; current return is entry → latest. Past results don’t guarantee anything.</div></div></details>';
+  el.innerHTML=metrics+sub+strip+detail;
 }
 
 async function fetchPicksLive(){
