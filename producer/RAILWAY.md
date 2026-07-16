@@ -36,6 +36,7 @@ Railway cron ─► entrypoint.sh
 | Data | Source in this path | Notes |
 |---|---|---|
 | Portfolio / positions / quotes | `robin_stocks` (every run) | required; run aborts if these fail |
+| **Agentic ••••3900 account** (Agentic Portfolio card) | `robin_stocks` (every run) | best-effort; auto-detects the cash account (`PF_AGENTIC_ACCOUNT` to override) → `agentic-portfolio.json`/`agentic-positions.json`. Missing → card carries forward frozen |
 | Day (YTD) + 5Y historicals | `robin_stocks` (FETCH_ALL only) | 5Y uses weekly bars (RH has no monthly interval) |
 | Holdings fundamentals (sector/PE/mktcap/52wk/yield) | `robin_stocks` (FETCH_ALL) | dividends-per-share absent → approximated |
 | Macro signals + AV company overviews | `av-fetch.mjs` over **HTTP** | already keyless of MCP; set `ALPHAVANTAGE_KEY` |
@@ -45,11 +46,13 @@ Railway cron ─► entrypoint.sh
 | **Daily Picks** | `robin_stocks` (FETCH_ALL) | client-side oversold screen → `scan.json`/`picks-fund.json` |
 | Realized P&L | carried forward / `realized.json` | owner-maintained; options realized/premium YTD refresh live |
 
-So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh live. This path is at
+So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh live, and the **Agentic
+Portfolio** card tracks the real ••••3900 account (holdings + cash re-priced every run). This path is at
 parity with the scheduled Claude agent (modulo the Picks-universe note below + dividend approximation).
 
 **Known gaps vs the agent path (post-publish, best-effort extras only):** the Railway producer cannot
-do the two Robinhood **watchlist syncs**, the weekly **agentic research refresh**, or deliver the
+do the two Robinhood **watchlist syncs**, the weekly **agentic research refresh** (the *research
+target*; the account's live holdings/cash DO refresh here now), or deliver the
 **level-crossing push alerts** (`PRODUCER.md` steps 5–8 — all need MCP / `PushNotification`, which only
 exist in a Claude session). The alert *detection* still runs here (`build-data.mjs` writes
 `producer/raw/alerts.json` and logs each `[alerts] …` line, visible in Railway logs) — only the phone
