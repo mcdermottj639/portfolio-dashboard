@@ -1,6 +1,6 @@
 // Offline unit checks for the picks scoring engine + the pure social shaper — no network.
 // Run: node producer/picks.test.mjs
-import { scanRows, selectFinalists, buildPicks } from './picks.mjs';
+import { scanRows, selectFinalists, buildPicks, trendGate, DOWNTREND_PENALTY } from './picks.mjs';
 import { shapeSocial } from './social.mjs';
 
 let pass = 0, fail = 0;
@@ -81,6 +81,42 @@ const fund = { pe_ratio: '12', pb_ratio: '2', dividend_yield: '1.5', high_52_wee
   const pickSyms = out.picks.map((p) => p.ticker).sort();
   eq('picks: max 2 per sector + backfill from other sectors', pickSyms, ['E1', 'T1', 'T2']);
   eq('candidates table stays composite-ranked (uncapped)', out.candidates.map((c) => c.ticker), ['T1', 'T2', 'T3', 'E1']);
+}
+
+// --- momentum / trend gate ---
+{
+  // MA structure: price below 200-DMA AND 50 < 200 → confirmed downtrend
+  eq('MA death-cross below 200 → downtrend', trendGate({ price: 100, sma50: 110, sma200: 130 }).downtrend, true);
+  // below 200 but 50 above 200 (recovering) → not a confirmed downtrend
+  eq('below 200 but 50>200 → not downtrend', trendGate({ price: 100, sma50: 135, sma200: 130 }).downtrend, false);
+  // above the 200-DMA → uptrend, never gated regardless of how far off a spike high
+  eq('above 200-DMA → not downtrend', trendGate({ price: 140, sma50: 120, sma200: 130, pctOffHigh: -60 }).downtrend, false);
+  // no MA data → fall back to distance off the 52wk high
+  eq('fallback: 63% off high → downtrend', trendGate({ pctOffHigh: -63 }).downtrend, true);
+  eq('fallback: 33% off high → not downtrend (normal pullback)', trendGate({ pctOffHigh: -33 }).downtrend, false);
+}
+// A confirmed downtrend is docked in the composite AND excluded from the highlighted top picks.
+{
+  // price 100, 52wk high 260 → -61.5% off high (no MA) → downtrend; base composite would be BUY-grade.
+  const dt = { ticker: 'FALL', name: 'Falling Knife', price: 100, rsi: 22, marketCap: 5e10 };
+  const dtFund = { pe_ratio: '12', pb_ratio: '2', dividend_yield: '1.5', high_52_weeks: '260', low_52_weeks: '95', sector: 'Energy' };
+  const clean = { ticker: 'DIP', name: 'Healthy Dip', price: 100, rsi: 30, marketCap: 5e10 };
+  const out = buildPicks([dt, clean], { FALL: dtFund, DIP: fund }, {}, {});
+  const fall = out.candidates.find((c) => c.ticker === 'FALL');
+  eq('downtrend flagged on the candidate', fall.downtrend, true);
+  eq('downtrend flag label', fall.flag, 'Downtrend');
+  eq('downtrend name excluded from top picks', out.picks.map((p) => p.ticker).includes('FALL'), false);
+  eq('healthy dip still a top pick', out.picks.map((p) => p.ticker).includes('DIP'), true);
+  // composite = base(tech.7*.33+... ) minus the penalty; confirm the dock is applied (FALL < DIP despite lower RSI).
+  eq('downtrend docks composite below the clean name', fall.composite < out.candidates.find((c) => c.ticker === 'DIP').composite, true);
+}
+// AV moving averages, when present, take precedence over the 52wk-high fallback.
+{
+  const dt = { ticker: 'MAD', name: 'MA Downtrend', price: 100, rsi: 28, marketCap: 5e10 };
+  const ov = { Symbol: 'MAD', Sector: 'Technology', '50DayMovingAverage': '115', '200DayMovingAverage': '140' };
+  const out = buildPicks([dt], { MAD: fund }, { MAD: ov }, {});
+  eq('MA-based downtrend flagged', out.candidates[0].downtrend, true);
+  eq('MA-based downtrend excluded from picks', out.picks.length, 0);
 }
 
 // --- shapeSocial (pure — the half of social.mjs both producers reuse) ---

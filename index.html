@@ -646,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v89'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v90'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1586,6 +1586,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     if(out.length<3){ const cands=((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[]);
       for(let i=0;i<cands.length&&out.length<3;i++){ const c=cands[i]; if(!c||!c.ticker)continue;
         if(pickPickTickers.has(c.ticker))continue;                              // already weighed as a top-3 pick
+        if(c.downtrend)continue;                                                // trend gate — never redeploy into a confirmed downtrend
         if(!eligible(c.ticker,c.sector))continue;
         const sp=synthPickFromCandidate(c,smaMap); if(!sp)continue;
         mark(c.sector); out.push({p:sp,rank:c.rank||(i+1),backfill:true}); } }
