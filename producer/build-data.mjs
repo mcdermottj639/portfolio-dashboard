@@ -268,6 +268,13 @@ const data = {
     data.agentic = { asOf: data.generatedAt, cash, buyingPower: bp, equity: +(cash + posVal).toFixed(2), positions };
     console.log(`agentic: ${positions.length} positions · ${fmtMoney(posVal)} invested · ${fmtMoney(cash)} cash`);
   } else if (prior && prior.agentic) {
+    // ⚠️ A fresh main-account portfolio.json is required for this build to run at all (see top),
+    // so if we're here the agent fetched the MAIN account but NOT the agentic ••••3900 account —
+    // the agentic-* rows were skipped this run. That's an every-run fetch (light AND full), so a
+    // skip means the card's share counts / cash are FROZEN (only prices re-drift below). Warn loudly
+    // so a persistent skip is visible in run logs instead of silently masquerading as fresh (the
+    // asOf below is re-stamped to now regardless). Fix = fetch agentic-portfolio/positions.json every run.
+    console.warn('⚠️  agentic: NO fresh agentic-portfolio.json this run — carrying forward FROZEN holdings/cash from the prior snapshot (only re-pricing). The ••••3900 fetch rows were skipped; new trades/deposits will NOT show until they are fetched every run (see PRODUCER.md step 2, agentic-* rows).');
     // No fresh agentic fetch this run (e.g. a light intraday run) — carry the holdings forward but
     // RE-PRICE each with THIS run's quotes, so the agentic values + drift track prices on every run
     // (3×/day), in step with the main account. The holdings are index/leader symbols that are quoted

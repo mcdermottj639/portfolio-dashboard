@@ -196,6 +196,18 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   that resolved to a live contract UUID this run are synced (estimate-only/multi-leg are skipped).
   `PF_ACCOUNT` = the default individual account (…0741). A 404 on `get_portfolio` usually means the
   connector needs reconnecting/approval ("always allow"), not a code bug.
+- **The agentic ••••3900 fetch is EVERY-RUN, not FETCH_ALL — skipping it silently FREEZES the card.**
+  `get_portfolio`/`get_equity_positions` for the …3900 cash account (`agentic-portfolio.json` /
+  `agentic-positions.json`, PRODUCER.md step 2) must run on **light runs too**. If they're absent,
+  `build-data.mjs` carries the prior holdings forward, **re-prices** them, and **re-stamps `asOf` to
+  now** — so the Agentic card looks freshly updated while share counts + cash are stuck at an old
+  snapshot (new trades/deposits never appear). This bit us: the light-run item list in
+  PRODUCER.md/SCHEDULING.md once read "(portfolio, positions, quotes, VIX, options)" and didn't name
+  the second account, so the agent fetched only the main book every light run and the card sat frozen
+  (equity flat for a week while the real account tripled). Fixed by naming **both accounts** in that
+  list; `build-data.mjs` now `console.warn`s when it carries the agentic block forward so a repeat is
+  visible in run logs. The account number is resolved live via `get_accounts` (`agentic_allowed:true`),
+  not an env var — don't skip the rows because the number "looks missing."
 - **Cost discipline:** historicals (5Y monthly + YTD daily for ~36 symbols ≈ 24 of ~30 calls) are the
   expensive part. They're fetched once/day (FETCH_ALL) and carried forward — never re-fetch them on a
   light run. The schedule runs **every ~30 min during market hours**, but only the day's first run is
