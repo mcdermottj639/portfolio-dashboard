@@ -58,7 +58,9 @@ Use exactly this as the scheduled prompt:
 > Run the portfolio dashboard producer by following `producer/PRODUCER.md` exactly. **First run
 > `node producer/preflight.mjs` and obey its directive:** if it prints `SKIP`, stop immediately and
 > do nothing; if `FETCH_ALL`, do the full fetch (steps 1–3c); if `FETCH_LIGHT`, fetch only the
-> EVERY-RUN items (portfolio, positions, quotes, VIX, options) and skip historicals, fundamentals,
+> EVERY-RUN items — **both accounts'** portfolio + positions (your main account **AND** the ••••3900
+> agentic cash account, resolved via `get_accounts` → `agentic-portfolio.json`/`agentic-positions.json`),
+> plus quotes, VIX, options — and skip historicals, fundamentals,
 > the Alpha Vantage refresh and the picks rebuild. `Write` each raw result into `producer/raw/` —
 > never use `cp`/`mv`/shell variables. If any Robinhood call fails, stop without building. Then run
 > **`node producer/run.mjs "<label>"`** (label = current time like `Jun 23 2026, 12:30 PM ET`),

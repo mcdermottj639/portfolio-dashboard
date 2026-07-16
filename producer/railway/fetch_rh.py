@@ -13,6 +13,8 @@ replay contract is unchanged:
 
   producer/raw/portfolio.json      { total_value, equity_value, cash, buying_power:{buying_power} }
   producer/raw/positions.json      { positions: [ {symbol, quantity, average_buy_price}, ... ] }
+  producer/raw/agentic-portfolio.json  same shape, for the ••••3900 agentic cash account   (EVERY-RUN)
+  producer/raw/agentic-positions.json  same shape, for the ••••3900 agentic cash account   (EVERY-RUN)
   producer/raw/quotes.json         { results: [ <raw RH quote dict>, ... ] }
   producer/raw/hist-day-N.json     { results: [ {symbol, bars:[{t,c}, ...]}, ... ] }   (FETCH_ALL)
   producer/raw/hist-month-N.json   { results: [ {symbol, bars:[{t,c}, ...]}, ... ] }   (FETCH_ALL)
@@ -27,6 +29,8 @@ Env:
   RH_USERNAME, RH_PASSWORD   Robinhood login
   RH_MFA_SECRET              base32 TOTP secret (authenticator). REQUIRED for unattended login.
   PF_ACCOUNT                 (optional) account number to read; default = robin_stocks default.
+  PF_AGENTIC_ACCOUNT         (optional) the ••••3900 agentic cash account number. Omit to auto-detect
+                             the sole cash-type account — only set this if you have >1 cash account.
   FETCH_MODE                 FETCH_ALL | FETCH_LIGHT (set by entrypoint from preflight.mjs).
   DRY_RUN=1                  log shapes / counts but do not write any files.
 
@@ -196,6 +200,109 @@ def fetch_portfolio_positions(rh):
     write_raw("positions.json", {"positions": positions})
     log(f"portfolio: total={total_value:.2f} equity={equity_value:.2f} cash={cash:.2f} · {len(positions)} positions")
     return [p["symbol"] for p in positions]
+
+
+def _agentic_account_number(rh):
+    """Resolve the agentic ••••3900 cash account. An explicit PF_AGENTIC_ACCOUNT env wins; otherwise
+    auto-detect the sole cash-type account (the agentic account is the only `type:"cash"` one — the
+    individual + both IRAs are margin), so no new env var is required. Returns the account_number
+    string or None."""
+    override = os.environ.get("PF_AGENTIC_ACCOUNT")
+    if override:
+        return override.strip()
+    from robin_stocks.robinhood.helper import request_get
+    try:
+        accts = request_get("https://api.robinhood.com/accounts/", "results") or []
+    except Exception as e:
+        log(f"⚠️  agentic: could not list accounts: {e}")
+        return None
+    cash = [a for a in accts if a.get("type") == "cash" and not a.get("deactivated")]
+    if not cash:
+        return None
+    if len(cash) > 1:  # disambiguate by the "Agentic" nickname if there's more than one cash account
+        named = [a for a in cash if (a.get("nickname") or "").strip().lower() == "agentic"]
+        if named:
+            return named[0].get("account_number")
+    return cash[0].get("account_number")
+
+
+def fetch_agentic(rh):
+    """EVERY-RUN (both modes), best-effort. Writes the ••••3900 agentic cash account's OWN portfolio +
+    positions to agentic-portfolio.json / agentic-positions.json — the same shapes build-data.mjs parses
+    into `data.agentic` (the Agentic Portfolio card's real holdings + cash). Without this the card
+    freezes: build-data carries the prior block forward and only re-prices it, so new trades/deposits
+    never appear. Fault-isolated — on any failure it writes NOTHING (both files, atomically at the end)
+    so the prior block carries forward intact rather than half-writing a wiped card. Returns the held
+    symbols so they join the EVERY-RUN quote batch (each needs a live price for the card's re-pricing)."""
+    acct = _agentic_account_number(rh)
+    if not acct:
+        log("agentic: no cash/agentic account resolved — skipping (card carries forward)")
+        return []
+
+    def num(d, *keys):
+        for k in keys:
+            v = (d or {}).get(k)
+            if v not in (None, ""):
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    pass
+        return 0.0
+
+    # Positions FIRST — so a symbol-mapping failure aborts before we write a half-populated card.
+    try:
+        raw_pos = rh.get_open_stock_positions(account_number=acct) or []
+    except Exception as e:
+        log(f"⚠️  agentic: positions fetch failed — card carries forward: {e}")
+        return []
+    positions, syms, sym_cache = [], [], {}
+    for p in raw_pos:
+        if num(p, "quantity") <= 0:
+            continue
+        sym = p.get("symbol")
+        if not sym:  # raw positions carry an instrument URL, not a symbol — resolve + cache
+            url = p.get("instrument")
+            sym = sym_cache.get(url)
+            if not sym and url:
+                try:
+                    sym = rh.get_symbol_by_url(url)
+                except Exception:
+                    sym = None
+                sym_cache[url] = sym
+        if not sym:
+            continue
+        positions.append({
+            "symbol": sym,
+            "quantity": p.get("quantity", "0"),
+            "average_buy_price": p.get("average_buy_price", "0"),
+        })
+        syms.append(sym)
+    if raw_pos and not positions:
+        log("⚠️  agentic: positions returned but none resolved to a symbol — card carries forward")
+        return []
+
+    try:
+        port = rh.load_portfolio_profile(account_number=acct)
+        profile = rh.load_account_profile(account_number=acct)
+    except Exception as e:
+        log(f"⚠️  agentic: portfolio/profile fetch failed — card carries forward: {e}")
+        return []
+    cash = num(profile, "portfolio_cash", "cash")
+    buying_power = num(profile, "buying_power")
+    equity_value = num(port, "market_value", "extended_hours_market_value")
+    rh_equity = num(port, "extended_hours_equity", "equity")
+    total_value = rh_equity if rh_equity > 0 else (equity_value + cash)
+
+    # Both writes back-to-back so the pair is always consistent (or absent → carry forward).
+    write_raw("agentic-portfolio.json", {
+        "total_value": total_value,
+        "equity_value": equity_value,
+        "cash": cash,
+        "buying_power": {"buying_power": buying_power},
+    })
+    write_raw("agentic-positions.json", {"positions": positions})
+    log(f"agentic ({acct[-4:]}): cash={cash:.2f} · {len(positions)} positions: {', '.join(syms) or '—'}")
+    return syms
 
 
 def fetch_quotes(rh, symbols):
@@ -583,14 +690,19 @@ def main():
     log(f"mode={MODE} dry_run={DRY} year={THIS_YEAR}")
     rh = rh_login()
     held = fetch_portfolio_positions(rh)
+
+    # Agentic ••••3900 cash account — its own portfolio + positions, EVERY run (both modes). Best-effort;
+    # its holdings join the quote batch so the Agentic Portfolio card re-prices with live prices.
+    agentic_syms = fetch_agentic(rh)
+
     markets = market_symbols()
 
     # Options every run (cheap); returns underlying chain symbols to fold into the quote batch
     # so options-build.mjs always has the underlying price (even for names you don't hold equity in).
     opt_syms = fetch_options(rh)
 
-    # quotes: every held symbol + every market symbol + option underlyings (EVERY-RUN)
-    all_syms = list(dict.fromkeys(held + markets + sorted(opt_syms)))
+    # quotes: every held symbol + agentic holdings + every market symbol + option underlyings (EVERY-RUN)
+    all_syms = list(dict.fromkeys(held + agentic_syms + markets + sorted(opt_syms)))
     fetch_quotes(rh, all_syms)
 
     # VIX: cheap, every run, best-effort

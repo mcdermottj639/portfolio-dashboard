@@ -74,8 +74,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      closing snapshot is already taken — a stray off-hours fire ends here for ~zero cost.)
    - **`FETCH_ALL`** → the day's first run. Do the full fetch: steps 1–3c below (historicals,
      fundamentals, AV, picks, options — everything).
-   - **`FETCH_LIGHT`** → an intraday/close run. Fetch **only the EVERY-RUN items** (portfolio,
-     positions, quotes, VIX, options) and **SKIP the FETCH_ALL-only items** (historicals,
+   - **`FETCH_LIGHT`** → an intraday/close run. Fetch **only the EVERY-RUN items** — **both
+     accounts'** portfolio + positions (your main account **AND** the ••••3900 agentic cash account —
+     resolve it via `get_accounts`, see the callout below; the `agentic-*.json` rows are EVERY-RUN,
+     **not** FETCH_ALL-only), plus quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
      fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
      forward from the prior snapshot automatically. Then go straight to step 4.
 
