@@ -70,6 +70,28 @@ function techScore(rsi, price, hi52, lo52) {
   return clamp(Math.round(rsiPart * 0.7 + rangePart * 0.3), 0, 10);
 }
 
+// Momentum / trend gate. The oversold screen surfaces two very different things: a healthy name in a
+// normal PULLBACK (a buy-the-dip setup) and a structurally BROKEN name in a confirmed DOWNTREND (a
+// falling knife the deep-research target explicitly AVOIDS — e.g. ORCL 63% below its high, "momentum
+// 1/10"). techScore actually REWARDS being deep in the 52wk range (more reversion room), so WITHOUT
+// this gate a broken downtrend can top the board and then get fed straight into the Action Center's
+// redeploy sleeve (which deploys into the top picks). We read trend from AV's 50/200-day moving
+// averages when present — price < 200-DMA AND 50-DMA < 200-DMA is a confirmed downtrend — else fall
+// back to distance below the 52-week high (>50% off the high = broken, not merely dipping; a normal
+// oversold pullback sits nearer its high). A confirmed downtrend is DISQUALIFIED from the highlighted
+// top picks (buildPicks filters it out of picks[]) and docked DOWNTREND_PENALTY composite points so it
+// also sinks in the candidates table. Milder pullbacks are untouched.
+export const DOWNTREND_PENALTY = 3.0;   // composite points docked from a confirmed-downtrend name
+export function trendGate({ price, sma50, sma200, pctOffHigh }) {
+  if (price != null && sma50 != null && sma200 != null && sma200 > 0) {   // primary: MA structure (AV)
+    if (price < sma200 && sma50 < sma200) return { downtrend: true, reason: 'below 200-DMA · 50 < 200-DMA' };
+    return { downtrend: false, reason: '' };
+  }
+  if (pctOffHigh != null && pctOffHigh <= -50)                            // fallback: distance off 52wk high
+    return { downtrend: true, reason: `${Math.abs(Math.round(pctOffHigh))}% below 52wk high` };
+  return { downtrend: false, reason: '' };
+}
+
 // Fundamentals: valuation (trailing P/E, P/B, dividend) from Robinhood, plus growth
 // (revenue growth, forward P/E) from AV when available. Returns 0–10.
 function fundScore({ pe, pb, divYield, revGrowth, fwdPE }) {
@@ -168,8 +190,13 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     const socT = socialMap[f.ticker];
     const social = socialScore(socT);
     const buzz = buzzLabel(socT, social);
-    const composite = +(tech * 0.33 + fundS * 0.28 + rrScore * 0.19 + social * 0.20).toFixed(2);
     const pctOffHigh = hi52 && hi52 > 0 ? ((f.price / hi52 - 1) * 100) : null;
+    const sma50 = num(ov['50DayMovingAverage']), sma200 = num(ov['200DayMovingAverage']);
+    const trend = trendGate({ price: f.price, sma50, sma200, pctOffHigh });
+    // Composite = the documented 33/28/19/20 blend, then a confirmed-downtrend name is docked so it
+    // sinks in the candidates table (it's already excluded from picks[] below).
+    const composite = +clamp(tech * 0.33 + fundS * 0.28 + rrScore * 0.19 + social * 0.20
+      - (trend.downtrend ? DOWNTREND_PENALTY : 0), 0, 10).toFixed(2);
     // Per-row data-coverage flags so the dashboard can tell a real score from a "no data → neutral"
     // one: growth = AV supplied revenue-growth/forward-P/E (else value-only); social = ApeWisdom
     // actually tracked this name (else neutral 5); rr = 52wk levels were present for the R/R math.
@@ -181,10 +208,11 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     return {
       ticker: f.ticker, company: f.name, sector, price: f.price, rsi: Math.round(f.rsi),
       tech, fund: fundS, rrScore, social, buzz, composite, cov,
+      downtrend: trend.downtrend, trendNote: trend.reason,
       revGrowth: revGrowth != null ? fmtPct(revGrowth) : '—',
       fwdPE: fwdPE != null ? fwdPE.toFixed(1) : (pe != null ? pe.toFixed(1) + ' (ttm)' : '—'),
       rr: L.rr != null ? L.rr.toFixed(1) + ':1' : '—',
-      flag: fwdPE != null && fwdPE > 100 ? 'Fwd P/E > 100' : revGrowth != null && revGrowth < 0 ? 'Neg Rev Growth' : 'ok',
+      flag: trend.downtrend ? 'Downtrend' : fwdPE != null && fwdPE > 100 ? 'Fwd P/E > 100' : revGrowth != null && revGrowth < 0 ? 'Neg Rev Growth' : 'ok',
       _L: L, _pctOffHigh: pctOffHigh, _hi52: hi52, _mcap: f.marketCap,
     };
   }).sort((a, b) => b.composite - a.composite);
@@ -193,12 +221,16 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     rank: i + 1, ticker: c.ticker, company: c.company, sector: c.sector, price: c.price, rsi: c.rsi,
     tech: c.tech, revGrowth: c.revGrowth, fwdPE: c.fwdPE, fund: c.fund,
     rr: c.rr, rrScore: c.rrScore, social: c.social, buzz: c.buzz, composite: c.composite, cov: c.cov, flag: c.flag,
+    downtrend: c.downtrend, trendNote: c.trendNote,
   }));
 
   // Top picks, sector-diversified: walk the composite ranking but cap how many share one sector so a
   // single-sector selloff (which fills the oversold screen) can't make all three picks the same theme.
   // Unknown sectors ("—") aren't capped against each other. Backfill from the ranking if caps fall short.
-  const pickRows = diversifyBySector(scored, N_PICKS, MAX_PICKS_PER_SECTOR);
+  // Confirmed downtrends are DISQUALIFIED here (the trend gate) — they stay in the candidates table as an
+  // oversold data point but never become a highlighted top pick (nor feed the Action Center's sleeve). If
+  // that leaves fewer than N_PICKS clean names, we show fewer rather than promote a falling knife.
+  const pickRows = diversifyBySector(scored.filter((c) => !c.downtrend), N_PICKS, MAX_PICKS_PER_SECTOR);
   const picks = pickRows.map((c) => {
     const L = c._L;
     const signal = c.composite >= 7 ? 'BUY' : c.composite >= 5.5 ? 'CAUTIOUS BUY' : 'WATCH';
