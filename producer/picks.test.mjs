@@ -144,6 +144,13 @@ const fund = { pe_ratio: '12', pb_ratio: '2', dividend_yield: '1.5', high_52_wee
   eq('a stop-out outside the window is NOT benched', cd.OLD, undefined);
   eq('an elapsed cooldown drops off once asOf passes `until`', recentStopCooldown(hist, bars, { asOf: '2026-08-01' }).ORCL, undefined);
   eq('empty history → empty cooldown', recentStopCooldown([], {}, { asOf: '2026-07-19' }), {});
+
+  // averaging-down backstop: NO bars to confirm the stop-out, but today's scan price is at/below the recent
+  // pick's published stop → still benched (chasing a knife down), even without a graded close.
+  const cd2 = recentStopCooldown(hist, {}, { asOf: '2026-07-19', priceBySym: { ORCL: 124 } });   // 124 < Jul-13 stop 128
+  eq('below-prior-stop scan price benches even with no bars', !!cd2.ORCL, true);
+  eq('averaging-down reason names the chase', /chasing down/.test(cd2.ORCL.reason), true);
+  eq('a scan price ABOVE the prior stop (no bars) is NOT benched', recentStopCooldown(hist, {}, { asOf: '2026-07-19', priceBySym: { ORCL: 140 } }).ORCL, undefined);
 }
 // --- cooldown gate in buildPicks: benched from picks[], docked in candidates, flagged ---
 {

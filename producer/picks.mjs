@@ -131,7 +131,8 @@ export function gradePickClose(pk, bars, sinceTs) {
 //   barsBySym:  { SYM: [{t,c}] }  daily bars (prior snapshot's data.hist.day, coalesced)
 //   { asOf }:   today's ISO date; { calDays }: the cooldown window (default COOLDOWN_CAL_DAYS)
 // Returns { SYM: { until:'YYYY-MM-DD', date:'YYYY-MM-DD', reason } } for names still inside the window.
-export function recentStopCooldown(history, barsBySym = {}, { asOf, calDays = COOLDOWN_CAL_DAYS } = {}) {
+//   { priceBySym }: today's fresh scan price per candidate — enables the averaging-down backstop (below).
+export function recentStopCooldown(history, barsBySym = {}, { asOf, calDays = COOLDOWN_CAL_DAYS, priceBySym = {} } = {}) {
   const out = {};
   if (!Array.isArray(history) || !asOf) return out;
   const cutoff = shiftISO(asOf, -calDays);                       // only scans within the trailing window matter
@@ -141,11 +142,21 @@ export function recentStopCooldown(history, barsBySym = {}, { asOf, calDays = CO
     for (const pk of (h.picks || [])) {
       const sym = pk && pk.ticker;
       if (!sym) continue;
-      if (gradePickClose(pk, barsBySym[sym] || [], ts) !== 'STOPPED') continue;
+      const stoppedByClose = gradePickClose(pk, barsBySym[sym] || [], ts) === 'STOPPED';
+      // Averaging-down backstop: a fresh scan price at/below this recent pick's PUBLISHED stop means the name
+      // has fallen THROUGH the level we'd have exited on — re-listing it lower is chasing a knife down. This
+      // fires straight from the scan price (no bars needed), so it still bites when the prior snapshot's daily
+      // bars for `sym` are thin/missing and the closing-basis grade above can't confirm the stop-out.
+      const px = num(priceBySym[sym]);
+      const belowStop = px != null && pk.sl != null && px <= num(pk.sl);
+      if (!stoppedByClose && !belowStop) continue;
       const until = shiftISO(ts, calDays);
       if (until <= asOf) continue;                               // cooldown already elapsed
-      if (!out[sym] || until > out[sym].until)                   // keep the most-recent stop-out per name
-        out[sym] = { until, date: ts, reason: `stopped out ${shortDate(ts)} · cooling ${COOLDOWN_TRADING_DAYS}d` };
+      const reason = stoppedByClose
+        ? `stopped out ${shortDate(ts)} · cooling ${COOLDOWN_TRADING_DAYS}d`
+        : `now below its ${shortDate(ts)} stop $${num(pk.sl)} — chasing down · cooling ${COOLDOWN_TRADING_DAYS}d`;
+      if (!out[sym] || until > out[sym].until)                   // keep the most-recent trigger per name
+        out[sym] = { until, date: ts, reason };
     }
   }
   return out;

@@ -80,7 +80,8 @@ try {
     const barsBySym = {};
     for (const [sym, arr] of Object.entries(day)) barsBySym[sym] = (arr || []).map((b) => ({ t: String(b.begins_at || b.t || '').slice(0, 10), c: b.close_price ?? b.c }));
     const asOf = new Date().toISOString().slice(0, 10);
-    cooldown = recentStopCooldown(history, barsBySym, { asOf });
+    const priceBySym = Object.fromEntries(finalists.map((f) => [f.ticker, f.price]));   // today's scan price → averaging-down backstop
+    cooldown = recentStopCooldown(history, barsBySym, { asOf, priceBySym });
   }
 } catch { cooldown = {}; }
 const cooldownList = Object.keys(cooldown);
