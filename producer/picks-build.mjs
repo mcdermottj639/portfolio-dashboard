@@ -10,8 +10,9 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { scanRows, selectFinalists, buildPicks, N_FINALISTS, WATCHLIST_ID, WATCHLIST_NAME } from './picks.mjs';
+import { scanRows, selectFinalists, buildPicks, recentStopCooldown, N_FINALISTS, WATCHLIST_ID, WATCHLIST_NAME } from './picks.mjs';
 import { fetchSocialPages, shapeSocial } from './social.mjs';
+import { decryptEnvelope } from './emit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -63,7 +64,28 @@ try {
 } catch { socialMap = {}; }
 const socialCovered = Object.values(socialMap).filter((t) => t && t.tracked).length;
 
-const picks = buildPicks(finalists, fundBySym, ovBySym, socialMap);
+// Recent stop-out cooldown (research picks screen): read the prior COMMITTED snapshot's graded pick history
+// so the engine benches any name it just stopped out on (~10 trading days) instead of re-emitting a fresh
+// loser daily — the ORCL failure mode. Best-effort and fully self-contained: no passphrase / no prior file /
+// plaintext dev snapshot / decrypt failure all degrade to an empty cooldown (i.e. the old behavior).
+let cooldown = {};
+try {
+  const dataFile = join(__dirname, '..', 'data.json');
+  const pass = process.env.PF_PASSPHRASE;
+  if (pass && existsSync(dataFile)) {
+    const env = readJSON(dataFile);
+    const prior = env && env.enc ? await decryptEnvelope(env, pass) : null;   // only real (encrypted) snapshots carry history
+    const history = prior?.picks?.history || [];
+    const day = (prior?.hist && (prior.hist.day || prior.hist.daily)) || {};
+    const barsBySym = {};
+    for (const [sym, arr] of Object.entries(day)) barsBySym[sym] = (arr || []).map((b) => ({ t: String(b.begins_at || b.t || '').slice(0, 10), c: b.close_price ?? b.c }));
+    const asOf = new Date().toISOString().slice(0, 10);
+    cooldown = recentStopCooldown(history, barsBySym, { asOf });
+  }
+} catch { cooldown = {}; }
+const cooldownList = Object.keys(cooldown);
+
+const picks = buildPicks(finalists, fundBySym, ovBySym, socialMap, cooldown);
 writeFileSync(join(RAW, 'picks.json'), JSON.stringify(picks, null, 2));
 
 // Sidecar for the Robinhood watchlist sync (FETCH_ALL only — this file's mere presence is the
@@ -77,6 +99,7 @@ const avCount = Object.keys(ovBySym).length;
 console.log(`picks: ${picks.candidates.length} candidates · top ${picks.picks.length}: ` +
   picks.picks.map((p) => `${p.ticker}(${p.composite} ${p.signal})`).join(', '));
 console.log(`watchlist: queued sync of ${top.length} → "${WATCHLIST_NAME}" (${top.join(' ')})`);
+console.log(`cooldown: ${cooldownList.length ? 'benched ' + cooldownList.join(' ') + ' (recent stop-outs, ~' + 10 + ' trading days)' : 'none (no recent stop-outs in window)'}`);
 console.log(`social: ${socialCovered}/${finalists.length} finalists with ApeWisdom buzz (20% of composite)`);
 console.log(`fundamentals: ${Object.keys(fundBySym).length} RH · ${avCount} AV overview${avCount === 1 ? '' : 's'}` +
   (avCount ? '' : ' (value-only scoring — AV skipped/capped)'));

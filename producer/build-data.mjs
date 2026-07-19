@@ -301,6 +301,30 @@ const data = {
   } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {
     data.agentic.equityHistory = prior.agentic.equityHistory.slice(-260);
   }
+  // ── Wash-sale ledger (taxable ••••3900). Robinhood gives us no dated realized-loss feed for this account,
+  // so we RECONSTRUCT recent realized losses from position diffs across snapshots: when a FRESH fetch shows
+  // an agentic holding reduced/exited while it was underwater vs its average cost, that's an inferred loss,
+  // dated today. Kept as a rolling 31-day ledger (data.agentic.recentLosses = [{sym,date,avgCost,exitPx}]);
+  // the consumer's Agentic card reads it to BLOCK + flag rebuying any name inside the 30-day wash-sale
+  // window. Only meaningful on a fresh agentic fetch — carry-forward runs have identical positions (no diff).
+  if (data.agentic) {
+    const day = new Date(data.generatedAt).toISOString().slice(0, 10);
+    const cutoff = (() => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 31); return d.toISOString().slice(0, 10); })();
+    let ledger = (prior && prior.agentic && Array.isArray(prior.agentic.recentLosses))
+      ? prior.agentic.recentLosses.filter((e) => e && e.date && e.date >= cutoff) : [];
+    if (apFile && prior && prior.agentic && Array.isArray(prior.agentic.positions)) {
+      const nowQty = Object.fromEntries((data.agentic.positions || []).map((p) => [p.symbol, p.qty || 0]));
+      for (const pp of prior.agentic.positions) {
+        if (!pp || !pp.symbol || !(pp.qty > 0)) continue;
+        const underwater = pp.px != null && pp.avgCost != null && pp.px < pp.avgCost;
+        const reduced = (nowQty[pp.symbol] || 0) < pp.qty - 1e-6;   // fully exited or partially trimmed
+        if (underwater && reduced && !ledger.some((e) => e.sym === pp.symbol && e.date === day))
+          ledger.push({ sym: pp.symbol, date: day, avgCost: pp.avgCost, exitPx: pp.px });
+      }
+    }
+    data.agentic.recentLosses = ledger.slice(-40);
+    if (data.agentic.recentLosses.length) console.log(`agentic wash-sale ledger: ${data.agentic.recentLosses.length} recent loss(es) — ${data.agentic.recentLosses.map((e) => e.sym).join(' ')}`);
+  }
   if (agenticTarget) {
     if (!data.agentic) data.agentic = { asOf: data.generatedAt, cash: 0, buyingPower: 0, equity: 0, positions: [] };
     data.agentic.target = agenticTarget;

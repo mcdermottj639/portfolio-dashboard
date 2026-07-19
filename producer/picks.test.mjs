@@ -1,6 +1,6 @@
 // Offline unit checks for the picks scoring engine + the pure social shaper — no network.
 // Run: node producer/picks.test.mjs
-import { scanRows, selectFinalists, buildPicks, trendGate, DOWNTREND_PENALTY } from './picks.mjs';
+import { scanRows, selectFinalists, buildPicks, trendGate, DOWNTREND_PENALTY, gradePickClose, recentStopCooldown, COOLDOWN_PENALTY } from './picks.mjs';
 import { shapeSocial } from './social.mjs';
 
 let pass = 0, fail = 0;
@@ -117,6 +117,50 @@ const fund = { pe_ratio: '12', pb_ratio: '2', dividend_yield: '1.5', high_52_wee
   const out = buildPicks([dt], { MAD: fund }, { MAD: ov }, {});
   eq('MA-based downtrend flagged', out.candidates[0].downtrend, true);
   eq('MA-based downtrend excluded from picks', out.picks.length, 0);
+}
+
+// --- recent stop-out cooldown (gradePickClose + recentStopCooldown) ---
+{
+  // closing-basis grade: a close ≤ stop is a stop-out; ≥ tp1 banks; ≥ tp2 wins.
+  const pk = { ticker: 'X', tp1: 110, tp2: 120, sl: 95 };
+  eq('grade STOPPED when a close breaches the stop', gradePickClose(pk, [{ t: '2026-07-01', c: 100 }, { t: '2026-07-02', c: 94 }], '2026-07-01'), 'STOPPED');
+  eq('grade TP1 when a close reaches the first target', gradePickClose(pk, [{ t: '2026-07-01', c: 100 }, { t: '2026-07-02', c: 112 }], '2026-07-01'), 'TP1');
+  eq('grade TP2 wins outright', gradePickClose(pk, [{ t: '2026-07-01', c: 121 }], '2026-07-01'), 'TP2');
+  eq('grade OPEN while between levels', gradePickClose(pk, [{ t: '2026-07-01', c: 103 }], '2026-07-01'), 'OPEN');
+  eq('grade ignores bars before the scan date', gradePickClose(pk, [{ t: '2026-06-01', c: 90 }, { t: '2026-07-02', c: 103 }], '2026-07-01'), 'OPEN');
+  eq('grade accepts raw RH bar shape', gradePickClose(pk, [{ begins_at: '2026-07-02', close_price: 94 }], '2026-07-01'), 'STOPPED');
+
+  // cooldown: a name stopped out inside the window is benched with a future `until`.
+  const hist = [
+    { ts: '2026-07-13', date: 'July 13, 2026', picks: [{ ticker: 'ORCL', tp1: 150, tp2: 160, sl: 128 }] },
+    { ts: '2026-07-10', date: 'July 10, 2026', picks: [{ ticker: 'ORCL', tp1: 150, tp2: 160, sl: 127 }] },
+    { ts: '2026-06-01', date: 'June 1, 2026', picks: [{ ticker: 'OLD', tp1: 150, tp2: 160, sl: 128 }] },   // outside window
+  ];
+  const bars = { ORCL: [{ t: '2026-07-14', c: 120 }], OLD: [{ t: '2026-06-02', c: 100 }] };
+  const cd = recentStopCooldown(hist, bars, { asOf: '2026-07-19' });
+  eq('recent stop-out benched', !!cd.ORCL, true);
+  eq('cooldown until = scan date + 14 calendar days', cd.ORCL.until, '2026-07-27');
+  eq('cooldown keeps the most-recent stop-out (Jul 13, not Jul 10)', cd.ORCL.date, '2026-07-13');
+  eq('a stop-out outside the window is NOT benched', cd.OLD, undefined);
+  eq('an elapsed cooldown drops off once asOf passes `until`', recentStopCooldown(hist, bars, { asOf: '2026-08-01' }).ORCL, undefined);
+  eq('empty history → empty cooldown', recentStopCooldown([], {}, { asOf: '2026-07-19' }), {});
+}
+// --- cooldown gate in buildPicks: benched from picks[], docked in candidates, flagged ---
+{
+  const clean = { ticker: 'DIP', name: 'Healthy Dip', price: 100, rsi: 30, marketCap: 5e10 };
+  const hot = { ticker: 'BURN', name: 'Just Stopped', price: 100, rsi: 28, marketCap: 5e10 };
+  const cd = { BURN: { until: '2026-12-31', date: '2026-07-13', reason: 'stopped out Jul 13 · cooling 10d' } };
+  const out = buildPicks([hot, clean], { BURN: fund, DIP: fund }, {}, {}, cd);
+  const burn = out.candidates.find((c) => c.ticker === 'BURN');
+  eq('cooldown flagged on the candidate', burn.cooldown, true);
+  eq('cooldown flag label', burn.flag, 'Recent stop-out');
+  eq('cooldown carries a note', burn.cooldownNote, 'stopped out Jul 13 · cooling 10d');
+  eq('recently-stopped name excluded from top picks', out.picks.map((p) => p.ticker).includes('BURN'), false);
+  eq('clean name still a top pick', out.picks.map((p) => p.ticker).includes('DIP'), true);
+  eq('cooldown docks composite below the clean name', burn.composite < out.candidates.find((c) => c.ticker === 'DIP').composite, true);
+  // no cooldown map → unchanged behavior (both eligible)
+  const out2 = buildPicks([hot, clean], { BURN: fund, DIP: fund }, {}, {});
+  eq('without a cooldown map both names are pickable', out2.picks.map((p) => p.ticker).sort(), ['BURN', 'DIP']);
 }
 
 // --- shapeSocial (pure — the half of social.mjs both producers reuse) ---
