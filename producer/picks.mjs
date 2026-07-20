@@ -92,6 +92,76 @@ export function trendGate({ price, sma50, sma200, pctOffHigh }) {
   return { downtrend: false, reason: '' };
 }
 
+// Recent-stop-out COOLDOWN (the research picks screen). The trend gate filters on trend SHAPE; it caught
+// ORCL only because ORCL was ALSO a textbook downtrend. But the engine otherwise has no memory of what it
+// just lost on, so it would happily re-surface a name the day after it stopped out — which is exactly how
+// ORCL got re-picked ~10 sessions running (June 29–July 13) and stuffed the track record 10×. This gate
+// reads the prior snapshot's GRADED pick history and benches any name that stopped out inside the trailing
+// window: disqualified from the highlighted picks (like a downtrend) and docked COOLDOWN_PENALTY so it also
+// sinks in the candidates table (it stays visible there, flagged "Recent stop-out", as an oversold data
+// point). ~10 trading days ≈ 14 calendar days (we work off the scan `ts` calendar date). Pairs with the
+// 30-day wash-sale guard on the taxable ••••3900 account (build-data → data.agentic.recentLosses).
+export const COOLDOWN_PENALTY = 3.0;          // composite points docked from a recently-stopped name
+export const COOLDOWN_TRADING_DAYS = 10;      // "sit out" horizon expressed in trading days (for display)
+export const COOLDOWN_CAL_DAYS = 14;          // its calendar-day equivalent (weekends) — what we actually gate on
+
+function shiftISO(iso, days) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10); }
+function shortDate(iso) { const d = new Date(iso + 'T00:00:00Z'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+
+// Grade one archived pick on a CLOSING basis (a pure mirror of the consumer's gradePick): walk daily
+// closes since the scan date — a close ≤ stop is a stop-out, ≥ tp2 wins outright, ≥ tp1 banks then keeps
+// watching. bars: [{t,c}] ascending. Returns 'STOPPED' | 'TP1' | 'TP2' | 'OPEN'.
+export function gradePickClose(pk, bars, sinceTs) {
+  const tp1 = num(pk.tp1), tp2 = num(pk.tp2), sl = num(pk.sl);
+  const closes = (bars || [])
+    .filter((b) => !sinceTs || String(b.t || b.begins_at || '').slice(0, 10) >= sinceTs)   // accept {t,c} AND raw RH {begins_at,close_price}
+    .map((b) => num(b.c ?? b.close_price))
+    .filter((c) => c != null && c > 0);
+  let status = 'OPEN', hitT1 = false;
+  for (const c of closes) {
+    if (sl != null && c <= sl) return hitT1 ? 'TP1' : 'STOPPED';
+    if (tp2 != null && c >= tp2) return 'TP2';
+    if (tp1 != null && c >= tp1) { hitT1 = true; status = 'TP1'; }
+  }
+  return status;
+}
+
+// Build the recent-stop-out cooldown map for the picks screen. Pure: (graded history + bars) → benched set.
+//   history:    prior snapshot's data.picks.history — [{ ts:'YYYY-MM-DD', picks:[{ticker,tp1,tp2,sl,...}] }]
+//   barsBySym:  { SYM: [{t,c}] }  daily bars (prior snapshot's data.hist.day, coalesced)
+//   { asOf }:   today's ISO date; { calDays }: the cooldown window (default COOLDOWN_CAL_DAYS)
+// Returns { SYM: { until:'YYYY-MM-DD', date:'YYYY-MM-DD', reason } } for names still inside the window.
+//   { priceBySym }: today's fresh scan price per candidate — enables the averaging-down backstop (below).
+export function recentStopCooldown(history, barsBySym = {}, { asOf, calDays = COOLDOWN_CAL_DAYS, priceBySym = {} } = {}) {
+  const out = {};
+  if (!Array.isArray(history) || !asOf) return out;
+  const cutoff = shiftISO(asOf, -calDays);                       // only scans within the trailing window matter
+  for (const h of history) {
+    const ts = h && h.ts;
+    if (!ts || ts < cutoff || ts > asOf) continue;
+    for (const pk of (h.picks || [])) {
+      const sym = pk && pk.ticker;
+      if (!sym) continue;
+      const stoppedByClose = gradePickClose(pk, barsBySym[sym] || [], ts) === 'STOPPED';
+      // Averaging-down backstop: a fresh scan price at/below this recent pick's PUBLISHED stop means the name
+      // has fallen THROUGH the level we'd have exited on — re-listing it lower is chasing a knife down. This
+      // fires straight from the scan price (no bars needed), so it still bites when the prior snapshot's daily
+      // bars for `sym` are thin/missing and the closing-basis grade above can't confirm the stop-out.
+      const px = num(priceBySym[sym]);
+      const belowStop = px != null && pk.sl != null && px <= num(pk.sl);
+      if (!stoppedByClose && !belowStop) continue;
+      const until = shiftISO(ts, calDays);
+      if (until <= asOf) continue;                               // cooldown already elapsed
+      const reason = stoppedByClose
+        ? `stopped out ${shortDate(ts)} · cooling ${COOLDOWN_TRADING_DAYS}d`
+        : `now below its ${shortDate(ts)} stop $${num(pk.sl)} — chasing down · cooling ${COOLDOWN_TRADING_DAYS}d`;
+      if (!out[sym] || until > out[sym].until)                   // keep the most-recent trigger per name
+        out[sym] = { until, date: ts, reason };
+    }
+  }
+  return out;
+}
+
 // Fundamentals: valuation (trailing P/E, P/B, dividend) from Robinhood, plus growth
 // (revenue growth, forward P/E) from AV when available. Returns 0–10.
 function fundScore({ pe, pb, divYield, revGrowth, fwdPE }) {
@@ -173,7 +243,8 @@ function diversifyBySector(sorted, n, maxPerSector) {
 //  fundBySym: { SYM: <RH get_equity_fundamentals result row> }
 //  ovBySym:   { SYM: <AV COMPANY_OVERVIEW object> }  (optional / may be {})
 //  socialMap: { SYM: <data.social.tickers entry> }   (optional / may be {} — neutral when absent)
-export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
+//  cooldown:  { SYM: {until,date,reason} }            (optional — recent stop-outs to bench; see recentStopCooldown)
+export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}, cooldown = {}) {
   const today = new Date();
   const scored = finalists.map((f) => {
     const fund = fundBySym[f.ticker] || {};
@@ -193,10 +264,11 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     const pctOffHigh = hi52 && hi52 > 0 ? ((f.price / hi52 - 1) * 100) : null;
     const sma50 = num(ov['50DayMovingAverage']), sma200 = num(ov['200DayMovingAverage']);
     const trend = trendGate({ price: f.price, sma50, sma200, pctOffHigh });
-    // Composite = the documented 33/28/19/20 blend, then a confirmed-downtrend name is docked so it
-    // sinks in the candidates table (it's already excluded from picks[] below).
+    const cd = cooldown[f.ticker] || null;   // recently stopped out → benched from picks[] + docked below
+    // Composite = the documented 33/28/19/20 blend, then a confirmed-downtrend OR recently-stopped name is
+    // docked so it sinks in the candidates table (both are also excluded from picks[] below).
     const composite = +clamp(tech * 0.33 + fundS * 0.28 + rrScore * 0.19 + social * 0.20
-      - (trend.downtrend ? DOWNTREND_PENALTY : 0), 0, 10).toFixed(2);
+      - (trend.downtrend ? DOWNTREND_PENALTY : 0) - (cd ? COOLDOWN_PENALTY : 0), 0, 10).toFixed(2);
     // Per-row data-coverage flags so the dashboard can tell a real score from a "no data → neutral"
     // one: growth = AV supplied revenue-growth/forward-P/E (else value-only); social = ApeWisdom
     // actually tracked this name (else neutral 5); rr = 52wk levels were present for the R/R math.
@@ -209,10 +281,11 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
       ticker: f.ticker, company: f.name, sector, price: f.price, rsi: Math.round(f.rsi),
       tech, fund: fundS, rrScore, social, buzz, composite, cov,
       downtrend: trend.downtrend, trendNote: trend.reason,
+      cooldown: !!cd, cooldownNote: cd ? cd.reason : '', cooldownUntil: cd ? cd.until : '',
       revGrowth: revGrowth != null ? fmtPct(revGrowth) : '—',
       fwdPE: fwdPE != null ? fwdPE.toFixed(1) : (pe != null ? pe.toFixed(1) + ' (ttm)' : '—'),
       rr: L.rr != null ? L.rr.toFixed(1) + ':1' : '—',
-      flag: trend.downtrend ? 'Downtrend' : fwdPE != null && fwdPE > 100 ? 'Fwd P/E > 100' : revGrowth != null && revGrowth < 0 ? 'Neg Rev Growth' : 'ok',
+      flag: trend.downtrend ? 'Downtrend' : cd ? 'Recent stop-out' : fwdPE != null && fwdPE > 100 ? 'Fwd P/E > 100' : revGrowth != null && revGrowth < 0 ? 'Neg Rev Growth' : 'ok',
       _L: L, _pctOffHigh: pctOffHigh, _hi52: hi52, _mcap: f.marketCap,
     };
   }).sort((a, b) => b.composite - a.composite);
@@ -222,15 +295,17 @@ export function buildPicks(finalists, fundBySym, ovBySym, socialMap = {}) {
     tech: c.tech, revGrowth: c.revGrowth, fwdPE: c.fwdPE, fund: c.fund,
     rr: c.rr, rrScore: c.rrScore, social: c.social, buzz: c.buzz, composite: c.composite, cov: c.cov, flag: c.flag,
     downtrend: c.downtrend, trendNote: c.trendNote,
+    cooldown: c.cooldown, cooldownNote: c.cooldownNote, cooldownUntil: c.cooldownUntil,
   }));
 
   // Top picks, sector-diversified: walk the composite ranking but cap how many share one sector so a
   // single-sector selloff (which fills the oversold screen) can't make all three picks the same theme.
   // Unknown sectors ("—") aren't capped against each other. Backfill from the ranking if caps fall short.
-  // Confirmed downtrends are DISQUALIFIED here (the trend gate) — they stay in the candidates table as an
-  // oversold data point but never become a highlighted top pick (nor feed the Action Center's sleeve). If
-  // that leaves fewer than N_PICKS clean names, we show fewer rather than promote a falling knife.
-  const pickRows = diversifyBySector(scored.filter((c) => !c.downtrend), N_PICKS, MAX_PICKS_PER_SECTOR);
+  // Confirmed downtrends (trend gate) AND recently-stopped-out names (cooldown gate) are DISQUALIFIED here —
+  // they stay in the candidates table as an oversold data point but never become a highlighted top pick (nor
+  // feed the Action Center's sleeve). If that leaves fewer than N_PICKS clean names, we show fewer rather than
+  // promote a falling knife or re-emit a name we just lost on.
+  const pickRows = diversifyBySector(scored.filter((c) => !c.downtrend && !c.cooldown), N_PICKS, MAX_PICKS_PER_SECTOR);
   const picks = pickRows.map((c) => {
     const L = c._L;
     const signal = c.composite >= 7 ? 'BUY' : c.composite >= 5.5 ? 'CAUTIOUS BUY' : 'WATCH';

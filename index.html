@@ -646,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v90'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v91'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1587,6 +1587,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       for(let i=0;i<cands.length&&out.length<3;i++){ const c=cands[i]; if(!c||!c.ticker)continue;
         if(pickPickTickers.has(c.ticker))continue;                              // already weighed as a top-3 pick
         if(c.downtrend)continue;                                                // trend gate — never redeploy into a confirmed downtrend
+        if(c.cooldown)continue;                                                 // cooldown gate — never redeploy into a name we just stopped out on
         if(!eligible(c.ticker,c.sector))continue;
         const sp=synthPickFromCandidate(c,smaMap); if(!sp)continue;
         mark(c.sector); out.push({p:sp,rank:c.rank||(i+1),backfill:true}); } }
@@ -1741,6 +1742,17 @@ function renderAgenticCard(){
     const q=(typeof azQuote==='function')?azQuote(sym):null;
     if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
     return 0; };
+  // ── Wash-sale guard (taxable ••••3900): data.agentic.recentLosses is a rolling ledger of inferred
+  //    realized losses (build-data reconstructs them from position diffs). Buying any name back inside 30
+  //    calendar days of realizing a loss on it disallows the loss, so we BLOCK that name from the deploy
+  //    hand-off and flag its Trade cell "wait" until the window clears. The target WEIGHT is unchanged —
+  //    only the execution is deferred. ──
+  const _todayISO=new Date().toISOString().slice(0,10);
+  const washMap={};
+  if(A&&Array.isArray(A.recentLosses)) for(const e of A.recentLosses){ if(!e||!e.sym||!e.date)continue;
+    const until=(()=>{ const d=new Date(e.date+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+31); return d.toISOString().slice(0,10); })();
+    if(until>_todayISO&&(!washMap[e.sym]||until>washMap[e.sym].until)) washMap[e.sym]={until,date:e.date}; }
+  const washUntilLbl=(sym)=>{ const w=washMap[sym]; if(!w)return ''; const d=new Date(w.until+'T00:00:00Z'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
   // ── target names: prefer the persisted research-driven target (data.agentic.target, refreshed weekly
   //    by the deep multi-factor research) so the card shows drift vs. the REAL deployed basket; fall back
   //    to an on-the-fly heuristic pool (top picks + leaders + index + held) only when it's absent. ──
@@ -1761,6 +1773,7 @@ function renderAgenticCard(){
   const pickRows=[...((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]),
                  ...((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[])];
   pickRows.forEach(c=>{ const t=c&&c.ticker; if(!t)return; const comp=(typeof c.composite==='number')?c.composite:null;
+    if(c.downtrend||c.cooldown){ if(!pool.has(t))return; }   // never seed the target from a falling knife / recent stop-out (held names still count)
     if(pool.has(t)){ const e=pool.get(t); if(!e.kind)e.kind='pick'; if(comp!=null)e.score=Math.max(e.score,comp); }
     else if(comp!=null){ pool.set(t,{sym:t,sector:secOfPick(c)||'—',score:comp,curVal:0,px:pxOf(t),held:false,kind:'pick'}); } });
   [{sym:'SPY',base:6.4},{sym:'QQQ',base:5.9}].forEach(ix=>{ if(pool.has(ix.sym))return; const px=pxOf(ix.sym);
@@ -1803,6 +1816,7 @@ function renderAgenticCard(){
   const kindTag=x=>x.held?'':(x.kind==='index'?' <span style="color:#9ca3af;font-size:10px">index</span>':(x.kind==='pick'?' <span style="color:#9ca3af;font-size:10px">pick</span>':(x.kind==='leader'?' <span style="color:#9ca3af;font-size:10px">leader</span>':'')));
   const tradeCell=x=>{ if(book<=0||x.shares==null) return '<span style="color:#9ca3af">—</span>';
     if(x.side==='HOLD'||Math.abs(x.delta)<holdThr) return '<span class="badge" style="background:#f3f4f6;color:#6b7280">hold</span>';
+    if(x.side==='BUY'&&washMap[x.sym]) return `<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${x.sym} on ${new Date(washMap[x.sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'})}. Rebuying within 30 days disallows the loss — hold off until ${washUntilLbl(x.sym)}.">⚠️ wait · wash-sale</span><br><span style="color:#9ca3af;font-size:11px">to ${washUntilLbl(x.sym)}</span>`;
     const col=x.side==='BUY'?'#065f46':'#991b1b';
     return `<span style="color:${col};font-weight:700">${x.side==='BUY'?'+':'−'}${shFmt(x.shares)} sh</span><br><span style="color:#9ca3af;font-size:11px">≈ ${fmtD(Math.abs(x.delta))}</span>`; };
   const driftCell=x=>{ if(!x.held||book<=0) return '<span style="color:#9ca3af">—</span>';
@@ -1845,12 +1859,14 @@ function renderAgenticCard(){
     <div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Cost basis</th><th class="tr">Day</th><th class="tr">YTD</th><th class="tr">Unrealized P&L</th></tr></thead><tbody>${prows}${pfoot}</tbody></table></div>`;
   }
   // deploy / rebalance hand-off (targets the agentic cash account; fractional, dollar-market at the open)
-  const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr);
+  const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]);
+  const washBlocked=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&washMap[x.sym]);
   const sells=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='SELL'&&-x.delta>=holdThr);
   const L=['Help me move my Robinhood AGENTIC cash account (the ••••3900 "Agentic" individual account — agentic_allowed) toward this target allocation. Cash account: fractional, dollar-based market orders only, in regular hours, fully funded by settled cash. Review each with review_equity_order and place ONLY after I confirm. This is a destination held with brackets, rebalanced when a name drifts past '+AGENTIC_DRIFT+'pp or hits a level — not daily.','',
     'Account equity (book): '+fmtD(book)+' = '+fmtD(investedNow)+' invested + '+fmtD(cash)+' cash (unlevered, 1×).',''];
   if(buys.length){ L.push('BUY toward target (≈, dollar-market at the open):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(sells.length){ L.push('TRIM toward target:'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
+  if(washBlocked.length){ L.push('DO NOT BUY YET — wash-sale window (realized a loss in this account within 30 days; rebuying disallows the loss). Skip these until the date shown, then revisit:'); washBlocked.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — wash-sale until '+washUntilLbl(x.sym))); L.push(''); }
   if(orphans.length) L.push('Held but not in target — review to exit/consolidate: '+orphans.map(p=>p.symbol+' (~'+fmtD(p.value)+')').join('; '),'');
   L.push((targetSrc==='research'?('Target from the weekly deep multi-factor research (momentum/quality/growth/catalyst → adversarial verify)'+(targetAsOf?', as of '+targetAsOf:'')):'Interim heuristic target (top picks + mega-cap leaders + SPY/QQQ core + held)')+', long-only, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
   const handoff=L.join('\n');
@@ -1860,6 +1876,7 @@ function renderAgenticCard(){
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (cash account, 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, and drift appear here after the next scheduled run picks it up.</div>`}
     <table><thead><tr><th>Ticker / sector</th><th class="tr">Target</th><th class="tr">Now</th><th class="tr">Trade</th><th class="tr">Drift</th><th class="tr">TP / Stop</th></tr></thead><tbody>${rows}${foot}</tbody></table>
     ${perfBlock}
+    ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> (until '+washUntilLbl(x.sym)+')').join(' · ')} — you realized a loss on ${washBlocked.length>1?'these':'this'} in ••••3900 within the last 30 days, so a rebuy would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
     ${orphans.length?`<div class="fund-note"><b>Held but off-target:</b> ${orphans.map(p=>'<b>'+p.symbol+'</b> '+fmtD(p.value)).join(' · ')} — review to consolidate into the names above.</div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }
@@ -4256,7 +4273,7 @@ function renderPicksTable(){
       +'<td class="tc" style="font-weight:600;color:'+socColor+'" title="'+(socNoData?'No retail chatter — neutral 5 (not a real reading)':'Retail buzz: '+buzz)+'">'+(c.social!=null?c.social:5)+(buzz?'<div style="font-size:8.5px;font-weight:600;color:#9ca3af">'+buzz+'</div>':'')+'</td>'
       +'<td class="tr" style="font-size:12px">'+c.rr+'</td>'
       +'<td class="tr" style="font-weight:600;color:'+(neg?'#ef4444':'#10b981')+'">'+c.revGrowth+'</td>'
-      +'<td>'+(c.flag==='ok'?'<span style="color:#10b981;font-weight:700">✓</span>':'<span class="drift-flag" style="background:#fee2e2;color:#991b1b">❌ '+c.flag+'</span>')+'</td>'
+      +'<td>'+(c.flag==='ok'?'<span style="color:#10b981;font-weight:700">✓</span>':'<span class="drift-flag" style="background:#fee2e2;color:#991b1b"'+((c.cooldownNote||c.trendNote)?' title="'+(c.cooldown?c.cooldownNote:c.trendNote)+'"':'')+'>❌ '+c.flag+'</span>')+'</td>'
     +'</tr>';
   }
   h+='</tbody></table>';
@@ -4346,17 +4363,42 @@ function gradePick(pk,bars,live,ts){
   const ret=entry?((cur-entry)/entry*100):null;
   return {status,ret,cur,entry};
 }
-/* Aggregate grade stats across ALL archived picks (Track Record card's tiles + the Action Plan's
-   conviction line both read this, reusing gradePick so the two surfaces can't diverge). */
-function picksTrackStats(){
+/* Collapse the archived picks into EPISODES so one broken thesis re-picked day after day counts ONCE, not
+   N times. Without this, ORCL — re-surfaced ~10 sessions running before it got trend-gated — booked 10
+   separate "losses" and sank the record to 0W·10L off a single bad call. Group each ticker's archived
+   picks chronologically and start a new episode only when there's a gap > EPISODE_GAP_DAYS (the cooldown
+   window) between consecutive re-picks; grade each episode from its EARLIEST entry (the outcome of that
+   continuous position). Returns [{sym,firstTs,lastTs,firstDate,count,pk,g}] most-recent-first. */
+const EPISODE_GAP_DAYS=14;   // re-picks of a name within ~2 weeks = one continuous thesis (matches the cooldown)
+function picksEpisodes(){
   const hist=Array.isArray(PICK_HISTORY)?PICK_HISTORY.filter(h=>h&&Array.isArray(h.picks)&&h.picks.length):[];
-  let wins=0,losses=0,open=0,retSum=0,retN=0;
-  for(const h of hist)for(const pk of h.picks){
-    const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts);
-    if(g.status==='TP1'||g.status==='TP2')wins++; else if(g.status==='STOPPED')losses++; else open++;
-    if(g.ret!=null){retSum+=g.ret;retN++;}
+  const dayNum=iso=>{ const d=new Date(String(iso)+'T00:00:00Z'); const n=d.getTime(); return isFinite(n)?n/864e5:0; };
+  const bySym={};
+  for(const h of hist)for(const pk of h.picks){ if(!pk||!pk.ticker||!h.ts)continue; (bySym[pk.ticker]=bySym[pk.ticker]||[]).push({pk,ts:h.ts,date:h.date}); }
+  const eps=[];
+  for(const sym of Object.keys(bySym)){
+    const arr=bySym[sym].sort((a,b)=>a.ts<b.ts?-1:a.ts>b.ts?1:0);
+    let cur=null;
+    for(const x of arr){
+      if(cur&&(dayNum(x.ts)-dayNum(cur.lastTs))<=EPISODE_GAP_DAYS){ cur.picks.push(x); cur.lastTs=x.ts; }
+      else { if(cur)eps.push(cur); cur={sym,firstTs:x.ts,lastTs:x.ts,firstDate:x.date,picks:[x]}; }
+    }
+    if(cur)eps.push(cur);
   }
-  return {wins,losses,open,hitRate:(wins+losses)>0?Math.round(wins/(wins+losses)*100):null,avgRet:retN?retSum/retN:null};
+  for(const ep of eps){ const first=ep.picks[0].pk;
+    ep.g=gradePick(first,_picksHistBars[first.ticker]||[],(_picksLive[first.ticker]&&_picksLive[first.ticker].price)||null,ep.firstTs);
+    ep.count=ep.picks.length; ep.pk=first; }
+  return eps.sort((a,b)=>a.lastTs<b.lastTs?1:a.lastTs>b.lastTs?-1:0);
+}
+/* Aggregate grade stats over EPISODES (Track Record tiles + the Action Plan conviction line read this, so
+   the two surfaces can't diverge). Episode-based so a name re-picked daily isn't counted many times. */
+function picksTrackStats(){
+  const eps=picksEpisodes();
+  let wins=0,losses=0,open=0,retSum=0,retN=0;
+  for(const ep of eps){ const s=ep.g.status;
+    if(s==='TP1'||s==='TP2')wins++; else if(s==='STOPPED')losses++; else open++;
+    if(ep.g.ret!=null){retSum+=ep.g.ret;retN++;} }
+  return {wins,losses,open,hitRate:(wins+losses)>0?Math.round(wins/(wins+losses)*100):null,avgRet:retN?retSum/retN:null,episodes:eps.length};
 }
 function renderPicksTrack(){
   const el=document.getElementById('picks-track'); if(!el)return;
@@ -4378,12 +4420,14 @@ function renderPicksTrack(){
   // One-line clarifier so "resolved vs open" is never ambiguous.
   const sub='<div style="font-size:11px;color:#9ca3af;margin:-4px 0 9px;line-height:1.45"><b>'+resolved+'</b> resolved '
       +'<span style="opacity:.8">(hit a target = win, or a stop = loss)</span> · <b>'+open+'</b> still open '
-      +'<span style="opacity:.8">(running — not yet at a target or stop, so not in the hit-rate)</span>.</div>';
-  // Compact recent-outcomes strip — most-recent scans first, one glyph chip per pick.
-  const flat=[]; for(const h of hist)for(const pk of h.picks){ const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts); flat.push({pk,g}); }
+      +'<span style="opacity:.8">(running — not yet at a target or stop, so not in the hit-rate)</span>. '
+      +'<span style="opacity:.8">Re-picks of the same name within ~2 weeks count once (one thesis); ·N on a chip shows how many times it was re-listed.</span></div>';
+  // Compact recent-outcomes strip — one chip per EPISODE (deduped), most-recent first; ·N shows how many
+  // times that name was re-listed inside one continuous thesis, so a repeated loser reads as a single outcome.
+  const eps=picksEpisodes();
   const CHIP={TP2:['#065f46','#d1fae5','✅'],TP1:['#065f46','#d1fae5','✅'],STOPPED:['#991b1b','#fee2e2','⛔'],OPEN:['#475569','#e2e8f0','•']};
-  const N=12; const strip='<div class="trk-strip">'+flat.slice(0,N).map(o=>{ const m=CHIP[o.g.status]||CHIP.OPEN; return '<span class="trk-chip" style="background:'+m[1]+';color:'+m[0]+'">'+m[2]+' '+o.pk.ticker+'</span>'; }).join('')
-      +(flat.length>N?'<span class="trk-chip trk-more">+'+(flat.length-N)+' more</span>':'')+'</div>';
+  const N=12; const strip='<div class="trk-strip">'+eps.slice(0,N).map(ep=>{ const m=CHIP[ep.g.status]||CHIP.OPEN; return '<span class="trk-chip" style="background:'+m[1]+';color:'+m[0]+'">'+m[2]+' '+ep.sym+(ep.count>1?' <span style="opacity:.65">·'+ep.count+'</span>':'')+'</span>'; }).join('')
+      +(eps.length>N?'<span class="trk-chip trk-more">+'+(eps.length-N)+' more</span>':'')+'</div>';
   // Full per-scan breakdown — collapsed by default (tap to expand), recent 8 scans, unchanged detail.
   const groups=hist.slice(0,8).map(h=>{
     const rows=h.picks.map(pk=>{
