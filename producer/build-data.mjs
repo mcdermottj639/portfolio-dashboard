@@ -294,8 +294,30 @@ const data = {
   if (data.agentic && data.agentic.equity > 0) {
     const prevEq = (prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) ? prior.agentic.equityHistory.slice() : [];
     const day = new Date(data.generatedAt).toISOString().slice(0, 10);
+    // ── Infer NET EXTERNAL CASH FLOW (deposits − withdrawals) since the prior snapshot and store it as a
+    // running cumulative on each point, so the consumer can report a deposit-immune, time-weighted return
+    // instead of raw equity/e0 (a $1k→$3.5k funding jump otherwise reads as a bogus +250%). Robinhood
+    // exposes no transfers feed, so we INFER: a deposit lands in cash without a matching position change,
+    // whereas price moves and internal buys/sells don't. flow ≈ ΔEquity − Σ(priorQty × price move); buys
+    // ↔ sells net to ~0, and overnight/weekend gaps are exact since qty is unchanged. Only flows past a
+    // noise floor count. Legacy points (recorded before this field) have no cumFlow — the consumer's
+    // implausible-jump fallback strips those. Carried verbatim in the else-branch, preserving cumFlow.
+    const priorCum = (() => { const h = prior && prior.agentic && prior.agentic.equityHistory; if (Array.isArray(h) && h.length && typeof h[h.length - 1].cumFlow === 'number') return h[h.length - 1].cumFlow; return 0; })();
+    let cumFlow = priorCum;
+    if (prior && prior.agentic && typeof prior.agentic.equity === 'number' && Array.isArray(prior.agentic.positions)) {
+      const nowPx = Object.fromEntries((data.agentic.positions || []).map((p) => [p.symbol, p.px]));
+      let priceMove = 0;
+      for (const pp of prior.agentic.positions) {
+        if (!pp || !pp.symbol || !(pp.qty > 0) || typeof pp.px !== 'number') continue;
+        const np = nowPx[pp.symbol]; const px1 = (typeof np === 'number' && np > 0) ? np : pp.px;
+        priceMove += pp.qty * (px1 - pp.px);
+      }
+      const flow = (data.agentic.equity - prior.agentic.equity) - priceMove;
+      const thresh = Math.max(40, 0.08 * (prior.agentic.equity || 0)); // ignore normal P&L / rounding noise
+      if (Math.abs(flow) >= thresh) { cumFlow = +(priorCum + flow).toFixed(2); console.log(`agentic: inferred net external cash flow ${fmtMoney(flow)} (cumFlow ${fmtMoney(cumFlow)}) — excluded from performance`); }
+    }
     const filtered = prevEq.filter((e) => e && e.t !== day);
-    filtered.push({ t: day, equity: data.agentic.equity });
+    filtered.push({ t: day, equity: data.agentic.equity, cumFlow });
     filtered.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
     data.agentic.equityHistory = filtered.slice(-260);
   } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {

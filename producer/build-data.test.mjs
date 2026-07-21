@@ -39,6 +39,11 @@ const FIXTURES = {
   'social-pages.json': { asOf: '2026-07-02T14:00:00.000Z', source: 'apewisdom', rows: [
     { ticker: 'AAA', name: 'Aaa Inc', rank: '12', mentions: '50', mentions_24h_ago: '40' },
   ] },
+  // Agentic account: fresh fetch holds 10 sh AAA (priced @108 from quotes-1) + $2000 cash. The prior
+  // snapshot held the SAME 10 sh @100 with only $50 cash → equity 1050 → 3080. The $8/sh price move
+  // accounts for +$80; the remaining ~$1950 is a DEPOSIT and must be inferred into cumFlow, not return.
+  'agentic-portfolio.json': { data: { cash: '2000.00', buying_power: '2000.00' } },
+  'agentic-positions.json': { data: { positions: [{ symbol: 'AAA', quantity: '10', average_buy_price: '95' }] } },
 };
 
 const prior = {
@@ -48,6 +53,11 @@ const prior = {
   quotes: { AAA: q(100, 99), BBB: q(55, 54) },
   hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50) }, month: { AAA: bars(3, 80) } },
   recorded: {},
+  agentic: {
+    asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), cash: 50, buyingPower: 50, equity: 1050,
+    positions: [{ symbol: 'AAA', qty: 10, avgCost: 95, px: 100, value: 1000 }],
+    equityHistory: [{ t: '2026-07-01', equity: 1050, cumFlow: 0 }],
+  },
 };
 
 const hadData = existsSync(DATA);
@@ -78,6 +88,13 @@ try {
 
   const alerts = JSON.parse(readFileSync(join(RAW, 'alerts.json'), 'utf8')).alerts;
   eq('day-move crossing alert fired for held name', alerts.map((a) => a.kind + ':' + a.symbol), ['day-move:AAA']);
+
+  // Agentic deposit inference: equity 1050 → 3080 (10sh AAA @108 = 1080 + 2000 cash). Price move on the
+  // held 10 sh = 10×(108−100)=+80; the rest (~1950) is a deposit → cumFlow ≈ 1950, NOT return.
+  const agEH = out.agentic.equityHistory;
+  const newPt = agEH[agEH.length - 1];
+  eq('agentic equity point recorded', newPt.equity, 3080);
+  eq('deposit inferred into cumFlow (not counted as return)', Math.abs(newPt.cumFlow - 1950) < 1, true);
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);

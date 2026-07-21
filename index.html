@@ -646,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v91'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v92'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1239,11 +1239,26 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
     }
     const EH=Array.isArray(AG.equityHistory)?AG.equityHistory.slice().filter(e=>e&&e.equity>0).sort((a,b)=>a.t<b.t?-1:1):[];
     if(EH.length>=2&&agModeled){
-      const firstT=dkey(EH[0].t), e0=EH[0].equity;
+      // Deposit-immune TIME-WEIGHTED growth of the real account. Raw equity/e0 is wrong here: this is a
+      // cash account the owner funds over time, and Robinhood exposes no transfers feed, so a deposit
+      // inflates equity and would read as a fake "return" (e.g. a $1.0k→$3.5k funding jump = a bogus
+      // +250%). We chain period returns and NEUTRALIZE external flows: subtract the producer's inferred
+      // cumFlow delta when present (precise), and fall back to zeroing any residual implausible one-period
+      // jump (a legacy deposit recorded before cumFlow annotation existed). mult[i] = growth EH[0]→EH[i].
+      const FLOW_JUMP=0.20;   // >20% in one recorded step isn't a market move for this ETF/leader basket
+      const mult=[1];
+      for(let i=1;i<EH.length;i++){
+        const prev=EH[i-1], cur=EH[i];
+        const flow=(typeof cur.cumFlow==='number'&&typeof prev.cumFlow==='number')?(cur.cumFlow-prev.cumFlow):0;
+        let r=prev.equity>0?((cur.equity-flow)/prev.equity-1):0;
+        if(!isFinite(r)||Math.abs(r)>FLOW_JUMP)r=0;
+        mult.push(mult[i-1]*(1+r));
+      }
+      const firstT=dkey(EH[0].t);
       let hi=axis.findIndex(t=>dkey(t)>=firstT); if(hi<0)hi=0;
       const baseMult=1+agModeled[hi]/100;
-      agReal=axis.map((t,i)=>{ if(i<hi)return null; const k=dkey(t); let ev=null; for(const e of EH){ if(dkey(e.t)<=k)ev=e.equity; else break; } if(ev==null)ev=e0; return (baseMult*(ev/e0)-1)*100; });
-      const eLast=EH[EH.length-1].equity, realRet=(eLast/e0-1)*100;
+      agReal=axis.map((t,i)=>{ if(i<hi)return null; const k=dkey(t); let g=1; for(let j=0;j<EH.length;j++){ if(dkey(EH[j].t)<=k)g=mult[j]; else break; } return (baseMult*g-1)*100; });
+      const realRet=(mult[mult.length-1]-1)*100;
       const sFirst=spy.find(b=>dkey(b.t)>=firstT), sLast=spy[spy.length-1];
       const spySince=(sFirst&&sLast)?((sLast.c/sFirst.c-1)*100):null;
       agSince={ ret:realRet, spy:spySince, since:EH[0].t };
@@ -1271,7 +1286,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
       <span class="legend-item"><span class="legend-dot" style="background:${C.qqq}"></span>QQQ</span>
       ${agModeled?`<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Agentic${agReal?' (— real · ⋯ modeled)':' (⋯ modeled)'}</span>`:''}
     </div>
-    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the cash account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked equity since ${agDateLbl}.`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
+    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the cash account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
     ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
       <div><div class="snap-lbl">10yr Treasury</div><div style="font-size:16px;font-weight:700">${macroData.tenYrYield?fmt(macroData.tenYrYield,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">Fed Funds</div><div style="font-size:16px;font-weight:700">${macroData.fedFunds?fmt(macroData.fedFunds,2)+'%':'—'}</div></div>
