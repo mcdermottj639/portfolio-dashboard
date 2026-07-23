@@ -1,0 +1,41 @@
+{
+  "_comment": "Owner-confirmed rebalance/deploy log for the agentic cash account (••••3900). The agent APPENDS one record per confirmed deploy/rebalance (see AGENTIC.md); build-data.mjs grades each vs live quotes + SPY and attaches it as data.agentic.decisions for the consumer's Rebalance Log card. priceAt = the fill price; spyAt = SPY at decision time (null = not recorded, e.g. the seed → graded on absolute return only).",
+  "decisions": [
+    {
+      "id": "2026-07-23-deploy",
+      "date": "2026-07-23",
+      "kind": "deploy",
+      "targetAsOf": "2026-07-23",
+      "book": 4955,
+      "equityAtDecision": 4955,
+      "spyAt": 739.41,
+      "rationale": "Deployed the added cash after a fresh research refresh (adversarial verify passed only LLY/JPM/NVDA as buys). Earnings-blackout deferred MSFT (7/29) and V (7/28); AMZN dropped from the target; GOOGL held near target. Placed LLY/GE/SPY/NVDA as fractional dollar-market buys queued for the open; the JPM $285 buy was blocked by the harness classifier and left pending (~$285 + ~$10 buffer stays in cash).",
+      "trades": [
+        { "sym": "LLY",  "side": "BUY", "dollars": 460.00, "shares": 0.400000, "priceAt": 1150.00 },
+        { "sym": "GE",   "side": "BUY", "dollars": 374.00, "shares": 1.103240, "priceAt": 339.00 },
+        { "sym": "SPY",  "side": "BUY", "dollars": 220.00, "shares": 0.297640, "priceAt": 739.13 },
+        { "sym": "NVDA", "side": "BUY", "dollars": 161.00, "shares": 0.772470, "priceAt": 208.42 }
+      ]
+    },
+    {
+      "id": "2026-06-29-deploy",
+      "date": "2026-06-29",
+      "kind": "deploy",
+      "targetAsOf": "2026-06-29",
+      "book": 3490,
+      "equityAtDecision": 3490,
+      "spyAt": null,
+      "rationale": "Initial deployment of the agentic cash account into the first research target — 8-name sector-diversified basket (SPY ballast + megacap quality). Seed record: entries are the account's actual average cost basis; SPY benchmark not recorded at seed time (absolute-return grading only).",
+      "trades": [
+        { "sym": "SPY",   "side": "BUY", "dollars": 665.99, "shares": 0.888410, "priceAt": 749.65 },
+        { "sym": "NVDA",  "side": "BUY", "dollars": 515.01, "shares": 2.493372, "priceAt": 206.55 },
+        { "sym": "GOOGL", "side": "BUY", "dollars": 487.00, "shares": 1.376083, "priceAt": 353.90 },
+        { "sym": "JPM",   "side": "BUY", "dollars": 383.99, "shares": 1.121360, "priceAt": 342.44 },
+        { "sym": "AMZN",  "side": "BUY", "dollars": 382.00, "shares": 1.555373, "priceAt": 245.60 },
+        { "sym": "LLY",   "side": "BUY", "dollars": 361.00, "shares": 0.306962, "priceAt": 1176.04 },
+        { "sym": "MSFT",  "side": "BUY", "dollars": 350.00, "shares": 0.909119, "priceAt": 384.99 },
+        { "sym": "V",     "side": "BUY", "dollars": 345.00, "shares": 0.992502, "priceAt": 347.61 }
+      ]
+    }
+  ]
+}

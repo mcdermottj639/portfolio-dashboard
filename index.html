@@ -646,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v92'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v93'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1358,6 +1358,7 @@ function paintActionCenter(){
   // so paint it BEFORE the margin-data early-return below — it must show even if the margin
   // portfolio hasn't loaded. Re-runs as ovMap/smaMap land to upgrade sectors/stops.
   if(document.getElementById('agentic-content')){ try{ renderAgenticCard(); }catch(e){} }
+  if(document.getElementById('agentic-log-content')){ try{ renderAgenticLog(); }catch(e){} }
   const S=window.__SNAP; if(!S||!S.enriched)return;
   const tv=(S.stats&&S.stats.totalVal)||S.totalVal||0;
   if(document.getElementById('act-content')){
@@ -1777,7 +1778,7 @@ function renderAgenticCard(){
   if(T){
     targetSrc='research';
     chosen=T.map(n=>{ const sym=n.ticker; if(!sym)return null; const cv=heldValOf(sym);
-      return {sym,sector:n.sector||secOf(sym),tgt:+n.weightPct||0,px:pxOf(sym),curVal:cv,held:cv>0,kind:'',_stop:+n.stop||0,_tp:+n.target||0}; }).filter(Boolean);
+      return {sym,sector:n.sector||secOf(sym),tgt:+n.weightPct||0,px:pxOf(sym),curVal:cv,held:cv>0,kind:'',_stop:+n.stop||0,_tp:+n.target||0,_entry:n.entry||''}; }).filter(Boolean);
     const tsum=chosen.reduce((s,x)=>s+x.tgt,0)||1; chosen.forEach(x=>{ x.tgt=x.tgt/tsum*100; });
     chosen.sort((a,b)=>b.tgt-a.tgt);
   } else {
@@ -1823,6 +1824,29 @@ function renderAgenticCard(){
   chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.cur=book>0?(x.curVal/book*100):0; x.drift=x.cur-x.tgt;
     x.delta=x.tgtVal-(x.curVal||0); x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD');
     x.stop=(x._stop>0)?x._stop:stopOf(x.sym,x.px); x.tp=(x._tp>0)?x._tp:tpOf(x.sym,x.px,x.stop); });
+  // ── Execution-discipline deferrals (v93): don't deploy NEW money into a name that is (a) inside a ~7d
+  //    EARNINGS blackout — a pre-print overnight gap can erase the edge, so wait for the number; or (b)
+  //    gapped THROUGH its planned entry/stop — a name crashing below the level we planned to buy at needs a
+  //    thesis re-verify (the GOOGL-after-earnings case), not a reflexive "bargain" buy. Same treatment as the
+  //    wash-sale guard: the target WEIGHT is unchanged, only the BUY is deferred + flagged. Research target
+  //    only (the heuristic pool carries no entry zones / research thesis to re-verify). Mirrors the producer's
+  //    agentic-deploy.mjs planner so the card and the ticket agree. ──
+  const EARN_BLACKOUT_D=7;
+  const _entryLow=(e)=>{ if(!e)return 0; const m=String(e).match(/-?\d+(\.\d+)?/g); return m&&m.length?parseFloat(m[0]):0; };
+  const execMap={};
+  if(targetSrc==='research') for(const x of chosen){
+    if(washMap[x.sym])continue;                       // wash-sale owns this name's deferral
+    const er=(typeof azEarn==='function')?azEarn(x.sym):null;
+    let dAway=null; if(er&&er.date){ const d=Date.parse(String(er.date).slice(0,10)+'T00:00:00Z'); if(isFinite(d))dAway=Math.round((d-Date.parse(_todayISO+'T00:00:00Z'))/86400000); }
+    const eLow=_entryLow(x._entry), stop=x._stop||0, px=x.px||0;
+    if(dAway!=null&&dAway>=0&&dAway<=EARN_BLACKOUT_D)
+      execMap[x.sym]={reason:'earnings',until:er.date,label:`⏸ earns ${(typeof azDateLbl==='function')?azDateLbl(er.date):er.date}`,note:`reports ${er.date} (≤${EARN_BLACKOUT_D}d) — wait for the print, then buy with full info`};
+    else if(px>0&&stop>0&&px<=stop)
+      execMap[x.sym]={reason:'below-stop',label:'⚠️ below stop',note:`${P(px)} is at/below the target stop ${P(stop)} — setup broken, re-verify before deploying`};
+    else if(px>0&&eLow>0&&px<eLow)
+      execMap[x.sym]={reason:'below-entry',label:'⚠️ re-verify',note:`${P(px)} gapped below planned entry ${x._entry} — re-check the thesis (esp. post-earnings) before buying`};
+  }
+  const execBadge=(sym)=>{ const e=execMap[sym]; if(!e)return ''; return `<span class="badge" style="background:#fef3c7;color:#92400e" title="${e.note}">${e.label}</span> <span style="color:#9ca3af;font-size:10px">${e.reason==='earnings'?'wait for print':'re-verify'}</span>`; };
   const chosenSet=new Set(chosen.map(x=>x.sym));
   const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0);
   // ── render — ONE unified holdings tracker (v91): each name ••••3900 holds is a single row that carries
@@ -1846,6 +1870,7 @@ function renderAgenticCard(){
     if(book<=0||shares==null) top='<span style="color:#9ca3af">—</span>';
     else if(side==='HOLD'||Math.abs(delta)<holdThr) top='<span class="badge" style="background:#f3f4f6;color:#6b7280">hold</span>';
     else if(side==='BUY'&&washMap[sym]) top=washBadge(sym);
+    else if(side==='BUY'&&execMap[sym]) top=execBadge(sym);
     else { const col=side==='BUY'?'#065f46':'#991b1b';
       top=`<span style="color:${col};font-weight:700">${side==='BUY'?'+':'−'}${shFmt(shares)} sh</span> <span style="color:#9ca3af;font-size:10px">≈${fmtD(Math.abs(delta))}</span>`; }
     const tpTxt=tp>0?`<span style="color:#065f46">TP ${P(tp)}</span>`:'';
@@ -1892,7 +1917,7 @@ function renderAgenticCard(){
   let opensBlock='';
   if(opens.length){
     const orows=opens.map(x=>{
-      const openTxt=washMap[x.sym]?washBadge(x.sym):((book>0&&x.shares!=null&&x.shares>0)?`+${shFmt(x.shares)} sh<br><span style="color:#9ca3af;font-size:11px">≈${fmtD(Math.abs(x.delta))}</span>`:'<span style="color:#9ca3af">—</span>');
+      const openTxt=washMap[x.sym]?washBadge(x.sym):(execMap[x.sym]?execBadge(x.sym):((book>0&&x.shares!=null&&x.shares>0)?`+${shFmt(x.shares)} sh<br><span style="color:#9ca3af;font-size:11px">≈${fmtD(Math.abs(x.delta))}</span>`:'<span style="color:#9ca3af">—</span>'));
       const lvls=`${x.px>0?P(x.px):'—'} · <span style="color:#991b1b">${x.stop>0?P(x.stop):'—'}</span> · <span style="color:#065f46">${x.tp>0?P(x.tp):'—'}</span>`;
       return `<tr><td><span class="sym">${x.sym}</span>${kindTag(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${fmt(x.tgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px">${book>0?fmtD(x.tgtVal):'—'}</span></td><td class="tr">${openTxt}</td><td class="tr" style="font-size:11px">${lvls}</td></tr>`;
     }).join('');
@@ -1901,14 +1926,16 @@ function renderAgenticCard(){
     <div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Target</th><th class="tr">Open</th><th class="tr">Entry · Stop · TP</th></tr></thead><tbody>${orows}</tbody></table></div>`;
   }
   // deploy / rebalance hand-off (targets the agentic cash account; fractional, dollar-market at the open)
-  const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]);
+  const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]&&!execMap[x.sym]);
   const washBlocked=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&washMap[x.sym]);
+  const execDeferred=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&execMap[x.sym]&&!washMap[x.sym]);
   const sells=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='SELL'&&-x.delta>=holdThr);
   const L=['Help me move my Robinhood AGENTIC cash account (the ••••3900 "Agentic" individual account — agentic_allowed) toward this target allocation. Cash account: fractional, dollar-based market orders only, in regular hours, fully funded by settled cash. Review each with review_equity_order and place ONLY after I confirm. This is a destination held with brackets, rebalanced when a name drifts past '+AGENTIC_DRIFT+'pp or hits a level — not daily.','',
     'Account equity (book): '+fmtD(book)+' = '+fmtD(investedNow)+' invested + '+fmtD(cash)+' cash (unlevered, 1×).',''];
   if(buys.length){ L.push('BUY toward target (≈, dollar-market at the open):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(sells.length){ L.push('TRIM toward target:'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(washBlocked.length){ L.push('DO NOT BUY YET — wash-sale window (realized a loss in this account within 30 days; rebuying disallows the loss). Skip these until the date shown, then revisit:'); washBlocked.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — wash-sale until '+washUntilLbl(x.sym))); L.push(''); }
+  if(execDeferred.length){ L.push('DEFER — execution discipline (target weight kept, buy waits; do NOT place these today):'); execDeferred.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — '+execMap[x.sym].note)); L.push(''); }
   if(orphans.length) L.push('Held but not in target — review to exit/consolidate: '+orphans.map(p=>p.symbol+' (~'+fmtD(p.value)+')').join('; '),'');
   L.push((targetSrc==='research'?('Target from the weekly deep multi-factor research (momentum/quality/growth/catalyst → adversarial verify)'+(targetAsOf?', as of '+targetAsOf:'')):'Interim heuristic target (top picks + mega-cap leaders + SPY/QQQ core + held)')+', long-only, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
   const handoff=L.join('\n');
@@ -1919,9 +1946,40 @@ function renderAgenticCard(){
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The recommended target is below — deploy it with the button.</div>`:'')}
     ${opensBlock}
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> (until '+washUntilLbl(x.sym)+')').join(' · ')} — you realized a loss on ${washBlocked.length>1?'these':'this'} in ••••3900 within the last 30 days, so a rebuy would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
+    ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':'gapped below entry')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify. Target weight unchanged. Education only.</div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }
 window.renderAgenticCard=renderAgenticCard;
+
+/* ═══ Rebalance Log (v93) — the agentic account's OWN track record. Reads data.agentic.decisions (the
+   graded ledger build-data maintains from producer/agentic-decisions.json): every owner-confirmed
+   deploy/rebalance, graded vs what happened next + vs SPY. Mirror of the picks Track Record, for the
+   account's allocation calls instead of the daily picks. ═══ */
+function renderAgenticLog(){
+  const el=document.getElementById('agentic-log-content'); if(!el)return;
+  const A=(window.__DATA&&window.__DATA.agentic)||null;
+  const D=A&&A.decisions;
+  if(!D||!Array.isArray(D.decisions)||!D.decisions.length){ el.innerHTML=`<div class="tech-empty">No rebalance decisions logged yet. Each confirmed deploy/rebalance is recorded here and graded against what happens next (and vs SPY) — the account's own track record.</div>`; return; }
+  const chip=(v)=> v==='ahead'?'<span class="badge" style="background:#dcfce7;color:#065f46">✅ ahead</span>':(v==='behind'?'<span class="badge" style="background:#fee2e2;color:#991b1b">🔻 behind</span>':'<span class="badge" style="background:#f3f4f6;color:#6b7280">• open</span>');
+  const pct=(v)=> v==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${v>=0?'#065f46':'#991b1b'};font-weight:600">${v>=0?'+':''}${fmt(v,1)}%</span>`;
+  const rows=D.decisions.map(d=>{
+    const g=d.grade||{};
+    const trades=(d.trades||[]).map(t=>`${t.side==='BUY'?'+':'−'}${t.sym}`).join(' ')||'—';
+    const days=g.daysSince!=null?g.daysSince+'d':'';
+    const rat=d.rationale?(d.rationale.length>96?d.rationale.slice(0,94)+'…':d.rationale):'';
+    return `<tr>
+      <td><b>${d.date}</b><br><span style="color:#9ca3af;font-size:10.5px">${d.kind}${days?' · '+days:''}</span></td>
+      <td style="font-size:11.5px">${trades}${rat?`<br><span style="color:#9ca3af;font-size:10px">${rat}</span>`:''}</td>
+      <td class="tr">${pct(g.avgContrib)}<br><span style="font-size:10px;color:#9ca3af">vs SPY ${g.alpha==null?'—':(g.alpha>=0?'+':'')+fmt(g.alpha,1)+'pp'}</span></td>
+      <td class="tr">${chip(g.verdict)}</td>
+    </tr>`;
+  }).join('');
+  const s=D.stats||{};
+  const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Contribution</b> = dollar-weighted price move since the decision (a trim that then fell counts positive); <b>vs SPY</b> = the same window's alpha. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
+    <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
+  el.innerHTML=hdr+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+window.renderAgenticLog=renderAgenticLog;
 
 /* ═══ All Positions (kept) ═══ */
 let _sc='val',_sd=1,_enriched=[];
@@ -4141,6 +4199,9 @@ function renderPicksStatic(){
     </div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(••••3900 · target vs. actual)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
       <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
+    </div></div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(••••3900 · decisions graded)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
+      <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
     </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>

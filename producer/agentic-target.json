@@ -1,17 +1,81 @@
 {
-  "asOf": "2026-07-15",
-  "method": "deep multi-factor research — momentum/quality/growth/catalyst sleeves + valuation → adversarial verify → synthesis (see producer/AGENTIC.md). Refreshed 2026-07-15: adversarial survivors (NVDA/GOOGL/AMZN/JPM) + SPY ballast overweighted; earnings-exposed 'holds' (LLY 8/5, V 7/28) trimmed; ORCL rejected (momentum 1/10, broken downtrend); UNH/COST rejected (avoid). This is the canonical target the Agentic Portfolio card + rebalance planner read.",
+  "asOf": "2026-07-23",
+  "method": "deep multi-factor research (2026-07-23): 27-name universe → 4 factor sleeves → adversarial verify (3/10 survived: LLY/JPM/NVDA buy; GE/GOOGL/MSFT/V/UNH/AMZN hold; SHEL avoid) → synthesis. AMZN DROPPED from prior target (7/30 earnings, crowded, hold). GOOGL trimmed 14→8% after its 7/22 post-earnings -5% gap. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)",
   "account": "AGENTIC",
-  "book": 3536,
+  "book": 4955,
   "driftTriggerPp": 5,
   "names": [
-    { "ticker": "SPY",   "sector": "Index",                "weightPct": 19, "entry": "745-755",   "stop": 690,  "target": 815,  "thesis": "Broad-market ballast — diffuses single-name catalyst risk into an earnings-heavy window; safest home for fresh cash. Core hold." },
-    { "ticker": "NVDA",  "sector": "Electronic Technology","weightPct": 15, "entry": "205-215",   "stop": 190,  "target": 245,  "thesis": "Adversarial survivor — elite quality 9.8 / growth 9.5, #1 composite; only caveat is entry timing (~10% above screen) into a late-Aug catalyst." },
-    { "ticker": "GOOGL", "sector": "Technology Services",  "weightPct": 14, "entry": "352-362",   "stop": 320,  "target": 415,  "thesis": "Survivor — deep valuation + quality 9.5; 7/22 earnings is a near-term binary but the risk/reward survives the stress test." },
-    { "ticker": "JPM",   "sector": "Finance",              "weightPct": 11, "entry": "336-345",   "stop": 310,  "target": 375,  "thesis": "Survivor with earnings already behind it (removes near-term binary); at highs, so weight is moderate, not max." },
-    { "ticker": "AMZN",  "sector": "Retail Trade",         "weightPct": 11, "entry": "240-250",   "stop": 225,  "target": 285,  "thesis": "Survivor — balanced quality/growth; 7/30 earnings the watch-item, support at the rising 200-DMA (~233)." },
-    { "ticker": "MSFT",  "sector": "Technology Services",  "weightPct": 10, "entry": "378-388",   "stop": 350,  "target": 425,  "thesis": "Best valuation 7.5 + quality 9.5; soft momentum (prints get sold) → defensive second Tech-Svcs slot." },
-    { "ticker": "V",     "sector": "Finance",              "weightPct": 10, "entry": "348-358",   "stop": 320,  "target": 385,  "thesis": "Elite quality but rated 'hold' — 7/28 earnings + 52wk-high extension + valuation; trimmed vs prior target, held not added-into-strength." },
-    { "ticker": "LLY",   "sector": "Health Technology",    "weightPct": 10, "entry": "1130-1170", "stop": 1085, "target": 1300, "thesis": "Rated 'hold' — 8/5 earnings binary + MFN drug-pricing overhang at 42x PE; trimmed vs prior target, kept for healthcare exposure." }
+    {
+      "ticker": "SPY",
+      "sector": "Index",
+      "weightPct": 18,
+      "entry": "735-748",
+      "stop": 666,
+      "target": 810,
+      "thesis": "Core index ballast — diversifies single-name earnings risk during a dense late-July print calendar."
+    },
+    {
+      "ticker": "LLY",
+      "sector": "Health Technology",
+      "weightPct": 17,
+      "entry": "1140-1165",
+      "stop": 1060,
+      "target": 1300,
+      "thesis": "Top conviction: strongest multi-sleeve card (mom 9.5/gro 9.5/qual 8.5), supported buy verdict; tirzepatide volume-vs-price the 8/5 watch item."
+    },
+    {
+      "ticker": "JPM",
+      "sector": "Finance",
+      "weightPct": 14,
+      "entry": "335-345",
+      "stop": 312,
+      "target": 385,
+      "thesis": "Most balanced survivor (no weak leg), buy verdict; prefer a pullback toward the 50-DMA over chasing the ~8.7% extension."
+    },
+    {
+      "ticker": "NVDA",
+      "sector": "Electronic Technology",
+      "weightPct": 14,
+      "entry": "200-210",
+      "stop": 185,
+      "target": 240,
+      "thesis": "Elite quality(9.5)+growth(10), buy verdict; reclaimed the 50-DMA, stop under the ~$193 200-DMA; hyperscaler-capex the swing risk."
+    },
+    {
+      "ticker": "MSFT",
+      "sector": "Technology Services",
+      "weightPct": 11,
+      "entry": "375-390",
+      "stop": 349,
+      "target": 437,
+      "thesis": "Quality 9.5 + best-valuation sleeve after the June de-rate; starter into the 7/29 print, stop under the $349-353 capitulation low."
+    },
+    {
+      "ticker": "V",
+      "sector": "Finance",
+      "weightPct": 10,
+      "entry": "340-355",
+      "stop": 317,
+      "target": 400,
+      "thesis": "Quality anchor (9.5), durable network economics; hold verdict flags the 7/28 print + DOJ overhang — compounder starter, not a trade."
+    },
+    {
+      "ticker": "GE",
+      "sector": "Electronic Technology",
+      "weightPct": 8,
+      "entry": "325-342",
+      "stop": 305,
+      "target": 383,
+      "thesis": "Strong mom/catalyst/growth but post-earnings de-rate → hold verdict; small starter ~11% off the high, stop under the ~$313 200-DMA."
+    },
+    {
+      "ticker": "GOOGL",
+      "sector": "Technology Services",
+      "weightPct": 8,
+      "entry": "315-328",
+      "stop": 295,
+      "target": 380,
+      "thesis": "Quality 9.5/growth 9 bought on the -5% gap to the 200-DMA (~$323); starter on an unconfirmed support test — best R/R if the level holds."
+    }
   ]
 }
