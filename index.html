@@ -646,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v93'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v94'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1022,11 +1022,20 @@ function computeIncome(enriched, ovMap){
   for(const p of enriched){
     if(p.val<=0)continue;
     const ov=ovMap[p.symbol]; if(!ov)continue;
+    // Annual dividend income per holding. PREFER DividendPerShare (an annual $/share figure — AV, or the
+    // producer's frequency-annualized synth) × shares. FALL BACK to DividendYield × market value when the
+    // overview carries a yield but no per-share amount — the case for names that only got the lighter
+    // Robinhood-synth overview (e.g. NVDA/TSM via the Railway producer's holdings-fund), which previously
+    // dropped to $0 income here. DividendYield follows the AV convention: a FRACTION (0.0088 = 0.88%).
     const dps=parseFloat(ov.DividendPerShare);
-    if(!isNaN(dps)&&dps>0){
-      const inc=dps*p.qty; annual+=inc; costBasis+=p.cost; mktBasis+=p.val;
+    const dy=parseFloat(ov.DividendYield);
+    let inc=0, dpsShown=null;
+    if(!isNaN(dps)&&dps>0){ inc=dps*p.qty; dpsShown=dps; }
+    else if(!isNaN(dy)&&dy>0&&p.qty>0){ inc=dy*p.val; dpsShown=dy*(p.val/p.qty); } // yield × mkt value; est. $/share
+    if(inc>0){
+      annual+=inc; costBasis+=p.cost; mktBasis+=p.val;
       const ex=ov.ExDividendDate;
-      if(ex&&ex!=='None'){ const d=new Date(ex); if(!isNaN(d)) exdiv.push({sym:p.symbol, date:ex, dps, inc}); }
+      if(ex&&ex!=='None'){ const d=new Date(ex); if(!isNaN(d)) exdiv.push({sym:p.symbol, date:ex, dps:dpsShown, inc}); }
     }
   }
   exdiv.sort((a,b)=>new Date(a.date)-new Date(b.date));
