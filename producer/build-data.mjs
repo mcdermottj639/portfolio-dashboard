@@ -20,6 +20,8 @@ import { LEADERS } from './leaders.mjs';
 import { avKey, specForId } from './av.mjs';
 import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
+import { computeAgenticTriggers } from './agentic-triggers.mjs';
+import { gradeDecisions } from './agentic-ledger.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -352,6 +354,22 @@ const data = {
     data.agentic.target = agenticTarget;
     console.log(`agentic target: ${(agenticTarget.names || []).length} names (asOf ${agenticTarget.asOf})`);
   }
+  // ── Rebalance decision ledger (data.agentic.decisions). The committed producer/agentic-decisions.json is
+  // the owner-confirmed log of each deploy/rebalance; grade every entry against THIS run's live quotes (+ vs
+  // SPY when spyAt was recorded) so the consumer's "Rebalance Log" card can show whether each call worked.
+  // Carry-forward like target when the file is absent (it's committed, so normally present).
+  if (data.agentic) {
+    let decisions = null;
+    try { const df = join(__dirname, 'agentic-decisions.json'); if (existsSync(df)) decisions = readJSON(df); } catch { decisions = null; }
+    const asOfDay = new Date(data.generatedAt).toISOString().slice(0, 10);
+    if (decisions && Array.isArray(decisions.decisions) && decisions.decisions.length) {
+      const graded = gradeDecisions(decisions.decisions, quotes, asOfDay);
+      data.agentic.decisions = graded;
+      console.log(`agentic decisions: ${graded.stats.total} logged · ${graded.stats.resolved} resolved (${graded.stats.ahead} ahead)${graded.stats.avgAlpha != null ? ` · avg alpha ${graded.stats.avgAlpha}%` : ''}`);
+    } else if (prior && prior.agentic && prior.agentic.decisions) {
+      data.agentic.decisions = prior.agentic.decisions;
+    }
+  }
 }
 function fmtMoney(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US'); }
 // Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks; the
@@ -571,6 +589,19 @@ try {
     for (const a of alerts) console.log('[alerts]   ' + a.msg);
   } else console.log('[alerts] none');
 } catch (e) { console.warn('[alerts] skipped:', e && e.message); }
+
+// --- Agentic event triggers (agentic-triggers.mjs — pure): idle/new cash ready to deploy, and whether a
+// deposit or a big held-name gap should force an EARLY research refresh this run (vs waiting out the weekly
+// gate). Written to a raw sidecar; the AGENT reads it post-publish (PRODUCER.md step 7) — PushNotifies any
+// 'deploy-cash' trigger and runs the research workflow when refreshResearch is set. Best-effort like alerts.
+try {
+  const trig = computeAgenticTriggers(prior, data);
+  writeFileSync(join(RAWDIR, 'agentic-triggers.json'), JSON.stringify({ asOf: data.generatedAt, ...trig }, null, 2));
+  if (trig.triggers.length || trig.refreshResearch) {
+    for (const t of trig.triggers) console.log('[agentic-trigger]   ' + t.msg);
+    if (trig.refreshResearch) console.log('[agentic-trigger]   ↻ refresh research early: ' + trig.refreshReasons.join(' · '));
+  } else console.log('[agentic-trigger] none');
+} catch (e) { console.warn('[agentic-trigger] skipped:', e && e.message); }
 
 await emit(data);
 console.log('built:',
