@@ -405,6 +405,13 @@ def fetch_fundamentals(rh, symbols):
             "high_52_weeks": fnd.get("high_52_weeks"),
             "low_52_weeks": fnd.get("low_52_weeks"),
             "dividend_yield": fnd.get("dividend_yield"),
+            # Per-share dividend + schedule so build-data's overview synth can populate
+            # DividendPerShare (accurate income, not just a yield estimate) AND ExDividendDate
+            # (so the Income & Tax card's "Upcoming Ex-Dividend Dates" list renders). All optional —
+            # .get() yields None when RH omits them, which build-data already tolerates.
+            "dividend_per_share": fnd.get("dividend_per_share"),
+            "distribution_frequency": fnd.get("distribution_frequency"),
+            "ex_dividend_date": fnd.get("ex_dividend_date"),
         })
     if results:
         write_raw("holdings-fund.json", {"results": results})

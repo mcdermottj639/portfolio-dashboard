@@ -107,7 +107,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v93** (`pf-v93`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v94** (`pf-v94`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -238,7 +238,12 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   correlation in `corrGroups`, and the highest-β "fragile leg" from per-symbol betas — no hardcoded
   tickers); allocation; Income & Tax (dividends, realized YTD, options premium — the itemized harvest
   list now lives in the Action Center — which now sits on the **Picks page** (see below) — only a summary
-  stat + pointer remain here). **Technical Signals** = RSI **+ price vs 50-day SMA** trend. **Performance vs
+  stat + pointer remain here). **Est. annual dividends (v94):** `computeIncome` prefers `DividendPerShare`×qty
+  but now **falls back to `DividendYield`×market-value** when a holding's overview carries a yield but no
+  per-share amount — the case for names that only got the lighter Robinhood-synth overview (e.g. NVDA/TSM via
+  the Railway `holdings-fund`), which previously showed **$0** income. The Railway producer now also emits
+  `dividend_per_share`/`distribution_frequency`/`ex_dividend_date` (so per-share income + the ex-div list
+  populate going forward). Ex-div dates only list names whose overview carries `ExDividendDate`. **Technical Signals** = RSI **+ price vs 50-day SMA** trend. **Performance vs
   Benchmark** plots YTD % return (your holdings vs SPY/QQQ, all indexed to Jan 1) and now **overlays the
   agentic cash account** (v72): a faint **dotted "modeled"** line (its current holdings priced back to Jan 1,
   same synthetic method as the "Your holdings" line) spliced into a **solid "real"** line from
