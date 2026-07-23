@@ -9,12 +9,12 @@
       "book": 4955,
       "equityAtDecision": 4955,
       "spyAt": 739.41,
-      "rationale": "Deployed the added cash after a fresh research refresh (adversarial verify passed only LLY/JPM/NVDA as buys). Earnings-blackout deferred MSFT (7/29) and V (7/28); AMZN dropped from the target; GOOGL held near target. Placed LLY/GE/SPY/NVDA as fractional dollar-market buys queued for the open; the JPM $285 buy was blocked by the harness classifier and left pending (~$285 + ~$10 buffer stays in cash).",
+      "rationale": "Deployed the added cash after a fresh research refresh (adversarial verify passed only LLY/JPM/NVDA as buys). Earnings-blackout deferred MSFT (7/29) and V (7/28); AMZN dropped from the target; GOOGL held near target. LLY/GE/SPY/NVDA filled at the 9:30 open (actual fills below). JPM (14% target) still PENDING: the owner's manual $285 order mis-filled as IBM; IBM was sold same-day (~+$2, avg 201.17) and JPM will be bought 2026-07-24 once the IBM proceeds settle (T+1, cash account) — append it to this decision then.",
       "trades": [
-        { "sym": "LLY",  "side": "BUY", "dollars": 460.00, "shares": 0.400000, "priceAt": 1150.00 },
-        { "sym": "GE",   "side": "BUY", "dollars": 374.00, "shares": 1.103240, "priceAt": 339.00 },
-        { "sym": "SPY",  "side": "BUY", "dollars": 220.00, "shares": 0.297640, "priceAt": 739.13 },
-        { "sym": "NVDA", "side": "BUY", "dollars": 161.00, "shares": 0.772470, "priceAt": 208.42 }
+        { "sym": "LLY",  "side": "BUY", "dollars": 460.00, "shares": 0.401180, "priceAt": 1146.615 },
+        { "sym": "GE",   "side": "BUY", "dollars": 374.00, "shares": 1.100317, "priceAt": 339.9019 },
+        { "sym": "SPY",  "side": "BUY", "dollars": 220.00, "shares": 0.297598, "priceAt": 739.25 },
+        { "sym": "NVDA", "side": "BUY", "dollars": 161.00, "shares": 0.769194, "priceAt": 209.31 }
       ]
     },
     {
