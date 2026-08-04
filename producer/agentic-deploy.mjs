@@ -4,6 +4,9 @@
 // enforcing the execution discipline the old flow only described in prose:
 //   • EARNINGS BLACKOUT — never put NEW money into a name inside `earningsBlackoutDays` (7) of its report.
 //     A pre-print gap of 5-10% overnight can erase the edge; wait for the number, then buy with full info.
+//   • POLICY BLACKOUT — the same rule for a SCHEDULED policy decision (tariff ruling, PDUFA date,
+//     antitrust judgment) inside `policyBlackoutDays` (7), read from producer/policy.json via policy.mjs.
+//     Only high-impact events block, and it no-ops entirely while that calendar is empty (the default).
 //   • GAP-THROUGH-ENTRY RE-VERIFY — if a name has fallen BELOW its target stop (setup broken) or below its
 //     planned entry zone (thesis in question), do NOT auto-buy the "bargain". Defer it for a fresh look —
 //     a stock crashing through the level we planned to buy at is exactly when the thesis needs re-checking
@@ -19,7 +22,10 @@
 // PURE + unit-tested (agentic-deploy.test.mjs). The producer/agent turns `.buys`/`.trims` into
 // review_equity_order → confirm → place (owner-confirmed; alert & one-tap per AGENTIC.md).
 
+import { policyBlackout, POLICY_BLACKOUT_DAYS } from './policy.mjs';
+
 export const EARNINGS_BLACKOUT_DAYS = 7;
+export { POLICY_BLACKOUT_DAYS };
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const money = (n) => '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -33,9 +39,10 @@ function entryLow(entry) {
 export function planDeployment(input = {}) {
   const {
     target = {}, positions = [], cash = 0, quotes = {},
-    earnings = {}, washMap = {}, opts = {},
+    earnings = {}, washMap = {}, policy = null, opts = {},
   } = input;
   const blackout = opts.earningsBlackoutDays ?? EARNINGS_BLACKOUT_DAYS;
+  const polBlackout = opts.policyBlackoutDays ?? POLICY_BLACKOUT_DAYS;
   const gapReverify = opts.gapReverify !== false;
   const names = (target.names || []).filter((n) => n && n.ticker).map((n) => ({ ...n, ticker: String(n.ticker).toUpperCase() }));
   const driftPp = num(target.driftTriggerPp) ?? 5;
@@ -74,6 +81,10 @@ export function planDeployment(input = {}) {
     const stop = num(n.stop), eLow = entryLow(n.entry);
     const ern = earnings[sym];
     const daysAway = ern ? (num(ern.daysAway) ?? daysUntil(ern.date, opts.asOf)) : null;
+    // Scheduled policy decision inside the blackout window — same logic as earnings: a dated binary
+    // event we KNOW is coming is a reason to wait for the outcome, not to deploy into it. No-ops
+    // entirely when policy.json is empty (the shipped default).
+    const polEvent = policy ? policyBlackout(sym, policy, { asOf: opts.asOf, sector: n.sector, blackoutDays: polBlackout }) : null;
 
     if (gap > 0.5) {
       // guardrails (order = most-blocking first)
@@ -83,6 +94,10 @@ export function planDeployment(input = {}) {
       }
       if (daysAway != null && daysAway >= 0 && daysAway <= blackout) {
         deferred.push({ sym, reason: 'earnings', detail: `reports ${ern.date || `in ${daysAway}d`} (≤${blackout}d) — wait for the print, then buy`, until: ern.date, dollars: gap });
+        continue;
+      }
+      if (polEvent) {
+        deferred.push({ sym, reason: 'policy', detail: `${polEvent.title} on ${polEvent.date} (≤${polBlackout}d) — scheduled policy decision, wait for the outcome`, until: polEvent.date, dollars: gap });
         continue;
       }
       if (gapReverify && px != null && stop != null && px <= stop) {

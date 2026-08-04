@@ -22,6 +22,7 @@ import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
+import { mergeEvents, detectClusters } from './polflow.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -371,6 +372,56 @@ const data = {
     }
   }
 }
+// Flow & Positioning signals (producer/raw/flow/<SYM>.json, written by flow-fetch.mjs — analyst revision
+// momentum, insider Form 4 clusters, earnings-surprise drift; each already scored by flow.mjs). Merged
+// PER SYMBOL over the prior snapshot, exactly like quotes: flow-fetch runs once/day and covers the held
+// book, so on light runs (and for any name whose providers were briefly unusable) the prior read carries
+// forward rather than the name dropping out of the card. DISPLAY-ONLY — nothing here touches
+// agentic-target.json until the sleeve weight is switched on (PROPOSAL-flow-signals.md Phase 4).
+{
+  const flowDir = join(RAWDIR, 'flow');
+  const flowDay = new Date(data.generatedAt).toISOString().slice(0, 10);
+  const symbols = (prior && prior.flow && prior.flow.symbols) ? { ...prior.flow.symbols } : {};
+  let fresh = 0;
+  if (existsSync(flowDir)) {
+    for (const f of readdirSync(flowDir).filter((x) => x.endsWith('.json') && !x.startsWith('_') && !x.startsWith('.'))) {
+      try {
+        const read = readJSON(join(flowDir, f));
+        if (read && read.sym) { symbols[read.sym] = read; fresh++; }
+      } catch { /* a corrupt sidecar keeps the carried-forward read */ }
+    }
+  }
+  // Congressional disclosure ledger. The FMP tier serves only the ~50 newest rows market-wide per poll
+  // and raw/ is wiped every scheduled run, so the ledger has to ACCUMULATE in the snapshot — this is the
+  // ivHistory/equityHistory pattern, not a re-derivable projection. mergeEvents de-duplicates, so the
+  // same trade re-served by tomorrow's rolling window can't inflate a cluster.
+  let polEvents = (prior && prior.flow && Array.isArray(prior.flow.polEvents)) ? prior.flow.polEvents : [];
+  let polClusters = (prior && prior.flow && prior.flow.polClusters) || {};
+  const polFile = join(flowDir, '_polflow.json');
+  if (existsSync(polFile)) {
+    try {
+      const freshPol = (readJSON(polFile) || {}).events || [];
+      const before = polEvents.length;
+      polEvents = mergeEvents(polEvents, freshPol, { asOf: flowDay });
+      polClusters = detectClusters(polEvents, { asOf: flowDay });
+      const added = polEvents.length - before;
+      console.log(`congressional ledger: ${polEvents.length} events (+${added > 0 ? added : 0} new of ${freshPol.length} polled) · ${Object.keys(polClusters).length} cluster(s) — zero score weight by design`);
+    } catch { /* a corrupt sidecar keeps the accumulated ledger */ }
+  } else if (polEvents.length) {
+    polEvents = mergeEvents(polEvents, [], { asOf: flowDay });   // still age out stale events
+    polClusters = detectClusters(polEvents, { asOf: flowDay });
+  }
+
+  if (Object.keys(symbols).length || polEvents.length) {
+    data.flow = { asOf: fresh ? flowDay : ((prior && prior.flow && prior.flow.asOf) || flowDay), symbols };
+    if (polEvents.length) { data.flow.polEvents = polEvents; data.flow.polClusters = polClusters; }
+    const scored = Object.values(symbols).filter((s) => s && s.flow).length;
+    const clusters = Object.values(symbols).filter((s) => s && s.insider && s.insider.cluster).length;
+    console.log(`flow signals: ${Object.keys(symbols).length} symbols (${fresh} fresh this run) · ${scored} with a composite · ${clusters} insider cluster(s)`);
+    if (Object.keys(symbols).length && !fresh) console.warn('flow signals: none fetched this run — carrying the prior read forward');
+  }
+}
+
 function fmtMoney(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US'); }
 // Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks; the
 // dashboard reads it directly. Fresh when built this run, else carried from the prior snapshot.

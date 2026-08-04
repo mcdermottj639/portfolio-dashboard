@@ -5,6 +5,8 @@
 //   · a run with NO picks (and no prior picks) must still publish (the post-emit log guard)
 //   · the social-pages sidecar is reused instead of a live ApeWisdom fetch
 //   · alerts.json records a ±7% day-move crossing for a held name
+//   · flow sidecars land in data.flow and carry forward per-symbol (this path referenced an
+//     out-of-scope variable once — an empty fixture would not have caught it)
 //
 // The repo's real data.json is backed up and restored (even on failure) — this test writes a
 // PLAINTEXT data.json while it runs, so never commit mid-test. No network, no MCP.
@@ -58,7 +60,33 @@ const prior = {
     positions: [{ symbol: 'AAA', qty: 10, avgCost: 95, px: 100, value: 1000 }],
     equityHistory: [{ t: '2026-07-01', equity: 1050, cumFlow: 0 }],
   },
+  // BBB was scored on an earlier run and is NOT re-fetched this run — it must carry forward.
+  flow: { asOf: '2026-07-01', symbols: {
+    BBB: { sym: 'BBB', asOf: '2026-07-01', flow: { score: 6.1, coverage: ['revision', 'insider'], components: { revision: 7, insider: 4.8 } } },
+  }, polEvents: [
+    { filer: 'FILER A', sym: 'LMT', side: 'buy', txn: '2026-06-20', chamber: 'house', lag: 40 },
+    { filer: 'FILER B', sym: 'LMT', side: 'buy', txn: '2026-06-25', chamber: 'house', lag: 40 },
+  ] },
 };
+
+// Fresh flow sidecar for AAA only (flow-fetch.mjs writes these into raw/flow/<SYM>.json).
+const FLOWDIR = join(RAW, 'flow');
+const FLOW_FIXTURE = {
+  sym: 'AAA', asOf: '2026-07-02',
+  flow: { score: 7.4, coverage: ['revision', 'insider', 'surprise'], components: { revision: 8.2, insider: 7.0, surprise: 6.2 } },
+  revision: { score: 8.2, level: 8.1, delta: 0.24, analysts: 41 },
+  insider: { score: 7.0, buyers: 3, sellers: 0, cluster: 'buy', filings: 3 },
+  surprise: { score: 6.2, avgSurprisePct: 2.9, positives: 3, quarters: 4 },
+};
+
+// Congressional ledger: the poll re-serves one row the prior snapshot already holds (the rolling 25-row
+// window does this constantly) plus one genuinely new filer. Dedup must keep the ledger at 3, and the
+// third distinct filer must tip LMT into a cluster.
+const pol = (filer, sym, side, txn) => ({ filer, sym, side, txn, chamber: 'house', lag: 40 });
+const POLFLOW_FIXTURE = { asOf: '2026-07-02', events: [
+  pol('FILER B', 'LMT', 'buy', '2026-06-25'),   // duplicate of one already in `prior`
+  pol('FILER C', 'LMT', 'buy', '2026-06-28'),   // new → third distinct filer → cluster
+] };
 
 const hadData = existsSync(DATA);
 mkdirSync(RAW, { recursive: true });
@@ -69,6 +97,9 @@ let stdout = '';
 try {
   writeFileSync(DATA, JSON.stringify(prior));
   for (const [f, obj] of Object.entries(FIXTURES)) writeFileSync(join(RAW, f), JSON.stringify(obj));
+  mkdirSync(FLOWDIR, { recursive: true });
+  writeFileSync(join(FLOWDIR, 'AAA.json'), JSON.stringify(FLOW_FIXTURE));
+  writeFileSync(join(FLOWDIR, '_polflow.json'), JSON.stringify(POLFLOW_FIXTURE));
 
   // PF_PASSPHRASE stripped → plaintext in, plaintext out (dev mode). Throws on non-zero exit —
   // which is itself the regression test for the old unguarded data.picks.candidates.length crash.
@@ -95,6 +126,19 @@ try {
   const newPt = agEH[agEH.length - 1];
   eq('agentic equity point recorded', newPt.equity, 3080);
   eq('deposit inferred into cumFlow (not counted as return)', Math.abs(newPt.cumFlow - 1950) < 1, true);
+
+  // Flow & Positioning: the fresh sidecar lands, the unfetched name carries forward, and asOf advances
+  // to THIS run's day (the block computes its own day — asOfDay is scoped to the agentic section).
+  eq('fresh flow sidecar lands in data.flow', out.flow.symbols.AAA.flow.score, 7.4);
+  eq('flow component detail preserved for display', out.flow.symbols.AAA.insider.cluster, 'buy');
+  eq('unfetched symbol flow carries forward', out.flow.symbols.BBB.flow.score, 6.1);
+  eq('flow asOf advances on a fresh fetch', out.flow.asOf, new Date(out.generatedAt).toISOString().slice(0, 10));
+  eq('flow run logged', stdout.includes('flow signals: 2 symbols (1 fresh this run)'), true);
+
+  // Congressional ledger accumulates across runs (raw/ is wiped every run, so it can only live here).
+  eq('ledger accumulated, duplicate poll row not double-counted', out.flow.polEvents.length, 3);
+  eq('third distinct filer tips it into a cluster', out.flow.polClusters.LMT.filers, 3);
+  eq('cluster direction recorded', out.flow.polClusters.LMT.side, 'buy');
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);
@@ -103,7 +147,7 @@ try {
 } finally {
   // ALWAYS restore the real (encrypted) data.json and remove fixtures + test artifacts.
   if (hadData) { copyFileSync(BAK, DATA); unlinkSync(BAK); }
-  for (const p of [...fixturePaths, join(RAW, 'alerts.json')]) { try { unlinkSync(p); } catch {} }
+  for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json')]) { try { unlinkSync(p); } catch {} }
 }
 
 console.log(fail ? `\n${fail} FAILED (${pass} passed)` : `all ${pass} checks passed ✅`);

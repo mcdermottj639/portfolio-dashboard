@@ -1,0 +1,15 @@
+{
+  "updated": "2026-08-04",
+  "readme": "Dated policy events that affect held or targeted names. Maintained by the weekly research agent (PRODUCER.md step 7) and by the owner — NOT fetched, because no free structured feed exists for this and a wrong date would defer or wave through a real trade. Ships empty on purpose: an empty calendar makes every policy helper a no-op, which is the correct failure mode. See producer/policy.mjs for the schema and validatePolicy() for the rules. Only impact:'high' events can defer a buy, and those require a source URL.",
+  "schema": {
+    "date": "YYYY-MM-DD — when the thing happens (required)",
+    "title": "short human label (required)",
+    "kind": "tariff | fda | appropriations | antitrust | regulatory | election | other",
+    "impact": "high | medium | low — only 'high' defers a buy (required)",
+    "tickers": ["direct exposure, e.g. LMT"],
+    "sectors": ["broader exposure, matched against a name's sector"],
+    "note": "why this matters for the position",
+    "source": "https://… — required for any high-impact event"
+  },
+  "events": []
+}

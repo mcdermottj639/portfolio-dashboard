@@ -18,8 +18,13 @@ import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// A sleeve counts as a "driver" of a name at or above this score (0-10). 7 = clearly strong, not merely
+// non-negative, so `drivers` stays a short, meaningful list rather than tagging every sleeve.
+export const DRIVER_THRESHOLD = 7;
+
 // allocation: the workflow's { picks:[{ticker,sector,weightPct,entryZone,stop,target,thesis,...}], summary? }
-// meta: { asOf, book, account, method, driftTriggerPp, universe?:[{t,px,hi,lo}] } (universe feeds vol proxy)
+// meta: { asOf, book, account, method, driftTriggerPp, universe?:[{t,px,hi,lo}], ranked?:[{t,m,q,g,c,v,f}] }
+//   universe feeds the vol proxy; ranked feeds the deterministic `drivers` attribution (both optional)
 export function finalizeTarget(allocation, meta = {}) {
   const picks = (allocation && (allocation.picks || allocation.names)) || [];
   const uni = Object.fromEntries((meta.universe || []).map((u) => [String(u.t || u.ticker).toUpperCase(), u]));
@@ -39,8 +44,28 @@ export function finalizeTarget(allocation, meta = {}) {
     };
   });
   const adj = riskAdjustWeights(named);
+  // ATTRIBUTION (v95): tag each name with the sleeves that actually earned it a slot, derived
+  // DETERMINISTICALLY from the workflow's sleeve scores rather than trusted from the model's prose. This
+  // is what lets the Rebalance Log eventually answer "is the flow sleeve earning its weight?" — and
+  // therefore what makes adding a new sleeve reversible instead of permanent. Pass meta.ranked (the
+  // workflow's `ranking` array); omit it and names simply carry no drivers.
+  const rankMap = Object.fromEntries((meta.ranked || [])
+    .map((r) => [String(r.t || r.ticker).toUpperCase(), r]));
+  const SLEEVE_KEYS = { m: 'momentum', q: 'quality', g: 'growth', c: 'catalyst', v: 'valuation', f: 'flow' };
+  const driversFor = (sym) => {
+    const r = rankMap[sym];
+    if (!r) return null;
+    const hits = Object.entries(SLEEVE_KEYS)
+      .filter(([k]) => Number.isFinite(r[k]) && r[k] >= DRIVER_THRESHOLD)
+      .sort((a, b) => r[b[0]] - r[a[0]])
+      .map(([, name]) => name);
+    return hits.length ? hits : null;
+  };
   // strip the vol-proxy helper fields from the committed target
-  const names = adj.names.map(({ px, hi, lo, ...rest }) => rest);
+  const names = adj.names.map(({ px, hi, lo, ...rest }) => {
+    const d = driversFor(rest.ticker);
+    return d ? { ...rest, drivers: d } : rest;
+  });
   const out = {
     asOf: meta.asOf || etDate(),
     method: (meta.method || (allocation && allocation.summary) || 'deep multi-factor research → adversarial verify → synthesis')
@@ -65,6 +90,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { target, notes, clusters } = finalizeTarget(allocation, {
     book: flag('book') != null ? +flag('book') : (allocation.book || null),
     asOf: flag('asOf'),
+    ranked: raw.ranking || null,   // present when fed the whole workflow return → enables `drivers`
   });
   console.log('risk-adjust notes:', notes.length ? notes.join('\n  ') : '(none — allocation already within caps)');
   console.log('cluster weights:', JSON.stringify(clusters));
