@@ -60,6 +60,12 @@ surprise, federal contract awards — `producer/flow.mjs`, surfaced on the Plan 
 **switched off**: `FLOW_WEIGHT` in `.claude/workflows/agentic-research.js` is `0`, so the composite is
 byte-identical to v94's and a name with no flow read is never penalised for the silence.
 
+`FLOW_WEIGHT` gates **every** path from flow data into the allocation — the composite, the sleeve line and
+notes in the adversarial verify prompt, and the sleeve scores handed to synthesis. At 0 the layer is
+genuinely inert. This matters: if flow leaked into the model's judgment while nominally "off", the
+burn-in would not be a control and there would be no clean before/after to evaluate at the decision point.
+(Verified by running the workflow with stubbed agents and asserting no flow string reaches any prompt.)
+
 The owner signed off on it taking **10%** *after* a **4-week display-only burn-in**, so the signal can be
 judged on real accumulated data first. To switch it on: set `FLOW_WEIGHT = 0.10` — nothing else changes
 (the other five sleeves scale proportionally). To judge whether it earned its keep, read the `drivers:[]`
