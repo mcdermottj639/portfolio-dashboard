@@ -26,6 +26,7 @@ import { coverFromRaw } from './av.mjs';
 import { avSym } from './extfund.mjs';
 import { scoreSymbol } from './flow.mjs';
 import { normalizeDisclosure } from './polflow.mjs';
+import { decryptEnvelope } from './emit.mjs';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,9 +41,26 @@ console.log(`[flow] keys → Finnhub: ✅ detected · FMP (treasury curve): ${FM
 mkdirSync(FLOWDIR, { recursive: true });
 
 const todayET = etDate();
+
+// ONCE/DAY GATE — must derive from the COMMITTED snapshot, not a raw/ marker file. producer/raw/ is
+// gitignored and empty on every scheduled run (fresh clone), so a marker-only gate never trips and this
+// would re-spend ~6 provider calls per symbol on all ~13 runs of the day instead of one. Same rule as
+// preflight.mjs. The raw marker is kept too, but only as a cheap guard for repeated LOCAL runs.
+// Best-effort: no passphrase / plaintext dev snapshot / decrypt failure all degrade to fetching.
+async function fetchedTodayPerSnapshot() {
+  try {
+    const f = join(__dirname, '..', 'data.json');
+    if (!existsSync(f)) return false;
+    const env = JSON.parse(readFileSync(f, 'utf8'));
+    const pass = process.env.PF_PASSPHRASE;
+    const prior = (env && env.enc && pass) ? await decryptEnvelope(env, pass) : (env && env.enc ? null : env);
+    return !!(prior && prior.flow && prior.flow.asOf === todayET);
+  } catch { return false; }
+}
 const fetchedFile = join(FLOWDIR, '.fetched');
-if (existsSync(fetchedFile) && readFileSync(fetchedFile, 'utf8').trim() === todayET) {
-  console.log(`[flow] already fetched today (${todayET}) — replaying existing sidecars, no provider calls spent`);
+const markerSaysToday = existsSync(fetchedFile) && readFileSync(fetchedFile, 'utf8').trim() === todayET;
+if (markerSaysToday || await fetchedTodayPerSnapshot()) {
+  console.log(`[flow] already fetched today (${todayET}) — carrying the snapshot's flow forward, no provider calls spent`);
   process.exit(0);
 }
 
