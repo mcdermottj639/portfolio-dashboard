@@ -194,7 +194,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
   spinner forever. Don't "simplify" the guards away.
 - **`producer/raw/` is gitignored and EMPTY on every scheduled run** (fresh clone). Any "once/day"
-  gating must derive from the committed `data.json`, not raw/ marker files.
+  gating must derive from the committed `data.json`, not raw/ marker files. **This bit us for real (v95):**
+  `av-fetch`, `extfund-fetch` and `flow-fetch` all gated on a `.fetched` marker *inside* `raw/`, so on the
+  scheduler the gate never tripped and each re-spent its full provider budget on all ~13 runs of the day —
+  extfund alone burned ~70 FMP calls/run against a ~250/day cap, exhausting it within the first few runs
+  and then silently dropping supplementary fundamentals for the rest of each day. All three now go through
+  **`producer/fetchgate.mjs`**, which reads `data.fetchDays.{av,extfund}` / `data.flow.asOf` from the
+  decrypted snapshot; `build-data.mjs` stamps those and **carries them forward** on runs where that
+  provider didn't fetch (otherwise skipping would clear the stamp and re-trigger the fetch next run).
+  Fails OPEN — no snapshot / no passphrase / decrypt failure all fetch, since one extra fetch is far
+  cheaper than a starved snapshot.
 - **No `cp`/`mv`/shell-variables in the agent's fetch step** — shell-var expansion triggers a
   permission prompt that stalls unattended runs. Save raw files with the `Write` tool; fetch
   historicals in ≤3-symbol batches so results return inline.

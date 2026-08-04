@@ -60,6 +60,9 @@ const prior = {
     positions: [{ symbol: 'AAA', qty: 10, avgCost: 95, px: 100, value: 1000 }],
     equityHistory: [{ t: '2026-07-01', equity: 1050, cumFlow: 0 }],
   },
+  // av last landed data on an earlier day and does NOT run this run — its stamp must survive, or the
+  // once/day gate would clear itself and re-fetch on the very next run.
+  fetchDays: { av: '2026-07-30' },
   // BBB was scored on an earlier run and is NOT re-fetched this run — it must carry forward.
   flow: { asOf: '2026-07-01', symbols: {
     BBB: { sym: 'BBB', asOf: '2026-07-01', flow: { score: 6.1, coverage: ['revision', 'insider'], components: { revision: 7, insider: 4.8 } } },
@@ -71,6 +74,7 @@ const prior = {
 
 // Fresh flow sidecar for AAA only (flow-fetch.mjs writes these into raw/flow/<SYM>.json).
 const FLOWDIR = join(RAW, 'flow');
+const EXTDIR = join(RAW, 'ext-fund');
 const FLOW_FIXTURE = {
   sym: 'AAA', asOf: '2026-07-02',
   flow: { score: 7.4, coverage: ['revision', 'insider', 'surprise'], components: { revision: 8.2, insider: 7.0, surprise: 6.2 } },
@@ -100,6 +104,9 @@ try {
   mkdirSync(FLOWDIR, { recursive: true });
   writeFileSync(join(FLOWDIR, 'AAA.json'), JSON.stringify(FLOW_FIXTURE));
   writeFileSync(join(FLOWDIR, '_polflow.json'), JSON.stringify(POLFLOW_FIXTURE));
+  // A fresh ext-fund sidecar this run → the extfund fetch-day stamp must be set to today.
+  mkdirSync(EXTDIR, { recursive: true });
+  writeFileSync(join(EXTDIR, 'overview-AAA.json'), JSON.stringify({ structuredContent: { Symbol: 'AAA', EPS: '4.20', ForwardPE: '18.5' } }));
 
   // PF_PASSPHRASE stripped → plaintext in, plaintext out (dev mode). Throws on non-zero exit —
   // which is itself the regression test for the old unguarded data.picks.candidates.length crash.
@@ -139,6 +146,13 @@ try {
   eq('ledger accumulated, duplicate poll row not double-counted', out.flow.polEvents.length, 3);
   eq('third distinct filer tips it into a cluster', out.flow.polClusters.LMT.filers, 3);
   eq('cluster direction recorded', out.flow.polClusters.LMT.side, 'buy');
+
+  // Provider fetch-day stamps. These are what the once/day gates key off, and they MUST carry forward
+  // on a run where that provider didn't fetch — raw/ is wiped every scheduled run, so if skipping
+  // cleared the stamp the next run would re-fetch and the gate would never hold.
+  const today = new Date(out.generatedAt).toISOString().slice(0, 10);
+  eq('extfund stamp set when fresh sidecars landed', out.fetchDays.extfund, today);
+  eq('av stamp carried forward when av did not run', out.fetchDays.av, '2026-07-30');
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);
@@ -147,7 +161,7 @@ try {
 } finally {
   // ALWAYS restore the real (encrypted) data.json and remove fixtures + test artifacts.
   if (hadData) { copyFileSync(BAK, DATA); unlinkSync(BAK); }
-  for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json')]) { try { unlinkSync(p); } catch {} }
+  for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json'), join(EXTDIR, 'overview-AAA.json')]) { try { unlinkSync(p); } catch {} }
 }
 
 console.log(fail ? `\n${fail} FAILED (${pass} passed)` : `all ${pass} checks passed ✅`);

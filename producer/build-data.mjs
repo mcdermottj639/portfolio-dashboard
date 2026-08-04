@@ -379,6 +379,23 @@ const data = {
 // forward rather than the name dropping out of the card. DISPLAY-ONLY — nothing here touches
 // agentic-target.json until the sleeve weight is switched on (PROPOSAL-flow-signals.md Phase 4).
 {
+  // ── Provider fetch-day stamps (data.fetchDays) ────────────────────────────────────────────────
+  // The once/day gates in av-fetch.mjs / extfund-fetch.mjs USED to key off a `.fetched` marker inside
+  // producer/raw/ — which is gitignored and empty on every scheduled run, so the gate never tripped and
+  // both re-spent their full call budget on all ~13 runs of the day. Any once/day gating has to derive
+  // from the COMMITTED snapshot (the standing rule in CLAUDE.md), so this records the ET day each
+  // provider last actually landed data, and CARRIES IT FORWARD on runs where it didn't run — otherwise
+  // the very act of skipping would clear the stamp and trigger a re-fetch on the next run.
+  // (The flow layer keys off `data.flow.asOf`, which is part of the payload the card renders anyway.)
+  {
+    const day = new Date(data.generatedAt).toISOString().slice(0, 10);
+    const priorDays = (prior && prior.fetchDays) || {};
+    const fetchDays = { ...priorDays };
+    if (avCount > 0) fetchDays.av = day;
+    if (extCount > 0) fetchDays.extfund = day;
+    if (Object.keys(fetchDays).length) data.fetchDays = fetchDays;
+  }
+
   const flowDir = join(RAWDIR, 'flow');
   const flowDay = new Date(data.generatedAt).toISOString().slice(0, 10);
   const symbols = (prior && prior.flow && prior.flow.symbols) ? { ...prior.flow.symbols } : {};
