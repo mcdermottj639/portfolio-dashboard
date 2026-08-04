@@ -86,6 +86,12 @@ const valOf=(u)=>{ let peS; const pe=u.pe; if(!(pe>0))peS=2.5; else if(pe<=12)pe
 // the ONLY line to change — set it to 0.10 once the burn-in is complete (see PROPOSAL-flow-signals.md
 // §8 and the burn-in note in producer/AGENTIC.md). The remaining five sleeves scale proportionally, so
 // their relative standing is identical either way.
+// FLOW_WEIGHT gates EVERY path from flow data into the allocation — the composite, the sleeve line and
+// notes in the verify prompt, and the sleeve scores handed to synthesis. At 0 the layer is genuinely
+// inert: the target is byte-identical to what it would have been without this sleeve. That is what makes
+// the burn-in a real control — if flow leaked into the model's judgment while nominally "off", there
+// would be no clean before/after to evaluate at the decision point.
+// (The congressional block below is separate: zero score weight PERMANENTLY, verify-stage context only.)
 const FLOW_WEIGHT = 0     // ← 0 during burn-in; 0.10 after. Nothing else needs to change.
 const FLOWMAP = (args && args.flow) || {}
 const flowOf = (t)=>{ const f=FLOWMAP[t]; return f && f.flow && typeof f.flow.score==='number' ? f.flow.score : null }
@@ -105,7 +111,7 @@ const ranked = U.map(u=>{ const t=u.t, m=sc(M,t), q=sc(Q,t), g=sc(G,t), c=sc(C,t
     : BASE.m*m + BASE.q*q + BASE.g*g + BASE.c*c + BASE.v*v;
   return {...u,m,q,g,c,v:+v.toFixed(2),f,composite:+composite.toFixed(3),
     notes:{momentum:note(M,t),quality:note(Q,t),growth:note(G,t),catalyst:note(C,t),
-      flow:f!=null?`flow ${f}/10 (${(FLOWMAP[t].flow.coverage||[]).join('+')})`:''}} }).sort((a,b)=>b.composite-a.composite)
+      flow:(FLOW_WEIGHT>0&&f!=null)?`flow ${f}/10 (${(FLOWMAP[t].flow.coverage||[]).join('+')})`:''}} }).sort((a,b)=>b.composite-a.composite)
 log('Composite top 14: '+ranked.slice(0,14).map(r=>`${r.t} ${r.composite}`).join(' · '))
 const secCount={}, finalists=[]
 for(const r of ranked){ if(finalists.length>=10)break; const n=secCount[r.sec]||0; if(n>=2)continue; secCount[r.sec]=n+1; finalists.push(r) }
@@ -121,12 +127,12 @@ const polNote = (t)=>{ const c=POLC[t]; return c
   ? `\nCONGRESSIONAL DISCLOSURE (weak, heavily lagged context — NOT a recommendation, do not treat as informed trading): ${c.filers} members ${c.side==='buy'?'bought':'sold'} this, last transaction ${c.lastTxn} (~${c.staleDays}d ago${c.medianLagDays!=null?`, disclosed ~${c.medianLagDays}d after the trade`:''}). Median disclosure lag makes this public information by the time we see it. Weigh accordingly — if your verdict rests on this, your verdict is wrong.`
   : '' }
 const verdicts = await parallel(finalists.map((r,i)=>()=>
-  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${r.f!=null?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}\nREFUTE, don't confirm: value trap? deteriorating fundamentals/margins? negative near-term catalyst (earnings-miss risk, guidance cut, secular decline, legal/regulatory)? crowded/over-owned downside skew? technically broken with no support? Pull live data via ToolSearch. Default skeptical. supports=true ONLY if it survives as a genuine buy for a long-only swing-to-position holding.`,
+  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}\nREFUTE, don't confirm: value trap? deteriorating fundamentals/margins? negative near-term catalyst (earnings-miss risk, guidance cut, secular decline, legal/regulatory)? crowded/over-owned downside skew? technically broken with no support? Pull live data via ToolSearch. Default skeptical. supports=true ONLY if it survives as a genuine buy for a long-only swing-to-position holding.`,
     {schema:VERDICT_SCHEMA, phase:'Verify', label:'verify:'+r.t, effort:'high'}).then(v=> v?{...r,verdict:v}:null)))
 const survivors = verdicts.filter(Boolean).filter(x=>x.verdict&&x.verdict.supports&&x.verdict.recommendation!=='avoid')
 log(`Survivors ${survivors.length}/${finalists.length}: `+survivors.map(s=>s.t).join(', '))
 const forSynth=(survivors.length>=6?survivors:verdicts.filter(Boolean).filter(x=>x.verdict&&x.verdict.recommendation!=='avoid'))
-  .map(s=>({ticker:s.t,sector:s.sec,px:s.px,hi52:s.hi,lo52:s.lo,composite:s.composite,sleeves:{momentum:s.m,quality:s.q,growth:s.g,catalyst:s.c,valuation:s.v,...(s.f!=null?{flow:s.f}:{})},verdict:s.verdict}))
+  .map(s=>({ticker:s.t,sector:s.sec,px:s.px,hi52:s.hi,lo52:s.lo,composite:s.composite,sleeves:{momentum:s.m,quality:s.q,growth:s.g,catalyst:s.c,valuation:s.v,...((FLOW_WEIGHT>0&&s.f!=null)?{flow:s.f}:{})},verdict:s.verdict}))
 
 phase('Synthesize')
 const alloc = await agent(`Build the long-only target allocation for the agentic cash account ($${(args&&args.book)||1000} book, fractional OK) from these VERIFIED survivors. Each carries sleeve scores (0-10), composite, sector, price, 52wk range, adversarial verdict.\nRules: 7-9 names, SECTOR-DIVERSIFIED (max 2/sector); include SPY as ~15-20% index ballast (add it, not a survivor); conviction-weighted toward MULTI-sleeve strength; floor ~5%, cap 25%; weights sum ~100%.\nRISK-AWARE WEIGHTING (a deterministic post-process — finalize-target.mjs — RE-ENFORCES these caps after you, so aim to satisfy them yourself to avoid being overridden):\n  • CORRELATION-CLUSTER cap: the megacap-tech/AI complex — NVDA, AVGO, AAPL, MSFT, GOOGL, META, AMZN, ORCL, NFLX (they co-move; "sector-diversified" labels hide this) — must sum to ≤48% of the book combined. Also payments (V+MA) ≤20%, staples (PG/WMT/COST) ≤25%. SPY/index ballast is UNCAPPED (it's the diversifier).\n  • VOL-SCALED sizing: give WILDER names a SMALLER slot for the same conviction. A name whose 52wk range (hi−lo)/price is much wider than ~0.42 (e.g. LLY, NFLX) should carry a materially lower weight than a tight compounder at equal conviction. Don't put a full 25% into a high-vol single name.\nPer name: sector, weightPct, dollars, one-line thesis naming the driving sleeves, entryZone near live price, protective stop (~8-12% below or under 50-DMA), take-profit target, reward:risk. SPY = wide stop / "core hold". Sanity-check live quotes before sizing. Summary: 2-3 sentences on factor/sector balance + risk posture, explicitly noting the megacap-tech cluster total.\nSurvivors: ${JSON.stringify(forSynth)}`,
