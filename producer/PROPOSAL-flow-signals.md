@@ -1,7 +1,11 @@
 # PROPOSAL v2 — Flow & Positioning layer for the agentic research
 
-**Status:** awaiting sign-off on one open question (§8) · **Branch:** `claude/agentic-research-integration-o8nvo8`
-**Owner decisions locked in so far:** political flow = **verify-stage evidence only, never a score input**; scope = **don't shrink it to the screenshot**.
+**Status:** ✅ **SIGNED OFF 2026-08-04** — build Phases 1→4 as written · **Branch:** `claude/agentic-research-integration-o8nvo8`
+
+**Owner decisions (locked):**
+1. **Scope** — full Flow & Positioning layer; do not shrink it to the screenshot's theme.
+2. **Congressional PTRs** — **verify-stage evidence only, never a score input.** Megacap-tech names excluded from any nudge.
+3. **Flow sleeve weight** — **takes 10% of the composite, after the 4-week burn-in** (Phase 4). Ships display-only first; the reweight is one constant, flipped once real accumulated data confirms the signal isn't noise, and revertible in one line if `drivers:[]` attribution shows it isn't earning its keep.
 
 Trigger: owner shared the **@Trump_portfolio "Trump Tracker"** X account and asked whether pages like it
 could feed the **agentic-research** workflow. v1 of this proposal answered that narrowly. This v2 answers
