@@ -57,6 +57,12 @@ else log(process.env.ALPHAVANTAGE_KEY ? 'AV fetch skipped (--no-av)' : 'AV direc
 if ((process.env.FINNHUB_KEY || process.env.FMP_KEY) && !flags.has('--no-extfund')) tryNode('extfund-fetch.mjs');
 else log((process.env.FINNHUB_KEY || process.env.FMP_KEY) ? 'ext-fund fetch skipped (--no-extfund)' : 'ext-fund fetch off (no FINNHUB_KEY / FMP_KEY)');
 
+// 1c. Flow & Positioning signals (analyst revisions / insider Form 4 clusters / earnings surprise) —
+// optional, Finnhub-only, once/day ET gate inside. Display-only until the sleeve weight is switched on
+// (see PROPOSAL-flow-signals.md Phase 4); non-fatal like every other enrichment step.
+if (process.env.FINNHUB_KEY && !flags.has('--no-flow')) tryNode('flow-fetch.mjs');
+else log(process.env.FINNHUB_KEY ? 'flow fetch skipped (--no-flow)' : 'flow signals off (no FINNHUB_KEY)');
+
 // 2–3. Picks + options (each optional, gated on its raw input; non-fatal so the snapshot still ships).
 if (existsSync(join(RAW, 'scan.json'))) tryNode('picks-build.mjs'); else log('no scan.json — skipping picks');
 if (existsSync(join(RAW, 'options-orders.json'))) tryNode('options-build.mjs'); else log('no options-orders.json — skipping options');

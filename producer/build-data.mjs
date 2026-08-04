@@ -371,6 +371,34 @@ const data = {
     }
   }
 }
+// Flow & Positioning signals (producer/raw/flow/<SYM>.json, written by flow-fetch.mjs — analyst revision
+// momentum, insider Form 4 clusters, earnings-surprise drift; each already scored by flow.mjs). Merged
+// PER SYMBOL over the prior snapshot, exactly like quotes: flow-fetch runs once/day and covers the held
+// book, so on light runs (and for any name whose providers were briefly unusable) the prior read carries
+// forward rather than the name dropping out of the card. DISPLAY-ONLY — nothing here touches
+// agentic-target.json until the sleeve weight is switched on (PROPOSAL-flow-signals.md Phase 4).
+{
+  const flowDir = join(RAWDIR, 'flow');
+  const flowDay = new Date(data.generatedAt).toISOString().slice(0, 10);
+  const symbols = (prior && prior.flow && prior.flow.symbols) ? { ...prior.flow.symbols } : {};
+  let fresh = 0;
+  if (existsSync(flowDir)) {
+    for (const f of readdirSync(flowDir).filter((x) => x.endsWith('.json') && !x.startsWith('_') && !x.startsWith('.'))) {
+      try {
+        const read = readJSON(join(flowDir, f));
+        if (read && read.sym) { symbols[read.sym] = read; fresh++; }
+      } catch { /* a corrupt sidecar keeps the carried-forward read */ }
+    }
+  }
+  if (Object.keys(symbols).length) {
+    data.flow = { asOf: fresh ? flowDay : ((prior && prior.flow && prior.flow.asOf) || flowDay), symbols };
+    const scored = Object.values(symbols).filter((s) => s && s.flow).length;
+    const clusters = Object.values(symbols).filter((s) => s && s.insider && s.insider.cluster).length;
+    console.log(`flow signals: ${Object.keys(symbols).length} symbols (${fresh} fresh this run) · ${scored} with a composite · ${clusters} insider cluster(s)`);
+    if (!fresh) console.warn('flow signals: none fetched this run — carrying the prior read forward');
+  }
+}
+
 function fmtMoney(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US'); }
 // Daily Picks (Robinhood scanner → scored in picks-build.mjs). Embedded as data.picks; the
 // dashboard reads it directly. Fresh when built this run, else carried from the prior snapshot.
