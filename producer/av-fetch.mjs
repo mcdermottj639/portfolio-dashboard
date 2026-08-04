@@ -23,6 +23,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { MACRO_CALLS, overviewCall, coverFromRaw, avSym } from './av.mjs';
+import { alreadyFetchedToday } from './fetchgate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -37,8 +38,10 @@ mkdirSync(AVDIR, { recursive: true });
 
 // ET date for the once/day gate.
 const todayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// Gate on the COMMITTED snapshot (data.fetchDays.av), not just the raw/ marker — raw/ is wiped on every
+// scheduled run, so a marker-only gate never tripped and this re-spent the 25/day AV cap every run.
 const fetchedFile = join(AVDIR, '.fetched');
-if (existsSync(fetchedFile) && readFileSync(fetchedFile, 'utf8').trim() === todayET) {
+if (await alreadyFetchedToday('av', todayET, fetchedFile)) {
   console.log(`[av] already fetched today (${todayET}) — replaying existing av-src, no AV calls spent`);
   process.exit(0);
 }

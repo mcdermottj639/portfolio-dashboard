@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { coverFromRaw } from './av.mjs';
 import { finnhubToOverview, fmpToOverview, mergeOverviews, isRich, avSym } from './extfund.mjs';
+import { alreadyFetchedToday } from './fetchgate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -30,8 +31,11 @@ mkdirSync(EXTDIR, { recursive: true });
 
 // Once/day ET gate (mirrors av-fetch.mjs) so the intraday loop doesn't re-spend provider calls.
 const todayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// Gate on the COMMITTED snapshot (data.fetchDays.extfund), not just the raw/ marker — raw/ is wiped on
+// every scheduled run, so a marker-only gate never tripped and this re-spent ~70 FMP calls per run
+// against a ~250/day free cap, exhausting it within the first few runs of each day.
 const fetchedFile = join(EXTDIR, '.fetched');
-if (existsSync(fetchedFile) && readFileSync(fetchedFile, 'utf8').trim() === todayET) {
+if (await alreadyFetchedToday('extfund', todayET, fetchedFile)) {
   console.log(`[extfund] already fetched today (${todayET}) — replaying existing ext-fund, no provider calls spent`);
   process.exit(0);
 }
