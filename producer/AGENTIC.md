@@ -44,10 +44,29 @@ can't cleanly buy:
 - **Gap-through-entry re-verify:** a name **at/below its target stop** is a broken setup → defer; a name
   **below its planned entry zone** (e.g. it sold off after earnings, like GOOGL post-7/22) has a thesis in
   question → defer for a fresh look, don't reflexively "buy the dip".
+- **Policy blackout (v95):** the same rule for a **scheduled policy decision** — a tariff ruling, PDUFA date,
+  appropriations vote or antitrust judgment inside ~7 days, read from `producer/policy.json` via `policy.mjs`.
+  Only `impact:"high"` events defer (a comment-period close is context, not a reason to sit out), and those
+  require a source URL. The calendar ships **empty** and is maintained by the weekly research agent, so this
+  is a no-op until events are added.
 - **Wash-sale / settlement:** skip a rebuy inside the 30-day loss window; deploying new cash needs no sells,
   and any required trim is sequenced first + flagged T+1 (cash account, no freeriding).
 Deferred names keep their **target weight** — only the buy waits. The consumer's Agentic card shows the same
 deferrals as amber badges so the card and the ticket always agree.
+
+## Flow & Positioning sleeve — in BURN-IN (v95)
+The research has a fifth sleeve (**flow**: analyst revision momentum, insider Form 4 clusters, earnings
+surprise, federal contract awards — `producer/flow.mjs`, surfaced on the Plan page's 🏛️ card). It is
+**switched off**: `FLOW_WEIGHT` in `.claude/workflows/agentic-research.js` is `0`, so the composite is
+byte-identical to v94's and a name with no flow read is never penalised for the silence.
+
+The owner signed off on it taking **10%** *after* a **4-week display-only burn-in**, so the signal can be
+judged on real accumulated data first. To switch it on: set `FLOW_WEIGHT = 0.10` — nothing else changes
+(the other five sleeves scale proportionally). To judge whether it earned its keep, read the `drivers:[]`
+tags `finalize-target.mjs` writes onto each target name against the Rebalance Log's graded outcomes.
+
+**Congressional disclosures are excluded from this permanently** — they enter the adversarial verify prompt
+as explicitly-labelled weak context and nothing else. See `producer/PROPOSAL-flow-signals.md`.
 
 ## Risk-aware target weighting (v93)
 The research proposes conviction weights; **`riskweights.mjs`** (enforced by `finalize-target.mjs` before the
@@ -88,8 +107,12 @@ never disturb the daily `data.json` publish (same isolation as the watchlist syn
    (skip; ~zero cost). The gate keys off `agentic-target.json`'s `asOf`, so it fires ~once a week and
    self-heals if a run is missed.
 2. On DUE: assemble a fresh universe (oversold scan finalists + `leaders.mjs` bench + ••••3900 holdings),
-   run the **`agentic-research`** workflow (`args:{universe, book}`), write the result to
-   `producer/agentic-target.json` (this file's shape) and commit + push it to `main`.
+   run the **`agentic-research`** workflow (`args:{universe, book, flow, polClusters}` — pass
+   `data.flow.symbols` and `data.flow.polClusters` from the fresh snapshot so the flow sleeve and the verify
+   stage see them), pipe the result through **`finalize-target.mjs`** (which re-enforces the risk caps and
+   writes the `drivers:[]` attribution when given `ranking`), and commit + push `agentic-target.json`.
+   While reviewing catalysts, add any newly-confirmed dated policy event to **`producer/policy.json`**
+   (schema + rules in `policy.mjs`; high-impact entries need a source URL) and commit it in the same change.
 3. Compute drift vs the new target, apply the **Tax & regulation rules** above, and **`PushNotification`
    the owner a rebalance proposal** — placing nothing (alert & one-tap-confirm).
 

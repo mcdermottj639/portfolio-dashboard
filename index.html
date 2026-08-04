@@ -646,7 +646,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v94'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v95'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1368,6 +1368,7 @@ function paintActionCenter(){
   // portfolio hasn't loaded. Re-runs as ovMap/smaMap land to upgrade sectors/stops.
   if(document.getElementById('agentic-content')){ try{ renderAgenticCard(); }catch(e){} }
   if(document.getElementById('agentic-log-content')){ try{ renderAgenticLog(); }catch(e){} }
+  if(document.getElementById('flow-content')){ try{ renderFlowCard(); }catch(e){} }
   const S=window.__SNAP; if(!S||!S.enriched)return;
   const tv=(S.stats&&S.stats.totalVal)||S.totalVal||0;
   if(document.getElementById('act-content')){
@@ -1990,6 +1991,67 @@ function renderAgenticLog(){
 }
 window.renderAgenticLog=renderAgenticLog;
 
+/* ═══ Flow & Positioning (v95) — WHO IS ACTING on your names, which none of the fundamental/technical
+   cards read. Renders data.flow (producer/flow.mjs): analyst revision momentum, insider Form 4 clusters,
+   earnings-surprise drift, federal contract awards, plus the congressional disclosure ledger.
+
+   DISPLAY-ONLY, on purpose. Nothing here moves agentic-target.json — the sleeve sits at weight 0 through
+   a burn-in so the signal can be judged on real accumulated data before it earns any say (see
+   producer/PROPOSAL-flow-signals.md §8). The congressional block carries ZERO weight permanently: it lags
+   40-116 days, its apparent edge is a megacap-tech beta tilt, and megacap names are excluded upstream. ═══ */
+function renderFlowCard(){
+  const el=document.getElementById('flow-content'); if(!el)return;
+  const F=(window.__DATA&&window.__DATA.flow)||null;
+  if(!F||!F.symbols||!Object.keys(F.symbols).length){
+    el.innerHTML='<div class="fund-note" style="margin:0">No flow data in this snapshot yet — it lands on the next full producer run (needs <code>FINNHUB_KEY</code>).</div>';
+    return;
+  }
+  const held=new Set((window.__SNAP&&window.__SNAP.enriched||[]).map(p=>p.symbol));
+  const rows=Object.values(F.symbols)
+    .filter(s=>s&&s.sym)
+    .sort((a,b)=>((b.flow&&b.flow.score)||-1)-((a.flow&&a.flow.score)||-1));
+  const pill=(v)=>{ if(v==null)return '<span style="opacity:.4">—</span>';
+    const c=v>=7?'#16a34a':v>=5.5?'#65a30d':v>=4?'#a16207':'#dc2626';
+    return `<b style="color:${c}">${fmt(v,1)}</b>`; };
+  const body=rows.map(s=>{
+    const ins=s.insider, rev=s.revision, aw=s.award;
+    const insTxt=ins?(ins.cluster==='buy'?`<span style="color:#16a34a;font-weight:700">▲ ${ins.buyers} buying</span>`
+      :ins.cluster==='sell'?`<span style="color:#dc2626">▼ ${ins.sellers} selling</span>`
+      :`${ins.buyers}B / ${ins.sellers}S`):'<span style="opacity:.4">—</span>';
+    // Flat is flat: a delta of exactly 0 must not read as "improving".
+    const revTxt=rev&&rev.delta!=null?`${rev.delta>0?'▲':rev.delta<0?'▼':'–'} ${rev.delta>0?'+':''}${fmt(rev.delta,2)}`:'<span style="opacity:.4">—</span>';
+    return `<tr><td><b>${s.sym}</b>${held.has(s.sym)?'':' <span class="card-hint" style="font-size:9px">not held</span>'}</td>
+      <td class="tr">${pill(s.flow&&s.flow.score)}</td>
+      <td class="tr">${pill(rev&&rev.score)} <span class="card-hint" style="font-size:9.5px">${revTxt}</span></td>
+      <td class="tr">${pill(ins&&ins.score)} <span class="card-hint" style="font-size:9.5px">${insTxt}</span></td>
+      <td class="tr">${pill(s.surprise&&s.surprise.score)}</td>
+      <td class="tr">${aw?pill(aw.score):'<span style="opacity:.4">—</span>'}</td></tr>`;
+  }).join('');
+  const abstain=rows.filter(s=>!s.flow).length;
+  const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">
+    Who is <i>acting</i> on your names. <b>Revisions</b> = analyst consensus direction (the change matters more than the level). <b>Insider</b> = open-market Form 4 only — grants and option exercises are excluded, and selling is weighted far below buying because large caps sell constantly for reasons that aren't a view. <b>Surprise</b> = earnings drift. <b>Awards</b> = federal contract growth. A blank column means that name abstained rather than guessing.
+    <b>Display-only</b> — none of this moves the agentic target yet.</div>
+    <div class="fund-note" style="margin:0 0 8px">${rows.length} names read${abstain?` · ${abstain} abstaining (too little data)`:''}${F.asOf?` · as of ${F.asOf}`:''}</div>`;
+  let html=hdr+`<div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Flow</th><th class="tr">Revisions</th><th class="tr">Insider</th><th class="tr">Surprise</th><th class="tr">Awards</th></tr></thead><tbody>${body}</tbody></table></div>`;
+
+  // Lobbying — a policy-exposure flag, never a score. Only worth showing where it's material.
+  const lob=rows.filter(s=>s.lob&&s.lob.ttm>0).sort((a,b)=>b.lob.ttm-a.lob.ttm).slice(0,6);
+  if(lob.length) html+=`<div class="ac-tier" style="margin-top:12px">🏛️ Lobbying intensity <span class="card-hint">(regulatory exposure, not a signal)</span></div>
+    <div class="fund-note" style="margin:0">${lob.map(s=>`<b>${s.sym}</b> ${s.lob.note}`).join(' · ')}</div>`;
+
+  // Congressional disclosures — context only, and labelled as such.
+  const pc=(F.polClusters&&Object.values(F.polClusters))||[];
+  if(pc.length){
+    html+=`<div class="ac-tier" style="margin-top:12px">🏛️ Congressional clusters <span class="card-hint">(context only — zero weight)</span></div>
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:0 0 6px;line-height:1.5">≥3 members trading the same name the same way within 45 days. Shown because it's interesting, weighted at <b>zero</b> because it isn't actionable: disclosure lags the trade by 40–116 days, and the mega-cap names this feed is dominated by are excluded outright — they're already inside the concentration cap the target enforces.</div>
+      <div class="fund-note" style="margin:0">${pc.map(c=>`<b>${c.sym}</b> ${c.side==='buy'?'▲':'▼'} ${c.filers} filers · last ${c.lastTxn} (~${c.staleDays}d ago)`).join(' · ')}</div>`;
+  } else if(F.polEvents&&F.polEvents.length){
+    html+=`<div class="fund-note" style="margin:10px 0 0">🏛️ Congressional ledger: ${F.polEvents.length} disclosures tracked, no cluster meets the ≥3-filer bar. (Context only — zero weight.)</div>`;
+  }
+  el.innerHTML=html;
+}
+window.renderFlowCard=renderFlowCard;
+
 /* ═══ All Positions (kept) ═══ */
 let _sc='val',_sd=1,_enriched=[];
 function sortBy(col){ _sd=_sc===col?-_sd:1; _sc=col; _renderPos(_enriched); }
@@ -2548,6 +2610,26 @@ window.switchTab=switchTab;
     </ul>` },
 
   /* ════════ PLAN / PICKS TAB ════════ */
+  'flow positioning': { tag:'Plan', t:'Flow &amp; Positioning', h:`
+    <p>Every other card reads the <i>company</i> — its price, its fundamentals. This one reads <b>who is acting on it</b>: analysts, corporate insiders, and the federal government.</p>
+    <div class="hsub">The columns</div>
+    <ul>
+      <li><span class="hk">Revisions</span> — the direction analyst consensus is moving. Scored mostly on the <b>change</b>, not the level: almost everything carries a "buy" rating, so the level says little, while a name being steadily upgraded (or quietly downgraded) says a lot.</li>
+      <li><span class="hk">Insider</span> — open-market Form 4 buys and sells only. Grants, option exercises, gifts and tax withholding are stripped out — they're mechanical and would make every large cap look like a wall of selling. <b>Buying counts far more than selling</b>: insiders buy for one reason and sell for a dozen.</li>
+      <li><span class="hk">Surprise</span> — earnings beats/misses, recency-weighted, with each quarter capped so one freak number can't dominate.</li>
+      <li><span class="hk">Awards</span> — growth in federal contract dollars. Meaningful for government-exposed names, silent for everyone else.</li>
+      <li><span class="hk">Flow</span> — the blend. A name with too little data <b>abstains</b> rather than showing a misleading middling score.</li>
+    </ul>
+    <div class="hsub">What it does NOT do</div>
+    <ul>
+      <li>It does <b>not</b> move the agentic target. The sleeve is switched off during a burn-in so the signal can be judged on real data before it earns a say.</li>
+      <li><span class="hk">Congressional clusters</span> carry <b>zero weight, permanently</b>. Disclosure lags the actual trade by 40–116 days, and the mega-cap names that feed is dominated by are excluded outright — they already sit inside the concentration cap the target enforces. Shown because it's interesting, not because it's actionable.</li>
+      <li><span class="hk">Lobbying</span> is a regulatory-exposure flag, not a buy or sell signal.</li>
+    </ul>
+    <p class="hnote">Research and education only.</p>`},
+  'flow read': { tag:'Analyze', t:'Flow read', h:`
+    <p>The one-line version of the <b>Flow &amp; Positioning</b> card for this ticker — analyst revision direction, insider cluster activity, earnings surprise and federal awards, blended into a 0–10 score.</p>
+    <p>Display-only: it doesn't feed the recommendation above it or the agentic target. "Partial read" means some signals were available but too few to blend a score.</p>`},
   'agentic portfolio': { tag:'Plan', t:'Agentic Portfolio', h:`
     <p>The <b>target blueprint</b> for the agentic cash account (••••3900) — a separate, unlevered cash account, distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
     <div class="hsub">Where the target comes from</div>
@@ -4103,6 +4185,20 @@ function runAnalysis(sym){
           '<div style="font-size:11px;color:#9ca3af;margin-top:2px">'+cmp.icon+' '+cmp.short+'</div></div>'+
           '<button class="az-btn az-btn-ghost" style="padding:6px 11px;font-size:12px;white-space:nowrap;flex:none" onclick="azCMOpen(\''+a.sym+'\')">📊 Chart</button>'+
         '</div></div>'; })():'')+
+    // 🏛️ Flow chip (v95) — one compact line for who is ACTING on the name (revisions / insider / surprise).
+    // Display-only, like the card on the Plan page; renders nothing when the name abstained or has no read.
+    (function(){ const f=(window.__DATA&&window.__DATA.flow&&window.__DATA.flow.symbols&&window.__DATA.flow.symbols[a.sym])||null;
+      if(!f||(!f.flow&&!f.revision&&!f.insider))return '';
+      const sc=f.flow&&f.flow.score, col=sc==null?'#9ca3af':sc>=7?'#16a34a':sc>=5.5?'#65a30d':sc>=4?'#a16207':'#dc2626';
+      const bits=[];
+      if(f.revision&&f.revision.delta!=null) bits.push((f.revision.delta>0?'▲':f.revision.delta<0?'▼':'–')+' analysts '+(f.revision.delta>0?'+':'')+fmt(f.revision.delta,2));
+      if(f.insider&&f.insider.cluster==='buy') bits.push('▲ '+f.insider.buyers+' insiders buying');
+      else if(f.insider&&f.insider.cluster==='sell') bits.push('▼ '+f.insider.sellers+' insiders selling');
+      if(f.surprise) bits.push(f.surprise.note);
+      if(f.award) bits.push('federal awards '+(f.award.growth>=0?'+':'')+Math.round(f.award.growth*100)+'%');
+      return '<div class="card" style="border-left:4px solid '+col+';padding:11px 14px"><div class="card-title" data-help="flow read" style="margin-bottom:7px"><span style="font-size:11px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px">🏛️ Flow read <span style="text-transform:none;letter-spacing:0;font-weight:400">· who\'s acting</span></span></div>'+
+        '<div style="font-size:15px;font-weight:800;color:'+col+'">'+(sc!=null?fmt(sc,1)+'/10':'partial read')+'</div>'+
+        '<div style="font-size:11px;color:#9ca3af;margin-top:2px">'+(bits.join(' · ')||'not enough data to score')+'</div></div>'; })()+
     azRec(a,x)+
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
@@ -4211,6 +4307,9 @@ function renderPicksStatic(){
     </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(••••3900 · decisions graded)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
       <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
+    </div></div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on your names)</span></span><span class="chevron">▼</span></div><div id="b-flow">
+      <div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
     </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>

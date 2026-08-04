@@ -74,7 +74,7 @@ export function revisionScore(recommendation, { lookbackMonths = 3 } = {}) {
   return {
     score: r2(clamp(0.6 * direction + 0.4 * level, 0, 10)),
     level: r2(level), delta: r2(delta), analysts: latest.total, months: rs.length,
-    note: `consensus ${delta >= 0 ? 'improving' : 'deteriorating'} (${delta >= 0 ? '+' : ''}${r2(delta)} over ${Math.min(lookbackMonths, rs.length - 1)}mo, ${latest.total} analysts)`,
+    note: `consensus ${delta > 0 ? 'improving' : delta < 0 ? 'deteriorating' : 'flat'} (${delta > 0 ? '+' : ''}${r2(delta)} over ${Math.min(lookbackMonths, rs.length - 1)}mo, ${latest.total} analysts)`,
   };
 }
 
@@ -176,6 +176,85 @@ export function surpriseScore(earnings, { quarters = 4 } = {}) {
   };
 }
 
+// ---- 4. Federal contract awards -------------------------------------------
+// Finnhub /stock/usa-spending → { data:[{ actionDate, obligatedAmount, totalValue, potentialAmount,
+//   awardingAgencyName, recipientParentName, … }] }.
+//
+// This is the signal the political-disclosure feeds are a rear-view mirror OF: money the federal
+// government has actually committed to the company, visible before it reaches the income statement.
+// Scored as GROWTH (trailing 12 months vs the 12 before it) rather than level, because the level just
+// measures how big a defence contractor is — LMT will always out-award NVDA, which says nothing about
+// either as an investment. Weighted lowest of the four components (10%): it is meaningful for
+// government-exposed names and silent for everyone else, which is exactly what abstention is for.
+//
+// CAVEAT (seen on the first live run): award flow is LUMPY. A single multi-year contract lands entirely
+// in one year's window, so YoY growth can swing violently on no real change in the business — LMT scored
+// −95% purely because the prior 12 months contained one very large award. This is the main reason the
+// component carries the smallest weight of the four, and why it is a growth signal rather than anything
+// that pretends to be precise. Treat a large negative as "no fresh awards this year", not as decline.
+export function awardScore(usaSpending, { asOf } = {}) {
+  const today = asOf || new Date().toISOString().slice(0, 10);
+  const rs = rows(usaSpending).filter((a) => a && a.actionDate);
+  if (!rs.length) return null;
+
+  let recent = 0, prior = 0, nRecent = 0;
+  const agencies = new Map();
+  for (const a of rs) {
+    const age = daysBetween(today, a.actionDate);
+    if (!(age >= 0)) continue;                    // ignore future-dated rows
+    const amt = num(a.obligatedAmount) ?? num(a.totalValue) ?? 0;
+    if (!(amt > 0)) continue;
+    if (age <= 365) {
+      recent += amt; nRecent++;
+      const ag = String(a.awardingAgencyName || 'unknown');
+      agencies.set(ag, (agencies.get(ag) || 0) + amt);
+    } else if (age <= 730) prior += amt;
+  }
+  if (recent === 0 && prior === 0) return null;
+
+  // Bounded growth: −1 (awards dried up) … +1 (new or sharply expanding award flow).
+  const growth = (recent - prior) / Math.max(recent, prior, 1);
+  const topAgency = [...agencies.entries()].sort((a, b) => b[1] - a[1])[0];
+  return {
+    score: r2(clamp(5 + 4 * growth, 0, 10)),
+    recent12mo: Math.round(recent), prior12mo: Math.round(prior),
+    growth: r2(growth), awards: nRecent,
+    topAgency: topAgency ? topAgency[0] : null,
+    note: `$${(recent / 1e6).toFixed(1)}M obligated in 12mo (${growth >= 0 ? '+' : ''}${Math.round(growth * 100)}% vs prior year)${topAgency ? ` · ${topAgency[0]}` : ''}`,
+  };
+}
+
+// ---- Lobbying intensity (a RISK FLAG, not a score) -------------------------
+// Finnhub /stock/lobbying → { data:[{ year, period:'Q4', income, expenses, … }] }.
+//
+// Deliberately NOT scored into the composite. Heavy lobbying is not bullish or bearish — it marks a name
+// with live regulatory exposure, i.e. higher policy beta. A company ramping its spend is usually fighting
+// something. Surfaced as context beside the policy calendar so a reader can connect "this name lobbies
+// hard on X" with "X has a scheduled decision next month", which is where the actual risk lives.
+export function lobbyingFlag(lobbying, { asOf } = {}) {
+  const today = asOf || new Date().toISOString().slice(0, 10);
+  const yr = +today.slice(0, 4), qtr = Math.floor((+today.slice(5, 7) - 1) / 3) + 1;
+  const absQ = (y, q) => y * 4 + q;
+  const nowQ = absQ(yr, qtr);
+  const rs = rows(lobbying).filter((l) => l && l.year);
+  if (!rs.length) return null;
+
+  let ttm = 0, prior = 0, filings = 0;
+  for (const l of rs) {
+    const q = /Q(\d)/i.exec(String(l.period || '')) ? +/Q(\d)/i.exec(String(l.period))[1] : 4;
+    const age = nowQ - absQ(+l.year, q);
+    const amt = num(l.income) ?? num(l.expenses) ?? 0;
+    if (!(amt > 0) || age < 0) continue;
+    if (age < 4) { ttm += amt; filings++; } else if (age < 8) prior += amt;
+  }
+  if (ttm === 0 && prior === 0) return null;
+  const trend = prior > 0 ? (ttm - prior) / prior : (ttm > 0 ? 1 : 0);
+  return {
+    ttm: Math.round(ttm), prior: Math.round(prior), trend: r2(trend), filings,
+    note: `$${(ttm / 1e3).toFixed(0)}k lobbying TTM${prior > 0 ? ` (${trend >= 0 ? '+' : ''}${Math.round(trend * 100)}% YoY)` : ''}`,
+  };
+}
+
 // ---- Composite -------------------------------------------------------------
 // Weighted blend over whatever components are present, renormalized. Returns null below MIN_COMPONENTS so
 // a name with only one live signal abstains instead of letting that signal masquerade as a whole sleeve.
@@ -195,10 +274,12 @@ export function flowScore(parts = {}, weights = FLOW_WEIGHTS) {
 
 // Convenience: raw provider payloads for one symbol → the full flow read. Used by build-data.mjs and by
 // the research workflow's sleeve agent so both compute the score identically.
-export function scoreSymbol({ recommendation, insiderTx, insiderSentiment, earnings } = {}, opts = {}) {
+export function scoreSymbol({ recommendation, insiderTx, insiderSentiment, earnings, usaSpending, lobbying } = {}, opts = {}) {
   const revision = revisionScore(recommendation, opts);
   const insider = insiderScore(insiderTx, insiderSentiment, opts);
   const surprise = surpriseScore(earnings, opts);
-  const flow = flowScore({ revision, insider, surprise });
-  return { flow, revision, insider, surprise };
+  const award = awardScore(usaSpending, opts);
+  const lobby = lobbyingFlag(lobbying, opts);   // context only — never enters the composite
+  const flow = flowScore({ revision, insider, surprise, award });
+  return { flow, revision, insider, surprise, award, lobby };
 }

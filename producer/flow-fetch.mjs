@@ -25,6 +25,7 @@ import { dirname, join } from 'node:path';
 import { coverFromRaw } from './av.mjs';
 import { avSym } from './extfund.mjs';
 import { scoreSymbol } from './flow.mjs';
+import { normalizeDisclosure } from './polflow.mjs';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -64,16 +65,20 @@ const FH = 'https://finnhub.io/api/v1';
 const tok = encodeURIComponent(FINNHUB_KEY);
 // Insider sentiment is a rolling monthly series; a 6-month lookback is enough to read the latest MSPR.
 const sentFrom = (() => { const d = new Date(`${todayET}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 6); return d.toISOString().slice(0, 10); })();
+// Awards and lobbying are scored as year-over-year GROWTH, so both need two years of history.
+const twoYearsAgo = (() => { const d = new Date(`${todayET}T00:00:00Z`); d.setUTCFullYear(d.getUTCFullYear() - 2); return d.toISOString().slice(0, 10); })();
 
 let wrote = 0, skipped = 0, firstErr = null;
 const symbols = coverFromRaw(RAW);
 for (const sym of symbols) {
   const s = encodeURIComponent(avSym(sym));
-  const [recommendation, insiderTx, insiderSentiment, earnings] = await Promise.all([
+  const [recommendation, insiderTx, insiderSentiment, earnings, usaSpending, lobbying] = await Promise.all([
     getJSON(`${FH}/stock/recommendation?symbol=${s}&token=${tok}`),
     getJSON(`${FH}/stock/insider-transactions?symbol=${s}&token=${tok}`),
     getJSON(`${FH}/stock/insider-sentiment?symbol=${s}&from=${sentFrom}&to=${todayET}&token=${tok}`),
     getJSON(`${FH}/stock/earnings?symbol=${s}&token=${tok}`),
+    getJSON(`${FH}/stock/usa-spending?symbol=${s}&from=${twoYearsAgo}&to=${todayET}&token=${tok}`),
+    getJSON(`${FH}/stock/lobbying?symbol=${s}&from=${twoYearsAgo}&to=${todayET}&token=${tok}`),
   ]);
   if (!firstErr) firstErr = [recommendation, insiderTx, insiderSentiment, earnings].map((x) => x && x._err).find(Boolean) || null;
 
@@ -82,6 +87,8 @@ for (const sym of symbols) {
     insiderTx: ok(insiderTx) ? insiderTx : null,
     insiderSentiment: ok(insiderSentiment) ? insiderSentiment : null,
     earnings: ok(earnings) ? earnings : null,
+    usaSpending: ok(usaSpending) ? usaSpending : null,
+    lobbying: ok(lobbying) ? lobbying : null,
   }, { asOf: todayET });
 
   // Only claim a read when SOMETHING scored — otherwise leave the prior sidecar in place. A name that
@@ -93,7 +100,31 @@ for (const sym of symbols) {
     writeFileSync(join(FLOWDIR, `${sym}.json`), JSON.stringify({ sym, asOf: todayET, ...read }));
     wrote++;
   }
-  await sleep(3300); // ~55 Finnhub calls/min at 4 calls per symbol
+  await sleep(5000); // ~55 Finnhub calls/min at 6 calls per symbol
+}
+
+// Congressional disclosures (STOCK Act PTRs) — TWO calls, whole-market, not per symbol. On our FMP tier
+// `page` must be 0 and `limit` ≤ 25, and the by-symbol endpoints are restricted, so each poll returns
+// only the ~50 newest rows market-wide. That is why these are normalized here and ACCUMULATED by
+// build-data.mjs into data.flow.polEvents rather than treated as a complete picture: any single fetch is
+// a rolling window, and producer/raw/ is wiped on every scheduled run.
+//
+// This feed carries ZERO score weight by design — see polflow.mjs and PROPOSAL-flow-signals.md.
+if (FMP_KEY) {
+  const k = encodeURIComponent(FMP_KEY);
+  const fresh = [];
+  for (const chamber of ['senate', 'house']) {
+    const res = await getJSON(`https://financialmodelingprep.com/stable/${chamber}-latest?page=0&limit=25&apikey=${k}`);
+    if (!Array.isArray(res)) { console.log(`[flow] ${chamber} disclosures unavailable${res && res._err ? ` (${res._err})` : ''}`); continue; }
+    for (const row of res) { const e = normalizeDisclosure(row, chamber); if (e) fresh.push(e); }
+  }
+  if (fresh.length) {
+    writeFileSync(join(FLOWDIR, '_polflow.json'), JSON.stringify({ asOf: todayET, events: fresh }));
+    const lags = fresh.map((e) => e.lag).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+    console.log(`[flow] congressional: ${fresh.length} tradeable rows of 50 polled (rest are bonds/funds/no-symbol)${lags.length ? ` · median disclosure lag ${lags[Math.floor(lags.length / 2)]}d` : ''}`);
+  } else {
+    console.log('[flow] congressional: no tradeable rows this poll — keeping the accumulated ledger');
+  }
 }
 
 // Treasury curve sidecar — one FMP call returns the ENTIRE curve (1m…30y) for the latest session. This

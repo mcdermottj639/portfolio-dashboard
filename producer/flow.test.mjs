@@ -48,6 +48,16 @@ near('single-snapshot level is dampened toward neutral', one.score, 6.9);
 eq('single-snapshot reports no delta', one.delta, null);
 ok('single snapshot scores below the full-history read', one.score < rv.score);
 
+// A flat consensus must read as flat, not as improving (the ▲ +0.00 bug).
+const flat = revisionScore([
+  { period: '2026-08-01', strongBuy: 5, buy: 10, hold: 5, sell: 0, strongSell: 0 },
+  { period: '2026-07-01', strongBuy: 5, buy: 10, hold: 5, sell: 0, strongSell: 0 },
+  { period: '2026-06-01', strongBuy: 5, buy: 10, hold: 5, sell: 0, strongSell: 0 },
+  { period: '2026-05-01', strongBuy: 5, buy: 10, hold: 5, sell: 0, strongSell: 0 },
+]);
+eq('unchanged consensus has zero delta', flat.delta, 0);
+ok('unchanged consensus is described as flat, not improving', /flat/.test(flat.note) && !/improving/.test(flat.note));
+
 eq('revision with no rows → null', revisionScore([]), null);
 eq('revision ignores rows with zero analysts', revisionScore([{ period: '2026-08-01', strongBuy: 0, buy: 0, hold: 0, sell: 0, strongSell: 0 }]), null);
 

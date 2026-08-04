@@ -22,6 +22,7 @@ import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
+import { mergeEvents, detectClusters } from './polflow.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -390,12 +391,34 @@ const data = {
       } catch { /* a corrupt sidecar keeps the carried-forward read */ }
     }
   }
-  if (Object.keys(symbols).length) {
+  // Congressional disclosure ledger. The FMP tier serves only the ~50 newest rows market-wide per poll
+  // and raw/ is wiped every scheduled run, so the ledger has to ACCUMULATE in the snapshot — this is the
+  // ivHistory/equityHistory pattern, not a re-derivable projection. mergeEvents de-duplicates, so the
+  // same trade re-served by tomorrow's rolling window can't inflate a cluster.
+  let polEvents = (prior && prior.flow && Array.isArray(prior.flow.polEvents)) ? prior.flow.polEvents : [];
+  let polClusters = (prior && prior.flow && prior.flow.polClusters) || {};
+  const polFile = join(flowDir, '_polflow.json');
+  if (existsSync(polFile)) {
+    try {
+      const freshPol = (readJSON(polFile) || {}).events || [];
+      const before = polEvents.length;
+      polEvents = mergeEvents(polEvents, freshPol, { asOf: flowDay });
+      polClusters = detectClusters(polEvents, { asOf: flowDay });
+      const added = polEvents.length - before;
+      console.log(`congressional ledger: ${polEvents.length} events (+${added > 0 ? added : 0} new of ${freshPol.length} polled) · ${Object.keys(polClusters).length} cluster(s) — zero score weight by design`);
+    } catch { /* a corrupt sidecar keeps the accumulated ledger */ }
+  } else if (polEvents.length) {
+    polEvents = mergeEvents(polEvents, [], { asOf: flowDay });   // still age out stale events
+    polClusters = detectClusters(polEvents, { asOf: flowDay });
+  }
+
+  if (Object.keys(symbols).length || polEvents.length) {
     data.flow = { asOf: fresh ? flowDay : ((prior && prior.flow && prior.flow.asOf) || flowDay), symbols };
+    if (polEvents.length) { data.flow.polEvents = polEvents; data.flow.polClusters = polClusters; }
     const scored = Object.values(symbols).filter((s) => s && s.flow).length;
     const clusters = Object.values(symbols).filter((s) => s && s.insider && s.insider.cluster).length;
     console.log(`flow signals: ${Object.keys(symbols).length} symbols (${fresh} fresh this run) · ${scored} with a composite · ${clusters} insider cluster(s)`);
-    if (!fresh) console.warn('flow signals: none fetched this run — carrying the prior read forward');
+    if (Object.keys(symbols).length && !fresh) console.warn('flow signals: none fetched this run — carrying the prior read forward');
   }
 }
 

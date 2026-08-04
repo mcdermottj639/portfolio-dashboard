@@ -56,5 +56,37 @@ ok('trim note flags T+1 settlement', find(over.trims, 'NVDA').note.includes('T+1
 const prorate = planDeployment({ target: { names: [{ ticker: 'SPY', weightPct: 50, entry: '740-750', stop: 690 }, { ticker: 'JPM', weightPct: 50, entry: '336-345', stop: 310 }] }, positions: [], cash: 100, quotes: { SPY: 747, JPM: 348.8 }, opts: { asOf: '2026-07-23' } });
 near('pro-rated buys sum to the small cash pot', prorate.spent, 100, 1);
 
+// ---- policy blackout (v95) — same reasoning as earnings: don't deploy into a dated binary event ----
+const POL = { events: [
+  { date: '2026-07-27', title: 'Section 232 tariff ruling', impact: 'high', tickers: ['NVDA'], source: 'https://example.gov/r' },
+  { date: '2026-07-27', title: 'Comment period closes', impact: 'low', tickers: ['JPM'] },
+  { date: '2026-11-01', title: 'Distant ruling', impact: 'high', tickers: ['SPY'], source: 'https://example.gov/d' },
+] };
+const polTarget = { names: [{ ticker: 'NVDA', weightPct: 100, entry: '205-215', stop: 190 }] };
+const polArgs = { positions: [], cash: 1000, quotes: { NVDA: 209, JPM: 348.8, SPY: 747 }, opts: { asOf: '2026-07-23' } };
+
+const polDefer = planDeployment({ ...polArgs, target: polTarget, policy: POL });
+ok('high-impact policy event inside the window defers the buy', find(polDefer.deferred, 'NVDA') && find(polDefer.deferred, 'NVDA').reason === 'policy');
+ok('policy-deferred name is not bought', !find(polDefer.buys, 'NVDA'));
+ok('policy deferral names the event and date', /Section 232 tariff ruling on 2026-07-27/.test(find(polDefer.deferred, 'NVDA').detail));
+
+// Absent or empty calendar must be a complete no-op — this is the shipped default.
+ok('no policy calendar → normal buy', !!find(planDeployment({ ...polArgs, target: polTarget }).buys, 'NVDA'));
+ok('empty policy calendar → normal buy', !!find(planDeployment({ ...polArgs, target: polTarget, policy: { events: [] } }).buys, 'NVDA'));
+
+// Low-impact events are context, not blockers — over-blocking would quietly starve the deploy plan.
+const lowImpact = planDeployment({ ...polArgs, target: { names: [{ ticker: 'JPM', weightPct: 100, entry: '330-345', stop: 310 }] }, policy: POL });
+ok('low-impact policy event does not defer', !!find(lowImpact.buys, 'JPM') && !find(lowImpact.deferred, 'JPM'));
+
+// A high-impact event months out is real but not imminent.
+const distant = planDeployment({ ...polArgs, target: { names: [{ ticker: 'SPY', weightPct: 100, entry: '740-750', stop: 690 }] }, policy: POL });
+ok('distant policy event does not defer today', !!find(distant.buys, 'SPY'));
+
+// Wash-sale and earnings still outrank policy in the guardrail order.
+const washFirst = planDeployment({ ...polArgs, target: polTarget, policy: POL, washMap: { NVDA: { until: '2026-08-01' } } });
+ok('wash-sale still takes precedence over policy', find(washFirst.deferred, 'NVDA').reason === 'wash-sale');
+const earnFirst = planDeployment({ ...polArgs, target: polTarget, policy: POL, earnings: { NVDA: { date: '2026-07-26' } } });
+ok('earnings still takes precedence over policy', find(earnFirst.deferred, 'NVDA').reason === 'earnings');
+
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);
