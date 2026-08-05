@@ -2,6 +2,21 @@
   "_comment": "Owner-confirmed rebalance/deploy log for the agentic cash account (••••3900). The agent APPENDS one record per confirmed deploy/rebalance (see AGENTIC.md); build-data.mjs grades each vs live quotes + SPY and attaches it as data.agentic.decisions for the consumer's Rebalance Log card. priceAt = the fill price; spyAt = SPY at decision time (null = not recorded, e.g. the seed → graded on absolute return only).",
   "decisions": [
     {
+      "id": "2026-08-05-deploy",
+      "date": "2026-08-05",
+      "kind": "deploy",
+      "targetAsOf": "2026-08-05",
+      "book": 5277.13,
+      "equityAtDecision": 5277.12,
+      "spyAt": 771.28,
+      "rationale": "Owner-confirmed deploy of the weekly research refresh (7-name target: JPM 16% / SPY 18% / NVDA 15% / V 15% / AAPL 15% / GOOGL 10% / UNH 11%). Account cash-constrained ($10.35 available) — only the gaps under the new target with room in cash were funded: V, AAPL, UNH. GOOGL/JPM/SPY already at/above target, no buy needed. NVDA deferred (wash-sale — loss booked 2026-08-03, rebuy blocked to 2026-09-03). Orders placed market-closed (~1:16 AM ET) as fractional dollar-market buys, queued for the 9:30 AM ET regular-session open — priceAt below is the order-time reference quote, not a confirmed fill.",
+      "trades": [
+        { "sym": "V",    "side": "BUY", "dollars": 2.20, "shares": 0.005930, "priceAt": 370.49 },
+        { "sym": "AAPL", "side": "BUY", "dollars": 4.11, "shares": 0.013200, "priceAt": 311.33 },
+        { "sym": "UNH",  "side": "BUY", "dollars": 3.01, "shares": 0.007360, "priceAt": 408.51 }
+      ]
+    },
+    {
       "id": "2026-07-23-deploy",
       "date": "2026-07-23",
       "kind": "deploy",
