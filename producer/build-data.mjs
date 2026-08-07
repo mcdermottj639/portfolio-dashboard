@@ -355,6 +355,22 @@ const data = {
     data.agentic.target = agenticTarget;
     console.log(`agentic target: ${(agenticTarget.names || []).length} names (asOf ${agenticTarget.asOf})`);
   }
+  // ── In-flight rebalance ticket (v96). producer/agentic-pending.json is the COMMITTED two-leg,
+  // T+1-aware ticket the executor drives (see agentic-pending.mjs for the state machine). Attach it
+  // whenever it's live so the Agentic card can show "rebalance in flight" instead of a stale drift
+  // table; done/aborted tickets are omitted (the card has nothing to say about finished ones).
+  if (data.agentic) {
+    try {
+      const pf = join(__dirname, 'agentic-pending.json');
+      if (existsSync(pf)) {
+        const ticket = readJSON(pf);
+        if (ticket && ticket.status && !['done', 'aborted'].includes(ticket.status)) {
+          data.agentic.pending = ticket;
+          console.log(`agentic pending ticket: ${ticket.id} · ${ticket.status} · turnover ${fmtMoney(ticket.turnover || 0)}`);
+        }
+      }
+    } catch { /* unreadable ticket never breaks a build */ }
+  }
   // ── Rebalance decision ledger (data.agentic.decisions). The committed producer/agentic-decisions.json is
   // the owner-confirmed log of each deploy/rebalance; grade every entry against THIS run's live quotes (+ vs
   // SPY when spyAt was recorded) so the consumer's "Rebalance Log" card can show whether each call worked.

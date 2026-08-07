@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-deploy.mjs — no network, no I/O. Run: node producer/agentic-deploy.test.mjs
-import { planDeployment, EARNINGS_BLACKOUT_DAYS } from './agentic-deploy.mjs';
+import { planDeployment, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP } from './agentic-deploy.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -87,6 +87,91 @@ const washFirst = planDeployment({ ...polArgs, target: polTarget, policy: POL, w
 ok('wash-sale still takes precedence over policy', find(washFirst.deferred, 'NVDA').reason === 'wash-sale');
 const earnFirst = planDeployment({ ...polArgs, target: polTarget, policy: POL, earnings: { NVDA: { date: '2026-07-26' } } });
 ok('earnings still takes precedence over policy', find(earnFirst.deferred, 'NVDA').reason === 'earnings');
+
+// ═══ v96 — full-book planner: off-target exits, TLH, two-leg T+1, tax math, auto tier ═══
+
+// The exact shape of the 2026-08 gap: 40% of the book in names the research dropped, target names
+// starved. Off-target holds must become exits whose proceeds fund the underweights next session.
+const fullBook = planDeployment({
+  target: { driftTriggerPp: 5, names: [
+    { ticker: 'SPY',  weightPct: 40, entry: '740-750', stop: 690, target: 815 },
+    { ticker: 'AAPL', weightPct: 40, entry: '304-312', stop: 284, target: 340 },
+    { ticker: 'UNH',  weightPct: 20, entry: '398-412', stop: 366, target: 465 },
+  ]},
+  positions: [
+    { symbol: 'SPY',  qty: 1, avgCost: 700 },     // held target name, near weight
+    { symbol: 'MSFT', qty: 2, avgCost: 400 },     // off-target, at a GAIN
+    { symbol: 'GE',   qty: 1, avgCost: 380 },     // off-target, at a LOSS
+  ],
+  cash: 50, quotes: { SPY: 750, AAPL: 309, UNH: 403, MSFT: 450, GE: 340 },
+  opts: { asOf: '2026-08-07' },
+});
+ok('off-target MSFT becomes an exit', find(fullBook.exits, 'MSFT') && find(fullBook.exits, 'MSFT').kind === 'exit');
+ok('off-target GE becomes an exit', !!find(fullBook.exits, 'GE'));
+ok('held target name is NOT exited', !find(fullBook.exits, 'SPY'));
+near('exit sells the whole position', find(fullBook.exits, 'MSFT').dollars, 900, 1);
+near('exit carries realized ST P&L vs avg cost', find(fullBook.exits, 'MSFT').pl, 100, 1);
+near('loss exit carries a negative P&L', find(fullBook.exits, 'GE').pl, -40, 1);
+ok('sells are ordered losses-first', fullBook.sells[0].sym === 'GE');
+near('taxSummary nets gains against losses', fullBook.taxSummary.net, 60, 2);
+ok('leg-1 buys spend only settled cash', fullBook.spent <= 50 + 1e-6);
+ok('T+1 leg exists, funded by proceeds', fullBook.buysT1.length > 0);
+ok('T+1 buys never exceed sale proceeds', fullBook.buysT1.reduce((s, b) => s + b.dollars, 0) <= fullBook.proceeds + 1e-6);
+ok('T+1 buys target the underweight names', !!find(fullBook.buysT1, 'AAPL') && !!find(fullBook.buysT1, 'UNH'));
+ok('turnover sums sells + both buy legs', fullBook.turnover > 1200);
+ok('a >$500-turnover ticket is NOT auto-eligible', fullBook.autoEligible === false && fullBook.autoCap === AUTO_TURNOVER_CAP);
+ok('summary mentions the exits and the tax net', /exit/.test(fullBook.summary) && /ST tax/.test(fullBook.summary));
+
+// Auto tier: small clean ticket ≤ $500 turnover is auto-eligible.
+const small = planDeployment({ target: { names: [{ ticker: 'SPY', weightPct: 100, entry: '740-750', stop: 690 }] },
+  positions: [], cash: 300, quotes: { SPY: 750 }, opts: { asOf: '2026-08-07' } });
+ok('small clean ticket is auto-eligible', small.autoEligible === true && small.turnover <= 500);
+
+// TLH: a target name deep underwater is harvested — full position, wash-blocked from the buy legs.
+const tlhTarget = { driftTriggerPp: 5, names: [
+  { ticker: 'GOOGL', weightPct: 50, entry: '370-382', stop: 332, target: 440 },
+  { ticker: 'SPY',   weightPct: 50, entry: '740-750', stop: 690, target: 815 },
+]};
+const tlh = planDeployment({
+  target: tlhTarget,
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], // px 340 → −$120 loss (>max($75,5% of $800))
+  cash: 1000, quotes: { GOOGL: 340, SPY: 750 }, opts: { asOf: '2026-08-07' },
+});
+ok('deep-loss target name is harvested', find(tlh.harvests, 'GOOGL') && find(tlh.harvests, 'GOOGL').kind === 'harvest');
+near('harvest realizes the ST loss', find(tlh.harvests, 'GOOGL').pl, -120, 1);
+ok('harvested name is NOT bought in leg-1', !find(tlh.buys, 'GOOGL'));
+ok('harvested name is NOT bought in leg-2', !find(tlh.buysT1, 'GOOGL'));
+ok('harvest adds a wash-sale deferral for the rebuy', find(tlh.deferred, 'GOOGL') && find(tlh.deferred, 'GOOGL').reason === 'wash-sale');
+ok('SPY still gets bought', !!find(tlh.buys, 'SPY'));
+
+// TLH threshold: a small loss is left alone (harvesting dust isn't worth the underweight).
+const smallLoss = planDeployment({ target: tlhTarget,
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 350 }], cash: 100, quotes: { GOOGL: 340, SPY: 750 }, opts: { asOf: '2026-08-07' } });
+ok('a −$20 loss is below the harvest floor', !find(smallLoss.harvests || [], 'GOOGL'));
+
+// Cross-account wash guard: the margin book bought the name within 30d → no harvest (loss disallowed),
+// and a loss-EXIT is flagged washRisk but still exits (allocation dominates; only the tax benefit dies).
+const cross = planDeployment({
+  target: tlhTarget,
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }, { symbol: 'INTC', qty: 10, avgCost: 40 }],
+  cash: 0, quotes: { GOOGL: 340, SPY: 750, INTC: 30 },
+  crossActivity: { GOOGL: { lastBuyDate: '2026-07-20' }, INTC: { lastBuyDate: '2026-07-25' } },
+  opts: { asOf: '2026-08-07' },
+});
+ok('cross-account recent buy blocks the harvest', !find(cross.harvests, 'GOOGL'));
+ok('…with a warning naming the reason', cross.warnings.some((w) => /TLH skipped on GOOGL/.test(w)));
+ok('off-target loss-exit still exits but is flagged washRisk', find(cross.exits, 'INTC') && find(cross.exits, 'INTC').washRisk === true);
+const crossOld = planDeployment({ ...{ target: tlhTarget, positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], cash: 0, quotes: { GOOGL: 340, SPY: 750 } },
+  crossActivity: { GOOGL: { lastBuyDate: '2026-06-01' } }, opts: { asOf: '2026-08-07' } });
+ok('a cross-account buy OUTSIDE 30d does not block the harvest', !!find(crossOld.harvests, 'GOOGL'));
+
+// Trims now carry the tax estimate too.
+const trimTax = planDeployment({
+  target: { driftTriggerPp: 5, names: [{ ticker: 'NVDA', weightPct: 10, entry: '205-215', stop: 190 }, { ticker: 'SPY', weightPct: 90, entry: '740-750', stop: 690 }] },
+  positions: [{ symbol: 'NVDA', qty: 5, avgCost: 150 }], cash: 0, quotes: { NVDA: 209, SPY: 747 }, opts: { asOf: '2026-07-23' },
+});
+ok('trim carries realized P&L', typeof find(trimTax.trims, 'NVDA').pl === 'number' && find(trimTax.trims, 'NVDA').pl > 0);
+ok('trim proceeds fund a T+1 buy of the underweight name', !!find(trimTax.buysT1, 'SPY'));
 
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);
