@@ -16,16 +16,42 @@
 //   • CASH-FLOW-FIRST / SETTLEMENT — deploying NEW cash needs no sells; when a trim is required (a name
 //     drifted over target), it's sequenced first and flagged T+1 (cash account, no freeriding).
 //
+// v96 — the planner became FULL-BOOK (it used to see only target names, which left off-target
+// holdings invisible — 40% of the book once sat in names the research had dropped, with no ticket):
+//   • OFF-TARGET EXITS — a held name absent from the target is an explicit SELL-to-exit, sequenced
+//     with the other sells. The research dropping a name IS the sell signal; before v96 it was a
+//     prose footnote in the card hand-off and the deploy planner never saw it.
+//   • TAX-AWARE SALE ORDERING + ESTIMATES — every sell (exit/trim/harvest) carries an estimated
+//     realized P&L vs avg cost (all lots in this account are short-term); the combined `sells` list
+//     is ordered losses-first (harvest what we're selling anyway), then smallest gain first.
+//     `taxSummary` nets the ticket's ST gains against its losses.
+//   • OPPORTUNISTIC TLH — a held TARGET name underwater ≥ max(TLH_MIN_LOSS, TLH_MIN_LOSS_PCT% of
+//     cost) is harvested (full position — Robinhood MCP can't pick lots), then wash-blocked from
+//     leg-2 rebuys; its target weight sits underweight until the 30-day window clears.
+//   • CROSS-ACCOUNT WASH GUARD — IRS wash-sale spans accounts and the margin book trades the same
+//     names. Pass `crossActivity` ({SYM:{lastBuyDate}}, from the margin account's recent orders —
+//     the executor fetches this live at execution time); a loss-sale on a name the OTHER account
+//     bought within 30d gets its harvest skipped (no tax benefit) or its exit flagged washRisk.
+//   • TWO-LEG T+1 TICKET — sells settle T+1 in a cash account, so buys split into `buys` (funded by
+//     settled cash, place today) and `buysT1` (funded by sell proceeds, place next session).
+//   • AUTO TIER — `autoEligible` = turnover ≤ AUTO_TURNOVER_CAP (owner-approved $500): the executor
+//     may place an auto-eligible ticket unattended; anything larger goes out as push + one-tap.
+//
 // Buys move each underweight name only toward its (already cluster/vol-capped) target weight, so honoring
 // the target inherently respects the risk caps riskweights.mjs enforced when the target was built.
 //
-// PURE + unit-tested (agentic-deploy.test.mjs). The producer/agent turns `.buys`/`.trims` into
-// review_equity_order → confirm → place (owner-confirmed; alert & one-tap per AGENTIC.md).
+// PURE + unit-tested (agentic-deploy.test.mjs). The producer/agent turns `.sells`/`.buys`/`.buysT1` into
+// review_equity_order → confirm → place (auto ≤ cap, owner-confirmed above; see AGENTIC.md).
 
 import { policyBlackout, POLICY_BLACKOUT_DAYS } from './policy.mjs';
 
 export const EARNINGS_BLACKOUT_DAYS = 7;
 export { POLICY_BLACKOUT_DAYS };
+export const AUTO_TURNOVER_CAP = 500; // $/ticket the executor may place unattended (owner-approved tier)
+export const TLH_MIN_LOSS = 75;       // opportunistic harvest floor, dollars…
+export const TLH_MIN_LOSS_PCT = 5;    // …and as % of cost basis — must clear max() of both
+export const MIN_EXIT = 5;            // ignore off-target dust below this value
+export const WASH_WINDOW_DAYS = 30;   // IRS wash-sale window (either side of a loss sale)
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const money = (n) => '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -39,7 +65,7 @@ function entryLow(entry) {
 export function planDeployment(input = {}) {
   const {
     target = {}, positions = [], cash = 0, quotes = {},
-    earnings = {}, washMap = {}, policy = null, opts = {},
+    earnings = {}, washMap = {}, policy = null, crossActivity = {}, opts = {},
   } = input;
   const blackout = opts.earningsBlackoutDays ?? EARNINGS_BLACKOUT_DAYS;
   const polBlackout = opts.policyBlackoutDays ?? POLICY_BLACKOUT_DAYS;
@@ -112,8 +138,62 @@ export function planDeployment(input = {}) {
     } else if (gap < 0 && (cw - tw) >= driftPp && h.qty > 0) {
       // over target beyond the drift band → trim (taxable — flag, sequence first, T+1 settle)
       const shares = px > 0 ? +(Math.abs(gap) / px).toFixed(4) : null;
-      trims.push({ sym, dollars: +Math.abs(gap).toFixed(2), shares, price: px, weightNow: cw, weightTarget: tw,
+      const pl = (h.avgCost != null && px != null && shares != null) ? +((px - h.avgCost) * shares).toFixed(2) : null;
+      trims.push({ sym, kind: 'trim', dollars: +Math.abs(gap).toFixed(2), shares, price: px, weightNow: cw, weightTarget: tw,
+        pl, plPct: (h.avgCost > 0 && px != null) ? +((px / h.avgCost - 1) * 100).toFixed(2) : null, term: 'short',
         note: `over target by ${(cw - tw).toFixed(1)}pp — taxable trim, sells settle T+1 (sequence before buys)` });
+    }
+  }
+
+  // 1b. OFF-TARGET EXITS — held names the research target dropped. The drop IS the sell signal; the
+  //     exit is what funds the underweight target names (before v96 these were invisible to the planner).
+  //     A loss-exit on a name the MARGIN account bought within the wash window is flagged (loss may be
+  //     disallowed) but still exits — the allocation reason dominates; only the tax benefit is at risk.
+  const crossRecent = (sym) => {
+    const c = crossActivity && crossActivity[sym];
+    if (!c || !c.lastBuyDate) return false;
+    const d = daysUntil(c.lastBuyDate, opts.asOf);
+    return d != null && d <= 0 && d >= -WASH_WINDOW_DAYS;
+  };
+  const exits = [];
+  for (const [sym, h] of Object.entries(held)) {
+    if (targetWeights[sym] != null) continue;
+    if (!(h.qty > 0) || h.value < (opts.minExit ?? MIN_EXIT)) continue;
+    const pl = h.avgCost != null ? +((h.px - h.avgCost) * h.qty).toFixed(2) : null;
+    const washRisk = pl != null && pl < 0 && crossRecent(sym);
+    exits.push({ sym, kind: 'exit', dollars: +h.value.toFixed(2), shares: +h.qty.toFixed(6), price: h.px,
+      pl, plPct: h.avgCost > 0 ? +((h.px / h.avgCost - 1) * 100).toFixed(2) : null, term: 'short',
+      ...(washRisk ? { washRisk: true } : {}),
+      note: `not in the current target — exit funds the underweight names${washRisk ? ' (⚠️ loss may be wash-disallowed: margin account bought this within 30d)' : ''}` });
+  }
+
+  // 1c. OPPORTUNISTIC TLH — a held TARGET name underwater ≥ max($, % of cost) is harvested whole
+  //     (position-level; the MCP can't select lots), then wash-blocked from the buy legs — its target
+  //     weight sits underweight until the window clears. Skipped when the margin book bought the name
+  //     within the window (no tax benefit) or the name is already inside a wash window (keep it simple).
+  const harvests = [];
+  if (opts.tlh !== false) {
+    const minLoss = opts.tlhMinLoss ?? TLH_MIN_LOSS, minPct = opts.tlhMinLossPct ?? TLH_MIN_LOSS_PCT;
+    for (const n of names) {
+      const sym = n.ticker, h = held[sym];
+      if (!h || !(h.qty > 0) || h.avgCost == null || !(h.px > 0)) continue;
+      const cost = h.avgCost * h.qty, pl = (h.px - h.avgCost) * h.qty;
+      if (!(cost > 0) || pl >= 0) continue;
+      if (-pl < Math.max(minLoss, cost * minPct / 100)) continue;
+      if (washMap[sym]) continue;
+      if (crossRecent(sym)) { warnings.push(`TLH skipped on ${sym}: margin account bought it within ${WASH_WINDOW_DAYS}d — the loss would be wash-disallowed`); continue; }
+      harvests.push({ sym, kind: 'harvest', dollars: +h.value.toFixed(2), shares: +h.qty.toFixed(6), price: h.px,
+        pl: +pl.toFixed(2), plPct: +((h.px / h.avgCost - 1) * 100).toFixed(2), term: 'short',
+        note: `tax-loss harvest — realize ${money(pl)} ST loss; rebuy blocked ${WASH_WINDOW_DAYS}d, target weight sits underweight until then` });
+    }
+    for (const hv of harvests) {
+      const i = candidates.findIndex((c) => c.sym === hv.sym);
+      if (i >= 0) candidates.splice(i, 1);
+      // wash outranks any earlier deferral (below-entry/earnings/…) — replace, don't stack, so the
+      // deferred list stays one-entry-per-name and deferredCash isn't double-counted.
+      const j = deferred.findIndex((d) => d.sym === hv.sym);
+      if (j >= 0) deferred.splice(j, 1);
+      deferred.push({ sym: hv.sym, reason: 'wash-sale', detail: `harvested this ticket — rebuy blocked ${WASH_WINDOW_DAYS}d`, dollars: +(book * (targetWeights[hv.sym] || 0) / 100).toFixed(2) });
     }
   }
 
@@ -135,6 +215,42 @@ export function planDeployment(input = {}) {
         note: `${c.cw.toFixed(1)}% → ${c.tw}% target` });
     }
   }
+  // 2b. leg-2 buys — funded by sell proceeds (exits + harvests + trims), which settle T+1 in a cash
+  //     account: place them the NEXT session, sized to the remaining gap after leg-1. Harvested names
+  //     were already pulled from `candidates`, so a harvest can never fund its own wash-triggering rebuy.
+  const proceeds = +([...exits, ...harvests, ...trims].reduce((s, x) => s + x.dollars, 0)).toFixed(2);
+  const buysT1 = [];
+  if (proceeds > 0) {
+    const remaining = candidates
+      .map((c) => ({ ...c, gap: +(c.gap - (buys.find((b) => b.sym === c.sym)?.dollars || 0)).toFixed(2) }))
+      .filter((c) => c.gap > 0.5);
+    const totalGap2 = remaining.reduce((s, c) => s + c.gap, 0);
+    if (remaining.length && totalGap2 > 0) {
+      const scale2 = Math.min(1, proceeds / totalGap2);
+      for (const c of remaining) {
+        const dollars = +(c.gap * scale2).toFixed(2);
+        if (dollars < 1) continue;
+        buysT1.push({ sym: c.sym, dollars, shares: c.px > 0 ? +(dollars / c.px).toFixed(4) : null, price: c.px,
+          weightNow: c.cw, weightTarget: c.tw, sector: c.sector, entry: c.entry, stop: c.stop, target: c.tgt,
+          note: 'T+1 leg — funded by settling sell proceeds; place next session' });
+      }
+    }
+    const t1spent = buysT1.reduce((s, b) => s + b.dollars, 0);
+    if (t1spent < proceeds - 1) warnings.push(`${money(proceeds - t1spent)} of sale proceeds stays in cash (eligible buys reach target; deferred names hold the rest)`);
+  }
+
+  // 3. tax-aware combined sell order (losses first — harvest what we're selling anyway — then smallest
+  //    gain first) + the ticket's ST tax picture and the executor's autonomy tier.
+  const sells = [...exits, ...harvests, ...trims].sort((a, b) => (a.pl ?? 0) - (b.pl ?? 0));
+  const realizedGain = +sells.reduce((s, x) => s + Math.max(0, x.pl || 0), 0).toFixed(2);
+  const realizedLoss = +sells.reduce((s, x) => s + Math.min(0, x.pl || 0), 0).toFixed(2);
+  const taxSummary = { realizedGain, realizedLoss, net: +(realizedGain + realizedLoss).toFixed(2), term: 'short',
+    note: sells.some((x) => x.washRisk) ? 'a flagged loss may be wash-disallowed (cross-account buy within 30d)'
+      : (realizedLoss < 0 && realizedGain > 0 ? 'harvested losses offset the gains — net is ST, taxed as ordinary income' : null) };
+  const turnover = +(sells.reduce((s, x) => s + x.dollars, 0) + spent + buysT1.reduce((s, b) => s + b.dollars, 0)).toFixed(2);
+  const autoCap = opts.autoCap ?? AUTO_TURNOVER_CAP;
+  const autoEligible = turnover > 0 && turnover <= autoCap;
+
   const deferredCash = deferred.reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
   const cashLeft = +(deployable - spent).toFixed(2);
 
@@ -142,17 +258,27 @@ export function planDeployment(input = {}) {
   if (deferred.length) warnings.push(`${deferred.length} name(s) deferred (${deferred.map((d) => d.sym).join(', ')}) — ~${money(deferredCash)} of intended weight held pending earnings/re-verify/wash-sale`);
   if (candidates.length && deployable > 0 && spent < deployable - 1) warnings.push(`${money(cashLeft)} left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)`);
 
-  const summary = buildSummary({ buys, trims, deferred, spent, cashLeft, book });
-  return { book, cash: deployable, currentWeights, targetWeights, buys, trims, deferred, deferredCash: +deferredCash.toFixed(2), spent: +spent.toFixed(2), cashLeft, warnings, summary };
+  const summary = buildSummary({ buys, buysT1, trims, exits, harvests, deferred, spent, cashLeft, book, taxSummary, turnover });
+  return { book, cash: deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, sells,
+    proceeds, taxSummary, turnover, autoCap, autoEligible,
+    deferred, deferredCash: +deferredCash.toFixed(2), spent: +spent.toFixed(2), cashLeft, warnings, summary };
 }
 
-function buildSummary({ buys, trims, deferred, spent, cashLeft, book }) {
+function buildSummary({ buys, buysT1 = [], trims, exits = [], harvests = [], deferred, spent, cashLeft, taxSummary, turnover }) {
   const parts = [];
-  if (buys.length) parts.push(`Deploy ${moneyS(spent)} across ${buys.length} name(s): ${buys.map((b) => `${b.sym} ${moneyS(b.dollars)}`).join(', ')}.`);
-  else parts.push('No eligible buys this pass.');
-  if (trims.length) parts.push(`Trim first (T+1): ${trims.map((t) => `${t.sym} ${moneyS(t.dollars)}`).join(', ')}.`);
+  const sellBits = [
+    ...exits.map((x) => `${x.sym} ${moneyS(x.dollars)} exit`),
+    ...harvests.map((x) => `${x.sym} ${moneyS(x.dollars)} harvest`),
+    ...trims.map((t) => `${t.sym} ${moneyS(t.dollars)} trim`),
+  ];
+  if (sellBits.length) parts.push(`Sell first (losses first, T+1): ${sellBits.join(', ')}.`);
+  if (buys.length) parts.push(`Deploy ${moneyS(spent)} of settled cash now: ${buys.map((b) => `${b.sym} ${moneyS(b.dollars)}`).join(', ')}.`);
+  else if (!sellBits.length) parts.push('No eligible buys this pass.');
+  if (buysT1.length) parts.push(`Next session (proceeds settled): ${buysT1.map((b) => `${b.sym} ${moneyS(b.dollars)}`).join(', ')}.`);
+  if (taxSummary && (taxSummary.realizedGain > 0 || taxSummary.realizedLoss < 0)) parts.push(`Est. ST tax: ${moneyS(taxSummary.realizedGain)} gains ${taxSummary.realizedLoss < 0 ? `− ${moneyS(-taxSummary.realizedLoss)} losses ` : ''}= net ${moneyS(taxSummary.net)}.`);
   if (deferred.length) parts.push(`Hold ${moneyS(deferred.reduce((s, d) => s + Math.max(0, d.dollars || 0), 0))} for ${deferred.map((d) => `${d.sym} (${d.reason})`).join(', ')}.`);
   if (cashLeft > 1) parts.push(`${moneyS(cashLeft)} stays in cash.`);
+  if (turnover > 0) parts.push(`Turnover ${moneyS(turnover)}.`);
   return parts.join(' ');
 }
 function moneyS(n) { return '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }

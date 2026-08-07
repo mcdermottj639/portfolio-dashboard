@@ -28,13 +28,20 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 | Account **values / drift** (card `Now`) | **every ~30 min** (each producer run, market hours) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
 | Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
-| **Rebalance proposal** | weekly + on any drift > trigger | the weekly job builds it; you confirm (see Execution policy) |
+| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $500 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json` |
 | **Event triggers (v93)** | every run (deposit / earnings gap) | `agentic-triggers.mjs` (in `build-data.mjs`) → `raw/agentic-triggers.json`: a **`deploy-cash`** push when idle/new cash crosses ~5% of book, and a **`refreshResearch`** flag that runs the research EARLY (before the weekly gate) on a deposit or a ≥6% held-name gap. So the account reacts to deposits + earnings, not just the 7-day clock. |
 
-## Execution policy — **alert & one-tap confirm** (owner's choice)
-Everything up to the trade is automated; **no order is placed without the owner confirming the exact
-tickers + amounts.** (This is also enforced by the trade-safety classifier — a summary "do it" is not
-enough; orders must be explicitly named.) The automation's job is to deliver a **ready-to-confirm ticket**.
+## Execution policy — **TIERED AUTO** (owner-approved 2026-08-07; supersedes confirm-everything)
+The owner signed off on a two-tier policy so the account is **self-sufficient** for routine upkeep:
+- **Auto tier:** a ticket with **turnover ≤ `AUTO_TURNOVER_CAP` ($500)** may be executed **unattended**
+  by the executor (below) — placed, logged to the decision ledger, and reported by PushNotification
+  *after* the fact. Routine drift top-ups, small TLH harvests, deploying a modest deposit.
+- **Confirm tier:** anything larger (a full restructure, a big deposit) goes out as a **push + one-tap
+  confirm** — the ticket sits in `agentic-pending.json` as `proposed` until the owner confirms (in any
+  session: "confirm the pending rebalance") or it goes stale (5 days → re-planned at fresh prices).
+- **Kill switch:** `PF_AGENTIC_AUTO=off` in the executor's environment idles the whole executor.
+The trade-safety classifier still applies — the executor always names exact tickers + dollar amounts
+when placing, and the auto tier never exceeds the cap the owner approved.
 
 The ticket is built by the pure **`agentic-deploy.mjs`** planner (`planDeployment(...)`), which enforces the
 tax/reg rules below AS EXECUTABLE CODE (not just prose) and defers — never silently drops — any name it
@@ -53,6 +60,23 @@ can't cleanly buy:
   and any required trim is sequenced first + flagged T+1 (cash account, no freeriding).
 Deferred names keep their **target weight** — only the buy waits. The consumer's Agentic card shows the same
 deferrals as amber badges so the card and the ticket always agree.
+
+**v96 — the planner is FULL-BOOK** (it used to see only target names, which once left 40% of the book
+sitting in names the research had dropped, with no ticket):
+- **Off-target exits:** a held name absent from the target is an explicit **SELL-to-exit** — the research
+  dropping it IS the sell signal; the proceeds fund the underweight target names.
+- **Tax-aware ordering + estimates:** every sell (exit/trim/harvest) carries an est. realized ST P&L; the
+  combined `sells` list is **losses-first**, and `taxSummary` nets the ticket's gains against its losses.
+- **Tax-loss harvesting (owner-approved):** *harvest-on-sells always* (loss lots go first whenever we're
+  selling anyway) **plus opportunistic**: a held target name underwater ≥ **max($75, 5% of cost)** is
+  harvested whole (position-level — the MCP can't select lots), wash-blocked from the buy legs, and its
+  target weight sits underweight until the 30-day window clears.
+- **Cross-account wash guard:** the IRS window spans accounts and the **margin book trades the same names**
+  — pass `crossActivity` (recent margin-account buys); a loss-sale on a name the other account bought
+  within 30d gets its harvest **skipped** (no benefit) or its exit flagged `washRisk`. The gate can't see
+  margin orders, so **the executor fetches `get_equity_orders` on the margin account live** before any
+  loss sale (step 3 below).
+- **Two-leg T+1 ticket:** `buys` (settled cash, today) vs `buysT1` (funded by sale proceeds, next session).
 
 ## Flow & Positioning sleeve — in BURN-IN (v95)
 The research has a fifth sleeve (**flow**: analyst revision momentum, insider Form 4 clusters, earnings
@@ -102,7 +126,9 @@ append the record** (record `spyAt` = SPY's price at decision time so alpha can 
    unsettled proceeds (T+1). Spreading a rebalance across days is fine and often cheaper tax-wise.
 4. **Drift band, not daily churn.** Only rebalance a name when |drift| ≥ `driftTriggerPp` (5pp) or a
    stop/target/earnings level triggers — turnover is tax drag.
-5. **Prefer long-term lots** for any necessary trim once lots age past 1 year; harvest losses thoughtfully.
+5. **Prefer long-term lots** for any necessary trim once lots age past 1 year. **TLH is formalized (v96):**
+   losses sell first on every ticket, and standalone harvests fire at ≥ max($75, 5% of cost) — see the
+   planner's TLH + cross-account wash rules above.
 
 ## Weekly job — wired into the existing producer (no separate trigger)
 Rather than a new scheduled trigger, the weekly refresh is **step 7 of the producer** (`PRODUCER.md`),
@@ -132,6 +158,40 @@ workflow → pipe its `allocation` through **`finalize-target.mjs`** (risk-caps 
 propose it for confirmation. On confirm + place, **append the decision** to `agentic-decisions.json`
 (`makeDecision`, with `spyAt`) so the Rebalance Log can grade it.
 
+## The executor — the self-driving loop (v96)
+A **separate scheduled Claude session** (hourly during market hours — cron `20 14-20 * * 1-5` UTC, its own
+trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
+Cheap by construction: every run starts with the deterministic gate and exits immediately when idle.
+
+**Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
+1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise
+   `producer/raw/agentic-plan.json` holds the plan/ticket. The gate handles: kill switch, market hours,
+   stale/missing snapshot (trading **fails safe**), in-flight ticket sequencing, dust plans (< $25),
+   and not re-nagging an identical outstanding proposal.
+2. **`EXEC_PROPOSE`** — write the ticket (`makeTicket`, status `proposed`) to `producer/agentic-pending.json`,
+   commit + push to `main`, and PushNotification the owner a one-tap summary (sells → buys, turnover, est
+   ST tax net). Place nothing. (An owner later confirming = set status `confirmed`, commit; the next
+   executor pass places it.)
+3. **`EXEC_AUTO` / `EXEC_TRADE`** — live pre-checks, then place:
+   a. Re-fetch the account (`get_portfolio`/`get_equity_positions`) + fresh quotes; abort if the book moved
+      > 5% from the plan's basis (re-plan next pass).
+   b. `get_earnings_calendar` for the buy names — drop any reporting ≤ 7d (the gate's plan has no earnings
+      map; this is where the blackout is enforced).
+   c. Before ANY loss-sale: `get_equity_orders` on the **margin** account (…0741) for the same symbol,
+      30-day window — a recent buy there kills a harvest (keep exits, flag `washRisk`).
+   d. Place **sells first** (losses first, then smallest gain), then **leg-1 buys** from settled cash —
+      fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.
+   e. Advance the ticket (`advanceTicket` → `sells-placed`, or `buys-placed`/`done` when there's no T+1
+      leg), **append the decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt`), commit +
+      push both files, PushNotification the fill report.
+4. **`EXEC_BUYS`** — the T+1 leg: verify settled cash actually covers it (settlement can lag), place the
+   `buysT1` orders, advance to `buys-placed` → `done`, append/extend the ledger record, commit + push, push
+   the report.
+5. Never gate or touch the data producer's publish. On ANY placement error: stop, leave the ticket state
+   as-is (idempotent — the next pass re-checks open orders via `get_equity_orders` before re-placing),
+   and push a failure note instead of improvising.
+
 ## Robinhood writes from this account
-The producer is READ-ONLY on ••••3900 (it only *fetches* for display). The **only** writes are the
-**owner-confirmed rebalance orders** placed interactively — never unattended.
+The **executor** (above) is the only thing that places orders here: unattended within the **auto tier**
+(≤ $500 turnover/ticket), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900
+(it only fetches for display; its only Robinhood writes anywhere are the two watchlist syncs).
