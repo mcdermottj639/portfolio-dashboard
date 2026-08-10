@@ -1,0 +1,118 @@
+{
+  "id": "2026-08-10-61kjns",
+  "created": "2026-08-10",
+  "status": "proposed",
+  "autoEligible": false,
+  "turnover": 3744.55,
+  "book": 5329.93,
+  "planHash": "s[AMZN:432,GE:404,LLY:860,MSFT:463]b[]t[AAPL:795,JPM:163,SPY:43,UNH:583]",
+  "legs": {
+    "sells": [
+      {
+        "sym": "GE",
+        "kind": "exit",
+        "dollars": 404.49,
+        "shares": 1.100317,
+        "price": 367.61,
+        "pl": 30.49,
+        "note": "not in the current target — exit funds the underweight names"
+      },
+      {
+        "sym": "LLY",
+        "kind": "exit",
+        "dollars": 860.37,
+        "shares": 0.708142,
+        "price": 1214.97,
+        "pl": 39.37,
+        "note": "not in the current target — exit funds the underweight names"
+      },
+      {
+        "sym": "AMZN",
+        "kind": "exit",
+        "dollars": 432.36,
+        "shares": 1.555373,
+        "price": 277.98,
+        "pl": 50.36,
+        "note": "not in the current target — exit funds the underweight names"
+      },
+      {
+        "sym": "MSFT",
+        "kind": "exit",
+        "dollars": 462.9,
+        "shares": 0.909119,
+        "price": 509.17,
+        "pl": 112.89,
+        "note": "not in the current target — exit funds the underweight names"
+      }
+    ],
+    "buysNow": [],
+    "buysT1": [
+      {
+        "sym": "JPM",
+        "kind": "buy",
+        "dollars": 162.93,
+        "shares": 0.4552,
+        "price": 357.928,
+        "pl": null,
+        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+      },
+      {
+        "sym": "AAPL",
+        "kind": "buy",
+        "dollars": 795.43,
+        "shares": 2.6037,
+        "price": 305.5,
+        "pl": null,
+        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+      },
+      {
+        "sym": "UNH",
+        "kind": "buy",
+        "dollars": 583.22,
+        "shares": 1.4199,
+        "price": 410.75,
+        "pl": null,
+        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+      },
+      {
+        "sym": "SPY",
+        "kind": "buy",
+        "dollars": 42.85,
+        "shares": 0.0554,
+        "price": 772.789,
+        "pl": null,
+        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+      }
+    ]
+  },
+  "taxSummary": {
+    "realizedGain": 233.11,
+    "realizedLoss": 0,
+    "net": 233.11,
+    "term": "short",
+    "note": null
+  },
+  "deferred": [
+    {
+      "sym": "NVDA",
+      "reason": "wash-sale",
+      "until": "2026-09-02"
+    },
+    {
+      "sym": "V",
+      "reason": "below-entry",
+      "until": null
+    },
+    {
+      "sym": "GOOGL",
+      "reason": "below-entry",
+      "until": null
+    }
+  ],
+  "history": [
+    {
+      "at": "2026-08-10",
+      "to": "proposed"
+    }
+  ]
+}
