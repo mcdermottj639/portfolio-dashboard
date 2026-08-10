@@ -11,9 +11,27 @@
       "spyAt": 771.28,
       "rationale": "Owner-confirmed deploy of the weekly research refresh (7-name target: JPM 16% / SPY 18% / NVDA 15% / V 15% / AAPL 15% / GOOGL 10% / UNH 11%). Account cash-constrained ($10.35 available) — only the gaps under the new target with room in cash were funded: V, AAPL, UNH. GOOGL/JPM/SPY already at/above target, no buy needed. NVDA deferred (wash-sale — loss booked 2026-08-03, rebuy blocked to 2026-09-03). Orders placed market-closed (~1:16 AM ET) as fractional dollar-market buys, queued for the 9:30 AM ET regular-session open — priceAt below is the order-time reference quote, not a confirmed fill.",
       "trades": [
-        { "sym": "V",    "side": "BUY", "dollars": 2.20, "shares": 0.005930, "priceAt": 370.49 },
-        { "sym": "AAPL", "side": "BUY", "dollars": 4.11, "shares": 0.013200, "priceAt": 311.33 },
-        { "sym": "UNH",  "side": "BUY", "dollars": 3.01, "shares": 0.007360, "priceAt": 408.51 }
+        {
+          "sym": "V",
+          "side": "BUY",
+          "dollars": 2.2,
+          "shares": 0.00593,
+          "priceAt": 370.49
+        },
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 4.11,
+          "shares": 0.0132,
+          "priceAt": 311.33
+        },
+        {
+          "sym": "UNH",
+          "side": "BUY",
+          "dollars": 3.01,
+          "shares": 0.00736,
+          "priceAt": 408.51
+        }
       ]
     },
     {
@@ -26,10 +44,34 @@
       "spyAt": 739.41,
       "rationale": "Deployed the added cash after a fresh research refresh (adversarial verify passed only LLY/JPM/NVDA as buys). Earnings-blackout deferred MSFT (7/29) and V (7/28); AMZN dropped from the target; GOOGL held near target. LLY/GE/SPY/NVDA filled at the 9:30 open (actual fills below). JPM (14% target) still PENDING: the owner's manual $285 order mis-filled as IBM; IBM was sold same-day (~+$2, avg 201.17) and JPM will be bought 2026-07-24 once the IBM proceeds settle (T+1, cash account) — append it to this decision then.",
       "trades": [
-        { "sym": "LLY",  "side": "BUY", "dollars": 460.00, "shares": 0.401180, "priceAt": 1146.615 },
-        { "sym": "GE",   "side": "BUY", "dollars": 374.00, "shares": 1.100317, "priceAt": 339.9019 },
-        { "sym": "SPY",  "side": "BUY", "dollars": 220.00, "shares": 0.297598, "priceAt": 739.25 },
-        { "sym": "NVDA", "side": "BUY", "dollars": 161.00, "shares": 0.769194, "priceAt": 209.31 }
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 460,
+          "shares": 0.40118,
+          "priceAt": 1146.615
+        },
+        {
+          "sym": "GE",
+          "side": "BUY",
+          "dollars": 374,
+          "shares": 1.100317,
+          "priceAt": 339.9019
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 220,
+          "shares": 0.297598,
+          "priceAt": 739.25
+        },
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 161,
+          "shares": 0.769194,
+          "priceAt": 209.31
+        }
       ]
     },
     {
@@ -42,14 +84,110 @@
       "spyAt": null,
       "rationale": "Initial deployment of the agentic cash account into the first research target — 8-name sector-diversified basket (SPY ballast + megacap quality). Seed record: entries are the account's actual average cost basis; SPY benchmark not recorded at seed time (absolute-return grading only).",
       "trades": [
-        { "sym": "SPY",   "side": "BUY", "dollars": 665.99, "shares": 0.888410, "priceAt": 749.65 },
-        { "sym": "NVDA",  "side": "BUY", "dollars": 515.01, "shares": 2.493372, "priceAt": 206.55 },
-        { "sym": "GOOGL", "side": "BUY", "dollars": 487.00, "shares": 1.376083, "priceAt": 353.90 },
-        { "sym": "JPM",   "side": "BUY", "dollars": 383.99, "shares": 1.121360, "priceAt": 342.44 },
-        { "sym": "AMZN",  "side": "BUY", "dollars": 382.00, "shares": 1.555373, "priceAt": 245.60 },
-        { "sym": "LLY",   "side": "BUY", "dollars": 361.00, "shares": 0.306962, "priceAt": 1176.04 },
-        { "sym": "MSFT",  "side": "BUY", "dollars": 350.00, "shares": 0.909119, "priceAt": 384.99 },
-        { "sym": "V",     "side": "BUY", "dollars": 345.00, "shares": 0.992502, "priceAt": 347.61 }
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 665.99,
+          "shares": 0.88841,
+          "priceAt": 749.65
+        },
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 515.01,
+          "shares": 2.493372,
+          "priceAt": 206.55
+        },
+        {
+          "sym": "GOOGL",
+          "side": "BUY",
+          "dollars": 487,
+          "shares": 1.376083,
+          "priceAt": 353.9
+        },
+        {
+          "sym": "JPM",
+          "side": "BUY",
+          "dollars": 383.99,
+          "shares": 1.12136,
+          "priceAt": 342.44
+        },
+        {
+          "sym": "AMZN",
+          "side": "BUY",
+          "dollars": 382,
+          "shares": 1.555373,
+          "priceAt": 245.6
+        },
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 361,
+          "shares": 0.306962,
+          "priceAt": 1176.04
+        },
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 350,
+          "shares": 0.909119,
+          "priceAt": 384.99
+        },
+        {
+          "sym": "V",
+          "side": "BUY",
+          "dollars": 345,
+          "shares": 0.992502,
+          "priceAt": 347.61
+        }
+      ]
+    },
+    {
+      "id": "2026-08-10-rebalance",
+      "date": "2026-08-10",
+      "kind": "rebalance",
+      "targetAsOf": "2026-08-05",
+      "book": 5331.51,
+      "equityAtDecision": 5331.51,
+      "spyAt": 773.09,
+      "rationale": "Owner-confirmed ticket 2026-08-10-61kjns (turnover $3,744.55, above the $500 auto tier). Leg 1 placed 2026-08-10: full exits of four off-target names (GE, LLY, AMZN, MSFT — losses-first ordering, all four were short-term gains) raising $2158.2 of proceeds; est. short-term realized gain $231.22, no harvestable losses so no cross-account wash check was required. Leg 2 (T+1, funded by settling proceeds) is JPM $162.93 / AAPL $795.43 / UNH $583.22 / SPY $42.85, to be placed next session after an earnings re-check. NVDA (wash-sale hold to 2026-09-02), V and GOOGL (gapped below planned entry) deferred — ~$576.71 of intended weight held back.",
+      "trades": [
+        {
+          "sym": "GE",
+          "side": "TRIM",
+          "dollars": 403.46,
+          "shares": 1.100317,
+          "priceAt": 366.6796,
+          "weightBefore": null,
+          "weightAfter": 0
+        },
+        {
+          "sym": "LLY",
+          "side": "TRIM",
+          "dollars": 861.5,
+          "shares": 0.708142,
+          "priceAt": 1216.5701,
+          "weightBefore": null,
+          "weightAfter": 0
+        },
+        {
+          "sym": "AMZN",
+          "side": "TRIM",
+          "dollars": 431.17,
+          "shares": 1.555373,
+          "priceAt": 277.215,
+          "weightBefore": null,
+          "weightAfter": 0
+        },
+        {
+          "sym": "MSFT",
+          "side": "TRIM",
+          "dollars": 462.07,
+          "shares": 0.909119,
+          "priceAt": 508.2601,
+          "weightBefore": null,
+          "weightAfter": 0
+        }
       ]
     }
   ]
