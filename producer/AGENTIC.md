@@ -191,6 +191,30 @@ Cheap by construction: every run starts with the deterministic gate and exits im
    as-is (idempotent — the next pass re-checks open orders via `get_equity_orders` before re-placing),
    and push a failure note instead of improvising.
 
+### How the executor trigger is wired (and the one thing that bit us)
+**A scheduled session only has a git checkout if its trigger carries a `sources` block — and
+`create_trigger` (the agent-facing MCP tool) cannot set one.** The first executor trigger was minted
+that way on 2026-08-10 and every firing landed in an **empty working directory**: step 1
+(`node producer/agentic-exec-gate.mjs`) could not run, so the loop never did anything and failed
+silently — no commit, no push, no notification, nothing to notice. Confirmed from the fired session's
+own `session_context`, which carried no `sources` where every working session carries one. (The same
+defect killed the standalone *Agentic weekly research refresh* trigger, minted the same way on Jul 15;
+`agentic-target.json` has exactly one commit in its history, written by an ad-hoc session on Aug 5.)
+
+The fix, and the pattern to reuse: `create_session` **does** accept `source_url`, so the executor now
+runs as a **persistent session with the repo attached** (`session_01PMH7obdqWYEiR63EhFRgd9`), with an
+hourly `persistent_session_id` routine firing into it. Two consequences that are load-bearing:
+- **The working tree persists between firings** — it is *not* a fresh clone like the data producer's.
+  Every pass therefore MUST start with `git fetch origin main && git checkout -f -B pf-exec origin/main`,
+  or the gate reads a stale `data.json` and plans against yesterday's snapshot.
+- **The routine carries no MCP connectors.** `create_trigger`'s `connectors` parameter is disabled for
+  this org, so the fired session has no `mcp__Robinhood__*` tools. `EXEC_PROPOSE` is fully unattended
+  (it only writes/commits/pushes the ticket and notifies), but the **placing** modes — `EXEC_AUTO`,
+  `EXEC_TRADE`, `EXEC_BUYS` — need Robinhood and will stall until the connector is attached to that
+  session from the claude.ai UI. Until then the auto tier is effectively **propose-only**.
+
+Do not "clean this up" by re-minting the trigger with `create_trigger` alone; that is the exact bug.
+
 ## Robinhood writes from this account
 The **executor** (above) is the only thing that places orders here: unattended within the **auto tier**
 (≤ $500 turnover/ticket), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900
