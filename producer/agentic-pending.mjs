@@ -1,0 +1,95 @@
+// producer/agentic-pending.mjs — PURE lifecycle helpers for the agentic rebalance ticket (v96).
+//
+// The planner (agentic-deploy.mjs) produces a two-leg, T+1-aware ticket; THIS module formalizes the
+// small state machine that carries it across producer/executor runs. The ticket itself lives in the
+// COMMITTED producer/agentic-pending.json (raw/ is wiped on every scheduled run — the same reason the
+// target/ledger live in git), so any session can pick up an in-flight rebalance where the last left off.
+//
+//   proposed ──(owner confirm / autoEligible)──▶ confirmed ──(sells + leg-1 buys placed)──▶ sells-placed
+//     sells-placed ──(next session, proceeds settled: leg-2 buys placed)──▶ buys-placed ──▶ done
+//   Any state ──(owner veto / re-plan)──▶ aborted
+//
+// Execution policy (owner-approved 2026-08): TIERED AUTO — a ticket with turnover ≤ AUTO_TURNOVER_CAP
+// ($500) is auto-executable with no confirm step; anything larger waits in `proposed` for a one-tap
+// confirm (push notification → owner replies / taps the card hand-off). PF_AGENTIC_AUTO=off is the
+// kill switch (read by the gate script, not here — this module stays pure).
+//
+// PURE + unit-tested (agentic-pending.test.mjs). No I/O — the gate script / executor do the reads/writes.
+
+export const TICKET_STALE_DAYS = 5; // a proposed/confirmed ticket older than this re-plans (prices moved)
+export const MIN_TURNOVER = 25;     // ignore dust plans — don't spin up a ticket to move lunch money
+
+const round2 = (n) => Math.round((n || 0) * 100) / 100;
+
+// Deterministic fingerprint of WHAT the plan trades (syms + rounded dollars per leg) — used to avoid
+// re-proposing the identical ticket every 30-min run, while letting a materially-changed plan replace it.
+export function planHash(plan) {
+  const leg = (arr) => (arr || []).map((x) => `${x.sym}:${Math.round(x.dollars)}`).sort().join(',');
+  return `s[${leg(plan.sells)}]b[${leg(plan.buys)}]t[${leg(plan.buysT1)}]`;
+}
+
+// Build a ticket from a planner result. `asOf` = ET date (YYYY-MM-DD) of creation.
+export function makeTicket(plan, { asOf } = {}) {
+  return {
+    id: `${asOf || 'undated'}-${Math.abs(hashCode(planHash(plan))).toString(36)}`,
+    created: asOf || null,
+    status: 'proposed',
+    autoEligible: !!plan.autoEligible,
+    turnover: round2(plan.turnover),
+    book: round2(plan.book),
+    planHash: planHash(plan),
+    legs: {
+      sells: (plan.sells || []).map(slim),
+      buysNow: (plan.buys || []).map(slim),
+      buysT1: (plan.buysT1 || []).map(slim),
+    },
+    taxSummary: plan.taxSummary || null,
+    deferred: (plan.deferred || []).map((d) => ({ sym: d.sym, reason: d.reason, until: d.until || null })),
+    history: [{ at: asOf || null, to: 'proposed' }],
+  };
+}
+const slim = (x) => ({ sym: x.sym, kind: x.kind || 'buy', dollars: round2(x.dollars), shares: x.shares ?? null, price: x.price ?? null, pl: x.pl ?? null, note: x.note || null });
+function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; } return h; }
+
+const TRANSITIONS = {
+  proposed: ['confirmed', 'aborted'],
+  confirmed: ['sells-placed', 'buys-placed', 'aborted'], // no-sell tickets jump straight to buys-placed
+  'sells-placed': ['buys-placed', 'aborted'],
+  'buys-placed': ['done', 'aborted'],
+  done: [], aborted: [],
+};
+
+// Advance the ticket; throws on an illegal transition so the executor can't corrupt state.
+export function advanceTicket(ticket, to, { date } = {}) {
+  const from = ticket.status;
+  if (!(TRANSITIONS[from] || []).includes(to)) throw new Error(`illegal ticket transition ${from} → ${to}`);
+  return { ...ticket, status: to, [`${to}At`]: date || null, history: [...(ticket.history || []), { at: date || null, to }] };
+}
+
+// What should the executor do RIGHT NOW with this ticket? (todayET = 'YYYY-MM-DD')
+//   'await-confirm' — proposed above the auto cap; push/nag handled elsewhere, place nothing
+//   'place-trades'  — place sells + leg-1 buys (ticket confirmed, or proposed within the auto tier)
+//   'place-buys'    — leg-2 (T+1) buys due: sells placed on a PRIOR day, proceeds now settled
+//   'stale'         — proposed/confirmed ticket too old — re-plan before acting (prices moved)
+//   'none'          — nothing to do (done/aborted/absent, or waiting for T+1 settlement)
+export function nextAction(ticket, todayET) {
+  if (!ticket || !ticket.status) return { action: 'none', reason: 'no ticket' };
+  const ageDays = (from) => (from && todayET) ? Math.round((Date.parse(todayET) - Date.parse(from)) / 86400000) : 0;
+  switch (ticket.status) {
+    case 'proposed':
+      if (ageDays(ticket.created) > TICKET_STALE_DAYS) return { action: 'stale', reason: `proposed ${ageDays(ticket.created)}d ago — re-plan` };
+      return ticket.autoEligible ? { action: 'place-trades', reason: `auto tier (turnover $${ticket.turnover} ≤ cap)` }
+        : { action: 'await-confirm', reason: `turnover $${ticket.turnover} above auto cap — owner confirm required` };
+    case 'confirmed':
+      if (ageDays(ticket.confirmedAt || ticket.created) > TICKET_STALE_DAYS) return { action: 'stale', reason: 'confirmed but stale — re-plan' };
+      return { action: 'place-trades', reason: 'owner-confirmed' };
+    case 'sells-placed': {
+      const placed = ticket['sells-placedAt'];
+      if (!(ticket.legs && ticket.legs.buysT1 && ticket.legs.buysT1.length)) return { action: 'none', reason: 'no T+1 leg' };
+      if (placed && todayET && ageDays(placed) >= 1) return { action: 'place-buys', reason: 'T+1: proceeds settled — place leg-2 buys' };
+      return { action: 'none', reason: 'waiting for T+1 settlement' };
+    }
+    default:
+      return { action: 'none', reason: ticket.status };
+  }
+}
