@@ -1,7 +1,7 @@
 {
   "id": "2026-08-10-61kjns",
   "created": "2026-08-10",
-  "status": "proposed",
+  "status": "confirmed",
   "autoEligible": false,
   "turnover": 3744.55,
   "book": 5329.93,
@@ -113,6 +113,11 @@
     {
       "at": "2026-08-10",
       "to": "proposed"
+    },
+    {
+      "at": "2026-08-10",
+      "to": "confirmed"
     }
-  ]
+  ],
+  "confirmedAt": "2026-08-10"
 }
