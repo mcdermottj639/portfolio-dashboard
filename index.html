@@ -84,7 +84,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .chart-wrap { position: relative; height: 300px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-thead th { text-align: left; color: #9ca3af; font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
+thead th { text-align: left; color: #6b7280; font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
 thead th.sortable { cursor: pointer; }
 thead th.sortable:hover, thead th.active { color: #1c1c1e; }
 tbody tr { border-bottom: 1px solid #f9fafb; }
@@ -103,6 +103,14 @@ html { overflow-x: clip; }
 #pos-table, #picks-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 #pos-table table, #picks-table table { min-width: 560px; }
 @media (max-width:760px){ table { font-size: 12px; } thead th, tbody td { padding: 6px 6px; } }
+/* Sticky ticker column (v96): when a wide table is scrolled sideways on the phone, the leftmost
+   (ticker) cell stays pinned so every row stays identifiable — before this, scrolling right left
+   anonymous rows of numbers. Applied to the big scrollers: All Positions, Picks, Agentic holdings. */
+:is(#pos-table,#picks-table,.sticky-first) tr > *:first-child{
+  position: sticky; left: 0; z-index: 2; background: var(--sticky-bg,#fff);
+  box-shadow: 4px 0 6px -4px rgba(0,0,0,0.14);
+}
+:is(#pos-table,#picks-table,.sticky-first) tbody tr:hover > td:first-child{ background: var(--sticky-hover,#fafafa); }
 
 .smalls-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .small-chip { background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
@@ -453,6 +461,8 @@ html[data-theme="gold"] thead th.sortable:hover,
 html[data-theme="gold"] thead th.active{ color:#fff5e0; }
 html[data-theme="gold"] tbody tr{ border-bottom-color:rgba(201,168,100,.09); }
 html[data-theme="gold"] tbody tr:hover{ background:rgba(227,192,116,.06); }
+/* sticky ticker cells need an OPAQUE bg per theme (they slide over the other columns) */
+html[data-theme="gold"] :is(#pos-table,#picks-table,.sticky-first) tr > *:first-child{ --sticky-bg:#0b0b0c; --sticky-hover:#151310; box-shadow:4px 0 6px -4px rgba(0,0,0,.7); }
 html[data-theme="gold"] .risk-line,
 html[data-theme="gold"] .exdiv-line,
 html[data-theme="gold"] .harv-line{ border-bottom-color:var(--nx-bd); }
@@ -646,7 +656,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v96'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v97'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -772,8 +782,10 @@ function risk(pct) {
 /* ─── Formatting ─── */
 function fmt(n,d=2){ if(n==null||isNaN(n))return'—'; return new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}).format(n); }
 function fmtD(n){ if(n==null||isNaN(n))return'—'; return(n<0?'-$':'$')+fmt(Math.abs(n)); }
-function fmtP(n){ if(n==null||isNaN(n))return'—'; return(n>=0?'+':'')+fmt(n)+'%'; }
-function sc(n){ return n>0?'pos':n<0?'neg':'neu'; }
+// Display-zero aware (v96): a value that ROUNDS to 0.0 renders as a neutral "0.0%", never a red
+// "-0.0%" — color must match what the reader sees, not the sign of an invisible fraction.
+function fmtP(n){ if(n==null||isNaN(n))return'—'; const r=+(+n).toFixed(2); if(r===0)return fmt(0)+'%'; return(r>0?'+':'')+fmt(r)+'%'; }
+function sc(n){ const r=n==null||isNaN(n)?0:+(+n).toFixed(2); return r>0?'pos':r<0?'neg':'neu'; }
 /* Theme-aware chart colors (Light + Neon). Charts read these so gridlines/labels stay legible. */
 function _isGold(){ return document.documentElement.getAttribute('data-theme')==='gold'; }
 function chGrid(){ return _isGold()?'rgba(210,180,120,0.12)':'#f3f4f6'; }
@@ -1867,7 +1879,8 @@ function renderAgenticCard(){
   const holdThr=Math.max(5,(book||0)*0.01);
   const kindTag=x=>x.held?'':(x.kind==='index'?'<span style="color:#9ca3af;font-size:10px"> · index</span>':(x.kind==='pick'?'<span style="color:#9ca3af;font-size:10px"> · pick</span>':(x.kind==='leader'?'<span style="color:#9ca3af;font-size:10px"> · leader</span>':'')));
   const pctCell=(v,dec=1)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af">—</span>';
-    const col=v>0?'#065f46':(v<0?'#991b1b':'#6b7280'); return `<span style="color:${col};font-weight:600">${v>0?'+':''}${fmt(v,dec)}%</span>`; };
+    const r=+v.toFixed(dec); // color by what the READER sees: a value that displays as 0.0% is neutral, not "-0.0%" red
+    const col=r>0?'#065f46':(r<0?'#991b1b':'#6b7280'); return `<span style="color:${col};font-weight:600">${r>0?'+':''}${fmt(Math.abs(r)===0?0:r,dec)}%</span>`; };
   const plCell=(pl,cost)=>{ if(!(cost>0))return '<span style="color:#9ca3af">—</span>';
     const col=pl>=0?'#065f46':'#991b1b', pct=pl/cost*100;
     return `<span style="color:${col};font-weight:600">${pl>=0?'+':'−'}${fmtD(Math.abs(pl))}</span><br><span style="color:#9ca3af;font-size:11px">${pl>=0?'+':''}${fmt(pct,1)}%</span>`; };
@@ -1914,13 +1927,13 @@ function renderAgenticCard(){
       totCost+=cost; totVal+=val;
       if(prev>0&&px>0){ totDayNow+=qty*px; totDayPrev+=qty*prev; }
       if(start>0&&px>0){ totYtdNow+=qty*px; totYtdBase+=qty*start; }
-      return `<tr><td><span class="sym">${p.symbol}</span>${off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector} · ${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tdCell(tgt,drift,off)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares,tp,stop)}</td></tr>`;
+      return `<tr><td><span class="sym">${p.symbol}</span>${off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector} · ${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${tdCell(tgt,drift,off)}</td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares,tp,stop)}</td></tr>`;
     }).join('');
     const totDay=totDayPrev>0?((totDayNow-totDayPrev)/totDayPrev*100):null;
     const totYtd=totYtdBase>0?((totYtdNow-totYtdBase)/totYtdBase*100):null;
     const heldTgt=heldPos.reduce((s,p)=>{ const c=chosenBySym.get(p.symbol); return s+(c?c.tgt:0); },0);
-    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr">${pctCell(totDay)}<br><span style="font-size:11px">${totYtd==null?'<span style="color:#9ca3af">—</span>':pctCell(totYtd)}</span></td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"><b>${fmt(heldTgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px;font-weight:400">of target</span></td><td class="tr"></td></tr>`;
-    holdingsBlock=`<div style="overflow-x:auto"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Day / YTD</th><th class="tr">Unreal. P&L</th><th class="tr">Target / Drift</th><th class="tr">Trade · TP/St</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
+    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr"><b>${fmt(heldTgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px;font-weight:400">of target</span></td><td class="tr">${pctCell(totDay)}<br><span style="font-size:11px">${totYtd==null?'<span style="color:#9ca3af">—</span>':pctCell(totYtd)}</span></td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
+    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Target / Drift</th><th class="tr">Day / YTD</th><th class="tr">Unreal. P&L</th><th class="tr">Trade · TP/St</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
   }
   // ── "Targets to open" strip: recommended names ••••3900 does NOT hold yet (no ragged perf cells in the main table) ──
   const opens=chosen.filter(x=>!x.held);
@@ -4461,7 +4474,7 @@ function renderPicksTable(){
   const arrow=k=>_pickSort.key===k?(_pickSort.dir>0?' ▲':' ▼'):'';
   const th=(k,lbl,cls)=>'<th class="'+(cls||'')+'" style="cursor:pointer;user-select:none" onclick="sortPicks(\''+k+'\')">'+lbl+arrow(k)+'</th>';
   let h='<table><thead><tr>'
-    +th('composite','Score','tc')+th('rank','#','')+th('ticker','Ticker','')
+    +th('ticker','Ticker','')+th('composite','Score','tc')+th('rank','#','')
     +th('price','Live Price','tr')+th('rsi','RSI','tr')+th('tech','Tech','tc')
     +th('fwdPE','Fwd P/E','tr')+th('fund','Fund','tc')+th('social','Social','tc')
     +th('rr','R/R','tr')+th('rev','Rev Gr','tr')+'<th>Status</th></tr></thead><tbody>';
@@ -4481,9 +4494,9 @@ function renderPicksTable(){
     const buzz=c.buzz||(socNoData?'Quiet':'');
     const socColor=socNoData?'#9ca3af':(c.social>=7?'#10b981':c.social<=3?'#ef4444':'#6b7280');
     h+='<tr'+rowBg+'>'
+      +'<td><span class="sym">'+c.ticker+'</span>'+ownBadge(c.ticker)+'<div style="font-size:10.5px;color:#9ca3af">'+c.company+'</div></td>'
       +'<td class="tc"><span class="score-pill2" style="background:'+sbg+';color:'+sfg+'">'+c.composite.toFixed(2)+'</span></td>'
       +'<td style="color:#9ca3af;font-size:12px">'+c.rank+'</td>'
-      +'<td><span class="sym">'+c.ticker+'</span>'+ownBadge(c.ticker)+'<div style="font-size:10.5px;color:#9ca3af">'+c.company+'</div></td>'
       +'<td class="tr" id="picks-price-'+c.ticker+'"><strong>$'+c.price.toFixed(2)+'</strong><div style="font-size:10px;color:#9ca3af">scan price</div></td>'
       +'<td class="tr"><span style="font-weight:700;color:'+rsiColor(rsi)+'">'+fmt(rsi,0)+'</span>'+(rsiLive?'<div style="font-size:9px;color:#10b981">live</div>':'')+'</td>'
       +'<td class="tc" style="font-weight:600">'+c.tech+'</td>'

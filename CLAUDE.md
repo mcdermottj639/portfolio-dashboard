@@ -114,7 +114,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v96** (`pf-v96`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v97** (`pf-v97`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -472,6 +472,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   `finalize-target.mjs` tags each target name with `drivers:[]` (the sleeves scoring ≥7, derived
   deterministically from sleeve scores rather than trusted from the model) so the Rebalance Log can
   eventually answer whether the sleeve earned its keep — which is what makes it removable.
+- **Table readability (v97):** the three wide scrollers (All Positions `#pos-table`, Picks `#picks-table`, the Agentic holdings table `.sticky-first`) pin their **first (ticker) column sticky** while the rest scrolls sideways — opaque per-theme background (`--sticky-bg`, gold override) + a soft edge shadow, so rows stay identifiable mid-scroll. The Picks table is **ticker-first** (was Score·#·Ticker) and the Agentic table's **Target/Drift sits next to Position** (allocation read side-by-side, perf after). `fmtP`/`sc`/the agentic `pctCell` are **display-zero aware**: a value that rounds to 0.0% renders neutral gray, never a red "-0.0%" (the weekend quirk). `thead th` contrast bumped (#9ca3af→#6b7280, light theme).
 - **Freshness bar:** shows the snapshot label/age and **tints amber with a "↻ to refresh" nudge when the
   snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts the build version,
   privacy, theme, and refresh controls. **v88 made it live**: the tint/label repaint every 5 min and on
