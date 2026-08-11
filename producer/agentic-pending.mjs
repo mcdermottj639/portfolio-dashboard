@@ -1,13 +1,18 @@
 // producer/agentic-pending.mjs — PURE lifecycle helpers for the agentic rebalance ticket (v96).
 //
-// The planner (agentic-deploy.mjs) produces a two-leg, T+1-aware ticket; THIS module formalizes the
+// The planner (agentic-deploy.mjs) produces a ticket; THIS module formalizes the
 // small state machine that carries it across producer/executor runs. The ticket itself lives in the
 // COMMITTED producer/agentic-pending.json (raw/ is wiped on every scheduled run — the same reason the
 // target/ledger live in git), so any session can pick up an in-flight rebalance where the last left off.
 //
-//   proposed ──(owner confirm / autoEligible)──▶ confirmed ──(sells + leg-1 buys placed)──▶ sells-placed
-//     sells-placed ──(next session, proceeds settled: leg-2 buys placed)──▶ buys-placed ──▶ done
+//   proposed ──(owner confirm / autoEligible)──▶ confirmed ──(sells placed)──▶ sells-placed
+//     sells-placed ──(sells filled, proceeds spendable: buys placed)──▶ buys-placed ──▶ done
 //   Any state ──(owner veto / re-plan)──▶ aborted
+//
+// v98 (limited margin, 2026-08-11): ••••3900 settles instantly, so `sells-placed → buys-placed` is now
+// a SAME-SESSION hop gated on the sells FILLING rather than on the calendar. The planner no longer emits
+// a `buysT1` leg at all; the leg-2 handling below survives only to carry tickets written under the old
+// two-leg model through to `done` — dropping it would strand any ticket in flight at the upgrade.
 //
 // Execution policy (owner-approved 2026-08): TIERED AUTO — a ticket with turnover ≤ AUTO_TURNOVER_CAP
 // ($500) is auto-executable with no confirm step; anything larger waits in `proposed` for a one-tap
@@ -69,9 +74,9 @@ export function advanceTicket(ticket, to, { date } = {}) {
 // What should the executor do RIGHT NOW with this ticket? (todayET = 'YYYY-MM-DD')
 //   'await-confirm' — proposed above the auto cap; push/nag handled elsewhere, place nothing
 //   'place-trades'  — place sells + leg-1 buys (ticket confirmed, or proposed within the auto tier)
-//   'place-buys'    — leg-2 (T+1) buys due: sells placed on a PRIOR day, proceeds now settled
+//   'place-buys'    — a carried buy leg is due: the sells are placed, their proceeds are spendable
 //   'stale'         — proposed/confirmed ticket too old — re-plan before acting (prices moved)
-//   'none'          — nothing to do (done/aborted/absent, or waiting for T+1 settlement)
+//   'none'          — nothing to do (done/aborted/absent, or no carried leg)
 export function nextAction(ticket, todayET) {
   if (!ticket || !ticket.status) return { action: 'none', reason: 'no ticket' };
   const ageDays = (from) => (from && todayET) ? Math.round((Date.parse(todayET) - Date.parse(from)) / 86400000) : 0;
@@ -84,10 +89,12 @@ export function nextAction(ticket, todayET) {
       if (ageDays(ticket.confirmedAt || ticket.created) > TICKET_STALE_DAYS) return { action: 'stale', reason: 'confirmed but stale — re-plan' };
       return { action: 'place-trades', reason: 'owner-confirmed' };
     case 'sells-placed': {
-      const placed = ticket['sells-placedAt'];
-      if (!(ticket.legs && ticket.legs.buysT1 && ticket.legs.buysT1.length)) return { action: 'none', reason: 'no T+1 leg' };
-      if (placed && todayET && ageDays(placed) >= 1) return { action: 'place-buys', reason: 'T+1: proceeds settled — place leg-2 buys' };
-      return { action: 'none', reason: 'waiting for T+1 settlement' };
+      // Legacy two-leg tickets only (see the v98 note above): new plans put every buy in `buysNow`,
+      // so a fresh ticket leaves this state via buys-placed in the same pass. The day-gate that used
+      // to hold this leg until T+1 is gone — under limited margin the proceeds are spendable as soon
+      // as the sells fill, so a carried leg is placeable immediately (same session or any later one).
+      if (!(ticket.legs && ticket.legs.buysT1 && ticket.legs.buysT1.length)) return { action: 'none', reason: 'no carried buy leg' };
+      return { action: 'place-buys', reason: 'sells placed — proceeds available (instant settlement), place the carried buys' };
     }
     default:
       return { action: 'none', reason: ticket.status };

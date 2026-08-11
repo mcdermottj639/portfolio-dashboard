@@ -75,7 +75,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - **`FETCH_ALL`** → the day's first run. Do the full fetch: steps 1–3c below (historicals,
      fundamentals, AV, picks, options — everything).
    - **`FETCH_LIGHT`** → an intraday/close run. Fetch **only the EVERY-RUN items** — **both
-     accounts'** portfolio + positions (your main account **AND** the ••••3900 agentic cash account —
+     accounts'** portfolio + positions (your main account **AND** the ••••3900 agentic account —
      resolve it via `get_accounts`, see the callout below; the `agentic-*.json` rows are EVERY-RUN,
      **not** FETCH_ALL-only), plus quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
      fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
@@ -101,7 +101,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)
    > The agentic account number is **not** in an env var, so before the two `agentic-portfolio.json` /
    > `agentic-positions.json` rows, **call `get_accounts` and use the `account_number` of the account
-   > with `agentic_allowed: true`** (the …3900 cash account, nickname "Agentic"). Pass that real number
+   > with `agentic_allowed: true`** (the …3900 limited-margin account, nickname "Agentic"). Pass that real number
    > to `get_portfolio` / `get_equity_positions` for those two rows — do **not** treat `<agentic acct
    > …3900>` as a literal or skip the rows because the number "looks missing." Only skip them if
    > `get_accounts` returns **no** `agentic_allowed` account. Also fold that account's holdings into the
@@ -347,7 +347,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    remove all succeed unattended.)
 
 7. **Weekly agentic-account research + rebalance alert (best-effort, post-publish, FETCH_ALL only).**
-   The agentic cash account (••••3900) target is the output of the deep multi-factor research, refreshed
+   The agentic account (••••3900) target is the output of the deep multi-factor research, refreshed
    ~weekly. After the watchlist syncs:
    1. `node producer/agentic-due.mjs` → `AGENTIC_DUE` (exit 0) or `AGENTIC_NOT_DUE` (exit 20). **Also read
       `producer/raw/agentic-triggers.json`** (written this build by `agentic-triggers.mjs`): if its
@@ -367,7 +367,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `build-data.mjs` embeds it as `data.agentic.target`).
    5. Build the rebalance ticket with **`agentic-deploy.mjs`** (`planDeployment` — applies the **Tax &
       regulation rules** in `AGENTIC.md` as code: earnings-blackout, gap-through-entry re-verify,
-      wash-sale, cash-flow-first, sells-before-buys/T+1). If `.buys`/`.trims` are non-empty,
+      wash-sale, cash-flow-first, sells-before-buys, and the v98 PDT day-trade guard). If `.buys`/`.trims` are non-empty,
       **`PushNotification`** the owner the ticket.
    6. **Place NOTHING** — execution is alert & one-tap-confirm; the owner confirms in a session. On a
       confirmed placement, **append the decision** to `producer/agentic-decisions.json` (`makeDecision`,

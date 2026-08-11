@@ -222,7 +222,7 @@ const data = {
   options,
   news,
   leaders: LEADERS,
-  // Sample agentic cash account so the Agentic Portfolio card renders populated in local preview
+  // Sample agentic account so the Agentic Portfolio card renders populated in local preview
   // (real runs emit this from agentic-portfolio.json/agentic-positions.json in build-data.mjs).
   agentic: {
     asOf: now.toISOString(),

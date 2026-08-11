@@ -7,8 +7,8 @@
 // tokens (and Robinhood MCP calls) when there is genuinely something to do.
 //
 //   exit 0  → actionable, mode on stdout:
-//     EXEC_TRADE   — an active ticket says place sells + leg-1 buys today (confirmed, or auto tier)
-//     EXEC_BUYS    — an active ticket's T+1 leg is due (sells settled) — place leg-2 buys
+//     EXEC_TRADE   — an active ticket says place its sells + buys today (confirmed, or auto tier)
+//     EXEC_BUYS    — an active ticket's carried buy leg is due (sells placed) — place those buys
 //     EXEC_AUTO    — fresh plan within the auto tier (turnover ≤ $500) — create ticket + execute now
 //     EXEC_PROPOSE — fresh plan above the auto tier — write ticket (proposed) + push for one-tap confirm
 //   exit 30 → EXEC_IDLE (nothing actionable / market closed / kill switch / stale or missing snapshot)
@@ -22,6 +22,13 @@
 // fragility) — the EXECUTOR must check get_earnings_calendar live before placing buys and drop any
 // name reporting ≤7d (AGENTIC.md executor step 3), and get_equity_orders on the MARGIN account before
 // any loss-sale (cross-account wash). The plan is the map; live checks are the territory.
+//
+// Same split for the v98 PDT guard: ••••3900 is a LIMITED MARGIN account since 2026-08-11, so a
+// same-day round trip books a day trade and 4 in 5 business days restricts a sub-$25k account. The
+// planner takes `accountActivity` ({SYM:{lastBuyDate}}) and refuses to sell anything bought today —
+// but the gate can't see today's fills either (the snapshot is up to an hour stale and carries no
+// order history), so it passes NONE and the EXECUTOR supplies it live from get_equity_orders on
+// ••••3900 before placing any sell (AGENTIC.md executor step 3c).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -48,7 +55,7 @@ try { const f = join(__dirname, 'agentic-pending.json'); if (existsSync(f)) tick
 if (ticket && !['done', 'aborted'].includes(ticket.status)) {
   const na = nextAction(ticket, today);
   if (na.action === 'place-trades') { if (!isMarketOpen()) idle(`ticket ready but market closed — place at the open`); act('EXEC_TRADE', { reason: na.reason, ticket }); }
-  if (na.action === 'place-buys') { if (!isMarketOpen()) idle(`T+1 buys due but market closed`); act('EXEC_BUYS', { reason: na.reason, ticket }); }
+  if (na.action === 'place-buys') { if (!isMarketOpen()) idle(`carried buys due but market closed`); act('EXEC_BUYS', { reason: na.reason, ticket }); }
   if (na.action === 'await-confirm') idle(`proposal outstanding (${ticket.id}) — waiting for owner confirm`);
   if (na.action === 'none') idle(na.reason);
   // 'stale' falls through: re-plan below; the agent aborts the stale ticket when it writes the new one.
