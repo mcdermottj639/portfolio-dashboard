@@ -228,15 +228,40 @@ const data = {
     asOf: now.toISOString(),
     cash: 196.0,
     buyingPower: 196.0,
-    equity: 1000.0,
+    // cash + the positions below — the real producer emits a consistent book, and the Account
+    // Performance card reads equity against the equity history, so a made-up round number here
+    // would make the preview's "account today" contradict its own "money made".
+    equity: +(196.0 + 170.94 + 150.92 + 140.61 + 129.92).toFixed(2),
     positions: [
       { symbol: 'SPY', qty: 0.231, avgCost: 735.92, px: 740.0, value: 170.94 },
       { symbol: 'NVDA', qty: 0.770, avgCost: 194.66, px: 196.0, value: 150.92 },
       { symbol: 'V', qty: 0.416, avgCost: 336.44, px: 338.0, value: 140.61 },
       { symbol: 'GOOGL', qty: 0.381, avgCost: 340.95, px: 341.0, value: 129.92 },
     ],
-    // sample real equity history (~2 trading weeks) so the consumer's REAL agentic line + "since" stat render
-    equityHistory: (() => { const out = []; for (let i = 14; i >= 0; i--) { const d = new Date(now.getTime() - i * 86400000); out.push({ t: d.toISOString().slice(0, 10), equity: +(948 + (14 - i) * 3.7 + (i % 2 ? 1.5 : -1)).toFixed(2) }); } return out; })(),
+    // Sample real equity history (~2 trading weeks) so the consumer's REAL agentic line, the
+    // "Agentic since" stat and the Account Performance card all render. Includes a mid-series
+    // $250 DEPOSIT (annotated via the running cumFlow, exactly as build-data.mjs infers it) so the
+    // deposit-adjusted math is actually exercised in local preview: raw equity jumps, but the
+    // time-weighted return must not — and the Value-mode chart shows the contribution step.
+    equityHistory: (() => {
+      // Anchor the points to the LAST 15 SPY bar dates rather than to `now`. The fixture's daily
+      // bars are a fixed historical stub, so a now-relative history would sit entirely after the
+      // last bar — SPY-since would find no starting bar and every benchmark comparison would show
+      // "—" in preview (masking whether that code path works at all).
+      const spy = hist.day.SPY || [];
+      const dates = spy.slice(-15).map((b) => String(b.begins_at || b.t).slice(0, 10));
+      const DEPOSIT = 250, AT = 8;                          // a $250 deposit lands at point 8
+      const end = 196.0 + 170.94 + 150.92 + 140.61 + 129.92; // = today's equity, so the series lands on it
+      const start = +(end - DEPOSIT - 51.8).toFixed(2);      // …having earned ~$51.80 along the way
+      const out = []; let cumFlow = 0;
+      dates.forEach((t, n) => {
+        if (n === AT) cumFlow += DEPOSIT;
+        const grown = start * (1 + 0.0037 * n) + (n % 2 ? 1.5 : -1);
+        out.push({ t, equity: +(grown + cumFlow).toFixed(2), cumFlow });
+      });
+      out[out.length - 1].equity = +end.toFixed(2);          // end exactly on the live figure
+      return out;
+    })(),
   },
 };
 

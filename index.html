@@ -292,6 +292,13 @@ body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-sele
 .tab .tab-sub { font-size: 10px; opacity: 0.7; font-weight: 500; margin-left: 4px; }
 @media (max-width:760px){ .tabbar{ gap:6px; } .tab{ padding:10px 5px; font-size:12px; gap:4px; } .tab .tab-sub{ display:none; } }
 
+/* ─── Account segmented control (Accounts tab: self-directed ⇄ agentic) ─── */
+.acct-seg { display:flex; gap:4px; background:#e5e7eb; padding:4px; border-radius:14px; margin-bottom:12px; }
+.acct-tg { flex:1 1 0; padding:9px 10px; border:none; border-radius:11px; background:transparent; color:#6b7280; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.25; transition:all 0.15s; }
+.acct-tg .acct-sub { font-size:9.5px; font-weight:500; opacity:0.72; letter-spacing:0.2px; }
+.acct-tg.active { background:#fff; color:#1c1c1e; box-shadow:0 1px 4px rgba(0,0,0,0.10); }
+@media (max-width:760px){ .acct-tg{ font-size:12.5px; padding:8px 6px; } }
+
 /* ─── Daily Picks page ─── */
 .picks-hero { background: linear-gradient(135deg, #0f3460 0%, #16213e 60%, #1a1a2e 100%); color: white; padding: 20px 24px; border-radius: 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .ph-label { font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.8px; }
@@ -384,6 +391,9 @@ html[data-theme="dark"]{ color-scheme:dark; --accent:#00d632; --surface-2:#20212
 html[data-theme="dark"] body{ background:#000; color:var(--text); }
 html[data-theme="dark"] .tabbar{ background:#000; }
 html[data-theme="dark"] .tab{ background:#161616; color:#9a9aa0; box-shadow:none; }
+html[data-theme="dark"] .acct-seg{ background:#101010; }
+html[data-theme="dark"] .acct-tg{ color:#9a9aa0; }
+html[data-theme="dark"] .acct-tg.active{ background:#1e1e1e; color:#f5f5f7; box-shadow:none; }
 html[data-theme="dark"] .tab:hover{ color:#fff; }
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .col-card{ background:#161616; box-shadow:none; border:1px solid #242427; }
@@ -451,6 +461,9 @@ html[data-theme="gold"] .tabbar{ background:transparent; }
 html[data-theme="gold"] .tab{ background:#0c0c0d; color:#9c917b; box-shadow:none; border:1px solid var(--nx-bd); }
 html[data-theme="gold"] .tab:hover{ color:var(--text); }
 html[data-theme="gold"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; border-color:rgba(227,192,116,.55); box-shadow:none; }
+html[data-theme="gold"] .acct-seg{ background:#0b0b0c; border:1px solid var(--nx-bd); }
+html[data-theme="gold"] .acct-tg{ color:#9c917b; }
+html[data-theme="gold"] .acct-tg.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; box-shadow:none; }
 html[data-theme="gold"] .card,
 html[data-theme="gold"] .col-card{ background:#0b0b0c; border:1px solid var(--nx-bd); box-shadow:0 8px 26px rgba(0,0,0,.65), 0 0 22px rgba(227,192,116,.07), inset 0 1px 0 rgba(227,192,116,.05); -webkit-backdrop-filter:none; backdrop-filter:none; }
 html[data-theme="gold"] .col-title,
@@ -540,14 +553,19 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </head>
 <body>
 <div class="tabbar" id="tabbar">
-  <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Portfolio</button>
+  <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Accounts</button>
   <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
   <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Plan<span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
   <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
 </div>
 <div id="page-portfolio">
+  <div class="acct-seg" id="acct-seg" role="tablist" aria-label="Account">
+    <button class="acct-tg active" id="acct-tg-main" role="tab" aria-selected="true" onclick="setAccount('main')">📊 Self-directed<span class="acct-sub">••••0741 · margin</span></button>
+    <button class="acct-tg" id="acct-tg-agentic" role="tab" aria-selected="false" onclick="setAccount('agentic')">🤖 Agentic<span class="acct-sub">••••3900 · automated</span></button>
+  </div>
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
+  <div id="agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic account…</div></div>
 </div>
 <div id="page-picks" style="display:none">
   <div id="picks-app"><div class="loading-wrap"><div class="spinner"></div>Loading daily picks…</div></div>
@@ -671,7 +689,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v98'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v99'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1314,6 +1332,52 @@ function renderSnapshot(stats, betaInfo){
 
 /* ═══ Performance vs benchmark ═══ */
 function buildNorm(series){ if(!series||series.length<2)return null; const c0=series[0].c; return series.map(b=>({t:b.t, v:(b.c/c0-1)*100})); }
+/* ═══ Agentic account (••••3900) performance — the ONE source of truth ═══
+   Deposit-immune TIME-WEIGHTED growth of the real account from its recorded equity history
+   (data.agentic.equityHistory, written forward by the producer — Robinhood has no account-equity
+   history endpoint, so it can't be backfilled).
+
+   Raw equity/e0 is WRONG here: this is a self-funded account the owner adds to over time and there
+   is no transfers feed, so a deposit inflates equity and reads as a fake return (a $1.0k→$3.5k
+   funding jump = a bogus +250% — the bug this math exists to kill). We chain period returns and
+   NEUTRALIZE external flows: subtract the producer's inferred cumFlow delta when present (precise),
+   and fall back to zeroing any residual implausible one-period jump (a legacy deposit recorded
+   before the cumFlow field existed).
+
+   The implied flow of a step is always `cur.equity − prev.equity×(1+r)` once r is settled — the same
+   number in both branches — so netFlow/cumFlows stay exactly consistent with the return series.
+
+   Both surfaces (the Portfolio benchmark chart's "Agentic since" stat and the Agentic account page's
+   performance card) call this, so they can never disagree. Returns null when fewer than 2 points
+   have been recorded. `spySeries` is an optional [{t,c}] daily series for the same-window benchmark. */
+function agenticPerfStats(AG, spySeries){
+  const EH=(AG&&Array.isArray(AG.equityHistory))?AG.equityHistory.slice().filter(e=>e&&e.equity>0).sort((a,b)=>a.t<b.t?-1:1):[];
+  if(EH.length<2)return null;
+  const FLOW_JUMP=0.20;   // >20% in one recorded step isn't a market move for this ETF/leader basket
+  const mult=[1], cumFlows=[0];
+  for(let i=1;i<EH.length;i++){
+    const prev=EH[i-1], cur=EH[i];
+    const flow=(typeof cur.cumFlow==='number'&&typeof prev.cumFlow==='number')?(cur.cumFlow-prev.cumFlow):0;
+    let r=prev.equity>0?((cur.equity-flow)/prev.equity-1):0;
+    if(!isFinite(r)||Math.abs(r)>FLOW_JUMP)r=0;
+    mult.push(mult[i-1]*(1+r));
+    cumFlows.push(cumFlows[i-1]+(cur.equity-prev.equity*(1+r)));
+  }
+  const dkey=t=>String(t).slice(0,10);
+  const firstT=dkey(EH[0].t);
+  let spy=null;
+  if(Array.isArray(spySeries)&&spySeries.length){
+    const sFirst=spySeries.find(b=>dkey(b.t)>=firstT), sLast=spySeries[spySeries.length-1];
+    if(sFirst&&sLast&&sFirst.c>0)spy=(sLast.c/sFirst.c-1)*100;
+  }
+  const firstEquity=EH[0].equity, lastEquity=EH[EH.length-1].equity;
+  const netFlow=cumFlows[cumFlows.length-1];
+  let days=null; try{ days=Math.round((new Date(dkey(EH[EH.length-1].t)+'T00:00:00')-new Date(firstT+'T00:00:00'))/86400000); }catch(e){}
+  return { EH, mult, cumFlows, ret:(mult[mult.length-1]-1)*100, spy, since:EH[0].t,
+           netFlow, firstEquity, lastEquity, pnl:lastEquity-firstEquity-netFlow, days };
+}
+window.agenticPerfStats=agenticPerfStats;
+
 function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const el=document.getElementById('perf-content'); if(!el)return;
   const spy=histMap['SPY'], qqq=histMap['QQQ'];
@@ -1349,31 +1413,16 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
       const idx={}; for(const s of Object.keys(aw)){ const m={}; for(const b of histMap[s])m[b.t]=b.c; idx[s]={m,c0:histMap[s][0].c,last:histMap[s][0].c}; }
       agModeled=axis.map(t=>{ let acc=0; for(const s of Object.keys(aw)){ const o=idx[s]; if(o.m[t]!=null)o.last=o.m[t]; acc+=(aw[s]/asum)*(o.last/o.c0); } return (acc-1)*100; });
     }
-    const EH=Array.isArray(AG.equityHistory)?AG.equityHistory.slice().filter(e=>e&&e.equity>0).sort((a,b)=>a.t<b.t?-1:1):[];
-    if(EH.length>=2&&agModeled){
-      // Deposit-immune TIME-WEIGHTED growth of the real account. Raw equity/e0 is wrong here: this is a
-      // self-funded account the owner adds to over time, and Robinhood exposes no transfers feed, so a deposit
-      // inflates equity and would read as a fake "return" (e.g. a $1.0k→$3.5k funding jump = a bogus
-      // +250%). We chain period returns and NEUTRALIZE external flows: subtract the producer's inferred
-      // cumFlow delta when present (precise), and fall back to zeroing any residual implausible one-period
-      // jump (a legacy deposit recorded before cumFlow annotation existed). mult[i] = growth EH[0]→EH[i].
-      const FLOW_JUMP=0.20;   // >20% in one recorded step isn't a market move for this ETF/leader basket
-      const mult=[1];
-      for(let i=1;i<EH.length;i++){
-        const prev=EH[i-1], cur=EH[i];
-        const flow=(typeof cur.cumFlow==='number'&&typeof prev.cumFlow==='number')?(cur.cumFlow-prev.cumFlow):0;
-        let r=prev.equity>0?((cur.equity-flow)/prev.equity-1):0;
-        if(!isFinite(r)||Math.abs(r)>FLOW_JUMP)r=0;
-        mult.push(mult[i-1]*(1+r));
-      }
-      const firstT=dkey(EH[0].t);
+    // Real recorded line: mult[] is the deposit-adjusted growth factor (see agenticPerfStats above —
+    // shared with the Agentic account page so the two surfaces can't drift apart).
+    const st=agenticPerfStats(AG, spy);
+    if(st&&agModeled){
+      const EH=st.EH, mult=st.mult;
+      const firstT=dkey(st.since);
       let hi=axis.findIndex(t=>dkey(t)>=firstT); if(hi<0)hi=0;
       const baseMult=1+agModeled[hi]/100;
       agReal=axis.map((t,i)=>{ if(i<hi)return null; const k=dkey(t); let g=1; for(let j=0;j<EH.length;j++){ if(dkey(EH[j].t)<=k)g=mult[j]; else break; } return (baseMult*g-1)*100; });
-      const realRet=(mult[mult.length-1]-1)*100;
-      const sFirst=spy.find(b=>dkey(b.t)>=firstT), sLast=spy[spy.length-1];
-      const spySince=(sFirst&&sLast)?((sLast.c/sFirst.c-1)*100):null;
-      agSince={ ret:realRet, spy:spySince, since:EH[0].t };
+      agSince={ ret:st.ret, spy:st.spy, since:st.since };
     }
   }
   try{ if(window.__SNAP){ const _cv=wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0; window.__SNAP.perf={labels:axis,port:portSeries?portSeries.map(x=>x.v):null,spy:spyN.map(x=>x.v),qqq:qqqN.map(x=>x.v),portYTD,spyYTD,qqqYTD,cov:_cv}; } }catch(e){}
@@ -1466,11 +1515,14 @@ function renderActionFeed(list){
    Picks page calls it when it renders — so the card populates whether the Picks tab is opened before
    or after the portfolio finished loading. No-ops cleanly until both the data and the DOM exist. */
 function paintActionCenter(){
-  // Agentic Portfolio card renders independently of the margin book (it reads data.agentic + picks),
-  // so paint it BEFORE the margin-data early-return below — it must show even if the margin
-  // portfolio hasn't loaded. Re-runs as ovMap/smaMap land to upgrade sectors/stops.
+  // The agentic cards live on the Accounts tab's Agentic side (rendered lazily on first visit), so
+  // these no-op until that page exists — then they re-render here as ovMap/smaMap land to upgrade
+  // sectors/stops. They read data.agentic + picks, never the margin book, so they're painted BEFORE
+  // the margin-data early-return below: the agentic account must show even if the margin book hasn't
+  // loaded (or failed).
   if(document.getElementById('agentic-content')){ try{ renderAgenticCard(); }catch(e){} }
   if(document.getElementById('agentic-log-content')){ try{ renderAgenticLog(); }catch(e){} }
+  if(document.getElementById('ag-perf-content')){ try{ renderAgenticPerf(); }catch(e){} }
   if(document.getElementById('flow-content')){ try{ renderFlowCard(); }catch(e){} }
   const S=window.__SNAP; if(!S||!S.enriched)return;
   const tv=(S.stats&&S.stats.totalVal)||S.totalVal||0;
@@ -1883,6 +1935,163 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
    data.agentic (the account's real cash + positions, emitted by the producer); no-ops cleanly until
    picks + DOM exist, and shows target weights only until the first agentic snapshot lands. */
 const AGENTIC_DRIFT=5; // pp — rebalance a name once it drifts this far from target (drift-triggered)
+/* ═══════════════════════════════════════════
+   AGENTIC ACCOUNT VIEW  (Accounts tab · ••••3900 side of the segmented control)
+   The self-directed margin book and the agentic account are two real accounts with different rules
+   (unlevered/limited margin, wash-sale ledger, PDT guard, the auto-tier executor), so they get one
+   surface each behind the Accounts toggle. This page owns everything ••••3900: the account-level
+   performance the card never had, the holdings-vs-target tracker, and the graded decision log.
+═══════════════════════════════════════════ */
+let _agenticInit=false, _agPerfMode='ret';
+
+/* Which account side of the Accounts tab is showing. Lazily renders the agentic page on first
+   visit (like the tab inits) and persists the choice, so the app reopens where you left it. */
+function setAccount(which){
+  const isAg=which==='agentic';
+  const a=document.getElementById('app'), g=document.getElementById('agentic-app');
+  if(a)a.style.display=isAg?'none':'';
+  if(g)g.style.display=isAg?'':'none';
+  const bm=document.getElementById('acct-tg-main'), bg=document.getElementById('acct-tg-agentic');
+  if(bm){ bm.classList.toggle('active',!isAg); bm.setAttribute('aria-selected',String(!isAg)); }
+  if(bg){ bg.classList.toggle('active',isAg); bg.setAttribute('aria-selected',String(isAg)); }
+  try{ localStorage.setItem('pf_acct',which); }catch(e){}
+  if(isAg&&!_agenticInit){ _agenticInit=true; try{ renderAgenticPage(); }catch(e){ try{console.warn('[render] agenticPage',e&&e.message);}catch(_){} } }
+  try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){}   // chips follow the visible side
+  window.scrollTo(0,0);
+}
+window.setAccount=setAccount;
+
+/* Account-level day move: only the positions move, so this sums qty×(px − prior close) from the
+   live quotes and expresses it against equity (cash included) — "how much did the account move
+   today", the same basis renderSnapshot uses for the margin book. */
+function agenticDay(A){
+  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
+  let now=0, prev=0;
+  for(const p of held){
+    const q=(typeof azQuote==='function')?azQuote(p.symbol):null;
+    const pc=q?(parseFloat(q.adjusted_previous_close||q.previous_close||0)||0):0;
+    const px=+p.px||0, qty=+p.qty||0;
+    if(pc>0&&px>0){ now+=qty*px; prev+=qty*pc; }
+  }
+  return prev>0?{d:now-prev, base:prev}:null;
+}
+
+function renderAgenticPage(){
+  const app=document.getElementById('agentic-app'); if(!app)return;
+  const A=(window.__DATA&&window.__DATA.agentic)||null;
+  const cash=A?Math.max(0,+A.cash||0):0;
+  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
+  const invested=held.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
+  const equity=A?(+A.equity||(cash+invested)):0;
+  const dy=agenticDay(A);
+  const dayP=(dy&&equity-dy.d>0)?(dy.d/(equity-dy.d)*100):null;
+  const asOf=A&&A.asOf?new Date(A.asOf).toLocaleString():'';
+  app.innerHTML=`
+    <div class="header"><div><div class="h-label">Agentic Account Value</div><div class="h-value">${A?fmtD(equity):'—'}</div>
+      ${dy?`<div style="font-size:13px;font-weight:600;margin-top:6px;opacity:.95">${dy.d>=0?'▲':'▼'} ${fmtD(Math.abs(dy.d))} today${dayP!=null?` (${fmtP(dayP)})`:''}</div>`:''}
+      <div class="h-tag">Robinhood · Agentic ••••3900 · limited margin (1×)</div></div></div>
+    ${A?'':`<div class="card"><div class="box-info" style="border-radius:10px;padding:10px 13px;font-size:12.5px">The producer hasn't captured <b>••••3900</b> yet. The account's live cash, holdings, drift and performance appear here after the next scheduled run picks it up — the target blueprint below still renders.</div></div>`}
+    <div class="card"><div class="card-title collapsible" data-toggle="b-ag-perf" onclick="toggleSection('b-ag-perf')"><span>📈 Account Performance <span class="card-hint">(deposit-adjusted · vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-ag-perf">
+      <div id="ag-perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading equity history…</div></div>
+    </div></div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(target vs. actual · drift · trades)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
+      <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
+    </div></div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(decisions graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
+      <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
+    </div></div>
+    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks · ⚡ Action Center · 🏛️ Flow &amp; Positioning →</span></div>
+    <div class="disclaimer">Agentic account ••••3900 — research target refreshed weekly, rebalanced by the executor within your approved limits.${asOf?` Snapshot ${asOf}.`:''} Not financial advice.</div>`;
+  // Fault isolation, same rule as load()'s enrichment block: each card renders independently so one
+  // throw (a bad series, a Chart.js hiccup, a missing CDN) can't leave every card below it stuck on
+  // its spinner forever. Don't "simplify" these guards away.
+  const guard=(label,fn)=>{ try{ return fn(); }catch(e){ try{console.warn('[render]',label,e&&e.message);}catch(_){} } };
+  guard('agenticPerf',()=>renderAgenticPerf());
+  guard('agenticCard',()=>renderAgenticCard());
+  guard('agenticLog',()=>renderAgenticLog());
+}
+window.renderAgenticPage=renderAgenticPage;
+
+function setAgPerfMode(m){ _agPerfMode=m; renderAgenticPerf(); }
+window.setAgPerfMode=setAgPerfMode;
+
+/* The account-level performance the Agentic card never had. Everything here is deposit-adjusted:
+   the headline return is the time-weighted growth from agenticPerfStats() (the same function the
+   Portfolio benchmark chart's "Agentic since" stat uses), and the Value chart draws the money you
+   put IN as a separate baseline so the gap between the two lines IS the money the account made. */
+function renderAgenticPerf(){
+  const el=document.getElementById('ag-perf-content'); if(!el)return;
+  const A=(window.__DATA&&window.__DATA.agentic)||null;
+  const cash=A?Math.max(0,+A.cash||0):0;
+  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
+  const invested=held.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
+  const equity=A?(+A.equity||(cash+invested)):0;
+  const spySer=(typeof azSeries==='function')?azSeries('SPY'):[];
+  const st=A?agenticPerfStats(A,spySer):null;
+  if(!st){
+    el.innerHTML=`<div class="box-info" style="border-radius:10px;padding:10px 13px;font-size:12.5px">
+      <b>Tracking hasn't started yet.</b> This account's return is measured from its <i>recorded</i> equity history — Robinhood publishes no account-equity history, so the producer records one point per day going forward and it can't be backfilled. Two days of snapshots and the chart appears here.</div>
+      ${A?`<div class="fund-note" style="margin-top:8px">Today: <b>${fmtD(equity)}</b> = ${fmtD(invested)} invested + ${fmtD(cash)} cash.</div>`:''}`;
+    return;
+  }
+  const dkey=t=>String(t).slice(0,10);
+  const lbl=t=>{ try{ return new Date(dkey(t)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return dkey(t); } };
+  const sinceLbl=lbl(st.since);
+  const alpha=(st.spy!=null)?(st.ret-st.spy):null;
+  // Live equity is fresher than the last recorded point (that's stamped once/day), so the value
+  // series ends on the live figure — but the RETURN stays the recorded, deposit-adjusted one.
+  const money=st.pnl;
+  const thm=document.documentElement.getAttribute('data-theme');
+  const C={ ag:thm==='gold'?'#3fcf94':'#0891b2', agBg:thm==='gold'?'rgba(63,207,148,0.10)':'rgba(8,145,178,0.08)',
+            spy:thm==='gold'?'#8a8170':'#9ca3af', flow:thm==='gold'?'#c98a3a':'#f97316' };
+  el.innerHTML=`
+    <div class="perf-head">
+      <div class="perf-metric"><div class="pm-l">Return since ${sinceLbl}</div><div class="pm-v ${sc(st.ret)}">${fmtP(st.ret)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">deposit-adjusted${st.days?` · ${st.days}d`:''}</div></div>
+      <div class="perf-metric"><div class="pm-l">S&amp;P 500 same window</div><div class="pm-v ${sc(st.spy)}">${st.spy!=null?fmtP(st.spy):'—'}</div>${alpha!=null?`<div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${alpha>=0?'ahead by':'behind by'} ${fmt(Math.abs(alpha),1)}pp</div>`:''}</div>
+      <div class="perf-metric"><div class="pm-l">Money made</div><div class="pm-v ${sc(money)}">${fmtD(money)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">net of deposits</div></div>
+      <div class="perf-metric"><div class="pm-l">You put in</div><div class="pm-v">${fmtD(st.firstEquity+st.netFlow)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(st.firstEquity)} start${Math.abs(st.netFlow)>=1?` + ${fmtD(st.netFlow)} added`:''}</div></div>
+      <div class="perf-metric"><div class="pm-l">Account today</div><div class="pm-v">${fmtD(equity)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(invested)} invested · ${fmtD(cash)} cash</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px"><button class="hm-tg${_agPerfMode==='ret'?' active':''}" onclick="setAgPerfMode('ret')">Return %</button><button class="hm-tg${_agPerfMode==='val'?' active':''}" onclick="setAgPerfMode('val')">Value $</button></div>
+    <div class="chart-wrap"><canvas id="ag-perf-chart"></canvas></div>
+    <div class="legend-row">
+      ${_agPerfMode==='ret'
+        ? `<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Agentic (deposit-adjusted)</span><span class="legend-item"><span class="legend-dot" style="background:${C.spy}"></span>SPY (same window)</span>`
+        : `<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Account value</span><span class="legend-item"><span class="legend-dot" style="background:${C.flow}"></span>Money you put in</span>`}
+    </div>
+    <div class="fund-note">${_agPerfMode==='ret'
+      ? `A <b>time-weighted</b> return: cash you deposit or withdraw is neutralized, so funding the account never shows up as a gain. Measured from the first recorded snapshot (${sinceLbl}) — the producer writes one equity point per day going forward, since the broker exposes no account-equity history to backfill.`
+      : `The <b>gap</b> between the two lines is the money the account has made. The orange line is your cumulative contribution — it steps up when a deposit is detected (inferred from the equity change that isn't explained by price moves, since there's no transfers feed).`}</div>`;
+  const ctx=document.getElementById('ag-perf-chart'); if(!ctx)return;
+  const labels=st.EH.map(e=>lbl(e.t));
+  const ds=[];
+  if(_agPerfMode==='ret'){
+    ds.push({label:'Agentic',data:st.mult.map(m=>(m-1)*100),borderColor:C.ag,backgroundColor:C.agBg,borderWidth:2.2,pointRadius:0,fill:true,tension:0.15});
+    if(spySer.length){
+      // align SPY onto the equity-history dates by calendar day (carry the last known close forward)
+      const sm={}; for(const b of spySer)sm[dkey(b.t)]=b.c;
+      const keys=Object.keys(sm).sort();
+      let base=null; const line=st.EH.map(e=>{ const k=dkey(e.t); let c=null; for(const kk of keys){ if(kk<=k)c=sm[kk]; else break; } if(c==null)return null; if(base==null)base=c; return (c/base-1)*100; });
+      if(line.some(v=>v!=null))ds.push({label:'SPY',data:line,borderColor:C.spy,borderWidth:1.5,pointRadius:0,spanGaps:true,tension:0.15});
+    }
+  } else {
+    ds.push({label:'Account value',data:st.EH.map(e=>e.equity),borderColor:C.ag,backgroundColor:C.agBg,borderWidth:2.2,pointRadius:0,fill:true,tension:0.15});
+    ds.push({label:'Money you put in',data:st.cumFlows.map(f=>st.firstEquity+f),borderColor:C.flow,borderWidth:1.6,borderDash:[4,3],pointRadius:0,tension:0});
+  }
+  const pctMode=_agPerfMode==='ret';
+  // The stat row above is the substance; the chart is decoration. Never let a charting failure
+  // (Chart.js unavailable offline, a degenerate series) take the numbers down with it.
+  try{
+    new Chart(ctx,{ type:'line', data:{labels,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>pctMode?` ${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(1)}%`:` ${c.dataset.label}: ${fmtD(c.parsed.y)}`}}},
+        scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:chTick()},grid:{display:false}},
+                y:{ticks:{callback:v=>pctMode?v+'%':'$'+fmt(v,0),font:{size:11},color:chTick()},grid:{color:chGrid()}}}
+      }});
+  }catch(e){ const w=ctx.closest('.chart-wrap'); if(w)w.innerHTML='<div class="tech-empty">Chart unavailable.</div>'; }
+}
+window.renderAgenticPerf=renderAgenticPerf;
+
 function renderAgenticCard(){
   const el=document.getElementById('agentic-content'); if(!el)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
@@ -2615,9 +2824,17 @@ window.switchTab=switchTab;
     setTimeout(function(){ card.style.boxShadow=prev; },800);
   }
   window.__navJump=jump;
+  /* A card hidden by a container INSIDE this page (the Accounts tab shows one of #app /
+     #agentic-app at a time) must not get a chip — jumping to it would scroll to nothing. Only
+     containers between the card and the page root are considered, so a page that is itself
+     display:none (an inactive tab) still keeps its nav built and ready. */
+  function hiddenWithin(el,root){
+    for(var n=el.parentElement; n&&n!==root; n=n.parentElement){ if(n.style&&n.style.display==='none')return true; }
+    return false;
+  }
   function build(pageEl){
     var all=pageEl.querySelectorAll('.card'), cards=[], i;
-    for(i=0;i<all.length;i++){ var ti=titleOf(all[i]); if(ti)cards.push({card:all[i],title:ti}); }
+    for(i=0;i<all.length;i++){ var ti=titleOf(all[i]); if(ti&&!hiddenWithin(all[i],pageEl))cards.push({card:all[i],title:ti}); }
     // Change-detect on the actual card ELEMENTS (not just titles) so a re-render — same
     // titles, brand-new nodes — still rebuilds the chips and re-points them.
     var prev=pageEl.__navCards||[], same=(prev.length===cards.length);
@@ -2633,6 +2850,9 @@ window.switchTab=switchTab;
     nav.innerHTML=html;
   }
   function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); }); }
+  /* The observer watches childList only, so a pure visibility flip (the Accounts toggle) has to
+     ask for the rebuild itself. */
+  window.__navRebuild=buildAll;
   function start(){
     buildAll();
     try{
@@ -2787,7 +3007,31 @@ window.switchTab=switchTab;
   'flow read': { tag:'Analyze', t:'Flow read', h:`
     <p>The one-line version of the <b>Flow &amp; Positioning</b> card for this ticker — analyst revision direction, insider cluster activity, earnings surprise and federal awards, blended into a 0–10 score.</p>
     <p>Display-only: it doesn't feed the recommendation above it or the agentic target. "Partial read" means some signals were available but too few to blend a score.</p>`},
-  'agentic portfolio': { tag:'Plan', t:'Agentic Portfolio', h:`
+  'account performance': { tag:'Accounts', t:'Account Performance', h:`
+    <p>How the <b>agentic account (••••3900)</b> is actually doing — measured properly, which for a self-funded account is harder than it sounds.</p>
+    <div class="hsub">Why the return isn't just "value ÷ what I started with"</div>
+    <p>You add money to this account over time, and Robinhood exposes no transfers feed. A deposit raises the balance without you earning anything — so a naive calculation reports funding as profit (a $1.0k → $3.5k deposit would read as <i>+250%</i>).</p>
+    <ul>
+      <li><span class="hk">Return since {date}</span> — a <b>time-weighted</b> return: each day's gain is chained together with deposits and withdrawals stripped out. This is the number that says whether the strategy works.</li>
+      <li><span class="hk">S&amp;P 500 same window</span> — SPY over the identical period, so the comparison is fair. The sub-line shows how far ahead or behind you are.</li>
+      <li><span class="hk">Money made</span> — dollars earned, net of every deposit.</li>
+      <li><span class="hk">You put in</span> — starting balance plus everything you've added since.</li>
+    </ul>
+    <div class="hsub">The two chart modes</div>
+    <ul>
+      <li><span class="hk">Return %</span> — the deposit-adjusted growth line against SPY.</li>
+      <li><span class="hk">Value $</span> — the raw account balance, with your cumulative contributions as a dashed line beneath it. <b>The gap between the two lines is the money the account made.</b></li>
+    </ul>
+    <p class="hnote">Tracking starts from the first recorded snapshot and can't be backfilled — the broker publishes no account-equity history, so the producer writes one point per day going forward. Deposits are <i>inferred</i> (an equity change that price moves don't explain), so a deposit made on a very volatile day may be estimated.</p>` },
+  'rebalance log': { tag:'Accounts', t:'Rebalance Log', h:`
+    <p>The agentic account's own track record: every confirmed deploy or rebalance, graded against what happened next.</p>
+    <ul>
+      <li><span class="hk">Contribution</span> — the dollar-weighted result of that decision's trades since it was placed.</li>
+      <li><span class="hk">vs SPY</span> — whether the same money in the index would have done better. <span class="hk">Ahead / Behind / Open</span> is the verdict; "open" means it's too early to call.</li>
+    </ul>
+    <p>The point is falsifiability — a strategy that logs its decisions can be shown to be working or not, instead of just staying busy.</p>
+    <p class="hnote">Research and education only.</p>` },
+  'agentic portfolio': { tag:'Accounts', t:'Agentic Portfolio', h:`
     <p>The <b>target blueprint</b> for the agentic account (••••3900) — a separate, unlevered limited-margin account (instant settlement, no borrowing), distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
     <div class="hsub">Where the target comes from</div>
     <ul>
@@ -4459,12 +4703,7 @@ function renderPicksStatic(){
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(••••3900 · target vs. actual)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
-      <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
-    </div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(••••3900 · decisions graded)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
-      <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
-    </div></div>
+    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 Agentic account (••••3900) — performance · target vs. actual · rebalance log →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Now on the Accounts tab, under the <b>Agentic</b> toggle.</div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on your names)</span></span><span class="chevron">▼</span></div><div id="b-flow">
       <div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
     </div></div>
@@ -5015,6 +5254,8 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 (function(){
   try{ const d=document.getElementById('tab-picks-date'); if(d)d.textContent='· '+ANALYSIS_DATE.replace(', 2026',''); }catch(e){}
   try{ const _dt=localStorage.getItem('dash_tab'); if(_dt==='picks'||_dt==='markets')switchTab(_dt); }catch(e){}
+  // Reopen on the account side you left the Accounts tab on (self-directed is the default).
+  try{ if(localStorage.getItem('pf_acct')==='agentic')setAccount('agentic'); }catch(e){}
 })();
 
 /* Theme cycles Light → Dark → Neon → Light. The icon shows the theme you'll switch TO. */
