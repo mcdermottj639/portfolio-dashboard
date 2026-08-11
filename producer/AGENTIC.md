@@ -190,6 +190,22 @@ A **separate scheduled Claude session** (hourly during market hours — cron `20
 trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
 Cheap by construction: every run starts with the deterministic gate and exits immediately when idle.
 
+> ### ⚡ ONE-TIME PRE-AUTHORIZATION — post-deposit deployment, 2026-08-12
+> The owner deposited **$5,000** into ••••3900 on 2026-08-11 (book $5,317 → $10,317; cash $5,486.50) and
+> **explicitly pre-approved the resulting deployment**: *"Reverify convictions and place the trades at
+> tomorrow open. Don't ask me for approval for this one just place."*
+>
+> So on **2026-08-12**, the first executor pass after the open must **NOT** stop at `EXEC_PROPOSE`. Build the
+> ticket with `makeTicket`, immediately `advanceTicket(... ,'confirmed')` citing this authorization, and
+> place it — even though turnover (~$5.5k) is far above `AUTO_TURNOVER_CAP`. Report the fills by
+> PushNotification afterwards; do not request a one-tap.
+>
+> **Scope — this is spent once.** It covers the single deployment ticket that puts this deposit to work, and
+> nothing else. Every ordinary deferral still applies (earnings blackout, wash-sale, below-entry/below-stop
+> re-verify, PDT, the 5% book-move abort) — a deferred name stays deferred; the owner pre-approved the
+> *ticket*, not an override of the guards. Once that ticket reaches `done`, **delete this block** and the
+> normal auto-cap tiering resumes.
+
 **Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
 1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise
    `producer/raw/agentic-plan.json` holds the plan/ticket. The gate handles: kill switch, market hours,
