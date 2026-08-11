@@ -290,6 +290,14 @@ ok('release respects the PDT guard', planDeployment({ ...relArgs,
   accountActivity: { VTI: { lastBuyDate: '2026-08-11' } } }).parking.released === null);
 ok('the release never exceeds what was parked', rel.parking.released.dollars <= 1400 + 1e-6);
 
+// (g2) LOCKED POOL — the vehicle was bought TODAY, so releasing it is a day trade. The parked pool
+//      must not count as funding: buys cap at real cash, and nothing pretends the release happened.
+const locked = planDeployment({ ...relArgs, positions: [{ symbol: 'VTI', qty: 5, avgCost: 280 }],
+  cash: 100, parked: { vehicle: 'VTI', dollars: 1400, forNames: ['V'] },
+  accountActivity: { VTI: { lastBuyDate: '2026-08-11' } } });
+ok('PDT-locked pool: buys never exceed real cash', locked.spent <= 100 + locked.proceeds + 1e-6);
+ok('PDT-locked pool: no phantom release', locked.parking.released === null && locked.parking.after === locked.parking.before);
+
 // (h) entry zones with commas + trailing prose must parse (the live research writes them this way).
 const prose = planDeployment({
   target: { asOf: '2026-08-11', names: [{ ticker: 'LLY', weightPct: 100, entry: '$1,130-$1,180 (into the $1,160 50-DMA)', stop: 1075 }] },

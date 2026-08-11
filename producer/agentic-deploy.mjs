@@ -357,7 +357,12 @@ export function planDeployment(input = {}) {
   //    Parked dollars are a funding source too — that is the whole point of the waiting ground. They go
   //    into the pool here so a cleared name can actually draw on them; how much was drawn (and therefore
   //    must be SOLD out of the vehicle) falls out of `spent` below as the release leg.
-  const parkPool = parkingOn ? parkedNow : 0;
+  //    The pool only counts money we can actually GET AT this pass: if the vehicle was bought today,
+  //    releasing it would be a day trade, so the parked dollars are locked until tomorrow and must not
+  //    be treated as funding — otherwise buys get sized against cash that cannot legally move (the
+  //    executor's buying-power check would bounce them, but the plan itself would be wrong).
+  const parkReleasable = parkingOn && parkedNow > 0 && !(opts.dayTradeGuard !== false && accountActivity[parkVehicle] && String(accountActivity[parkVehicle].lastBuyDate).slice(0, 10) === opts.asOf);
+  const parkPool = parkReleasable ? parkedNow : 0;
   const deployable = +(cashThisPass + proceeds + parkPool).toFixed(2);
   const buysT1 = [];
   const totalGap = candidates.reduce((s, c) => s + c.gap, 0);
@@ -397,9 +402,10 @@ export function planDeployment(input = {}) {
       if (!dayTradeBlock(leg)) { parkLegs.release = leg; parkedAfter = +(parkedNow - release).toFixed(2); }
     }
   }
-  //     Only cash can be parked — the un-drawn remainder of the pool minus whatever is still sitting in
-  //     the vehicle already (that's parked, not idle, and re-parking it would be a no-op round trip).
-  const parkableCash = +(deployable - spent - (parkedAfter)).toFixed(2);
+  //     Only CASH can be parked — never the already-parked remainder (re-parking is a no-op round trip)
+  //     and never the pool itself, so this is what's left of cash+proceeds after the buys drew on them.
+  //     (Park only fires when there was no release, so spent here is cash-funded by construction.)
+  const parkableCash = +(cashThisPass + proceeds - spent).toFixed(2);
   const parkableNeed = deferred.filter((d) => d.sym !== parkVehicle).reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
   if (parkingOn && !parkLegs.release && parkableCash >= parkMin && parkableNeed >= parkMin) {
     const dollars = +Math.min(parkableCash, parkableNeed).toFixed(2);
@@ -418,7 +424,8 @@ export function planDeployment(input = {}) {
 
   // Sells still lead: instant settlement means spendable once a sell FILLS, not before it does. When the
   // buys lean on proceeds, the executor must confirm the sell fills before placing them.
-  const buysNeedProceeds = proceeds > 0 && spent > settledNow + 1;
+  const releaseD = parkLegs.release ? parkLegs.release.dollars : 0;
+  const buysNeedProceeds = (proceeds + releaseD) > 0 && spent > cashThisPass + 1;
 
   // 3. tax-aware combined sell order (losses first — harvest what we're selling anyway — then smallest
   //    gain first) + the ticket's ST tax picture and the executor's autonomy tier.
@@ -433,7 +440,9 @@ export function planDeployment(input = {}) {
   const autoEligible = turnover > 0 && turnover <= autoCap;
 
   const deferredCash = deferred.reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
-  const cashLeft = +(deployable - spent).toFixed(2);
+  // cashLeft = actual CASH left, not "pool left": released dollars funded buys (so they don't drain
+  //   cash), and still-parked dollars live in the vehicle, reported via `parking`, not here.
+  const cashLeft = +Math.max(0, cashThisPass + proceeds - (spent - releaseD)).toFixed(2);
 
   if (!names.length) warnings.push('no research target loaded — cannot plan a deployment');
   if (deferred.length) warnings.push(`${deferred.length} name(s) deferred (${deferred.map((d) => d.sym).join(', ')}) — ~${money(deferredCash)} of intended weight held pending earnings/re-verify/wash-sale`);
