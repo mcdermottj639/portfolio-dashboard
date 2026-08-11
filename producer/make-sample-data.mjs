@@ -230,15 +230,19 @@ const data = {
   options,
   news,
   leaders: LEADERS,
-  // Sample flow read spanning BOTH books so the Accounts-page Flow card renders populated in
-  // preview and exercises the per-account tags: NVDA = held in both (📊🤖), SPY = agentic-held
-  // (🤖), AAPL = margin-only (📊), LLY = agentic target not yet opened (🎯).
+  // Sample flow read spanning BOTH books: each account side of the Accounts tab renders its OWN
+  // Flow card filtered to its own names, so the fixture needs margin names (NVDA/MSFT/AAPL/GLD)
+  // AND agentic ones (SPY/NVDA/V/GOOGL + LLY, a target name not yet opened) to exercise both.
   flow: {
     asOf: now.toISOString().slice(0, 10),
     symbols: {
       NVDA: { sym: 'NVDA', flow: { score: 6.8 }, revision: { score: 6.4, delta: 0.05 }, insider: { score: 3.2, cluster: 'sell', buyers: 1, sellers: 6 }, surprise: { score: 7.5 } },
       SPY:  { sym: 'SPY',  flow: null, revision: null, insider: null, surprise: null },
-      AAPL: { sym: 'AAPL', flow: { score: 5.4, }, revision: { score: 5.9, delta: 0 }, insider: { score: 4.8, cluster: null, buyers: 2, sellers: 3 }, surprise: { score: 6.1 } },
+      AAPL: { sym: 'AAPL', flow: { score: 5.4 }, revision: { score: 5.9, delta: 0 }, insider: { score: 4.8, cluster: null, buyers: 2, sellers: 3 }, surprise: { score: 6.1 } },
+      MSFT: { sym: 'MSFT', flow: { score: 6.2 }, revision: { score: 6.6, delta: 0.04 }, insider: { score: 4.1, cluster: 'sell', buyers: 0, sellers: 4 }, surprise: { score: 7.0 } },
+      GLD:  { sym: 'GLD',  flow: null, revision: null, insider: null, surprise: null },
+      V:    { sym: 'V',    flow: { score: 6.9 }, revision: { score: 6.8, delta: 0.06 }, insider: { score: 5.2, cluster: null, buyers: 2, sellers: 2 }, surprise: { score: 7.4 } },
+      GOOGL:{ sym: 'GOOGL',flow: { score: 7.5 }, revision: { score: 7.3, delta: 0.14 }, insider: { score: 6.0, cluster: 'buy', buyers: 3, sellers: 1 }, surprise: { score: 8.1 } },
       LLY:  { sym: 'LLY',  flow: { score: 7.2 }, revision: { score: 7.0, delta: 0.11 }, insider: { score: 6.5, cluster: 'buy', buyers: 4, sellers: 1 }, surprise: { score: 7.8 }, award: { score: 4.0 } },
     },
     polEvents: [{ filer: 'Sample Member', sym: 'NVDA', side: 'buy', date: '2026-07-20' }],
