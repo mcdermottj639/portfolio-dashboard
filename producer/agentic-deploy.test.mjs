@@ -124,13 +124,13 @@ ok('buys target the underweight names in one leg', !!find(fullBook.buys, 'AAPL')
 ok('no T+1 leg is emitted any more', fullBook.buysT1.length === 0);
 ok('buys are flagged as leaning on sale proceeds', fullBook.buysNeedProceeds === true);
 ok('turnover sums sells + buys', fullBook.turnover > 1200);
-ok('a >$500-turnover ticket is NOT auto-eligible', fullBook.autoEligible === false && fullBook.autoCap === AUTO_TURNOVER_CAP);
+ok('an over-cap ticket is NOT auto-eligible', fullBook.autoEligible === false && fullBook.turnover > AUTO_TURNOVER_CAP && fullBook.autoCap === AUTO_TURNOVER_CAP);
 ok('summary mentions the exits and the tax net', /exit/.test(fullBook.summary) && /ST tax/.test(fullBook.summary));
 
-// Auto tier: small clean ticket ≤ $500 turnover is auto-eligible.
+// Auto tier: small clean ticket within AUTO_TURNOVER_CAP is auto-eligible.
 const small = planDeployment({ target: { names: [{ ticker: 'SPY', weightPct: 100, entry: '740-750', stop: 690 }] },
   positions: [], cash: 300, quotes: { SPY: 750 }, opts: { asOf: '2026-08-07' } });
-ok('small clean ticket is auto-eligible', small.autoEligible === true && small.turnover <= 500);
+ok('small clean ticket is auto-eligible', small.autoEligible === true && small.turnover <= AUTO_TURNOVER_CAP);
 
 // TLH: a target name deep underwater is harvested — full position, wash-blocked from the buy legs.
 const tlhTarget = { driftTriggerPp: 5, names: [

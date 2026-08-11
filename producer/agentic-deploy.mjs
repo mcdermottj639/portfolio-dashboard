@@ -56,8 +56,11 @@
 //     names. Pass `crossActivity` ({SYM:{lastBuyDate}}, from the margin account's recent orders —
 //     the executor fetches this live at execution time); a loss-sale on a name the OTHER account
 //     bought within 30d gets its harvest skipped (no tax benefit) or its exit flagged washRisk.
-//   • AUTO TIER — `autoEligible` = turnover ≤ AUTO_TURNOVER_CAP (owner-approved $500): the executor
-//     may place an auto-eligible ticket unattended; anything larger goes out as push + one-tap.
+//   • AUTO TIER — `autoEligible` = turnover ≤ AUTO_TURNOVER_CAP (owner-approved $1,000): the executor
+//     may place an auto-eligible ticket unattended; anything larger goes out as push + one-tap. Raised
+//     from $500 (2026-08-11, owner): routine drift top-ups were landing just over the old cap and
+//     stalling on a confirm, while a structural full-book rebalance (~$3.7k) still asks. The cap only
+//     decides WHO presses go — every deferral rule above (earnings/wash/policy/gap/PDT) applies either way.
 //
 // Buys move each underweight name only toward its (already cluster/vol-capped) target weight, so honoring
 // the target inherently respects the risk caps riskweights.mjs enforced when the target was built.
@@ -69,7 +72,7 @@ import { policyBlackout, POLICY_BLACKOUT_DAYS } from './policy.mjs';
 
 export const EARNINGS_BLACKOUT_DAYS = 7;
 export { POLICY_BLACKOUT_DAYS };
-export const AUTO_TURNOVER_CAP = 500; // $/ticket the executor may place unattended (owner-approved tier)
+export const AUTO_TURNOVER_CAP = 1000; // $/ticket the executor may place unattended (owner-approved tier)
 export const TLH_MIN_LOSS = 75;       // opportunistic harvest floor, dollars…
 export const TLH_MIN_LOSS_PCT = 5;    // …and as % of cost basis — must clear max() of both
 export const MIN_EXIT = 5;            // ignore off-target dust below this value

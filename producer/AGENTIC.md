@@ -40,12 +40,13 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 | Account **values / drift** (card `Now`) | **hourly** (each producer run, market hours — `35 * * * *` UTC) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
 | Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
-| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $500 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
+| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $1,000 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
 | **Event triggers (v93)** | every run (deposit / earnings gap) | `agentic-triggers.mjs` (in `build-data.mjs`) → `raw/agentic-triggers.json`: a **`deploy-cash`** push when idle/new cash crosses ~5% of book, and a **`refreshResearch`** flag that runs the research EARLY (before the weekly gate) on a deposit or a ≥6% held-name gap. So the account reacts to deposits + earnings, not just the 7-day clock. |
 
 ## Execution policy — **TIERED AUTO** (owner-approved 2026-08-07; supersedes confirm-everything)
 The owner signed off on a two-tier policy so the account is **self-sufficient** for routine upkeep:
-- **Auto tier:** a ticket with **turnover ≤ `AUTO_TURNOVER_CAP` ($500)** may be executed **unattended**
+- **Auto tier:** a ticket with **turnover ≤ `AUTO_TURNOVER_CAP` ($1,000 — raised from $500 on 2026-08-11,
+  owner: routine top-ups kept landing just over the old cap and stalling on a confirm)** may be executed **unattended**
   by the executor (below) — placed, logged to the decision ledger, and reported by PushNotification
   *after* the fact. Routine drift top-ups, small TLH harvests, deploying a modest deposit.
 - **Confirm tier:** anything larger (a full restructure, a big deposit) goes out as a **push + one-tap
@@ -189,6 +190,22 @@ A **separate scheduled Claude session** (hourly during market hours — cron `20
 trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
 Cheap by construction: every run starts with the deterministic gate and exits immediately when idle.
 
+> ### ⚡ ONE-TIME PRE-AUTHORIZATION — post-deposit deployment, 2026-08-12
+> The owner deposited **$5,000** into ••••3900 on 2026-08-11 (book $5,317 → $10,317; cash $5,486.50) and
+> **explicitly pre-approved the resulting deployment**: *"Reverify convictions and place the trades at
+> tomorrow open. Don't ask me for approval for this one just place."*
+>
+> So on **2026-08-12**, the first executor pass after the open must **NOT** stop at `EXEC_PROPOSE`. Build the
+> ticket with `makeTicket`, immediately `advanceTicket(... ,'confirmed')` citing this authorization, and
+> place it — even though turnover (~$5.5k) is far above `AUTO_TURNOVER_CAP`. Report the fills by
+> PushNotification afterwards; do not request a one-tap.
+>
+> **Scope — this is spent once.** It covers the single deployment ticket that puts this deposit to work, and
+> nothing else. Every ordinary deferral still applies (earnings blackout, wash-sale, below-entry/below-stop
+> re-verify, PDT, the 5% book-move abort) — a deferred name stays deferred; the owner pre-approved the
+> *ticket*, not an override of the guards. Once that ticket reaches `done`, **delete this block** and the
+> normal auto-cap tiering resumes.
+
 **Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
 1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise
    `producer/raw/agentic-plan.json` holds the plan/ticket. The gate handles: kill switch, market hours,
@@ -224,5 +241,5 @@ Cheap by construction: every run starts with the deterministic gate and exits im
 
 ## Robinhood writes from this account
 The **executor** (above) is the only thing that places orders here: unattended within the **auto tier**
-(≤ $500 turnover/ticket), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900
+(≤ $1,000 turnover/ticket), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900
 (it only fetches for display; its only Robinhood writes anywhere are the two watchlist syncs).
