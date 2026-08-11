@@ -566,12 +566,6 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   </div>
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
   <div id="agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic account…</div></div>
-  <!-- Flow & Positioning sits OUTSIDE the account toggle: it reads names from BOTH books (each row
-       tagged 📊/🤖/🎯), so it stays visible under whichever side is active. Moved here from the Plan
-       page — "who is acting on what I own" is account context, not pick research. -->
-  <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on your names — both accounts)</span></span><span class="chevron">▼</span></div><div id="b-flow">
-    <div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
-  </div></div>
 </div>
 <div id="page-picks" style="display:none">
   <div id="picks-app"><div class="loading-wrap"><div class="spinner"></div>Loading daily picks…</div></div>
@@ -695,7 +689,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v101'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v102'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1551,7 +1545,8 @@ function paintActionCenter(){
   if(document.getElementById('agentic-log-content')){ try{ renderAgenticLog(); }catch(e){} }
   if(document.getElementById('ag-perf-content')){ try{ renderAgenticPerf(); }catch(e){} }
   if(document.getElementById('risk-content-ag')){ try{ renderAgenticAnalytics(); }catch(e){} }
-  if(document.getElementById('flow-content')){ try{ renderFlowCard(); }catch(e){} }
+  if(document.getElementById('flow-content')){ try{ renderFlowCard({scope:'main'}); }catch(e){} }
+  if(document.getElementById('flow-content-ag')){ try{ renderFlowCard({sfx:'-ag',scope:'agentic'}); }catch(e){} }
   const S=window.__SNAP; if(!S||!S.enriched)return;
   const tv=(S.stats&&S.stats.totalVal)||S.totalVal||0;
   if(document.getElementById('act-content')){
@@ -2054,6 +2049,9 @@ function renderAgenticPage(){
     <div class="card"><div class="card-title collapsible" data-toggle="b-inc-ag" onclick="toggleSection('b-inc-ag')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · realized)</span></span><span class="chevron">▼</span></div><div id="b-inc-ag"><div id="inc-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-tech-ag" onclick="toggleSection('b-tech-ag')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech-ag"><div id="tech-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-fund-ag" onclick="toggleSection('b-fund-ag')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund-ag"><div id="fund-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-flow-ag" onclick="toggleSection('b-flow-ag')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••3900's names)</span></span><span class="chevron">▼</span></div><div id="b-flow-ag">
+      <div id="flow-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
+    </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(decisions graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
       <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
     </div></div>
@@ -2066,6 +2064,7 @@ function renderAgenticPage(){
   guard('agenticPerf',()=>renderAgenticPerf());
   guard('agenticCard',()=>renderAgenticCard());
   guard('agenticLog',()=>renderAgenticLog());
+  guard('agenticFlow',()=>renderFlowCard({sfx:'-ag',scope:'agentic'}));
   guard('agenticAnalytics',()=>renderAgenticAnalytics());
 }
 window.renderAgenticPage=renderAgenticPage;
@@ -2470,8 +2469,11 @@ window.renderAgenticLog=renderAgenticLog;
    a burn-in so the signal can be judged on real accumulated data before it earns any say (see
    producer/PROPOSAL-flow-signals.md §8). The congressional block carries ZERO weight permanently: it lags
    40-116 days, its apparent edge is a megacap-tech beta tilt, and megacap names are excluded upstream. ═══ */
-function renderFlowCard(){
-  const el=document.getElementById('flow-content'); if(!el)return;
+/* opts.scope: 'main' (default) = the self-directed book · 'agentic' = ••••3900's holdings and its
+   research-target names. One card per account side of the Accounts tab. */
+function renderFlowCard(opts){
+  const O=opts||{}, scope=O.scope||'main', agOnly=scope==='agentic';
+  const el=document.getElementById('flow-content'+(O.sfx||'')); if(!el)return;
   const F=(window.__DATA&&window.__DATA.flow)||null;
   if(!F||!F.symbols||!Object.keys(F.symbols).length){
     el.innerHTML='<div class="fund-note" style="margin:0">No flow data in this snapshot yet — it lands on the next full producer run (needs <code>FINNHUB_KEY</code>).</div>';
@@ -2485,11 +2487,19 @@ function renderFlowCard(){
   const agHeld=new Set((Array.isArray(AG.positions)?AG.positions:[]).filter(p=>p&&p.qty>0).map(p=>p.symbol));
   const agTgt=new Set((((AG.target||{}).names)||[]).map(n=>n&&n.ticker).filter(Boolean));
   const acctTag=(sym)=>{ const t=[];
-    if(held.has(sym))t.push('📊'); if(agHeld.has(sym))t.push('🤖'); else if(agTgt.has(sym))t.push('🎯');
+    if(agOnly){ if(agHeld.has(sym))t.push('🤖'); else if(agTgt.has(sym))t.push('🎯'); if(held.has(sym))t.push('📊'); }
+    else { if(held.has(sym))t.push('📊'); if(agHeld.has(sym))t.push('🤖'); else if(agTgt.has(sym))t.push('🎯'); }
     return t.length?` <span style="font-size:9.5px">${t.join('')}</span>`:' <span class="card-hint" style="font-size:9px">not held</span>'; };
+  // Each account side shows only ITS OWN names: this card sits inside the Accounts toggle, so a
+  // margin-only ticker under the Agentic side is just noise about a book you aren't looking at.
+  const inScope=(sym)=>agOnly?(agHeld.has(sym)||agTgt.has(sym)):held.has(sym);
   const rows=Object.values(F.symbols)
-    .filter(s=>s&&s.sym)
+    .filter(s=>s&&s.sym&&inScope(s.sym))
     .sort((a,b)=>((b.flow&&b.flow.score)||-1)-((a.flow&&a.flow.score)||-1));
+  if(!rows.length){
+    el.innerHTML=`<div class="fund-note" style="margin:0">No flow read yet for ${agOnly?'this account\'s holdings or target names':'this account\'s holdings'}. The producer covers both books, so ${agOnly?'these':'they'} fill in on its next full run.</div>`;
+    return;
+  }
   const pill=(v)=>{ if(v==null)return '<span style="opacity:.4">—</span>';
     const c=v>=7?'#16a34a':v>=5.5?'#65a30d':v>=4?'#a16207':'#dc2626';
     return `<b style="color:${c}">${fmt(v,1)}</b>`; };
@@ -2509,7 +2519,7 @@ function renderFlowCard(){
   }).join('');
   const abstain=rows.filter(s=>!s.flow).length;
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">
-    Who is <i>acting</i> on your names — across <b>both accounts</b> (📊 self-directed · 🤖 agentic held · 🎯 agentic target). <b>Revisions</b> = analyst consensus direction (the change matters more than the level). <b>Insider</b> = open-market Form 4 only — grants and option exercises are excluded, and selling is weighted far below buying because large caps sell constantly for reasons that aren't a view. <b>Surprise</b> = earnings drift. <b>Awards</b> = federal contract growth. A blank column means that name abstained rather than guessing.
+    Who is <i>acting</i> on ${agOnly?'the names in your <b>agentic account</b> (🤖 held · 🎯 target, not yet opened)':'the names in your <b>self-directed account</b>'}. <b>Revisions</b> = analyst consensus direction (the change matters more than the level). <b>Insider</b> = open-market Form 4 only — grants and option exercises are excluded, and selling is weighted far below buying because large caps sell constantly for reasons that aren't a view. <b>Surprise</b> = earnings drift. <b>Awards</b> = federal contract growth. A blank column means that name abstained rather than guessing.
     <b>Display-only</b> — none of this moves the agentic target yet.</div>
     <div class="fund-note" style="margin:0 0 8px">${rows.length} names read${abstain?` · ${abstain} abstaining (too little data)`:''}${F.asOf?` · as of ${F.asOf}`:''}</div>`;
   let html=hdr+`<div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Flow</th><th class="tr">Revisions</th><th class="tr">Insider</th><th class="tr">Surprise</th><th class="tr">Awards</th></tr></thead><tbody>${body}</tbody></table></div>`;
@@ -2767,6 +2777,7 @@ async function load(){
       <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
       ${smalls.length>0?`<div class="card"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
+      <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••0741's names)</span></span><span class="chevron">▼</span></div><div id="b-flow"><div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div></div></div>
       <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks + ⚡ Action Center (raise cash · redeploy plan) →</span></div>
       <div class="disclaimer">Live from Robinhood + Alpha Vantage. Research only — not financial advice.</div>`;
 

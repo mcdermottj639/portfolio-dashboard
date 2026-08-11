@@ -123,7 +123,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
   test suite before pushing (see "Verify before shipping").
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v101** (`pf-v101`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v102** (`pf-v102`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -559,7 +559,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   watchdog, clean-stop on push failure, and the two best-effort post-publish **watchlist syncs** (the
   equity "Dashboard Top 10 Picks" list + the options watchlist — the only Robinhood writes; both
   fault-isolated so they never gate a run).
-- **🏛️ Flow & Positioning (v95; moved to the ACCOUNTS page in v100):** a card (`renderFlowCard`, mounted statically on `page-portfolio` OUTSIDE the account toggle so it shows under either side, each ticker tagged 📊 self-directed-held / 🤖 agentic-held / 🎯 agentic-target) + an Analyze **🏛️ Flow read chip**
+- **🏛️ Flow & Positioning (v95; moved to the ACCOUNTS page in v100, split per account in v102):** a card (`renderFlowCard(opts)`) mounted ONCE PER ACCOUNT SIDE — `{scope:'main'}` at the foot of `#app`, `{scope:'agentic', sfx:'-ag'}` on the agentic page directly above the Rebalance Log. Each shows only that account's names (`inScope`: margin-held, vs agentic-held ∪ agentic-target), because a shared card sitting outside the toggle listed margin-only tickers under the Agentic side — noise about a book you aren't looking at. Rows stay tagged 📊 self-directed-held / 🤖 agentic-held / 🎯 agentic-target (own account's tag first) so a name in both books is still obvious; an empty scope says so rather than rendering a blank table + an Analyze **🏛️ Flow read chip**
   showing who is *acting* on your names — analyst revision direction, insider Form 4 clusters, earnings
   surprise, federal contract awards — plus a lobbying-intensity strip and a labelled congressional-cluster
   strip. Reads `data.flow`; a name with too little data **abstains** rather than showing a misleading
