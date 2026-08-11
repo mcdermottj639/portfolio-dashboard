@@ -1942,7 +1942,7 @@ const AGENTIC_DRIFT=5; // pp — rebalance a name once it drifts this far from t
    surface each behind the Accounts toggle. This page owns everything ••••3900: the account-level
    performance the card never had, the holdings-vs-target tracker, and the graded decision log.
 ═══════════════════════════════════════════ */
-let _agenticInit=false, _agPerfMode='ret';
+let _agenticInit=false, _agPerfMode='ret', _agChart=null;
 
 /* Which account side of the Accounts tab is showing. Lazily renders the agentic page on first
    visit (like the tab inits) and persists the choice, so the app reopens where you left it. */
@@ -1955,11 +1955,29 @@ function setAccount(which){
   if(bm){ bm.classList.toggle('active',!isAg); bm.setAttribute('aria-selected',String(!isAg)); }
   if(bg){ bg.classList.toggle('active',isAg); bg.setAttribute('aria-selected',String(isAg)); }
   try{ localStorage.setItem('pf_acct',which); }catch(e){}
-  if(isAg&&!_agenticInit){ _agenticInit=true; try{ renderAgenticPage(); }catch(e){ try{console.warn('[render] agenticPage',e&&e.message);}catch(_){} } }
+  if(isAg&&!_agenticInit){ _agenticInit=true;
+    // Gate the first render on the snapshot settling. The boot restore (pf_acct='agentic') calls
+    // this synchronously during script parse, BEFORE data.json is decrypted — rendering then would
+    // freeze the hero at "—" behind a false "producer hasn't captured ••••3900" banner, since
+    // nothing below repaints the hero. Once __dataReady has settled this fires on a microtask, so a
+    // mid-session toggle still paints instantly. `.then(r,r)`: render either way — a failed decrypt
+    // should show the honest no-snapshot state, not a spinner forever.
+    const r=()=>{ try{ renderAgenticPage(); }catch(e){ try{console.warn('[render] agenticPage',e&&e.message);}catch(_){} } };
+    if(window.__dataReady&&window.__dataReady.then)window.__dataReady.then(r,r); else r();
+  }
   try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){}   // chips follow the visible side
   window.scrollTo(0,0);
 }
 window.setAccount=setAccount;
+
+/* The account's book, derived one way for every surface on this page (the hero, the perf card and
+   the tracker card all need it — keep them incapable of disagreeing). */
+function agenticBook(A){
+  const cash=A?Math.max(0,+A.cash||0):0;
+  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
+  const invested=held.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
+  return { cash, held, invested, equity:A?(+A.equity||(cash+invested)):0 };
+}
 
 /* Account-level day move: only the positions move, so this sums qty×(px − prior close) from the
    live quotes and expresses it against equity (cash included) — "how much did the account move
@@ -1979,10 +1997,7 @@ function agenticDay(A){
 function renderAgenticPage(){
   const app=document.getElementById('agentic-app'); if(!app)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
-  const cash=A?Math.max(0,+A.cash||0):0;
-  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
-  const invested=held.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
-  const equity=A?(+A.equity||(cash+invested)):0;
+  const {equity}=agenticBook(A);
   const dy=agenticDay(A);
   const dayP=(dy&&equity-dy.d>0)?(dy.d/(equity-dy.d)*100):null;
   const asOf=A&&A.asOf?new Date(A.asOf).toLocaleString():'';
@@ -2021,11 +2036,12 @@ window.setAgPerfMode=setAgPerfMode;
    put IN as a separate baseline so the gap between the two lines IS the money the account made. */
 function renderAgenticPerf(){
   const el=document.getElementById('ag-perf-content'); if(!el)return;
+  // This card repaints on every enrichment stage and mode toggle; Chart.js instances stay
+  // registered (with their ResizeObservers) until destroyed, so free the old one first — the same
+  // rule _picksChart follows.
+  if(_agChart){ try{_agChart.destroy();}catch(e){} _agChart=null; }
   const A=(window.__DATA&&window.__DATA.agentic)||null;
-  const cash=A?Math.max(0,+A.cash||0):0;
-  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
-  const invested=held.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
-  const equity=A?(+A.equity||(cash+invested)):0;
+  const {cash,invested,equity}=agenticBook(A);
   const spySer=(typeof azSeries==='function')?azSeries('SPY'):[];
   const st=A?agenticPerfStats(A,spySer):null;
   if(!st){
@@ -2049,7 +2065,7 @@ function renderAgenticPerf(){
       <div class="perf-metric"><div class="pm-l">Return since ${sinceLbl}</div><div class="pm-v ${sc(st.ret)}">${fmtP(st.ret)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">deposit-adjusted${st.days?` · ${st.days}d`:''}</div></div>
       <div class="perf-metric"><div class="pm-l">S&amp;P 500 same window</div><div class="pm-v ${sc(st.spy)}">${st.spy!=null?fmtP(st.spy):'—'}</div>${alpha!=null?`<div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${alpha>=0?'ahead by':'behind by'} ${fmt(Math.abs(alpha),1)}pp</div>`:''}</div>
       <div class="perf-metric"><div class="pm-l">Money made</div><div class="pm-v ${sc(money)}">${fmtD(money)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">net of deposits</div></div>
-      <div class="perf-metric"><div class="pm-l">You put in</div><div class="pm-v">${fmtD(st.firstEquity+st.netFlow)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(st.firstEquity)} start${Math.abs(st.netFlow)>=1?` + ${fmtD(st.netFlow)} added`:''}</div></div>
+      <div class="perf-metric"><div class="pm-l">You put in</div><div class="pm-v">${fmtD(st.firstEquity+st.netFlow)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(st.firstEquity)} start${Math.abs(st.netFlow)>=1?(st.netFlow>0?` + ${fmtD(st.netFlow)} added`:` − ${fmtD(Math.abs(st.netFlow))} withdrawn`):''}</div></div>
       <div class="perf-metric"><div class="pm-l">Account today</div><div class="pm-v">${fmtD(equity)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(invested)} invested · ${fmtD(cash)} cash</div></div>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px"><button class="hm-tg${_agPerfMode==='ret'?' active':''}" onclick="setAgPerfMode('ret')">Return %</button><button class="hm-tg${_agPerfMode==='val'?' active':''}" onclick="setAgPerfMode('val')">Value $</button></div>
@@ -2082,7 +2098,7 @@ function renderAgenticPerf(){
   // The stat row above is the substance; the chart is decoration. Never let a charting failure
   // (Chart.js unavailable offline, a degenerate series) take the numbers down with it.
   try{
-    new Chart(ctx,{ type:'line', data:{labels,datasets:ds},
+    _agChart=new Chart(ctx,{ type:'line', data:{labels,datasets:ds},
       options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
         plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>pctMode?` ${c.dataset.label}: ${c.parsed.y>=0?'+':''}${c.parsed.y.toFixed(1)}%`:` ${c.dataset.label}: ${fmtD(c.parsed.y)}`}}},
         scales:{x:{ticks:{maxTicksLimit:6,font:{size:10},color:chTick()},grid:{display:false}},
@@ -2095,10 +2111,7 @@ window.renderAgenticPerf=renderAgenticPerf;
 function renderAgenticCard(){
   const el=document.getElementById('agentic-content'); if(!el)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
-  const cash=A?Math.max(0,+A.cash||0):0;
-  const heldPos=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
-  const investedNow=heldPos.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
-  const equity=A?(+A.equity||(cash+investedNow)):0;
+  const {cash,held:heldPos,invested:investedNow,equity}=agenticBook(A);
   const book=Math.max(0,equity);            // unlevered: the account's own equity IS the book (1×)
   const P=(v)=>'$'+(+v).toFixed(2);
   const ovMap=(window.__SNAP&&window.__SNAP.ovMap)||{};

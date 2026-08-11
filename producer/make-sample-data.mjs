@@ -224,20 +224,25 @@ const data = {
   leaders: LEADERS,
   // Sample agentic account so the Agentic Portfolio card renders populated in local preview
   // (real runs emit this from agentic-portfolio.json/agentic-positions.json in build-data.mjs).
-  agentic: {
+  agentic: (() => {
+    // Priced FROM the fixture's own quotes — the real producer prices agentic positions off the
+    // same quote table, and two consumer surfaces cross-check them in preview: the day-move hero
+    // computes qty×(px − quote prev close), and Account Performance reads equity against the
+    // history. Hardcoded px values that disagree with the quotes made the hero show a fake ~+5%
+    // day on a flat sample book (and a made-up round equity contradicted "money made").
+    const pos = [['SPY', 0.231, 0.006], ['NVDA', 0.770, 0.007], ['V', 0.416, 0.005], ['GOOGL', 0.381, 0.001]]
+      .map(([symbol, qty, gain]) => {
+        const px = parseFloat((quotes[symbol] || {}).last_trade_price) || 100;
+        return { symbol, qty, avgCost: +(px * (1 - gain)).toFixed(2), px, value: +(qty * px).toFixed(2) };
+      });
+    const cash = 196.0;
+    const equity = +(cash + pos.reduce((s, p) => s + p.value, 0)).toFixed(2);
+    return {
     asOf: now.toISOString(),
-    cash: 196.0,
-    buyingPower: 196.0,
-    // cash + the positions below — the real producer emits a consistent book, and the Account
-    // Performance card reads equity against the equity history, so a made-up round number here
-    // would make the preview's "account today" contradict its own "money made".
-    equity: +(196.0 + 170.94 + 150.92 + 140.61 + 129.92).toFixed(2),
-    positions: [
-      { symbol: 'SPY', qty: 0.231, avgCost: 735.92, px: 740.0, value: 170.94 },
-      { symbol: 'NVDA', qty: 0.770, avgCost: 194.66, px: 196.0, value: 150.92 },
-      { symbol: 'V', qty: 0.416, avgCost: 336.44, px: 338.0, value: 140.61 },
-      { symbol: 'GOOGL', qty: 0.381, avgCost: 340.95, px: 341.0, value: 129.92 },
-    ],
+    cash,
+    buyingPower: cash,
+    equity,
+    positions: pos,
     // Sample real equity history (~2 trading weeks) so the consumer's REAL agentic line, the
     // "Agentic since" stat and the Account Performance card all render. Includes a mid-series
     // $250 DEPOSIT (annotated via the running cumFlow, exactly as build-data.mjs infers it) so the
@@ -251,18 +256,18 @@ const data = {
       const spy = hist.day.SPY || [];
       const dates = spy.slice(-15).map((b) => String(b.begins_at || b.t).slice(0, 10));
       const DEPOSIT = 250, AT = 8;                          // a $250 deposit lands at point 8
-      const end = 196.0 + 170.94 + 150.92 + 140.61 + 129.92; // = today's equity, so the series lands on it
-      const start = +(end - DEPOSIT - 51.8).toFixed(2);      // …having earned ~$51.80 along the way
+      const start = +(equity - DEPOSIT - 51.8).toFixed(2);  // ends on today's equity, ~$51.80 earned
       const out = []; let cumFlow = 0;
       dates.forEach((t, n) => {
         if (n === AT) cumFlow += DEPOSIT;
         const grown = start * (1 + 0.0037 * n) + (n % 2 ? 1.5 : -1);
         out.push({ t, equity: +(grown + cumFlow).toFixed(2), cumFlow });
       });
-      out[out.length - 1].equity = +end.toFixed(2);          // end exactly on the live figure
+      out[out.length - 1].equity = equity;                  // end exactly on the live figure
       return out;
     })(),
-  },
+    };
+  })(),
 };
 
 await emit(data);
