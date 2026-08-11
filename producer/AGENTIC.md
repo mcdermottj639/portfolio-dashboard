@@ -248,6 +248,29 @@ Cheap by construction: every run starts with the deterministic gate and exits im
    as-is (idempotent — the next pass re-checks open orders via `get_equity_orders` before re-placing),
    and push a failure note instead of improvising.
 
+## Entry discipline, the idle-cash deadline, and the waiting ground (v102)
+Three linked rules the planner enforces, all added 2026-08-11 after a live re-verification exposed them:
+
+- **Symmetric entry band.** A buy defers only when price is more than `ENTRY_TOLERANCE_PCT` (2.5%) *below*
+  the entry floor or more than `ENTRY_PREMIUM_PCT` (2.0%) *above* the ceiling. Previously there was no
+  tolerance (a 0.2% miss parked a whole position) and no upper bound at all, so a target whose zones were
+  set deliberately below spot would have been bought straight through. `below-stop` is deliberately **not**
+  banded — at/below the stop is the genuine thesis-broken signal and stays absolute.
+- **Zones expire.** Past `ENTRY_ZONE_STALE_DAYS` (7 days from `target.asOf`) the bands go advisory and are
+  skipped. Zones are written against the prices of the day the research ran; when most of the target reads
+  "out of band" at once, the guard is measuring its own staleness, not the companies.
+- **The waiting ground (`PARK_VEHICLE` = VTI).** Deferred dollars are parked in a broad-market placeholder
+  rather than left in cash, and released to fund each name as it clears. VTI rather than SPY so the
+  placeholder is visibly separate from the target's SPY ballast (and the two aren't substantially identical
+  for wash-sale purposes); not QQQ, which would concentrate into the capped megacap-tech cluster. The
+  vehicle is **exempt from off-target exits** — it is absent from the target by design, and without the
+  exemption the orphan rule would sell it every pass while parking rebuilt it. Releases are taxable ST
+  sales: floored at `PARK_MIN` ($100), sized to the actual shortfall, PDT-guarded, losses-first ordered.
+- **Idle-cash deadline (backstop).** If cash still sits past `CASH_IDLE_DEPLOY_DAYS` (10, tracked by
+  `data.agentic.cashIdleSince`), the bands are waived and the balance deploys in ~thirds
+  (`CASH_IDLE_TRANCHE_PCT`), sweeping whole under `CASH_IDLE_SWEEP_FLOOR`. Waiting indefinitely is a
+  decision too, and cash drag is a loss that never shows up as one.
+
 ## Robinhood writes from this account
 The **executor** (above) is the only thing that places orders here: unattended within the **auto tier**
 (≤ $1,000 turnover/ticket), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900

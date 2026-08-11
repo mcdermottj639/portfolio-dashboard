@@ -81,7 +81,9 @@ for (const e of A.recentLosses || []) {
 }
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},
-  washMap, opts: { asOf: today },
+  washMap, parked: A.parked || null,
+  // v102: the idle clock and the parking ledger both live in the snapshot (raw/ is wiped every run).
+  opts: { asOf: today, cashIdleDays: A.cashIdleDays ?? null },
 });
 
 if (!(plan.turnover >= MIN_TURNOVER)) idle(`plan turnover $${plan.turnover} < $${MIN_TURNOVER} — nothing worth a ticket`);

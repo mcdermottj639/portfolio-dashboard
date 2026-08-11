@@ -327,6 +327,25 @@ const data = {
   } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {
     data.agentic.equityHistory = prior.agentic.equityHistory.slice(-260);
   }
+  // ── Idle-cash clock (v102) = data.agentic.cashIdleSince ────────────────────────────────────────
+  // The deploy planner's idle deadline needs to know HOW LONG cash has been sitting, and raw/ is wiped
+  // every run, so the clock can only live in the snapshot (the ivHistory/ledger pattern). Semantics:
+  // the first UTC day deployable cash crossed the floor and has stayed above it since. Falling back
+  // under the floor RESETS it — otherwise a deposit spent down to nothing would leave a stale start
+  // date that instantly "expires" the next deposit and force-deploys it on arrival.
+  if (data.agentic) {
+    const IDLE_FLOOR = 200;
+    const day = String(data.generatedAt || '').slice(0, 10);
+    const cashNow = +(data.agentic.cash || 0);
+    const prevSince = (prior && prior.agentic && prior.agentic.cashIdleSince) || null;
+    data.agentic.cashIdleSince = cashNow >= IDLE_FLOOR ? (prevSince || day) : null;
+    if (data.agentic.cashIdleSince && day) {
+      const d = Math.round((Date.parse(day + 'T00:00:00Z') - Date.parse(data.agentic.cashIdleSince + 'T00:00:00Z')) / 86400000);
+      data.agentic.cashIdleDays = Number.isFinite(d) ? Math.max(0, d) : null;
+    } else data.agentic.cashIdleDays = 0;
+    // Index-parking ledger — carried forward; the executor rewrites it after a park/release fills.
+    if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked;
+  }
   // ── Wash-sale ledger (taxable ••••3900) = data.agentic.recentLosses [{sym,date,realized?,avgCost?,exitPx}],
   // rolling 31 days. The consumer's Agentic card reads it to BLOCK + flag rebuying any name inside the
   // 30-day window.

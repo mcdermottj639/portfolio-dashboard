@@ -219,5 +219,83 @@ const pdtTrim = planDeployment({
 });
 ok('a trim of a name bought today is blocked too', !find(pdtTrim.trims, 'NVDA') && !!find(pdtTrim.blockedSells, 'NVDA'));
 
+// ── v102: symmetric entry band, zone ageing, idle-cash deadline, index parking ──────────────────
+// Fresh target (asOf == asOf) so zones are live; one name, so the arithmetic is checkable by hand.
+const band = (px, extra = {}, tgt = {}) => planDeployment({
+  target: { asOf: '2026-08-11', driftTriggerPp: 5, names: [{ ticker: 'V', weightPct: 100, entry: '364-372', stop: 328 }], ...tgt },
+  positions: [], cash: 1000, quotes: { V: px, SPY: 750 }, opts: { asOf: '2026-08-11' }, ...extra,
+});
+const defReason = (p, sym) => (p.deferred.find((d) => d.sym === sym) || {}).reason;
+
+// (a) TOLERANCE — the live 2026-08-11 case: V at $363.22 vs a $364 floor is 0.2% under = noise.
+ok('a 0.2% miss under the entry floor no longer defers', !!find(band(363.22).buys, 'V'));
+ok('…and a real break below the floor still does', defReason(band(340), 'V') === 'below-entry');
+ok('below-stop stays absolute — no tolerance band', defReason(band(320), 'V') === 'below-stop');
+
+// (b) UPPER BOUND — the gap that would have bought all 7 names above their zones on 2026-08-11.
+ok('a small premium over the entry ceiling is tolerated', !!find(band(375).buys, 'V'));
+ok('a real premium over the ceiling defers (above-entry)', defReason(band(400), 'V') === 'above-entry');
+
+// (c) AGEING — same out-of-band price, but the zone is 30 days old → advisory, so it buys.
+const stale = band(400, {}, { asOf: '2026-07-12' });
+ok('a stale entry zone goes advisory (no band deferral)', !!find(stale.buys, 'V') && stale.entryPolicy.zonesStale === true);
+ok('…and says so in the warnings', stale.warnings.some((w) => /advisory/i.test(w)));
+
+// (d) IDLE DEADLINE — cash sitting past the deadline waives the bands and tranches in.
+const idle = band(400, { opts: { asOf: '2026-08-11', cashIdleDays: 12 } });
+ok('past the idle deadline the bands are waived', !!find(idle.buys, 'V') && idle.entryPolicy.idleOverdue === true);
+ok('…and only a tranche of the idle cash is deployed', idle.entryPolicy.tranching === true && idle.spent < 500);
+ok('…while a small balance is swept whole, not tranched forever',
+  planDeployment({ target: { asOf: '2026-08-11', names: [{ ticker: 'V', weightPct: 100, entry: '364-372', stop: 328 }] },
+    positions: [], cash: 200, quotes: { V: 400 }, opts: { asOf: '2026-08-11', cashIdleDays: 30 } }).entryPolicy.tranching === false);
+
+// (e) PARKING — a deferred name's dollars go to the VTI waiting ground instead of idling in cash.
+const parkArgs = {
+  target: { asOf: '2026-08-11', driftTriggerPp: 5, names: [
+    { ticker: 'V', weightPct: 50, entry: '364-372', stop: 328 }, { ticker: 'SPY', weightPct: 50, entry: '740-760', stop: 690 }] },
+  positions: [], cash: 2000, quotes: { V: 450, SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-11' },
+};
+const parked = planDeployment(parkArgs);
+ok('V defers on premium and its weight parks in VTI', defReason(parked, 'V') === 'above-entry' && parked.parking.parked !== null);
+ok('the vehicle is VTI, not the SPY ballast', parked.parking.vehicle === 'VTI');
+ok('the park leg is a real VTI buy flagged parked', (find(parked.buys, 'VTI') || {}).parked === true);
+ok('parking is reported and named', parked.parking.after > 0 && parked.parking.forNames.includes('V'));
+ok('parking off → the money stays in cash', planDeployment({ ...parkArgs, opts: { ...parkArgs.opts, park: false } }).parking.parked === null);
+ok('the SPY ballast is untouched by parking', !find(parked.buys, 'VTI') || (find(parked.buys, 'SPY') || {}).parked !== true);
+
+// (f) INVARIANT 1 — the placeholder is absent from the target, so the off-target EXIT rule would
+//     liquidate it every pass and the parking rule would rebuild it. That loop must not exist.
+const heldPark = planDeployment({ ...parkArgs,
+  parked: { vehicle: 'VTI', dollars: 900, forNames: ['V'] },
+  positions: [{ symbol: 'VTI', qty: 3, avgCost: 300 }], cash: 0 });
+ok('the parked VTI position is NOT exited as off-target',
+  !heldPark.exits.some((e) => e.sym === 'VTI' && e.kind === 'exit'));
+ok('…nor trimmed as drift', !find(heldPark.trims, 'VTI'));
+ok('parking off → VTI IS a normal off-target orphan again', !!find(planDeployment({ ...parkArgs,
+  positions: [{ symbol: 'VTI', qty: 3, avgCost: 300 }], cash: 0, opts: { ...parkArgs.opts, park: false } }).exits, 'VTI'));
+
+// (g) RELEASE — V clears, so the parked slice is sold to fund it (taxable, in the sell list).
+const relArgs = {
+  target: { asOf: '2026-08-11', driftTriggerPp: 5, names: [
+    { ticker: 'V', weightPct: 50, entry: '364-372', stop: 328 }, { ticker: 'SPY', weightPct: 50, entry: '740-760', stop: 690 }] },
+  positions: [{ symbol: 'VTI', qty: 5, avgCost: 280 }, { symbol: 'SPY', qty: 2, avgCost: 700 }],
+  cash: 0, quotes: { V: 368, SPY: 750, VTI: 300 },
+  parked: { vehicle: 'VTI', dollars: 1400, forNames: ['V'] }, opts: { asOf: '2026-08-11' },
+};
+const rel = planDeployment(relArgs);
+ok('a cleared name releases the parked slice', rel.parking.released !== null && rel.parking.after < rel.parking.before);
+ok('the release is a SELL carrying a realized P&L', (rel.parking.released || {}).kind === 'park-release' && rel.parking.released.pl !== null);
+ok('…and it funds the cleared name', !!find(rel.buys, 'V'));
+ok('release respects the PDT guard', planDeployment({ ...relArgs,
+  accountActivity: { VTI: { lastBuyDate: '2026-08-11' } } }).parking.released === null);
+ok('the release never exceeds what was parked', rel.parking.released.dollars <= 1400 + 1e-6);
+
+// (h) entry zones with commas + trailing prose must parse (the live research writes them this way).
+const prose = planDeployment({
+  target: { asOf: '2026-08-11', names: [{ ticker: 'LLY', weightPct: 100, entry: '$1,130-$1,180 (into the $1,160 50-DMA)', stop: 1075 }] },
+  positions: [], cash: 1000, quotes: { LLY: 1216.41 }, opts: { asOf: '2026-08-11' },
+});
+ok('a "$1,130-$1,180 (prose)" zone parses and defers on premium', defReason(prose, 'LLY') === 'above-entry');
+
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);
