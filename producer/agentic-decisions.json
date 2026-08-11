@@ -225,6 +225,36 @@
           "weightAfter": 18
         }
       ]
+    },
+    {
+      "id": "2026-08-11-deploy",
+      "date": "2026-08-11",
+      "kind": "deploy",
+      "targetAsOf": "2026-08-05",
+      "book": 5315.77,
+      "equityAtDecision": 5315.77,
+      "spyAt": 773.45,
+      "rationale": "Owner-confirmed ticket 2026-08-11-iy7ywv — deploy the cash left over from the 08-10 rebalance. No sells, $0 tax. Live pre-checks: book -0.41% vs plan basis; next reports NVDA 2026-08-26, V 2026-10-27, UNH 2026-10-27, so no earnings blackout. NVDA was buyable because the wash-sale ledger now rebuilds from real closing trades (lossSource=trades, empty) — the phantom loss behind the 09-02 block is gone. PLACED: NVDA $86.49 @ $216.67, UNH $1.80 @ $403.52. HELD BACK: V $436.92 — it had slipped to $362.96, below its planned $364-372 entry, which is the planner's own below-entry deferral rule (it was $364.32 when the plan was built); re-proposes when it trades back in the zone. GOOGL still deferred below entry.",
+      "trades": [
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 86.49,
+          "shares": 0.399184,
+          "priceAt": 216.6667,
+          "weightBefore": 13.38,
+          "weightAfter": 15
+        },
+        {
+          "sym": "UNH",
+          "side": "BUY",
+          "dollars": 1.8,
+          "shares": 0.00446,
+          "priceAt": 403.518,
+          "weightBefore": 10.97,
+          "weightAfter": 11
+        }
+      ]
     }
   ]
 }
