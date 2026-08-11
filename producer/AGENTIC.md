@@ -195,16 +195,25 @@ Cheap by construction: every run starts with the deterministic gate and exits im
 > **explicitly pre-approved the resulting deployment**: *"Reverify convictions and place the trades at
 > tomorrow open. Don't ask me for approval for this one just place."*
 >
-> So on **2026-08-12**, the first executor pass after the open must **NOT** stop at `EXEC_PROPOSE`. Build the
-> ticket with `makeTicket`, immediately `advanceTicket(... ,'confirmed')` citing this authorization, and
-> place it — even though turnover (~$5.5k) is far above `AUTO_TURNOVER_CAP`. Report the fills by
-> PushNotification afterwards; do not request a one-tap.
+> **NARROWED 2026-08-11 (owner) — SPY ONLY.** The re-verification run that afternoon came back defensive:
+> adversarial verify rejected **5 of 6** single names, every rejection conceding the business is sound and
+> objecting to **entry price**, and the resulting allocation set every entry zone *below* spot — SPY was the
+> only name inside its band. Rather than deploy $5.5k into six names the verify stage had just rejected, the
+> owner chose *"SPY only is good for now"*.
 >
-> **Scope — this is spent once.** It covers the single deployment ticket that puts this deposit to work, and
-> nothing else. Every ordinary deferral still applies (earnings blackout, wash-sale, below-entry/below-stop
-> re-verify, PDT, the 5% book-move abort) — a deferred name stays deferred; the owner pre-approved the
-> *ticket*, not an override of the guards. Once that ticket reaches `done`, **delete this block** and the
-> normal auto-cap tiering resumes.
+> So on **2026-08-12**, the first executor pass after the open places **exactly one order**: buy SPY at market
+> (fractional dollar-market) to bring it to **20% of book** — roughly **$1,100** on a ~$10.3k book; recompute
+> off the live book at the open, never exceed 20%. Place it without a one-tap. Then advance the ticket to
+> `done`, log the decision, and **delete this block**.
+>
+> **Do NOT** deploy the remaining ~$4,400 — it waits in cash. **Do NOT** commit the 2026-08-11 research output
+> as `agentic-target.json`: it drops AAPL/GOOGL/UNH and re-adds LLY/AMZN/MSFT, which would sell holdings
+> bought that same morning and rebuy names sold two days earlier. The **2026-08-05 target stays canonical**
+> for existing holdings until the owner decides otherwise.
+>
+> **Scope — spent once.** Covers only the SPY ballast order above. Every ordinary deferral still applies
+> (earnings blackout, wash-sale, below-entry/below-stop re-verify, PDT, the 5% book-move abort); the owner
+> pre-approved a *ticket*, not an override of the guards.
 
 **Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
 1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise

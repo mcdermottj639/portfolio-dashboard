@@ -1,0 +1,443 @@
+{
+  "asOf": "2026-08-11",
+  "note": "Re-verification after the $5k deposit. NOT promoted to agentic-target.json — 5 of 6 names failed adversarial verify on entry price and the allocation would have churned the book. Kept for reference / later promotion.",
+  "ranking": [
+    {
+      "t": "LLY",
+      "composite": 7.912,
+      "m": 8.7,
+      "q": 9.2,
+      "g": 8.8,
+      "c": 9,
+      "v": 3.3,
+      "f": null
+    },
+    {
+      "t": "NVDA",
+      "composite": 7.882,
+      "m": 7.2,
+      "q": 9.8,
+      "g": 9.7,
+      "c": 6,
+      "v": 5.4,
+      "f": null
+    },
+    {
+      "t": "MSFT",
+      "composite": 7.748,
+      "m": 7,
+      "q": 9.7,
+      "g": 8,
+      "c": 5.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "JPM",
+      "composite": 7.666,
+      "m": 8.3,
+      "q": 8,
+      "g": 7.5,
+      "c": 8.5,
+      "v": 6,
+      "f": null
+    },
+    {
+      "t": "AMZN",
+      "composite": 7.488,
+      "m": 8.1,
+      "q": 7.8,
+      "g": 7.6,
+      "c": 8.5,
+      "v": 5.4,
+      "f": null
+    },
+    {
+      "t": "SHEL",
+      "composite": 7.404,
+      "m": 7.9,
+      "q": 6.8,
+      "g": 7.5,
+      "c": 7,
+      "v": 7.8,
+      "f": null
+    },
+    {
+      "t": "CNQ",
+      "composite": 7.32,
+      "m": 7.8,
+      "q": 7,
+      "g": 7,
+      "c": 7,
+      "v": 7.8,
+      "f": null
+    },
+    {
+      "t": "GOOGL",
+      "composite": 7.308,
+      "m": 5,
+      "q": 9.5,
+      "g": 8.2,
+      "c": 9,
+      "v": 4.8,
+      "f": null
+    },
+    {
+      "t": "GE",
+      "composite": 7.212,
+      "m": 8.4,
+      "q": 8.5,
+      "g": 7,
+      "c": 8.5,
+      "v": 3.3,
+      "f": null
+    },
+    {
+      "t": "V",
+      "composite": 7.144,
+      "m": 7,
+      "q": 9.6,
+      "g": 6.3,
+      "c": 7.5,
+      "v": 4.8,
+      "f": null
+    },
+    {
+      "t": "AVGO",
+      "composite": 7.136,
+      "m": 7.2,
+      "q": 8.5,
+      "g": 9.2,
+      "c": 6,
+      "v": 3.6,
+      "f": null
+    },
+    {
+      "t": "AAPL",
+      "composite": 7.014,
+      "m": 5.9,
+      "q": 9.6,
+      "g": 7.3,
+      "c": 7.5,
+      "v": 4.2,
+      "f": null
+    },
+    {
+      "t": "AMD",
+      "composite": 6.786,
+      "m": 8,
+      "q": 6.5,
+      "g": 8.7,
+      "c": 8,
+      "v": 2.4,
+      "f": null
+    },
+    {
+      "t": "UNH",
+      "composite": 6.302,
+      "m": 7.9,
+      "q": 6.8,
+      "g": 4.8,
+      "c": 8,
+      "v": 4.2,
+      "f": null
+    },
+    {
+      "t": "XOM",
+      "composite": 6.022,
+      "m": 6,
+      "q": 7.2,
+      "g": 5.5,
+      "c": 4.5,
+      "v": 6.3,
+      "f": null
+    },
+    {
+      "t": "CRM",
+      "composite": 5.9,
+      "m": 3.2,
+      "q": 8.3,
+      "g": 6.2,
+      "c": 3.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "META",
+      "composite": 5.87,
+      "m": 2.3,
+      "q": 9.2,
+      "g": 6.3,
+      "c": 3,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "COST",
+      "composite": 5.61,
+      "m": 2.1,
+      "q": 8.8,
+      "g": 6.3,
+      "c": 6,
+      "v": 4.5,
+      "f": null
+    },
+    {
+      "t": "ACN",
+      "composite": 5.58,
+      "m": 2,
+      "q": 8.5,
+      "g": 4.5,
+      "c": 3.5,
+      "v": 9,
+      "f": null
+    },
+    {
+      "t": "ICE",
+      "composite": 5.454,
+      "m": 2.5,
+      "q": 7.8,
+      "g": 5,
+      "c": 3,
+      "v": 8.4,
+      "f": null
+    },
+    {
+      "t": "CME",
+      "composite": 5.426,
+      "m": 2.2,
+      "q": 8.8,
+      "g": 4.5,
+      "c": 3.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "NFLX",
+      "composite": 5.314,
+      "m": 0.5,
+      "q": 8.7,
+      "g": 5.8,
+      "c": 3.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "HD",
+      "composite": 5.264,
+      "m": 4.6,
+      "q": 8.2,
+      "g": 3,
+      "c": 3.5,
+      "v": 6.3,
+      "f": null
+    },
+    {
+      "t": "CTSH",
+      "composite": 5.08,
+      "m": 3,
+      "q": 7,
+      "g": 3.5,
+      "c": 2.5,
+      "v": 9,
+      "f": null
+    },
+    {
+      "t": "WMT",
+      "composite": 4.906,
+      "m": 1.8,
+      "q": 8.2,
+      "g": 5.5,
+      "c": 4.5,
+      "v": 3.9,
+      "f": null
+    },
+    {
+      "t": "ORCL",
+      "composite": 4.65,
+      "m": 0.8,
+      "q": 6,
+      "g": 6.8,
+      "c": 2.5,
+      "v": 6.6,
+      "f": null
+    },
+    {
+      "t": "ROL",
+      "composite": 4.52,
+      "m": 0.2,
+      "q": 8.5,
+      "g": 4.5,
+      "c": 3,
+      "v": 5.7,
+      "f": null
+    }
+  ],
+  "flowWeight": 0,
+  "finalists": [
+    "LLY",
+    "NVDA",
+    "MSFT",
+    "JPM",
+    "AMZN",
+    "SHEL",
+    "CNQ",
+    "GOOGL",
+    "GE",
+    "V"
+  ],
+  "verdicts": [
+    {
+      "t": "LLY",
+      "rec": "hold",
+      "conf": 0.72,
+      "supports": false,
+      "risk": "Reward is already harvested at this entry: consensus PT $1,296.80 (20 analysts) is only +6.6% above spot $1,216.41 and one independent fair value is $1,218.72 (literally spot), against 33-38% annualized realized vol, a -23.3% 12m max drawdown, and a proven -14.1% single-day headline gap (2025-08-07). That is ~0.2 sigma of reward per 1 sigma of risk at 35x forward (industry median 17.4). Compounding it: near-term momentum is already gone (21-day RS vs SPY +0.1pp, vs XLV -1.2pp - the 8.7 score is carried entirely by stale 3m/12m windows), the entry sits at 76% of a five-week 1,109-1,249 range with the 52wk high ($1,249.45, set 2026-07-07 - NOT the $1,215.80 the screen claimed) having rejected twice, and the Q3 bar was reset to $9.48 vs Q2 actual $8.38 (+13% sequential), erasing the serial-beat cushion that came from a lagging estimate feed. Unscored live risks: Foundayo did only $98M in Q2 and Goldman cut its 2026 US estimate 31% ($1.1B to $755M) on a script stall that prints weekly; Q1 realized prices fell 13% against a 65% volume gain with Mounjaro+Zepbound at ~65% of sales - volume-led growth into a falling price curve is exactly where a 35x multiple de-rates without any miss."
+    },
+    {
+      "t": "NVDA",
+      "rec": "hold",
+      "conf": 0.82,
+      "supports": false,
+      "risk": "Binary earnings 8/26 (15d) with a ±7.3% implied move (8/28 ATM straddle $15.85, IV 42.4%) that EXCEEDS the 5.2% distance to the only logical stop (50-DMA $206.14) — the stop cannot function through the gap. Skew is negative: a good print (+7.3% = $233) still lands below 52wk-high resistance ($236.54), while a bad one breaks the 50-DMA and a -11% reaction hits the 200-DMA ($194.16) — and you'd be entering after an 18% two-week run on unremarkable volume. Compounding this, the screen itself is untrustworthy for this name: it ran on a stale $192.53 (NVDA's 2026-06-22 weekly close, 13% below the live $217.47), which corrupts the valuation (5.4) and R/R (19% of composite) sleeves and produced two mutually contradictory off-high figures (3.5% and -18.6%; actual -8.1%). Underneath that, NVDA lagged its own sector ETF by 75.6pp over 12 months (+19.0% vs SMH +94.6%) — a competitive-displacement signal the research never addressed — while its P/E compressed 55 to 31.6 on +108% TTM EPS, and the 'NI +210% accelerating' headline is a double artifact of a writedown-depressed base quarter (60.5% GM vs 72-75% normal) and a current quarter whose 71.5% net margin vs 74.9% gross margin implies ~$11B of non-operating gain; normalized growth is ~+94% with flat ~20% sequential, i.e. no acceleration."
+    },
+    {
+      "t": "MSFT",
+      "rec": "hold",
+      "conf": 0.82,
+      "supports": false,
+      "risk": "The screen ranked MSFT on a 34.9% stale price ($372.97 vs live $503.01), and the catalyst sleeve's entire thesis (\"-32.9% off high, near the 52wk low, unexplained sentiment overhang\") is a direct artifact of that stale number — live MSFT is only -9.2% off its high and +44.1% ABOVE the 52wk low. Strip the artifact and this is not a de-rated mean-reversion candidate but a momentum chase at the worst possible entry: RSI(14) 79.1 (vs the platform's own RSI>75 trim rule), +23.1% above the 50-DMA and 6.0 ATRs extended, immediately after the strongest three-day rally since October 2000. The bullish catalyst is fully paid out — the Q4 beat, Azure +43%, and the capex guide cut to ~$175B all happened on 7/29 and are in the tape — leaving consensus upside of only ~+11% to a >$560 mean target versus -13.9% to the 200-DMA and -18.8% to the 50-DMA, with the next catalyst 78 days out on Oct 28. Structure is also unconfirmed (50-DMA $408.59 still below a falling 200-DMA $433.02, no golden cross, 12m RS -24.5). Secondary: the growth sleeve's \"margins expanding\" is wrong at the operating line — gross margin compressed four straight quarters (69.05%→68.04%→67.63%→67.20%) and only NET margin expanded, contaminated by a one-off (Q2'26 printed 47.32%); FCF fell to $15.8B from $20.3B against $31.8B net income, which is the live bear case that produced a -34.9% drawdown eight weeks ago, and quality=9.7 was equally true at $349 in June, so it carries no drawdown protection."
+    },
+    {
+      "t": "JPM",
+      "rec": "hold",
+      "conf": 0.82,
+      "supports": false,
+      "risk": "Peak-cycle earnings capitalized at a peak multiple, with no room left to the entry. Q2'26's growth came from Equity Markets revenue +86% YoY and IB fees +30% (NII only +10%) plus a one-off $4.6B Visa gain — the least persistent revenue in banking — yet the stock trades at 2.65x book, +68% over its 10-yr median (1.58), +84% over its 20-yr average (1.44), and a 65-128% premium to BAC 1.59 / WFC 1.61 / C 1.16. A residual-income check (ROE 17.5%, g 4%, COE 10%) justifies only ~2.25x. Consensus already models the normalization: Q3'26 EPS est $5.46 vs Q2 actual $6.14, -11% sequential. That leaves +2.85% to the $372.65 consensus target against -5.1% to the 7/29 swing low and -7.2% to the 50-DMA — roughly 1:2 to 1:2.5 against, at an all-time high made today, inside a flat $362-363 ceiling tested four times in six sessions, on volume halving into the highs (4.6-5.8M vs 7.96M 30-day avg) with bearish RSI divergence (70.9 on 7/28 at $357.31 to 64.8 on 8/10 at $359.79). GS, the purest proxy for the trading boom behind the quarter, topped one day after JPM's print and is -10.5% since, so the market is already de-rating the cycle JPM is being bought for. Caveat, held honestly: fundamentals are NOT deteriorating — FY26 NII guidance was raised to ~$105.5B, card charge-offs guided down to ~3.2%, ROTCE 23%, no earnings until Oct 13 and no legal overhang. The risk is entry price, not business quality."
+    },
+    {
+      "t": "AMZN",
+      "rec": "hold",
+      "conf": 0.82,
+      "supports": false,
+      "risk": "Earnings quality: $53.4B of Q2's $62.6B pre-tax profit was a non-operating mark on the Anthropic stake (31.2% net margin vs ~11% baseline). Strip it and the \"3.2x blowout\" is a 4-15% beat and the 22.8x P/E becomes ~35x normalized. Meanwhile TTM FCF is -$7.6B (first negative print) with capex raised to $220B for higher memory costs, and the street models -$17B to -$28B FCF for 2026. The mark is reversible with AI sentiment, so a write-down would hit headline EPS and the multiple with no offsetting cash. Entry compounds it: live price is $272.42, not the screened $232.69, putting it 5% below an all-time high set eight days ago and +15% over the 200-DMA, not \"-16% off high with room.\""
+    },
+    {
+      "t": "SHEL",
+      "rec": "avoid",
+      "conf": 0.82,
+      "supports": false,
+      "risk": "The 10x P/E rests on war-inflated peak earnings, not cheapness. Q2'26 EPS $3.52 (vs $1.44 YoY) is a function of oil +82.6% YTD driven by the 2026 Strait of Hormuz closure (Rapidan: largest oil disruption in history, 3x the 1973 embargo). On FY2025 pre-shock EPS of $6.28 the multiple is 14.4x; at Goldman's $60 Brent Q4'26 (below 2025 levels, -30% EPS) it is ~20.6x. Trump has publicly said Hormuz reopens \"soon,\" and every de-escalation headline this year cratered crude (Brent -11.3% in a session to $85.87). Compounding it: the buy is proposed at a stale $77.16 when SHEL is actually $90.65 (+17.5% gap-through, 84% of 52wk range, -4.5% off high), consensus already models Q3 EPS -23.6% sequentially ($2.69 vs $3.52), the analyst tape is cutting (BNP to Neutral, Morgan Stanley to Equal Weight, Mizuho Neutral on reserve life/refining margins/litigation; 2026 revenue est. $307B->$270B), and SHEL lagged its own sector by 12.6pp YTD (+19.2% vs XLE +31.8%) so it never captured the war upside but owns the full de-rate downside."
+    },
+    {
+      "t": "CNQ",
+      "rec": "avoid",
+      "conf": 0.82,
+      "supports": false,
+      "risk": "Peak-cycle earnings masquerading as a cheap multiple. The 13.8x trailing PE rests on a war-inflated Q2'26 (EPS $1.581 on WTI $78-82 plus an extraordinary US$8.37/bbl SCO premium) that consensus already models collapsing 53% sequentially to $0.75 in Q3 (Nov 5) — while OPEC+ adds supply in September and the reopened Strait of Hormuz restores Gulf flows to ~90% of pre-war volumes. Normalized forward PE is ~14.5-15, not the claimed 11.8. The multiple re-rates upward on falling EPS rather than the stock re-rating upward. Compounding this, the entry is at the top of a 5-month lower-highs structure (51.34 to 50.16 to 49.75 to 47.82 to today's 47.74), +16.8% above the 200-DMA at $40.83, RSI 60, after a +22% seven-week run — upside to the 52wk high is +7.6% versus -14.4% to structural support, roughly 0.5:1 R/R against, with Scotiabank at Hold and only ~11% to its C$73 target."
+    },
+    {
+      "t": "GOOGL",
+      "rec": "avoid",
+      "conf": 0.88,
+      "supports": false,
+      "risk": "The entire \"cheap + massive catalyst\" case is an accounting artifact: $99.03B of non-cash unrealized gains on private equity stakes (Anthropic/SpaceX) inflated Q2'26 EPS to $9.11 vs a ~$2.80 operating figure, producing a headline P/E of 18.8x when normalized P/E is ~29-30x — the MOST expensive megacap (MSFT 27.2, AMZN 22.8, META 22.2), not the cheapest. Those marks are reversible into a reported GAAP loss, and there is no cash cushion behind them: Q2'26 free cash flow was -$5.9B, the first negative quarter since the 2004 IPO, against 2026 capex guided up to $195-205B. The market already voted on the \"3.2x blowout\" — GOOGL fell -7.13% on 2.18x volume the session after the 7/22 print. Secondary risk: the sole technical support (50>200 DMA, price above a rising 200-DMA) is on a mechanical clock — the 50-DMA is falling $0.86/day while the 200-DMA rises $0.51/day, closing a $25.02 gap into a death cross in ~18 sessions at a flat price, with price already 3.1% below the 50-DMA, volatility expanding (20d 52.5% vs 60d 38.3%), and a live key-man catalyst today (DeepMind CEO Hassabis and Jeff Dean departing; -3.77% vs SPY -0.29%)."
+    },
+    {
+      "t": "GE",
+      "rec": "avoid",
+      "conf": 0.8,
+      "supports": false,
+      "risk": "Priced for perfection into a decelerating order book, with no valuation cushion and an active negative revision. GE has beaten EPS every quarter and been SOLD every time: -7.4% (Q4'25), -5.6% (Q1'26), -4.1% (Q2'26, confirmed in bars: $360.35 -> $345.73 on 6.9M vs 4M avg volume) — the last one even came with a raised FY guide ($7.65-7.85 from $7.10-7.40). The beat streak the catalyst sleeve scored 8.5 on is the priced-in baseline, not an edge. Meanwhile orders decelerated 87% -> 17% QoQ (orders lead revenue in aero), and GE just cut its 2026 departures forecast from mid-single-digit to flat/low-single-digit growth on Middle East/Iran instability — departures drive the aftermarket services book, GE's margin engine. That is the proximate cause of the current slide and directly falsifies the note's \"no imminent catalyst risk.\" Margins are contracting, not stable: FY25 quarterly net margin averaged 19.0% vs 16.6% in H1'26; Q2'26 17.75% vs 18.40% YoY (-65bp), Q1'26 15.36% vs 19.91% (-455bp), and net income +17% is growing slower than revenue +21% — negative operating leverage at ~47x forward ($367 / $7.75 mid-guide) versus a ~35x 5-year norm and XLI at 29.9x / RTX at 38.1x. Multiple compression to its own historical average alone is roughly -25%. Technically the entry is broken: the momentum sleeve's \"-2.8% off high\" used a stale $379.67 (the Jun 25 print); the real 52wk high is $388.84 set Aug 6, so GE is -5.6% off it. Aug 6 was a bearish outside-reversal at the all-time high (open 383.97, high 388.84, close 374.55 — below the prior day's low) on rising volume, followed by four consecutive lower closes; today's bounce to 372.56 failed completely, leaving price at 367.02 near the day's low with RSI rolling 66.4 -> 54.9. The identical failed-spike setup seven weeks ago cost -10.5% (379.67 on Jun 25 -> 339.89 on Jul 20). R/R is unattractive: ATR(14) = $10.20 (2.8%/day) means any stop inside one ATR is noise, so a structural stop below the 50-DMA ($352.79) risks -3.9% against +5.9% upside to a high that has now rejected twice — about 1.5:1 into overhead supply. Corroborating the skew, UBS cut its target to $350 while keeping a Buy (4.6% BELOW spot) and Morgan Stanley cut $425 -> $400. Finally, the scoring itself was data-blind: the notes concede no AV sentiment or insider data (rate limit) and empty flow, so catalyst=8.5 rested entirely on a backward-looking EPS beat table that missed both the guidance revision and the order deceleration; valuation=3.3 was the only sleeve reading reality and was outvoted 4-to-1. The business is genuinely high quality (ROE 48%, engine duopoly, long-dated aftermarket annuity, deleveraged, revenue +21%) and the primary uptrend is intact with the July dip bought back to new highs — this is a verdict on the ENTRY at $367, not on the franchise. A pullback to the 50-DMA (~$353) or the July base (~$340) with orders stabilizing would make it a legitimate buy; initiating a long-only swing here, four days into a reversal from an all-time high with a fresh operational downgrade and zero valuation support, has negative expectancy."
+    },
+    {
+      "t": "V",
+      "rec": "buy",
+      "conf": 0.65,
+      "supports": true,
+      "risk": "Valuation with no margin of safety, compounded by a poor entry point. At ~31.4x trailing GAAP / ~28.4x trailing non-GAAP / ~25.7x forward FY27 EPS and 19.7x book, V is priced as a flawless mid-teens compounder while consensus PT ($413.79) implies only ~14% upside — so essentially all of the return depends on multiple maintenance rather than expansion. Buying at $362.49, just 3.1% below the 52wk high of $373.97, into a fading RSI (66.5 to 53.8) and six consecutive lower highs after the 7/29 heavy-volume upper-wick reversal, means paying a full multiple right as near-term momentum decelerates. Secondary: the \"quality defensive\" premise failed its live test this year (-21% Jan-to-Apr drawdown vs SPY -10%), so this is not the low-beta ballast the 9.6 quality score suggests, and a residual $17.4B of unresolved US covered litigation claims plus Class B makewhole dilution remains an ongoing cash and share-count drag."
+    }
+  ],
+  "allocation": {
+    "summary": "Seven names, 38% in the megacap-tech/AI correlation cluster (NVDA 13 + MSFT 13 + AMZN 12), comfortably inside the 48% cap, with payments at 15% (V) and Finance the only doubled sector (JPM + V, at the 2/sector limit). Risk posture is deliberately defensive: 5 of 6 survivors came back adversarially UNSUPPORTED — all six rejections concede the businesses are sound and locate the problem in entry price — so SPY ballast sits at the top of its band (20%) and every single-name entry zone is set below spot rather than at it, with stops measured off the entry, not off today's quote. Vol-scaling does real work here: V and JPM carry the largest single slots (15% each) on the two tightest 52wk ranges (0.221/0.231) despite V holding the lowest composite in the set, while LLY is cut to 12% despite the highest composite (7.912) because its 0.514 range is the widest in the book and its valuation sleeve is 3.3. Three names are sized down for specific, non-valuation defects rather than price: NVDA's 8/26 earnings carry a ±7.3% implied move that exceeds any workable stop distance, AMZN's headline beat is a reversible non-operating mark on the Anthropic stake against TTM FCF of -$7.6B, and MSFT's catalyst score was a pure artifact of the 35% stale price — live it is RSI 79 and six ATRs extended, in violation of the platform's own RSI>75 trim rule.",
+    "picks": [
+      {
+        "ticker": "SPY",
+        "sector": "Index / Broad Market",
+        "weightPct": 20,
+        "dollars": 200,
+        "thesis": "Uncapped index ballast at the top of the mandated band, deliberately maxed because 5 of 6 single-name verdicts came back unsupported on entry — this is the diversifier that carries the book while the singles wait for pullbacks.",
+        "entryZone": "$755-775 (accumulate at market, no timing)",
+        "stop": 690,
+        "target": 850,
+        "rr": "n/a - core hold (regime stop only)"
+      },
+      {
+        "ticker": "V",
+        "sector": "Finance",
+        "weightPct": 15,
+        "dollars": 150,
+        "thesis": "The only adversarially SUPPORTED name (buy, conf 0.65) and the tightest 52wk range in the book (0.221), so vol-scaling earns it a top slot on quality (9.6) despite the lowest composite (7.144) and soft growth (6.3).",
+        "entryZone": "$348-358 (pullback toward the $345 50-DMA, into the six-lower-highs fade)",
+        "stop": 328,
+        "target": 410,
+        "rr": "2.3:1"
+      },
+      {
+        "ticker": "JPM",
+        "sector": "Finance",
+        "weightPct": 15,
+        "dollars": 150,
+        "thesis": "The most balanced sleeve profile in the set (momentum 8.3, catalyst 8.5, quality 8.0, no sleeve below 6.0) on the second-tightest vol (0.231); the verdict's own words are that the risk is entry price, not business quality, and price is pinned at a $363 ceiling tested four times in six sessions.",
+        "entryZone": "$338-350 (7/29 swing-low retest toward the $334 50-DMA)",
+        "stop": 322,
+        "target": 390,
+        "rr": "2.1:1"
+      },
+      {
+        "ticker": "NVDA",
+        "sector": "Electronic Technology",
+        "weightPct": 13,
+        "dollars": 130,
+        "thesis": "Best fundamental pairing in the book on quality 9.8 / growth 9.7, but sized below its conviction because 8/26 earnings carry a ±7.3% implied move that exceeds the distance to any logical stop — the stop cannot function through that gap.",
+        "entryZone": "$200-210 (at the $206 50-DMA; ideally established after the 8/26 print)",
+        "stop": 186,
+        "target": 255,
+        "rr": "2.6:1"
+      },
+      {
+        "ticker": "MSFT",
+        "sector": "Technology Services",
+        "weightPct": 13,
+        "dollars": 130,
+        "thesis": "Carried by the best valuation sleeve in the set (7.5) plus quality 9.7 — but the catalyst sleeve (5.5) was a fabrication of the 35% stale price, and live MSFT is RSI 79.1 and six ATRs extended, so the entry zone demands a real retracement to the 200-DMA shelf.",
+        "entryZone": "$455-480 (retracement of the parabolic run, holding above the $433 200-DMA)",
+        "stop": 428,
+        "target": 560,
+        "rr": "2.4:1"
+      },
+      {
+        "ticker": "LLY",
+        "sector": "Health Technology",
+        "weightPct": 12,
+        "dollars": 120,
+        "thesis": "Highest composite (7.912) on four sleeves at 8.7+ (momentum/quality/growth/catalyst), cut hard anyway by vol-scaling — the 0.514 52wk range is the widest here, valuation is 3.3, and a proven -14.1% single-day headline gap sits against only ~6.6% of consensus upside.",
+        "entryZone": "$1,130-1,180 (lower half of the five-week range, into the $1,160 50-DMA)",
+        "stop": 1075,
+        "target": 1300,
+        "rr": "1.8:1"
+      },
+      {
+        "ticker": "AMZN",
+        "sector": "Retail Trade",
+        "weightPct": 12,
+        "dollars": 120,
+        "thesis": "Momentum 8.1 and catalyst 8.5 are real, but sized down on earnings quality rather than price: $53.4B of $62.6B pre-tax profit was a reversible non-operating Anthropic mark, and TTM FCF has gone negative at -$7.6B against a raised $220B capex line.",
+        "entryZone": "$250-264 (toward the $248 50-DMA, off the 8-day-old all-time high)",
+        "stop": 236,
+        "target": 315,
+        "rr": "2.8:1"
+      }
+    ]
+  }
+}
