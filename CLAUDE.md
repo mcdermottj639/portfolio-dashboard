@@ -119,7 +119,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
   to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v100** (`pf-v100`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v101** (`pf-v101`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -293,6 +293,27 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   jump-nav** skips cards hidden by the inactive side (`hiddenWithin`) and rebuilds on toggle
   (`window.__navRebuild`), so chips always match what's on screen. Privacy masking already scoped to
   `#page-portfolio`, so it covers the agentic side for free.
+- **Card parity across the two account sides (v101):** the agentic side now carries the SAME analytics
+  cards as the self-directed side — snapshot tiles, 🗺️ Holdings Heatmap, 🛡️ Risk & Diversification,
+  🗂 Allocation, 💵 Income & Tax, 📡 Technical Signals, 📋 Fundamentals — plus its own 📈 Account
+  Performance, 🤖 Agentic Portfolio tracker and 🧾 Rebalance Log. **They are the same functions, not
+  copies:** `agenticEnriched()` returns the margin `enriched` row shape (incl. `pct`, `dayD`/`dayP`
+  and `r`=`risk(pct)` — the shared renderers read `p.r.color`, so a row without it throws), and each
+  renderer took an optional `opts` — `{sfx}` picks the mount id (`'-ag'`), `{min}` the position floor,
+  `{scope}` the account. `renderAgenticAnalytics()` (fault-isolated per card, like `load()`) builds the
+  book, fetches this account's historicals (merged over `__SNAP.histMap`, since the margin fetch only
+  covers ITS top holdings) and drives them. Two deliberate account-specific differences: the position
+  floor is **`AG_MIN_POS` (1), not `SMALL_THR` (250)** — this book is fractional (~$150 names) and a
+  $250 floor would empty every table; and the snapshot's 5th tile is **Idle Cash %** instead of Margin
+  Used (the account can't borrow, so "Margin: None" was a dead tile — idle cash is what actually
+  drives its next rebalance). The heatmap keeps **per-instance state** (`_hmS` keyed by suffix) so the
+  two mounts' Day/P&L toggles don't move together. **Income & Tax is scoped**: `accountRollup(..., scope)`
+  filters accounts, so the self-directed side keeps the all-account view + By-Account table while the
+  agentic side shows only ••••3900 (no one-row table, its own harvest floor, options premium hidden —
+  options are margin-only, and the harvest pointer targets the rebalance ticket, not the Action Center).
+  Two cards are intentionally NOT duplicated because the agentic side already has a superset: **All
+  Positions** (the Agentic Portfolio tracker is the same table plus target/drift/trade) and
+  **Performance vs Benchmark** (Account Performance is the real, deposit-adjusted return).
 - **📈 Account Performance (v99, agentic side)** — the account-level performance the Agentic card never had.
   **`agenticPerfStats(AG, spySeries)`** is now the single source of truth for this math: extracted verbatim
   out of `renderPerformance`, it returns `{EH,mult,cumFlows,ret,spy,since,netFlow,firstEquity,lastEquity,pnl,days}`
