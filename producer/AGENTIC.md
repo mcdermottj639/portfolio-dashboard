@@ -203,8 +203,12 @@ Cheap by construction: every run starts with the deterministic gate and exits im
 > The owner deposited **$5,000** into ••••3900 on 2026-08-11 ($5,486.50 cash) and, after reviewing the
 > first re-verification, ratified the standing flow above and superseded the earlier SPY-only narrowing:
 > *"I want the research to build the model, it gets run through our legitimizer, traded, and then the
-> excess not placed goes to VTI."* The research was re-run that evening under the split-verdict pipeline
-> and promoted through `finalize-target.mjs` to `agentic-target.json`.
+> excess not placed goes to VTI."* The split-verdict research re-run + `finalize-target.mjs` promotion
+> happen the evening of 2026-08-11.
+>
+> **GUARD: this block applies ONLY if `agentic-target.json` carries `asOf` ≥ 2026-08-11.** If the
+> promotion did not land (the target still says 2026-08-05), the model was NOT rebuilt — do NOT
+> self-confirm; propose normally with a one-tap and say the promotion is missing.
 >
 > So on **2026-08-12**, the first executor pass after the open runs the gate as normal and — if the mode
 > comes back `EXEC_PROPOSE` purely because turnover exceeds the auto cap — treats THIS ticket as
