@@ -222,6 +222,19 @@ const data = {
   options,
   news,
   leaders: LEADERS,
+  // Sample flow read spanning BOTH books so the Accounts-page Flow card renders populated in
+  // preview and exercises the per-account tags: NVDA = held in both (📊🤖), SPY = agentic-held
+  // (🤖), AAPL = margin-only (📊), LLY = agentic target not yet opened (🎯).
+  flow: {
+    asOf: now.toISOString().slice(0, 10),
+    symbols: {
+      NVDA: { sym: 'NVDA', flow: { score: 6.8 }, revision: { score: 6.4, delta: 0.05 }, insider: { score: 3.2, cluster: 'sell', buyers: 1, sellers: 6 }, surprise: { score: 7.5 } },
+      SPY:  { sym: 'SPY',  flow: null, revision: null, insider: null, surprise: null },
+      AAPL: { sym: 'AAPL', flow: { score: 5.4, }, revision: { score: 5.9, delta: 0 }, insider: { score: 4.8, cluster: null, buyers: 2, sellers: 3 }, surprise: { score: 6.1 } },
+      LLY:  { sym: 'LLY',  flow: { score: 7.2 }, revision: { score: 7.0, delta: 0.11 }, insider: { score: 6.5, cluster: 'buy', buyers: 4, sellers: 1 }, surprise: { score: 7.8 }, award: { score: 4.0 } },
+    },
+    polEvents: [{ filer: 'Sample Member', sym: 'NVDA', side: 'buy', date: '2026-07-20' }],
+  },
   // Sample agentic account so the Agentic Portfolio card renders populated in local preview
   // (real runs emit this from agentic-portfolio.json/agentic-positions.json in build-data.mjs).
   agentic: (() => {
@@ -243,6 +256,15 @@ const data = {
     buyingPower: cash,
     equity,
     positions: pos,
+    // Sample research target: the four held names + one not yet opened (LLY), so preview
+    // exercises the research-target path, the Targets-to-open strip, and the Flow card's 🎯 tag.
+    target: { asOf: now.toISOString().slice(0, 10), method: 'sample', driftTriggerPp: 5, names: [
+      { ticker: 'SPY',   weightPct: 30, sector: 'Index' },
+      { ticker: 'NVDA',  weightPct: 22, sector: 'Technology' },
+      { ticker: 'V',     weightPct: 18, sector: 'Financial Services' },
+      { ticker: 'GOOGL', weightPct: 18, sector: 'Communication Services' },
+      { ticker: 'LLY',   weightPct: 12, sector: 'Healthcare', entry: '$610 – $630', stop: 585, target: 690 },
+    ] },
     // Sample real equity history (~2 trading weeks) so the consumer's REAL agentic line, the
     // "Agentic since" stat and the Account Performance card all render. Includes a mid-series
     // $250 DEPOSIT (annotated via the running cumFlow, exactly as build-data.mjs infers it) so the

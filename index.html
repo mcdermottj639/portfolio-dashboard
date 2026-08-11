@@ -566,6 +566,12 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   </div>
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
   <div id="agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic account…</div></div>
+  <!-- Flow & Positioning sits OUTSIDE the account toggle: it reads names from BOTH books (each row
+       tagged 📊/🤖/🎯), so it stays visible under whichever side is active. Moved here from the Plan
+       page — "who is acting on what I own" is account context, not pick research. -->
+  <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on your names — both accounts)</span></span><span class="chevron">▼</span></div><div id="b-flow">
+    <div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
+  </div></div>
 </div>
 <div id="page-picks" style="display:none">
   <div id="picks-app"><div class="loading-wrap"><div class="spinner"></div>Loading daily picks…</div></div>
@@ -689,7 +695,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v99'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v100'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2015,7 +2021,7 @@ function renderAgenticPage(){
     <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(decisions graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
       <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
     </div></div>
-    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks · ⚡ Action Center · 🏛️ Flow &amp; Positioning →</span></div>
+    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks · ⚡ Action Center →</span></div>
     <div class="disclaimer">Agentic account ••••3900 — research target refreshed weekly, rebalanced by the executor within your approved limits.${asOf?` Snapshot ${asOf}.`:''} Not financial advice.</div>`;
   // Fault isolation, same rule as load()'s enrichment block: each card renders independently so one
   // throw (a bad series, a Chart.js hiccup, a missing CDN) can't leave every card below it stuck on
@@ -2374,7 +2380,16 @@ function renderFlowCard(){
     el.innerHTML='<div class="fund-note" style="margin:0">No flow data in this snapshot yet — it lands on the next full producer run (needs <code>FINNHUB_KEY</code>).</div>';
     return;
   }
+  // Per-account tags — the card now lives on the Accounts page and covers BOTH books:
+  // 📊 held in the self-directed margin account · 🤖 held in ••••3900 · 🎯 in the agentic
+  // target but not yet held. A name in neither book keeps the old "not held" hint.
   const held=new Set((window.__SNAP&&window.__SNAP.enriched||[]).map(p=>p.symbol));
+  const AG=(window.__DATA&&window.__DATA.agentic)||{};
+  const agHeld=new Set((Array.isArray(AG.positions)?AG.positions:[]).filter(p=>p&&p.qty>0).map(p=>p.symbol));
+  const agTgt=new Set((((AG.target||{}).names)||[]).map(n=>n&&n.ticker).filter(Boolean));
+  const acctTag=(sym)=>{ const t=[];
+    if(held.has(sym))t.push('📊'); if(agHeld.has(sym))t.push('🤖'); else if(agTgt.has(sym))t.push('🎯');
+    return t.length?` <span style="font-size:9.5px">${t.join('')}</span>`:' <span class="card-hint" style="font-size:9px">not held</span>'; };
   const rows=Object.values(F.symbols)
     .filter(s=>s&&s.sym)
     .sort((a,b)=>((b.flow&&b.flow.score)||-1)-((a.flow&&a.flow.score)||-1));
@@ -2388,7 +2403,7 @@ function renderFlowCard(){
       :`${ins.buyers}B / ${ins.sellers}S`):'<span style="opacity:.4">—</span>';
     // Flat is flat: a delta of exactly 0 must not read as "improving".
     const revTxt=rev&&rev.delta!=null?`${rev.delta>0?'▲':rev.delta<0?'▼':'–'} ${rev.delta>0?'+':''}${fmt(rev.delta,2)}`:'<span style="opacity:.4">—</span>';
-    return `<tr><td><b>${s.sym}</b>${held.has(s.sym)?'':' <span class="card-hint" style="font-size:9px">not held</span>'}</td>
+    return `<tr><td><b>${s.sym}</b>${acctTag(s.sym)}</td>
       <td class="tr">${pill(s.flow&&s.flow.score)}</td>
       <td class="tr">${pill(rev&&rev.score)} <span class="card-hint" style="font-size:9.5px">${revTxt}</span></td>
       <td class="tr">${pill(ins&&ins.score)} <span class="card-hint" style="font-size:9.5px">${insTxt}</span></td>
@@ -2397,7 +2412,7 @@ function renderFlowCard(){
   }).join('');
   const abstain=rows.filter(s=>!s.flow).length;
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">
-    Who is <i>acting</i> on your names. <b>Revisions</b> = analyst consensus direction (the change matters more than the level). <b>Insider</b> = open-market Form 4 only — grants and option exercises are excluded, and selling is weighted far below buying because large caps sell constantly for reasons that aren't a view. <b>Surprise</b> = earnings drift. <b>Awards</b> = federal contract growth. A blank column means that name abstained rather than guessing.
+    Who is <i>acting</i> on your names — across <b>both accounts</b> (📊 self-directed · 🤖 agentic held · 🎯 agentic target). <b>Revisions</b> = analyst consensus direction (the change matters more than the level). <b>Insider</b> = open-market Form 4 only — grants and option exercises are excluded, and selling is weighted far below buying because large caps sell constantly for reasons that aren't a view. <b>Surprise</b> = earnings drift. <b>Awards</b> = federal contract growth. A blank column means that name abstained rather than guessing.
     <b>Display-only</b> — none of this moves the agentic target yet.</div>
     <div class="fund-note" style="margin:0 0 8px">${rows.length} names read${abstain?` · ${abstain} abstaining (too little data)`:''}${F.asOf?` · as of ${F.asOf}`:''}</div>`;
   let html=hdr+`<div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Flow</th><th class="tr">Revisions</th><th class="tr">Insider</th><th class="tr">Surprise</th><th class="tr">Awards</th></tr></thead><tbody>${body}</tbody></table></div>`;
@@ -3000,8 +3015,8 @@ window.switchTab=switchTab;
     </ul>` },
 
   /* ════════ PLAN / PICKS TAB ════════ */
-  'flow positioning': { tag:'Plan', t:'Flow &amp; Positioning', h:`
-    <p>Every other card reads the <i>company</i> — its price, its fundamentals. This one reads <b>who is acting on it</b>: analysts, corporate insiders, and the federal government.</p>
+  'flow positioning': { tag:'Accounts', t:'Flow &amp; Positioning', h:`
+    <p>Every other card reads the <i>company</i> — its price, its fundamentals. This one reads <b>who is acting on it</b>: analysts, corporate insiders, and the federal government. It covers the names in <b>both accounts</b> — 📊 held in the self-directed margin book, 🤖 held in the agentic account, 🎯 in the agentic target but not opened yet.</p>
     <div class="hsub">The columns</div>
     <ul>
       <li><span class="hk">Revisions</span> — the direction analyst consensus is moving. Scored mostly on the <b>change</b>, not the level: almost everything carries a "buy" rating, so the level says little, while a name being steadily upgraded (or quietly downgraded) says a lot.</li>
@@ -4716,10 +4731,7 @@ function renderPicksStatic(){
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
-    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 Agentic account (••••3900) — performance · target vs. actual · rebalance log →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Now on the Accounts tab, under the <b>Agentic</b> toggle.</div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on your names)</span></span><span class="chevron">▼</span></div><div id="b-flow">
-      <div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
-    </div></div>
+    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 Agentic account (••••3900) — performance · target vs. actual · rebalance log →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Now on the Accounts tab, under the <b>Agentic</b> toggle — along with 🏛️ Flow &amp; Positioning, which covers both accounts there.</div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
