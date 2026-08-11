@@ -93,6 +93,12 @@ sitting in names the research had dropped, with no ticket):
   field survives only to carry tickets written under the old model through to `done`). Sells still lead:
   instant settlement means spendable once a sell **fills**, not before, so the executor places the sells,
   confirms the fills, then places the buys.
+- **The wash-sale ledger is REAL trades (v98), not an inference.** `data.agentic.recentLosses` is rebuilt
+  each run from `producer/raw/agentic-trades.json` (`get_pnl_trade_history`, span `ytd`) — the account's
+  actual closing trades, losses only, rolling 31 days. It used to be *inferred* from position diffs, which
+  booked five phantom losses on 2026-08-03 and blocked a real NVDA buy for 30 days off one of them. If you
+  ever see a wash-sale hold you can't tie to a closing trade, check `data.agentic.lossSource`: `trades` is
+  authoritative, `inferred` means the run fell back (Railway) and the entry deserves a second look.
 
 ## Flow & Positioning sleeve — in BURN-IN (v95)
 The research has a fifth sleeve (**flow**: analyst revision momentum, insider Form 4 clusters, earnings

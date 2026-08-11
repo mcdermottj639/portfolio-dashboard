@@ -46,6 +46,20 @@ const FIXTURES = {
   // accounts for +$80; the remaining ~$1950 is a DEPOSIT and must be inferred into cumFlow, not return.
   'agentic-portfolio.json': { data: { cash: '2000.00', buying_power: '2000.00' } },
   'agentic-positions.json': { data: { positions: [{ symbol: 'AAA', quantity: '10', average_buy_price: '95' }] } },
+  // Broker-reported realized P&L, per account and per asset class (get_realized_pnl). Both accounts
+  // are present, so data.realized must carry the split AND all-account totals.
+  'realized-main.json': { data: { window: '2026-01-01..2026-07-02', data_points: [
+    { realized_gain: '3963.72', number_of_trades: 420 }, { realized_gain: null, number_of_trades: 0 },
+  ], total_returns: '3963.72' } },
+  'realized-main-opt.json': { data: { data_points: [{ realized_gain: '550', number_of_trades: 2 }], total_returns: '550' } },
+  'realized-agentic.json': { data: { data_points: [{ realized_gain: '233.18', number_of_trades: 5 }], total_returns: '233.18' } },
+  // Real closing trades for the agentic account — the wash-sale ledger's authoritative source. One
+  // loss (CCC), one gain (AAA, must be ignored). The prior snapshot's INFERRED 'ZZZ' entry has no
+  // matching trade and must be dropped rather than keep blocking a buy for 30 days.
+  'agentic-trades.json': { data: { trades: [
+    { timestamp: new Date(Date.now() - 3 * 24 * 3600e3).toISOString(), symbol: 'CCC', side: 'sell', quantity: '2', price: '41.10', realized_gain: '-18.40' },
+    { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'AAA', side: 'sell', quantity: '1', price: '108.00', realized_gain: '12.00' },
+  ] } },
 };
 
 const prior = {
@@ -59,7 +73,11 @@ const prior = {
     asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), cash: 50, buyingPower: 50, equity: 1050,
     positions: [{ symbol: 'AAA', qty: 10, avgCost: 95, px: 100, value: 1000 }],
     equityHistory: [{ t: '2026-07-01', equity: 1050, cumFlow: 0 }],
+    // A phantom entry from the old position-diff inference (a wrong-account fetch booked it).
+    recentLosses: [{ sym: 'ZZZ', date: new Date(Date.now() - 5 * 24 * 3600e3).toISOString().slice(0, 10), avgCost: 50, exitPx: 44 }],
   },
+  // The stale owner-typed margin-only figure the broker fetch must supersede.
+  realized: { year: '2026 YTD', equity: 2335, options: 0, total: 2335, approx: true },
   // av last landed data on an earlier day and does NOT run this run — its stamp must survive, or the
   // once/day gate would clear itself and re-fetch on the very next run.
   fetchDays: { av: '2026-07-30' },
@@ -133,6 +151,22 @@ try {
   const newPt = agEH[agEH.length - 1];
   eq('agentic equity point recorded', newPt.equity, 3080);
   eq('deposit inferred into cumFlow (not counted as return)', Math.abs(newPt.cumFlow - 1950) < 1, true);
+
+  // Realized P&L is now per account and broker-sourced — the stale owner figure must NOT win.
+  eq('realized is broker-sourced when the fetch landed', out.realized.source, 'robinhood');
+  eq('stale owner realized figure superseded', out.realized.total !== 2335, true);
+  eq('margin account realized split by asset class', [out.realized.accounts.main.equity, out.realized.accounts.main.options], [3963.72, 550]);
+  eq('agentic account realized captured', out.realized.accounts.agentic.total, 233.18);
+  eq('top-level total covers BOTH accounts', out.realized.total, 4746.90);
+  eq('broker figures are not flagged approx', out.realized.approx, false);
+  eq('account masks carried for the card', [out.realized.accounts.main.mask, out.realized.accounts.agentic.mask], ['••••0741', '••••3900']);
+
+  // Wash-sale ledger: real closing trades replace the inference wholesale.
+  eq('ledger sourced from real trades', out.agentic.lossSource, 'trades');
+  eq('only genuine realized losses are listed', out.agentic.recentLosses.map((l) => l.sym), ['CCC']);
+  eq('phantom inferred entry dropped', out.agentic.recentLosses.some((l) => l.sym === 'ZZZ'), false);
+  eq('dropped phantom is logged', stdout.includes('no matching closing trade'), true);
+  eq('realized loss amount carried', out.agentic.recentLosses[0].realized, -18.40);
 
   // Flow & Positioning: the fresh sidecar lands, the unfetched name carries forward, and asOf advances
   // to THIS run's day (the block computes its own day — asOfDay is scoped to the agentic section).
