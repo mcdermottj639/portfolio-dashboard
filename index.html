@@ -689,7 +689,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v103'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v104'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2310,22 +2310,35 @@ function renderAgenticCard(){
   //    wash-sale guard: the target WEIGHT is unchanged, only the BUY is deferred + flagged. Research target
   //    only (the heuristic pool carries no entry zones / research thesis to re-verify). Mirrors the producer's
   //    agentic-deploy.mjs planner so the card and the ticket agree. ──
-  const EARN_BLACKOUT_D=7;
-  const _entryLow=(e)=>{ if(!e)return 0; const m=String(e).match(/-?\d+(\.\d+)?/g); return m&&m.length?parseFloat(m[0]):0; };
+  //    v102 — the entry check is now a SYMMETRIC, TOLERANCED, AGEING band, mirroring agentic-deploy.mjs:
+  //    a 0.2%-under-the-floor miss is noise and must not park a position; a name trading ABOVE its zone is
+  //    deferred too (nothing guarded that side before, so a target that priced its entries below spot would
+  //    have been bought straight through); and zones written more than ENTRY_STALE_D ago go ADVISORY, because
+  //    when most of a target reads "out of band" at once the guard is measuring its own staleness, not the
+  //    companies. `below-stop` stays absolute — that one is the real thesis-broken signal.
+  const EARN_BLACKOUT_D=7, ENTRY_TOL_PCT=2.5, ENTRY_PREM_PCT=2.0, ENTRY_STALE_D=7;
+  const _entryBounds=(e)=>{ if(!e)return{lo:0,hi:0}; const m=String(e).replace(/,/g,'').match(/\d+(\.\d+)?/g); if(!m||!m.length)return{lo:0,hi:0};
+    const lo=parseFloat(m[0]), hi=m.length>1?parseFloat(m[1]):lo; return (hi>=lo)?{lo,hi}:{lo,hi:lo}; };
+  const _zoneAge=(()=>{ if(!targetAsOf)return null; const a=Date.parse(String(targetAsOf).slice(0,10)+'T00:00:00Z'), b=Date.parse(_todayISO+'T00:00:00Z');
+    return (isFinite(a)&&isFinite(b))?Math.round((b-a)/86400000):null; })();
+  const _zonesStale=_zoneAge!=null&&_zoneAge>ENTRY_STALE_D;
   const execMap={};
   if(targetSrc==='research') for(const x of chosen){
     if(washMap[x.sym])continue;                       // wash-sale owns this name's deferral
     const er=(typeof azEarn==='function')?azEarn(x.sym):null;
     let dAway=null; if(er&&er.date){ const d=Date.parse(String(er.date).slice(0,10)+'T00:00:00Z'); if(isFinite(d))dAway=Math.round((d-Date.parse(_todayISO+'T00:00:00Z'))/86400000); }
-    const eLow=_entryLow(x._entry), stop=x._stop||0, px=x.px||0;
+    const {lo:eLow,hi:eHigh}=_entryBounds(x._entry), stop=x._stop||0, px=x.px||0;
     if(dAway!=null&&dAway>=0&&dAway<=EARN_BLACKOUT_D)
       execMap[x.sym]={reason:'earnings',until:er.date,label:`⏸ earns ${(typeof azDateLbl==='function')?azDateLbl(er.date):er.date}`,note:`reports ${er.date} (≤${EARN_BLACKOUT_D}d) — wait for the print, then buy with full info`};
     else if(px>0&&stop>0&&px<=stop)
       execMap[x.sym]={reason:'below-stop',label:'⚠️ below stop',note:`${P(px)} is at/below the target stop ${P(stop)} — setup broken, re-verify before deploying`};
-    else if(px>0&&eLow>0&&px<eLow)
-      execMap[x.sym]={reason:'below-entry',label:'⚠️ re-verify',note:`${P(px)} gapped below planned entry ${x._entry} — re-check the thesis (esp. post-earnings) before buying`};
+    else if(!_zonesStale&&px>0&&eLow>0&&px<eLow*(1-ENTRY_TOL_PCT/100))
+      execMap[x.sym]={reason:'below-entry',label:'⚠️ re-verify',note:`${P(px)} is ${((1-px/eLow)*100).toFixed(1)}% below planned entry ${x._entry} (tolerance ${ENTRY_TOL_PCT}%) — re-check the thesis (esp. post-earnings) before buying`};
+    else if(!_zonesStale&&px>0&&eHigh>0&&px>eHigh*(1+ENTRY_PREM_PCT/100))
+      execMap[x.sym]={reason:'above-entry',label:'⏳ wait for pullback',note:`${P(px)} is ${((px/eHigh-1)*100).toFixed(1)}% above planned entry ${x._entry} (tolerance ${ENTRY_PREM_PCT}%) — the research priced this entry deliberately; chasing it gives up the reward:risk`};
   }
-  const execBadge=(sym)=>{ const e=execMap[sym]; if(!e)return ''; return `<span class="badge" style="background:#fef3c7;color:#92400e" title="${e.note}">${e.label}</span> <span style="color:#9ca3af;font-size:10px">${e.reason==='earnings'?'wait for print':'re-verify'}</span>`; };
+  const execBadge=(sym)=>{ const e=execMap[sym]; if(!e)return ''; const tag=e.reason==='earnings'?'wait for print':e.reason==='above-entry'?'too rich':'re-verify';
+    return `<span class="badge" style="background:#fef3c7;color:#92400e" title="${e.note}">${e.label}</span> <span style="color:#9ca3af;font-size:10px">${tag}</span>`; };
   const chosenSet=new Set(chosen.map(x=>x.sym));
   const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0);
   // ── render — ONE unified holdings tracker (v91): each name ••••3900 holds is a single row that carries
@@ -2435,7 +2448,7 @@ function renderAgenticCard(){
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The recommended target is below — deploy it with the button.</div>`:'')}
     ${opensBlock}
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> (until '+washUntilLbl(x.sym)+')').join(' · ')} — you realized a loss on ${washBlocked.length>1?'these':'this'} in ••••3900 within the last 30 days, so a rebuy would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
-    ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':'gapped below entry')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify. Target weight unchanged. Education only.</div>`:''}
+    ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry zone':'below entry zone')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify; a name trading above its entry zone waits for the pullback the research priced in. Small misses are tolerated (±${ENTRY_TOL_PCT}%/${ENTRY_PREM_PCT}%) and zones older than ${ENTRY_STALE_D}d go advisory${_zonesStale?` — <b>the current zones are ${_zoneAge}d old, so entry checks are OFF</b>`:''}. Deferred weight waits in the ${'VTI'} placeholder rather than cash. Target weight unchanged. Education only.</div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }
 window.renderAgenticCard=renderAgenticCard;
