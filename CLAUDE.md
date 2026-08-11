@@ -235,12 +235,21 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   must be fetched on **light runs too**. If they're absent, `build-data.mjs` carries the prior holdings
   forward, **re-prices** them, and **re-stamps `asOf` to now** — so the Agentic card looks freshly
   updated while share counts + cash are stuck at an old snapshot (new trades/deposits never appear).
-  **This bit us hard (2026-07):** the **active producer is the Railway path** (`pf-railway-bot` commits;
-  the scheduled Claude "Portfolio dashboard refresh" trigger had gone dormant), and `fetch_rh.py` only
-  fetched the **main** account — it never fetched ••••3900 at all, so the card sat frozen ~$1,033 for a
-  week while the real account had tripled to ~$3,574. Fixed in `fetch_rh.py` (`fetch_agentic()` — every
-  run, auto-detects the sole cash-type account, `PF_AGENTIC_ACCOUNT` to override, fault-isolated: writes
-  both files or neither). The Claude-agent path fetches it too (PRODUCER.md step 2 rows, resolved via
+  **This bit us hard (2026-07):** the Railway path was the active producer then (`pf-railway-bot`
+  commits; the scheduled Claude "Portfolio dashboard refresh" trigger had gone dormant), and
+  `fetch_rh.py` only fetched the **main** account — it never fetched ••••3900 at all, so the card sat
+  frozen ~$1,033 for a week while the real account had tripled to ~$3,574. Fixed in `fetch_rh.py`
+  (`fetch_agentic()` — every run, `PF_AGENTIC_ACCOUNT` to override, fault-isolated: writes both files
+  or neither).
+  **WHICH PRODUCER IS LIVE FLIPS — check, don't assume** (as of 2026-08-11 it's the **Claude agent**:
+  every `data:` snapshot on `main` is authored `Claude <noreply@anthropic.com>` and Railway's last run
+  was ~17d prior). One command settles it: `git log origin/main --format='%an | %s' -5` — `pf-railway-bot`
+  means Railway, `Claude` means the scheduled agent. This matters because the two paths resolve ••••3900
+  DIFFERENTLY: the Claude path via `get_accounts` `agentic_allowed:true` (type-independent), Railway via
+  `_agentic_account_number()`. Railway's detector used to filter `type == "cash"` and would have broken
+  silently at the 2026-08-11 limited-margin upgrade — latent only because Railway happened to be idle.
+  It now keys on structure (the non-IRA account that isn't `PF_ACCOUNT`), since account TYPE is a
+  mutable broker attribute and must never be the identity test. The Claude-agent path fetches it too (PRODUCER.md step 2 rows, resolved via
   `get_accounts` `agentic_allowed:true`); its FETCH_LIGHT item list was also corrected to name **both
   accounts**. `build-data.mjs` now `console.warn`s whenever it carries the agentic block forward, so a
   future skip (either producer) is visible in run logs instead of masquerading as fresh.
