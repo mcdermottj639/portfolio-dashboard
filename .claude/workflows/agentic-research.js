@@ -12,6 +12,14 @@ export const meta = {
 // Universe: spans value (oversold large-caps), momentum/quality leaders, and an index core. Pass a
 // FRESH universe via args.universe each weekly run (assemble it from the RH oversold scan + leaders +
 // any new holdings — see producer/AGENTIC.md); this baked-in list is the fallback / starting point.
+//
+// BREADTH MATTERS (v102). On 2026-08-11 a 25-name, megacap-heavy universe produced a book where every
+// single name was above its own entry zone — because when the whole universe is extended, "wait for a
+// better price" is the only honest answer the process can give, and the cash never gets deployed. A
+// screen can only buy what it is shown. When assembling `args.universe`, deliberately include ground
+// where value can actually be found — mid-caps, out-of-favour sectors, international/EM, and the
+// oversold-scan finalists — not just the mega-cap leaders bench. A wider universe does not weaken the
+// discipline; it gives the discipline somewhere to say yes.
 const U = (args && Array.isArray(args.universe) && args.universe.length) ? args.universe : [
   {t:'ICE', sec:'Finance',              px:123.84, pe:18.0,  hi:189.35, lo:123.74},
   {t:'CME', sec:'Finance',              px:221.30, pe:18.9,  hi:329.16, lo:220.73},
@@ -47,10 +55,20 @@ const SLEEVE_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ scores:{ type:'array', items:{ type:'object', additionalProperties:false,
     properties:{ ticker:{type:'string'}, score:{type:'number'}, note:{type:'string'} },
     required:['ticker','score','note'] } } }, required:['scores'] }
+// SPLIT VERDICT (v102). `supports` used to collapse two independent judgements into one boolean, and
+// the failure mode showed up live on 2026-08-11: 5 of 6 names came back unsupported and EVERY rejection
+// said the same thing — "the business is sound, the price is wrong". One yes/no can't express that, so a
+// great company 2% above its ideal entry was discarded exactly like a broken one, and the whole book went
+// to cash. Now the two are scored apart: `businessOk` decides INCLUSION, `entryQuality` decides SIZE.
+// A sound business at a mediocre price gets sized DOWN (and its entry zone set where it's worth owning),
+// which is a position, not an abstention.
 const VERDICT_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ ticker:{type:'string'}, recommendation:{type:'string', enum:['buy','hold','avoid']},
-    confidence:{type:'number'}, biggestRisk:{type:'string'}, supports:{type:'boolean'} },
-  required:['ticker','recommendation','confidence','biggestRisk','supports'] }
+    confidence:{type:'number'}, biggestRisk:{type:'string'}, supports:{type:'boolean'},
+    businessOk:{type:'boolean'},                 // is this a business worth owning at SOME price?
+    entryQuality:{type:'number'},                // 0-10: how good is TODAY's price for entering?
+    entryRisk:{type:'string'} },                 // the price-specific objection, kept apart from the thesis
+  required:['ticker','recommendation','confidence','biggestRisk','supports','businessOk','entryQuality','entryRisk'] }
 const ALLOC_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ summary:{type:'string'}, picks:{ type:'array', items:{ type:'object', additionalProperties:false,
     properties:{ ticker:{type:'string'}, sector:{type:'string'}, weightPct:{type:'number'}, dollars:{type:'number'},
@@ -127,19 +145,28 @@ const polNote = (t)=>{ const c=POLC[t]; return c
   ? `\nCONGRESSIONAL DISCLOSURE (weak, heavily lagged context — NOT a recommendation, do not treat as informed trading): ${c.filers} members ${c.side==='buy'?'bought':'sold'} this, last transaction ${c.lastTxn} (~${c.staleDays}d ago${c.medianLagDays!=null?`, disclosed ~${c.medianLagDays}d after the trade`:''}). Median disclosure lag makes this public information by the time we see it. Weigh accordingly — if your verdict rests on this, your verdict is wrong.`
   : '' }
 const verdicts = await parallel(finalists.map((r,i)=>()=>
-  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}\nREFUTE, don't confirm: value trap? deteriorating fundamentals/margins? negative near-term catalyst (earnings-miss risk, guidance cut, secular decline, legal/regulatory)? crowded/over-owned downside skew? technically broken with no support? Pull live data via ToolSearch. Default skeptical. supports=true ONLY if it survives as a genuine buy for a long-only swing-to-position holding.`,
+  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}\nREFUTE, don't confirm. Pull live data via ToolSearch. Default skeptical.\nSCORE TWO SEPARATE THINGS — do not let one contaminate the other:\n  1. businessOk — is this a business worth owning at SOME price? Value trap? deteriorating fundamentals/margins? secular decline? legal/regulatory impairment? accounting or earnings-quality problem? false ⇒ we don't want it at any price.\n  2. entryQuality 0-10 — how good is TODAY'S price specifically? Extended vs its moving averages, RSI, distance to 52wk high, multiple vs history, imminent binary catalyst, reward:risk to the consensus target. 10 = a gift, 5 = fair, 0 = badly chased. Put the price-specific objection in entryRisk, NOT in biggestRisk.\nThis split matters: 'great company, wrong price' must come back businessOk=true with a LOW entryQuality, never businessOk=false — the allocator sizes down on a poor entry, it does not need you to veto the name. Reserve businessOk=false for a thesis that is actually broken.\nsupports = businessOk && entryQuality >= 4 (kept for back-compat; the allocator reads the two fields).`,
     {schema:VERDICT_SCHEMA, phase:'Verify', label:'verify:'+r.t, effort:'high'}).then(v=> v?{...r,verdict:v}:null)))
-const survivors = verdicts.filter(Boolean).filter(x=>x.verdict&&x.verdict.supports&&x.verdict.recommendation!=='avoid')
-log(`Survivors ${survivors.length}/${finalists.length}: `+survivors.map(s=>s.t).join(', '))
-const forSynth=(survivors.length>=6?survivors:verdicts.filter(Boolean).filter(x=>x.verdict&&x.verdict.recommendation!=='avoid'))
-  .map(s=>({ticker:s.t,sector:s.sec,px:s.px,hi52:s.hi,lo52:s.lo,composite:s.composite,sleeves:{momentum:s.m,quality:s.q,growth:s.g,catalyst:s.c,valuation:s.v,...((FLOW_WEIGHT>0&&s.f!=null)?{flow:s.f}:{})},verdict:s.verdict}))
+// INCLUSION is now the business test alone. A weak entry no longer removes a name — it shrinks it
+// (entryHaircut below), so a market where everything is a bit extended produces a smaller, more
+// defensive book rather than an empty one.
+const ok = (x)=> x && x.verdict && x.verdict.businessOk !== false && x.verdict.recommendation !== 'avoid'
+const survivors = verdicts.filter(Boolean).filter(ok)
+const eq = (x)=> (typeof x.verdict.entryQuality === 'number' ? x.verdict.entryQuality : (x.verdict.supports ? 6 : 3))
+log(`Survivors ${survivors.length}/${finalists.length} (business test): `+survivors.map(s=>`${s.t}${eq(s)<4?` [thin entry ${eq(s)}/10]`:''}`).join(', '))
+const forSynth=(survivors.length?survivors:verdicts.filter(Boolean).filter(x=>x.verdict&&x.verdict.recommendation!=='avoid'))
+  .map(s=>({ticker:s.t,sector:s.sec,px:s.px,hi52:s.hi,lo52:s.lo,composite:s.composite,
+    entryQuality:eq(s), entryHaircut:+(0.55+0.045*Math.min(10,Math.max(0,eq(s)))).toFixed(2),
+    sleeves:{momentum:s.m,quality:s.q,growth:s.g,catalyst:s.c,valuation:s.v,...((FLOW_WEIGHT>0&&s.f!=null)?{flow:s.f}:{})},verdict:s.verdict}))
 
 phase('Synthesize')
-const alloc = await agent(`Build the long-only target allocation for the agentic cash account ($${(args&&args.book)||1000} book, fractional OK) from these VERIFIED survivors. Each carries sleeve scores (0-10), composite, sector, price, 52wk range, adversarial verdict.\nRules: 7-9 names, SECTOR-DIVERSIFIED (max 2/sector); include SPY as ~15-20% index ballast (add it, not a survivor); conviction-weighted toward MULTI-sleeve strength; floor ~5%, cap 25%; weights sum ~100%.\nRISK-AWARE WEIGHTING (a deterministic post-process — finalize-target.mjs — RE-ENFORCES these caps after you, so aim to satisfy them yourself to avoid being overridden):\n  • CORRELATION-CLUSTER cap: the megacap-tech/AI complex — NVDA, AVGO, AAPL, MSFT, GOOGL, META, AMZN, ORCL, NFLX (they co-move; "sector-diversified" labels hide this) — must sum to ≤48% of the book combined. Also payments (V+MA) ≤20%, staples (PG/WMT/COST) ≤25%. SPY/index ballast is UNCAPPED (it's the diversifier).\n  • VOL-SCALED sizing: give WILDER names a SMALLER slot for the same conviction. A name whose 52wk range (hi−lo)/price is much wider than ~0.42 (e.g. LLY, NFLX) should carry a materially lower weight than a tight compounder at equal conviction. Don't put a full 25% into a high-vol single name.\nPer name: sector, weightPct, dollars, one-line thesis naming the driving sleeves, entryZone near live price, protective stop (~8-12% below or under 50-DMA), take-profit target, reward:risk. SPY = wide stop / "core hold". Sanity-check live quotes before sizing. Summary: 2-3 sentences on factor/sector balance + risk posture, explicitly noting the megacap-tech cluster total.\nSurvivors: ${JSON.stringify(forSynth)}`,
+const alloc = await agent(`Build the long-only target allocation for the agentic cash account ($${(args&&args.book)||1000} book, fractional OK) from these VERIFIED survivors. Each carries sleeve scores (0-10), composite, sector, price, 52wk range, adversarial verdict.\nRules: 7-9 names, SECTOR-DIVERSIFIED (max 2/sector); include SPY as ~15-20% index ballast (add it, not a survivor); conviction-weighted toward MULTI-sleeve strength; floor ~5%, cap 25%; weights sum ~100%.\nENTRY QUALITY SIZES, IT DOES NOT VETO. Each survivor carries entryQuality (0-10, how good TODAY'S price is) and a precomputed entryHaircut multiplier. Size on conviction, then scale by the haircut: a sound business at a poor entry belongs in the book at a REDUCED weight with its entryZone set where it IS worth owning — it does not belong in cash. Never drop a name for entry alone; that is what the haircut and the entry zone are for.\nENTRY ZONES MUST BE REACHABLE. Set entryZone around a price the stock can plausibly trade at soon (near spot, or a specific nearby support you name). A zone far below spot reads as 'never buy' to the executor and strands the cash — if you genuinely want to wait for a deep pullback, say so by cutting the WEIGHT, not by setting an unreachable zone.\nRISK-AWARE WEIGHTING (a deterministic post-process — finalize-target.mjs — RE-ENFORCES these caps after you, so aim to satisfy them yourself to avoid being overridden):\n  • CORRELATION-CLUSTER cap: the megacap-tech/AI complex — NVDA, AVGO, AAPL, MSFT, GOOGL, META, AMZN, ORCL, NFLX (they co-move; "sector-diversified" labels hide this) — must sum to ≤48% of the book combined. Also payments (V+MA) ≤20%, staples (PG/WMT/COST) ≤25%. SPY/index ballast is UNCAPPED (it's the diversifier).\n  • VOL-SCALED sizing: give WILDER names a SMALLER slot for the same conviction. A name whose 52wk range (hi−lo)/price is much wider than ~0.42 (e.g. LLY, NFLX) should carry a materially lower weight than a tight compounder at equal conviction. Don't put a full 25% into a high-vol single name.\nPer name: sector, weightPct, dollars, one-line thesis naming the driving sleeves, entryZone near live price, protective stop (~8-12% below or under 50-DMA), take-profit target, reward:risk. SPY = wide stop / "core hold". Sanity-check live quotes before sizing. Summary: 2-3 sentences on factor/sector balance + risk posture, explicitly noting the megacap-tech cluster total.\nSurvivors: ${JSON.stringify(forSynth)}`,
   {schema:ALLOC_SCHEMA, phase:'Synthesize', label:'synthesize', effort:'high'})
 
 return { ranking: ranked.map(r=>({t:r.t,composite:r.composite,m:r.m,q:r.q,g:r.g,c:r.c,v:r.v,f:r.f})),
   flowWeight: FLOW_WEIGHT,
   finalists: finalists.map(f=>f.t),
-  verdicts: verdicts.filter(Boolean).map(x=>({t:x.t,rec:x.verdict.recommendation,conf:x.verdict.confidence,supports:x.verdict.supports,risk:x.verdict.biggestRisk})),
+  verdicts: verdicts.filter(Boolean).map(x=>({t:x.t,rec:x.verdict.recommendation,conf:x.verdict.confidence,
+    supports:x.verdict.supports,businessOk:x.verdict.businessOk,entryQuality:x.verdict.entryQuality,
+    risk:x.verdict.biggestRisk,entryRisk:x.verdict.entryRisk})),
   allocation: alloc }
