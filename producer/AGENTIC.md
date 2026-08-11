@@ -43,6 +43,15 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 | **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $1,000 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
 | **Event triggers (v93)** | every run (deposit / earnings gap) | `agentic-triggers.mjs` (in `build-data.mjs`) → `raw/agentic-triggers.json`: a **`deploy-cash`** push when idle/new cash crosses ~5% of book, and a **`refreshResearch`** flag that runs the research EARLY (before the weekly gate) on a deposit or a ≥6% held-name gap. So the account reacts to deposits + earnings, not just the 7-day clock. |
 
+## The standing flow (owner-ratified 2026-08-11)
+**Research builds the model → the legitimizer decides what's tradeable → the executor trades it → the
+excess parks in VTI.** Concretely: the `agentic-research` workflow (split verdict: `businessOk` gates
+inclusion, `entryQuality` sizes) proposes an allocation; `finalize-target.mjs` re-enforces the risk caps
+deterministically and writes the canonical `agentic-target.json`; the executor's planner applies the
+guards (earnings/policy/wash/PDT/entry-band) and places what clears; whatever the guards hold back is
+parked in the VTI waiting ground rather than left in cash, and released to fund each name as it clears.
+Cash never waits idle by design — a deferral changes WHERE the money waits, not whether it works.
+
 ## Execution policy — **TIERED AUTO** (owner-approved 2026-08-07; supersedes confirm-everything)
 The owner signed off on a two-tier policy so the account is **self-sufficient** for routine upkeep:
 - **Auto tier:** a ticket with **turnover ≤ `AUTO_TURNOVER_CAP` ($1,000 — raised from $500 on 2026-08-11,
@@ -190,30 +199,24 @@ A **separate scheduled Claude session** (hourly during market hours — cron `20
 trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
 Cheap by construction: every run starts with the deterministic gate and exits immediately when idle.
 
-> ### ⚡ ONE-TIME PRE-AUTHORIZATION — post-deposit deployment, 2026-08-12
-> The owner deposited **$5,000** into ••••3900 on 2026-08-11 (book $5,317 → $10,317; cash $5,486.50) and
-> **explicitly pre-approved the resulting deployment**: *"Reverify convictions and place the trades at
-> tomorrow open. Don't ask me for approval for this one just place."*
+> ### ⚡ ONE-TIME PRE-AUTHORIZATION — post-deposit deployment, 2026-08-12 (rewritten 2026-08-11 evening)
+> The owner deposited **$5,000** into ••••3900 on 2026-08-11 ($5,486.50 cash) and, after reviewing the
+> first re-verification, ratified the standing flow above and superseded the earlier SPY-only narrowing:
+> *"I want the research to build the model, it gets run through our legitimizer, traded, and then the
+> excess not placed goes to VTI."* The research was re-run that evening under the split-verdict pipeline
+> and promoted through `finalize-target.mjs` to `agentic-target.json`.
 >
-> **NARROWED 2026-08-11 (owner) — SPY ONLY.** The re-verification run that afternoon came back defensive:
-> adversarial verify rejected **5 of 6** single names, every rejection conceding the business is sound and
-> objecting to **entry price**, and the resulting allocation set every entry zone *below* spot — SPY was the
-> only name inside its band. Rather than deploy $5.5k into six names the verify stage had just rejected, the
-> owner chose *"SPY only is good for now"*.
+> So on **2026-08-12**, the first executor pass after the open runs the gate as normal and — if the mode
+> comes back `EXEC_PROPOSE` purely because turnover exceeds the auto cap — treats THIS ticket as
+> pre-approved: build it with `makeTicket`, immediately `advanceTicket(..., 'confirmed')` citing this
+> block, place it, and report the fills by PushNotification. No one-tap.
 >
-> So on **2026-08-12**, the first executor pass after the open places **exactly one order**: buy SPY at market
-> (fractional dollar-market) to bring it to **20% of book** — roughly **$1,100** on a ~$10.3k book; recompute
-> off the live book at the open, never exceed 20%. Place it without a one-tap. Then advance the ticket to
-> `done`, log the decision, and **delete this block**.
->
-> **Do NOT** deploy the remaining ~$4,400 — it waits in cash. **Do NOT** commit the 2026-08-11 research output
-> as `agentic-target.json`: it drops AAPL/GOOGL/UNH and re-adds LLY/AMZN/MSFT, which would sell holdings
-> bought that same morning and rebuy names sold two days earlier. The **2026-08-05 target stays canonical**
-> for existing holdings until the owner decides otherwise.
->
-> **Scope — spent once.** Covers only the SPY ballast order above. Every ordinary deferral still applies
-> (earnings blackout, wash-sale, below-entry/below-stop re-verify, PDT, the 5% book-move abort); the owner
-> pre-approved a *ticket*, not an override of the guards.
+> **Scope — spent once, ticket-level only.** It covers the single deployment ticket that puts this
+> deposit to work against the promoted target. Every guard still binds — earnings/policy blackout,
+> wash-sale, below-stop, the entry band, PDT, the 5% book-move abort — and a deferred name STAYS
+> deferred; its dollars park in the VTI waiting ground per the standing flow, which needs no extra
+> approval (it is part of the plan the gate emits). Once the ticket reaches `done`, **delete this
+> block**; normal auto-cap tiering resumes.
 
 **Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
 1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise

@@ -81,6 +81,17 @@ try { data = await decryptEnvelope(JSON.parse(readFileSync(join(__dirname, '..',
 catch { idle('snapshot unreadable — fail safe'); }
 const A = data && data.agentic;
 if (!A || !Array.isArray(A.positions)) idle('no agentic block in the snapshot');
+// The COMMITTED producer/agentic-target.json is the canonical target (CLAUDE.md); the snapshot's copy
+// is a cache stamped in by the last producer run. Prefer the file so a target promoted between producer
+// runs (e.g. an evening research refresh) reaches the very next executor pass instead of trading a
+// stale cache — and so a failed producer run can't leave the executor deploying against last week's book.
+try {
+  const tf = join(__dirname, 'agentic-target.json');
+  if (existsSync(tf)) {
+    const t = JSON.parse(readFileSync(tf, 'utf8'));
+    if (t && Array.isArray(t.names) && t.names.length) A.target = t;
+  }
+} catch { /* unreadable file → fall back to the snapshot's cached copy */ }
 if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idle('no research target');
 const ageH = data.generatedAt ? (Date.now() - Date.parse(data.generatedAt)) / 3.6e6 : Infinity;
 if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
