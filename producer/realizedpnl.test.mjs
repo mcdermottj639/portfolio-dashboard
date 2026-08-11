@@ -41,7 +41,7 @@ ok('sums trade counts across asset classes', main.trades === 422);
 ok('carries the account label + mask', main.label === 'Individual margin' && main.mask === '••••0741');
 
 // An account with no options level supplies no options payload — that is null (unknown), not 0.
-const cash = accountRealized({ equity: pnl([bkt('233.18', 5)], '233.18'), label: 'Agentic cash', mask: '••••3900' });
+const cash = accountRealized({ equity: pnl([bkt('233.18', 5)], '233.18'), label: 'Agentic', mask: '••••3900' });
 ok('a missing asset class stays null rather than 0', cash.options === null);
 ok('total ignores the missing class', cash.total === 233.18);
 

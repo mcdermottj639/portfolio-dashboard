@@ -1,4 +1,4 @@
-// producer/agentic-ledger.mjs — PURE rebalance-decision ledger + grader for the agentic cash account.
+// producer/agentic-ledger.mjs — PURE rebalance-decision ledger + grader for the agentic account.
 //
 // The picks screen has a Track Record (every pick graded win/loss); the agentic ACCOUNT's rebalance
 // decisions had no equivalent — we never learned whether "trim V, add NVDA" actually helped. This logs

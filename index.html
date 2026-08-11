@@ -1078,12 +1078,12 @@ function harvestCandidates(enriched){
 
 /* ── Per-account income & tax roll-up (v98) ────────────────────────────────────────────────────
    The Income & Tax card described ONE book — the individual margin account the Portfolio page is
-   built from. Everything the agentic ••••3900 cash account earned was invisible here: its dividend
+   built from. Everything the agentic ••••3900 account earned was invisible here: its dividend
    payers weren't in the dividend estimate, its positions weren't in the harvest scan, and its
    realized gains weren't in the Realized tile (which was a single owner-typed margin figure).
    These helpers build the same three measures per account so the card can attribute every number.
 
-   The agentic account is a small fractional-share cash account, so it gets the PLANNER's harvest
+   The agentic account is a small fractional-share book, so it gets the PLANNER's harvest
    thresholds (max($75, 5% of cost) — producer/agentic-deploy.mjs TLH_MIN_LOSS/_PCT) rather than the
    margin book's flat $250-position floor, keeping the card and the rebalance ticket in agreement. */
 const AG_TLH_MIN=75, AG_TLH_PCT=5;
@@ -1127,7 +1127,7 @@ function accountRollup(enriched, ovMap, harvest, mainIncome){
     const agH=agenticHarvest(ag);
     const A=window.__DATA.agentic;
     rows.push({
-      key:'agentic', icon:'🤖', name:'Agentic cash', mask:'••••3900',
+      key:'agentic', icon:'🤖', name:'Agentic', mask:'••••3900',
       val:ag.reduce((s,p)=>s+Math.max(p.val,0),0), cash:+A.cash||0,
       pnl:ag.reduce((s,p)=>s+p.pnlD,0),
       realized:acct.agentic?acct.agentic.total:null,
@@ -1335,7 +1335,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const spyN=buildNorm(spy), qqqN=buildNorm(qqq);
   const lastV=a=>a&&a.length?a[a.length-1].v:null;
   const portYTD=lastV(portSeries), spyYTD=lastV(spyN), qqqYTD=lastV(qqqN);
-  // ── Agentic cash account (••••3900) overlay: a faint dotted MODELED lead-in (its current holdings
+  // ── Agentic account (••••3900) overlay: a faint dotted MODELED lead-in (its current holdings
   // priced back to Jan 1, same trick as portSeries) spliced into the REAL recorded equity line
   // (data.agentic.equityHistory, recorded forward by the producer). dkey() aligns by calendar day so
   // the equity points map onto the SPY axis regardless of timestamp shape.
@@ -1352,7 +1352,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
     const EH=Array.isArray(AG.equityHistory)?AG.equityHistory.slice().filter(e=>e&&e.equity>0).sort((a,b)=>a.t<b.t?-1:1):[];
     if(EH.length>=2&&agModeled){
       // Deposit-immune TIME-WEIGHTED growth of the real account. Raw equity/e0 is wrong here: this is a
-      // cash account the owner funds over time, and Robinhood exposes no transfers feed, so a deposit
+      // self-funded account the owner adds to over time, and Robinhood exposes no transfers feed, so a deposit
       // inflates equity and would read as a fake "return" (e.g. a $1.0k→$3.5k funding jump = a bogus
       // +250%). We chain period returns and NEUTRALIZE external flows: subtract the producer's inferred
       // cumFlow delta when present (precise), and fall back to zeroing any residual implausible one-period
@@ -1398,7 +1398,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
       <span class="legend-item"><span class="legend-dot" style="background:${C.qqq}"></span>QQQ</span>
       ${agModeled?`<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Agentic${agReal?' (— real · ⋯ modeled)':' (⋯ modeled)'}</span>`:''}
     </div>
-    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the cash account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
+    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the agentic account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
     ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
       <div><div class="snap-lbl">10yr Treasury</div><div style="font-size:16px;font-weight:700">${macroData.tenYrYield?fmt(macroData.tenYrYield,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">Fed Funds</div><div style="font-size:16px;font-weight:700">${macroData.fedFunds?fmt(macroData.fedFunds,2)+'%':'—'}</div></div>
@@ -1872,9 +1872,9 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     </div>`;
 }
 
-/* ═══ Agentic Portfolio (the recommended portfolio for the ••••3900 cash account) ═══
+/* ═══ Agentic Portfolio (the recommended portfolio for the ••••3900 agentic account) ═══
    Standalone card — formerly Step 4 of the Action Center, split out because the recommended
-   portfolio is now the blueprint for the agentic cash account, not a restructuring of the margin
+   portfolio is now the blueprint for the agentic account, not a restructuring of the margin
    book. Builds a from-scratch, long-only, UNLEVERED target from a FULLY-INDEPENDENT universe
    (top scored picks ∪ mega-cap leaders ∪ SPY/QQQ index core ∪ whatever ••••3900 already holds —
    the margin account is ignored), sector-diversified + conviction-weighted, capped at
@@ -2072,12 +2072,12 @@ function renderAgenticCard(){
     <div style="font-weight:700;font-size:12.5px;margin:16px 0 3px">🎯 Targets to open <span style="color:#9ca3af;font-weight:400;font-size:11px">— recommended, not yet held (${opens.length})</span></div>
     <div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Target</th><th class="tr">Open</th><th class="tr">Entry · Stop · TP</th></tr></thead><tbody>${orows}</tbody></table></div>`;
   }
-  // deploy / rebalance hand-off (targets the agentic cash account; fractional, dollar-market at the open)
+  // deploy / rebalance hand-off (targets the agentic account; fractional, dollar-market at the open)
   const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]&&!execMap[x.sym]);
   const washBlocked=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&washMap[x.sym]);
   const execDeferred=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&execMap[x.sym]&&!washMap[x.sym]);
   const sells=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='SELL'&&-x.delta>=holdThr);
-  const L=['Help me move my Robinhood AGENTIC cash account (the ••••3900 "Agentic" individual account — agentic_allowed) toward this target allocation. Cash account: fractional, dollar-based market orders only, in regular hours, fully funded by settled cash. Review each with review_equity_order and place ONLY after I confirm. This is a destination held with brackets, rebalanced when a name drifts past '+AGENTIC_DRIFT+'pp or hits a level — not daily.','',
+  const L=['Help me move my Robinhood AGENTIC account (the ••••3900 "Agentic" individual account — agentic_allowed) toward this target allocation. LIMITED MARGIN account: fractional, dollar-based market orders only, in regular hours; sale proceeds are spendable as soon as the sell FILLS (instant settlement), and there is no borrowing or leverage. Do NOT sell anything this account bought earlier today — that books a day trade, and the account is under $25k (PDT). Review each with review_equity_order and place ONLY after I confirm. This is a destination held with brackets, rebalanced when a name drifts past '+AGENTIC_DRIFT+'pp or hits a level — not daily.','',
     'Account equity (book): '+fmtD(book)+' = '+fmtD(investedNow)+' invested + '+fmtD(cash)+' cash (unlevered, 1×).',''];
   // est. realized ST P&L for a sale (client mirror of the producer planner's tax math — v96)
   const estPl=(sym,dollars)=>{ const p=heldPos.find(h=>h.symbol===sym); if(!p||!(p.avgCost>0)||!(p.px>0))return null; return dollars*(1-p.avgCost/p.px); };
@@ -2085,10 +2085,10 @@ function renderAgenticCard(){
   const plTag=(pl)=>pl==null?'':' (est '+(pl>=0?'+':'−')+fmtD(Math.abs(pl))+' ST '+(pl>=0?'gain':'loss')+')';
   const allSellPl=[...sells.map(x=>estPl(x.sym,Math.abs(x.delta))),...orphans.map(orphanPl)].filter(v=>v!=null);
   const taxGain=allSellPl.reduce((s,v)=>s+Math.max(0,v),0), taxLoss=allSellPl.reduce((s,v)=>s+Math.min(0,v),0);
-  if(orphans.length){ L.push('EXIT — no longer in the research target (the drop IS the sell signal; sells settle T+1, proceeds fund the buys next session). Sell losses first:');
+  if(orphans.length){ L.push('EXIT — no longer in the research target (the drop IS the sell signal; proceeds fund the buys as soon as these fill). Sell losses first:');
     orphans.slice().sort((a,b)=>(orphanPl(a)??0)-(orphanPl(b)??0)).forEach(p=>L.push('• SELL ALL '+shFmt(p.qty)+' sh '+p.symbol+' ≈ '+fmtD(p.value)+plTag(orphanPl(p)))); L.push(''); }
-  if(sells.length){ L.push('TRIM toward target (T+1 — place with the exits, before the buys):'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+plTag(estPl(x.sym,Math.abs(x.delta)))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
-  if(buys.length){ L.push('BUY toward target (≈, dollar-market): settled cash today; anything funded by sale proceeds goes the NEXT session once they settle (T+1, cash account):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
+  if(sells.length){ L.push('TRIM toward target (place with the exits, before the buys):'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+plTag(estPl(x.sym,Math.abs(x.delta)))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
+  if(buys.length){ L.push('BUY toward target (≈, dollar-market) — place AFTER the sells above have filled; settled cash plus those proceeds fund these in the SAME session (limited margin, instant settlement):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(allSellPl.length) L.push('Est. short-term tax impact of the sells: '+fmtD(taxGain)+' gains'+(taxLoss<0?' − '+fmtD(Math.abs(taxLoss))+' harvested losses':'')+' = net '+(taxGain+taxLoss>=0?'+':'−')+fmtD(Math.abs(taxGain+taxLoss))+' (ST, ordinary income; before any cross-account wash effects — check the margin account for buys of the same names within 30 days before harvesting a loss). Not tax advice.','');
   if(washBlocked.length){ L.push('DO NOT BUY YET — wash-sale window (realized a loss in this account within 30 days; rebuying disallows the loss). Skip these until the date shown, then revisit:'); washBlocked.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — wash-sale until '+washUntilLbl(x.sym))); L.push(''); }
   if(execDeferred.length){ L.push('DEFER — execution discipline (target weight kept, buy waits; do NOT place these today):'); execDeferred.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — '+execMap[x.sym].note)); L.push(''); }
@@ -2096,9 +2096,9 @@ function renderAgenticCard(){
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">One tracker for your <b>agentic cash account (••••3900)</b>: each holding's live position, trailing performance (day / YTD / unrealized P&L), the weekly target's <b>drift</b> + rebalance <b>trade</b>, and the <b>TP/stop</b> I monitor. Target is long-only, <b>unlevered</b>, ${targetSrc==='research'?`from the <b>weekly deep multi-factor research</b> (momentum · quality · growth · catalyst → adversarial verify)${targetAsOf?` · as of ${targetAsOf}`:''}`:`built on-the-fly from top picks + mega-cap leaders + an SPY/QQQ core + held (interim, until the research target lands)`}, capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; brackets are monitor-only (fractional positions can't carry resting stops). <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</span></div>
-    ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (cash account, 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, drift, and performance appear here after the next scheduled run picks it up.</div>`}
-    ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your one-tap confirm</b>'):T.status==='sells-placed'?' · sells placed — T+1 buys go next session':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The drift table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">One tracker for your <b>agentic account (••••3900)</b>: each holding's live position, trailing performance (day / YTD / unrealized P&L), the weekly target's <b>drift</b> + rebalance <b>trade</b>, and the <b>TP/stop</b> I monitor. Target is long-only, <b>unlevered</b>, ${targetSrc==='research'?`from the <b>weekly deep multi-factor research</b> (momentum · quality · growth · catalyst → adversarial verify)${targetAsOf?` · as of ${targetAsOf}`:''}`:`built on-the-fly from top picks + mega-cap leaders + an SPY/QQQ core + held (interim, until the research target lands)`}, capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; brackets are monitor-only (fractional positions can't carry resting stops). <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</span></div>
+    ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, drift, and performance appear here after the next scheduled run picks it up.</div>`}
+    ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your one-tap confirm</b>'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The drift table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The recommended target is below — deploy it with the button.</div>`:'')}
     ${opensBlock}
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> (until '+washUntilLbl(x.sym)+')').join(' · ')} — you realized a loss on ${washBlocked.length>1?'these':'this'} in ••••3900 within the last 30 days, so a rebuy would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
@@ -2316,7 +2316,7 @@ function setHeatmap(m){ _hmMode=m; const d=document.getElementById('hm-day'),p=d
 window.setHeatmap=setHeatmap;
 function setHeatmapAcct(a){ _hmAcct=a; const m=document.getElementById('hm-acct-main'),g=document.getElementById('hm-acct-agentic'); if(m)m.classList.toggle('active',a==='main'); if(g)g.classList.toggle('active',a==='agentic'); renderHeatmap(); }
 window.setHeatmapAcct=setHeatmapAcct;
-// Heatmap rows for the agentic cash account (••••3900) — same {symbol,val,dayP,pnlP} shape the
+// Heatmap rows for the agentic account (••••3900) — same {symbol,val,dayP,pnlP} shape the
 // margin account's enriched rows use, derived from data.agentic.positions (priced by the producer).
 function _agenticHeatRows(){
   const A=(window.__DATA&&window.__DATA.agentic)||null; if(!A||!Array.isArray(A.positions))return [];
@@ -2332,7 +2332,7 @@ function renderHeatmap(){
   const el=document.getElementById('heatmap'); if(!el)return;
   const agentic=_hmAcct==='agentic';
   const src=agentic?_agenticHeatRows():((window.__PORT&&window.__PORT.enriched)||_enriched||[]);
-  const thr=agentic?0:SMALL_THR;   // the agentic cash account is small/fractional — don't hide its names
+  const thr=agentic?0:SMALL_THR;   // the agentic account is small/fractional — don't hide its names
   const rows=src.filter(p=>p.val>thr);
   const note=document.getElementById('hm-note');
   if(!rows.length){ el.innerHTML=`<div class="tech-empty" style="padding:18px">${agentic?'The agentic account (••••3900) hasn’t been captured yet — it appears after the next scheduled run.':'No positions to map.'}</div>`; if(note)note.textContent=''; return; }
@@ -2340,7 +2340,7 @@ function renderHeatmap(){
   const CAP=30;
   const sorted=rows.map(p=>({value:p.val, p})).sort((a,b)=>b.value-a.value);
   const items=sorted.slice(0,CAP);
-  if(note){ if(sorted.length>CAP){ const shownVal=items.reduce((s,it)=>s+it.value,0); const totVal=sorted.reduce((s,it)=>s+it.value,0); note.textContent=`Showing the ${CAP} largest of ${sorted.length} positions${thr>0?` ≥ $${thr}`:''} (${fmt(totVal>0?shownVal/totVal*100:0,0)}% of mapped value). Smaller names are omitted for legibility.`; } else { note.textContent=agentic?`Agentic cash account (••••3900) · ${sorted.length} holding${sorted.length===1?'':'s'}.`:''; } }
+  if(note){ if(sorted.length>CAP){ const shownVal=items.reduce((s,it)=>s+it.value,0); const totVal=sorted.reduce((s,it)=>s+it.value,0); note.textContent=`Showing the ${CAP} largest of ${sorted.length} positions${thr>0?` ≥ $${thr}`:''} (${fmt(totVal>0?shownVal/totVal*100:0,0)}% of mapped value). Smaller names are omitted for legibility.`; } else { note.textContent=agentic?`Agentic account (••••3900) · ${sorted.length} holding${sorted.length===1?'':'s'}.`:''; } }
   const rects=squarify(items,0,0,W,H);
   const gold=document.documentElement.getAttribute('data-theme')==='gold';
   const div=_hmMode==='day'?3:40;
@@ -2679,7 +2679,7 @@ window.switchTab=switchTab;
     <ul>
       <li>It's a <b>price return of your current holdings at today's weights</b>, priced back to Jan 1 — a like-for-like comparison vs the index, <i>not</i> a time-weighted account return (the broker doesn't expose full purchase history).</li>
       <li>The <b>coverage %</b> in the note is how much of your equity the line actually reflects (names with daily history).</li>
-      <li>The faint <b>dotted "Agentic"</b> line (when present) models the agentic cash account back to Jan 1; it splices into a <b>solid</b> line once real tracked equity accumulates.</li>
+      <li>The faint <b>dotted "Agentic"</b> line (when present) models the agentic account back to Jan 1; it splices into a <b>solid</b> line once real tracked equity accumulates.</li>
     </ul>
     <div class="hsub">What to look for</div>
     <ul>
@@ -2692,7 +2692,7 @@ window.switchTab=switchTab;
     <ul>
       <li><b>Tile size</b> = position value. The biggest tiles are your biggest bets — if one dominates the grid, that's concentration you can <i>see</i>.</li>
       <li><b>Color</b> = green up / red down. Use the toggle to switch between <span class="hk">Day move</span> (today) and <span class="hk">Total P&amp;L</span> (since you bought).</li>
-      <li>The <b>account toggle</b> (Margin ⇄ Agentic), when shown, re-maps the tiles to the agentic cash account's holdings instead of the margin book.</li>
+      <li>The <b>account toggle</b> (Margin ⇄ Agentic), when shown, re-maps the tiles to the agentic account's holdings instead of the margin book.</li>
     </ul>
     <p>A "top N of M" note appears when there are more positions than tiles shown.</p>` },
   'risk diversification': { tag:'Portfolio', t:'Risk &amp; Diversification', h:`
@@ -2729,7 +2729,7 @@ window.switchTab=switchTab;
     </ul>
     <div class="hsub">By account</div>
     <ul>
-      <li>The four tiles are <b>all-account totals</b>; the <span class="hk">By Account</span> table underneath shows which account each figure came from — <b>📊 Individual margin ••••0741</b> (the book the rest of the Portfolio tab describes) and <b>🤖 Agentic cash ••••3900</b> (the research-driven account the Plan tab's Agentic Portfolio card runs).</li>
+      <li>The four tiles are <b>all-account totals</b>; the <span class="hk">By Account</span> table underneath shows which account each figure came from — <b>📊 Individual margin ••••0741</b> (the book the rest of the Portfolio tab describes) and <b>🤖 Agentic ••••3900</b> (the research-driven limited-margin account the Plan tab's Agentic Portfolio card runs).</li>
       <li><span class="hk">Realized</span> is reported by Robinhood per account and per asset class — not an estimate from order history. <b>Options</b> are traded in the margin account only, so all options realized/premium sits there.</li>
       <li><span class="hk">Harvest floors differ by account</span> — the margin book flags any position ≥ $250 that's in the red; the small fractional agentic account uses the rebalance planner's floor (a loss ≥ the greater of $75 or 5% of cost), so the card and the rebalance ticket agree on what's worth harvesting.</li>
       <li>The <b>wash-sale window is per security, not per account</b> — rebuying in ••••3900 a name you just took a loss on in ••••0741 (or the reverse) still disallows the loss. The Agentic card's buy plan checks both.</li>
@@ -2788,7 +2788,7 @@ window.switchTab=switchTab;
     <p>The one-line version of the <b>Flow &amp; Positioning</b> card for this ticker — analyst revision direction, insider cluster activity, earnings surprise and federal awards, blended into a 0–10 score.</p>
     <p>Display-only: it doesn't feed the recommendation above it or the agentic target. "Partial read" means some signals were available but too few to blend a score.</p>`},
   'agentic portfolio': { tag:'Plan', t:'Agentic Portfolio', h:`
-    <p>The <b>target blueprint</b> for the agentic cash account (••••3900) — a separate, unlevered cash account, distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
+    <p>The <b>target blueprint</b> for the agentic account (••••3900) — a separate, unlevered limited-margin account (instant settlement, no borrowing), distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
     <div class="hsub">Where the target comes from</div>
     <ul>
       <li>Primarily the <b>weekly deep-research output</b> — a multi-factor screen (momentum / quality / growth / catalyst + valuation) that's adversarially verified before it lands.</li>
@@ -2798,7 +2798,7 @@ window.switchTab=switchTab;
     <ul>
       <li><span class="hk">Target $ / %</span> — the recommended weight. <span class="hk">Now $ / %</span> — what the account actually holds today.</li>
       <li><span class="hk">Trade (±sh ≈ ±$)</span> — the buy/sell to close the gap. <span class="hk">Drift</span> flags any name past the <b>5pp</b> rebalance trigger.</li>
-      <li><span class="hk">TP / Stop</span> — monitor-only bracket levels (a fractional cash account can't hold resting stops).</li>
+      <li><span class="hk">TP / Stop</span> — monitor-only bracket levels (fractional positions can't hold resting stops).</li>
     </ul>
     <p>The <b>🤖 hand-off button</b> carries a deploy/rebalance prompt that places fractional dollar orders after your review. Below the target sits a <b>per-holding performance</b> table (cost basis, Day %, YTD %, unrealized P&amp;L).</p>` },
   'action center': { tag:'Plan', t:'Action Center', h:`

@@ -37,18 +37,20 @@ ok('stale proposal re-plans', nextAction(t, '2026-08-20').action === 'stale');
 const confirmed = advanceTicket(t, 'confirmed', { date: '2026-08-07' });
 ok('confirmed → place-trades', nextAction(confirmed, '2026-08-07').action === 'place-trades');
 const placed = advanceTicket(confirmed, 'sells-placed', { date: '2026-08-07' });
-ok('same-day after sells → waiting on T+1', nextAction(placed, '2026-08-07').action === 'none');
-ok('next day → place the T+1 buys', nextAction(placed, '2026-08-08').action === 'place-buys');
+// v98 (limited margin): the carried leg is placeable as soon as the sells fill — the old day-gate that
+// held it until the next session is gone. A ticket in flight at the upgrade must still reach `done`.
+ok('same-day after sells → place the carried buys', nextAction(placed, '2026-08-07').action === 'place-buys');
+ok('a later session still places them', nextAction(placed, '2026-08-08').action === 'place-buys');
 const bought = advanceTicket(placed, 'buys-placed', { date: '2026-08-08' });
 ok('buys-placed → none (finalize to done)', nextAction(bought, '2026-08-08').action === 'none');
 const done = advanceTicket(bought, 'done', { date: '2026-08-08' });
 ok('done is terminal', nextAction(done, '2026-08-09').action === 'none');
 
-// no-T1 ticket: confirmed may jump straight to buys-placed
+// no carried leg (every new v98 plan): confirmed may jump straight to buys-placed
 const noT1 = advanceTicket(makeTicket({ ...plan, buysT1: [] }, { asOf: '2026-08-07' }), 'confirmed', { date: '2026-08-07' });
 ok('no-sell/no-T1 ticket can jump to buys-placed', advanceTicket(noT1, 'buys-placed', { date: '2026-08-07' }).status === 'buys-placed');
 const placedNoT1 = advanceTicket(noT1, 'sells-placed', { date: '2026-08-07' });
-ok('sells-placed with no T+1 leg → none', nextAction(placedNoT1, '2026-08-08').action === 'none');
+ok('sells-placed with no carried leg → none', nextAction(placedNoT1, '2026-08-08').action === 'none');
 
 // ── illegal transitions throw (the executor can't corrupt state) ──
 let threw = false; try { advanceTicket(t, 'buys-placed'); } catch { threw = true; }

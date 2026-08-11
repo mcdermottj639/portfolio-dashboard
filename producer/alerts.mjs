@@ -46,7 +46,7 @@ export function computeAlerts(prior, fresh, heldSyms = []) {
     const stop = num(t.stop), target = num(t.target);
     if (stop != null && prev > stop && cur <= stop) alerts.push({
       kind: 'agentic-stop', symbol: sym,
-      msg: `🛑 Agentic: ${sym} ${money(cur)} crossed its stop ${money(stop)} — review/exit. (Monitor-only bracket: the cash account holds no resting stop, this push IS the stop.)`,
+      msg: `🛑 Agentic: ${sym} ${money(cur)} crossed its stop ${money(stop)} — review/exit. (Monitor-only bracket: fractional positions hold no resting stop, this push IS the stop.)`,
     });
     if (target != null && prev < target && cur >= target) alerts.push({
       kind: 'agentic-target', symbol: sym,

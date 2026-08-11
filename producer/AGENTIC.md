@@ -1,13 +1,25 @@
-# AGENTIC.md — Agentic cash account (••••3900) automation & rebalancing
+# AGENTIC.md — Agentic account (••••3900) automation & rebalancing
 
-How the **agentic cash account** is researched, targeted, monitored, and rebalanced. Read with
+How the **agentic account** is researched, targeted, monitored, and rebalanced. Read with
 `CLAUDE.md` (architecture) and `SCHEDULING.md` (how the producer is scheduled — same web-trigger model).
 
 ## What this account is
-- **••••3900 "Agentic"** — an **individual CASH account**, the only one with `agentic_allowed: true`
-  (the agent can place orders here; the other three accounts can't). Confirm with `get_accounts`.
-- **Cash account ⇒ taxable, unlevered, settled-cash-only.** Every sell is a taxable event; there is no
-  margin; proceeds settle **T+1** and can't be reused before settlement (good-faith / freeriding rule).
+- **••••3900 "Agentic"** — an **individual LIMITED MARGIN account**, the only one with
+  `agentic_allowed: true` (the agent can place orders here; the other three accounts can't). Confirm
+  with `get_accounts` — it reports `type: "limited_margin"`.
+- **Upgraded from a cash account 2026-08-11 (v98).** Limited margin buys exactly one thing: **instant
+  settlement** — proceeds from a closing order are spendable the moment the sell FILLS, so a rebalance
+  no longer straddles two sessions. It adds **no borrowing and no leverage** (`get_portfolio` shows
+  `unleveraged_buying_power == buying_power`), so everything downstream stays **unlevered, 1×**.
+- **Still taxable, still short-term.** Every sell is a taxable event and the wash-sale rules are
+  unchanged — the upgrade moved settlement, not tax treatment.
+- **⚠️ PDT now applies — this is the cost of the upgrade.** A limited-margin account is a margin account
+  for FINRA purposes, so **4+ day trades in 5 rolling business days** on a book under **$25,000** gets it
+  flagged and restricted. This book is ~$5k and the executor runs hourly. A cash account had no such
+  rule (it had good-faith/freeriding violations instead), so nothing in the system guarded against it
+  before v98. The guard is absolute rather than a counter: **a name bought today is never sold today**
+  (`accountActivity` in `agentic-deploy.mjs`). Zero round trips ⇒ PDT can't accrue; the only cost is
+  that a same-day reversal waits a session, which the 5pp drift band already tolerates.
 - Fractional + dollar-based market orders fill **regular hours only**; **fractional positions can't carry
   resting GTC stop orders** — stops/targets in the target are **monitor-and-alert**, not resting orders.
 
@@ -28,7 +40,7 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 | Account **values / drift** (card `Now`) | **every ~30 min** (each producer run, market hours) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
 | Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
-| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $500 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json` |
+| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $500 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
 | **Event triggers (v93)** | every run (deposit / earnings gap) | `agentic-triggers.mjs` (in `build-data.mjs`) → `raw/agentic-triggers.json`: a **`deploy-cash`** push when idle/new cash crosses ~5% of book, and a **`refreshResearch`** flag that runs the research EARLY (before the weekly gate) on a deposit or a ≥6% held-name gap. So the account reacts to deposits + earnings, not just the 7-day clock. |
 
 ## Execution policy — **TIERED AUTO** (owner-approved 2026-08-07; supersedes confirm-everything)
@@ -57,7 +69,7 @@ can't cleanly buy:
   require a source URL. The calendar ships **empty** and is maintained by the weekly research agent, so this
   is a no-op until events are added.
 - **Wash-sale / settlement:** skip a rebuy inside the 30-day loss window; deploying new cash needs no sells,
-  and any required trim is sequenced first + flagged T+1 (cash account, no freeriding).
+  and any required trim is sequenced first so its proceeds fund the buys the same session (v98).
 Deferred names keep their **target weight** — only the buy waits. The consumer's Agentic card shows the same
 deferrals as amber badges so the card and the ticket always agree.
 
@@ -76,7 +88,11 @@ sitting in names the research had dropped, with no ticket):
   within 30d gets its harvest **skipped** (no benefit) or its exit flagged `washRisk`. The gate can't see
   margin orders, so **the executor fetches `get_equity_orders` on the margin account live** before any
   loss sale (step 3 below).
-- **Two-leg T+1 ticket:** `buys` (settled cash, today) vs `buysT1` (funded by sale proceeds, next session).
+- **~~Two-leg T+1 ticket~~ — removed in v98.** Under limited margin the sale proceeds fund the buys in the
+  SAME session, so there is one allocation pass over `cash + proceeds` and `buysT1` is always empty (the
+  field survives only to carry tickets written under the old model through to `done`). Sells still lead:
+  instant settlement means spendable once a sell **fills**, not before, so the executor places the sells,
+  confirms the fills, then places the buys.
 - **The wash-sale ledger is REAL trades (v98), not an inference.** `data.agentic.recentLosses` is rebuilt
   each run from `producer/raw/agentic-trades.json` (`get_pnl_trade_history`, span `ytd`) — the account's
   actual closing trades, losses only, rolling 31 days. It used to be *inferred* from position diffs, which
@@ -128,8 +144,12 @@ append the record** (record `spyAt` = SPY's price at decision time so alpha can 
 2. **Wash-sale guard.** Never realize a loss and rebuy the same (or substantially identical) security within
    **30 days** either side. Check recent orders (`get_equity_orders`) / `get_realized_pnl` before any loss sale
    or any rebuy of a recently-sold loser.
-3. **Settlement / freeriding.** It's a cash account: **sequence sells before buys**, and don't rebuy with
-   unsettled proceeds (T+1). Spreading a rebalance across days is fine and often cheaper tax-wise.
+3. **Settlement / day trades (v98).** Limited margin settles instantly, so a rebalance completes in one
+   session: still **sequence sells before buys** (proceeds are spendable on FILL, not on placement), but
+   there's no T+1 wait and no freeriding rule to trip. What replaced it is **PDT** — never sell a name
+   this account bought earlier the same day; that's the one way an hourly executor could walk into the
+   4-day-trades-in-5-days restriction on a sub-$25k book. The planner enforces this; the executor must
+   supply it live (step 3c below).
 4. **Drift band, not daily churn.** Only rebalance a name when |drift| ≥ `driftTriggerPp` (5pp) or a
    stop/target/earnings level triggers — turnover is tax drag.
 5. **Prefer long-term lots** for any necessary trim once lots age past 1 year. **TLH is formalized (v96):**
@@ -183,16 +203,21 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       > 5% from the plan's basis (re-plan next pass).
    b. `get_earnings_calendar` for the buy names — drop any reporting ≤ 7d (the gate's plan has no earnings
       map; this is where the blackout is enforced).
-   c. Before ANY loss-sale: `get_equity_orders` on the **margin** account (…0741) for the same symbol,
-      30-day window — a recent buy there kills a harvest (keep exits, flag `washRisk`).
-   d. Place **sells first** (losses first, then smallest gain), then **leg-1 buys** from settled cash —
-      fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.
-   e. Advance the ticket (`advanceTicket` → `sells-placed`, or `buys-placed`/`done` when there's no T+1
-      leg), **append the decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt`), commit +
-      push both files, PushNotification the fill report.
-4. **`EXEC_BUYS`** — the T+1 leg: verify settled cash actually covers it (settlement can lag), place the
-   `buysT1` orders, advance to `buys-placed` → `done`, append/extend the ledger record, commit + push, push
-   the report.
+   c. `get_equity_orders` on **••••3900** for today (**PDT guard, v98**) and on the **margin** account
+      (…0741) over a 30-day window. Today's ••••3900 fills feed `accountActivity` — **drop any sell of a
+      name bought earlier today** (a day trade; this book is under $25k). A recent margin-account buy of
+      the same symbol kills a harvest (keep exits, flag `washRisk`). The gate can see neither, so this is
+      the only place both are enforced.
+   d. Place **sells first** (losses first, then smallest gain), **confirm they FILL**, then place the buys
+      — instant settlement makes the proceeds spendable on fill, so the whole ticket goes in one session.
+      Fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.
+      If a sell is still pending, leave the ticket at `sells-placed`; the next pass places the rest.
+   e. Advance the ticket (`advanceTicket` → `sells-placed`, then `buys-placed`/`done`), **append the
+      decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt`), commit + push both files,
+      PushNotification the fill report.
+4. **`EXEC_BUYS`** — a carried buy leg (a ticket whose sells were placed on an earlier pass, or one written
+   under the pre-v98 two-leg model): verify buying power actually covers it, place the orders, advance to
+   `buys-placed` → `done`, append/extend the ledger record, commit + push, push the report.
 5. Never gate or touch the data producer's publish. On ANY placement error: stop, leave the ticket state
    as-is (idempotent — the next pass re-checks open orders via `get_equity_orders` before re-placing),
    and push a failure note instead of improvising.

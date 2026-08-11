@@ -16,7 +16,7 @@ const target = { driftTriggerPp: 5, names: [
 ]};
 const quotes = { SPY: 747, NVDA: 209, GOOGL: 324.76, JPM: 348.8, V: 352.5, LLY: 1152 };
 
-// All-cash account with $2000 fresh cash, and near-term earnings on V (7d) + LLY (13d), GOOGL gapped below entry.
+// All-cash book with $2000 fresh cash, and near-term earnings on V (7d) + LLY (13d), GOOGL gapped below entry.
 const base = planDeployment({
   target, positions: [], cash: 2000, quotes,
   earnings: { V: { date: '2026-07-28', daysAway: 5 }, LLY: { date: '2026-08-05', daysAway: 13 } },
@@ -44,13 +44,13 @@ ok('below-stop → deferred as broken setup', find(broken.deferred, 'NVDA') && f
 const wash = planDeployment({ target: { names: [{ ticker: 'NVDA', weightPct: 100, entry: '205-215', stop: 190 }] }, positions: [], cash: 1000, quotes: { NVDA: 209 }, washMap: { NVDA: { until: '2026-08-01' } }, opts: { asOf: '2026-07-23' } });
 ok('wash-sale name deferred, not bought', find(wash.deferred, 'NVDA') && find(wash.deferred, 'NVDA').reason === 'wash-sale' && !find(wash.buys, 'NVDA'));
 
-// over-target holding triggers a trim (taxable, T+1)
+// over-target holding triggers a trim (taxable, sequenced before the buys it funds)
 const over = planDeployment({
   target: { driftTriggerPp: 5, names: [{ ticker: 'NVDA', weightPct: 10, entry: '205-215', stop: 190 }, { ticker: 'SPY', weightPct: 90, entry: '740-750', stop: 690 }] },
   positions: [{ symbol: 'NVDA', qty: 5, avgCost: 150 }], cash: 0, quotes: { NVDA: 209, SPY: 747 }, opts: { asOf: '2026-07-23' },
 });
 ok('over-drift NVDA generates a trim', find(over.trims, 'NVDA'));
-ok('trim note flags T+1 settlement', find(over.trims, 'NVDA').note.includes('T+1'));
+ok('trim note flags the sell-before-buy sequencing', /sequenced before the buys/.test(find(over.trims, 'NVDA').note));
 
 // pro-rate when cash < total gap: two equal-gap eligible names split a small pot
 const prorate = planDeployment({ target: { names: [{ ticker: 'SPY', weightPct: 50, entry: '740-750', stop: 690 }, { ticker: 'JPM', weightPct: 50, entry: '336-345', stop: 310 }] }, positions: [], cash: 100, quotes: { SPY: 747, JPM: 348.8 }, opts: { asOf: '2026-07-23' } });
@@ -88,10 +88,10 @@ ok('wash-sale still takes precedence over policy', find(washFirst.deferred, 'NVD
 const earnFirst = planDeployment({ ...polArgs, target: polTarget, policy: POL, earnings: { NVDA: { date: '2026-07-26' } } });
 ok('earnings still takes precedence over policy', find(earnFirst.deferred, 'NVDA').reason === 'earnings');
 
-// ═══ v96 — full-book planner: off-target exits, TLH, two-leg T+1, tax math, auto tier ═══
+// ═══ v96 — full-book planner: off-target exits, TLH, tax math, auto tier ═══
 
 // The exact shape of the 2026-08 gap: 40% of the book in names the research dropped, target names
-// starved. Off-target holds must become exits whose proceeds fund the underweights next session.
+// starved. Off-target holds must become exits whose proceeds fund the underweights.
 const fullBook = planDeployment({
   target: { driftTriggerPp: 5, names: [
     { ticker: 'SPY',  weightPct: 40, entry: '740-750', stop: 690, target: 815 },
@@ -114,11 +114,16 @@ near('exit carries realized ST P&L vs avg cost', find(fullBook.exits, 'MSFT').pl
 near('loss exit carries a negative P&L', find(fullBook.exits, 'GE').pl, -40, 1);
 ok('sells are ordered losses-first', fullBook.sells[0].sym === 'GE');
 near('taxSummary nets gains against losses', fullBook.taxSummary.net, 60, 2);
-ok('leg-1 buys spend only settled cash', fullBook.spent <= 50 + 1e-6);
-ok('T+1 leg exists, funded by proceeds', fullBook.buysT1.length > 0);
-ok('T+1 buys never exceed sale proceeds', fullBook.buysT1.reduce((s, b) => s + b.dollars, 0) <= fullBook.proceeds + 1e-6);
-ok('T+1 buys target the underweight names', !!find(fullBook.buysT1, 'AAPL') && !!find(fullBook.buysT1, 'UNH'));
-ok('turnover sums sells + both buy legs', fullBook.turnover > 1200);
+// v98 (limited margin): proceeds are spendable the same session, so there is ONE buy leg funded by
+// settled cash + this ticket's proceeds — the old `buysT1` split is gone.
+ok('buys draw on settled cash AND the sale proceeds', fullBook.spent > 50);
+ok('buys never exceed cash + proceeds', fullBook.spent <= 50 + fullBook.proceeds + 1e-6);
+ok('deployable pool = settled cash + proceeds', Math.abs(fullBook.deployable - (50 + fullBook.proceeds)) < 0.02);
+ok('cash reports SETTLED cash, not the pool', Math.abs(fullBook.cash - 50) < 1e-6);
+ok('buys target the underweight names in one leg', !!find(fullBook.buys, 'AAPL') && !!find(fullBook.buys, 'UNH'));
+ok('no T+1 leg is emitted any more', fullBook.buysT1.length === 0);
+ok('buys are flagged as leaning on sale proceeds', fullBook.buysNeedProceeds === true);
+ok('turnover sums sells + buys', fullBook.turnover > 1200);
 ok('a >$500-turnover ticket is NOT auto-eligible', fullBook.autoEligible === false && fullBook.autoCap === AUTO_TURNOVER_CAP);
 ok('summary mentions the exits and the tax net', /exit/.test(fullBook.summary) && /ST tax/.test(fullBook.summary));
 
@@ -139,8 +144,7 @@ const tlh = planDeployment({
 });
 ok('deep-loss target name is harvested', find(tlh.harvests, 'GOOGL') && find(tlh.harvests, 'GOOGL').kind === 'harvest');
 near('harvest realizes the ST loss', find(tlh.harvests, 'GOOGL').pl, -120, 1);
-ok('harvested name is NOT bought in leg-1', !find(tlh.buys, 'GOOGL'));
-ok('harvested name is NOT bought in leg-2', !find(tlh.buysT1, 'GOOGL'));
+ok('harvested name is NOT bought back this ticket', !find(tlh.buys, 'GOOGL') && !find(tlh.buysT1, 'GOOGL'));
 ok('harvest adds a wash-sale deferral for the rebuy', find(tlh.deferred, 'GOOGL') && find(tlh.deferred, 'GOOGL').reason === 'wash-sale');
 ok('SPY still gets bought', !!find(tlh.buys, 'SPY'));
 
@@ -171,7 +175,49 @@ const trimTax = planDeployment({
   positions: [{ symbol: 'NVDA', qty: 5, avgCost: 150 }], cash: 0, quotes: { NVDA: 209, SPY: 747 }, opts: { asOf: '2026-07-23' },
 });
 ok('trim carries realized P&L', typeof find(trimTax.trims, 'NVDA').pl === 'number' && find(trimTax.trims, 'NVDA').pl > 0);
-ok('trim proceeds fund a T+1 buy of the underweight name', !!find(trimTax.buysT1, 'SPY'));
+ok('trim proceeds fund a same-session buy of the underweight name', !!find(trimTax.buys, 'SPY'));
+
+// ═══ v98 — limited margin (2026-08-11): instant settlement + the PDT day-trade guard ═══
+
+// Instant settlement: with zero settled cash, a ticket's own sale proceeds still fund its buys today.
+const noCash = planDeployment({
+  target: { driftTriggerPp: 5, names: [{ ticker: 'AAPL', weightPct: 100, entry: '304-312', stop: 284 }] },
+  positions: [{ symbol: 'MSFT', qty: 2, avgCost: 400 }],
+  cash: 0, quotes: { AAPL: 309, MSFT: 450 }, opts: { asOf: '2026-08-11' },
+});
+ok('zero settled cash still funds buys from this ticket\'s proceeds', !!find(noCash.buys, 'AAPL') && noCash.spent > 0);
+ok('…and the plan flags that the buys need the sells to fill first', noCash.buysNeedProceeds === true);
+ok('…summary spells out the same-session funding', /same session/.test(noCash.summary));
+
+// PDT guard: a name BOUGHT TODAY is never sold today — one day trade is one too many on a sub-$25k
+// margin account, and the hourly executor would otherwise walk into the 4-in-5 restriction.
+const pdtArgs = {
+  target: { driftTriggerPp: 5, names: [{ ticker: 'AAPL', weightPct: 100, entry: '304-312', stop: 284 }] },
+  positions: [{ symbol: 'MSFT', qty: 2, avgCost: 400 }],
+  cash: 0, quotes: { AAPL: 309, MSFT: 450 }, opts: { asOf: '2026-08-11' },
+};
+const pdt = planDeployment({ ...pdtArgs, accountActivity: { MSFT: { lastBuyDate: '2026-08-11' } } });
+ok('a name bought TODAY is not sold today', !find(pdt.exits, 'MSFT'));
+ok('…it lands in blockedSells with the day-trade reason', find(pdt.blockedSells, 'MSFT') && find(pdt.blockedSells, 'MSFT').blocked === 'day-trade');
+ok('…with a warning naming the guard', pdt.warnings.some((w) => /day trade/.test(w)));
+ok('…and its proceeds are NOT counted as funding', pdt.proceeds === 0 && pdt.spent === 0);
+const pdtOld = planDeployment({ ...pdtArgs, accountActivity: { MSFT: { lastBuyDate: '2026-08-08' } } });
+ok('a buy on an EARLIER day does not block the sell', !!find(pdtOld.exits, 'MSFT') && !pdtOld.blockedSells.length);
+ok('no accountActivity → no blocking (gate passes none)', !!find(planDeployment(pdtArgs).exits, 'MSFT'));
+
+// The guard covers every sell kind, not just exits.
+const pdtHarvest = planDeployment({
+  target: { driftTriggerPp: 5, names: [{ ticker: 'GOOGL', weightPct: 50, entry: '370-382', stop: 332 }, { ticker: 'SPY', weightPct: 50, entry: '740-750', stop: 690 }] },
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], cash: 1000, quotes: { GOOGL: 340, SPY: 750 },
+  accountActivity: { GOOGL: { lastBuyDate: '2026-08-11' } }, opts: { asOf: '2026-08-11' },
+});
+ok('a harvest of a name bought today is blocked too', !find(pdtHarvest.harvests, 'GOOGL') && !!find(pdtHarvest.blockedSells, 'GOOGL'));
+const pdtTrim = planDeployment({
+  target: { driftTriggerPp: 5, names: [{ ticker: 'NVDA', weightPct: 10, entry: '205-215', stop: 190 }, { ticker: 'SPY', weightPct: 90, entry: '740-750', stop: 690 }] },
+  positions: [{ symbol: 'NVDA', qty: 5, avgCost: 150 }], cash: 0, quotes: { NVDA: 209, SPY: 747 },
+  accountActivity: { NVDA: { lastBuyDate: '2026-08-11' } }, opts: { asOf: '2026-08-11' },
+});
+ok('a trim of a name bought today is blocked too', !find(pdtTrim.trims, 'NVDA') && !!find(pdtTrim.blockedSells, 'NVDA'));
 
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);
