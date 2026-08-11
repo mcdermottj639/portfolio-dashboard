@@ -1,72 +1,136 @@
 {
-  "asOf": "2026-08-05",
-  "method": "Seven-name, four-sector-plus-index book anchored by an 18% SPY ballast. The megacap-tech/AI cluster (NVDA 15% + AAPL 15% + GOOGL 10% = 40% of book) sits comfortably inside the 48% correlation cap, with GOOGL vol-scaled down to just 10% given its ~63%-of-price 52wk range versus AAPL/NVDA's tighter ~40% ranges (live quotes pulled fresh — the research snapshot's prices were stale by 9-12% across most names, notably JPM at $357.58 vs the survivor list's $336). JPM and V, the tightest-range, broadest multi-sleeve names, carry the largest active single-name slots (16%/15%) as low-vol quality compounders (V alone under the 20% payments cap); UNH is sized smallest (11%) for its softer composite and open DOJ/antitrust optionality, and NVDA's slot is deliberately held to 15% rather than maxed, sized for gap risk into its Aug 26 earnings print. Overall posture: moderate conviction, vol-aware, sector-diversified with no single non-index name above 16%. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)",
+  "asOf": "2026-08-11",
+  "method": "A 9-name book: SPY 20% ballast plus 8 survivors spread across seven sectors (max 2 in Electronic Tech and Technology Services), with the megacap-tech/AI cluster (NVDA+MSFT+GOOGL+AMZN) deliberately held to 41%, under the 48% cap. Conviction was set from multi-sleeve strength and then scaled by each name's entryHaircut, so the extended-tape names (MSFT, JPM, GOOGL, CNQ-class entries) carry reduced weights with reachable near-spot zones rather than being dropped — CNQ (duplicate energy leg with the worse entry and richer P/B than SHEL) and V (lowest composite, ~1:1 R:R, structural take-rate compression) were the two cut on conviction and sector-slot grounds, not entry alone. Posture is moderately defensive for a momentum-led tape: 20% index, 10% cheap-cycle energy (valuation 7.8), a bank, an aerospace industrial, and vol-scaled sizing that keeps the widest-range name (LLY, range/price ~0.49) at 8% despite its top composite. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)",
   "account": "AGENTIC",
-  "book": 5309,
+  "book": 10317,
   "driftTriggerPp": 5,
   "names": [
     {
-      "ticker": "NVDA",
-      "sector": "Electronic Technology",
-      "weightPct": 15,
-      "entry": "$206–$214",
-      "stop": 192,
-      "target": 238,
-      "thesis": "Quality (9) + growth (9.5) sleeves lead the survivor set, but Aug 26 earnings sits inside the hold window and adversarial review flags China-export/circular-financing risk — sized for gap risk, not maxed on composite alone; vol now tight-ish (52wk range ≈40% of live price) after the run to $211.86."
+      "ticker": "SPY",
+      "sector": "Index",
+      "weightPct": 20,
+      "entry": "755-775 (at market; core hold)",
+      "stop": 655,
+      "target": 850,
+      "thesis": "Uncapped index ballast and the book's diversifier in an extended, momentum-led tape; core hold, not a trade."
+    },
+    {
+      "ticker": "MSFT",
+      "sector": "Technology Services",
+      "weightPct": 12,
+      "entry": "485-508 (spot 502; add on any consolidation day)",
+      "stop": 456,
+      "target": 556,
+      "thesis": "Quality 9.7 + valuation 7.5 dual-sleeve AAA franchise; entryQuality 3 (RSI 79, +23% over 50-DMA) haircuts what conviction alone would make the largest single name.",
+      "drivers": [
+        "quality",
+        "growth",
+        "valuation",
+        "momentum"
+      ]
     },
     {
       "ticker": "JPM",
       "sector": "Finance",
-      "weightPct": 16,
-      "entry": "$352–$360",
-      "stop": 328,
-      "target": 395,
-      "thesis": "Broadest multi-sleeve strength in the book — momentum (8), quality (8), growth (8) all align — at the tightest 52wk range (~22% of price); largest active slot as a low-vol compounder despite trading at an all-time high ($357.58) where valuation, not fundamentals, is the flagged risk."
+      "weightPct": 12,
+      "entry": "350-366 (spot 362.50; 50-DMA ~334 is the deeper add)",
+      "stop": 331,
+      "target": 400,
+      "thesis": "Momentum 8.3 + catalyst 8.5 best-of-breed bank at peak-cycle numbers; sized down for the fresh-high chase (entryQuality 3) rather than benched.",
+      "drivers": [
+        "catalyst",
+        "momentum",
+        "quality",
+        "growth"
+      ]
     },
     {
-      "ticker": "V",
-      "sector": "Finance",
-      "weightPct": 15,
-      "entry": "$364–$372",
-      "stop": 340,
-      "target": 405,
-      "thesis": "Quality (9.5) is the standout sleeve with the tightest historical range (~20% of price) in the set — a low-vol payments compounder sized generously; sits well inside the 20% payments-cluster ceiling since it's the only payments name held (no MA)."
+      "ticker": "NVDA",
+      "sector": "Electronic Technology",
+      "weightPct": 11,
+      "entry": "208-220 (spot 217.67)",
+      "stop": 195,
+      "target": 250,
+      "thesis": "Quality 9.8 / growth 9.7 — the strongest two-sleeve pairing in the set; weight trimmed for the 8/26 earnings binary and hyperscaler-concentration risk (the planner's 7-day blackout governs timing).",
+      "drivers": [
+        "quality",
+        "growth",
+        "momentum"
+      ]
+    },
+    {
+      "ticker": "AMZN",
+      "sector": "Retail Trade",
+      "weightPct": 10,
+      "entry": "260-276 (spot 272.31; fading -5% off the post-earnings spike)",
+      "stop": 245,
+      "target": 305,
+      "thesis": "Momentum 8.1 + catalyst 8.5 with broad sleeve balance; haircut applied for the +17% run since screening and near-breakeven FCF from the capex cycle.",
+      "drivers": [
+        "catalyst",
+        "momentum",
+        "quality",
+        "growth"
+      ]
+    },
+    {
+      "ticker": "SHEL",
+      "sector": "Energy Minerals",
+      "weightPct": 10,
+      "entry": "86-92 (spot 90.71)",
+      "stop": 82,
+      "target": 102,
+      "thesis": "Valuation 7.8 + momentum 7.9 — the book's cheapest sleeve profile and its inflation/energy diversifier; preferred over CNQ (better P/B, buybacks, same cycle exposure).",
+      "drivers": [
+        "momentum",
+        "valuation",
+        "growth",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "GE",
+      "sector": "Electronic Technology",
+      "weightPct": 9,
+      "entry": "355-372 (spot 368.06; 5.4% off the Aug-6 high, RSI cooled to 55)",
+      "stop": 336,
+      "target": 419,
+      "thesis": "Momentum 8.4 / quality 8.5 / catalyst 8.5 triple-sleeve aerospace aftermarket annuity; valuation 3.3 (43x, decade-high multiple) caps the slot despite the cleanest tactical entry in the set.",
+      "drivers": [
+        "quality",
+        "catalyst",
+        "momentum",
+        "growth"
+      ]
+    },
+    {
+      "ticker": "LLY",
+      "sector": "Health Technology",
+      "weightPct": 8,
+      "entry": "1150-1225 (spot 1213.50; faded from the 1249 high)",
+      "stop": 1080,
+      "target": 1360,
+      "thesis": "Top composite (momentum 8.7 / quality 9.2 / growth 8.8 / catalyst 9.0) but the widest 52wk range in the book (~0.49) and valuation 3.3 — vol-scaling and the 0.73 haircut, not conviction, set this weight.",
+      "drivers": [
+        "quality",
+        "catalyst",
+        "growth",
+        "momentum"
+      ]
     },
     {
       "ticker": "GOOGL",
       "sector": "Technology Services",
-      "weightPct": 10,
-      "entry": "$370–$382",
-      "stop": 332,
-      "target": 440,
-      "thesis": "Quality (9.5) + growth (8.5) rival V's, but by far the widest 52wk range (~63% of price) in the survivor set plus capex-driven margin compression and antitrust overhang — vol-scaled down to the smallest megacap-tech slot despite a composite on par with V/JPM."
-    },
-    {
-      "ticker": "AAPL",
-      "sector": "Electronic Technology",
-      "weightPct": 15,
-      "entry": "$304–$312",
-      "stop": 284,
-      "target": 340,
-      "thesis": "Quality (9) + momentum (7) with the tightest range of the megacap-tech names near its 52wk high — sized alongside JPM/V for stability, tempered by guided gross-margin compression (memory costs, chip supply) into the holiday quarter."
-    },
-    {
-      "ticker": "UNH",
-      "sector": "Health Services",
-      "weightPct": 11,
-      "entry": "$398–$412",
-      "stop": 366,
-      "target": 465,
-      "thesis": "Momentum (8.5) is the standout sleeve (strong technical recovery), but quality (6.5)/growth (5) are the softest in the book and the range is wide (~47% of price) — lowest composite here, further vol- and event-scaled down (open-ended DOJ criminal/antitrust probe) to the smallest active slot above the floor."
-    },
-    {
-      "ticker": "SPY",
-      "sector": "Index / Broad Market",
-      "weightPct": 18,
-      "entry": "$760–$780",
-      "stop": 680,
-      "target": 887,
-      "thesis": "Uncapped index ballast diversifying away single-name and megacap-tech-cluster risk from an otherwise concentrated book; core hold with a wide, portfolio-level stop rather than a tactical exit."
+      "weightPct": 8,
+      "entry": "330-348 (spot 344.89; 200-DMA ~330 sits 4% below)",
+      "stop": 313,
+      "target": 400,
+      "thesis": "Quality 9.5 + catalyst 9.0 with the cheapest optionality in megacap AI, but momentum 5.0 and a mid-rollover tape (below the 50-DMA today) take the deepest haircut in the book; the rising 200-DMA ~330 is the named, reachable support.",
+      "drivers": [
+        "quality",
+        "catalyst",
+        "growth"
+      ]
     }
   ]
 }

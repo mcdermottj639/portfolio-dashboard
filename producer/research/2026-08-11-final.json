@@ -1,0 +1,495 @@
+{
+  "asOf": "2026-08-11",
+  "note": "Split-verdict re-run (v102 pipeline) after the $5k deposit — promoted to agentic-target.json via finalize-target.mjs. Supersedes 2026-08-11-reverify.json (old one-boolean pipeline, not promoted).",
+  "ranking": [
+    {
+      "t": "LLY",
+      "composite": 7.912,
+      "m": 8.7,
+      "q": 9.2,
+      "g": 8.8,
+      "c": 9,
+      "v": 3.3,
+      "f": null
+    },
+    {
+      "t": "NVDA",
+      "composite": 7.882,
+      "m": 7.2,
+      "q": 9.8,
+      "g": 9.7,
+      "c": 6,
+      "v": 5.4,
+      "f": null
+    },
+    {
+      "t": "MSFT",
+      "composite": 7.748,
+      "m": 7,
+      "q": 9.7,
+      "g": 8,
+      "c": 5.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "JPM",
+      "composite": 7.666,
+      "m": 8.3,
+      "q": 8,
+      "g": 7.5,
+      "c": 8.5,
+      "v": 6,
+      "f": null
+    },
+    {
+      "t": "AMZN",
+      "composite": 7.488,
+      "m": 8.1,
+      "q": 7.8,
+      "g": 7.6,
+      "c": 8.5,
+      "v": 5.4,
+      "f": null
+    },
+    {
+      "t": "SHEL",
+      "composite": 7.404,
+      "m": 7.9,
+      "q": 6.8,
+      "g": 7.5,
+      "c": 7,
+      "v": 7.8,
+      "f": null
+    },
+    {
+      "t": "CNQ",
+      "composite": 7.32,
+      "m": 7.8,
+      "q": 7,
+      "g": 7,
+      "c": 7,
+      "v": 7.8,
+      "f": null
+    },
+    {
+      "t": "GOOGL",
+      "composite": 7.308,
+      "m": 5,
+      "q": 9.5,
+      "g": 8.2,
+      "c": 9,
+      "v": 4.8,
+      "f": null
+    },
+    {
+      "t": "GE",
+      "composite": 7.212,
+      "m": 8.4,
+      "q": 8.5,
+      "g": 7,
+      "c": 8.5,
+      "v": 3.3,
+      "f": null
+    },
+    {
+      "t": "V",
+      "composite": 7.144,
+      "m": 7,
+      "q": 9.6,
+      "g": 6.3,
+      "c": 7.5,
+      "v": 4.8,
+      "f": null
+    },
+    {
+      "t": "AVGO",
+      "composite": 7.136,
+      "m": 7.2,
+      "q": 8.5,
+      "g": 9.2,
+      "c": 6,
+      "v": 3.6,
+      "f": null
+    },
+    {
+      "t": "AAPL",
+      "composite": 7.014,
+      "m": 5.9,
+      "q": 9.6,
+      "g": 7.3,
+      "c": 7.5,
+      "v": 4.2,
+      "f": null
+    },
+    {
+      "t": "AMD",
+      "composite": 6.786,
+      "m": 8,
+      "q": 6.5,
+      "g": 8.7,
+      "c": 8,
+      "v": 2.4,
+      "f": null
+    },
+    {
+      "t": "UNH",
+      "composite": 6.302,
+      "m": 7.9,
+      "q": 6.8,
+      "g": 4.8,
+      "c": 8,
+      "v": 4.2,
+      "f": null
+    },
+    {
+      "t": "XOM",
+      "composite": 6.022,
+      "m": 6,
+      "q": 7.2,
+      "g": 5.5,
+      "c": 4.5,
+      "v": 6.3,
+      "f": null
+    },
+    {
+      "t": "CRM",
+      "composite": 5.9,
+      "m": 3.2,
+      "q": 8.3,
+      "g": 6.2,
+      "c": 3.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "META",
+      "composite": 5.87,
+      "m": 2.3,
+      "q": 9.2,
+      "g": 6.3,
+      "c": 3,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "COST",
+      "composite": 5.61,
+      "m": 2.1,
+      "q": 8.8,
+      "g": 6.3,
+      "c": 6,
+      "v": 4.5,
+      "f": null
+    },
+    {
+      "t": "ACN",
+      "composite": 5.58,
+      "m": 2,
+      "q": 8.5,
+      "g": 4.5,
+      "c": 3.5,
+      "v": 9,
+      "f": null
+    },
+    {
+      "t": "ICE",
+      "composite": 5.454,
+      "m": 2.5,
+      "q": 7.8,
+      "g": 5,
+      "c": 3,
+      "v": 8.4,
+      "f": null
+    },
+    {
+      "t": "CME",
+      "composite": 5.426,
+      "m": 2.2,
+      "q": 8.8,
+      "g": 4.5,
+      "c": 3.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "NFLX",
+      "composite": 5.314,
+      "m": 0.5,
+      "q": 8.7,
+      "g": 5.8,
+      "c": 3.5,
+      "v": 7.5,
+      "f": null
+    },
+    {
+      "t": "HD",
+      "composite": 5.264,
+      "m": 4.6,
+      "q": 8.2,
+      "g": 3,
+      "c": 3.5,
+      "v": 6.3,
+      "f": null
+    },
+    {
+      "t": "CTSH",
+      "composite": 5.08,
+      "m": 3,
+      "q": 7,
+      "g": 3.5,
+      "c": 2.5,
+      "v": 9,
+      "f": null
+    },
+    {
+      "t": "WMT",
+      "composite": 4.906,
+      "m": 1.8,
+      "q": 8.2,
+      "g": 5.5,
+      "c": 4.5,
+      "v": 3.9,
+      "f": null
+    },
+    {
+      "t": "ORCL",
+      "composite": 4.65,
+      "m": 0.8,
+      "q": 6,
+      "g": 6.8,
+      "c": 2.5,
+      "v": 6.6,
+      "f": null
+    },
+    {
+      "t": "ROL",
+      "composite": 4.52,
+      "m": 0.2,
+      "q": 8.5,
+      "g": 4.5,
+      "c": 3,
+      "v": 5.7,
+      "f": null
+    }
+  ],
+  "flowWeight": 0,
+  "finalists": [
+    "LLY",
+    "NVDA",
+    "MSFT",
+    "JPM",
+    "AMZN",
+    "SHEL",
+    "CNQ",
+    "GOOGL",
+    "GE",
+    "V"
+  ],
+  "verdicts": [
+    {
+      "t": "LLY",
+      "rec": "hold",
+      "conf": 0.7,
+      "supports": true,
+      "businessOk": true,
+      "entryQuality": 4,
+      "risk": "Structural GLP-1 price deflation: realized prices already fell 13% Y/Y and the MFN/Medicare $50-a-month deals plus a crowding field (Pfizer-Metsera, Amgen, oral entrants) keep compressing revenue-per-patient; a $1.25T market cap at 40x earnings assumes volume outruns that deflation for years, plus rising debt funding an unanticipated $4.5B capex step-up and the tirzepatide patent cliff in the mid-2030s.",
+      "entryRisk": "$1,215 is 40x trailing / 34x book after a +95% 12-month run, +17% above the 200-DMA, and consensus targets ($1,236-$1,301) imply only ~2-7% upside — roughly 1:1 reward:risk against a 50-DMA stop. The screen's 'at its 52wk high' claim was stale: the real high is $1,249.45 (Jul 7), the stock faded that retest and fell 1.4% today, so you'd be buying a slightly weaker tape than the momentum note describes. No imminent binary (earnings Oct 29)."
+    },
+    {
+      "t": "NVDA",
+      "rec": "hold",
+      "conf": 0.75,
+      "supports": true,
+      "businessOk": true,
+      "entryQuality": 4,
+      "risk": "Extreme customer concentration in a few hyperscalers who are all building substitute custom silicon (TPU/Trainium/MTIA) — one capex-digestion quarter cracks the growth narrative, and the 9.7 growth score is rearview-looking: +85% YoY on an $81.6B quarter mathematically cannot persist at a $5.35T cap, so deceleration is a when, not an if.",
+      "entryRisk": "Screen ranked it at a stale $192.53 but live price is $217.48 (+13% above the analyzed basis, invalidating its entry/stop math); price is +5.5% over the 50-DMA with RSI ~58 and market-like relative strength (RS3 -3.4, RS12 -1.9 — trend without leadership); confirmed binary earnings event 8/26 pm in 15 days (fresh entry carries full gap/IV-crush exposure and trips the system's own 7d blackout within days); today's session showed mild distribution (opened 222.05, closed near the 216.30 low)."
+    },
+    {
+      "t": "MSFT",
+      "rec": "hold",
+      "conf": 0.8,
+      "supports": false,
+      "businessOk": true,
+      "entryQuality": 3,
+      "risk": "AI capex cycle compressing free cash flow: if Azure AI monetization lags the ~$100B+ spend, margins and the quality premium both compress — the only fundamental crack in an otherwise AAA franchise.",
+      "entryRisk": "The screen's entry thesis is stale: universe px $372.97 vs live $502.30. The 'de-rated, near 52wk-low' setup already resolved (+44% off the June low, now only -9% from the $553.72 high). RSI 79, +23% over the 50-DMA, no golden cross yet, and R:R is ~+10% to the prior high vs ~-19% to the 50-DMA. Chasing a vertical thrust; wait for consolidation toward the low-$400s/200-DMA zone."
+    },
+    {
+      "t": "JPM",
+      "rec": "hold",
+      "conf": 0.75,
+      "supports": false,
+      "businessOk": true,
+      "entryQuality": 3,
+      "risk": "Structurally levered, credit-cycle-exposed earnings priced at a cyclical best — ROE 17-18% and +23% NI growth are peak-cycle numbers, and any credit normalization or rate-cut NII compression hits both the E and the record multiple; Dimon succession is the unpriced governance overhang.",
+      "entryRisk": "Chased: the screen scored it at ~$336 but it trades $362 after printing a fresh 52wk high today on below-average volume; +8.3% over the 50-DMA, +15.5% over the 200-DMA, RSI ~65, P/B 2.65 and 1.70% yield at JPM's own historical extremes, and only ~3-4% upside to the ~$374-376 consensus (one median at $344 is below spot) — roughly 0.4:1 reward:risk to the 50-DMA."
+    },
+    {
+      "t": "AMZN",
+      "rec": "hold",
+      "conf": 0.65,
+      "supports": true,
+      "businessOk": true,
+      "entryQuality": 4,
+      "risk": "Earnings quality + capex: the Q2 \"blowout\" and the cheap-looking 22.8 PE are inflated by a one-off non-operating gain (normalized PE nearer ~30), while the AI/logistics capex cycle has pushed FCF to roughly breakeven — if AWS AI monetization lags, $100B+/yr of capex turns return-dilutive and the margin-expansion thesis stalls.",
+      "entryRisk": "The case was scored at a stale $232.69 but the live price is $272.27 — 17% higher, only 5.2% off the 52wk high, +10% over the 50-DMA and +15% over the 200-DMA after a +30% six-month run, RSI ~66, fading -5% from the post-earnings spike with a -2.1% down day today; reward to consensus is roughly 1:1 vs a -9% give-back to the 50-DMA, so size down or stage in toward ~$248-255."
+    },
+    {
+      "t": "SHEL",
+      "rec": "hold",
+      "conf": 0.6,
+      "supports": true,
+      "businessOk": true,
+      "entryQuality": 4,
+      "risk": "Earnings are a commodity-price cycle, not durable growth: the +144% EPS YoY surge and the +45% next-Q estimate reverse mechanically if crude/gas normalize, with ~10-12% ROE and zero pricing power — a 10x trailing PE on peak-cycle earnings is the classic integrated-oil value-trap setup, and the repeated Q4 impairment misses (Q4'24 and Q4'25 both missed) show the earnings base is lumpier than the beat streak suggests.",
+      "entryRisk": "The screen's entry case was computed on a stale $77.16 price — SHEL actually trades at $90.51, 17% higher: only 4.6% off its 52-week high (not 18.7%), +7.3% over the 50-DMA and +11% over the 200-DMA after a ~32% run off the January low, so the 'mid-range pullback' being bought no longer exists and today's fill chases peak-cycle trailing earnings near the high; consensus-target reward:risk unverifiable (AV rate-limited)."
+    },
+    {
+      "t": "CNQ",
+      "rec": "hold",
+      "conf": 0.75,
+      "supports": false,
+      "businessOk": true,
+      "entryQuality": 3,
+      "risk": "Fully unhedged commodity-price dependence: the +210% YoY EPS print is a one-quarter commodity/one-off swing, not durable growth — consensus already models Q3 EPS halving to $0.75 from $1.58 — so the low-teens PE is measured on peak-cycle earnings, plus WCS-differential/Canadian egress and policy exposure.",
+      "entryRisk": "The screened entry ($39.50, '-23% off high, PE 11.8') is stale — live price is $47.61, 20.5% higher, only 7.3% below the $51.34 52wk high, +8.6% over the 50-DMA and +16.6% over the 200-DMA after a +57% 12m run; reward:risk ~ +8% to the high vs ~-14% back to the 200-DMA, and PB 3.0 is historically rich for the name."
+    },
+    {
+      "t": "GOOGL",
+      "rec": "hold",
+      "conf": 0.75,
+      "supports": false,
+      "businessOk": true,
+      "entryQuality": 3,
+      "risk": "The AI capex supercycle has flipped Alphabet FCF-negative for the first time (-$5.9B in Q2, $195-205B 2026 guide, $25B debt raised) with unproven incremental returns, while the headline catalyst (3.2x EPS beat) was ~$99B of unrealized equity-securities gains, not operations — the earnings-quality story is far weaker than the sleeve scores imply, and antitrust/AI-search-substitution pressure (fresh French AI Overviews complaint) keeps chipping at the core Search moat.",
+      "entryRisk": "Buying mid-rollover: -3.8% today to ~$344, closing at the day's low and breaking below the 50-DMA ($355.85) on fresh negative news (capex anxiety, DeepMind leadership churn, debt offering); 3m return -13.9% and decaying, ex-investment-gain PE is ~28-30x not the screen's 18.8x, and the rising 200-DMA at ~$330 (~4% lower) is the natural support — a materially better entry is plausibly days away, so today's price is below fair."
+    },
+    {
+      "t": "GE",
+      "rec": "hold",
+      "conf": 0.65,
+      "supports": true,
+      "businessOk": true,
+      "entryQuality": 4,
+      "risk": "Aftermarket-annuity earnings are cyclically exposed: a travel/fuel-shock downturn compresses shop-visit demand while a quantified >$500M tariff drag and the LEAP durability-hardware gap (meaningful volumes only H2'26) squeeze margins — none thesis-breaking, but all landing on a stock priced for flawless execution.",
+      "entryRisk": "43.5x trailing / ~46-47x forward — a decade-high multiple, P/B 21.7, PEG ~5.4 — with consensus target $419 only +14% above spot, the LOW target ($375) ~2% away, a bear model near $276 (-25%), and Citi/MS/Jefferies/UBS all trimming targets; tactically OK (5.4% off the Aug-6 high, RSI cooled to 55, +4% vs 50-DMA, no earnings until Oct 20) but structurally expensive with thin reward:risk."
+    },
+    {
+      "t": "V",
+      "rec": "hold",
+      "conf": 0.62,
+      "supports": true,
+      "businessOk": true,
+      "entryQuality": 4,
+      "risk": "Take-rate compression from regulation and disintermediation — the DOJ debit antitrust suit, interchange-cap/CCCA pressure, and stablecoin/account-to-account payment rails — already visible in net income (+6.8%) badly lagging revenue (+14.4%) and net margin slipping to 48.4% from 51.8% a year ago; this is why the stock has negative 12-month relative strength despite eight straight beats.",
+      "entryRisk": "The screened $332 is stale — the live price is $362.59, +9% higher, sitting 5.1% over the 50-DMA ($345) and 9.5% over a barely-rising 200-DMA ($331) after a +13.7% three-month run whose momentum is already fading (RSI 66→54 after rejection at the $373.97 high); ~9% upside to consensus target roughly equals downside to the 200-DMA, so reward:risk at today's price is ~1:1."
+    }
+  ],
+  "allocation": {
+    "summary": "A 9-name book: SPY 20% ballast plus 8 survivors spread across seven sectors (max 2 in Electronic Tech and Technology Services), with the megacap-tech/AI cluster (NVDA+MSFT+GOOGL+AMZN) deliberately held to 41%, under the 48% cap. Conviction was set from multi-sleeve strength and then scaled by each name's entryHaircut, so the extended-tape names (MSFT, JPM, GOOGL, CNQ-class entries) carry reduced weights with reachable near-spot zones rather than being dropped — CNQ (duplicate energy leg with the worse entry and richer P/B than SHEL) and V (lowest composite, ~1:1 R:R, structural take-rate compression) were the two cut on conviction and sector-slot grounds, not entry alone. Posture is moderately defensive for a momentum-led tape: 20% index, 10% cheap-cycle energy (valuation 7.8), a bank, an aerospace industrial, and vol-scaled sizing that keeps the widest-range name (LLY, range/price ~0.49) at 8% despite its top composite.",
+    "picks": [
+      {
+        "ticker": "SPY",
+        "sector": "Index",
+        "weightPct": 20,
+        "dollars": 200,
+        "thesis": "Uncapped index ballast and the book's diversifier in an extended, momentum-led tape; core hold, not a trade.",
+        "entryZone": "755-775 (at market; core hold)",
+        "stop": 655,
+        "target": 850,
+        "rr": "core hold (wide stop, ~-15%)"
+      },
+      {
+        "ticker": "MSFT",
+        "sector": "Technology Services",
+        "weightPct": 12,
+        "dollars": 120,
+        "thesis": "Quality 9.7 + valuation 7.5 dual-sleeve AAA franchise; entryQuality 3 (RSI 79, +23% over 50-DMA) haircuts what conviction alone would make the largest single name.",
+        "entryZone": "485-508 (spot 502; add on any consolidation day)",
+        "stop": 456,
+        "target": 556,
+        "rr": "1.2:1"
+      },
+      {
+        "ticker": "JPM",
+        "sector": "Finance",
+        "weightPct": 12,
+        "dollars": 120,
+        "thesis": "Momentum 8.3 + catalyst 8.5 best-of-breed bank at peak-cycle numbers; sized down for the fresh-high chase (entryQuality 3) rather than benched.",
+        "entryZone": "350-366 (spot 362.50; 50-DMA ~334 is the deeper add)",
+        "stop": 331,
+        "target": 400,
+        "rr": "1.2:1"
+      },
+      {
+        "ticker": "NVDA",
+        "sector": "Electronic Technology",
+        "weightPct": 11,
+        "dollars": 110,
+        "thesis": "Quality 9.8 / growth 9.7 — the strongest two-sleeve pairing in the set; weight trimmed for the 8/26 earnings binary and hyperscaler-concentration risk (the planner's 7-day blackout governs timing).",
+        "entryZone": "208-220 (spot 217.67)",
+        "stop": 195,
+        "target": 250,
+        "rr": "1.4:1"
+      },
+      {
+        "ticker": "AMZN",
+        "sector": "Retail Trade",
+        "weightPct": 10,
+        "dollars": 100,
+        "thesis": "Momentum 8.1 + catalyst 8.5 with broad sleeve balance; haircut applied for the +17% run since screening and near-breakeven FCF from the capex cycle.",
+        "entryZone": "260-276 (spot 272.31; fading -5% off the post-earnings spike)",
+        "stop": 245,
+        "target": 305,
+        "rr": "1.2:1"
+      },
+      {
+        "ticker": "SHEL",
+        "sector": "Energy Minerals",
+        "weightPct": 10,
+        "dollars": 100,
+        "thesis": "Valuation 7.8 + momentum 7.9 — the book's cheapest sleeve profile and its inflation/energy diversifier; preferred over CNQ (better P/B, buybacks, same cycle exposure).",
+        "entryZone": "86-92 (spot 90.71)",
+        "stop": 82,
+        "target": 102,
+        "rr": "1.3:1"
+      },
+      {
+        "ticker": "GE",
+        "sector": "Electronic Technology",
+        "weightPct": 9,
+        "dollars": 90,
+        "thesis": "Momentum 8.4 / quality 8.5 / catalyst 8.5 triple-sleeve aerospace aftermarket annuity; valuation 3.3 (43x, decade-high multiple) caps the slot despite the cleanest tactical entry in the set.",
+        "entryZone": "355-372 (spot 368.06; 5.4% off the Aug-6 high, RSI cooled to 55)",
+        "stop": 336,
+        "target": 419,
+        "rr": "1.6:1"
+      },
+      {
+        "ticker": "LLY",
+        "sector": "Health Technology",
+        "weightPct": 8,
+        "dollars": 80,
+        "thesis": "Top composite (momentum 8.7 / quality 9.2 / growth 8.8 / catalyst 9.0) but the widest 52wk range in the book (~0.49) and valuation 3.3 — vol-scaling and the 0.73 haircut, not conviction, set this weight.",
+        "entryZone": "1150-1225 (spot 1213.50; faded from the 1249 high)",
+        "stop": 1080,
+        "target": 1360,
+        "rr": "1.1:1"
+      },
+      {
+        "ticker": "GOOGL",
+        "sector": "Technology Services",
+        "weightPct": 8,
+        "dollars": 80,
+        "thesis": "Quality 9.5 + catalyst 9.0 with the cheapest optionality in megacap AI, but momentum 5.0 and a mid-rollover tape (below the 50-DMA today) take the deepest haircut in the book; the rising 200-DMA ~330 is the named, reachable support.",
+        "entryZone": "330-348 (spot 344.89; 200-DMA ~330 sits 4% below)",
+        "stop": 313,
+        "target": 400,
+        "rr": "1.7:1"
+      }
+    ]
+  }
+}
