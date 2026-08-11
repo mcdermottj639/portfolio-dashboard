@@ -343,8 +343,15 @@ const data = {
       const d = Math.round((Date.parse(day + 'T00:00:00Z') - Date.parse(data.agentic.cashIdleSince + 'T00:00:00Z')) / 86400000);
       data.agentic.cashIdleDays = Number.isFinite(d) ? Math.max(0, d) : null;
     } else data.agentic.cashIdleDays = 0;
-    // Index-parking ledger — carried forward; the executor rewrites it after a park/release fills.
-    if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked;
+    // Index-parking ledger. Sourced from the COMMITTED producer/agentic-parked.json, not carried
+    // forward from the prior snapshot: the executor is forbidden from writing data.json, so the
+    // snapshot can never be the system of record for state the executor mutates. Same precedence
+    // pattern as the target/decision ledgers — committed file wins, prior snapshot is the fallback.
+    try {
+      const pk = JSON.parse(readFileSync(new URL('./agentic-parked.json', import.meta.url), 'utf8'));
+      if (pk && +pk.dollars > 0) data.agentic.parked = { vehicle: pk.vehicle || 'VTI', dollars: +pk.dollars, forNames: pk.forNames || [], since: pk.since || null };
+      else if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked;
+    } catch { if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked; }
   }
   // ── Wash-sale ledger (taxable ••••3900) = data.agentic.recentLosses [{sym,date,realized?,avgCost?,exitPx}],
   // rolling 31 days. The consumer's Agentic card reads it to BLOCK + flag rebuying any name inside the

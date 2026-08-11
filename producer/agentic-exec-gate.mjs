@@ -35,6 +35,18 @@ import { dirname, join } from 'node:path';
 import { isMarketOpen, etDate } from './market.mjs';
 import { decryptEnvelope } from './emit.mjs';
 import { planDeployment } from './agentic-deploy.mjs';
+
+// The committed index-parking ledger (see producer/agentic-parked.json). Read here rather than off the
+// snapshot so a park/release the executor wrote THIS session is visible on the very next pass, instead
+// of waiting for the producer to rebuild data.json. Missing/garbage file → null → parking simply idle.
+function readParked() {
+  try {
+    const f = join(dirname(fileURLToPath(import.meta.url)), 'agentic-parked.json');
+    if (!existsSync(f)) return null;
+    const p = JSON.parse(readFileSync(f, 'utf8'));
+    return (p && +p.dollars > 0) ? { vehicle: p.vehicle || 'VTI', dollars: +p.dollars, forNames: p.forNames || [], since: p.since || null } : null;
+  } catch { return null; }
+}
 import { planHash, nextAction, MIN_TURNOVER, TICKET_STALE_DAYS } from './agentic-pending.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -81,8 +93,9 @@ for (const e of A.recentLosses || []) {
 }
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},
-  washMap, parked: A.parked || null,
-  // v102: the idle clock and the parking ledger both live in the snapshot (raw/ is wiped every run).
+  washMap, parked: readParked() || A.parked || null,
+  // v102: the idle clock rides in the snapshot; the parking ledger is read from the COMMITTED file so
+  // the gate sees a park/release the executor wrote this session, before the next producer run.
   opts: { asOf: today, cashIdleDays: A.cashIdleDays ?? null },
 });
 

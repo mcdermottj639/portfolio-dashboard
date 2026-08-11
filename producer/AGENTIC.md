@@ -241,12 +241,28 @@ Cheap by construction: every run starts with the deterministic gate and exits im
    e. Advance the ticket (`advanceTicket` → `sells-placed`, then `buys-placed`/`done`), **append the
       decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt`), commit + push both files,
       PushNotification the fill report.
+   f. **PARKING LEDGER (v102) — do not skip this.** If the plan carried a `parking.parked` leg (a buy
+      flagged `parked: true`) or a `parking.released` leg (`kind: 'park-release'`), rewrite
+      **`producer/agentic-parked.json`** from the plan's `parking.after` once those orders FILL, and
+      commit + push it alongside the other two files. This is the **third and only other committable
+      file** for the executor — `data.json` stays off-limits, and `raw/` is wiped every run, so this
+      committed file is the sole system of record for the waiting ground. **Skipping it silently breaks
+      the mechanism**: the ledger would read $0 while the vehicle is actually held, so the next pass
+      sees an unexplained position, can't release it to fund a cleared name, and — because the
+      off-target-exit exemption keys off the SAME `parkVehicle` — would leave real money stranded in a
+      placeholder nothing knows about. Set `dollars`, `forNames` (the deferred names it stands in for),
+      and `since` (first park date); append a `{date, action, dollars, forNames}` row to `history`.
 4. **`EXEC_BUYS`** — a carried buy leg (a ticket whose sells were placed on an earlier pass, or one written
    under the pre-v98 two-leg model): verify buying power actually covers it, place the orders, advance to
    `buys-placed` → `done`, append/extend the ledger record, commit + push, push the report.
 5. Never gate or touch the data producer's publish. On ANY placement error: stop, leave the ticket state
    as-is (idempotent — the next pass re-checks open orders via `get_equity_orders` before re-placing),
    and push a failure note instead of improvising.
+
+**Files the executor may commit — the complete list:** `producer/agentic-pending.json` (the ticket),
+`producer/agentic-decisions.json` (the graded ledger), and — since v102 — `producer/agentic-parked.json`
+(the waiting ground). Nothing else, and **never `data.json`**: the producer owns that file, and the
+executor writing it would race the publish. Any executor state must therefore live in one of these three.
 
 ## Entry discipline, the idle-cash deadline, and the waiting ground (v102)
 Three linked rules the planner enforces, all added 2026-08-11 after a live re-verification exposed them:
