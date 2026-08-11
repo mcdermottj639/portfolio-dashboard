@@ -689,7 +689,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v102'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v103'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1393,8 +1393,14 @@ function agenticPerfStats(AG, spySeries){
   }
   const firstEquity=EH[0].equity, lastEquity=EH[EH.length-1].equity;
   const netFlow=cumFlows[cumFlows.length-1];
+  // The individual contribution events behind netFlow, so the card can SHOW its work: a single
+  // cumulative "you put in" figure sitting next to today's deposit reads as though all of it
+  // arrived today. $50 floor keeps rounding noise out of the list.
+  const flows=[];
+  for(let i=1;i<cumFlows.length;i++){ const amt=cumFlows[i]-cumFlows[i-1];
+    if(Math.abs(amt)>=50) flows.push({t:EH[i].t, amt, tagged:typeof EH[i].cumFlow==='number'}); }
   let days=null; try{ days=Math.round((new Date(dkey(EH[EH.length-1].t)+'T00:00:00')-new Date(firstT+'T00:00:00'))/86400000); }catch(e){}
-  return { EH, mult, cumFlows, ret:(mult[mult.length-1]-1)*100, spy, since:EH[0].t,
+  return { EH, mult, cumFlows, flows, ret:(mult[mult.length-1]-1)*100, spy, since:EH[0].t,
            netFlow, firstEquity, lastEquity, pnl:lastEquity-firstEquity-netFlow, days };
 }
 window.agenticPerfStats=agenticPerfStats;
@@ -2167,9 +2173,10 @@ function renderAgenticPerf(){
       <div class="perf-metric"><div class="pm-l">Return since ${sinceLbl}</div><div class="pm-v ${sc(st.ret)}">${fmtP(st.ret)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">deposit-adjusted${st.days?` · ${st.days}d`:''}</div></div>
       <div class="perf-metric"><div class="pm-l">S&amp;P 500 same window</div><div class="pm-v ${sc(st.spy)}">${st.spy!=null?fmtP(st.spy):'—'}</div>${alpha!=null?`<div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${alpha>=0?'ahead by':'behind by'} ${fmt(Math.abs(alpha),1)}pp</div>`:''}</div>
       <div class="perf-metric"><div class="pm-l">Money made</div><div class="pm-v ${sc(money)}">${fmtD(money)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">net of deposits</div></div>
-      <div class="perf-metric"><div class="pm-l">You put in</div><div class="pm-v">${fmtD(st.firstEquity+st.netFlow)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(st.firstEquity)} start${Math.abs(st.netFlow)>=1?(st.netFlow>0?` + ${fmtD(st.netFlow)} added`:` − ${fmtD(Math.abs(st.netFlow))} withdrawn`):''}</div></div>
+      <div class="perf-metric"><div class="pm-l">You put in</div><div class="pm-v">${fmtD(st.firstEquity+st.netFlow)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(st.firstEquity)} start${Math.abs(st.netFlow)>=1?(st.netFlow>0?` + ${fmtD(st.netFlow)} added since ${sinceLbl}`:` − ${fmtD(Math.abs(st.netFlow))} withdrawn since ${sinceLbl}`):''}</div></div>
       <div class="perf-metric"><div class="pm-l">Account today</div><div class="pm-v">${fmtD(equity)}</div><div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">${fmtD(invested)} invested · ${fmtD(cash)} cash</div></div>
     </div>
+    ${st.flows.length?`<div class="fund-note" style="margin:0 0 10px"><b>💰 Money you added</b> — ${st.flows.length} transfer${st.flows.length===1?'':'s'} detected since ${sinceLbl}: ${st.flows.map((f,i)=>`<b style="color:${i===st.flows.length-1?'var(--text)':'inherit'}">${lbl(f.t)}</b> ${f.amt>=0?'+':'−'}${fmtD(Math.abs(f.amt))}${f.tagged?'':'*'}`).join(' · ')} = <b>${fmtD(st.netFlow)}</b> on top of the ${fmtD(st.firstEquity)} you started with. None of it counts as a gain.${st.flows.some(f=>!f.tagged)?' <span style="opacity:.75">(*inferred from the equity jump — recorded before deposit tagging existed.)</span>':''} Transfers are <i>inferred</i> from equity changes that price moves don\'t explain, since the broker publishes no transfers feed — amounts are approximate.</div>`:''}
     <div style="display:flex;gap:6px;margin-bottom:8px"><button class="hm-tg${_agPerfMode==='ret'?' active':''}" onclick="setAgPerfMode('ret')">Return %</button><button class="hm-tg${_agPerfMode==='val'?' active':''}" onclick="setAgPerfMode('val')">Value $</button></div>
     <div class="chart-wrap"><canvas id="ag-perf-chart"></canvas></div>
     <div class="legend-row">
@@ -2194,7 +2201,9 @@ function renderAgenticPerf(){
     }
   } else {
     ds.push({label:'Account value',data:st.EH.map(e=>e.equity),borderColor:C.ag,backgroundColor:C.agBg,borderWidth:2.2,pointRadius:0,fill:true,tension:0.15});
-    ds.push({label:'Money you put in',data:st.cumFlows.map(f=>st.firstEquity+f),borderColor:C.flow,borderWidth:1.6,borderDash:[4,3],pointRadius:0,tension:0});
+    const depIdx=new Set(st.flows.map(f=>st.EH.findIndex(e=>e.t===f.t)));
+    ds.push({label:'Money you put in',data:st.cumFlows.map(f=>st.firstEquity+f),borderColor:C.flow,borderWidth:1.6,borderDash:[4,3],
+      pointRadius:st.cumFlows.map((_,i)=>depIdx.has(i)?4:0),pointBackgroundColor:C.flow,pointBorderColor:C.flow,tension:0});
   }
   const pctMode=_agPerfMode==='ret';
   // The stat row above is the substance; the chart is decoration. Never let a charting failure
