@@ -123,7 +123,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
   test suite before pushing (see "Verify before shipping").
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v102** (`pf-v102`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v103** (`pf-v103`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -328,7 +328,13 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   would otherwise read as profit (the +250% bug). `cumFlows[i]` is the running implied flow, defined as
   `cur.equity − prev.equity×(1+r)` so it stays exactly consistent with the return series. Stat row: Return
   since {date} · S&P 500 same window (+ ahead/behind in pp) · Money made (net of deposits) · You put in
-  (start + added) · Account today (invested + cash). Chart toggles **Return %** (deposit-adjusted line vs SPY
+  (start + added **since {date}**) · Account today (invested + cash). **A 💰 contributions strip (v103)
+  itemizes every detected transfer — date + amount, most recent bolded, legacy untagged ones flagged `*`
+  — because one cumulative "you put in" figure standing next to a same-day deposit reads as though the
+  whole amount arrived today (the owner saw $10,083.94 the day they wired $5,000 and reasonably called
+  it wrong; the figure was right, the card just never showed its work). `agenticPerfStats` returns
+  `flows[]` (per-step implied flow, $50 floor) for it, and the Value-$ chart dots the contribution line
+  at each one. Chart toggles **Return %** (deposit-adjusted line vs SPY
   rebased over the same window, aligned by calendar day) ⇄ **Value $** (raw equity with cumulative
   contributions as a dashed baseline — the gap between the lines IS the money made). Degrades honestly:
   under 2 recorded points it explains that tracking can't be backfilled (the broker publishes no
