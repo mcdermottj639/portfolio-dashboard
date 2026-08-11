@@ -142,9 +142,17 @@ const OV = {
   MSFT: { Sector: 'TECHNOLOGY', Industry: 'Software', PERatio: '36.8', ForwardPE: '31.2', PEGRatio: '2.1', Beta: '0.91', DividendYield: '0.0072', EPS: '13.05', QuarterlyRevenueGrowthYOY: '0.16', AnalystTargetPrice: '540', ProfitMargin: '0.36' },
   AAPL: { Sector: 'TECHNOLOGY', Industry: 'Consumer Electronics', PERatio: '31.0', ForwardPE: '28.5', PEGRatio: '2.6', Beta: '1.25', DividendYield: '0.0044', EPS: '6.95', QuarterlyRevenueGrowthYOY: '0.05', AnalystTargetPrice: '310', ProfitMargin: '0.25' },
   GLD:  { Sector: 'N/A', Industry: 'Exchange Traded Fund', PERatio: 'None', ForwardPE: 'None', PEGRatio: 'None', Beta: '0.12', DividendYield: '0.0', EPS: 'None', QuarterlyRevenueGrowthYOY: 'None', AnalystTargetPrice: 'None', ProfitMargin: 'None' },
+  // The agentic book's names — real runs record these too (load() covers ••••3900's holdings since
+  // v98), so without them the Accounts page's agentic Allocation/Fundamentals/Income cards render
+  // mostly "Uncategorized" in preview and can't show whether those paths actually work.
+  V:    { Sector: 'FINANCIAL SERVICES', Industry: 'Credit Services', PERatio: '31.4', ForwardPE: '26.8', PEGRatio: '2.2', Beta: '0.95', DividendYield: '0.0071', EPS: '10.75', QuarterlyRevenueGrowthYOY: '0.10', AnalystTargetPrice: '385', ProfitMargin: '0.54' },
+  GOOGL:{ Sector: 'COMMUNICATION SERVICES', Industry: 'Internet Content', PERatio: '25.8', ForwardPE: '22.4', PEGRatio: '1.4', Beta: '1.04', DividendYield: '0.0042', EPS: '13.20', QuarterlyRevenueGrowthYOY: '0.22', AnalystTargetPrice: '405', ProfitMargin: '0.31' },
+  SPY:  { Sector: 'N/A', Industry: 'Exchange Traded Fund', PERatio: 'None', ForwardPE: 'None', PEGRatio: 'None', Beta: '1.00', DividendYield: '0.0118', DividendPerShare: '7.20', ExDividendDate: '2026-09-19', EPS: 'None', QuarterlyRevenueGrowthYOY: 'None', AnalystTargetPrice: 'None', ProfitMargin: 'None' },
 };
-for (const p of POS) recorded[avKey('COMPANY_OVERVIEW', { symbol: p.symbol.replace(/\./g, '-') })] =
-  avStruct(Object.assign({ Symbol: p.symbol, Name: p.symbol }, OV[p.symbol] || {}));
+// Margin holdings ∪ the agentic book, so both sides of the Accounts tab have overviews in preview.
+const OV_SYMS = [...new Set([...POS.map((p) => p.symbol), 'V', 'GOOGL', 'SPY'])];
+for (const sym of OV_SYMS) recorded[avKey('COMPANY_OVERVIEW', { symbol: sym.replace(/\./g, '-') })] =
+  avStruct(Object.assign({ Symbol: sym, Name: sym }, OV[sym] || {}));
 
 // --- sample Daily Picks (exercises the same scoring engine the producer uses) ---
 const pickFinalists = [
