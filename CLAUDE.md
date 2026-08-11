@@ -117,7 +117,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 
 ## Conventions
 - **Branch:** develop on `claude/portfolio-dashboard-data-ffc7x3`; the producer publishes `data.json`
-  to `main`. Ship code via PR → squash-merge to `main` (the producer always reads `main`).
+  to `main`. **Push code straight to `main`** — the owner gave standing authorization (2026-08-11); a PR
+  the agent opens and merges alone is ceremony, and both the producer and the agentic executor read
+  `main`, so unmerged work simply never takes effect. Open a PR only when the owner asks for one, or
+  when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
+  test suite before pushing (see "Verify before shipping").
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
   `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v100** (`pf-v100`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
