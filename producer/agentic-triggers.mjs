@@ -1,4 +1,4 @@
-// producer/agentic-triggers.mjs — PURE event detection for the agentic cash account. The scheduled flow
+// producer/agentic-triggers.mjs — PURE event detection for the agentic account. The scheduled flow
 // was purely CALENDAR-driven: research refreshed every 7 days and nothing ever noticed a deposit or an
 // earnings gap between refreshes. This adds EVENT triggers so the producer reacts to what actually happens.
 //

@@ -13,8 +13,8 @@ replay contract is unchanged:
 
   producer/raw/portfolio.json      { total_value, equity_value, cash, buying_power:{buying_power} }
   producer/raw/positions.json      { positions: [ {symbol, quantity, average_buy_price}, ... ] }
-  producer/raw/agentic-portfolio.json  same shape, for the ••••3900 agentic cash account   (EVERY-RUN)
-  producer/raw/agentic-positions.json  same shape, for the ••••3900 agentic cash account   (EVERY-RUN)
+  producer/raw/agentic-portfolio.json  same shape, for the ••••3900 agentic account         (EVERY-RUN)
+  producer/raw/agentic-positions.json  same shape, for the ••••3900 agentic account         (EVERY-RUN)
   producer/raw/quotes.json         { results: [ <raw RH quote dict>, ... ] }
   producer/raw/hist-day-N.json     { results: [ {symbol, bars:[{t,c}, ...]}, ... ] }   (FETCH_ALL)
   producer/raw/hist-month-N.json   { results: [ {symbol, bars:[{t,c}, ...]}, ... ] }   (FETCH_ALL)
@@ -29,8 +29,10 @@ Env:
   RH_USERNAME, RH_PASSWORD   Robinhood login
   RH_MFA_SECRET              base32 TOTP secret (authenticator). REQUIRED for unattended login.
   PF_ACCOUNT                 (optional) account number to read; default = robin_stocks default.
-  PF_AGENTIC_ACCOUNT         (optional) the ••••3900 agentic cash account number. Omit to auto-detect
-                             the sole cash-type account — only set this if you have >1 cash account.
+  PF_AGENTIC_ACCOUNT         (optional) the ••••3900 agentic account number. Omit to auto-detect the
+                             sole non-IRA account that isn't PF_ACCOUNT. Set it if that's ambiguous.
+                             (Do NOT key on type=="cash" — the account was upgraded to limited margin
+                             2026-08-11 and now reports type=="limited_margin".)
   FETCH_MODE                 FETCH_ALL | FETCH_LIGHT (set by entrypoint from preflight.mjs).
   DRY_RUN=1                  log shapes / counts but do not write any files.
 
@@ -203,10 +205,18 @@ def fetch_portfolio_positions(rh):
 
 
 def _agentic_account_number(rh):
-    """Resolve the agentic ••••3900 cash account. An explicit PF_AGENTIC_ACCOUNT env wins; otherwise
-    auto-detect the sole cash-type account (the agentic account is the only `type:"cash"` one — the
-    individual + both IRAs are margin), so no new env var is required. Returns the account_number
-    string or None."""
+    """Resolve the agentic ••••3900 account. An explicit PF_AGENTIC_ACCOUNT env wins; otherwise
+    auto-detect it. Returns the account_number string or None.
+
+    Do NOT key this on `type == "cash"`. That was the original detector and it BROKE on 2026-08-11
+    when the account was upgraded to **limited margin** (instant settlement): Robinhood re-typed it
+    `limited_margin`, the filter matched nothing, fetch_agentic() skipped, and build-data.mjs would
+    have carried the prior holdings forward while re-stamping `asOf` — i.e. the Agentic card silently
+    freezing while looking fresh. That exact failure already cost us a week in 2026-07; account TYPE is
+    a mutable broker attribute and must never be the identity test.
+
+    Identity here is structural instead: the agentic account is the one non-IRA brokerage account that
+    is NOT the main trading account (PF_ACCOUNT). Nickname is used only to disambiguate."""
     override = os.environ.get("PF_AGENTIC_ACCOUNT")
     if override:
         return override.strip()
@@ -216,18 +226,30 @@ def _agentic_account_number(rh):
     except Exception as e:
         log(f"⚠️  agentic: could not list accounts: {e}")
         return None
-    cash = [a for a in accts if a.get("type") == "cash" and not a.get("deactivated")]
-    if not cash:
+    main = (os.environ.get("PF_ACCOUNT") or "").strip()
+    cands = [
+        a for a in accts
+        if not a.get("deactivated")
+        and not a.get("permanently_deactivated")
+        and str(a.get("state") or "active") == "active"
+        and not str(a.get("brokerage_account_type") or "").lower().startswith("ira")
+        and (not main or a.get("account_number") != main)
+    ]
+    if not cands:
+        log("⚠️  agentic: no non-IRA candidate account found — set PF_AGENTIC_ACCOUNT")
         return None
-    if len(cash) > 1:  # disambiguate by the "Agentic" nickname if there's more than one cash account
-        named = [a for a in cash if (a.get("nickname") or "").strip().lower() == "agentic"]
-        if named:
+    if len(cands) > 1:
+        named = [a for a in cands if (a.get("nickname") or "").strip().lower() == "agentic"]
+        if len(named) == 1:
             return named[0].get("account_number")
-    return cash[0].get("account_number")
+        log(f"⚠️  agentic: {len(cands)} candidate accounts and no unique 'Agentic' nickname — "
+            f"set PF_AGENTIC_ACCOUNT to disambiguate")
+        return None
+    return cands[0].get("account_number")
 
 
 def fetch_agentic(rh):
-    """EVERY-RUN (both modes), best-effort. Writes the ••••3900 agentic cash account's OWN portfolio +
+    """EVERY-RUN (both modes), best-effort. Writes the ••••3900 agentic account's OWN portfolio +
     positions to agentic-portfolio.json / agentic-positions.json — the same shapes build-data.mjs parses
     into `data.agentic` (the Agentic Portfolio card's real holdings + cash). Without this the card
     freezes: build-data carries the prior block forward and only re-prices it, so new trades/deposits
@@ -236,7 +258,7 @@ def fetch_agentic(rh):
     symbols so they join the EVERY-RUN quote batch (each needs a live price for the card's re-pricing)."""
     acct = _agentic_account_number(rh)
     if not acct:
-        log("agentic: no cash/agentic account resolved — skipping (card carries forward)")
+        log("agentic: no agentic account resolved — skipping (card carries forward)")
         return []
 
     def num(d, *keys):
@@ -698,7 +720,7 @@ def main():
     rh = rh_login()
     held = fetch_portfolio_positions(rh)
 
-    # Agentic ••••3900 cash account — its own portfolio + positions, EVERY run (both modes). Best-effort;
+    # Agentic ••••3900 account — its own portfolio + positions, EVERY run (both modes). Best-effort;
     # its holdings join the quote batch so the Agentic Portfolio card re-prices with live prices.
     agentic_syms = fetch_agentic(rh)
 

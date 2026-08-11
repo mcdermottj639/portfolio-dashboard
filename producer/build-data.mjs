@@ -232,9 +232,9 @@ const data = {
   leaders: LEADERS,
 };
 
-// --- Agentic cash account (the "Agentic Portfolio" card's ACTUAL holdings + cash) ---
+// --- Agentic account (the "Agentic Portfolio" card's ACTUAL holdings + cash) ---
 // The recommended portfolio is no longer a restructuring of the margin book — it's the blueprint for
-// the agentic cash account, which the consumer renders as its own card (target vs. actual vs. drift).
+// the agentic account, which the consumer renders as its own card (target vs. actual vs. drift).
 // Optional raw inputs the producer fetches every run for that account: agentic-portfolio.json
 // (get_portfolio) + agentic-positions.json (get_equity_positions). Emitted as
 //   data.agentic = { asOf, cash, buyingPower, equity, positions:[{symbol,qty,avgCost,px,value}], target }
@@ -356,7 +356,7 @@ const data = {
     console.log(`agentic target: ${(agenticTarget.names || []).length} names (asOf ${agenticTarget.asOf})`);
   }
   // ── In-flight rebalance ticket (v96). producer/agentic-pending.json is the COMMITTED two-leg,
-  // T+1-aware ticket the executor drives (see agentic-pending.mjs for the state machine). Attach it
+  // the ticket the executor drives (see agentic-pending.mjs for the state machine). Attach it
   // whenever it's live so the Agentic card can show "rebalance in flight" instead of a stale drift
   // table; done/aborted tickets are omitted (the card has nothing to say about finished ones).
   if (data.agentic) {
