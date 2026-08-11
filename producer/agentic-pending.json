@@ -1,7 +1,7 @@
 {
   "id": "2026-08-11-iy7ywv",
   "created": "2026-08-11",
-  "status": "proposed",
+  "status": "confirmed",
   "autoEligible": false,
   "turnover": 525.21,
   "book": 5337.76,
@@ -57,6 +57,11 @@
     {
       "at": "2026-08-11",
       "to": "proposed"
+    },
+    {
+      "at": "2026-08-11",
+      "to": "confirmed"
     }
-  ]
+  ],
+  "confirmedAt": "2026-08-11"
 }
