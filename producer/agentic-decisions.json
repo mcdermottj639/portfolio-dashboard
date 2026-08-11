@@ -150,7 +150,7 @@
       "book": 5331.51,
       "equityAtDecision": 5331.51,
       "spyAt": 773.09,
-      "rationale": "Owner-confirmed ticket 2026-08-10-61kjns (turnover $3,744.55, above the $500 auto tier). Leg 1 placed 2026-08-10: full exits of four off-target names (GE, LLY, AMZN, MSFT — losses-first ordering, all four were short-term gains) raising $2158.2 of proceeds; est. short-term realized gain $231.22, no harvestable losses so no cross-account wash check was required. Leg 2 (T+1, funded by settling proceeds) is JPM $162.93 / AAPL $795.43 / UNH $583.22 / SPY $42.85, to be placed next session after an earnings re-check. NVDA (wash-sale hold to 2026-09-02), V and GOOGL (gapped below planned entry) deferred — ~$576.71 of intended weight held back.",
+      "rationale": "Owner-confirmed ticket 2026-08-10-61kjns (turnover $3,744.55, above the $500 auto tier). Leg 1 placed 2026-08-10: full exits of four off-target names (GE, LLY, AMZN, MSFT — losses-first ordering, all four were short-term gains) raising $2158.2 of proceeds; est. short-term realized gain $231.22, no harvestable losses so no cross-account wash check was required. Leg 2 (T+1, funded by settling proceeds) is JPM $162.93 / AAPL $795.43 / UNH $583.22 / SPY $42.85, to be placed next session after an earnings re-check. NVDA (wash-sale hold to 2026-09-02), V and GOOGL (gapped below planned entry) deferred — ~$576.71 of intended weight held back. Leg 2 placed 2026-08-11 (proceeds settled, $2,159.22 buying power): AAPL $795.43 @ $306.05, UNH $583.22 @ $404.81, JPM $162.93 @ $359.45, SPY $42.85 @ $773.51 — $1,584.43 deployed, all four filled. Earnings re-check over Aug 11-18 returned no report for any buy name, so none were dropped; all four traded inside their planned entry zones. Ticket closed (done).",
       "trades": [
         {
           "sym": "GE",
@@ -187,6 +187,42 @@
           "priceAt": 508.2601,
           "weightBefore": null,
           "weightAfter": 0
+        },
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 795.43,
+          "shares": 2.59902,
+          "priceAt": 306.0499,
+          "weightBefore": 0.08,
+          "weightAfter": 15
+        },
+        {
+          "sym": "UNH",
+          "side": "BUY",
+          "dollars": 583.22,
+          "shares": 1.440708,
+          "priceAt": 404.8147,
+          "weightBefore": 0.06,
+          "weightAfter": 11
+        },
+        {
+          "sym": "JPM",
+          "side": "BUY",
+          "dollars": 162.93,
+          "shares": 0.453275,
+          "priceAt": 359.4499,
+          "weightBefore": 12.94,
+          "weightAfter": 16
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 42.85,
+          "shares": 0.055396,
+          "priceAt": 773.5099,
+          "weightBefore": 17.2,
+          "weightAfter": 18
         }
       ]
     }

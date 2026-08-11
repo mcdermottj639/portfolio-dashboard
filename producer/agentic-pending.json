@@ -1,7 +1,7 @@
 {
   "id": "2026-08-10-61kjns",
   "created": "2026-08-10",
-  "status": "sells-placed",
+  "status": "done",
   "autoEligible": false,
   "turnover": 3744.55,
   "book": 5329.93,
@@ -121,8 +121,18 @@
     {
       "at": "2026-08-10",
       "to": "sells-placed"
+    },
+    {
+      "at": "2026-08-11",
+      "to": "buys-placed"
+    },
+    {
+      "at": "2026-08-11",
+      "to": "done"
     }
   ],
   "confirmedAt": "2026-08-10",
-  "sells-placedAt": "2026-08-10"
+  "sells-placedAt": "2026-08-10",
+  "buys-placedAt": "2026-08-11",
+  "doneAt": "2026-08-11"
 }
