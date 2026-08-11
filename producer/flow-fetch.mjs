@@ -74,7 +74,29 @@ const sentFrom = (() => { const d = new Date(`${todayET}T00:00:00Z`); d.setUTCMo
 const twoYearsAgo = (() => { const d = new Date(`${todayET}T00:00:00Z`); d.setUTCFullYear(d.getUTCFullYear() - 2); return d.toISOString().slice(0, 10); })();
 
 let wrote = 0, skipped = 0, firstErr = null;
-const symbols = coverFromRaw(RAW);
+// Cover BOTH books, not just the margin account: the consumer's Flow card sits on the Accounts
+// page and reads for the agentic side too, and flow context matters most exactly where the
+// executor may act — the agentic holdings and the weekly target's names. Margin cover first
+// (value-ranked, capped by coverFromRaw), then the agentic names deduped on top. ~10 extra
+// symbols × 3 calls stays well inside the once-a-day Finnhub budget this file paces for.
+const agenticSyms = (() => {
+  const out = [];
+  try {
+    const f = join(RAW, 'agentic-positions.json');
+    if (existsSync(f)) {
+      const d = JSON.parse(readFileSync(f, 'utf8'));
+      const u = d.structuredContent ?? d;
+      const pos = u.data?.positions ?? u.positions ?? [];
+      for (const p of pos) if (p && p.symbol && parseFloat(p.quantity ?? p.qty ?? 0) > 0) out.push(p.symbol);
+    }
+  } catch { /* best-effort — a malformed sidecar must not kill the fetch */ }
+  try {
+    const t = JSON.parse(readFileSync(join(__dirname, 'agentic-target.json'), 'utf8'));
+    for (const n of (t.names || [])) if (n && n.ticker) out.push(n.ticker);
+  } catch { /* target absent is a normal state */ }
+  return out;
+})();
+const symbols = [...new Set([...coverFromRaw(RAW), ...agenticSyms])];
 for (const sym of symbols) {
   const s = encodeURIComponent(avSym(sym));
   const [recommendation, insiderTx, insiderSentiment, earnings, usaSpending, lobbying] = await Promise.all([
