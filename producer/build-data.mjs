@@ -23,6 +23,7 @@ import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
+import { accountRealized, buildRealized, lossesFromTrades } from './realizedpnl.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -326,29 +327,54 @@ const data = {
   } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {
     data.agentic.equityHistory = prior.agentic.equityHistory.slice(-260);
   }
-  // ── Wash-sale ledger (taxable ••••3900). Robinhood gives us no dated realized-loss feed for this account,
-  // so we RECONSTRUCT recent realized losses from position diffs across snapshots: when a FRESH fetch shows
-  // an agentic holding reduced/exited while it was underwater vs its average cost, that's an inferred loss,
-  // dated today. Kept as a rolling 31-day ledger (data.agentic.recentLosses = [{sym,date,avgCost,exitPx}]);
-  // the consumer's Agentic card reads it to BLOCK + flag rebuying any name inside the 30-day wash-sale
-  // window. Only meaningful on a fresh agentic fetch — carry-forward runs have identical positions (no diff).
+  // ── Wash-sale ledger (taxable ••••3900) = data.agentic.recentLosses [{sym,date,realized?,avgCost?,exitPx}],
+  // rolling 31 days. The consumer's Agentic card reads it to BLOCK + flag rebuying any name inside the
+  // 30-day window.
+  //
+  // PREFERRED SOURCE (v98): the account's REAL closing trades — producer/raw/agentic-trades.json, a
+  // get_pnl_trade_history(span:'ytd') response, rebuilt wholesale each fetch. Anything the broker didn't
+  // record as a closing trade simply isn't in the ledger.
+  //
+  // FALLBACK: the original inference — diff prior→fresh positions and call a holding "reduced while
+  // underwater" a realized loss, dated today. Kept for the Railway producer (robin_stocks has no
+  // per-trade realized feed), but it is DEMONSTRABLY unsound and must never win over real trades: any
+  // run whose agentic fetch returned the wrong account's positions makes the next CORRECT fetch look
+  // like a mass liquidation. That is not hypothetical — it booked five losses on 2026-08-03
+  // (LLY/NVDA/TSM/CIFR/IREN) for an account that had no closing trades that week and had never held
+  // three of those names, and NVDA was then wash-sale blocked out of a real buy for 30 days off it.
+  // Hence: when real trades are available they REPLACE the ledger (including stale inferred entries).
   if (data.agentic) {
     const day = new Date(data.generatedAt).toISOString().slice(0, 10);
     const cutoff = (() => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 31); return d.toISOString().slice(0, 10); })();
-    let ledger = (prior && prior.agentic && Array.isArray(prior.agentic.recentLosses))
-      ? prior.agentic.recentLosses.filter((e) => e && e.date && e.date >= cutoff) : [];
-    if (apFile && prior && prior.agentic && Array.isArray(prior.agentic.positions)) {
-      const nowQty = Object.fromEntries((data.agentic.positions || []).map((p) => [p.symbol, p.qty || 0]));
-      for (const pp of prior.agentic.positions) {
-        if (!pp || !pp.symbol || !(pp.qty > 0)) continue;
-        const underwater = pp.px != null && pp.avgCost != null && pp.px < pp.avgCost;
-        const reduced = (nowQty[pp.symbol] || 0) < pp.qty - 1e-6;   // fully exited or partially trimmed
-        if (underwater && reduced && !ledger.some((e) => e.sym === pp.symbol && e.date === day))
-          ledger.push({ sym: pp.symbol, date: day, avgCost: pp.avgCost, exitPx: pp.px });
+    const tradesFile = filesMatching(/^agentic-trades\.json$/)[0];
+    if (tradesFile) {
+      const real = lossesFromTrades(readJSON(tradesFile), { asOf: data.generatedAt, days: 31 });
+      const dropped = ((prior && prior.agentic && prior.agentic.recentLosses) || []).filter((e) => e && e.date >= cutoff && !real.some((r) => r.sym === e.sym && r.date === e.date));
+      data.agentic.recentLosses = real.slice(-40);
+      data.agentic.lossSource = 'trades';
+      if (dropped.length) console.log(`agentic wash-sale ledger: dropped ${dropped.length} INFERRED entr(ies) with no matching closing trade — ${dropped.map((e) => e.sym + '@' + e.date).join(' ')}`);
+      console.log(`agentic wash-sale ledger: ${real.length} real realized loss(es) in the last 31d${real.length ? ' — ' + real.map((e) => e.sym).join(' ') : ''} (broker trade history)`);
+    } else {
+      let ledger = (prior && prior.agentic && Array.isArray(prior.agentic.recentLosses))
+        ? prior.agentic.recentLosses.filter((e) => e && e.date && e.date >= cutoff) : [];
+      // Never mix sources: once a run has built the ledger from real closing trades, a later run that
+      // merely lacks the trade file carries it forward and expires it — it does NOT layer inferences
+      // back on top (that mixing is precisely what produced the phantom 2026-08-03 entries).
+      const priorReal = !!(prior && prior.agentic && prior.agentic.lossSource === 'trades');
+      if (!priorReal && apFile && prior && prior.agentic && Array.isArray(prior.agentic.positions)) {
+        const nowQty = Object.fromEntries((data.agentic.positions || []).map((p) => [p.symbol, p.qty || 0]));
+        for (const pp of prior.agentic.positions) {
+          if (!pp || !pp.symbol || !(pp.qty > 0)) continue;
+          const underwater = pp.px != null && pp.avgCost != null && pp.px < pp.avgCost;
+          const reduced = (nowQty[pp.symbol] || 0) < pp.qty - 1e-6;   // fully exited or partially trimmed
+          if (underwater && reduced && !ledger.some((e) => e.sym === pp.symbol && e.date === day))
+            ledger.push({ sym: pp.symbol, date: day, avgCost: pp.avgCost, exitPx: pp.px });
+        }
       }
+      data.agentic.recentLosses = ledger.slice(-40);
+      data.agentic.lossSource = priorReal ? 'trades' : 'inferred';
+      if (data.agentic.recentLosses.length) console.log(`agentic wash-sale ledger: ${data.agentic.recentLosses.length} ${priorReal ? 'carried real' : 'INFERRED'} loss(es) — ${data.agentic.recentLosses.map((e) => e.sym).join(' ')} (no agentic-trades.json this run)`);
     }
-    data.agentic.recentLosses = ledger.slice(-40);
-    if (data.agentic.recentLosses.length) console.log(`agentic wash-sale ledger: ${data.agentic.recentLosses.length} recent loss(es) — ${data.agentic.recentLosses.map((e) => e.sym).join(' ')}`);
   }
   if (agenticTarget) {
     if (!data.agentic) data.agentic = { asOf: data.generatedAt, cash: 0, buyingPower: 0, equity: 0, positions: [] };
@@ -523,27 +549,60 @@ if (data.options && optionsFile) {
   if (data.options.ideas && Array.isArray(data.options.ideas.ideas)) data.options.ideas.ideas.forEach(decorate);
 }
 
-// Realized P&L for the Income & Tax widget. There is no cost-basis/realized endpoint, so this is
-// an owner-maintained figure (authoritative source: Robinhood's tax center) committed to
-// producer/realized.json as { year, equity, options, total, approx }. Embedded verbatim as
-// data.realized; the widget simply hides the tile when the file is absent.
-const realizedFile = join(__dirname, 'realized.json');
-if (existsSync(realizedFile)) {
-  const r = readJSON(realizedFile);
-  if (r && r.total == null) r.total = (r.equity || 0) + (r.options || 0);
-  data.realized = r;
-} else if (prior && prior.realized) {
-  // No fresh figure this run — carry forward the prior snapshot's realized (already decrypted in
-  // loadPrior) so the tile persists across the routine's fresh-clone runs.
-  data.realized = prior.realized;
+// Realized P&L for the Income & Tax widget — PER ACCOUNT (v98).
+//
+// This used to be a single owner-maintained figure typed in from Robinhood's tax center
+// (producer/realized.json), which meant it (a) froze at whatever was last typed, since it is carried
+// forward on every run, and (b) described the MARGIN book only — the agentic ••••3900 account's
+// realized gains appeared nowhere in the dashboard. The connector's get_realized_pnl endpoint gives
+// the real numbers per account per asset class, so the producer now fetches them (PRODUCER.md step 2,
+// realized-* rows) and this assembles data.realized:
+//
+//   { year, asOf, source:'robinhood', approx:false, accounts:{ main:{…}, agentic:{…} },
+//     equity, options, total, premiumYTD }
+//
+// Top-level equity/options/total are ALL-ACCOUNT sums (so an older cached consumer that only knows
+// the flat shape shows a correct combined figure rather than a margin-only one); `accounts` carries
+// the per-account split the Income & Tax card renders.
+//
+// PRECEDENCE: fresh broker fetch → committed producer/realized.json (owner override / the fallback
+// for the Railway producer, whose robin_stocks path has no realized endpoint) → prior snapshot.
+{
+  const rawPnl = (name) => { const f = filesMatching(new RegExp(`^${name}\\.json$`))[0]; return f ? readJSON(f) : null; };
+  const mainEq = rawPnl('realized-main'), mainOpt = rawPnl('realized-main-opt');
+  const agEq = rawPnl('realized-agentic'), agOpt = rawPnl('realized-agentic-opt');
+  const year = String(new Date(data.generatedAt).getUTCFullYear()) + ' YTD';
+  if (mainEq || agEq) {
+    const accounts = {};
+    if (mainEq || mainOpt) accounts.main = accountRealized({ equity: mainEq, options: mainOpt, label: 'Individual margin', mask: '••••0741' });
+    if (agEq || agOpt) accounts.agentic = accountRealized({ equity: agEq, options: agOpt, label: 'Agentic cash', mask: '••••3900' });
+    data.realized = buildRealized({ accounts, year, asOf: data.generatedAt });
+    console.log(`realized: ${Object.entries(accounts).map(([k, a]) => `${k} ${fmtMoney(a.total)}`).join(' · ')} → total ${fmtMoney(data.realized.total)} (broker-reported)`);
+  } else {
+    const realizedFile = join(__dirname, 'realized.json');
+    if (existsSync(realizedFile)) {
+      const r = readJSON(realizedFile);
+      if (r && r.total == null) r.total = (r.equity || 0) + (r.options || 0);
+      data.realized = r;
+    } else if (prior && prior.realized) {
+      // No fresh figure this run — carry forward the prior snapshot's realized (already decrypted in
+      // loadPrior) so the tile persists across the routine's fresh-clone runs.
+      data.realized = prior.realized;
+    }
+  }
 }
-// Options realized + premium-collected (YTD) come from options.json fresh every run (cheap), and
-// override whatever the equity figure carried. Equity realized stays owner/carry-forward sourced.
+// Options realized + premium-collected (YTD) come from options.json fresh every run (cheap). The
+// PREMIUM figure is always worth carrying (it's the cash banked selling calls/puts, which the tile
+// shows separately), but the realized OVERRIDE only applies to owner/carry-forward sourced figures —
+// a broker-reported block already has the real per-account options realized and must not be
+// clobbered by the options-book estimate, which would desync accounts.* from the totals.
 if (data.options && (data.options.realizedYTD != null || data.options.premiumYTD != null)) {
   data.realized = data.realized || { approx: true };
-  if (data.options.realizedYTD != null) data.realized.options = data.options.realizedYTD;
   if (data.options.premiumYTD != null) data.realized.premiumYTD = data.options.premiumYTD;
-  data.realized.total = (data.realized.equity || 0) + (data.realized.options || 0);
+  if (data.realized.source !== 'robinhood' && data.options.realizedYTD != null) {
+    data.realized.options = data.options.realizedYTD;
+    data.realized.total = (data.realized.equity || 0) + (data.realized.options || 0);
+  }
   if (data.realized.year == null) data.realized.year = String(new Date().getUTCFullYear()) + ' YTD';
 }
 

@@ -77,7 +77,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - **`FETCH_LIGHT`** → an intraday/close run. Fetch **only the EVERY-RUN items** — **both
      accounts'** portfolio + positions (your main account **AND** the ••••3900 agentic cash account —
      resolve it via `get_accounts`, see the callout below; the `agentic-*.json` rows are EVERY-RUN,
-     **not** FETCH_ALL-only), plus quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
+     **not** FETCH_ALL-only), plus the ••••3900 `get_pnl_trade_history` row (the wash-sale ledger's
+     source — also EVERY-RUN), quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
      fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
      forward from the prior snapshot automatically. Then go straight to step 4.
 
@@ -97,6 +98,25 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
+   | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
+   | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
+
+   > ### 💵 Realized P&L is BROKER-REPORTED, per account (v98)
+   > `asset_classes` is **required** — omitting it errors with `un-specified asset class`. The agentic
+   > ••••3900 account has no options level, so there is no `realized-agentic-opt.json` row; add one only
+   > if that changes. These four rows are what make the Income & Tax card's **Realized — YTD** tile real
+   > and account-attributed. Before v98 it was a hand-typed `producer/realized.json` that (a) froze at
+   > whatever was last entered, since it is carried forward every run, and (b) covered the margin book
+   > only — ••••3900's realized gains were nowhere in the dashboard.
+   >
+   > `agentic-trades.json` is **EVERY-RUN** and does double duty: it is the authoritative source for the
+   > ••••3900 **wash-sale ledger** (`data.agentic.recentLosses`). That ledger used to be *inferred* by
+   > diffing positions between snapshots, which mis-booked five losses on 2026-08-03 for an account with
+   > no closing trades that week — and wash-sale blocked a real NVDA buy for 30 days off one of them.
+   > Real closing trades cannot drift like that; when this file is present it REPLACES the inference.
+   > A failure on any of these rows is not fatal — build-data falls back to the prior snapshot's figures.
 
    > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)
    > The agentic account number is **not** in an env var, so before the two `agentic-portfolio.json` /

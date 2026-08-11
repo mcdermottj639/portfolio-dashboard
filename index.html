@@ -184,6 +184,15 @@ html { overflow-x: clip; }
 .harvest-tile .inc-lbl{ color:#b91c1c;} .harvest-tile .inc-val{ color:#991b1b;} .harvest-tile .inc-sub{ color:#dc2626;}
 .exdiv-line, .harv-line { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px; }
 .exdiv-line:last-child, .harv-line:last-child { border-bottom:none; }
+/* Per-account attribution (v98) — which account each figure above comes from. */
+.acct-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:2px 0 12px; }
+.acct-tbl { width:100%; border-collapse:collapse; font-size:12px; min-width:520px; }
+.acct-tbl th { text-align:right; font-size:10px; text-transform:uppercase; letter-spacing:.4px; color:#6b7280; font-weight:700; padding:4px 8px; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+.acct-tbl th:first-child, .acct-tbl td:first-child { text-align:left; }
+.acct-tbl td { text-align:right; padding:7px 8px; border-bottom:1px solid #f3f4f6; white-space:nowrap; }
+.acct-tbl tr:last-child td { border-bottom:none; }
+.acct-tbl tr.acct-total td { font-weight:800; border-top:1.5px solid #e5e7eb; }
+.acct-mask { color:#9ca3af; font-weight:600; font-size:10.5px; }
 
 /* Performance */
 .perf-head { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:12px; }
@@ -392,6 +401,9 @@ html[data-theme="dark"] tbody tr:hover{ background:#1a1a1c; }
 html[data-theme="dark"] .risk-line,
 html[data-theme="dark"] .exdiv-line,
 html[data-theme="dark"] .harv-line{ border-bottom-color:#242427; }
+html[data-theme="dark"] .acct-tbl th{ color:#9a9aa0; border-bottom-color:#242427; }
+html[data-theme="dark"] .acct-tbl td{ border-bottom-color:#1d1d1f; }
+html[data-theme="dark"] .acct-tbl tr.acct-total td{ border-top-color:#2a2a2e; }
 html[data-theme="dark"] .risk-name{ color:#c9c9ce; }
 html[data-theme="dark"] .thesis2 li{ color:#c9c9ce; }
 html[data-theme="dark"] .alloc-track,
@@ -466,6 +478,9 @@ html[data-theme="gold"] :is(#pos-table,#picks-table,.sticky-first) tr > *:first-
 html[data-theme="gold"] .risk-line,
 html[data-theme="gold"] .exdiv-line,
 html[data-theme="gold"] .harv-line{ border-bottom-color:var(--nx-bd); }
+html[data-theme="gold"] .acct-tbl th{ color:#a89878; border-bottom-color:var(--nx-bd); }
+html[data-theme="gold"] .acct-tbl td{ border-bottom-color:var(--nx-bd); }
+html[data-theme="gold"] .acct-tbl tr.acct-total td{ border-top-color:var(--nx-bd); }
 html[data-theme="gold"] .risk-name,
 html[data-theme="gold"] .thesis2 li{ color:#cabfa6; }
 html[data-theme="gold"] .alloc-track,
@@ -656,7 +671,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v97'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v98'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1051,11 +1066,87 @@ function computeIncome(enriched, ovMap){
     }
   }
   exdiv.sort((a,b)=>new Date(a.date)-new Date(b.date));
-  return { annual, yieldOnMkt: mktBasis>0?annual/mktBasis*100:0, yieldOnCost: costBasis>0?annual/costBasis*100:0, exdiv };
+  // mktBasis/costBasis cover the DIVIDEND PAYERS only — that's what makes the yield a yield rather
+  // than a dilution of the whole book. They're returned so a multi-account roll-up can pool the
+  // right denominators instead of dividing combined income by combined market value.
+  return { annual, mktBasis, costBasis, yieldOnMkt: mktBasis>0?annual/mktBasis*100:0, yieldOnCost: costBasis>0?annual/costBasis*100:0, exdiv };
 }
 
 function harvestCandidates(enriched){
   return enriched.filter(p=>p.val>=SMALL_THR && p.pnlD<0).sort((a,b)=>a.pnlD-b.pnlD);
+}
+
+/* ── Per-account income & tax roll-up (v98) ────────────────────────────────────────────────────
+   The Income & Tax card described ONE book — the individual margin account the Portfolio page is
+   built from. Everything the agentic ••••3900 cash account earned was invisible here: its dividend
+   payers weren't in the dividend estimate, its positions weren't in the harvest scan, and its
+   realized gains weren't in the Realized tile (which was a single owner-typed margin figure).
+   These helpers build the same three measures per account so the card can attribute every number.
+
+   The agentic account is a small fractional-share cash account, so it gets the PLANNER's harvest
+   thresholds (max($75, 5% of cost) — producer/agentic-deploy.mjs TLH_MIN_LOSS/_PCT) rather than the
+   margin book's flat $250-position floor, keeping the card and the rebalance ticket in agreement. */
+const AG_TLH_MIN=75, AG_TLH_PCT=5;
+function agenticEnriched(){
+  const A=(window.__DATA&&window.__DATA.agentic)||null;
+  if(!A||!Array.isArray(A.positions)||!A.positions.length)return null;
+  return A.positions.filter(p=>p&&p.symbol&&(+p.qty>0)).map(p=>{
+    const qty=+p.qty||0, avg=+p.avgCost||0, px=+p.px||0;
+    const val=(+p.value>0?+p.value:qty*px), cost=qty*avg, pnlD=val-cost;
+    return {symbol:p.symbol, qty, avg, px, val, cost, pnlD, pnlP:cost>0?(pnlD/cost)*100:0};
+  });
+}
+function agenticHarvest(ag){
+  if(!ag)return [];
+  return ag.filter(p=>p.pnlD<0 && Math.abs(p.pnlD)>=Math.max(AG_TLH_MIN, p.cost*AG_TLH_PCT/100)).sort((a,b)=>a.pnlD-b.pnlD);
+}
+/* One row per account: value, unrealized, realized (broker-reported when the producer fetched it),
+   estimated dividends, harvestable loss. Accounts the snapshot can't see are simply omitted — the
+   card then reads exactly as it always did, minus the false impression that it covered everything. */
+function accountRollup(enriched, ovMap, harvest, mainIncome){
+  const R=(window.__DATA&&window.__DATA.realized)||null;
+  const acct=(R&&R.accounts)||{};
+  const rows=[];
+  const mainInc=mainIncome||((enriched&&ovMap)?computeIncome(enriched,ovMap):{annual:0,exdiv:[]});
+  rows.push({
+    key:'main', icon:'📊', name:'Individual margin', mask:'••••0741',
+    val:enriched.reduce((s,p)=>s+Math.max(p.val,0),0),
+    cash:(window.__SNAP&&window.__SNAP.stats)?(+window.__SNAP.stats.cashVal||0):0,
+    pnl:enriched.reduce((s,p)=>s+p.pnlD,0),
+    divBasis:mainInc.mktBasis||0,
+    // No per-account split in the snapshot yet (an older flat figure, or the owner-maintained one):
+    // that number has ALWAYS described this account, so attribute it here rather than leaving the row
+    // blank under a populated total.
+    realized:acct.main?acct.main.total:(R&&R.total!=null?R.total:null),
+    div:mainInc.annual, exdiv:mainInc.exdiv||[],
+    harv:(harvest||[]).reduce((s,p)=>s+p.pnlD,0), harvN:(harvest||[]).length,
+  });
+  const ag=agenticEnriched();
+  if(ag){
+    const agInc=ovMap?computeIncome(ag,ovMap):{annual:0,exdiv:[]};
+    const agH=agenticHarvest(ag);
+    const A=window.__DATA.agentic;
+    rows.push({
+      key:'agentic', icon:'🤖', name:'Agentic cash', mask:'••••3900',
+      val:ag.reduce((s,p)=>s+Math.max(p.val,0),0), cash:+A.cash||0,
+      pnl:ag.reduce((s,p)=>s+p.pnlD,0),
+      realized:acct.agentic?acct.agentic.total:null,
+      div:agInc.annual, divBasis:agInc.mktBasis||0, exdiv:agInc.exdiv||[],
+      harv:agH.reduce((s,p)=>s+p.pnlD,0), harvN:agH.length,
+    });
+  }
+  const sum=(f)=>rows.reduce((s,r)=>s+(r[f]||0),0);
+  const anyRealized=rows.some(r=>r.realized!=null);
+  return {
+    rows,
+    total:{
+      val:sum('val'), cash:sum('cash'), pnl:sum('pnl'), div:sum('div'), divBasis:sum('divBasis'), harv:sum('harv'), harvN:sum('harvN'),
+      realized:anyRealized?rows.reduce((s,r)=>s+(r.realized||0),0):(R?R.total:null),
+    },
+    // True only when the Realized tile is genuinely covering every account shown above it.
+    realizedComplete:rows.every(r=>r.realized!=null),
+    source:(R&&R.source)||null, asOf:(R&&R.asOf)||null,
+  };
 }
 
 /* ═══ small helpers ═══ */
@@ -1469,25 +1560,58 @@ function renderAllocation(alloc, totalVal){
     </div>`;
 }
 
-/* ═══ Income & Tax ═══ */
-function renderIncomeTax(income, harvest){
+/* ═══ Income & Tax ═══
+   Covers EVERY account the snapshot carries (v98), not just the margin book the Portfolio page is
+   built from: the headline tiles are all-account totals and the breakdown table underneath attributes
+   each figure to the account it came from. Falls back to margin-only, clearly labelled, when the
+   agentic snapshot or the broker's realized figures aren't in the snapshot yet. */
+function renderIncomeTax(income, harvest, ovMap){
   const el=document.getElementById('inc-content'); if(!el)return;
-  const ex=income.exdiv.slice(0,5);
-  const harvTop=harvest.slice(0,5);
-  const totalHarv=harvest.reduce((s,p)=>s+p.pnlD,0);
+  const R=(window.__DATA&&window.__DATA.realized)||null;
+  const roll=accountRollup((window.__SNAP&&window.__SNAP.enriched)||[], ovMap, harvest, income);
+  const multi=roll.rows.length>1;
+  // Ex-div across accounts (tagged when more than one account contributes), soonest first.
+  const today=new Date().toISOString().slice(0,10);
+  const ex=roll.rows.flatMap(r=>(r.exdiv||[]).map(e=>({...e, acct:r.mask, icon:r.icon})))
+    .filter(e=>e.date>=today)   // the header says "Upcoming" — a stale overview date is not
+    .sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,5);
+  const totalDiv=roll.total.div, totalHarv=roll.total.harv, harvN=roll.total.harvN;
+  const divMkt=roll.total.divBasis;   // dividend PAYERS only — see computeIncome
+  const sign=(v)=>(v>=0?'+':'')+fmtD(v);
+  const money=(v,pos)=>v==null?'<span style="color:#9ca3af">—</span>':`<span class="${v>0?'pos':v<0?'neg':''}">${pos?sign(v):fmtD(v)}</span>`;
   el.innerHTML=`
     <div class="inc-grid">
-      <div class="inc-tile"><div class="inc-lbl">Est. Annual Dividends</div><div class="inc-val">${fmtD(income.annual)}</div><div class="inc-sub">${fmt(income.yieldOnMkt,2)}% yield · ${fmt(income.yieldOnCost,2)}% on cost</div></div>
-      <div class="inc-tile"><div class="inc-lbl">Income / Month (avg)</div><div class="inc-val">${fmtD(income.annual/12)}</div><div class="inc-sub">across dividend payers</div></div>
-      ${(()=>{ const R=(window.__DATA&&window.__DATA.realized)||null; if(!R||R.total==null)return ''; const c=R.total>=0?'#10b981':'#ef4444'; const parts=[]; if(R.equity!=null)parts.push('stocks '+(R.equity>=0?'+':'')+fmtD(R.equity)); if(R.options!=null)parts.push('options '+(R.options>=0?'+':'')+fmtD(R.options)); return `<div class="inc-tile"><div class="inc-lbl">Realized — ${R.year||'YTD'}</div><div class="inc-val" style="color:${c}">${R.total>=0?'+':''}${fmtD(R.total)}</div><div class="inc-sub">${parts.join(' · ')||'closed trades'}${R.approx?' · approx':''}</div></div>`; })()}
-      <div class="inc-tile harvest-tile"><div class="inc-lbl">Harvestable Losses</div><div class="inc-val">${fmtD(totalHarv)}</div><div class="inc-sub">${harvest.length} position${harvest.length===1?'':'s'} in the red ≥ $${SMALL_THR}</div></div>
+      <div class="inc-tile"><div class="inc-lbl">Est. Annual Dividends</div><div class="inc-val">${fmtD(totalDiv)}</div><div class="inc-sub">${divMkt>0?fmt(totalDiv/divMkt*100,2)+'% yield · ':''}${multi?'all accounts':'margin ••••0741'}</div></div>
+      <div class="inc-tile"><div class="inc-lbl">Income / Month (avg)</div><div class="inc-val">${fmtD(totalDiv/12)}</div><div class="inc-sub">across dividend payers${multi?' in both accounts':''}</div></div>
+      ${(()=>{ if(!R||roll.total.realized==null)return ''; const t=roll.total.realized, c=t>=0?'#10b981':'#ef4444';
+        const parts=multi&&roll.realizedComplete
+          ? roll.rows.map(r=>r.mask+' '+sign(r.realized))
+          : [R.equity!=null?'stocks '+sign(R.equity):null, R.options!=null?'options '+sign(R.options):null].filter(Boolean);
+        return `<div class="inc-tile"><div class="inc-lbl">Realized — ${R.year||'YTD'}</div><div class="inc-val" style="color:${c}">${sign(t)}</div><div class="inc-sub">${parts.join(' · ')||'closed trades'}${R.approx?' · approx':''}</div></div>`; })()}
+      <div class="inc-tile harvest-tile"><div class="inc-lbl">Harvestable Losses</div><div class="inc-val">${fmtD(totalHarv)}</div><div class="inc-sub">${harvN} position${harvN===1?'':'s'} in the red${multi?' · all accounts':' ≥ $'+SMALL_THR}</div></div>
     </div>
-    ${(()=>{ const R=(window.__DATA&&window.__DATA.realized)||null; if(!R||!R.premiumYTD)return ''; return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">💵 Options premium collected ${R.year||'YTD'}: <b style="color:#10b981">+${fmtD(R.premiumYTD)}</b> <span style="color:#9ca3af">— cash banked from selling calls/puts (e.g. your IREN covered call); counts as realized only once the contract expires or is closed.</span></div>`; })()}
-    <div class="two-col no-mb">
-      <div><div class="col-title">📅 Upcoming Ex-Dividend Dates</div>${ex.length?ex.map(e=>`<div class="exdiv-line"><span><b>${e.sym}</b> <span style="color:#9ca3af">$${fmt(e.dps,2)}/sh</span></span><span>${e.date} · <b class="pos">${fmtD(e.inc)}</b></span></div>`).join(''):'<div class="tech-empty">No upcoming ex-div dates in covered holdings.</div>'}</div>
-      <div><div class="col-title">🧾 Tax-Loss Harvest</div>${harvTop.length?`<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${harvest.length} position${harvest.length===1?'':'s'} carrying ${fmtD(totalHarv)} of harvestable loss. The itemized list — and the sized winner-trims those losses offset — now live in the <b>⚡ Action Center</b> on the <span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab</span> (Step 1 · Raise cash).</div>`:'<div class="tech-empty">No positions in the red above $'+SMALL_THR+'.</div>'}</div>
+    ${(()=>{ if(!R||!R.premiumYTD)return ''; return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">💵 Options premium collected ${R.year||'YTD'}: <b style="color:#10b981">+${fmtD(R.premiumYTD)}</b> <span style="color:#9ca3af">— cash banked from selling calls/puts (e.g. your IREN covered call); counts as realized only once the contract expires or is closed. Options are traded in the margin account only.</span></div>`; })()}
+    <div class="col-title">🏦 By Account</div>
+    <div class="acct-wrap"><table class="acct-tbl">
+      <thead><tr><th>Account</th><th>Value</th><th>Unrealized P&amp;L</th><th>Realized ${R&&R.year?R.year.replace(/^\d+ /,''):'YTD'}</th><th>Est. dividends</th><th>Harvestable</th></tr></thead>
+      <tbody>
+        ${roll.rows.map(r=>`<tr>
+          <td>${r.icon} ${r.name} <span class="acct-mask">${r.mask}</span></td>
+          <td>${fmtD(r.val)}${r.cash?`<div style="font-size:10px;color:#9ca3af">${r.cash<0?fmtD(r.cash)+' margin':'+'+fmtD(r.cash)+' cash'}</div>`:''}</td>
+          <td>${money(r.pnl,true)}</td>
+          <td>${money(r.realized,true)}</td>
+          <td>${r.div>0?fmtD(r.div):'<span style="color:#9ca3af">—</span>'}</td>
+          <td>${r.harv<0?`<span class="neg">${fmtD(r.harv)}</span> <span style="color:#9ca3af;font-size:10px">(${r.harvN})</span>`:'<span style="color:#9ca3af">none</span>'}</td>
+        </tr>`).join('')}
+        <tr class="acct-total"><td>Total <span style="font-weight:600;color:#9ca3af;font-size:10px">net of margin</span></td><td>${fmtD(roll.total.val+roll.total.cash)}</td><td>${money(roll.total.pnl,true)}</td><td>${money(roll.total.realized,true)}</td><td>${fmtD(totalDiv)}</td><td>${totalHarv<0?`<span class="neg">${fmtD(totalHarv)}</span>`:'<span style="color:#9ca3af">none</span>'}</td></tr>
+      </tbody></table></div>
+    ${!multi?'<div class="cov-note" style="margin-top:-6px">Only the margin book is in this snapshot — the agentic ••••3900 figures appear once its holdings are captured.</div>':''}
+    ${(multi&&!roll.realizedComplete)?`<div class="cov-note" style="margin-top:-6px">⚠️ Realized YTD is not yet broker-sourced for every account — the total above covers ${roll.rows.filter(r=>r.realized!=null).map(r=>r.mask).join(' + ')||'the margin book'} only. It refreshes on the next full producer run.</div>`:''}
+    <div class="two-col no-mb" style="margin-top:12px">
+      <div><div class="col-title">📅 Upcoming Ex-Dividend Dates</div>${ex.length?ex.map(e=>`<div class="exdiv-line"><span><b>${e.sym}</b> <span style="color:#9ca3af">$${fmt(e.dps,2)}/sh</span>${multi?` <span class="acct-mask">${e.acct}</span>`:''}</span><span>${e.date} · <b class="pos">${fmtD(e.inc)}</b></span></div>`).join(''):'<div class="tech-empty">No upcoming ex-div dates in covered holdings.</div>'}</div>
+      <div><div class="col-title">🧾 Tax-Loss Harvest</div>${harvN?`<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${harvN} position${harvN===1?'':'s'} carrying ${fmtD(totalHarv)} of harvestable loss${multi?' ('+roll.rows.filter(r=>r.harvN).map(r=>r.mask).join(' + ')+')':''}. The itemized list — and the sized winner-trims those losses offset — now live in the <b>⚡ Action Center</b> on the <span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab</span> (Step 1 · Raise cash)${multi&&roll.rows.some(r=>r.key==='agentic'&&r.harvN)?'; the agentic account harvests through its own rebalance ticket':''}.</div>`:'<div class="tech-empty">No positions in the red above the harvest threshold.</div>'}</div>
     </div>
-    <div class="cov-note">Dividends/ex-div from covered holdings (top names). ${(window.__DATA&&window.__DATA.realized&&window.__DATA.realized.approx)?'Realized stock gains are an average-cost estimate from order history (no tax-lot/wash-sale adjustment) — confirm against your Robinhood tax documents. ':''}Harvesting realizes a loss to offset gains — avoid rebuying the same security within 30 days (wash-sale rule). Not tax advice.</div>`;
+    <div class="cov-note">Dividends/ex-div from covered holdings (top names) in each account. Margin ••••0741 harvest floor is a $${SMALL_THR} position; the agentic ••••3900 account uses the rebalance planner's floor (a loss ≥ the greater of $${AG_TLH_MIN} or ${AG_TLH_PCT}% of cost). ${R&&R.source==='robinhood'?'Realized figures are broker-reported per account (get_realized_pnl) — informational, not a tax document. ':(R&&R.approx?'Realized stock gains are an average-cost estimate from order history (no tax-lot/wash-sale adjustment) — confirm against your Robinhood tax documents. ':'')}Harvesting realizes a loss to offset gains — avoid rebuying the same security within 30 days (wash-sale rule), in EITHER account. Not tax advice.</div>`;
 }
 
 /* The plan tier of the Action Center. Three steps: RAISE cash (harvest losers + right-size
@@ -2292,7 +2416,7 @@ async function load(){
       <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">${(window.__DATA&&window.__DATA.agentic&&(window.__DATA.agentic.positions||[]).some(p=>p&&+p.value>0))?`<span style="display:flex;gap:6px"><button class="hm-tg active" id="hm-acct-main" onclick="setHeatmapAcct('main')">Margin</button><button class="hm-tg" id="hm-acct-agentic" onclick="setHeatmapAcct('agentic')">Agentic</button></span><span style="width:1px;align-self:stretch;background:rgba(148,163,184,.35)"></span>`:''}<button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
+      <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · by account)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
       ${smalls.length>0?`<div class="card"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
@@ -2328,12 +2452,16 @@ async function load(){
       if(window.__SNAP){ window.__SNAP.rsiMap=rsiMap; window.__SNAP.smaMap=smaMap; }
       guard('plan',()=>paintActionCenter());
       let ovMap=await loadFundFeed().catch(()=>({}));
-      const ovMissing=cover.filter(s=>!ovMap[s]);
+      // Cover the agentic ••••3900 holdings too (v98). Without them the Income & Tax card reported $0
+      // of dividends for an account whose book is mostly dividend payers (SPY/JPM/V/AAPL/UNH) — the
+      // overviews are already recorded in the snapshot, the page just never asked for them.
+      const agCover=(((window.__DATA||{}).agentic||{}).positions||[]).map(p=>p&&p.symbol).filter(Boolean);
+      const ovMissing=[...new Set([...cover,...agCover])].filter(s=>!ovMap[s]);
       if(ovMissing.length){ const ovLive=await fetchOverviewBatch(ovMissing).catch(()=>({})); ovMap=Object.assign({},ovMap,ovLive); }
       const _alloc=guard('alloc',()=>computeAllocation(enriched,ovMap,totalVal)), _income=guard('income',()=>computeIncome(enriched,ovMap)), _harvest=guard('harvest',()=>harvestCandidates(enriched))||[];
       if(window.__SNAP){ window.__SNAP.alloc=_alloc; window.__SNAP.income=_income; window.__SNAP.harvest=_harvest; window.__SNAP.ovMap=ovMap; }
       if(_alloc)guard('allocRender',()=>renderAllocation(_alloc,totalVal));
-      if(_income)guard('incomeRender',()=>renderIncomeTax(_income, _harvest));
+      if(_income)guard('incomeRender',()=>renderIncomeTax(_income, _harvest, ovMap));
       guard('fundamentals',()=>renderFundamentals(enriched,ovMap));
       const earn=await fetchEarningsCalendar().catch(()=>({}));
       if(window.__SNAP){ window.__SNAP.earn=earn; }
@@ -2598,6 +2726,13 @@ window.switchTab=switchTab;
       <li>Selling a position at a loss <b>realizes</b> that loss, which offsets realized <b>gains</b> elsewhere and lowers your taxable total.</li>
       <li><span class="hk">Wash-sale rule</span> — if you rebuy the same (or "substantially identical") security within <b>30 days</b>, the IRS disallows the loss. Wait the window or buy a different name.</li>
       <li>The itemized harvest list and the winner-trims those losses offset now live in the <b>Action Center</b> on the Plan tab.</li>
+    </ul>
+    <div class="hsub">By account</div>
+    <ul>
+      <li>The four tiles are <b>all-account totals</b>; the <span class="hk">By Account</span> table underneath shows which account each figure came from — <b>📊 Individual margin ••••0741</b> (the book the rest of the Portfolio tab describes) and <b>🤖 Agentic cash ••••3900</b> (the research-driven account the Plan tab's Agentic Portfolio card runs).</li>
+      <li><span class="hk">Realized</span> is reported by Robinhood per account and per asset class — not an estimate from order history. <b>Options</b> are traded in the margin account only, so all options realized/premium sits there.</li>
+      <li><span class="hk">Harvest floors differ by account</span> — the margin book flags any position ≥ $250 that's in the red; the small fractional agentic account uses the rebalance planner's floor (a loss ≥ the greater of $75 or 5% of cost), so the card and the rebalance ticket agree on what's worth harvesting.</li>
+      <li>The <b>wash-sale window is per security, not per account</b> — rebuying in ••••3900 a name you just took a loss on in ••••0741 (or the reverse) still disallows the loss. The Agentic card's buy plan checks both.</li>
     </ul>
     <p>Dividend income is typically small for a growth/AI book — the tax lever here is harvesting, not yield. <i>Not tax advice.</i></p>` },
   'technical signals': { tag:'Portfolio', t:'Technical Signals', h:`

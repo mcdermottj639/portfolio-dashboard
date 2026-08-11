@@ -44,7 +44,8 @@ Railway cron ─► entrypoint.sh
 | VIX | best-effort RH index quote | carries forward / shows "—" on failure |
 | Retail buzz (ApeWisdom) | `build-data.mjs` in-process | needs `apewisdom.io` egress |
 | **Daily Picks** | `robin_stocks` (FETCH_ALL) | client-side oversold screen → `scan.json`/`picks-fund.json` |
-| Realized P&L | carried forward / `realized.json` | owner-maintained; options realized/premium YTD refresh live |
+| Realized P&L | carried forward / `realized.json` | **Claude-agent path fetches it per account** (`get_realized_pnl` → `realized-main{,-opt}.json` / `realized-agentic.json`); `robin_stocks` has no equivalent, so a Railway run carries the last broker-sourced figures forward. Options realized/premium YTD still refresh live. |
+| Agentic wash-sale ledger | inferred from position diffs | The Claude-agent path sources it from real closing trades (`agentic-trades.json`); Railway falls back to the position-diff inference — but it will **not** layer inferences onto a trades-sourced ledger (see `lossSource` in build-data.mjs), it only carries it forward and expires it. |
 
 So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh live, and the **Agentic
 Portfolio** card tracks the real ••••3900 account (holdings + cash re-priced every run). This path is at
