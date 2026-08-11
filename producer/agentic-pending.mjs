@@ -27,7 +27,7 @@ export const MIN_TURNOVER = 25;     // ignore dust plans — don't spin up a tic
 const round2 = (n) => Math.round((n || 0) * 100) / 100;
 
 // Deterministic fingerprint of WHAT the plan trades (syms + rounded dollars per leg) — used to avoid
-// re-proposing the identical ticket every 30-min run, while letting a materially-changed plan replace it.
+// re-proposing the identical ticket every producer run, while letting a materially-changed plan replace it.
 export function planHash(plan) {
   const leg = (arr) => (arr || []).map((x) => `${x.sym}:${Math.round(x.dollars)}`).sort().join(',');
   return `s[${leg(plan.sells)}]b[${leg(plan.buys)}]t[${leg(plan.buysT1)}]`;

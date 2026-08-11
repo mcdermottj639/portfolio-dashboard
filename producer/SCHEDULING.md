@@ -31,17 +31,23 @@ Make sure the environment has the **Robinhood** and **Alpha Vantage** MCP connec
 macro/fundamentals sections degrade to "—" (everything else still works).
 
 ### 3. Create a scheduled trigger
-Run **every ~30 minutes during market hours on weekdays.** This is cheap by design: `preflight.mjs`
+**What's actually live (as of 2026-08-11): the "Portfolio dashboard refresh" Routine, cron
+`35 * * * *` UTC — HOURLY, every day.** The Routine scheduler's minimum interval is one hour, so the
+30-minute cadence this section originally specified isn't expressible in a single trigger there;
+hourly is the deliberate compromise. It works because runs are cheap by design: `preflight.mjs`
 makes the **day's first run** a full fetch (the heavy price history) and **every run after** a *light*
-run that carries the history forward — so only one run/day is expensive and the rest are nearly free.
-The 30-minute cadence keeps prices/values current intraday (including the Agentic Portfolio card, which
-re-prices its holdings on every run). Set this in **America/New_York**:
+run that carries the history forward — and it `SKIP`s nights/weekends/holidays outright, so the
+24/7 `35 * * * *` shape costs ~nothing outside market hours. The freshness watchdog alarms at
+**>90 min** while the market is open, so hourly leaves one-miss tolerance: a single failed run opens
+an issue (that's the watchdog doing its job), two consecutive ones mean go look.
 
-- **`*/30 9-16 * * 1-5`** — every 30 min, ~09:00–16:30 ET, weekdays. The day's first fire is the full
-  fetch; the rest are light. If the UI allows, nudge off the `:00`/`:30` marks (e.g. `2,32 9-16 * * 1-5`)
-  so fleet-wide fires don't cluster.
+If you ever want the original 30-min intraday cadence back, add a **second** hourly trigger offset
+by 30 minutes (e.g. `5 13-20 * * 1-5` UTC alongside the `:35`) — same prompt; preflight makes the
+extra fires light/skips. A scheduling surface with a true 30-min interval can use the original spec:
 
-UTC fallback (no per-trigger TZ; EDT = ET+4, add an hour in EST): `*/30 13-20 * * 1-5`.
+- **`*/30 9-16 * * 1-5`** in **America/New_York** — every 30 min, ~09:00–16:30 ET, weekdays. If the
+  UI allows, nudge off the `:00`/`:30` marks (e.g. `2,32 9-16 * * 1-5`) so fleet-wide fires don't
+  cluster. UTC fallback (EDT = ET+4, add an hour in EST): `*/30 13-20 * * 1-5`.
 
 **Stray/extra fires are safe and nearly free:** `preflight.mjs` returns `SKIP` on weekends, on NYSE
 full-closure holidays (hardcoded calendar in `market.mjs` — extend it annually), and once the day's
@@ -94,7 +100,8 @@ Use exactly this as the scheduled prompt:
 market hours or how much to fetch.
 
 ## Verify it's working
-- **Commits:** `data.json` on `main` should get a new commit **every ~30 min during market hours**,
+- **Commits:** `data.json` on `main` should get a new commit **hourly during market hours** (~:35
+  UTC fire + a few minutes of work; every ~30 min only if the optional second offset trigger is added),
   starting with the day's first run (GitHub → repo → commits, or `list_commits` filtered to `data.json`).
 - **Phone:** open the app and pull-to-refresh — the freshness bar ("📡 Snapshot: …") should show
   a recent time. `data.json` is network-first, so a refresh always pulls the latest.

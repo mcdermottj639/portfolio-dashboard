@@ -37,7 +37,7 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 ## Cadence (who updates what, when)
 | Item | Cadence | Mechanism |
 |---|---|---|
-| Account **values / drift** (card `Now`) | **every ~30 min** (each producer run, market hours) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
+| Account **values / drift** (card `Now`) | **hourly** (each producer run, market hours — `35 * * * *` UTC) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
 | Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
 | **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $500 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |

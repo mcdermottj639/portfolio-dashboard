@@ -255,9 +255,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   future skip (either producer) is visible in run logs instead of masquerading as fresh.
 - **Cost discipline:** historicals (5Y monthly + YTD daily for ~36 symbols ≈ 24 of ~30 calls) are the
   expensive part. They're fetched once/day (FETCH_ALL) and carried forward — never re-fetch them on a
-  light run. The schedule runs **every ~30 min during market hours**, but only the day's first run is
-  heavy; every run after is a cheap light run (historicals/AV/picks carry forward), so the cadence stays
-  inexpensive. (See `SCHEDULING.md` — `*/30 9-16 * * 1-5` ET.)
+  light run. The live schedule is **hourly** (the "Portfolio dashboard refresh" Routine, `35 * * * *`
+  UTC — the Routine scheduler's minimum interval is an hour; preflight SKIPs the off-hours fires), and
+  only the day's first run is heavy; every run after is a cheap light run (historicals/AV/picks carry
+  forward), so the cadence stays inexpensive. (See `SCHEDULING.md`, incl. how to get 30-min cadence
+  back with a second offset trigger.)
 
 ## Feature inventory (what's built)
 - **Portfolio:** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %

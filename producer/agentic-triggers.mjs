@@ -10,7 +10,7 @@
 //     says NOT_DUE (a fresh deposit or a big held-name gap means the week-old target may be stale).
 //
 // Transition-based (like alerts): 'deploy-cash' fires on the run where cash CROSSES the band up or a fresh
-// deposit lands — not every 30-min run while cash merely sits there — so it nudges once, not endlessly.
+// deposit lands — not every hourly run while cash merely sits there — so it nudges once, not endlessly.
 
 export const CASH_DEPLOY_PCT = 5;    // idle cash ≥ this % of book is "worth deploying"
 export const CASH_DEPLOY_FLOOR = 200; // …and at least this many dollars (don't nag over lunch money)
