@@ -1,108 +1,52 @@
 {
-  "id": "2026-08-10-61kjns",
-  "created": "2026-08-10",
-  "status": "done",
+  "id": "2026-08-11-iy7ywv",
+  "created": "2026-08-11",
+  "status": "proposed",
   "autoEligible": false,
-  "turnover": 3744.55,
-  "book": 5329.93,
-  "planHash": "s[AMZN:432,GE:404,LLY:860,MSFT:463]b[]t[AAPL:795,JPM:163,SPY:43,UNH:583]",
+  "turnover": 525.21,
+  "book": 5337.76,
+  "planHash": "s[]b[NVDA:86,UNH:2,V:437]t[]",
   "legs": {
-    "sells": [
+    "sells": [],
+    "buysNow": [
       {
-        "sym": "GE",
-        "kind": "exit",
-        "dollars": 404.49,
-        "shares": 1.100317,
-        "price": 367.61,
-        "pl": 30.49,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "LLY",
-        "kind": "exit",
-        "dollars": 860.37,
-        "shares": 0.708142,
-        "price": 1214.97,
-        "pl": 39.37,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "AMZN",
-        "kind": "exit",
-        "dollars": 432.36,
-        "shares": 1.555373,
-        "price": 277.98,
-        "pl": 50.36,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "MSFT",
-        "kind": "exit",
-        "dollars": 462.9,
-        "shares": 0.909119,
-        "price": 509.17,
-        "pl": 112.89,
-        "note": "not in the current target — exit funds the underweight names"
-      }
-    ],
-    "buysNow": [],
-    "buysT1": [
-      {
-        "sym": "JPM",
+        "sym": "NVDA",
         "kind": "buy",
-        "dollars": 162.93,
-        "shares": 0.4552,
-        "price": 357.928,
+        "dollars": 86.49,
+        "shares": 0.3951,
+        "price": 218.9,
         "pl": null,
-        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+        "note": "13.4% → 15% target"
       },
       {
-        "sym": "AAPL",
+        "sym": "V",
         "kind": "buy",
-        "dollars": 795.43,
-        "shares": 2.6037,
-        "price": 305.5,
+        "dollars": 436.92,
+        "shares": 1.1993,
+        "price": 364.3196,
         "pl": null,
-        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+        "note": "6.8% → 15% target"
       },
       {
         "sym": "UNH",
         "kind": "buy",
-        "dollars": 583.22,
-        "shares": 1.4199,
-        "price": 410.75,
+        "dollars": 1.8,
+        "shares": 0.0045,
+        "price": 404.2,
         "pl": null,
-        "note": "T+1 leg — funded by settling sell proceeds; place next session"
-      },
-      {
-        "sym": "SPY",
-        "kind": "buy",
-        "dollars": 42.85,
-        "shares": 0.0554,
-        "price": 772.789,
-        "pl": null,
-        "note": "T+1 leg — funded by settling sell proceeds; place next session"
+        "note": "11.0% → 11% target"
       }
-    ]
+    ],
+    "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 233.11,
+    "realizedGain": 0,
     "realizedLoss": 0,
-    "net": 233.11,
+    "net": 0,
     "term": "short",
     "note": null
   },
   "deferred": [
-    {
-      "sym": "NVDA",
-      "reason": "wash-sale",
-      "until": "2026-09-02"
-    },
-    {
-      "sym": "V",
-      "reason": "below-entry",
-      "until": null
-    },
     {
       "sym": "GOOGL",
       "reason": "below-entry",
@@ -111,28 +55,8 @@
   ],
   "history": [
     {
-      "at": "2026-08-10",
+      "at": "2026-08-11",
       "to": "proposed"
-    },
-    {
-      "at": "2026-08-10",
-      "to": "confirmed"
-    },
-    {
-      "at": "2026-08-10",
-      "to": "sells-placed"
-    },
-    {
-      "at": "2026-08-11",
-      "to": "buys-placed"
-    },
-    {
-      "at": "2026-08-11",
-      "to": "done"
     }
-  ],
-  "confirmedAt": "2026-08-10",
-  "sells-placedAt": "2026-08-10",
-  "buys-placedAt": "2026-08-11",
-  "doneAt": "2026-08-11"
+  ]
 }
