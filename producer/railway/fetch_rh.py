@@ -731,7 +731,16 @@ def main():
     opt_syms = fetch_options(rh)
 
     # quotes: every held symbol + agentic holdings + every market symbol + option underlyings (EVERY-RUN)
-    all_syms = list(dict.fromkeys(held + agentic_syms + markets + sorted(opt_syms)))
+    # + every agentic-TARGET ticker and the VTI parking vehicle (v102): a research refresh can introduce
+    # a name the account has never held — unquoted it prices as $0 in the deploy planner and defers as a
+    # phantom below-stop, and an unquoted parking vehicle silently disables the waiting ground.
+    target_syms = []
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "..", "agentic-target.json")) as f:
+            target_syms = [n.get("ticker") for n in (json.load(f).get("names") or []) if n.get("ticker")]
+    except Exception:
+        pass
+    all_syms = list(dict.fromkeys(held + agentic_syms + markets + sorted(opt_syms) + target_syms + ["VTI"]))
     fetch_quotes(rh, all_syms)
 
     # VIX: cheap, every run, best-effort

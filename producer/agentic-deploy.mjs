@@ -249,6 +249,15 @@ export function planDeployment(input = {}) {
         deferred.push({ sym, reason: 'policy', detail: `${polEvent.title} on ${polEvent.date} (≤${polBlackout}d) — scheduled policy decision, wait for the outcome`, until: polEvent.date, dollars: gap });
         continue;
       }
+      // NO QUOTE — a research refresh can introduce a name the account has never held; until the
+      // producer's next run folds it into the quote batch it prices as 0 here, which used to read as a
+      // phantom "below-stop". Defer honestly instead: fail safe, name the real cause, self-heals on the
+      // next snapshot. (PRODUCER.md now quotes agentic-target tickers + the park vehicle every run.)
+      if (!(px > 0)) {
+        deferred.push({ sym, reason: 'no-quote', dollars: gap,
+          detail: `no live quote for ${sym} in the snapshot — a new target name isn't priced until the next producer run; deferring (fail safe)` });
+        continue;
+      }
       if (gapReverify && px != null && stop != null && px <= stop) {
         deferred.push({ sym, reason: 'below-stop', detail: `${money(px)} is at/below target stop ${money(stop)} — setup broken, re-verify before buying`, dollars: gap });
         continue;
@@ -410,6 +419,7 @@ export function planDeployment(input = {}) {
   if (parkingOn && !parkLegs.release && parkableCash >= parkMin && parkableNeed >= parkMin) {
     const dollars = +Math.min(parkableCash, parkableNeed).toFixed(2);
     const px = pxOf(parkVehicle);
+    if (!(px > 0)) warnings.push(`index parking unavailable: no live quote for ${parkVehicle} in the snapshot — deferred cash stays in cash this pass (producer must quote the park vehicle every run)`);
     if (px > 0 && dollars >= parkMin) {
       parkLegs.park = { sym: parkVehicle, kind: 'park', dollars, shares: +(dollars / px).toFixed(4), price: px,
         forNames: deferred.filter((d) => d.sym !== parkVehicle).map((d) => d.sym),

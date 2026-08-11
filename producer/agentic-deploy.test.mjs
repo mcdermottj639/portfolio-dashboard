@@ -305,5 +305,18 @@ const prose = planDeployment({
 });
 ok('a "$1,130-$1,180 (prose)" zone parses and defers on premium', defReason(prose, 'LLY') === 'above-entry');
 
+// (i) NO QUOTE — a brand-new target name with no snapshot price defers honestly (not phantom below-stop),
+//     and an unquoted park vehicle warns instead of silently disabling the waiting ground.
+const noQuote = planDeployment({
+  target: { asOf: '2026-08-11', names: [{ ticker: 'SHEL', weightPct: 50, entry: '86-92', stop: 82 }, { ticker: 'SPY', weightPct: 50, entry: '740-780', stop: 690 }] },
+  positions: [], cash: 2000, quotes: { SPY: 750 }, opts: { asOf: '2026-08-11' },   // no SHEL, no VTI quote
+});
+ok('unquoted target name defers as no-quote, not below-stop', defReason(noQuote, 'SHEL') === 'no-quote');
+ok('…and parking-unavailable is a visible warning', noQuote.warnings.some((w) => /parking unavailable/.test(w)));
+ok('…while a quoted VTI parks the same deferral', planDeployment({
+  target: { asOf: '2026-08-11', names: [{ ticker: 'SHEL', weightPct: 50, entry: '86-92', stop: 82 }, { ticker: 'SPY', weightPct: 50, entry: '740-780', stop: 690 }] },
+  positions: [], cash: 2000, quotes: { SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-11' },
+}).parking.parked !== null);
+
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);

@@ -94,7 +94,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI] }` | `producer/raw/quotes.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
@@ -127,6 +127,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > `get_accounts` returns **no** `agentic_allowed` account. Also fold that account's holdings into the
    > `get_equity_quotes` symbol list so each gets a live price. (Without this the Agentic Portfolio card
    > shows the target with `$0.00` live holdings — exactly the bug this note prevents.)
+   > **Also fold in (every run): every ticker in the committed `producer/agentic-target.json` and the
+   > parking vehicle `VTI`** (see `PARK_VEHICLE`, agentic-deploy.mjs). A research refresh can introduce a
+   > name the account has never held (2026-08-11: SHEL) — with no quote it prices as $0 in the deploy
+   > planner and defers as a phantom "below-stop", and an unquoted VTI silently disables index parking.
+   > Both are one extra symbol in the SAME batched quotes call — never a separate fetch.
 
    > ### ⚠️ CRITICAL — how to save raw files (or the scheduled run hangs)
    > A scheduled run is unattended: **any command that triggers a permission prompt stalls the
