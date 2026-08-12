@@ -131,7 +131,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
   test suite before pushing (see "Verify before shipping").
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v105** (`pf-v105`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v107** (`pf-v107`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -335,6 +335,27 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   Two cards are intentionally NOT duplicated because the agentic side already has a superset: **All
   Positions** (the Agentic Portfolio tracker is the same table plus target/drift/trade) and
   **Performance vs Benchmark** (Account Performance is the real, deposit-adjusted return).
+  **The switcher is STICKY and lands you on the SAME section (v107).** `.acct-seg-wrap` pins the
+  segmented control below the tab bar (`top: env(safe-area-inset-top) + var(--tabbar-h)`; the height is
+  measured live by `_syncTabbarH` because the tab row wraps to two lines on a phone), so accounts can be
+  swapped from anywhere in the page. Swapping then **preserves the reader's section**: every paired card
+  on both sides carries a `data-sec` key (`snapshot·holdings·performance·heatmap·risk·allocation·income·
+  technicals·fundamentals·flow`, plus the unpaired `smalls`/`rebalance-log`), `_currentSec()` notes which
+  one is on screen before the swap and `_landOnSec()` scrolls to its counterpart after — so comparing the
+  two books' Risk or Income cards is one tap, not a scroll back to the top and down again. An unpaired
+  section falls back to the nearest common one **above** it in `SEC_ORDER` (self-directed `smalls` →
+  `fundamentals`). Three things here are load-bearing and were each a real bug in development:
+  **(a) `__pfTopOffset()` must be built from HEIGHTS + the tab bar's resolved sticky `top`, never from
+  live `getBoundingClientRect().bottom`** — a rect-based offset reads ~50px larger while the page sits at
+  scroll 0 (nothing is stuck yet), so a scroll computed before sticking and judged after it disagreed with
+  itself and landed every jump a section early; **(b) `_currentSec` picks the FIRST section whose bottom
+  clears the header by `SEC_EDGE` (40px)** — "last card whose top is above the line" flips to the previous
+  section exactly when the next card starts filling the screen, and "whichever card covers the most pixels"
+  tips to the *next* section whenever the current one is short (a compact Allocation card handed you off to
+  Income); **(c) the nav-chip `topOffset()` delegates to `__pfTopOffset`** — once the switcher became
+  sticky, any jump computed off the tab bar alone parks the target card underneath it. First visit to a
+  side also runs `_settleOnSec` (re-place for ~1.2s, cancelled by any real scroll input) because that
+  side's cards are still filling in and everything above the target grows.
   **Both sides run the SAME card order (v106)** — hero → snapshot tiles → *holdings table* → *performance*
   → 🗺️ Heatmap → 🛡️ Risk → 🗂 Allocation → 💵 Income & Tax → 📡 Technicals → 📋 Fundamentals → 🏛️ Flow →
   pointer, where "holdings table"/"performance" resolve to each side's version of that card (All

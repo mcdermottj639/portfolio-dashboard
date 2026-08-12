@@ -292,8 +292,13 @@ body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-sele
 .tab .tab-sub { font-size: 10px; opacity: 0.7; font-weight: 500; margin-left: 4px; }
 @media (max-width:760px){ .tabbar{ gap:6px; } .tab{ padding:10px 5px; font-size:12px; gap:4px; } .tab .tab-sub{ display:none; } }
 
-/* ─── Account segmented control (Accounts tab: self-directed ⇄ agentic) ─── */
-.acct-seg { display:flex; gap:4px; background:#e5e7eb; padding:4px; border-radius:14px; margin-bottom:12px; }
+/* ─── Account segmented control (Accounts tab: self-directed ⇄ agentic) ───
+   The control STICKS below the tab bar (v106) so the reader can swap accounts from wherever they
+   are in the page instead of scrolling back up — paired with setAccount's section matching, which
+   lands them on the same card on the other side. --tabbar-h is measured live (_syncTabbarH): the
+   tab row wraps to two lines on a phone, so a hardcoded offset would overlap or leave a gap. */
+.acct-seg-wrap { position:sticky; top:calc(env(safe-area-inset-top) + var(--tabbar-h,96px)); z-index:90; background:#f0f2f5; padding:2px 0 8px; margin-bottom:4px; }
+.acct-seg { display:flex; gap:4px; background:#e5e7eb; padding:4px; border-radius:14px; }
 .acct-tg { flex:1 1 0; padding:9px 10px; border:none; border-radius:11px; background:transparent; color:#6b7280; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.25; transition:all 0.15s; }
 .acct-tg .acct-sub { font-size:9.5px; font-weight:500; opacity:0.72; letter-spacing:0.2px; }
 .acct-tg.active { background:#fff; color:#1c1c1e; box-shadow:0 1px 4px rgba(0,0,0,0.10); }
@@ -392,6 +397,7 @@ html[data-theme="dark"] body{ background:#000; color:var(--text); }
 html[data-theme="dark"] .tabbar{ background:#000; }
 html[data-theme="dark"] .tab{ background:#161616; color:#9a9aa0; box-shadow:none; }
 html[data-theme="dark"] .acct-seg{ background:#101010; }
+html[data-theme="dark"] .acct-seg-wrap{ background:#000; }
 html[data-theme="dark"] .acct-tg{ color:#9a9aa0; }
 html[data-theme="dark"] .acct-tg.active{ background:#1e1e1e; color:#f5f5f7; box-shadow:none; }
 html[data-theme="dark"] .tab:hover{ color:#fff; }
@@ -462,6 +468,7 @@ html[data-theme="gold"] .tab{ background:#0c0c0d; color:#9c917b; box-shadow:none
 html[data-theme="gold"] .tab:hover{ color:var(--text); }
 html[data-theme="gold"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; border-color:rgba(227,192,116,.55); box-shadow:none; }
 html[data-theme="gold"] .acct-seg{ background:#0b0b0c; border:1px solid var(--nx-bd); }
+html[data-theme="gold"] .acct-seg-wrap{ background:#000; }
 html[data-theme="gold"] .acct-tg{ color:#9c917b; }
 html[data-theme="gold"] .acct-tg.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; box-shadow:none; }
 html[data-theme="gold"] .card,
@@ -560,9 +567,11 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
 </div>
 <div id="page-portfolio">
-  <div class="acct-seg" id="acct-seg" role="tablist" aria-label="Account">
-    <button class="acct-tg active" id="acct-tg-main" role="tab" aria-selected="true" onclick="setAccount('main')">📊 Self-directed<span class="acct-sub">••••0741 · margin</span></button>
-    <button class="acct-tg" id="acct-tg-agentic" role="tab" aria-selected="false" onclick="setAccount('agentic')">🤖 Agentic<span class="acct-sub">••••3900 · automated</span></button>
+  <div class="acct-seg-wrap" id="acct-seg-wrap">
+    <div class="acct-seg" id="acct-seg" role="tablist" aria-label="Account">
+      <button class="acct-tg active" id="acct-tg-main" role="tab" aria-selected="true" onclick="setAccount('main',{keepSection:true})">📊 Self-directed<span class="acct-sub">••••0741 · margin</span></button>
+      <button class="acct-tg" id="acct-tg-agentic" role="tab" aria-selected="false" onclick="setAccount('agentic',{keepSection:true})">🤖 Agentic<span class="acct-sub">••••3900 · automated</span></button>
+    </div>
   </div>
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
   <div id="agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic account…</div></div>
@@ -689,7 +698,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v106'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v107'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1982,8 +1991,76 @@ let _agenticInit=false, _agPerfMode='ret', _agChart=null;
 
 /* Which account side of the Accounts tab is showing. Lazily renders the agentic page on first
    visit (like the tab inits) and persists the choice, so the app reopens where you left it. */
-function setAccount(which){
+/* ── Sticky-header geometry + section matching for the Accounts toggle (v106) ──
+   The account switcher is sticky, so it's reachable mid-scroll — but a switch that dumps you back
+   at the top makes comparing the two books a scrolling chore. Both sides carry matching `data-sec`
+   keys (the aligned card spine), so we note which section the reader is on, swap, and land on the
+   same one. A section with no counterpart (self-directed 🧹 smalls, agentic 🧾 Rebalance Log) falls
+   back to the nearest section ABOVE it that both sides have. */
+const SEC_ORDER=['snapshot','holdings','performance','heatmap','risk','allocation','income','technicals','fundamentals','smalls','flow','rebalance-log'];
+// Every programmatic scroll has to clear the tab bar AND (on this tab) the sticky switcher, or the
+// target card lands underneath them. Built from HEIGHTS plus the tab bar's resolved sticky `top`,
+// never from live rects: a rect-based offset reads ~50px larger while the page sits at scroll 0
+// (nothing is stuck yet), so a scroll computed at the top of the page and judged after it stuck
+// disagreed with itself and landed every jump a section early. Heights are scroll-independent.
+// The tab row wraps to two lines on a phone; the switcher measures 0 on pages that don't show it.
+function __pfTopOffset(){
+  const tb=document.querySelector('.tabbar'); if(!tb||!tb.offsetHeight)return 96;
+  let safe=0; try{ safe=parseFloat(getComputedStyle(tb).top)||0; }catch(e){}
+  let y=safe+tb.offsetHeight;
+  const w=document.getElementById('acct-seg-wrap');
+  if(w&&w.offsetHeight>0)y+=w.offsetHeight;
+  return y+8;
+}
+window.__pfTopOffset=__pfTopOffset;
+function _syncTabbarH(){ const tb=document.querySelector('.tabbar');
+  if(tb&&tb.offsetHeight>0)document.documentElement.style.setProperty('--tabbar-h',tb.offsetHeight+'px'); }
+window.addEventListener('resize',_syncTabbarH);
+window.addEventListener('orientationchange',()=>setTimeout(_syncTabbarH,150));
+try{ _syncTabbarH(); if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_syncTabbarH); }catch(e){}
+/* Which section is the reader actually on? The FIRST one still meaningfully on screen — i.e. whose
+   bottom clears the sticky header by more than SEC_EDGE. Two heuristics were tried and rejected:
+   "last card whose top is above the header" flips to the PREVIOUS section the moment a card starts
+   a pixel below the line (exactly when that card is the one you're reading), and "whichever card
+   fills the most pixels" tips to the NEXT section whenever the current one is short — a compact
+   Allocation card would hand you off to Income. Topmost-still-visible matches how people read. */
+const SEC_EDGE=40;
+function _currentSec(rootId){
+  const root=document.getElementById(rootId); if(!root)return null;
+  const cut=__pfTopOffset()+SEC_EDGE; let last=null;
+  const els=root.querySelectorAll('[data-sec]');
+  for(let i=0;i<els.length;i++){
+    if(els[i].getBoundingClientRect().bottom>cut)return els[i].getAttribute('data-sec');
+    last=els[i].getAttribute('data-sec');
+  }
+  return last;   // scrolled past every section (short page pinned at its bottom) → the final one
+}
+function _landOnSec(rootId,sec){
+  const root=document.getElementById(rootId); if(!root||!sec)return false;
+  const place=()=>{
+    let i=SEC_ORDER.indexOf(sec), el=root.querySelector('[data-sec="'+sec+'"]');
+    while(!el&&i>0){ i--; el=root.querySelector('[data-sec="'+SEC_ORDER[i]+'"]'); }
+    if(!el)return false;
+    const y=(window.pageYOffset||document.documentElement.scrollTop||0)+el.getBoundingClientRect().top-__pfTopOffset();
+    window.scrollTo(0,Math.max(0,y)); return true;
+  };
+  if(!place())return false;
+  requestAnimationFrame(place);   // second pass — the sticky header has settled into place by now
+  return true;
+}
+/* First visit to a side: its cards are still filling in (spinners → tables), so everything ABOVE
+   the target grows and pushes it back out of view. Re-place for a beat — and stop the instant the
+   reader scrolls themselves, since fighting a deliberate scroll is worse than landing imprecisely. */
+function _settleOnSec(rootId,sec){
+  let n=0,done=false;
+  const stop=()=>{ done=true; ['wheel','touchstart','keydown'].forEach(e=>window.removeEventListener(e,stop)); };
+  ['wheel','touchstart','keydown'].forEach(e=>window.addEventListener(e,stop,{passive:true}));
+  const t=setInterval(()=>{ if(done||++n>8){ clearInterval(t); stop(); return; } _landOnSec(rootId,sec); },150);
+}
+function setAccount(which,opts){
   const isAg=which==='agentic';
+  // Note the reader's section BEFORE the swap (the outgoing side is still laid out and measurable).
+  const keepSec=(opts&&opts.keepSection)?_currentSec(isAg?'app':'agentic-app'):null;
   const a=document.getElementById('app'), g=document.getElementById('agentic-app');
   if(a)a.style.display=isAg?'none':'';
   if(g)g.style.display=isAg?'':'none';
@@ -1991,6 +2068,11 @@ function setAccount(which){
   if(bm){ bm.classList.toggle('active',!isAg); bm.setAttribute('aria-selected',String(!isAg)); }
   if(bg){ bg.classList.toggle('active',isAg); bg.setAttribute('aria-selected',String(isAg)); }
   try{ localStorage.setItem('pf_acct',which); }catch(e){}
+  const land=(settle)=>{
+    const root=isAg?'agentic-app':'app';
+    if(keepSec&&_landOnSec(root,keepSec)){ if(settle)_settleOnSec(root,keepSec); }
+    else window.scrollTo(0,0);   // no section to match (boot restore, tab switch) → top, as before
+  };
   if(isAg&&!_agenticInit){ _agenticInit=true;
     // Gate the first render on the snapshot settling. The boot restore (pf_acct='agentic') calls
     // this synchronously during script parse, BEFORE data.json is decrypted — rendering then would
@@ -1998,11 +2080,16 @@ function setAccount(which){
     // nothing below repaints the hero. Once __dataReady has settled this fires on a microtask, so a
     // mid-session toggle still paints instantly. `.then(r,r)`: render either way — a failed decrypt
     // should show the honest no-snapshot state, not a spinner forever.
-    const r=()=>{ try{ renderAgenticPage(); }catch(e){ try{console.warn('[render] agenticPage',e&&e.message);}catch(_){} } };
+    const r=()=>{ try{ renderAgenticPage(); }catch(e){ try{console.warn('[render] agenticPage',e&&e.message);}catch(_){} }
+      try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){}
+      land(true);   // the side only just materialised — land once it exists, then hold through its fills
+    };
     if(window.__dataReady&&window.__dataReady.then)window.__dataReady.then(r,r); else r();
+    try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){}
+    return;   // land() runs from r(); scrolling now would only fight it
   }
   try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){}   // chips follow the visible side
-  window.scrollTo(0,0);
+  land(false);
 }
 window.setAccount=setAccount;
 
@@ -2042,23 +2129,23 @@ function renderAgenticPage(){
       ${dy?`<div style="font-size:13px;font-weight:600;margin-top:6px;opacity:.95">${dy.d>=0?'▲':'▼'} ${fmtD(Math.abs(dy.d))} today${dayP!=null?` (${fmtP(dayP)})`:''}</div>`:''}
       <div class="h-tag">Robinhood · Agentic ••••3900 · limited margin (1×)</div></div></div>
     ${A?'':`<div class="card"><div class="box-info" style="border-radius:10px;padding:10px 13px;font-size:12.5px">The producer hasn't captured <b>••••3900</b> yet. The account's live cash, holdings, drift and performance appear here after the next scheduled run picks it up — the target blueprint below still renders.</div></div>`}
-    <div class="card"><div id="snap-content-ag"></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(target vs. actual · drift · trades)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
+    <div class="card" data-sec="snapshot"><div id="snap-content-ag"></div></div>
+    <div class="card" data-sec="holdings"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(target vs. actual · drift · trades)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
       <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
     </div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-ag-perf" onclick="toggleSection('b-ag-perf')"><span>📈 Account Performance <span class="card-hint">(deposit-adjusted · vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-ag-perf">
+    <div class="card" data-sec="performance"><div class="card-title collapsible" data-toggle="b-ag-perf" onclick="toggleSection('b-ag-perf')"><span>📈 Account Performance <span class="card-hint">(deposit-adjusted · vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-ag-perf">
       <div id="ag-perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading equity history…</div></div>
     </div></div>
-    <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl-ag">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button class="hm-tg active" id="hm-day-ag" onclick="setHeatmap('day','-ag')">Day</button><button class="hm-tg" id="hm-pnl-ag" onclick="setHeatmap('pnl','-ag')">Total P&amp;L</button></span></div><div id="heatmap-ag" class="heatmap"></div><div id="hm-note-ag" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-risk-ag" onclick="toggleSection('b-risk-ag')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk-ag"><div id="risk-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-alloc-ag" onclick="toggleSection('b-alloc-ag')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc-ag"><div id="alloc-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-inc-ag" onclick="toggleSection('b-inc-ag')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · realized)</span></span><span class="chevron">▼</span></div><div id="b-inc-ag"><div id="inc-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-tech-ag" onclick="toggleSection('b-tech-ag')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech-ag"><div id="tech-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-fund-ag" onclick="toggleSection('b-fund-ag')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund-ag"><div id="fund-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-flow-ag" onclick="toggleSection('b-flow-ag')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••3900's names)</span></span><span class="chevron">▼</span></div><div id="b-flow-ag">
+    <div class="card" data-sec="heatmap"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl-ag">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button class="hm-tg active" id="hm-day-ag" onclick="setHeatmap('day','-ag')">Day</button><button class="hm-tg" id="hm-pnl-ag" onclick="setHeatmap('pnl','-ag')">Total P&amp;L</button></span></div><div id="heatmap-ag" class="heatmap"></div><div id="hm-note-ag" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
+    <div class="card" data-sec="risk"><div class="card-title collapsible" data-toggle="b-risk-ag" onclick="toggleSection('b-risk-ag')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk-ag"><div id="risk-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
+    <div class="card" data-sec="allocation"><div class="card-title collapsible" data-toggle="b-alloc-ag" onclick="toggleSection('b-alloc-ag')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc-ag"><div id="alloc-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
+    <div class="card" data-sec="income"><div class="card-title collapsible" data-toggle="b-inc-ag" onclick="toggleSection('b-inc-ag')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · realized)</span></span><span class="chevron">▼</span></div><div id="b-inc-ag"><div id="inc-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
+    <div class="card" data-sec="technicals"><div class="card-title collapsible" data-toggle="b-tech-ag" onclick="toggleSection('b-tech-ag')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech-ag"><div id="tech-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
+    <div class="card" data-sec="fundamentals"><div class="card-title collapsible" data-toggle="b-fund-ag" onclick="toggleSection('b-fund-ag')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund-ag"><div id="fund-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
+    <div class="card" data-sec="flow"><div class="card-title collapsible" data-toggle="b-flow-ag" onclick="toggleSection('b-flow-ag')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••3900's names)</span></span><span class="chevron">▼</span></div><div id="b-flow-ag">
       <div id="flow-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div>
     </div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(decisions graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
+    <div class="card" data-sec="rebalance-log"><div class="card-title collapsible" data-toggle="b-agentic-log" onclick="toggleSection('b-agentic-log')"><span>🧾 Rebalance Log <span class="card-hint">(decisions graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-agentic-log">
       <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
     </div></div>
     <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks · ⚡ Action Center →</span></div>
@@ -2790,17 +2877,17 @@ async function load(){
     app.innerHTML=`
       ${cashVal<0?`<div class="margin-banner"><div style="font-size:20px">⚠️</div><div><div class="mb-text">Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))}. Leverage amplifies both gains and losses — see Risk below.</div></div></div>`:''}
       <div class="header"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="h-label">Total Portfolio Value</div><div class="h-value">${fmtD(totalVal)}</div><div class="h-tag">Robinhood · Individual Margin</div></div><button id="kyle-btn" class="kyle-btn" onclick="pushToKyle()">📲 Push to Kyle</button></div></div>
-      <div class="card"><div id="snap-content"></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
-      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · by account)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
-      <div class="card"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
-      ${smalls.length>0?`<div class="card"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
-      <div class="card"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••0741's names)</span></span><span class="chevron">▼</span></div><div id="b-flow"><div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div></div></div>
+      <div class="card" data-sec="snapshot"><div id="snap-content"></div></div>
+      <div class="card" data-sec="holdings"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
+      <div class="card" data-sec="performance"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
+      <div class="card" data-sec="heatmap"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
+      <div class="card" data-sec="risk"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
+      <div class="card" data-sec="allocation"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
+      <div class="card" data-sec="income"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · by account)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
+      <div class="card" data-sec="technicals"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
+      <div class="card" data-sec="fundamentals"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
+      ${smalls.length>0?`<div class="card" data-sec="smalls"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
+      <div class="card" data-sec="flow"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••0741's names)</span></span><span class="chevron">▼</span></div><div id="b-flow"><div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div></div></div>
       <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks + ⚡ Action Center (raise cash · redeploy plan) →</span></div>
       <div class="disclaimer">Live from Robinhood + Alpha Vantage. Research only — not financial advice.</div>`;
 
@@ -2979,8 +3066,12 @@ window.switchTab=switchTab;
     var s=(c.textContent||'').replace(/\s+/g,' ').trim();
     return s||null;
   }
-  // Top offset to clear the sticky tab bar (which wraps to 2 rows on mobile) — measured live.
+  // Top offset to clear the sticky tab bar (which wraps to 2 rows on mobile) AND, on the Accounts
+  // tab, the sticky account switcher — measured live by the shared helper. Delegating matters: once
+  // the switcher became sticky (v106), a chip jump computed off the tab bar alone lands the card
+  // underneath it.
   function topOffset(){
+    if(window.__pfTopOffset)try{ return window.__pfTopOffset(); }catch(e){}
     var tb=document.querySelector('.tabbar');
     if(tb){ var r=tb.getBoundingClientRect(); if(r.height>0)return Math.max(0,r.bottom)+8; }
     return 96;
