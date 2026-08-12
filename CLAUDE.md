@@ -335,6 +335,16 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   Two cards are intentionally NOT duplicated because the agentic side already has a superset: **All
   Positions** (the Agentic Portfolio tracker is the same table plus target/drift/trade) and
   **Performance vs Benchmark** (Account Performance is the real, deposit-adjusted return).
+  **Both sides run the SAME card order (v106)** — hero → snapshot tiles → *holdings table* → *performance*
+  → 🗺️ Heatmap → 🛡️ Risk → 🗂 Allocation → 💵 Income & Tax → 📡 Technicals → 📋 Fundamentals → 🏛️ Flow →
+  pointer, where "holdings table"/"performance" resolve to each side's version of that card (All
+  Positions / Performance vs Benchmark on the self-directed side; Agentic Portfolio / Account
+  Performance on the agentic side). The agentic page's 🧾 Rebalance Log has no counterpart, so it
+  trails after Flow; the self-directed 🧹 Positions Under $250 card is likewise a conditional extra
+  (the agentic floor is `AG_MIN_POS`, so it can't apply there). **Keep the spine aligned when adding a
+  card** — the toggle swaps the two containers in place, and a card that sits third on one side and
+  eighth on the other makes the switch feel like a different app rather than the same view of a
+  different account.
 - **📈 Account Performance (v99, agentic side)** — the account-level performance the Agentic card never had.
   **`agenticPerfStats(AG, spySeries)`** is now the single source of truth for this math: extracted verbatim
   out of `renderPerformance`, it returns `{EH,mult,cumFlows,ret,spy,since,netFlow,firstEquity,lastEquity,pnl,days}`
@@ -358,10 +368,11 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   account-equity history) instead of showing a fake number, and a chart failure leaves the stat row intact.
 - **Portfolio (the Self-directed side of the Accounts tab):** All Positions table (sortable) with a **TOTAL footer row** (value, cost, P&L $, P&L %
   on cost, value-weighted Day %); **Holdings Heatmap** (squarified treemap, sized by value, colored by
-  day move or total P&L, tap-to-Analyze, with a "top N of M" coverage note when capped; v74 adds an
-  **account toggle — Margin ⇄ Agentic** that re-maps the tiles from the agentic account's
-  `data.agentic.positions` instead of the margin book, shown only when that snapshot exists, with a
-  $0 floor since that account is small/fractional); risk/concentration
+  day move or total P&L, tap-to-Analyze, with a "top N of M" coverage note when capped; **locked to
+  this account's book** — the v74 Margin ⇄ Agentic compare toggle was **retired in v106**, since v101
+  gave the agentic side its own heatmap and one page showing the other page's holdings was a second,
+  worse route to the same tiles; `_agenticHeatRows()` lives on as the `-ag` instance's source);
+  risk/concentration
   with a **risk-adjusted metrics row** (Sharpe · annualized volatility · max drawdown · beta, computed YTD
   from covered holdings' historicals in `computeRiskMetrics`) plus a **data-derived concentration &
   correlation context** block (largest theme, an **empirical correlated cluster** from actual return
