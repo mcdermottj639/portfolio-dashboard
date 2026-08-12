@@ -689,7 +689,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v105'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v106'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2043,11 +2043,11 @@ function renderAgenticPage(){
       <div class="h-tag">Robinhood · Agentic ••••3900 · limited margin (1×)</div></div></div>
     ${A?'':`<div class="card"><div class="box-info" style="border-radius:10px;padding:10px 13px;font-size:12.5px">The producer hasn't captured <b>••••3900</b> yet. The account's live cash, holdings, drift and performance appear here after the next scheduled run picks it up — the target blueprint below still renders.</div></div>`}
     <div class="card"><div id="snap-content-ag"></div></div>
-    <div class="card"><div class="card-title collapsible" data-toggle="b-ag-perf" onclick="toggleSection('b-ag-perf')"><span>📈 Account Performance <span class="card-hint">(deposit-adjusted · vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-ag-perf">
-      <div id="ag-perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading equity history…</div></div>
-    </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(target vs. actual · drift · trades)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
       <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
+    </div></div>
+    <div class="card"><div class="card-title collapsible" data-toggle="b-ag-perf" onclick="toggleSection('b-ag-perf')"><span>📈 Account Performance <span class="card-hint">(deposit-adjusted · vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-ag-perf">
+      <div id="ag-perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading equity history…</div></div>
     </div></div>
     <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl-ag">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button class="hm-tg active" id="hm-day-ag" onclick="setHeatmap('day','-ag')">Day</button><button class="hm-tg" id="hm-pnl-ag" onclick="setHeatmap('pnl','-ag')">Total P&amp;L</button></span></div><div id="heatmap-ag" class="heatmap"></div><div id="hm-note-ag" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-risk-ag" onclick="toggleSection('b-risk-ag')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk-ag"><div id="risk-content-ag"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
@@ -2067,8 +2067,8 @@ function renderAgenticPage(){
   // throw (a bad series, a Chart.js hiccup, a missing CDN) can't leave every card below it stuck on
   // its spinner forever. Don't "simplify" these guards away.
   const guard=(label,fn)=>{ try{ return fn(); }catch(e){ try{console.warn('[render]',label,e&&e.message);}catch(_){} } };
-  guard('agenticPerf',()=>renderAgenticPerf());
   guard('agenticCard',()=>renderAgenticCard());
+  guard('agenticPerf',()=>renderAgenticPerf());
   guard('agenticLog',()=>renderAgenticLog());
   guard('agenticFlow',()=>renderFlowCard({sfx:'-ag',scope:'agentic'}));
   guard('agenticAnalytics',()=>renderAgenticAnalytics());
@@ -2684,17 +2684,16 @@ function hmColor(pct, div, gold){
   const l=gold?(26+mag*26):(30+mag*22); const s=gold?88:60; const h=pct>=0?(gold?158:152):(gold?342:356);
   return 'hsl('+h+' '+s+'% '+l+'%)';
 }
-/* Per-instance heatmap state: the Accounts tab mounts one on each side ('' = self-directed with
-   its Margin/Agentic compare toggle, '-ag' = the agentic account's own, locked to that book), and
-   each keeps its own Day/P&L mode. Shared module state would make one toggle move both. */
+/* Per-instance heatmap state: the Accounts tab mounts one on each side, each locked to its OWN book
+   ('' = self-directed, '-ag' = agentic) and keeping its own Day/P&L mode. Shared module state would
+   make one toggle move both. The '' instance used to carry a Margin ⇄ Agentic compare toggle (v74);
+   it was retired in v106 once the agentic side got its own heatmap (v101) — one book per page. */
 let _hmS={'':{mode:'day',acct:'main'},'-ag':{mode:'day',acct:'agentic'}};
-let _hmMode='day', _hmAcct='main';   // kept as the '' instance's mirror (legacy read sites)
+let _hmMode='day';   // kept as the '' instance's mirror (legacy read sites)
 function setHeatmap(m,sfx){ sfx=sfx||''; _hmS[sfx].mode=m; if(!sfx)_hmMode=m;
   const d=document.getElementById('hm-day'+sfx),p=document.getElementById('hm-pnl'+sfx),l=document.getElementById('hm-mode-lbl'+sfx);
   if(d)d.classList.toggle('active',m==='day'); if(p)p.classList.toggle('active',m==='pnl'); if(l)l.textContent=m==='day'?'day move':'total P&L'; renderHeatmap(sfx); }
 window.setHeatmap=setHeatmap;
-function setHeatmapAcct(a){ _hmAcct=a; _hmS[''].acct=a; const m=document.getElementById('hm-acct-main'),g=document.getElementById('hm-acct-agentic'); if(m)m.classList.toggle('active',a==='main'); if(g)g.classList.toggle('active',a==='agentic'); renderHeatmap(''); }
-window.setHeatmapAcct=setHeatmapAcct;
 // Heatmap rows for the agentic account (••••3900) — same {symbol,val,dayP,pnlP} shape the
 // margin account's enriched rows use, derived from data.agentic.positions (priced by the producer).
 function _agenticHeatRows(){
@@ -2794,7 +2793,7 @@ async function load(){
       <div class="card"><div id="snap-content"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-perf" onclick="toggleSection('b-perf')"><span>📈 Performance vs Benchmark <span class="card-hint">(YTD, your holdings vs SPY/QQQ)</span></span><span class="chevron">▼</span></div><div id="b-perf"><div id="perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading benchmark history…</div></div></div></div>
-      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">${(window.__DATA&&window.__DATA.agentic&&(window.__DATA.agentic.positions||[]).some(p=>p&&+p.value>0))?`<span style="display:flex;gap:6px"><button class="hm-tg active" id="hm-acct-main" onclick="setHeatmapAcct('main')">Margin</button><button class="hm-tg" id="hm-acct-agentic" onclick="setHeatmapAcct('agentic')">Agentic</button></span><span style="width:1px;align-self:stretch;background:rgba(148,163,184,.35)"></span>`:''}<button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
+      <div class="card"><div class="card-title"><span>🗺️ Holdings Heatmap <span class="card-hint">(size = value · color = <span id="hm-mode-lbl">day move</span> · tap to analyze)</span></span><span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button class="hm-tg active" id="hm-day" onclick="setHeatmap('day')">Day</button><button class="hm-tg" id="hm-pnl" onclick="setHeatmap('pnl')">Total P&amp;L</button></span></div><div id="heatmap" class="heatmap"></div><div id="hm-note" style="font-size:11px;color:#9ca3af;margin-top:8px"></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-risk" onclick="toggleSection('b-risk')"><span>🛡️ Risk &amp; Diversification</span><span class="chevron">▼</span></div><div id="b-risk"><div id="risk-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Computing beta &amp; concentration…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-alloc" onclick="toggleSection('b-alloc')"><span>🗂 Allocation <span class="card-hint">(sector &amp; asset class)</span></span><span class="chevron">▼</span></div><div id="b-alloc"><div id="alloc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading sectors…</div></div></div></div>
       <div class="card"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · by account)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
@@ -3085,7 +3084,7 @@ window.switchTab=switchTab;
     <ul>
       <li><b>Tile size</b> = position value. The biggest tiles are your biggest bets — if one dominates the grid, that's concentration you can <i>see</i>.</li>
       <li><b>Color</b> = green up / red down. Use the toggle to switch between <span class="hk">Day move</span> (today) and <span class="hk">Total P&amp;L</span> (since you bought).</li>
-      <li>The <b>account toggle</b> (Margin ⇄ Agentic), when shown, re-maps the tiles to the agentic account's holdings instead of the margin book.</li>
+      <li>Each account side maps <b>its own book</b> — the self-directed heatmap shows ••••0741, and the Agentic side of the Accounts toggle has its own heatmap for ••••3900.</li>
     </ul>
     <p>A "top N of M" note appears when there are more positions than tiles shown.</p>` },
   'risk diversification': { tag:'Portfolio', t:'Risk &amp; Diversification', h:`
