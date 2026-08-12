@@ -11,8 +11,11 @@
 //     planned entry zone (thesis in question), do NOT auto-buy the "bargain". Defer it for a fresh look —
 //     a stock crashing through the level we planned to buy at is exactly when the thesis needs re-checking
 //     (this is the GOOGL-gaps-after-earnings case that prompted the feature).
-//   • WASH-SALE — never rebuy a name we booked a loss on inside the 30-day window (reads data.agentic
-//     recentLosses via washMap).
+//   • WASH-SALE — never rebuy a name a TAXABLE account booked a loss on inside the 30-day window (reads
+//     data.agentic.recentLosses via washMap — since v105 the ledger spans BOTH taxable accounts, so a
+//     loss the owner realized in the self-directed margin book blocks an agentic buy too; the IRS
+//     window is per taxpayer, which is exactly how a real Jul-29 NVDA loss got partially disallowed by
+//     an Aug-11 agentic rebuy the single-account ledger couldn't see).
 //   • CASH-FLOW-FIRST / SETTLEMENT — deploying NEW cash needs no sells; when a trim is required (a name
 //     drifted over target), it's sequenced first so its proceeds fund the buys.
 //   • NO INTRADAY ROUND TRIPS — never sell a name this account bought TODAY (see PDT note below).
@@ -238,7 +241,8 @@ export function planDeployment(input = {}) {
     if (gap > 0.5) {
       // guardrails (order = most-blocking first)
       if (washMap[sym]) {
-        deferred.push({ sym, reason: 'wash-sale', detail: `loss booked recently; rebuy blocked to ${washMap[sym].until || '?'}`, until: washMap[sym].until, dollars: gap });
+        const where = washMap[sym].account === 'main' ? 'in the self-directed account (cross-account wash)' : 'in this account';
+        deferred.push({ sym, reason: 'wash-sale', detail: `loss booked recently ${where}; rebuy blocked to ${washMap[sym].until || '?'}`, until: washMap[sym].until, dollars: gap });
         continue;
       }
       if (daysAway != null && daysAway >= 0 && daysAway <= blackout) {

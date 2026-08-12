@@ -96,11 +96,13 @@ if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idle(
 const ageH = data.generatedAt ? (Date.now() - Date.parse(data.generatedAt)) / 3.6e6 : Infinity;
 if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
 
+// recentLosses spans BOTH taxable accounts since v105 (each entry tagged `account`) — a loss realized
+// in the self-directed margin book blocks an agentic rebuy just the same (per-taxpayer IRS window).
 const washMap = {};
 for (const e of A.recentLosses || []) {
   if (!e || !e.sym || !e.date) continue;
   const until = new Date(Date.parse(e.date + 'T00:00:00Z') + 30 * 86400000).toISOString().slice(0, 10);
-  if (until > today && (!washMap[e.sym] || until > washMap[e.sym].until)) washMap[e.sym] = { until, date: e.date };
+  if (until > today && (!washMap[e.sym] || until > washMap[e.sym].until)) washMap[e.sym] = { until, date: e.date, account: e.account || 'agentic' };
 }
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},

@@ -93,22 +93,31 @@ sitting in names the research had dropped, with no ticket):
   selling anyway) **plus opportunistic**: a held target name underwater ≥ **max($75, 5% of cost)** is
   harvested whole (position-level — the MCP can't select lots), wash-blocked from the buy legs, and its
   target weight sits underweight until the 30-day window clears.
-- **Cross-account wash guard:** the IRS window spans accounts and the **margin book trades the same names**
-  — pass `crossActivity` (recent margin-account buys); a loss-sale on a name the other account bought
-  within 30d gets its harvest **skipped** (no benefit) or its exit flagged `washRisk`. The gate can't see
-  margin orders, so **the executor fetches `get_equity_orders` on the margin account live** before any
-  loss sale (step 3 below).
+- **Cross-account wash guard — BOTH directions (v105):** the IRS window spans accounts and the **margin
+  book trades the same names**. Direction 1 (v96): pass `crossActivity` (recent margin-account buys); a
+  loss-sale on a name the other account bought within 30d gets its harvest **skipped** (no benefit) or
+  its exit flagged `washRisk`. Direction 2 (v105): the wash-sale ledger itself now merges the margin
+  book's realized LOSSES (`main-trades.json` → `recentLosses` entries tagged `account:'main'`), so an
+  owner loss-sale in ••••0741 blocks the agentic executor from rebuying that name for 30 days. This
+  direction was missing and it bit for real: the owner sold 35 NVDA at −$431.76 on 2026-07-29 and the
+  executor bought NVDA back on 2026-08-11, partially disallowing the loss. The gate can't see margin
+  orders newer than the snapshot, so **the executor fetches both accounts live** (step 3c below).
 - **~~Two-leg T+1 ticket~~ — removed in v98.** Under limited margin the sale proceeds fund the buys in the
   SAME session, so there is one allocation pass over `cash + proceeds` and `buysT1` is always empty (the
   field survives only to carry tickets written under the old model through to `done`). Sells still lead:
   instant settlement means spendable once a sell **fills**, not before, so the executor places the sells,
   confirms the fills, then places the buys.
-- **The wash-sale ledger is REAL trades (v98), not an inference.** `data.agentic.recentLosses` is rebuilt
-  each run from `producer/raw/agentic-trades.json` (`get_pnl_trade_history`, span `ytd`) — the account's
-  actual closing trades, losses only, rolling 31 days. It used to be *inferred* from position diffs, which
-  booked five phantom losses on 2026-08-03 and blocked a real NVDA buy for 30 days off one of them. If you
-  ever see a wash-sale hold you can't tie to a closing trade, check `data.agentic.lossSource`: `trades` is
-  authoritative, `inferred` means the run fell back (Railway) and the entry deserves a second look.
+- **The wash-sale ledger is REAL trades (v98), not an inference — and spans BOTH taxable accounts (v105).**
+  `data.agentic.recentLosses` is rebuilt each run from `producer/raw/agentic-trades.json`
+  (`get_pnl_trade_history`, span `ytd`) PLUS `producer/raw/main-trades.json` (the self-directed ••••0741
+  book, span `3month`) — actual closing trades, losses only, rolling 31 days, each entry tagged
+  `account: 'agentic' | 'main'`. The agentic portion used to be *inferred* from position diffs, which
+  booked five phantom losses on 2026-08-03 and blocked a real NVDA buy for 30 days off one of them. The
+  main portion exists because the single-account ledger missed a REAL cross-account wash: NVDA sold at a
+  loss in ••••0741 on 2026-07-29, rebought by the executor on 2026-08-11. If you ever see a wash-sale
+  hold you can't tie to a closing trade, check `data.agentic.lossSource`: `trades` is authoritative,
+  `inferred` means the agentic portion fell back (Railway) and the entry deserves a second look (the
+  main portion is only ever broker trades or a carry-forward of them — never inferred).
 
 ## Flow & Positioning sleeve — in BURN-IN (v95)
 The research has a fifth sleeve (**flow**: analyst revision momentum, insider Form 4 clusters, earnings
@@ -240,7 +249,12 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       (…0741) over a 30-day window. Today's ••••3900 fills feed `accountActivity` — **drop any sell of a
       name bought earlier today** (a day trade; this book is under $25k). A recent margin-account buy of
       the same symbol kills a harvest (keep exits, flag `washRisk`). The gate can see neither, so this is
-      the only place both are enforced.
+      the only place both are enforced. **Also (v105): `get_pnl_trade_history` on the margin account
+      (…0741, span `month`) — drop any BUY of a name that account realized a LOSS on within 30 days**
+      (cross-account wash; keep the target weight, defer like the gate's own wash deferral). The
+      snapshot's merged ledger covers losses up to the last producer run; this live call covers a loss
+      the owner books between that run and this executor pass — the exact gap that let a Jul-29 NVDA
+      loss in ••••0741 get partially disallowed by an Aug-11 agentic rebuy.
    d. Place **sells first** (losses first, then smallest gain), **confirm they FILL**, then place the buys
       — instant settlement makes the proceeds spendable on fill, so the whole ticket goes in one session.
       Fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.

@@ -689,7 +689,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v104'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v105'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2237,16 +2237,17 @@ function renderAgenticCard(){
     const q=(typeof azQuote==='function')?azQuote(sym):null;
     if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
     return 0; };
-  // ── Wash-sale guard (taxable ••••3900): data.agentic.recentLosses is a rolling ledger of inferred
-  //    realized losses (build-data reconstructs them from position diffs). Buying any name back inside 30
-  //    calendar days of realizing a loss on it disallows the loss, so we BLOCK that name from the deploy
-  //    hand-off and flag its Trade cell "wait" until the window clears. The target WEIGHT is unchanged —
-  //    only the execution is deferred. ──
+  // ── Wash-sale guard (taxable accounts): data.agentic.recentLosses is a rolling ledger of realized
+  //    losses (broker trade history; since v105 it spans BOTH taxable accounts — ••••3900 AND the
+  //    self-directed ••••0741, each entry tagged `account` — because the IRS window is per taxpayer,
+  //    not per account). Buying any name back inside 30 calendar days of realizing a loss on it
+  //    disallows the loss, so we BLOCK that name from the deploy hand-off and flag its Trade cell
+  //    "wait" until the window clears. The target WEIGHT is unchanged — only the execution is deferred. ──
   const _todayISO=new Date().toISOString().slice(0,10);
   const washMap={};
   if(A&&Array.isArray(A.recentLosses)) for(const e of A.recentLosses){ if(!e||!e.sym||!e.date)continue;
     const until=(()=>{ const d=new Date(e.date+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+31); return d.toISOString().slice(0,10); })();
-    if(until>_todayISO&&(!washMap[e.sym]||until>washMap[e.sym].until)) washMap[e.sym]={until,date:e.date}; }
+    if(until>_todayISO&&(!washMap[e.sym]||until>washMap[e.sym].until)) washMap[e.sym]={until,date:e.date,account:e.account||'agentic'}; }
   const washUntilLbl=(sym)=>{ const w=washMap[sym]; if(!w)return ''; const d=new Date(w.until+'T00:00:00Z'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
   // ── target names: prefer the persisted research-driven target (data.agentic.target, refreshed weekly
   //    by the deep multi-factor research) so the card shows drift vs. the REAL deployed basket; fall back
@@ -2356,7 +2357,8 @@ function renderAgenticCard(){
     return `<span style="color:${col};font-weight:600">${pl>=0?'+':'−'}${fmtD(Math.abs(pl))}</span><br><span style="color:#9ca3af;font-size:11px">${pl>=0?'+':''}${fmt(pct,1)}%</span>`; };
   const perfCell=(day,ytd)=>`${pctCell(day)}<br><span style="font-size:11px">${ytd==null?'<span style="color:#9ca3af">—</span>':pctCell(ytd)}</span>`;
   // wash-sale badge: a BUY into a name this account realized a loss on within 30d would disallow that loss
-  const washBadge=(sym)=>`<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${sym} on ${washMap[sym]?new Date(washMap[sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}. Rebuying within 30 days disallows the loss — hold off until ${washUntilLbl(sym)}.">⚠️ wait · wash-sale</span> <span style="color:#9ca3af;font-size:10px">to ${washUntilLbl(sym)}</span>`;
+  const washAcctLbl=(sym)=>{ const w=washMap[sym]; return (w&&w.account==='main')?'in your self-directed ••••0741 account':'in this account'; };
+  const washBadge=(sym)=>`<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${sym} ${washAcctLbl(sym)} on ${washMap[sym]?new Date(washMap[sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}. Rebuying in ANY of your accounts within 30 days disallows the loss — hold off until ${washUntilLbl(sym)}.">⚠️ wait · wash-sale</span> <span style="color:#9ca3af;font-size:10px">to ${washUntilLbl(sym)}</span>`;
   // trade + monitor levels, stacked in one cell (top = rebalance action, bottom = TP/stop I watch)
   const tradeCell=(sym,side,delta,shares,tp,stop)=>{
     let top;
@@ -2436,7 +2438,7 @@ function renderAgenticCard(){
   if(sells.length){ L.push('TRIM toward target (place with the exits, before the buys):'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+plTag(estPl(x.sym,Math.abs(x.delta)))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(buys.length){ L.push('BUY toward target (≈, dollar-market) — place AFTER the sells above have filled; settled cash plus those proceeds fund these in the SAME session (limited margin, instant settlement):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(allSellPl.length) L.push('Est. short-term tax impact of the sells: '+fmtD(taxGain)+' gains'+(taxLoss<0?' − '+fmtD(Math.abs(taxLoss))+' harvested losses':'')+' = net '+(taxGain+taxLoss>=0?'+':'−')+fmtD(Math.abs(taxGain+taxLoss))+' (ST, ordinary income; before any cross-account wash effects — check the margin account for buys of the same names within 30 days before harvesting a loss). Not tax advice.','');
-  if(washBlocked.length){ L.push('DO NOT BUY YET — wash-sale window (realized a loss in this account within 30 days; rebuying disallows the loss). Skip these until the date shown, then revisit:'); washBlocked.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — wash-sale until '+washUntilLbl(x.sym))); L.push(''); }
+  if(washBlocked.length){ L.push('DO NOT BUY YET — wash-sale window (a taxable account of yours realized a loss on these within 30 days; the IRS window spans accounts, so rebuying here disallows the loss). Skip these until the date shown, then revisit:'); washBlocked.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — loss booked '+washAcctLbl(x.sym)+', wash-sale until '+washUntilLbl(x.sym))); L.push(''); }
   if(execDeferred.length){ L.push('DEFER — execution discipline (target weight kept, buy waits; do NOT place these today):'); execDeferred.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — '+execMap[x.sym].note)); L.push(''); }
   L.push((targetSrc==='research'?('Target from the weekly deep multi-factor research (momentum/quality/growth/catalyst → adversarial verify)'+(targetAsOf?', as of '+targetAsOf:'')):'Interim heuristic target (top picks + mega-cap leaders + SPY/QQQ core + held)')+', long-only, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
   const handoff=L.join('\n');
@@ -2447,7 +2449,7 @@ function renderAgenticCard(){
     ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your one-tap confirm</b>'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The drift table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The recommended target is below — deploy it with the button.</div>`:'')}
     ${opensBlock}
-    ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> (until '+washUntilLbl(x.sym)+')').join(' · ')} — you realized a loss on ${washBlocked.length>1?'these':'this'} in ••••3900 within the last 30 days, so a rebuy would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
+    ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> ('+(washMap[x.sym]&&washMap[x.sym].account==='main'?'loss in ••••0741':'loss in ••••3900')+' · until '+washUntilLbl(x.sym)+')').join(' · ')} — a taxable account of yours realized a loss on ${washBlocked.length>1?'these':'this'} within the last 30 days; the IRS wash-sale window spans your accounts, so a rebuy here would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
     ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry zone':'below entry zone')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify; a name trading above its entry zone waits for the pullback the research priced in. Small misses are tolerated (±${ENTRY_TOL_PCT}%/${ENTRY_PREM_PCT}%) and zones older than ${ENTRY_STALE_D}d go advisory${_zonesStale?` — <b>the current zones are ${_zoneAge}d old, so entry checks are OFF</b>`:''}. Deferred weight waits in the ${'VTI'} placeholder rather than cash. Target weight unchanged. Education only.</div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }

@@ -353,54 +353,81 @@ const data = {
       else if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked;
     } catch { if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked; }
   }
-  // ── Wash-sale ledger (taxable ••••3900) = data.agentic.recentLosses [{sym,date,realized?,avgCost?,exitPx}],
-  // rolling 31 days. The consumer's Agentic card reads it to BLOCK + flag rebuying any name inside the
-  // 30-day window.
+  // ── Wash-sale ledger (taxable accounts) = data.agentic.recentLosses [{sym,date,realized?,avgCost?,exitPx,account?}],
+  // rolling 31 days. The consumer's Agentic card and the deploy planner read it to BLOCK + flag
+  // rebuying any name inside the 30-day window.
   //
-  // PREFERRED SOURCE (v98): the account's REAL closing trades — producer/raw/agentic-trades.json, a
-  // get_pnl_trade_history(span:'ytd') response, rebuilt wholesale each fetch. Anything the broker didn't
-  // record as a closing trade simply isn't in the ledger.
+  // CROSS-ACCOUNT (v105): the ledger merges BOTH taxable accounts' realized losses — the agentic
+  // ••••3900 book (producer/raw/agentic-trades.json) AND the self-directed margin book
+  // (producer/raw/main-trades.json), each entry tagged `account`. The IRS wash-sale window is per
+  // TAXPAYER: on 2026-07-29 the owner sold 35 NVDA at −$431.76 in the margin account, and on 2026-08-11
+  // the agentic executor — whose ledger only read ••••3900's (empty) trade history — bought NVDA back
+  // inside the window, partially disallowing the loss. IRA losses aren't deductible, so only these two
+  // accounts feed the ledger.
   //
-  // FALLBACK: the original inference — diff prior→fresh positions and call a holding "reduced while
-  // underwater" a realized loss, dated today. Kept for the Railway producer (robin_stocks has no
-  // per-trade realized feed), but it is DEMONSTRABLY unsound and must never win over real trades: any
-  // run whose agentic fetch returned the wrong account's positions makes the next CORRECT fetch look
-  // like a mass liquidation. That is not hypothetical — it booked five losses on 2026-08-03
-  // (LLY/NVDA/TSM/CIFR/IREN) for an account that had no closing trades that week and had never held
-  // three of those names, and NVDA was then wash-sale blocked out of a real buy for 30 days off it.
-  // Hence: when real trades are available they REPLACE the ledger (including stale inferred entries).
+  // PREFERRED SOURCE (v98): REAL closing trades per account — get_pnl_trade_history responses, each
+  // account's portion rebuilt wholesale when its file is present, carried forward (and expired) when not.
+  //
+  // FALLBACK (agentic portion only): the original inference — diff prior→fresh positions and call a
+  // holding "reduced while underwater" a realized loss, dated today. Kept for the Railway producer
+  // (robin_stocks has no per-trade realized feed), but it is DEMONSTRABLY unsound and must never win
+  // over real trades: any run whose agentic fetch returned the wrong account's positions makes the next
+  // CORRECT fetch look like a mass liquidation. That is not hypothetical — it booked five losses on
+  // 2026-08-03 (LLY/NVDA/TSM/CIFR/IREN) for an account that had no closing trades that week and had
+  // never held three of those names, and NVDA was then wash-sale blocked out of a real buy for 30 days
+  // off it. Hence: when real trades are available they REPLACE that portion (including stale inferred
+  // entries). There is NO inference for the margin book — its positions aren't even fetched per-lot.
   if (data.agentic) {
     const day = new Date(data.generatedAt).toISOString().slice(0, 10);
     const cutoff = (() => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 31); return d.toISOString().slice(0, 10); })();
+    const priorLedger = ((prior && prior.agentic && prior.agentic.recentLosses) || []).filter((e) => e && e.date && e.date >= cutoff);
+    // Legacy entries predate the account tag and were always agentic-sourced.
+    const priorOf = (acct) => priorLedger.filter((e) => (e.account || 'agentic') === acct);
+
+    // Agentic portion — trades file wins; else carry forward; else (Railway, never-trades ledgers) infer.
+    let agLosses, agReal;
     const tradesFile = filesMatching(/^agentic-trades\.json$/)[0];
     if (tradesFile) {
-      const real = lossesFromTrades(readJSON(tradesFile), { asOf: data.generatedAt, days: 31 });
-      const dropped = ((prior && prior.agentic && prior.agentic.recentLosses) || []).filter((e) => e && e.date >= cutoff && !real.some((r) => r.sym === e.sym && r.date === e.date));
-      data.agentic.recentLosses = real.slice(-40);
-      data.agentic.lossSource = 'trades';
+      agLosses = lossesFromTrades(readJSON(tradesFile), { asOf: data.generatedAt, days: 31, account: 'agentic' });
+      agReal = true;
+      const dropped = priorOf('agentic').filter((e) => !agLosses.some((r) => r.sym === e.sym && r.date === e.date));
       if (dropped.length) console.log(`agentic wash-sale ledger: dropped ${dropped.length} INFERRED entr(ies) with no matching closing trade — ${dropped.map((e) => e.sym + '@' + e.date).join(' ')}`);
-      console.log(`agentic wash-sale ledger: ${real.length} real realized loss(es) in the last 31d${real.length ? ' — ' + real.map((e) => e.sym).join(' ') : ''} (broker trade history)`);
+      console.log(`agentic wash-sale ledger: ${agLosses.length} real realized loss(es) in the last 31d${agLosses.length ? ' — ' + agLosses.map((e) => e.sym).join(' ') : ''} (broker trade history)`);
     } else {
-      let ledger = (prior && prior.agentic && Array.isArray(prior.agentic.recentLosses))
-        ? prior.agentic.recentLosses.filter((e) => e && e.date && e.date >= cutoff) : [];
+      agLosses = priorOf('agentic');
       // Never mix sources: once a run has built the ledger from real closing trades, a later run that
       // merely lacks the trade file carries it forward and expires it — it does NOT layer inferences
       // back on top (that mixing is precisely what produced the phantom 2026-08-03 entries).
-      const priorReal = !!(prior && prior.agentic && prior.agentic.lossSource === 'trades');
-      if (!priorReal && apFile && prior && prior.agentic && Array.isArray(prior.agentic.positions)) {
+      agReal = !!(prior && prior.agentic && prior.agentic.lossSource === 'trades');
+      if (!agReal && apFile && prior && prior.agentic && Array.isArray(prior.agentic.positions)) {
         const nowQty = Object.fromEntries((data.agentic.positions || []).map((p) => [p.symbol, p.qty || 0]));
         for (const pp of prior.agentic.positions) {
           if (!pp || !pp.symbol || !(pp.qty > 0)) continue;
           const underwater = pp.px != null && pp.avgCost != null && pp.px < pp.avgCost;
           const reduced = (nowQty[pp.symbol] || 0) < pp.qty - 1e-6;   // fully exited or partially trimmed
-          if (underwater && reduced && !ledger.some((e) => e.sym === pp.symbol && e.date === day))
-            ledger.push({ sym: pp.symbol, date: day, avgCost: pp.avgCost, exitPx: pp.px });
+          if (underwater && reduced && !agLosses.some((e) => e.sym === pp.symbol && e.date === day))
+            agLosses.push({ sym: pp.symbol, date: day, avgCost: pp.avgCost, exitPx: pp.px, account: 'agentic' });
         }
       }
-      data.agentic.recentLosses = ledger.slice(-40);
-      data.agentic.lossSource = priorReal ? 'trades' : 'inferred';
-      if (data.agentic.recentLosses.length) console.log(`agentic wash-sale ledger: ${data.agentic.recentLosses.length} ${priorReal ? 'carried real' : 'INFERRED'} loss(es) — ${data.agentic.recentLosses.map((e) => e.sym).join(' ')} (no agentic-trades.json this run)`);
+      if (agLosses.length) console.log(`agentic wash-sale ledger: ${agLosses.length} ${agReal ? 'carried real' : 'INFERRED'} agentic loss(es) — ${agLosses.map((e) => e.sym).join(' ')} (no agentic-trades.json this run)`);
     }
+
+    // Margin-book portion — trades file wins, else carry forward. No inference fallback, ever.
+    let mainLosses;
+    const mainTradesFile = filesMatching(/^main-trades\.json$/)[0];
+    if (mainTradesFile) {
+      mainLosses = lossesFromTrades(readJSON(mainTradesFile), { asOf: data.generatedAt, days: 31, account: 'main' });
+      console.log(`cross-account wash ledger: ${mainLosses.length} margin-book realized loss(es) in the last 31d${mainLosses.length ? ' — ' + mainLosses.map((e) => e.sym).join(' ') : ''}`);
+    } else {
+      mainLosses = priorOf('main');
+      if (mainLosses.length) console.log(`cross-account wash ledger: carried ${mainLosses.length} margin-book loss(es) forward — ${mainLosses.map((e) => e.sym).join(' ')} (no main-trades.json this run)`);
+      else console.warn('cross-account wash ledger: no main-trades.json and nothing carried — margin-book losses are NOT guarding agentic buys this run');
+    }
+
+    // Most-recent-first; cap keeps the NEWEST entries (an old entry is days from expiring anyway).
+    data.agentic.recentLosses = [...agLosses, ...mainLosses]
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 60);
+    data.agentic.lossSource = agReal ? 'trades' : 'inferred';   // describes the AGENTIC portion (main is always trades or carried-trades)
   }
   if (agenticTarget) {
     if (!data.agentic) data.agentic = { asOf: data.generatedAt, cash: 0, buyingPower: 0, equity: 0, positions: [] };

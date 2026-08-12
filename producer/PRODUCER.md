@@ -99,6 +99,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
@@ -116,6 +117,13 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > diffing positions between snapshots, which mis-booked five losses on 2026-08-03 for an account with
    > no closing trades that week — and wash-sale blocked a real NVDA buy for 30 days off one of them.
    > Real closing trades cannot drift like that; when this file is present it REPLACES the inference.
+   >
+   > `main-trades.json` is also **EVERY-RUN** (v105) — the SELF-DIRECTED account's closing trades feed
+   > the SAME wash-sale ledger, tagged `account:'main'`. The IRS window is per taxpayer, not per account:
+   > on 2026-07-29 the owner sold 35 NVDA at a −$431.76 loss in ••••0741, and on 2026-08-11 the agentic
+   > executor bought NVDA back inside the 30-day window because its ledger only read ••••3900's (empty)
+   > trade history — a real cross-account wash sale this row exists to prevent. `span: "3month"` (not
+   > `ytd`) so the 31-day window stays covered across a year boundary.
    > A failure on any of these rows is not fatal — build-data falls back to the prior snapshot's figures.
 
    > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)
