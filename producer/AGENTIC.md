@@ -208,29 +208,6 @@ A **separate scheduled Claude session** (hourly during market hours — cron `20
 trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
 Cheap by construction: every run starts with the deterministic gate and exits immediately when idle.
 
-> ### ⚡ ONE-TIME PRE-AUTHORIZATION — post-deposit deployment, 2026-08-12 (rewritten 2026-08-11 evening)
-> The owner deposited **$5,000** into ••••3900 on 2026-08-11 ($5,486.50 cash) and, after reviewing the
-> first re-verification, ratified the standing flow above and superseded the earlier SPY-only narrowing:
-> *"I want the research to build the model, it gets run through our legitimizer, traded, and then the
-> excess not placed goes to VTI."* The split-verdict research re-run + `finalize-target.mjs` promotion
-> happen the evening of 2026-08-11.
->
-> **GUARD: this block applies ONLY if `agentic-target.json` carries `asOf` ≥ 2026-08-11.** If the
-> promotion did not land (the target still says 2026-08-05), the model was NOT rebuilt — do NOT
-> self-confirm; propose normally with a one-tap and say the promotion is missing.
->
-> So on **2026-08-12**, the first executor pass after the open runs the gate as normal and — if the mode
-> comes back `EXEC_PROPOSE` purely because turnover exceeds the auto cap — treats THIS ticket as
-> pre-approved: build it with `makeTicket`, immediately `advanceTicket(..., 'confirmed')` citing this
-> block, place it, and report the fills by PushNotification. No one-tap.
->
-> **Scope — spent once, ticket-level only.** It covers the single deployment ticket that puts this
-> deposit to work against the promoted target. Every guard still binds — earnings/policy blackout,
-> wash-sale, below-stop, the entry band, PDT, the 5% book-move abort — and a deferred name STAYS
-> deferred; its dollars park in the VTI waiting ground per the standing flow, which needs no extra
-> approval (it is part of the plan the gate emits). Once the ticket reaches `done`, **delete this
-> block**; normal auto-cap tiering resumes.
-
 **Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
 1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise
    `producer/raw/agentic-plan.json` holds the plan/ticket. The gate handles: kill switch, market hours,

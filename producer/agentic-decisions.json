@@ -255,6 +255,126 @@
           "weightAfter": 11
         }
       ]
+    },
+    {
+      "id": "2026-08-12-rebalance",
+      "date": "2026-08-12",
+      "kind": "rebalance",
+      "targetAsOf": "2026-08-11",
+      "book": 10338.63,
+      "equityAtDecision": 10338.63,
+      "spyAt": 772.4,
+      "rationale": "Pre-authorized post-deposit deployment (ticket 2026-08-12-1aqszr, owner 2026-08-11: research builds the model -> legitimizer -> trade -> excess parks in VTI). Sold the three names the split-verdict target dropped (AAPL -9.07, UNH -1.02, V +12.57 — net ST +2.48), then deployed 7223.71 across the 9-name target. NVDA deferred by the v105 cross-account wash guard (margin-book NVDA loss 2026-07-29, blocked to 2026-08-28) — its 320.53 PARKED in VTI, first live use of the waiting ground; released to fund NVDA when the window clears. Pre-checks: book +0.10% vs basis; all buy names report late Oct; no margin AAPL buy in 30d (loss-sale wash-clean); no same-day orders (PDT clear). Proceeds ran 6.89 under plan; the park leg absorbed the shave — never exceeded the ticket.",
+      "trades": [
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 1108.1,
+          "shares": 1.434619,
+          "priceAt": 772.3999,
+          "weightBefore": 9.3,
+          "weightAfter": 20
+        },
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 1240.54,
+          "shares": 2.498922,
+          "priceAt": 496.4299,
+          "weightBefore": 0,
+          "weightAfter": 12
+        },
+        {
+          "sym": "JPM",
+          "side": "BUY",
+          "dollars": 375.91,
+          "shares": 1.028763,
+          "priceAt": 365.3999,
+          "weightBefore": 8.4,
+          "weightAfter": 12
+        },
+        {
+          "sym": "AMZN",
+          "side": "BUY",
+          "dollars": 1033.79,
+          "shares": 3.835814,
+          "priceAt": 269.5099,
+          "weightBefore": 0,
+          "weightAfter": 10
+        },
+        {
+          "sym": "SHEL",
+          "side": "BUY",
+          "dollars": 1033.79,
+          "shares": 11.474137,
+          "priceAt": 90.0974,
+          "weightBefore": 0,
+          "weightAfter": 10
+        },
+        {
+          "sym": "GE",
+          "side": "BUY",
+          "dollars": 930.41,
+          "shares": 2.54865,
+          "priceAt": 365.0599,
+          "weightBefore": 0,
+          "weightAfter": 9
+        },
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 827.03,
+          "shares": 0.682493,
+          "priceAt": 1211.7765,
+          "weightBefore": 0,
+          "weightAfter": 8
+        },
+        {
+          "sym": "GOOGL",
+          "side": "BUY",
+          "dollars": 353.61,
+          "shares": 1.030722,
+          "priceAt": 343.07,
+          "weightBefore": 4.6,
+          "weightAfter": 8
+        },
+        {
+          "sym": "VTI",
+          "side": "BUY",
+          "dollars": 320.53,
+          "shares": 0.840051,
+          "priceAt": 381.5599,
+          "weightBefore": 0,
+          "weightAfter": 0
+        },
+        {
+          "sym": "AAPL",
+          "side": "TRIM",
+          "dollars": 790.48,
+          "shares": 2.612314,
+          "priceAt": 302.596,
+          "weightBefore": 7.7,
+          "weightAfter": 0
+        },
+        {
+          "sym": "UNH",
+          "side": "TRIM",
+          "dollars": 587.01,
+          "shares": 1.452636,
+          "priceAt": 404.1001,
+          "weightBefore": 5.7,
+          "weightAfter": 0
+        },
+        {
+          "sym": "V",
+          "side": "TRIM",
+          "dollars": 359.77,
+          "shares": 0.998421,
+          "priceAt": 360.3372,
+          "weightBefore": 3.5,
+          "weightAfter": 0
+        }
+      ]
     }
   ]
 }
