@@ -104,9 +104,15 @@ export function buildRealized({ accounts = {}, year, asOf } = {}) {
 // no closing trades that week and had never held three of those names. NVDA was then wash-sale
 // blocked for 30 days off a loss that never occurred. Real closing trades can't drift like that.
 //
-// Returns [{ sym, date, realized, exitPx }] for LOSSES only (realized_gain < 0) inside the window,
-// most recent first, one entry per symbol+date (the largest loss wins a same-day duplicate).
-export function lossesFromTrades(raw, { asOf, days = 31 } = {}) {
+// Returns [{ sym, date, realized, exitPx, account? }] for LOSSES only (realized_gain < 0) inside the
+// window, most recent first, one entry per symbol+date (the largest loss wins a same-day duplicate).
+//
+// `account` tags which taxable account booked the loss ('agentic' | 'main'). The IRS wash-sale window
+// is PER TAXPAYER, not per account — a loss realized in the self-directed margin book is disallowed by
+// an agentic rebuy just the same. The ledger therefore merges BOTH taxable accounts' losses (the 2026
+// NVDA case: the owner sold 35 NVDA at a −$431.76 loss in ••••0741 on Jul 29 and the agentic executor,
+// whose ledger only read ••••3900's empty trade history, bought NVDA back on Aug 11 inside the window).
+export function lossesFromTrades(raw, { asOf, days = 31, account } = {}) {
   const r = unwrapPnl(raw);
   const trades = Array.isArray(r.trades) ? r.trades : [];
   const cutoff = asOf ? shiftDays(asOf.slice(0, 10), -days) : null;
@@ -120,6 +126,7 @@ export function lossesFromTrades(raw, { asOf, days = 31 } = {}) {
     if (cutoff && date < cutoff) continue;
     const key = sym + '|' + date;
     const entry = { sym, date, realized: +g.toFixed(2), exitPx: num(t.price) != null ? +num(t.price).toFixed(4) : null };
+    if (account) entry.account = account;
     const prev = byKey.get(key);
     if (!prev || entry.realized < prev.realized) byKey.set(key, entry);
   }

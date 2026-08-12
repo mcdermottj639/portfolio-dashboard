@@ -46,6 +46,7 @@ Railway cron ─► entrypoint.sh
 | **Daily Picks** | `robin_stocks` (FETCH_ALL) | client-side oversold screen → `scan.json`/`picks-fund.json` |
 | Realized P&L | carried forward / `realized.json` | **Claude-agent path fetches it per account** (`get_realized_pnl` → `realized-main{,-opt}.json` / `realized-agentic.json`); `robin_stocks` has no equivalent, so a Railway run carries the last broker-sourced figures forward. Options realized/premium YTD still refresh live. |
 | Agentic wash-sale ledger | inferred from position diffs | The Claude-agent path sources it from real closing trades (`agentic-trades.json`); Railway falls back to the position-diff inference — but it will **not** layer inferences onto a trades-sourced ledger (see `lossSource` in build-data.mjs), it only carries it forward and expires it. |
+| Cross-account wash losses (v105) | carried forward only | The Claude-agent path fetches the self-directed book's closing trades too (`main-trades.json` → ledger entries tagged `account:'main'`, blocking agentic rebuys of names the owner just sold at a loss); `robin_stocks` has no per-trade realized feed, so Railway carries the last broker-sourced main entries forward and expires them — a NEW margin-book loss won't guard agentic buys until a Claude-agent run lands. |
 
 So all tabs — Portfolio, Markets, Analyze, **Options**, **Picks** — refresh live, and the **Agentic
 Portfolio** card tracks the real ••••3900 account (holdings + cash re-priced every run). This path is at

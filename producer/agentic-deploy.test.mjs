@@ -44,6 +44,13 @@ ok('below-stop → deferred as broken setup', find(broken.deferred, 'NVDA') && f
 const wash = planDeployment({ target: { names: [{ ticker: 'NVDA', weightPct: 100, entry: '205-215', stop: 190 }] }, positions: [], cash: 1000, quotes: { NVDA: 209 }, washMap: { NVDA: { until: '2026-08-01' } }, opts: { asOf: '2026-07-23' } });
 ok('wash-sale name deferred, not bought', find(wash.deferred, 'NVDA') && find(wash.deferred, 'NVDA').reason === 'wash-sale' && !find(wash.buys, 'NVDA'));
 
+// v105: a loss booked in the SELF-DIRECTED account blocks the agentic rebuy too (the IRS window is per
+// taxpayer — the real Jul-29 NVDA loss / Aug-11 agentic rebuy case), and the deferral says which book.
+const crossWash = planDeployment({ target: { names: [{ ticker: 'NVDA', weightPct: 100, entry: '205-215', stop: 190 }] }, positions: [], cash: 1000, quotes: { NVDA: 209 }, washMap: { NVDA: { until: '2026-08-28', date: '2026-07-29', account: 'main' } }, opts: { asOf: '2026-08-12' } });
+const cw = find(crossWash.deferred, 'NVDA');
+ok('a margin-book loss defers the agentic buy', cw && cw.reason === 'wash-sale' && !find(crossWash.buys, 'NVDA'));
+ok('cross-account deferral names the other account', cw && /cross-account/.test(cw.detail));
+
 // over-target holding triggers a trim (taxable, sequenced before the buys it funds)
 const over = planDeployment({
   target: { driftTriggerPp: 5, names: [{ ticker: 'NVDA', weightPct: 10, entry: '205-215', stop: 190 }, { ticker: 'SPY', weightPct: 90, entry: '740-750', stop: 690 }] },

@@ -60,6 +60,13 @@ const FIXTURES = {
     { timestamp: new Date(Date.now() - 3 * 24 * 3600e3).toISOString(), symbol: 'CCC', side: 'sell', quantity: '2', price: '41.10', realized_gain: '-18.40' },
     { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'AAA', side: 'sell', quantity: '1', price: '108.00', realized_gain: '12.00' },
   ] } },
+  // The SELF-DIRECTED book's closing trades (v105) — its losses must land in the SAME ledger tagged
+  // 'main' (the cross-account wash guard: the real Jul-29 NVDA loss the agentic executor rebought
+  // through on Aug-11). The gain must be ignored like any other.
+  'main-trades.json': { data: { trades: [
+    { timestamp: new Date(Date.now() - 4 * 24 * 3600e3).toISOString(), symbol: 'MMM', side: 'sell', quantity: '35', price: '195.53', realized_gain: '-431.76' },
+    { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'DDD', side: 'sell', quantity: '5', price: '210.00', realized_gain: '250.00' },
+  ] } },
 };
 
 const prior = {
@@ -161,12 +168,16 @@ try {
   eq('broker figures are not flagged approx', out.realized.approx, false);
   eq('account masks carried for the card', [out.realized.accounts.main.mask, out.realized.accounts.agentic.mask], ['••••0741', '••••3900']);
 
-  // Wash-sale ledger: real closing trades replace the inference wholesale.
+  // Wash-sale ledger: real closing trades replace the inference wholesale, and (v105) the ledger
+  // merges BOTH taxable accounts — the margin book's losses guard agentic rebuys too.
   eq('ledger sourced from real trades', out.agentic.lossSource, 'trades');
-  eq('only genuine realized losses are listed', out.agentic.recentLosses.map((l) => l.sym), ['CCC']);
+  eq('both accounts\' losses merged, most-recent-first', out.agentic.recentLosses.map((l) => l.sym), ['CCC', 'MMM']);
+  eq('entries carry their account tag', out.agentic.recentLosses.map((l) => l.account), ['agentic', 'main']);
+  eq('margin-book GAIN ignored', out.agentic.recentLosses.some((l) => l.sym === 'DDD'), false);
   eq('phantom inferred entry dropped', out.agentic.recentLosses.some((l) => l.sym === 'ZZZ'), false);
   eq('dropped phantom is logged', stdout.includes('no matching closing trade'), true);
-  eq('realized loss amount carried', out.agentic.recentLosses[0].realized, -18.40);
+  eq('realized loss amounts carried', out.agentic.recentLosses.map((l) => l.realized), [-18.40, -431.76]);
+  eq('margin-book fetch is logged', stdout.includes('cross-account wash ledger: 1 margin-book realized loss'), true);
 
   // Flow & Positioning: the fresh sidecar lands, the unfetched name carries forward, and asOf advances
   // to THIS run's day (the block computes its own day — asOfDay is scoped to the agentic section).

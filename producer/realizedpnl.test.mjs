@@ -77,5 +77,11 @@ ok('sorted most-recent-first', losses.every((l, i, a) => i === 0 || a[i - 1].dat
 ok('no closing trades → no wash-sale entries', lossesFromTrades({ data: { trades: [] } }, { asOf: '2026-08-11' }).length === 0);
 ok('a missing payload degrades to an empty ledger', lossesFromTrades(null, { asOf: '2026-08-11' }).length === 0);
 
+// v105 cross-account: the merged ledger needs to know WHICH taxable account booked each loss, so the
+// caller can tag its portion. Untagged calls stay byte-identical to the v98 shape.
+const tagged = lossesFromTrades(hist, { asOf: '2026-08-11T12:00:00Z', days: 31, account: 'main' });
+ok('account tag stamped on every entry when requested', tagged.length > 0 && tagged.every((l) => l.account === 'main'));
+ok('no account requested → no account field (v98 shape preserved)', losses.every((l) => !('account' in l)));
+
 console.log(`\nrealizedpnl.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
