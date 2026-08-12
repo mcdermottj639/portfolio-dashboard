@@ -63,5 +63,37 @@ const mega = hot.target.names.filter((n) => ['NVDA', 'MSFT'].includes(n.ticker))
 ok('megacap-tech cluster pulled back under its cap', mega <= 49);
 ok('the pullback is recorded in the notes', hot.notes.length > 0);
 
+// ---- churn governor: two-strike phase-out (2026-08-12) ----------------------
+// The 08-10/08-12 whipsaw: a held name dropped by ONE refresh must be retained (flagged phaseOut),
+// not exited; only a second consecutive absence — or an explicit business-broken verdict — drops it.
+const PRIOR = { asOf: '2026-08-05', names: [
+  { ticker: 'GE',   sector: 'Electronic Technology', weightPct: 9,  entry: '355-372', stop: 336, target: 419, thesis: 'aero aftermarket' },
+  { ticker: 'AAPL', sector: 'Electronic Technology', weightPct: 15, entry: '300-312', stop: 284, target: 340, thesis: 'services' },
+  { ticker: 'UNH',  sector: 'Health Services',       weightPct: 11, entry: '398-412', stop: 366, target: 465, thesis: 'managed care', phaseOut: true },
+  { ticker: 'V',    sector: 'Finance',               weightPct: 15, entry: '348-358', stop: 320, target: 385, thesis: 'take rate' },
+  { ticker: 'XOM',  sector: 'Energy Minerals',       weightPct: 8,  entry: '130-140', stop: 120, target: 160, thesis: 'never bought' },
+] };
+const churn = finalizeTarget(ALLOC, { ...base, prior: PRIOR,
+  held: ['GE', 'AAPL', 'UNH', 'V', 'SPY', 'NVDA', 'JPM'],           // XOM was never actually bought
+  verdicts: [{ t: 'AAPL', rec: 'avoid', businessOk: false, risk: 'thesis broken in test' }] });
+const dropReason = (t) => (churn.target.dropped.find((d) => d.ticker === t) || {}).reason;
+
+ok('a held name dropped ONCE is retained, flagged phaseOut', nameOf(churn, 'GE') && nameOf(churn, 'GE').phaseOut === true);
+ok('a second held no-verdict name is retained too', nameOf(churn, 'V') && nameOf(churn, 'V').phaseOut === true);
+ok('the phase-out thesis says what it is', /PHASE-OUT/.test(nameOf(churn, 'GE').thesis));
+ok('strike 2: a name already phaseOut in the prior target is genuinely dropped',
+  !nameOf(churn, 'UNH') && dropReason('UNH') === 'phase-out-complete');
+ok('business-broken verdict drops immediately (no retention)',
+  !nameOf(churn, 'AAPL') && dropReason('AAPL') === 'business-broken');
+ok('a prior name the account never held has nothing to protect',
+  !nameOf(churn, 'XOM') && dropReason('XOM') === 'not-held');
+ok('weights still normalize to ~100 with the retained names in',
+  Math.abs(churn.target.names.reduce((a, n) => a + n.weightPct, 0) - 100) < 1);
+ok('the method line records the retention', /phase-out retained/.test(churn.target.method));
+ok('phaseOuts/dropped are surfaced to the caller',
+  churn.phaseOuts.includes('GE') && churn.dropped.some((d) => d.ticker === 'AAPL'));
+ok('without a prior target the shape is unchanged (no dropped key)',
+  !('dropped' in finalizeTarget(ALLOC, base).target));
+
 console.log(`\nfinalize-target.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

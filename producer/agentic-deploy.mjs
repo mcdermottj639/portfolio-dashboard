@@ -81,6 +81,32 @@ export const TLH_MIN_LOSS_PCT = 5;    // …and as % of cost basis — must clea
 export const MIN_EXIT = 5;            // ignore off-target dust below this value
 export const WASH_WINDOW_DAYS = 30;   // IRS wash-sale window (either side of a loss sale)
 
+// ── Churn governor (2026-08-12) ─────────────────────────────────────────────────────────────────
+// On 2026-08-10 the planner exited GE/LLY/AMZN/MSFT (dropped by the 08-05 target) and bought
+// AAPL/UNH/V; on 2026-08-12 the next target re-included the four and dropped the three, and the
+// planner executed the full round trip — a near-100% book flip in 48 hours, four positions held
+// under two days each, all short-term taxable. Nothing priced the cost of changing our mind: the
+// research is memoryless week to week, and this planner executed the full delta immediately. These
+// three rules make conviction changes pay a toll before they become trades. They pair with the
+// target-level guard in finalize-target.mjs (a dropped-but-held name is RETAINED one cycle unless
+// the research says the business is broken — see `target.dropped` below).
+//   • MIN-HOLD: a name this account bought within MIN_HOLD_DAYS is not exited/trimmed, UNLESS the
+//     research explicitly marked it business-broken (`target.dropped` reason), the position is down
+//     ≤ MIN_HOLD_EXEMPT_LOSS_PCT (risk control outranks churn control), or it's a TLH harvest /
+//     park-release (each has its own floor and purpose). Day 0 stays the harder PDT 'day-trade' block.
+//   • RE-ENTRY COOLDOWN: a name this account sold within REENTRY_COOLDOWN_DAYS is not rebought —
+//     the deferred weight parks in the VTI waiting ground like any other deferral. (The wash-sale
+//     ledger already blocks loss-sale rebuys for 30d; this covers GAIN-sells, which is exactly what
+//     the 08-10 exits were.) The park vehicle itself is exempt or park/release would jam.
+//   • MIN_BUY: no dust orders (the 08-05 ticket placed a $1.80 UNH buy) — below this the gap just
+//     waits for the next pass.
+// `accountActivity` carries {SYM:{lastBuyDate,lastSellDate}} — the gate derives it from the committed
+// agentic-decisions.json (activityFromDecisions) and the executor overlays today's live fills.
+export const MIN_HOLD_DAYS = 14;
+export const REENTRY_COOLDOWN_DAYS = 14;
+export const MIN_HOLD_EXEMPT_LOSS_PCT = -10; // a position down this much may exit regardless (risk first)
+export const MIN_BUY = 25;                   // smallest buy order worth placing
+
 // ── Entry-zone discipline (v102) ────────────────────────────────────────────────────────────────
 // The zone check used to be a BRIGHT LINE on one side only: defer iff `px < entryLow`, no tolerance,
 // nothing above. Three failure modes, all observed live on 2026-08-11:
@@ -200,7 +226,8 @@ export function planDeployment(input = {}) {
 
   const buys = [], trims = [], deferred = [], warnings = [], blockedSells = [];
   // PDT guard (v98, limited margin): a name BOUGHT TODAY in this account can't be sold today without
-  // booking a day trade. `accountActivity` = {SYM:{lastBuyDate}} from ••••3900's own recent fills.
+  // booking a day trade. `accountActivity` = {SYM:{lastBuyDate,lastSellDate}} from ••••3900's own
+  // recent fills (committed decisions ledger + the executor's live overlay).
   const boughtToday = (sym) => {
     const a = accountActivity && accountActivity[sym];
     return !!(a && a.lastBuyDate && opts.asOf && String(a.lastBuyDate).slice(0, 10) === opts.asOf);
@@ -211,6 +238,31 @@ export function planDeployment(input = {}) {
       note: `bought earlier today — selling now would be a day trade (PDT: this account is under $25k), deferred to the next session` });
     return true;
   };
+  // Churn governor (2026-08-12): min-hold on sells, re-entry cooldown on buys, dust floor on orders.
+  const minHoldDays = opts.minHoldDays ?? MIN_HOLD_DAYS;
+  const reentryDays = opts.reentryCooldownDays ?? REENTRY_COOLDOWN_DAYS;
+  const minBuy = Math.max(1, opts.minBuy ?? MIN_BUY);
+  // finalize-target records why a prior name left the target; 'business-broken' (an explicit adverse
+  // verdict) is the one drop reason that overrides the min-hold — a broken thesis exits regardless of age.
+  const brokenDrops = new Set((target.dropped || [])
+    .filter((d) => d && d.reason === 'business-broken' && d.ticker)
+    .map((d) => String(d.ticker).toUpperCase()));
+  const daysSinceActivity = (sym, key) => {
+    const a = accountActivity && accountActivity[sym];
+    return (a && a[key]) ? daysSince(String(a[key]).slice(0, 10), opts.asOf) : null;
+  };
+  const minHoldBlock = (row) => {
+    if (!(minHoldDays > 0) || row.kind === 'harvest' || row.kind === 'park-release') return false;
+    if (brokenDrops.has(row.sym)) return false;                       // research says the thesis broke
+    const exemptLoss = opts.minHoldExemptLossPct ?? MIN_HOLD_EXEMPT_LOSS_PCT;
+    if (row.plPct != null && row.plPct <= exemptLoss) return false;   // deep loss: risk control wins
+    const d = daysSinceActivity(row.sym, 'lastBuyDate');
+    if (d == null || d < 0 || d >= minHoldDays) return false;         // day 0 already caught by PDT block
+    blockedSells.push({ ...row, blocked: 'min-hold',
+      note: `bought ${d}d ago (min-hold ${minHoldDays}d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks ${addDays(accountActivity[row.sym].lastBuyDate, minHoldDays)} (a business-broken drop or a ≤${exemptLoss}% loss would override)` });
+    return true;
+  };
+  const sellBlocked = (row) => dayTradeBlock(row) || minHoldBlock(row);
   const currentWeights = {}, targetWeights = {};
 
   // 1. classify each target name: underweight → buy candidate; over-drift → trim; then apply guardrails.
@@ -239,10 +291,25 @@ export function planDeployment(input = {}) {
     const polEvent = policy ? policyBlackout(sym, policy, { asOf: opts.asOf, sector: n.sector, blackoutDays: polBlackout }) : null;
 
     if (gap > 0.5) {
+      // A phase-out name (retained by finalize-target's churn guard after the research dropped it) is a
+      // lame duck: HOLD what we have, but never put NEW money into a name on its way out. Not a
+      // deferral — its weight shouldn't attract parked dollars either.
+      if (n.phaseOut) continue;
       // guardrails (order = most-blocking first)
       if (washMap[sym]) {
         const where = washMap[sym].account === 'main' ? 'in the self-directed account (cross-account wash)' : 'in this account';
         deferred.push({ sym, reason: 'wash-sale', detail: `loss booked recently ${where}; rebuy blocked to ${washMap[sym].until || '?'}`, until: washMap[sym].until, dollars: gap });
+        continue;
+      }
+      // RE-ENTRY COOLDOWN (churn governor): we sold this name within the window — buying it back now
+      // is the 48-hour flip this guard exists to stop. The weight parks in the waiting ground like any
+      // other deferral. The park vehicle is exempt (releases stamp a lastSellDate on it, and blocking
+      // its re-park would jam the parking mechanism against itself).
+      const soldAgo = daysSinceActivity(sym, 'lastSellDate');
+      if (reentryDays > 0 && sym !== parkVehicle && soldAgo != null && soldAgo >= 0 && soldAgo < reentryDays) {
+        const until = addDays(accountActivity[sym].lastSellDate, reentryDays);
+        deferred.push({ sym, reason: 'reentry', until, dollars: gap,
+          detail: `sold ${soldAgo}d ago — re-entry cooldown ${reentryDays}d (churn guard): a name we just exited isn't rebought on the next refresh; weight waits (parked) until ${until || 'the window clears'}` });
         continue;
       }
       if (daysAway != null && daysAway >= 0 && daysAway <= blackout) {
@@ -286,7 +353,7 @@ export function planDeployment(input = {}) {
       const trim = { sym, kind: 'trim', dollars: +Math.abs(gap).toFixed(2), shares, price: px, weightNow: cw, weightTarget: tw,
         pl, plPct: (h.avgCost > 0 && px != null) ? +((px / h.avgCost - 1) * 100).toFixed(2) : null, term: 'short',
         note: `over target by ${(cw - tw).toFixed(1)}pp — taxable trim, sequenced before the buys it funds` };
-      if (!dayTradeBlock(trim)) trims.push(trim);
+      if (!sellBlocked(trim)) trims.push(trim);
     }
   }
 
@@ -315,7 +382,7 @@ export function planDeployment(input = {}) {
       pl, plPct: h.avgCost > 0 ? +((h.px / h.avgCost - 1) * 100).toFixed(2) : null, term: 'short',
       ...(washRisk ? { washRisk: true } : {}),
       note: `not in the current target — exit funds the underweight names${washRisk ? ' (⚠️ loss may be wash-disallowed: margin account bought this within 30d)' : ''}` };
-    if (!dayTradeBlock(exit)) exits.push(exit);
+    if (!sellBlocked(exit)) exits.push(exit);
   }
 
   // 1c. OPPORTUNISTIC TLH — a held TARGET name underwater ≥ max($, % of cost) is harvested whole
@@ -384,7 +451,7 @@ export function planDeployment(input = {}) {
     const scale = Math.min(1, deployable / totalGap); // pro-rate if the pool < total need
     for (const c of candidates) {
       const dollars = +(Math.min(c.gap, c.gap * scale)).toFixed(2);
-      if (dollars < 1) continue;
+      if (dollars < minBuy) continue; // dust floor (churn governor) — a sub-$25 gap waits for the next pass
       const shares = c.px > 0 ? +(dollars / c.px).toFixed(4) : null;
       spent += dollars;
       buys.push({ sym: c.sym, dollars, shares, price: c.px, weightNow: c.cw, weightTarget: c.tw, sector: c.sector,
@@ -460,7 +527,10 @@ export function planDeployment(input = {}) {
 
   if (!names.length) warnings.push('no research target loaded — cannot plan a deployment');
   if (deferred.length) warnings.push(`${deferred.length} name(s) deferred (${deferred.map((d) => d.sym).join(', ')}) — ~${money(deferredCash)} of intended weight held pending earnings/re-verify/wash-sale`);
-  if (blockedSells.length) warnings.push(`${blockedSells.length} sell(s) held to the next session (${blockedSells.map((b) => b.sym).join(', ')}) — bought today, selling now would be a day trade (PDT guard)`);
+  const pdtBlocked = blockedSells.filter((b) => b.blocked === 'day-trade');
+  const holdBlocked = blockedSells.filter((b) => b.blocked === 'min-hold');
+  if (pdtBlocked.length) warnings.push(`${pdtBlocked.length} sell(s) held to the next session (${pdtBlocked.map((b) => b.sym).join(', ')}) — bought today, selling now would be a day trade (PDT guard)`);
+  if (holdBlocked.length) warnings.push(`${holdBlocked.length} sell(s) held by the ${minHoldDays}d min-hold (${holdBlocked.map((b) => b.sym).join(', ')}) — churn guard: positions opened within the window aren't flipped by the next research refresh`);
   if (candidates.length && deployable > 0 && spent < deployable - 1) warnings.push(`${money(cashLeft)} left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)`);
   if (zonesStale) warnings.push(`entry zones are ${zoneAgeDays}d old (target asOf ${target.asOf || '?'}) — treated as ADVISORY, band checks skipped; a stale zone drifts out of range on its own`);
   if (idleOverdue) warnings.push(`cash idle ${idleDays}d (≥${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d deadline) — entry bands waived and ${tranching ? `a ${tranchePct}% tranche (${money(cashThisPass)}) deployed this pass` : `the ${money(settledNow)} remainder swept in`}; waiting indefinitely is a decision too`);
@@ -511,4 +581,8 @@ function daysUntil(dateStr, asOf) {
 function daysSince(dateStr, asOf) {
   const d = daysUntil(dateStr, asOf);
   return d == null ? null : -d;
+}
+function addDays(dateStr, n) {
+  const t = Date.parse(String(dateStr).slice(0, 10) + 'T00:00:00Z');
+  return Number.isFinite(t) ? new Date(t + n * 86400000).toISOString().slice(0, 10) : null;
 }

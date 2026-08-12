@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, MIN_GRADE_DAYS } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -44,6 +44,19 @@ const md = makeDecision({ date: '2026-07-23', kind: 'deploy', targetAsOf: '2026-
   rationale: 'deploy deposit', buys: [{ sym: 'spy', dollars: 300, shares: 0.4, price: 747, weightNow: 18, weightTarget: 22 }], trims: [] });
 ok('makeDecision uppercases + tags side BUY', md.trades[0].sym === 'SPY' && md.trades[0].side === 'BUY');
 ok('makeDecision stamps id/date/spyAt', md.id === '2026-07-23-deploy' && md.spyAt === 747);
+
+// ── activityFromDecisions (2026-08-12 churn governor) ───────────────────────────────────────────
+// The committed ledger → the deploy planner's {SYM:{lastBuyDate,lastSellDate}} shape. This is the
+// exact 08-10/08-12 whipsaw window: GE sold 08-10 then rebought 08-12, AAPL the mirror image.
+const act = activityFromDecisions([
+  { date: '2026-08-10', trades: [{ sym: 'GE', side: 'TRIM' }, { sym: 'AAPL', side: 'BUY' }] },
+  { date: '2026-08-12', trades: [{ sym: 'AAPL', side: 'TRIM' }, { sym: 'GE', side: 'BUY' }] },
+  { date: '2026-05-01', trades: [{ sym: 'OLD', side: 'BUY' }] },   // outside the window
+], { asOf: '2026-08-12', sinceDays: 30 });
+ok('a TRIM stamps lastSellDate', act.GE.lastSellDate === '2026-08-10' && act.AAPL.lastSellDate === '2026-08-12');
+ok('a BUY stamps lastBuyDate', act.GE.lastBuyDate === '2026-08-12' && act.AAPL.lastBuyDate === '2026-08-10');
+ok('decisions outside the window are ignored', !act.OLD);
+ok('empty ledger → empty map', Object.keys(activityFromDecisions([], { asOf: '2026-08-12' })).length === 0);
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

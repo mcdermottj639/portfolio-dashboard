@@ -25,10 +25,11 @@
 //
 // Same split for the v98 PDT guard: ••••3900 is a LIMITED MARGIN account since 2026-08-11, so a
 // same-day round trip books a day trade and 4 in 5 business days restricts a sub-$25k account. The
-// planner takes `accountActivity` ({SYM:{lastBuyDate}}) and refuses to sell anything bought today —
-// but the gate can't see today's fills either (the snapshot is up to an hour stale and carries no
-// order history), so it passes NONE and the EXECUTOR supplies it live from get_equity_orders on
-// ••••3900 before placing any sell (AGENTIC.md executor step 3c).
+// planner takes `accountActivity` ({SYM:{lastBuyDate,lastSellDate}}) — since the 2026-08-12 churn
+// governor the gate DOES pass it, derived from the committed agentic-decisions.json (that ledger
+// records every placed rebalance, so it covers the 14d min-hold / re-entry lookback), but it still
+// can't see TODAY's fills, so the EXECUTOR overlays get_equity_orders on ••••3900 live before
+// placing any sell (AGENTIC.md executor step 3c).
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -48,6 +49,19 @@ function readParked() {
   } catch { return null; }
 }
 import { planHash, nextAction, MIN_TURNOVER, TICKET_STALE_DAYS } from './agentic-pending.mjs';
+import { activityFromDecisions } from './agentic-ledger.mjs';
+
+// Churn governor (2026-08-12): the committed decisions ledger tells the planner what this account
+// bought/sold recently, powering the 14d min-hold + re-entry cooldown. Missing/garbage file → {} →
+// the guards simply don't bind (fail open on churn; trading itself still fails safe elsewhere).
+function readActivity(asOf) {
+  try {
+    const f = join(dirname(fileURLToPath(import.meta.url)), 'agentic-decisions.json');
+    if (!existsSync(f)) return {};
+    const d = JSON.parse(readFileSync(f, 'utf8'));
+    return activityFromDecisions((d && d.decisions) || [], { asOf, sinceDays: 30 });
+  } catch { return {}; }
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const idle = (why) => { console.log(`EXEC_IDLE (${why})`); process.exit(30); };
@@ -107,6 +121,10 @@ for (const e of A.recentLosses || []) {
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},
   washMap, parked: readParked() || A.parked || null,
+  // Churn governor: recent buys/sells from the committed decisions ledger drive the min-hold and
+  // re-entry cooldown. The executor OVERLAYS today's live fills (get_equity_orders) on top — the
+  // ledger can't see an order placed since its last append (AGENTIC.md executor step 3c).
+  accountActivity: readActivity(today),
   // v102: the idle clock rides in the snapshot; the parking ledger is read from the COMMITTED file so
   // the gate sees a park/release the executor wrote this session, before the next producer run.
   opts: { asOf: today, cashIdleDays: A.cashIdleDays ?? null },

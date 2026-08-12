@@ -77,6 +77,29 @@ export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, 
   return { id: `${date}-${kind}`, date, kind, targetAsOf: targetAsOf || null, book: num(book), equityAtDecision: num(equity), spyAt: num(spyAt), rationale: rationale || '', trades };
 }
 
+// Churn-governor input (2026-08-12): fold the committed decisions ledger into the deploy planner's
+// `accountActivity` shape — {SYM:{lastBuyDate,lastSellDate}} over the trailing window. This is what
+// lets the exec gate see "we bought AAPL two days ago / sold MSFT yesterday" BETWEEN producer runs
+// (raw/ is wiped; the ledger is the committed record of every placed rebalance). The executor still
+// overlays today's live fills from get_equity_orders — this covers everything before today.
+export function activityFromDecisions(decisions = [], { asOf, sinceDays = 30 } = {}) {
+  const map = {};
+  for (const d of decisions) {
+    if (!d || !d.date) continue;
+    const age = daysBetween(d.date, asOf);
+    if (age == null || age < 0 || age > sinceDays) continue;
+    for (const t of d.trades || []) {
+      const sym = String(t.sym || '').toUpperCase();
+      if (!sym) continue;
+      const side = String(t.side || 'BUY').toUpperCase();
+      const m = map[sym] || (map[sym] = {});
+      const key = side === 'BUY' ? 'lastBuyDate' : 'lastSellDate'; // SELL/TRIM/EXIT all count as sells
+      if (!m[key] || d.date > m[key]) m[key] = d.date;
+    }
+  }
+  return map;
+}
+
 function daysBetween(a, b) {
   if (!a) return null;
   const t0 = Date.parse(String(a).slice(0, 10) + 'T00:00:00Z');

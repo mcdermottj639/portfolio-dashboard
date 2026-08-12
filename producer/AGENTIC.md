@@ -224,7 +224,13 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       map; this is where the blackout is enforced).
    c. `get_equity_orders` on **••••3900** for today (**PDT guard, v98**) and on the **margin** account
       (…0741) over a 30-day window. Today's ••••3900 fills feed `accountActivity` — **drop any sell of a
-      name bought earlier today** (a day trade; this book is under $25k). A recent margin-account buy of
+      name bought earlier today** (a day trade; this book is under $25k), and **overlay them onto the
+      gate's ledger-derived buy/sell dates** (2026-08-12 churn governor: the gate already passed
+      `{SYM:{lastBuyDate,lastSellDate}}` from `agentic-decisions.json`; your live fills cover anything
+      placed since its last append). A sell of a name bought <14d ago, or a buy of a name sold <14d ago,
+      that somehow reaches you anyway must be dropped for the same reasons the planner would have
+      (min-hold / re-entry cooldown) — unless the plan explicitly carries the business-broken drop or
+      deep-loss override. A recent margin-account buy of
       the same symbol kills a harvest (keep exits, flag `washRisk`). The gate can see neither, so this is
       the only place both are enforced. **Also (v105): `get_pnl_trade_history` on the margin account
       (…0741, span `month`) — drop any BUY of a name that account realized a LOSS on within 30 days**
@@ -261,6 +267,31 @@ Cheap by construction: every run starts with the deterministic gate and exits im
 `producer/agentic-decisions.json` (the graded ledger), and — since v102 — `producer/agentic-parked.json`
 (the waiting ground). Nothing else, and **never `data.json`**: the producer owns that file, and the
 executor writing it would race the publish. Any executor state must therefore live in one of these three.
+
+## The churn governor (2026-08-12)
+Added after a real 48-hour whipsaw: the 08-05 target dropped GE/LLY/AMZN/MSFT (all exited 08-10, buying
+AAPL/UNH/V), then the 08-11 target re-included the four and dropped the three (all reversed 08-12) — a
+near-total book flip with every leg short-term taxable, driven by nothing but two weekly research runs
+disagreeing at the margin. The research is memoryless and the planner executed the full delta; neither
+priced the cost of changing its mind. Four rules now stand between a target refresh and the trades:
+
+- **Two-strike phase-out** (`finalize-target.mjs`): a held name dropped by ONE refresh is retained at its
+  prior weight (`phaseOut:true` — zero trades; the planner holds it but never adds). Dropped by TWO
+  consecutive refreshes → a real off-target exit. An explicit `businessOk:false`/`avoid` verdict skips the
+  grace period (`target.dropped`, reason `business-broken`).
+- **Min-hold** (`agentic-deploy.mjs`, 14d): a name bought inside the window is not exited or trimmed.
+  Overrides: business-broken drop, a position down ≥10% (risk control outranks churn control), TLH
+  harvests and park-releases (own floors/purpose). Day 0 remains the harder PDT day-trade block.
+- **Re-entry cooldown** (14d): a name this account sold inside the window is not rebought; the weight
+  parks in the VTI waiting ground until the window clears. (The wash-sale ledger already blocks
+  loss-sale rebuys 30d — this covers gain-sells, which is what the 08-10 exits were.)
+- **Dust floor** ($25): no more $1.80 orders.
+
+The research workflow is also handed the current book + prior target (`args.held` / `args.priorTarget`)
+and told the current book is the null hypothesis — the deterministic layer is the backstop, but the
+cheapest churn is the churn never proposed. As the book grows, these same rules scale: the toll is
+proportional (ST tax + spread on every flipped dollar), so what was a ~$240 annoyance at $10k becomes
+real money at $100k — which is why the governor is code, not prose.
 
 ## Entry discipline, the idle-cash deadline, and the waiting ground (v102)
 Three linked rules the planner enforces, all added 2026-08-11 after a live re-verification exposed them:

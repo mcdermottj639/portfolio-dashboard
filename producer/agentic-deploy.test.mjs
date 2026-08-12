@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-deploy.mjs — no network, no I/O. Run: node producer/agentic-deploy.test.mjs
-import { planDeployment, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP } from './agentic-deploy.mjs';
+import { planDeployment, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY } from './agentic-deploy.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -208,9 +208,11 @@ ok('a name bought TODAY is not sold today', !find(pdt.exits, 'MSFT'));
 ok('…it lands in blockedSells with the day-trade reason', find(pdt.blockedSells, 'MSFT') && find(pdt.blockedSells, 'MSFT').blocked === 'day-trade');
 ok('…with a warning naming the guard', pdt.warnings.some((w) => /day trade/.test(w)));
 ok('…and its proceeds are NOT counted as funding', pdt.proceeds === 0 && pdt.spent === 0);
-const pdtOld = planDeployment({ ...pdtArgs, accountActivity: { MSFT: { lastBuyDate: '2026-08-08' } } });
-ok('a buy on an EARLIER day does not block the sell', !!find(pdtOld.exits, 'MSFT') && !pdtOld.blockedSells.length);
-ok('no accountActivity → no blocking (gate passes none)', !!find(planDeployment(pdtArgs).exits, 'MSFT'));
+// (a buy a few days back is now the MIN-HOLD's territory — see the churn-governor section below;
+//  only a buy outside that window sells freely)
+const pdtOld = planDeployment({ ...pdtArgs, accountActivity: { MSFT: { lastBuyDate: '2026-07-01' } } });
+ok('a buy outside the min-hold window does not block the sell', !!find(pdtOld.exits, 'MSFT') && !pdtOld.blockedSells.length);
+ok('no accountActivity → no blocking (nothing to key off)', !!find(planDeployment(pdtArgs).exits, 'MSFT'));
 
 // The guard covers every sell kind, not just exits.
 const pdtHarvest = planDeployment({
@@ -324,6 +326,78 @@ ok('…while a quoted VTI parks the same deferral', planDeployment({
   target: { asOf: '2026-08-11', names: [{ ticker: 'SHEL', weightPct: 50, entry: '86-92', stop: 82 }, { ticker: 'SPY', weightPct: 50, entry: '740-780', stop: 690 }] },
   positions: [], cash: 2000, quotes: { SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-11' },
 }).parking.parked !== null);
+
+// ═══ Churn governor (2026-08-12) — min-hold, re-entry cooldown, dust floor, phase-out ═══
+// The live failure this encodes: 08-10 exited GE/LLY/AMZN/MSFT and bought AAPL/UNH/V; 08-12 the next
+// target reversed both legs — a near-total book flip in 48h. These guards make that impossible.
+
+// MIN-HOLD: an off-target exit of a name bought 2 days ago is blocked (the AAPL-bought-08-10 case).
+const mh = planDeployment({ ...pdtArgs, accountActivity: { MSFT: { lastBuyDate: '2026-08-09' } } });
+ok('an exit of a name bought 2d ago is min-hold blocked',
+  !find(mh.exits, 'MSFT') && find(mh.blockedSells, 'MSFT') && find(mh.blockedSells, 'MSFT').blocked === 'min-hold');
+ok('…the note names the unlock date', /2026-08-23/.test(find(mh.blockedSells, 'MSFT').note));
+ok('…and a churn-guard warning is raised', mh.warnings.some((w) => /min-hold/.test(w)));
+ok('…its proceeds are NOT counted as funding', mh.proceeds === 0);
+
+// Risk control outranks churn control: a ≥10% loss may exit regardless of age.
+const mhLoss = planDeployment({ ...pdtArgs, positions: [{ symbol: 'MSFT', qty: 2, avgCost: 520 }],
+  accountActivity: { MSFT: { lastBuyDate: '2026-08-09' } } });
+ok('a deep (≤−10%) loss overrides the min-hold', !!find(mhLoss.exits, 'MSFT'));
+
+// A research verdict that the BUSINESS broke overrides too (finalize-target records it in target.dropped).
+const mhBroken = planDeployment({ ...pdtArgs,
+  target: { ...pdtArgs.target, dropped: [{ ticker: 'MSFT', reason: 'business-broken' }] },
+  accountActivity: { MSFT: { lastBuyDate: '2026-08-09' } } });
+ok('a business-broken drop overrides the min-hold', !!find(mhBroken.exits, 'MSFT'));
+
+// A TLH harvest is exempt by kind (it has its own floor; a real loss harvested fast is legitimate).
+// GOOGL here is −8.6% — NOT deep enough for the loss override, so only the kind-exemption passes it.
+const mhHarvest = planDeployment({
+  target: { driftTriggerPp: 5, names: [{ ticker: 'GOOGL', weightPct: 50, entry: '370-382', stop: 332 }, { ticker: 'SPY', weightPct: 50, entry: '740-750', stop: 690 }] },
+  positions: [{ symbol: 'GOOGL', qty: 10, avgCost: 372 }], cash: 0, quotes: { GOOGL: 340, SPY: 750 },
+  accountActivity: { GOOGL: { lastBuyDate: '2026-08-06' } }, opts: { asOf: '2026-08-11' },
+});
+ok('a TLH harvest is exempt from the min-hold', !!find(mhHarvest.harvests, 'GOOGL'));
+
+// RE-ENTRY COOLDOWN: a name sold 2 days ago is not rebought (the GE-sold-08-10-rebought-08-12 case);
+// its weight parks in the VTI waiting ground instead.
+const reArgs = {
+  target: { asOf: '2026-08-12', driftTriggerPp: 5, names: [
+    { ticker: 'AAPL', weightPct: 50, entry: '300-312', stop: 284 }, { ticker: 'SPY', weightPct: 50, entry: '740-760', stop: 690 }] },
+  positions: [], cash: 2000, quotes: { AAPL: 309, SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-12' },
+};
+const re = planDeployment({ ...reArgs, accountActivity: { AAPL: { lastSellDate: '2026-08-10' } } });
+ok('a name sold 2d ago is not rebought (re-entry cooldown)', !find(re.buys, 'AAPL') && defReason(re, 'AAPL') === 'reentry');
+ok('…the deferral carries the unlock date', find(re.deferred, 'AAPL').until === '2026-08-24');
+ok('…and the deferred weight parks in VTI', re.parking.parked !== null && re.parking.forNames.includes('AAPL'));
+ok('a sell outside the cooldown does not defer',
+  !!find(planDeployment({ ...reArgs, accountActivity: { AAPL: { lastSellDate: '2026-07-01' } } }).buys, 'AAPL'));
+ok('wash-sale still outranks the re-entry reason', defReason(planDeployment({ ...reArgs,
+  washMap: { AAPL: { until: '2026-09-01' } }, accountActivity: { AAPL: { lastSellDate: '2026-08-10' } } }), 'AAPL') === 'wash-sale');
+
+// DUST FLOOR: a sub-$25 gap is not worth an order (the 08-05 ticket placed a $1.80 UNH buy).
+const dust = planDeployment({
+  target: { asOf: '2026-08-12', names: [{ ticker: 'SPY', weightPct: 100, entry: '740-760', stop: 690 }] },
+  positions: [{ symbol: 'SPY', qty: 1.3, avgCost: 700 }], cash: 10, quotes: { SPY: 750 }, opts: { asOf: '2026-08-12' },
+});
+ok('a sub-$25 gap is not traded (dust floor)', dust.buys.length === 0 && MIN_BUY === 25);
+ok('…opts.minBuy can lower the floor', planDeployment({
+  target: { asOf: '2026-08-12', names: [{ ticker: 'SPY', weightPct: 100, entry: '740-760', stop: 690 }] },
+  positions: [{ symbol: 'SPY', qty: 1.3, avgCost: 700 }], cash: 10, quotes: { SPY: 750 },
+  opts: { asOf: '2026-08-12', minBuy: 1 } }).buys.length === 1);
+
+// PHASE-OUT: a name finalize-target retained after the research dropped it is held but never added to —
+// and it is NOT a deferral, so its weight must not attract parked dollars.
+const po = planDeployment({
+  target: { asOf: '2026-08-12', driftTriggerPp: 5, names: [
+    { ticker: 'GE', weightPct: 50, entry: '350-372', stop: 336, phaseOut: true },
+    { ticker: 'SPY', weightPct: 50, entry: '740-760', stop: 690 }] },
+  positions: [], cash: 1000, quotes: { GE: 368, SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-12' },
+});
+ok('no NEW money into a phase-out name', !find(po.buys, 'GE') && !find(po.deferred, 'GE'));
+ok('…its weight does not park', po.parking.parked === null);
+near('…while the live names still deploy to target', po.spent, 500, 1);
+ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 && REENTRY_COOLDOWN_DAYS === 14);
 
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);

@@ -392,10 +392,16 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `picks.mjs`) + the `leaders.mjs` mega-cap bench + current ••••3900 holdings (`agentic-positions.json`),
       with live quotes/fundamentals for sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
    3. Run the **`agentic-research`** workflow (`.claude/workflows/agentic-research.js`) with
-      `args:{ universe:<that list>, book:<••••3900 equity from agentic-portfolio.json> }`.
-   4. Pipe its `allocation` through **`node producer/finalize-target.mjs <raw>.json --book <equity> --write`**
+      `args:{ universe:<that list>, book:<••••3900 equity from agentic-portfolio.json>,
+      held:<[{t,w}] from agentic-positions.json — ticker + current % of book>,
+      priorTarget:<the committed producer/agentic-target.json> }` — `held`/`priorTarget` power the
+      incumbency framing (2026-08-12 churn governor: the current book is the null hypothesis).
+   4. Pipe the **whole workflow return** through **`node producer/finalize-target.mjs <raw>.json
+      --book <equity> --held <SYM,SYM,… from agentic-positions.json> --write`**
       (or `import { finalizeTarget }`) — this RE-ENFORCES the `riskweights.mjs` correlation-cluster + vol
-      caps and writes **`producer/agentic-target.json`** (shape per `AGENTIC.md`), then
+      caps, applies the **two-strike phase-out** (the CLI auto-reads the committed target as the prior and
+      the return's `verdicts` for business-broken drops — a held name dropped by one refresh is retained
+      `phaseOut:true`, not exited), and writes **`producer/agentic-target.json`** (shape per `AGENTIC.md`), then
       `git add producer/agentic-target.json && git commit && git push origin main` (next run's
       `build-data.mjs` embeds it as `data.agentic.target`).
    5. Build the rebalance ticket with **`agentic-deploy.mjs`** (`planDeployment` — applies the **Tax &
