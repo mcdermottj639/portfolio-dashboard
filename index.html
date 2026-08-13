@@ -463,7 +463,10 @@ html[data-theme="gold"]{ color-scheme:dark; --accent:#e3c074; --surface-2:#0e0e0
   /* var names are historical (cyan/mag/pur) — repurposed to the rich-gold palette */
   --nx-cyan:#e3c074; --nx-mag:#c98a3a; --nx-pur:#caa24a; --nx-grn:#3fcf94; --nx-red:#ef8278; --nx-bd:rgba(201,168,100,.18); --nx-muted:#9c917b; }
 html[data-theme="gold"] body{ background:#000; color:var(--text); }
-html[data-theme="gold"] .tabbar{ background:transparent; }
+/* Opaque, not transparent: the tab bar is sticky, so a see-through background lets the page scroll
+   visibly behind the pills. Harmless when nothing else was sticky; obvious once the account switcher
+   sits under it (v106 Accounts, v108 Plan). Gold's body is near-pure black, so #000 is the match. */
+html[data-theme="gold"] .tabbar{ background:#000; }
 html[data-theme="gold"] .tab{ background:#0c0c0d; color:#9c917b; box-shadow:none; border:1px solid var(--nx-bd); }
 html[data-theme="gold"] .tab:hover{ color:var(--text); }
 html[data-theme="gold"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; border-color:rgba(227,192,116,.55); box-shadow:none; }
@@ -577,7 +580,17 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   <div id="agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic account…</div></div>
 </div>
 <div id="page-picks" style="display:none">
+  <!-- Same account switcher as the Accounts tab, so the app has ONE account context: Accounts = what
+       you own, Plan = what happens next, both split the same way. Self-directed side = the daily scan
+       + Action Center; agentic side = the ••••3900 strategy (target · deferrals · parking · rules). -->
+  <div class="acct-seg-wrap" id="plan-seg-wrap">
+    <div class="acct-seg" id="plan-seg" role="tablist" aria-label="Account plan">
+      <button class="acct-tg active" id="plan-tg-main" role="tab" aria-selected="true" onclick="setPlanAccount('main')">📊 Self-directed<span class="acct-sub">picks · action center</span></button>
+      <button class="acct-tg" id="plan-tg-agentic" role="tab" aria-selected="false" onclick="setPlanAccount('agentic')">🤖 Agentic<span class="acct-sub">target · guardrails</span></button>
+    </div>
+  </div>
   <div id="picks-app"><div class="loading-wrap"><div class="spinner"></div>Loading daily picks…</div></div>
+  <div id="plan-agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic plan…</div></div>
 </div>
 <div id="page-markets" style="display:none">
   <div id="markets-app"><div class="loading-wrap"><div class="spinner"></div>Loading markets…</div></div>
@@ -698,7 +711,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v107'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v108'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1557,6 +1570,9 @@ function paintActionCenter(){
   // the margin-data early-return below: the agentic account must show even if the margin book hasn't
   // loaded (or failed).
   if(document.getElementById('agentic-content')){ try{ renderAgenticCard(); }catch(e){} }
+  // The Plan tab's agentic side reads the same state; repaint it as quotes/earnings land so its
+  // deferral badges track the card's (only once it has been rendered — the container always exists).
+  if(_planAgInit&&document.getElementById('b-agp-target')){ try{ renderAgenticPlan(); }catch(e){} }
   if(document.getElementById('agentic-log-content')){ try{ renderAgenticLog(); }catch(e){} }
   if(document.getElementById('ag-perf-content')){ try{ renderAgenticPerf(); }catch(e){} }
   if(document.getElementById('risk-content-ag')){ try{ renderAgenticAnalytics(); }catch(e){} }
@@ -2008,8 +2024,11 @@ function __pfTopOffset(){
   const tb=document.querySelector('.tabbar'); if(!tb||!tb.offsetHeight)return 96;
   let safe=0; try{ safe=parseFloat(getComputedStyle(tb).top)||0; }catch(e){}
   let y=safe+tb.offsetHeight;
-  const w=document.getElementById('acct-seg-wrap');
-  if(w&&w.offsetHeight>0)y+=w.offsetHeight;
+  // Two pages carry a sticky switcher (Accounts + Plan) but only one page is visible at a time, so
+  // the one with a non-zero height IS the one on screen. Keyed by class, not id, since v108 added
+  // the Plan tab's own switcher.
+  const ws=document.querySelectorAll('.acct-seg-wrap');
+  for(let i=0;i<ws.length;i++){ if(ws[i].offsetHeight>0){ y+=ws[i].offsetHeight; break; } }
   return y+8;
 }
 window.__pfTopOffset=__pfTopOffset;
@@ -2092,6 +2111,124 @@ function setAccount(which,opts){
   land(false);
 }
 window.setAccount=setAccount;
+
+/* ── Plan tab's account switcher (v108) ────────────────────────────────────────────────────────
+   Same two accounts, same persisted key (`pf_acct`), so flipping to Agentic anywhere flips it
+   everywhere: Accounts = what you own, Plan = what happens next. The Accounts tab's heavy render
+   is NOT triggered from here — its charts would size to a zero-height hidden container — so we
+   only mirror the button state and let switchTab('portfolio') apply the account when that page is
+   actually visible. No section-matching: the two Plan sides are different documents, not the
+   aligned card spine the Accounts tab pairs up. */
+let _planAgInit=false;
+function setPlanAccount(which){
+  const isAg=which==='agentic';
+  const p=document.getElementById('picks-app'), g=document.getElementById('plan-agentic-app');
+  if(p)p.style.display=isAg?'none':'';
+  if(g)g.style.display=isAg?'':'none';
+  const bm=document.getElementById('plan-tg-main'), bg=document.getElementById('plan-tg-agentic');
+  if(bm){ bm.classList.toggle('active',!isAg); bm.setAttribute('aria-selected',String(!isAg)); }
+  if(bg){ bg.classList.toggle('active',isAg); bg.setAttribute('aria-selected',String(isAg)); }
+  try{ localStorage.setItem('pf_acct',which); }catch(e){}
+  const am=document.getElementById('acct-tg-main'), ag=document.getElementById('acct-tg-agentic');
+  if(am){ am.classList.toggle('active',!isAg); am.setAttribute('aria-selected',String(!isAg)); }
+  if(ag){ ag.classList.toggle('active',isAg); ag.setAttribute('aria-selected',String(isAg)); }
+  if(isAg){
+    // Gate the FIRST paint on the snapshot, like setAccount: a boot restore can land here before
+    // data.json is decrypted, and rendering then would freeze the page on a false "no target yet".
+    const r=()=>{ try{ renderAgenticPlan(); }catch(e){ try{console.warn('[render] agenticPlan',e&&e.message);}catch(_){} }
+      try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){} };
+    if(!_planAgInit&&window.__dataReady&&window.__dataReady.then){ _planAgInit=true; window.__dataReady.then(r,r); }
+    else { _planAgInit=true; r(); }
+  }
+  try{ if(window.__navRebuild)window.__navRebuild(); }catch(e){}
+  window.scrollTo(0,0);
+}
+window.setPlanAccount=setPlanAccount;
+/* Which side is a page showing right now? Used by switchTab to bring a page into line with the
+   shared `pf_acct` the OTHER tab may have changed while this one was hidden. */
+function _acctPref(){ try{ return localStorage.getItem('pf_acct')==='agentic'?'agentic':'main'; }catch(e){ return 'main'; } }
+
+/* ═══ Shared execution guards for the agentic account ═══════════════════════════════════════════
+   Two surfaces now read these — the Agentic Portfolio card (Accounts tab) and the Plan tab's
+   agentic side — and BOTH mirror producer/agentic-deploy.mjs. Extracted (v108) so the card, the
+   plan page and the producer's ticket can't drift apart: a badge that says "buy deferred" while
+   the executor buys anyway is worse than no badge. Constants mirror agentic-deploy.mjs exactly. */
+const AG_EARN_BLACKOUT_D=7,      // EARNINGS_BLACKOUT_DAYS — no NEW money ≤7d before a print
+      AG_ENTRY_TOL_PCT=2.5,      // ENTRY_TOLERANCE_PCT — how far under the floor before below-entry
+      AG_ENTRY_PREM_PCT=2.0,     // ENTRY_PREMIUM_PCT — how far over the ceiling before above-entry
+      AG_ENTRY_STALE_D=7,        // ENTRY_ZONE_STALE_DAYS — older zones go ADVISORY
+      AG_WASH_WINDOW_D=30,       // WASH_WINDOW_DAYS — IRS wash-sale window
+      AG_MIN_HOLD_D=14,          // MIN_HOLD_DAYS
+      AG_REENTRY_D=14,           // REENTRY_COOLDOWN_DAYS
+      AG_AUTO_CAP=1000,          // AUTO_TURNOVER_CAP — unattended-execution ceiling per ticket
+      AG_MIN_BUY=25,             // MIN_BUY — dust floor
+      AG_IDLE_DEPLOY_D=10,       // CASH_IDLE_DEPLOY_DAYS — idle-cash deadline
+      AG_IDLE_TRANCHE_PCT=34,    // CASH_IDLE_TRANCHE_PCT
+      AG_IDLE_SWEEP_FLOOR=250,   // CASH_IDLE_SWEEP_FLOOR
+      AG_PARK_VEHICLE='VTI',     // PARK_VEHICLE — the waiting ground
+      AG_PARK_MIN=100,           // PARK_MIN
+      AG_CLUSTER_CAP=48;         // riskweights.mjs CLUSTER_CAPS['megacap-tech']
+const agToday=()=>new Date().toISOString().slice(0,10);
+/* Best live price for a name in the agentic book: the held position's mark → today's pick scan →
+   the recorded quote. Shared so the card and the Plan page price the same guards identically. */
+function agenticPxOf(sym,heldPos){
+  const h=(heldPos||[]).find(p=>p&&p.symbol===sym); if(h&&h.px>0)return h.px;
+  const pk=(typeof azPick==='function')?azPick(sym):null; if(pk&&pk.price>0)return pk.price;
+  const q=(typeof azQuote==='function')?azQuote(sym):null;
+  if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
+  return 0;
+}
+/* Wash-sale ledger → {SYM:{until,date,account}} for names still inside the window. data.agentic
+   .recentLosses spans BOTH taxable books since v105 (each entry tagged `account`) because the IRS
+   window is per TAXPAYER — a loss booked in ••••0741 blocks a rebuy in ••••3900 too. */
+function agenticWashMap(A){
+  const today=agToday(), m={};
+  if(A&&Array.isArray(A.recentLosses)) for(const e of A.recentLosses){
+    if(!e||!e.sym||!e.date)continue;
+    const d=new Date(e.date+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+AG_WASH_WINDOW_D+1);
+    const until=d.toISOString().slice(0,10);
+    if(until>today&&(!m[e.sym]||until>m[e.sym].until)) m[e.sym]={until,date:e.date,account:e.account||'agentic'};
+  }
+  return m;
+}
+/* Parse a research entry zone ("120-135", "at market; core hold", "$120 – $135") → {lo,hi}. */
+function agenticEntryBounds(e){
+  if(!e)return{lo:0,hi:0};
+  const m=String(e).replace(/,/g,'').match(/\d+(\.\d+)?/g); if(!m||!m.length)return{lo:0,hi:0};
+  const lo=parseFloat(m[0]), hi=m.length>1?parseFloat(m[1]):lo;
+  return (hi>=lo)?{lo,hi}:{lo,hi:lo};
+}
+/* Execution-discipline deferrals for research-target names. `rows` = [{sym,px,_entry,_stop}].
+   Returns {map,zoneAge,stale}. The entry band is SYMMETRIC, TOLERANCED and AGEING (v102): a 0.2%
+   miss under the floor must not park a position, a name trading ABOVE its zone is deferred too, and
+   zones older than AG_ENTRY_STALE_D go advisory — when a whole target reads out-of-band at once the
+   guard is measuring its own staleness, not the companies. `below-stop` stays absolute: that one is
+   the real thesis-broken signal. A wash-blocked name is skipped — that deferral owns the name. */
+function agenticExecMap(rows,targetAsOf,washMap){
+  const today=agToday(), P=(v)=>'$'+(+v).toFixed(2), map={};
+  const zoneAge=(()=>{ if(!targetAsOf)return null;
+    const a=Date.parse(String(targetAsOf).slice(0,10)+'T00:00:00Z'), b=Date.parse(today+'T00:00:00Z');
+    return (isFinite(a)&&isFinite(b))?Math.round((b-a)/86400000):null; })();
+  const stale=zoneAge!=null&&zoneAge>AG_ENTRY_STALE_D;
+  for(const x of (rows||[])){
+    if(!x||!x.sym)continue;
+    if(washMap&&washMap[x.sym])continue;
+    const er=(typeof azEarn==='function')?azEarn(x.sym):null;
+    let dAway=null;
+    if(er&&er.date){ const d=Date.parse(String(er.date).slice(0,10)+'T00:00:00Z');
+      if(isFinite(d))dAway=Math.round((d-Date.parse(today+'T00:00:00Z'))/86400000); }
+    const {lo:eLow,hi:eHigh}=agenticEntryBounds(x._entry), stop=+x._stop||0, px=+x.px||0;
+    if(dAway!=null&&dAway>=0&&dAway<=AG_EARN_BLACKOUT_D)
+      map[x.sym]={reason:'earnings',until:er.date,label:`⏸ earns ${(typeof azDateLbl==='function')?azDateLbl(er.date):er.date}`,note:`reports ${er.date} (≤${AG_EARN_BLACKOUT_D}d) — wait for the print, then buy with full info`};
+    else if(px>0&&stop>0&&px<=stop)
+      map[x.sym]={reason:'below-stop',label:'⚠️ below stop',note:`${P(px)} is at/below the target stop ${P(stop)} — setup broken, re-verify before deploying`};
+    else if(!stale&&px>0&&eLow>0&&px<eLow*(1-AG_ENTRY_TOL_PCT/100))
+      map[x.sym]={reason:'below-entry',label:'⚠️ re-verify',note:`${P(px)} is ${((1-px/eLow)*100).toFixed(1)}% below planned entry ${x._entry} (tolerance ${AG_ENTRY_TOL_PCT}%) — re-check the thesis (esp. post-earnings) before buying`};
+    else if(!stale&&px>0&&eHigh>0&&px>eHigh*(1+AG_ENTRY_PREM_PCT/100))
+      map[x.sym]={reason:'above-entry',label:'⏳ wait for pullback',note:`${P(px)} is ${((px/eHigh-1)*100).toFixed(1)}% above planned entry ${x._entry} (tolerance ${AG_ENTRY_PREM_PCT}%) — the research priced this entry deliberately; chasing it gives up the reward:risk`};
+  }
+  return {map,zoneAge,stale};
+}
 
 /* The account's book, derived one way for every surface on this page (the hero, the perf card and
    the tracker card all need it — keep them incapable of disagreeing). */
@@ -2319,22 +2456,15 @@ function renderAgenticCard(){
     if(s&&/^(N\/?A|None|Trade Commercial)$/i.test(s))s=null;
     if(!s&&typeof ASSET_MAP!=='undefined'&&ASSET_MAP[sym]&&ASSET_MAP[sym]!=='Stocks')s=ASSET_MAP[sym];
     return s||'—'; };
-  const pxOf=(sym)=>{ const h=heldPos.find(p=>p.symbol===sym); if(h&&h.px>0)return h.px;
-    const pk=(typeof azPick==='function')?azPick(sym):null; if(pk&&pk.price>0)return pk.price;
-    const q=(typeof azQuote==='function')?azQuote(sym):null;
-    if(q){ const p=parseFloat(q.last_extended_hours_trade_price||q.last_trade_price||q.ask_price||q.mark_price||q.adjusted_previous_close||0)||0; if(p>0)return p; }
-    return 0; };
+  const pxOf=(sym)=>agenticPxOf(sym,heldPos);
   // ── Wash-sale guard (taxable accounts): data.agentic.recentLosses is a rolling ledger of realized
   //    losses (broker trade history; since v105 it spans BOTH taxable accounts — ••••3900 AND the
   //    self-directed ••••0741, each entry tagged `account` — because the IRS window is per taxpayer,
   //    not per account). Buying any name back inside 30 calendar days of realizing a loss on it
   //    disallows the loss, so we BLOCK that name from the deploy hand-off and flag its Trade cell
   //    "wait" until the window clears. The target WEIGHT is unchanged — only the execution is deferred. ──
-  const _todayISO=new Date().toISOString().slice(0,10);
-  const washMap={};
-  if(A&&Array.isArray(A.recentLosses)) for(const e of A.recentLosses){ if(!e||!e.sym||!e.date)continue;
-    const until=(()=>{ const d=new Date(e.date+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+31); return d.toISOString().slice(0,10); })();
-    if(until>_todayISO&&(!washMap[e.sym]||until>washMap[e.sym].until)) washMap[e.sym]={until,date:e.date,account:e.account||'agentic'}; }
+  const _todayISO=agToday();
+  const washMap=agenticWashMap(A);   // shared with the Plan tab's agentic side (v108)
   const washUntilLbl=(sym)=>{ const w=washMap[sym]; if(!w)return ''; const d=new Date(w.until+'T00:00:00Z'); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
   // ── target names: prefer the persisted research-driven target (data.agentic.target, refreshed weekly
   //    by the deep multi-factor research) so the card shows drift vs. the REAL deployed basket; fall back
@@ -2404,31 +2534,20 @@ function renderAgenticCard(){
   //    have been bought straight through); and zones written more than ENTRY_STALE_D ago go ADVISORY, because
   //    when most of a target reads "out of band" at once the guard is measuring its own staleness, not the
   //    companies. `below-stop` stays absolute — that one is the real thesis-broken signal.
-  const EARN_BLACKOUT_D=7, ENTRY_TOL_PCT=2.5, ENTRY_PREM_PCT=2.0, ENTRY_STALE_D=7;
-  const _entryBounds=(e)=>{ if(!e)return{lo:0,hi:0}; const m=String(e).replace(/,/g,'').match(/\d+(\.\d+)?/g); if(!m||!m.length)return{lo:0,hi:0};
-    const lo=parseFloat(m[0]), hi=m.length>1?parseFloat(m[1]):lo; return (hi>=lo)?{lo,hi}:{lo,hi:lo}; };
-  const _zoneAge=(()=>{ if(!targetAsOf)return null; const a=Date.parse(String(targetAsOf).slice(0,10)+'T00:00:00Z'), b=Date.parse(_todayISO+'T00:00:00Z');
-    return (isFinite(a)&&isFinite(b))?Math.round((b-a)/86400000):null; })();
-  const _zonesStale=_zoneAge!=null&&_zoneAge>ENTRY_STALE_D;
-  const execMap={};
-  if(targetSrc==='research') for(const x of chosen){
-    if(washMap[x.sym])continue;                       // wash-sale owns this name's deferral
-    const er=(typeof azEarn==='function')?azEarn(x.sym):null;
-    let dAway=null; if(er&&er.date){ const d=Date.parse(String(er.date).slice(0,10)+'T00:00:00Z'); if(isFinite(d))dAway=Math.round((d-Date.parse(_todayISO+'T00:00:00Z'))/86400000); }
-    const {lo:eLow,hi:eHigh}=_entryBounds(x._entry), stop=x._stop||0, px=x.px||0;
-    if(dAway!=null&&dAway>=0&&dAway<=EARN_BLACKOUT_D)
-      execMap[x.sym]={reason:'earnings',until:er.date,label:`⏸ earns ${(typeof azDateLbl==='function')?azDateLbl(er.date):er.date}`,note:`reports ${er.date} (≤${EARN_BLACKOUT_D}d) — wait for the print, then buy with full info`};
-    else if(px>0&&stop>0&&px<=stop)
-      execMap[x.sym]={reason:'below-stop',label:'⚠️ below stop',note:`${P(px)} is at/below the target stop ${P(stop)} — setup broken, re-verify before deploying`};
-    else if(!_zonesStale&&px>0&&eLow>0&&px<eLow*(1-ENTRY_TOL_PCT/100))
-      execMap[x.sym]={reason:'below-entry',label:'⚠️ re-verify',note:`${P(px)} is ${((1-px/eLow)*100).toFixed(1)}% below planned entry ${x._entry} (tolerance ${ENTRY_TOL_PCT}%) — re-check the thesis (esp. post-earnings) before buying`};
-    else if(!_zonesStale&&px>0&&eHigh>0&&px>eHigh*(1+ENTRY_PREM_PCT/100))
-      execMap[x.sym]={reason:'above-entry',label:'⏳ wait for pullback',note:`${P(px)} is ${((px/eHigh-1)*100).toFixed(1)}% above planned entry ${x._entry} (tolerance ${ENTRY_PREM_PCT}%) — the research priced this entry deliberately; chasing it gives up the reward:risk`};
-  }
+  const EARN_BLACKOUT_D=AG_EARN_BLACKOUT_D, ENTRY_TOL_PCT=AG_ENTRY_TOL_PCT, ENTRY_PREM_PCT=AG_ENTRY_PREM_PCT, ENTRY_STALE_D=AG_ENTRY_STALE_D;
+  // Research target only — the heuristic pool carries no entry zones / thesis to re-verify.
+  const _eg=(targetSrc==='research')?agenticExecMap(chosen,targetAsOf,washMap):{map:{},zoneAge:null,stale:false};
+  const execMap=_eg.map, _zoneAge=_eg.zoneAge, _zonesStale=_eg.stale;
   const execBadge=(sym)=>{ const e=execMap[sym]; if(!e)return ''; const tag=e.reason==='earnings'?'wait for print':e.reason==='above-entry'?'too rich':'re-verify';
     return `<span class="badge" style="background:#fef3c7;color:#92400e" title="${e.note}">${e.label}</span> <span style="color:#9ca3af;font-size:10px">${tag}</span>`; };
   const chosenSet=new Set(chosen.map(x=>x.sym));
-  const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0);
+  // The index-parking vehicle is absent from the target BY DESIGN (deferred weight waits there), so
+  // the off-target-orphan rule must skip it — otherwise the card tells you to liquidate the very
+  // position the planner keeps rebuilding, an infinite taxable churn loop. Mirrors the same
+  // exemption in agentic-deploy.mjs. Only exempt while something is actually parked.
+  const parkedNow=!!(A&&A.parked&&+A.parked.dollars>0);
+  const isPark=(sym)=>parkedNow&&sym===AG_PARK_VEHICLE&&!chosenSet.has(sym);
+  const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0&&!isPark(p.symbol));
   // ── render — ONE unified holdings tracker (v91): each name ••••3900 holds is a single row that carries
   //    its position, trailing performance (day/YTD/P&L), the weekly target's drift + rebalance trade, and the
   //    TP/stop I monitor. Recommended names not yet held drop into a slim "Targets to open" strip below, so
@@ -2459,8 +2578,8 @@ function renderAgenticCard(){
     const stTxt=stop>0?`<span style="color:#991b1b">St ${P(stop)}</span>`:'';
     const lvl=(tpTxt||stTxt)?`<br><span style="font-size:10px">${[tpTxt,stTxt].filter(Boolean).join(' · ')}</span>`:'';
     return top+lvl; };
-  const tdCell=(tgt,drift,off)=>{
-    const top=off?'<span style="color:#d97706;font-size:11px">off-target</span>':`<b>${fmt(tgt,0)}%</b>`;
+  const tdCell=(tgt,drift,off,park)=>{
+    const top=park?'<span style="color:#6b7280;font-size:11px">parked</span>':off?'<span style="color:#d97706;font-size:11px">off-target</span>':`<b>${fmt(tgt,0)}%</b>`;
     const hot=Math.abs(drift)>=AGENTIC_DRIFT; const col=hot?(drift>0?'#991b1b':'#0969da'):'#9ca3af';
     const dr=book>0?`<span style="color:${col};font-weight:${hot?700:400};font-size:11px">${drift>0?'+':''}${fmt(drift,1)}pp${hot?' ⚠️':''}</span>`:'<span style="color:#9ca3af;font-size:11px">—</span>';
     return top+'<br>'+dr; };
@@ -2477,16 +2596,18 @@ function renderAgenticCard(){
       const bars=azBars(p.symbol); const start=bars.length?bars[0]:0;
       const ytdPct=(start>0&&px>0)?((px/start-1)*100):null;
       const curPct=book>0?val/book*100:0;
-      const tgt=c?c.tgt:0, off=!c, drift=curPct-tgt;
+      const park=isPark(p.symbol);
+      const tgt=c?c.tgt:0, off=!c&&!park, drift=curPct-tgt;
       const stop=c?c.stop:stopOf(p.symbol,px), tp=c?c.tp:tpOf(p.symbol,px,stop);
       let side,delta,shares;
       if(c){ side=c.side; delta=c.delta; shares=c.shares; }
+      else if(park){ delta=0; shares=0; side='HOLD'; }               // waiting ground — released to fund its name, never exited
       else { delta=-val; shares=px>0?-val/px:null; side='SELL'; }  // orphan → trim to exit
       const sector=(c&&c.sector)||secOf(p.symbol);
       totCost+=cost; totVal+=val;
       if(prev>0&&px>0){ totDayNow+=qty*px; totDayPrev+=qty*prev; }
       if(start>0&&px>0){ totYtdNow+=qty*px; totYtdBase+=qty*start; }
-      return `<tr><td><span class="sym">${p.symbol}</span>${off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector} · ${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${tdCell(tgt,drift,off)}</td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares,tp,stop)}</td></tr>`;
+      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector} · ${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${tdCell(tgt,drift,off,park)}</td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares,tp,stop)}</td></tr>`;
     }).join('');
     const totDay=totDayPrev>0?((totDayNow-totDayPrev)/totDayPrev*100):null;
     const totYtd=totYtdBase>0?((totYtdNow-totYtdBase)/totYtdBase*100):null;
@@ -2538,9 +2659,212 @@ function renderAgenticCard(){
     ${opensBlock}
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> ('+(washMap[x.sym]&&washMap[x.sym].account==='main'?'loss in ••••0741':'loss in ••••3900')+' · until '+washUntilLbl(x.sym)+')').join(' · ')} — a taxable account of yours realized a loss on ${washBlocked.length>1?'these':'this'} within the last 30 days; the IRS wash-sale window spans your accounts, so a rebuy here would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
     ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry zone':'below entry zone')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify; a name trading above its entry zone waits for the pullback the research priced in. Small misses are tolerated (±${ENTRY_TOL_PCT}%/${ENTRY_PREM_PCT}%) and zones older than ${ENTRY_STALE_D}d go advisory${_zonesStale?` — <b>the current zones are ${_zoneAge}d old, so entry checks are OFF</b>`:''}. Deferred weight waits in the ${'VTI'} placeholder rather than cash. Target weight unchanged. Education only.</div>`:''}
+    ${parkedNow?`<div class="fund-note"><b>🅿️ Waiting ground:</b> ${fmtD(A.parked.dollars)} of deferred weight is parked in <b>${A.parked.vehicle||AG_PARK_VEHICLE}</b> on behalf of ${(A.parked.forNames||[]).map(s=>'<b>'+s+'</b>').join(', ')||'a deferred name'} — released to fund ${((A.parked.forNames||[]).length>1)?'them':'it'} once the deferral clears, so it is held, never exited. <span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')">See the plan →</span></div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }
 window.renderAgenticCard=renderAgenticCard;
+
+/* ═══ Agentic PLAN page (v108) — the Plan tab's 🤖 side ═══════════════════════════════════════════
+   The Accounts tab answers "what does ••••3900 own and how is it doing". Nothing answered "what is
+   it about to do, and what is holding it back" — the deferral reasons, the parked cash, the
+   two-strike phase-outs and the whole rulebook lived only in producer/AGENTIC.md, i.e. nowhere on
+   the phone. This page is that half: target → what's blocked → the waiting ground → guardrails →
+   how the loop runs. It deliberately does NOT restate the holdings/drift table (that's the Agentic
+   Portfolio card one tab over) — a card that exists twice is the v99 mistake this repo already made
+   once. Read-only: it renders state the producer/executor own, and places nothing. */
+function renderAgenticPlan(){
+  const host=document.getElementById('plan-agentic-app'); if(!host)return;
+  const A=(window.__DATA&&window.__DATA.agentic)||null;
+  const T=(A&&A.target)||null;
+  const names=(T&&Array.isArray(T.names))?T.names.filter(n=>n&&n.ticker):[];
+  const {cash,held:heldPos,invested,equity}=agenticBook(A);
+  const book=Math.max(0,equity);
+  const P=(v)=>'$'+(+v).toFixed(2);
+  const today=agToday();
+  const dLbl=(s)=>{ if(!s)return '—'; const d=new Date(String(s).slice(0,10)+'T00:00:00Z');
+    return isNaN(d)?String(s):d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  const daysSince=(s)=>{ if(!s)return null; const a=Date.parse(String(s).slice(0,10)+'T00:00:00Z'), b=Date.parse(today+'T00:00:00Z');
+    return (isFinite(a)&&isFinite(b))?Math.round((b-a)/86400000):null; };
+
+  if(!names.length){
+    host.innerHTML=`
+      <div class="card"><div class="card-title"><span>🤖 Agentic plan <span class="card-hint">••••3900</span></span></div>
+        <div class="tech-empty">No research target in this snapshot yet. The weekly deep research writes <code>producer/agentic-target.json</code>; once a run picks it up, the target, its deferrals and the account's guardrails appear here.</div>
+        <div style="text-align:center;margin-top:10px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 Agentic account — holdings · performance · rebalance log →</span></div>
+      </div>`;
+    return;
+  }
+
+  // ── live state ───────────────────────────────────────────────────────────────────────────────
+  const washMap=agenticWashMap(A);
+  const rows=names.map(n=>({sym:n.ticker,sector:n.sector||'—',tgt:+n.weightPct||0,px:agenticPxOf(n.ticker,heldPos),
+    _entry:n.entry||'',_stop:+n.stop||0,_tp:+n.target||0,thesis:n.thesis||'',phaseOut:!!n.phaseOut,
+    drivers:Array.isArray(n.drivers)?n.drivers:[],
+    curVal:(()=>{ const h=heldPos.find(p=>p.symbol===n.ticker); return h?Math.max(0,+h.value||0):0; })()}));
+  rows.forEach(x=>{ x.held=x.curVal>0; x.cur=book>0?x.curVal/book*100:0; x.drift=x.cur-x.tgt; });
+  const {map:execMap,zoneAge,stale:zonesStale}=agenticExecMap(rows,T.asOf,washMap);
+  const tgtAge=daysSince(T.asOf);
+  const heldSet=new Set(heldPos.map(p=>p.symbol));
+  const targetSet=new Set(rows.map(x=>x.sym));
+  const orphans=heldPos.filter(p=>!targetSet.has(p.symbol)&&(+p.value||0)>0&&p.symbol!==AG_PARK_VEHICLE);
+  const parked=(A&&A.parked&&+A.parked.dollars>0)?A.parked:null;
+  const pend=(A&&A.pending)||null;
+  // data.agentic.decisions is the GRADED ledger {decisions:[…newest first], stats} — not a bare array.
+  const decisions=(()=>{ const d=A&&A.decisions; if(!d)return [];
+    return Array.isArray(d)?d:(Array.isArray(d.decisions)?d.decisions:[]); })();
+  // …and pick by date rather than position, so a legacy oldest-first array can't show a stale date.
+  const lastDec=decisions.length?decisions.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))[0]:null;
+  const idleDays=daysSince(A&&A.cashIdleSince);
+  const cashPct=book>0?cash/book*100:0;
+
+  // ── hero ─────────────────────────────────────────────────────────────────────────────────────
+  const ageTxt=tgtAge==null?'':(tgtAge<=0?'refreshed today':tgtAge+' day'+(tgtAge===1?'':'s')+' old');
+  const ageCol=(tgtAge!=null&&tgtAge>7)?'#fca5a5':'rgba(255,255,255,0.9)';
+  const hero=`
+    <div class="picks-hero">
+      <div>
+        <div class="ph-label">Agentic Strategy · ••••3900</div>
+        <div class="ph-date">Target as of ${T.asOf||'—'}</div>
+        <div class="ph-stale">Research target <span style="color:${ageCol};font-weight:600">${ageTxt||'—'}</span> · ${rows.length} names · refreshed weekly (or early on a deposit / big move) · executor checks hourly</div>
+      </div>
+    </div>`;
+
+  // ── 1. status & next action ──────────────────────────────────────────────────────────────────
+  const pendLine=(()=>{
+    if(!pend)return `<div class="fund-note" style="margin:0">No rebalance ticket outstanding. The executor re-plans every hour the market is open; it opens a ticket when the target and the book have drifted far enough apart to be worth the trades.</div>`;
+    const lg=pend.legs||{}, ns=(lg.sells||[]).length, nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length, tax=pend.taxSummary;
+    const done=pend.status==='done'||pend.status==='aborted';
+    const next=done?'':(pend.status==='proposed'?(pend.autoEligible
+        ?`turnover is under the ${fmtD(AG_AUTO_CAP)} auto tier — the executor places it unattended at its next pass`
+        :`turnover is over the ${fmtD(AG_AUTO_CAP)} auto tier — <b>waiting on your one-tap confirm</b>`)
+      :pend.status==='confirmed'?'confirmed — executes at the next executor pass'
+      :pend.status==='sells-placed'?'sells are in — the buys follow as soon as they fill (limited margin: proceeds are spendable on fill)'
+      :pend.status==='buys-placed'?'buys are in — the ticket closes once they fill':'');
+    return `<div class="fund-note" style="margin:0;${done?'':'background:#eff6ff;border-color:#bfdbfe'}"><b>${done?'Last ticket':'🤖 Rebalance in flight'}</b> — <span style="font-family:monospace;font-size:10.5px">${pend.id||''}</span> · <b>${pend.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(pend.turnover||0)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${next?` — ${next}`:''}.</div>`;
+  })();
+  const statusCard=`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-status" onclick="toggleSection('b-agp-status')"><span>🤖 Where the plan stands <span class="card-hint">(ticket · cash · next action)</span></span><span class="chevron">▼</span></div><div id="b-agp-status">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">This account runs itself between your confirmations: research sets the destination, a deterministic planner turns drift into a ticket, and an hourly executor places what falls inside the auto tier. Everything below is state the producer and executor own — this page reads it, it never places an order.</div>
+      ${pendLine}
+      <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr);margin-top:10px">
+        <div class="pk-m"><div class="pk-m-l">Book</div><div class="pk-m-v">${book>0?fmtD(book):'—'}</div></div>
+        <div class="pk-m"><div class="pk-m-l">Idle cash</div><div class="pk-m-v">${fmtD(cash)}${book>0?` <span style="font-size:11px;color:#9ca3af">${fmt(cashPct,1)}%</span>`:''}</div></div>
+        <div class="pk-m"><div class="pk-m-l">On target</div><div class="pk-m-v">${rows.filter(x=>x.held).length}/${rows.length} <span style="font-size:11px;color:#9ca3af">names held</span></div></div>
+        <div class="pk-m"><div class="pk-m-l">Last rebalance</div><div class="pk-m-v">${lastDec?dLbl(lastDec.date):'—'}</div></div>
+      </div>
+      ${idleDays!=null?`<div class="fund-note" style="margin:10px 0 0;${idleDays>=AG_IDLE_DEPLOY_D?'background:#fffbeb;border-color:#fde68a':''}"><b>⏱ Idle-cash clock:</b> cash has been sitting since <b>${dLbl(A.cashIdleSince)}</b> (${idleDays}d of ${AG_IDLE_DEPLOY_D}). ${idleDays>=AG_IDLE_DEPLOY_D?`The deadline has passed — entry bands are <b>waived</b> and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches (swept whole below ${fmtD(AG_IDLE_SWEEP_FLOOR)}).`:`At ${AG_IDLE_DEPLOY_D}d the entry bands are waived and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches — "wait for a pullback" is not allowed to run forever.`}</div>`:''}
+      ${orphans.length?`<div class="fund-note" style="margin:10px 0 0"><b>Off-target holdings:</b> ${orphans.map(p=>`<b>${p.symbol}</b> (${fmtD(p.value)})`).join(' · ')} — held but not in the current target. The planner exits ${orphans.length>1?'these':'this'} to fund the underweight names, subject to the ${AG_MIN_HOLD_D}-day min-hold below.</div>`:''}
+      <div style="text-align:center;margin-top:12px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 See the actual book — holdings · drift · performance · rebalance log →</span></div>
+    </div></div>`;
+
+  // ── 2. the target and why ────────────────────────────────────────────────────────────────────
+  const statusOf=(x)=>{
+    if(washMap[x.sym])return {t:'wash-sale hold',c:'#92400e',b:'#fef3c7'};
+    if(execMap[x.sym])return {t:execMap[x.sym].reason==='earnings'?'earnings blackout':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry':'below entry',c:'#92400e',b:'#fef3c7'};
+    if(x.phaseOut)return {t:'phasing out',c:'#6b7280',b:'#f3f4f6'};
+    if(!x.held)return {t:'to open',c:'#1d4ed8',b:'#dbeafe'};
+    if(Math.abs(x.drift)>=AGENTIC_DRIFT)return {t:(x.drift>0?'over':'under')+' by '+fmt(Math.abs(x.drift),1)+'pp',c:'#991b1b',b:'#fee2e2'};
+    return {t:'on target',c:'#065f46',b:'#d1fae5'};
+  };
+  const tRows=rows.slice().sort((a,b)=>b.tgt-a.tgt).map(x=>{
+    const s=statusOf(x);
+    // Sector only in the name cell. A real target carries 3-5 sleeve drivers per name, which wrapped
+    // rows to five lines and pushed Status — the column this table exists for — off a phone screen;
+    // the drivers live in the thesis expander below instead.
+    return `<tr><td><span class="sym">${x.sym}</span>${x.phaseOut?' <span style="color:#6b7280;font-size:9px">phase-out</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td>`+
+      `<td class="tr"><b>${fmt(x.tgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px">${book>0?fmtD(x.tgt/100*book):'—'}</span></td>`+
+      // Status sits next to Target on purpose: "is this on track or blocked" is the question this
+      // table exists to answer, and the levels columns are wide enough to push it off a phone screen.
+      `<td class="tr"><span class="badge" style="background:${s.b};color:${s.c};white-space:nowrap">${s.t}</span></td>`+
+      `<td class="tr" style="font-size:11px">${x._entry?String(x._entry).replace(/\s*\(.*\)$/,''):'—'}<br><span style="color:#9ca3af">now ${x.px>0?P(x.px):'—'}</span></td>`+
+      `<td class="tr" style="font-size:11px"><span style="color:#991b1b">${x._stop>0?P(x._stop):'—'}</span> · <span style="color:#065f46">${x._tp>0?P(x._tp):'—'}</span></td></tr>`;
+  }).join('');
+  // `drivers` are the sleeves that scored this name ≥7 — attributed deterministically by
+  // finalize-target from the sleeve scores, not taken on the model's word.
+  const theses=rows.filter(x=>x.thesis||x.drivers.length).map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.sym}</b> <span style="color:#9ca3af">${fmt(x.tgt,0)}%</span>${x.drivers.length?` <span style="color:#9ca3af;font-size:10.5px">· ${x.drivers.join(' · ')}</span>`:''}${x.thesis?`<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-top:2px;line-height:1.45">${x.thesis}</div>`:''}</span></div>`).join('');
+  const targetCard=`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-target" onclick="toggleSection('b-agp-target')"><span>🎯 The target — and why these names <span class="card-hint">${rows.length} names · as of ${T.asOf||'—'}</span></span><span class="chevron">▼</span></div><div id="b-agp-target">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The destination, not the book. Weekly deep multi-factor research (momentum · quality · growth · catalyst → adversarial verify → synthesis) proposes an allocation; <b>finalize-target</b> then re-enforces the correlation-cluster and vol-scaled caps deterministically, so the caps hold no matter what the research says. Business quality decides <b>inclusion</b>; today's price decides <b>size</b> — a stretched entry shrinks a position instead of vetoing it.</div>
+      <div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Name</th><th class="tr">Target</th><th class="tr">Status</th><th class="tr">Entry · now</th><th class="tr">Stop · TP</th></tr></thead><tbody>${tRows}</tbody></table></div>
+      ${T.method?`<details class="trk-detail" style="margin-top:10px"><summary>View the research's construction note</summary><div style="font-size:11.5px;color:var(--text);opacity:.85;line-height:1.55;margin-top:6px">${String(T.method).replace(/\|/g,'<br>·')}</div></details>`:''}
+      ${theses?`<details class="trk-detail" style="margin-top:6px"><summary>View the per-name thesis &amp; drivers</summary><div style="margin-top:6px">${theses}</div></details>`:''}
+    </div></div>`;
+
+  // ── 3. what's blocked and why ────────────────────────────────────────────────────────────────
+  const washRows=rows.filter(x=>washMap[x.sym]);
+  const execRows=rows.filter(x=>execMap[x.sym]);
+  const blocked=washRows.length+execRows.length;
+  const blockList=[
+    ...washRows.map(x=>{ const w=washMap[x.sym];
+      return {sym:x.sym,tag:'wash-sale',col:'#92400e',bg:'#fef3c7',
+        why:`A loss on ${x.sym} was realized ${w.account==='main'?'in your self-directed ••••0741 book':'in this account'} on <b>${dLbl(w.date)}</b>. The IRS window is per <i>taxpayer</i>, not per account, so rebuying here before <b>${dLbl(w.until)}</b> would disallow that loss.`,
+        clears:`buy unblocks ${dLbl(w.until)}`}; }),
+    ...execRows.map(x=>{ const e=execMap[x.sym];
+      const clears=e.reason==='earnings'?`after the ${dLbl(e.until)} print`:e.reason==='above-entry'?`on a pullback into ${x._entry||'the entry zone'}`:e.reason==='below-entry'?'after a thesis re-verify':'after a thesis re-verify';
+      return {sym:x.sym,tag:e.reason.replace('-',' '),col:'#92400e',bg:'#fef3c7',why:e.note.charAt(0).toUpperCase()+e.note.slice(1)+'.',clears}; })
+  ];
+  const blockedCard=`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blocked?blocked+' name'+(blocked===1?'':'s')+' deferred':'nothing deferred'}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do.</div>
+      ${blockList.length?blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):
+        `<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
+      ${zonesStale?`<div class="fund-note" style="margin:10px 0 0;background:#fffbeb;border-color:#fde68a"><b>⚠️ Entry zones are advisory:</b> this target is <b>${zoneAge}d</b> old (over the ${AG_ENTRY_STALE_D}-day limit), so the entry-band checks are <b>off</b>. When a whole target reads out-of-band at once, the guard is measuring its own staleness rather than the companies. <b>Below-stop</b> still binds — that one is the real thesis-broken signal.</div>`:
+        `<div class="fund-note" style="margin:10px 0 0">Entry checks are <b>live</b> (target is ${zoneAge==null?'—':zoneAge+'d'} old, limit ${AG_ENTRY_STALE_D}d): a name more than <b>${AG_ENTRY_TOL_PCT}%</b> below its entry floor defers for a re-verify, more than <b>${AG_ENTRY_PREM_PCT}%</b> above its ceiling waits for a pullback. Small misses are tolerated on purpose — a 0.2% miss parking a position is how cash gets stranded.</div>`}
+    </div></div>`;
+
+  // ── 4. the waiting ground ────────────────────────────────────────────────────────────────────
+  const parkVal=(()=>{ const h=heldPos.find(p=>p.symbol===AG_PARK_VEHICLE); return h?Math.max(0,+h.value||0):0; })();
+  const parkCard=`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-park" onclick="toggleSection('b-agp-park')"><span>🅿️ The waiting ground <span class="card-hint">${parked?fmtD(parked.dollars)+' parked in '+(parked.vehicle||AG_PARK_VEHICLE):'nothing parked'}</span></span><span class="chevron">▼</span></div><div id="b-agp-park">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">When a name is deferred, its dollars don't sit in cash — they wait in <b>${AG_PARK_VEHICLE}</b>, a broad-market placeholder, and are released to fund the name once it clears. <b>${AG_PARK_VEHICLE}, not SPY</b>: SPY is the target's own ballast, so parking there would bury the placeholder inside a real position — and the two track different indexes, so they're never "substantially identical" for wash-sale purposes. Not QQQ either, since half of it is the megacap-tech cluster the ${AG_CLUSTER_CAP}% cap exists to contain.</div>
+      ${parked?`
+        <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr)">
+          <div class="pk-m"><div class="pk-m-l">Parked (cost)</div><div class="pk-m-v">${fmtD(parked.dollars)}</div></div>
+          <div class="pk-m"><div class="pk-m-l">${parked.vehicle||AG_PARK_VEHICLE} held now</div><div class="pk-m-v">${parkVal>0?fmtD(parkVal):'—'}</div></div>
+        </div>
+        <div class="fund-note" style="margin:10px 0 0">Waiting on behalf of <b>${(parked.forNames||[]).join(', ')||'—'}</b>, parked since <b>${dLbl(parked.since)}</b>. Each release is a real short-term taxable sale, so it's floored at ${fmtD(AG_PARK_MIN)}, sized to the actual shortfall, and runs through the same losses-first ordering and day-trade guard as any other sell.</div>
+        <div class="fund-note" style="margin:8px 0 0">${AG_PARK_VEHICLE} is deliberately <b>exempt from the off-target exit rule</b> — it is absent from the target by design, so treating it as an orphan would liquidate it on every pass while parking rebuilt it, an infinite taxable churn loop.</div>`:
+        `<div class="tech-empty">Nothing parked — no target name is currently deferred with money waiting behind it.</div>`}
+    </div></div>`;
+
+  // ── 5. the rulebook ──────────────────────────────────────────────────────────────────────────
+  const rule=(icon,name,val,why)=>`<div class="harv-line"><span style="flex:1"><b>${icon} ${name}</b> <span style="color:#9ca3af">${val}</span><div style="font-size:11.5px;color:var(--text);opacity:.8;margin-top:2px;line-height:1.45">${why}</div></span></div>`;
+  const rulesCard=`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-rules" onclick="toggleSection('b-agp-rules')"><span>📏 Guardrails <span class="card-hint">the standing rules the executor can't cross</span></span><span class="chevron">▼</span></div><div id="b-agp-rules">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div>
+      ${rule('🧬','Correlation-cluster cap',AG_CLUSTER_CAP+'% megacap-tech','A "sector-diversified" label hid the fact that NVDA/MSFT/GOOGL/AMZN/META/AAPL all trade as one bet. Payments cap 20%, staples 25%; index is uncapped.')}
+      ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
+      ${rule('⏳','Min-hold',AG_MIN_HOLD_D+' days','A name bought inside the window is not exited or trimmed. Overridden only by a business-broken verdict, a loss past −10% (risk control outranks churn control), or a harvest/park release. Added after two consecutive targets flipped the whole book in 48 hours.')}
+      ${rule('🔁','Re-entry cooldown',AG_REENTRY_D+' days','A name this account sold inside the window is not rebought — it covers the gain-sells the 30-day wash ledger cannot see. The weight parks in '+AG_PARK_VEHICLE+' meanwhile.')}
+      ${rule('🧾','Wash-sale window',AG_WASH_WINDOW_D+' days, cross-account','The IRS window is per taxpayer, so the ledger reads BOTH taxable books. A loss booked in ••••0741 blocks a rebuy here — the exact trade that partially disallowed a −$431 NVDA loss once.')}
+      ${rule('📅','Earnings blackout','≤'+AG_EARN_BLACKOUT_D+' days','No NEW money into a name about to report. Wait for the print, then buy with full information.')}
+      ${rule('🎯','Entry band','−'+AG_ENTRY_TOL_PCT+'% / +'+AG_ENTRY_PREM_PCT+'%, advisory past '+AG_ENTRY_STALE_D+'d','Symmetric on purpose: too cheap means re-verify the thesis, too rich means wait for the pullback the research priced in.')}
+      ${rule('⚖️','Drift trigger',(T.driftTriggerPp||AGENTIC_DRIFT)+'pp','A name is only rebalanced once it drifts this far from target — small gaps are not worth the spread or the tax.')}
+      ${rule('🤖','Auto tier',fmtD(AG_AUTO_CAP)+' / ticket','Turnover at or under this executes unattended; anything larger becomes a one-tap proposal pushed to your phone.')}
+      ${rule('🚫','PDT guard','nothing bought today is sold today','Limited margin makes this a margin account for FINRA, and the book is under $25k with an hourly executor — so zero round trips, categorically, rather than counting day trades.')}
+      ${rule('🪙','Dust floor',fmtD(AG_MIN_BUY)+' minimum buy','A ticket once placed a $1.80 order. Below this the spread and the bookkeeping cost more than the position is worth.')}
+      ${rule('⏱','Idle-cash deadline',AG_IDLE_DEPLOY_D+' days','Nothing ever forced cash IN, so "wait for a pullback" had no expiry and a rising market could strand a deposit indefinitely. Past the deadline the bands are waived and cash deploys in '+AG_IDLE_TRANCHE_PCT+'% tranches.')}
+      ${rule('🔓','No leverage','unlevered 1×','Limited margin grants instant settlement only. The account cannot borrow, so the book is its own equity.')}
+    </div></div>`;
+
+  // ── 6. how the loop runs ─────────────────────────────────────────────────────────────────────
+  const step=(n,title,body)=>`<div class="act-item" style="background:rgba(99,102,241,0.10);border-color:#6366f1"><div class="act-icon">${n}</div><div class="act-body"><div class="act-title" style="color:var(--text)">${title}</div><div class="act-detail" style="color:var(--text);opacity:.82">${body}</div></div></div>`;
+  const loopCard=`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
+      <div class="act-list">
+        ${step('1','Research — weekly, or early','A multi-sleeve deep research run (momentum · quality · growth · catalyst, with an adversarial verify pass) proposes names and weights. It also runs early when a deposit lands or a held name gaps ≥6% — the system reacts to events, not just the calendar.')}
+        ${step('2','Finalize — caps re-enforced','<code>finalize-target.mjs</code> re-applies the cluster and vol-scaled caps to whatever the research returned, and a held name the research dropped is retained one cycle as a <b>phase-out</b> (zero trades) unless the verdict was explicitly business-broken. A target refresh expresses intent; it is not an execution order.')}
+        ${step('3','Plan — drift becomes a ticket','The deploy planner compares the target to the real book and writes a ticket: exits first, then harvests, then buys — losses sold first for tax, with every guardrail above applied. Deferred weight parks in '+AG_PARK_VEHICLE+'.')}
+        ${step('4','Execute — hourly, within the tier','An hourly executor places tickets at or under the '+fmtD(AG_AUTO_CAP)+' auto tier unattended and pushes anything larger for your one-tap confirm. Sells fund the buys in the same session; nothing bought today is sold today.')}
+        ${step('5','Grade — the account\'s own record','Every confirmed rebalance is logged and graded against what happened next and against SPY, so the strategy can be judged rather than just repeated.')}
+      </div>
+      <div style="text-align:center;margin-top:12px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🧾 Rebalance log &amp; account performance →</span></div>
+      <div class="disclaimer" style="margin-top:12px">⚠️ Not financial advice. This page reports what the automated system intends and why; it places nothing. Levels are monitor-only — fractional positions can't carry resting stops.</div>
+    </div></div>`;
+
+  host.innerHTML=hero+statusCard+targetCard+blockedCard+parkCard+rulesCard+loopCard;
+}
+window.renderAgenticPlan=renderAgenticPlan;
 
 /* ═══ Rebalance Log (v93) — the agentic account's OWN track record. Reads data.agentic.decisions (the
    graded ledger build-data maintains from producer/agentic-decisions.json): every owner-confirmed
@@ -3002,6 +3326,13 @@ function switchTab(tab){
   try{localStorage.setItem('dash_tab',tab);}catch(e){}
   window.scrollTo(0,0);
   if(tab==='picks'&&!_picksInit){_picksInit=true;initPicks();}
+  // Both tabs share `pf_acct` (v108), but each only re-renders its side while VISIBLE — a chart
+  // built into a display:none container sizes to zero. So a page that fell behind while hidden is
+  // brought into line here, on the way in.
+  if(tab==='portfolio'){ try{ const want=_acctPref(), g=document.getElementById('agentic-app');
+    const showing=(g&&g.style.display!=='none')?'agentic':'main'; if(want!==showing)setAccount(want); }catch(e){} }
+  if(tab==='picks'){ try{ const want=_acctPref(), g=document.getElementById('plan-agentic-app');
+    const showing=(g&&g.style.display!=='none')?'agentic':'main'; if(want!==showing)setPlanAccount(want); }catch(e){} }
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
   if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
   if(tab==='analyze'&&!_analyzeInit){_analyzeInit=true;initAnalyze();}
@@ -3294,6 +3625,62 @@ window.switchTab=switchTab;
     </ul>
     <p>The point is falsifiability — a strategy that logs its decisions can be shown to be working or not, instead of just staying busy.</p>
     <p class="hnote">Research and education only.</p>` },
+  'where the plan stands': { tag:'Plan · Agentic', t:'Where the plan stands', h:`
+    <p>The live state of the agentic account's automation: whether a rebalance <b>ticket</b> is outstanding, how much cash is idle, and what happens next.</p>
+    <div class="hsub">Ticket statuses</div>
+    <ul>
+      <li><span class="hk">proposed</span> — planned but not placed. Under the auto tier it executes unattended; over it, it waits for your one-tap confirm.</li>
+      <li><span class="hk">confirmed</span> → <span class="hk">sells-placed</span> → <span class="hk">buys-placed</span> → <span class="hk">done</span> — sells go first, and their proceeds fund the buys the same session (limited margin settles instantly).</li>
+    </ul>
+    <div class="hsub">The idle-cash clock</div>
+    <p>Cash sitting for 10 days forces deployment in tranches. Without a deadline, "wait for a pullback" never expires and a rising market can strand a deposit indefinitely.</p>`},
+  'the target and why these names': { tag:'Plan · Agentic', t:'The target', h:`
+    <p>The <b>destination</b> for ••••3900 — not what it currently holds. Refreshed weekly by deep multi-factor research, then run through deterministic caps.</p>
+    <div class="hsub">Inclusion vs. size</div>
+    <p>The research returns two separate judgements: is the business worth owning at <i>some</i> price (decides whether it's in at all), and how good is <i>today's</i> price (decides how big). A stretched entry <b>shrinks</b> a position rather than vetoing it — otherwise an extended market yields an empty book instead of a smaller, defensive one.</p>
+    <div class="hsub">Status column</div>
+    <ul>
+      <li><span class="hk">on target</span> / <span class="hk">over</span> / <span class="hk">under</span> — drift vs. the weight, flagged past the 5pp trigger.</li>
+      <li><span class="hk">to open</span> — recommended, not held yet. <span class="hk">phase-out</span> — dropped by the latest research but held one more cycle (two strikes) so a re-inclusion next week costs nothing.</li>
+      <li>Anything else is a deferral — see the next card.</li>
+    </ul>`},
+  'what s blocked and what clears it': { tag:'Plan · Agentic', t:"What's blocked", h:`
+    <p>Deferrals never change a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks the producer's planner runs before writing a ticket, so the badges here match what the executor will actually do.</p>
+    <div class="hsub">The reasons</div>
+    <ul>
+      <li><span class="hk">wash-sale</span> — a loss on this name was realized in <i>either</i> taxable account within 30 days. The IRS window is per taxpayer, so a loss in ••••0741 blocks a rebuy here.</li>
+      <li><span class="hk">earnings</span> — reports within 7 days. Wait for the print rather than gambling on the gap.</li>
+      <li><span class="hk">below stop</span> — trading at or below the target's stop: the setup is broken, not cheap.</li>
+      <li><span class="hk">below / above entry</span> — outside the research's entry band. Too cheap means re-verify the thesis; too rich means wait for the pullback the research priced in.</li>
+    </ul>
+    <div class="hsub">Why zones expire</div>
+    <p>Entry zones older than 7 days go <b>advisory</b>. When most of a target reads out-of-band at once, the guard is measuring its own staleness, not the companies. Below-stop still binds.</p>`},
+  'the waiting ground': { tag:'Plan · Agentic', t:'The waiting ground', h:`
+    <p>A deferred name's dollars don't idle in cash — they wait in <b>VTI</b>, a broad-market placeholder, and are released to fund the name once it clears.</p>
+    <div class="hsub">Why VTI specifically</div>
+    <ul>
+      <li>Not <b>SPY</b> — that's the target's own ballast, so parking there would hide the placeholder inside a real position. VTI and SPY track different indexes, so they're never "substantially identical" for wash-sale purposes.</li>
+      <li>Not <b>QQQ</b> — roughly half of it is the megacap-tech cluster the 48% cap exists to contain.</li>
+    </ul>
+    <div class="hsub">Cost</div>
+    <p>Releasing is a real short-term taxable sale, so releases are floored, sized to the actual shortfall, and run through the same losses-first ordering and day-trade guard as any other sell.</p>`},
+  'guardrails': { tag:'Plan · Agentic', t:'Guardrails', h:`
+    <p>The standing rules the automated executor cannot cross. Each is enforced in code, and most were added after a specific mistake.</p>
+    <div class="hsub">Why they exist</div>
+    <ul>
+      <li><span class="hk">Cluster + vol caps</span> — sector labels hid the fact that the big AI/tech names trade as one bet, and a fixed % weight means very different risk in a wide-range name than in an index.</li>
+      <li><span class="hk">Min-hold + re-entry cooldown</span> — the weekly research is memoryless, so two disagreeing targets once flipped the entire book in 48 hours, all short-term taxable. A target refresh expresses <i>intent</i>; these decide <i>when</i> intent becomes trades.</li>
+      <li><span class="hk">PDT guard</span> — limited margin makes this a margin account for FINRA, and the book is under $25k with an hourly executor. Nothing bought today is sold today, categorically.</li>
+    </ul>`},
+  'how the loop runs': { tag:'Plan · Agentic', t:'How the loop runs', h:`
+    <p>The five stages between "research has an opinion" and "shares change hands", and who owns each one.</p>
+    <ul>
+      <li><b>Research</b> proposes — weekly, or early when a deposit lands or a held name gaps hard.</li>
+      <li><b>Finalize</b> disposes — caps are re-enforced deterministically, so they hold regardless of what the research returned.</li>
+      <li><b>Plan</b> turns drift into a ticket, applying every guardrail.</li>
+      <li><b>Execute</b> places it hourly, unattended within the auto tier, one-tap above it.</li>
+      <li><b>Grade</b> logs it against what happened next and against SPY — the account's own track record.</li>
+    </ul>`},
   'agentic portfolio': { tag:'Accounts', t:'Agentic Portfolio', h:`
     <p>The <b>target blueprint</b> for the agentic account (••••3900) — a separate, unlevered limited-margin account (instant settlement, no borrowing), distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
     <div class="hsub">Where the target comes from</div>
@@ -4966,7 +5353,7 @@ function renderPicksStatic(){
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
-    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 Agentic account (••••3900) — performance · target vs. actual · rebalance log →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Now on the Accounts tab, under the <b>Agentic</b> toggle — along with 🏛️ Flow &amp; Positioning, which covers both accounts there.</div></div>
+    <div class="card" style="text-align:center"><span class="dp-link" onclick="setPlanAccount('agentic')">🤖 Agentic account (••••3900) — its target, deferrals &amp; guardrails →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">The <b>Agentic</b> toggle above holds that account's <i>plan</i>. Its <b>holdings, drift, performance and rebalance log</b> live on the Accounts tab's Agentic side, along with 🏛️ Flow &amp; Positioning.</div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
@@ -5514,7 +5901,8 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 (function(){
   try{ const d=document.getElementById('tab-picks-date'); if(d)d.textContent='· '+ANALYSIS_DATE.replace(', 2026',''); }catch(e){}
   try{ const _dt=localStorage.getItem('dash_tab'); if(_dt==='picks'||_dt==='markets')switchTab(_dt); }catch(e){}
-  // Reopen on the account side you left the Accounts tab on (self-directed is the default).
+  // Reopen on the account side you left off on — shared by the Accounts and Plan tabs (v108), so
+  // the app has one account context. switchTab brings whichever page you land on into line.
   try{ if(localStorage.getItem('pf_acct')==='agentic')setAccount('agentic'); }catch(e){}
 })();
 

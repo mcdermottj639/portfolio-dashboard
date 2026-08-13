@@ -255,7 +255,7 @@ const data = {
     // computes qty×(px − quote prev close), and Account Performance reads equity against the
     // history. Hardcoded px values that disagree with the quotes made the hero show a fake ~+5%
     // day on a flat sample book (and a made-up round equity contradicted "money made").
-    const pos = [['SPY', 0.231, 0.006], ['NVDA', 0.770, 0.007], ['V', 0.416, 0.005], ['GOOGL', 0.381, 0.001]]
+    const pos = [['SPY', 0.231, 0.006], ['NVDA', 0.770, 0.007], ['V', 0.416, 0.005], ['GOOGL', 0.381, 0.001], ['VTI', 0.402, 0.002]]
       .map(([symbol, qty, gain]) => {
         const px = parseFloat((quotes[symbol] || {}).last_trade_price) || 100;
         return { symbol, qty, avgCost: +(px * (1 - gain)).toFixed(2), px, value: +(qty * px).toFixed(2) };
@@ -271,12 +271,27 @@ const data = {
     // Sample research target: the four held names + one not yet opened (LLY), so preview
     // exercises the research-target path, the Targets-to-open strip, and the Flow card's 🎯 tag.
     target: { asOf: now.toISOString().slice(0, 10), method: 'sample', driftTriggerPp: 5, names: [
-      { ticker: 'SPY',   weightPct: 30, sector: 'Index' },
-      { ticker: 'NVDA',  weightPct: 22, sector: 'Technology' },
-      { ticker: 'V',     weightPct: 18, sector: 'Financial Services' },
-      { ticker: 'GOOGL', weightPct: 18, sector: 'Communication Services' },
-      { ticker: 'LLY',   weightPct: 12, sector: 'Healthcare', entry: '$610 – $630', stop: 585, target: 690 },
+      { ticker: 'SPY',   weightPct: 30, sector: 'Index', thesis: 'Uncapped index ballast; core hold, not a trade.' },
+      // Entry zone deliberately BELOW the fixture's NVDA quote so the Plan page's `above-entry`
+      // deferral (and the VTI parking that follows it) actually renders in preview.
+      { ticker: 'NVDA',  weightPct: 22, sector: 'Technology', entry: '150 – 160', stop: 138, target: 205, drivers: ['momentum', 'growth'], thesis: 'AI capex cycle leader; sized under the cluster cap.' },
+      { ticker: 'V',     weightPct: 18, sector: 'Financial Services', thesis: 'Toll booth on card volume; steady compounder.' },
+      { ticker: 'GOOGL', weightPct: 18, sector: 'Communication Services', thesis: 'Search cash flows fund the cloud/AI build.' },
+      { ticker: 'LLY',   weightPct: 12, sector: 'Healthcare', entry: '$610 – $630', stop: 585, target: 690, thesis: 'Incretin franchise still supply-constrained.' },
     ] },
+    // ── Plan-tab (v108) fixtures: the executor/planner state the agentic PLAN page reads. Without
+    //    these, local preview shows every card in its empty state and the deferral/parking/ticket
+    //    paths go unexercised. Mirrors the shapes build-data.mjs emits from the committed
+    //    agentic-parked.json / agentic-pending.json / trade history.
+    cashIdleSince: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 4); return d.toISOString().slice(0, 10); })(),
+    parked: { vehicle: 'VTI', dollars: 120.4, forNames: ['NVDA'], since: now.toISOString().slice(0, 10) },
+    // A cross-account loss (booked in the self-directed book) — the v105 case the wash guard exists
+    // for: the IRS window is per taxpayer, so it must block a rebuy in the agentic account too.
+    recentLosses: [{ sym: 'GOOGL', date: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 9); return d.toISOString().slice(0, 10); })(), realized: -84.2, account: 'main' }],
+    lossSource: 'trades',
+    pending: { id: now.toISOString().slice(0, 10) + '-sample', created: now.toISOString().slice(0, 10), status: 'proposed',
+      autoEligible: false, turnover: 1420.5, book: equity, taxSummary: { gains: 61.4, losses: -22.8, net: 38.6 },
+      legs: { sells: [{ sym: 'V', kind: 'trim', dollars: 62.4 }], buysNow: [{ sym: 'SPY', dollars: 48.1 }, { sym: 'LLY', dollars: 120.6 }], buysT1: [] } },
     // Sample real equity history (~2 trading weeks) so the consumer's REAL agentic line, the
     // "Agentic since" stat and the Account Performance card all render. Includes a mid-series
     // $250 DEPOSIT (annotated via the running cumFlow, exactly as build-data.mjs infers it) so the

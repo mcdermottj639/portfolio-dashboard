@@ -85,7 +85,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
 ## Key files
 | File | Role |
 |---|---|
-| `index.html` | The entire consumer app (UI, charts, Analyze/Picks/Markets/Options tabs, replay shim). |
+| `index.html` | The entire consumer app (UI, charts, Analyze/Picks/Markets/Options tabs, replay shim). Both the Accounts and Plan tabs are split per account by a shared `pf_acct` switcher (v108). |
 | `sw.js` | Service worker. `CACHE_VERSION` must be bumped with every shell change. |
 | `producer/run.mjs` | Orchestrator: build→validate→**publish to `origin/main`** (works from any session branch; retries; refuses to push plaintext). |
 | `producer/preflight.mjs` | Run-mode gate (SKIP / FETCH_ALL / FETCH_LIGHT). |
@@ -131,7 +131,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
   test suite before pushing (see "Verify before shipping").
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v107** (`pf-v107`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v108** (`pf-v108`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -288,7 +288,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   a phase-out name into an immediate exit, and don't bypass the cooldown because a target "says so" — a
   target refresh expresses *intent*; the governor decides *when* intent becomes trades. (The consumer's
   Agentic card doesn't yet render min-hold/re-entry badges — the phase-out names reach it naturally via
-  the target; mirroring the two account-activity guards client-side is open follow-up.)
+  the target; mirroring the two account-activity guards client-side is open follow-up. Since v108 the
+  Plan tab's agentic side at least *documents* both rules in its Guardrails card, but it still can't flag
+  WHICH name is inside a window — that needs the account-activity dates in the snapshot, which
+  `build-data.mjs` doesn't emit.)
 - **The wash-sale ledger must cover BOTH taxable accounts (v105).** The IRS window is per taxpayer, not
   per account, and the ledger originally read only ••••3900's trade history — so when the owner sold 35
   NVDA at a **−$431.76 loss in the self-directed ••••0741 book on 2026-07-29**, the agentic executor's
@@ -445,6 +448,39 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   implausible >20% one-step jump — so funding the account no longer masquerades as a gain (was the bug: a
   deposit had inflated "Agentic since" to +251.83% vs the true ~+2%). All the above commentary is derived from live data; optional owner editorial can be
   supplied via `data.notes`.
+- **Plan tab is SPLIT BY ACCOUNT (v108) — the same switcher the Accounts tab carries.** `page-picks`
+  now leads with a sticky `.acct-seg-wrap` (`#plan-seg-wrap` → `setPlanAccount('main'|'agentic')`) over two
+  containers: **📊 Self-directed** = `#picks-app`, the daily scan + Action Center + Top-3, unchanged; and
+  **🤖 Agentic** = `#plan-agentic-app`, rendered lazily by `renderAgenticPlan()`. Both tabs share the
+  **`pf_acct`** key, so the app has ONE account context — but each side only re-renders while its page is
+  VISIBLE (a Chart.js canvas built into a `display:none` container sizes to zero), so `setPlanAccount` only
+  mirrors the other tab's button state and `switchTab` brings whichever page you land on into line. The
+  mental model is **Accounts = what you own, Plan = what happens next**, both split the same way.
+  The agentic side deliberately carries the **plan half only** — it does NOT restate the holdings/drift
+  table or the Rebalance Log (those are the Accounts tab's Agentic side; a card that exists twice is the
+  v99 mistake this repo already made once). Six cards: **🤖 Where the plan stands** (the `data.agentic
+  .pending` ticket + its `nextAction`, book/idle-cash/on-target/last-rebalance tiles, the `cashIdleSince`
+  clock, off-target holdings), **🎯 The target — and why these names** (weights · entry vs. spot · stop/TP ·
+  a per-name **Status** badge, with `method` and the per-name thesis + `drivers` behind `<details>`),
+  **⏸ What's blocked — and what clears it** (every wash-sale / earnings / entry-band deferral, each with the
+  date or condition that clears it, plus whether zones have gone advisory), **🅿️ The waiting ground**
+  (`data.agentic.parked` — the VTI ledger), **📏 Guardrails** (the standing rulebook: cluster/vol caps,
+  min-hold, re-entry cooldown, wash window, earnings blackout, entry band, drift trigger, auto tier, PDT,
+  dust floor, idle-cash deadline, no leverage), and **🔁 How the loop runs**. This exists because `parked`,
+  `phaseOut`, `cashIdleSince`, `target.dropped` and the whole rulebook were rendered **nowhere** — they
+  lived only in `AGENTIC.md`, i.e. not on the phone. Read-only: it reports what the automated system
+  intends and why, and places nothing.
+  **The guards are SHARED, not copied** — `agenticWashMap(A)` / `agenticExecMap(rows,targetAsOf,washMap)` /
+  `agenticEntryBounds` / `agenticPxOf` were extracted out of `renderAgenticCard` so the card, this page and
+  `producer/agentic-deploy.mjs` can't drift; the `AG_*` constants at the top of that block mirror the
+  planner's exports one-for-one. A badge that says "buy deferred" while the executor buys anyway is worse
+  than no badge. **v108 also fixed a real card bug the new fixtures exposed:** the Agentic Portfolio card
+  treated the **`VTI` parking vehicle as an off-target orphan** and put "EXIT — SELL ALL VTI" in the deploy
+  hand-off, contradicting the planner's exemption (which exists to stop an infinite park→liquidate→park
+  churn loop). It now renders as **`waiting ground` / `parked` / hold** and is excluded from the orphan
+  exits. `make-sample-data.mjs` gained the matching fixtures (`parked`, `pending`, `cashIdleSince`, a
+  cross-account `recentLosses` entry, a held VTI, entry zones that trip the band) so all of this renders in
+  local preview instead of showing every card in its empty state.
 - **Picks (the "🎯 Plan" tab — renamed from "Picks" in v56):** **sortable + sector-filterable** scored candidates table incl. a
   **Social** column (retail buzz, 20% of composite, with an inline buzz label) and **data-coverage cues**
   (grey social = "no data, neutral 5"; `ᵛ` = value-only fundamentals when AV growth is unavailable).
