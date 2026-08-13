@@ -711,7 +711,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v108'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v109'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2514,13 +2514,10 @@ function renderAgenticCard(){
   chosen.forEach(x=>{ x.tgt=x.w/sumW*100; });
     chosen.sort((a,b)=>b.tgt-a.tgt);
   }
-  // ── sizing to the unlevered book + brackets + drift ──
-  const stopOf=(sym,px)=>{ if(!(px>0))return 0; const s=smaMap[sym]; return (s&&isFinite(s)&&s<px)?Math.min(s*0.95,px*0.92):px*0.88; };
-  const pickOf=(sym)=>((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).find(p=>p&&p.ticker===sym);
-  const tpOf=(sym,px,stop)=>{ if(!(px>0))return 0; const pk=pickOf(sym); if(pk&&pk.tp1&&pk.tp1.price>px)return pk.tp1.price; return (stop>0&&px>stop)?px+2*(px-stop):px*1.20; };
+  // ── sizing to the unlevered book + drift. (The synthesized stop/TP brackets that used to hang off
+  //    each row went with the TP/St column in v109 — the Plan tab carries the target's real levels.) ──
   chosen.forEach(x=>{ x.tgtVal=book>0?x.tgt/100*book:0; x.cur=book>0?(x.curVal/book*100):0; x.drift=x.cur-x.tgt;
-    x.delta=x.tgtVal-(x.curVal||0); x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD');
-    x.stop=(x._stop>0)?x._stop:stopOf(x.sym,x.px); x.tp=(x._tp>0)?x._tp:tpOf(x.sym,x.px,x.stop); });
+    x.delta=x.tgtVal-(x.curVal||0); x.shares=(x.px>0)?x.delta/x.px:null; x.side=x.delta>0?'BUY':(x.delta<0?'SELL':'HOLD'); });
   // ── Execution-discipline deferrals (v93): don't deploy NEW money into a name that is (a) inside a ~7d
   //    EARNINGS blackout — a pre-print overnight gap can erase the edge, so wait for the number; or (b)
   //    gapped THROUGH its planned entry/stop — a name crashing below the level we planned to buy at needs a
@@ -2548,13 +2545,15 @@ function renderAgenticCard(){
   const parkedNow=!!(A&&A.parked&&+A.parked.dollars>0);
   const isPark=(sym)=>parkedNow&&sym===AG_PARK_VEHICLE&&!chosenSet.has(sym);
   const orphans=heldPos.filter(p=>!chosenSet.has(p.symbol)&&(+p.value||0)>0&&!isPark(p.symbol));
-  // ── render — ONE unified holdings tracker (v91): each name ••••3900 holds is a single row that carries
-  //    its position, trailing performance (day/YTD/P&L), the weekly target's drift + rebalance trade, and the
-  //    TP/stop I monitor. Recommended names not yet held drop into a slim "Targets to open" strip below, so
-  //    the position table has no ragged empty perf/P&L cells. (Replaces the old two-table target+perf split.) ──
+  // ── render — the holdings tracker for what ••••3900 ACTUALLY holds: position, trailing performance
+  //    (day/YTD/P&L) and the rebalance trade. v109 dropped the **Target %/Drift** column, the TP/stop
+  //    sub-line and the "Targets to open" strip: the Plan tab's Agentic side (v108) now owns the target
+  //    — weights, entry zones, stop/TP, per-name status incl. over/under-by-Xpp — so keeping them here
+  //    was the same numbers in two places, and the wider table pushed the columns that are genuinely
+  //    account-side (P&L, day/YTD) off a phone screen. What stays is what you can only answer from the
+  //    book itself, plus the Trade cell, since that's what the hand-off button below actually places. ──
   const shFmt=(n)=>{ const a=Math.abs(n); return a>=10?fmt(a,0):fmt(a,2); };
   const holdThr=Math.max(5,(book||0)*0.01);
-  const kindTag=x=>x.held?'':(x.kind==='index'?'<span style="color:#9ca3af;font-size:10px"> · index</span>':(x.kind==='pick'?'<span style="color:#9ca3af;font-size:10px"> · pick</span>':(x.kind==='leader'?'<span style="color:#9ca3af;font-size:10px"> · leader</span>':'')));
   const pctCell=(v,dec=1)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af">—</span>';
     const r=+v.toFixed(dec); // color by what the READER sees: a value that displays as 0.0% is neutral, not "-0.0%" red
     const col=r>0?'#065f46':(r<0?'#991b1b':'#6b7280'); return `<span style="color:${col};font-weight:600">${r>0?'+':''}${fmt(Math.abs(r)===0?0:r,dec)}%</span>`; };
@@ -2565,8 +2564,9 @@ function renderAgenticCard(){
   // wash-sale badge: a BUY into a name this account realized a loss on within 30d would disallow that loss
   const washAcctLbl=(sym)=>{ const w=washMap[sym]; return (w&&w.account==='main')?'in your self-directed ••••0741 account':'in this account'; };
   const washBadge=(sym)=>`<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${sym} ${washAcctLbl(sym)} on ${washMap[sym]?new Date(washMap[sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}. Rebuying in ANY of your accounts within 30 days disallows the loss — hold off until ${washUntilLbl(sym)}.">⚠️ wait · wash-sale</span> <span style="color:#9ca3af;font-size:10px">to ${washUntilLbl(sym)}</span>`;
-  // trade + monitor levels, stacked in one cell (top = rebalance action, bottom = TP/stop I watch)
-  const tradeCell=(sym,side,delta,shares,tp,stop)=>{
+  // the rebalance action for this holding. The TP/stop that used to stack underneath now lives on the
+  // Plan tab with the rest of the target's levels — they were monitor-only here, never actionable.
+  const tradeCell=(sym,side,delta,shares)=>{
     let top;
     if(book<=0||shares==null) top='<span style="color:#9ca3af">—</span>';
     else if(side==='HOLD'||Math.abs(delta)<holdThr) top='<span class="badge" style="background:#f3f4f6;color:#6b7280">hold</span>';
@@ -2574,15 +2574,7 @@ function renderAgenticCard(){
     else if(side==='BUY'&&execMap[sym]) top=execBadge(sym);
     else { const col=side==='BUY'?'#065f46':'#991b1b';
       top=`<span style="color:${col};font-weight:700">${side==='BUY'?'+':'−'}${shFmt(shares)} sh</span> <span style="color:#9ca3af;font-size:10px">≈${fmtD(Math.abs(delta))}</span>`; }
-    const tpTxt=tp>0?`<span style="color:#065f46">TP ${P(tp)}</span>`:'';
-    const stTxt=stop>0?`<span style="color:#991b1b">St ${P(stop)}</span>`:'';
-    const lvl=(tpTxt||stTxt)?`<br><span style="font-size:10px">${[tpTxt,stTxt].filter(Boolean).join(' · ')}</span>`:'';
-    return top+lvl; };
-  const tdCell=(tgt,drift,off,park)=>{
-    const top=park?'<span style="color:#6b7280;font-size:11px">parked</span>':off?'<span style="color:#d97706;font-size:11px">off-target</span>':`<b>${fmt(tgt,0)}%</b>`;
-    const hot=Math.abs(drift)>=AGENTIC_DRIFT; const col=hot?(drift>0?'#991b1b':'#0969da'):'#9ca3af';
-    const dr=book>0?`<span style="color:${col};font-weight:${hot?700:400};font-size:11px">${drift>0?'+':''}${fmt(drift,1)}pp${hot?' ⚠️':''}</span>`:'<span style="color:#9ca3af;font-size:11px">—</span>';
-    return top+'<br>'+dr; };
+    return top; };
   // ── unified holdings table: iterate what the account ACTUALLY holds (incl. off-target orphans) ──
   const chosenBySym=new Map(chosen.map(x=>[x.sym,x]));
   let holdingsBlock='', totCost=0,totVal=0,totDayNow=0,totDayPrev=0,totYtdNow=0,totYtdBase=0;
@@ -2597,8 +2589,7 @@ function renderAgenticCard(){
       const ytdPct=(start>0&&px>0)?((px/start-1)*100):null;
       const curPct=book>0?val/book*100:0;
       const park=isPark(p.symbol);
-      const tgt=c?c.tgt:0, off=!c&&!park, drift=curPct-tgt;
-      const stop=c?c.stop:stopOf(p.symbol,px), tp=c?c.tp:tpOf(p.symbol,px,stop);
+      const off=!c&&!park;
       let side,delta,shares;
       if(c){ side=c.side; delta=c.delta; shares=c.shares; }
       else if(park){ delta=0; shares=0; side='HOLD'; }               // waiting ground — released to fund its name, never exited
@@ -2607,27 +2598,16 @@ function renderAgenticCard(){
       totCost+=cost; totVal+=val;
       if(prev>0&&px>0){ totDayNow+=qty*px; totDayPrev+=qty*prev; }
       if(start>0&&px>0){ totYtdNow+=qty*px; totYtdBase+=qty*start; }
-      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector} · ${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${tdCell(tgt,drift,off,park)}</td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares,tp,stop)}</td></tr>`;
+      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector&&sector!=='—'?sector+' · ':''}${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares)}</td></tr>`;
     }).join('');
     const totDay=totDayPrev>0?((totDayNow-totDayPrev)/totDayPrev*100):null;
     const totYtd=totYtdBase>0?((totYtdNow-totYtdBase)/totYtdBase*100):null;
-    const heldTgt=heldPos.reduce((s,p)=>{ const c=chosenBySym.get(p.symbol); return s+(c?c.tgt:0); },0);
-    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr"><b>${fmt(heldTgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px;font-weight:400">of target</span></td><td class="tr">${pctCell(totDay)}<br><span style="font-size:11px">${totYtd==null?'<span style="color:#9ca3af">—</span>':pctCell(totYtd)}</span></td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
-    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Target / Drift</th><th class="tr">Day / YTD</th><th class="tr">Unreal. P&L</th><th class="tr">Trade · TP/St</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
+    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr">${pctCell(totDay)}<br><span style="font-size:11px">${totYtd==null?'<span style="color:#9ca3af">—</span>':pctCell(totYtd)}</span></td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
+    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Day / YTD</th><th class="tr">Unreal. P&L</th><th class="tr">Trade</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
   }
-  // ── "Targets to open" strip: recommended names ••••3900 does NOT hold yet (no ragged perf cells in the main table) ──
-  const opens=chosen.filter(x=>!x.held);
-  let opensBlock='';
-  if(opens.length){
-    const orows=opens.map(x=>{
-      const openTxt=washMap[x.sym]?washBadge(x.sym):(execMap[x.sym]?execBadge(x.sym):((book>0&&x.shares!=null&&x.shares>0)?`+${shFmt(x.shares)} sh<br><span style="color:#9ca3af;font-size:11px">≈${fmtD(Math.abs(x.delta))}</span>`:'<span style="color:#9ca3af">—</span>'));
-      const lvls=`${x.px>0?P(x.px):'—'} · <span style="color:#991b1b">${x.stop>0?P(x.stop):'—'}</span> · <span style="color:#065f46">${x.tp>0?P(x.tp):'—'}</span>`;
-      return `<tr><td><span class="sym">${x.sym}</span>${kindTag(x)}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td><td class="tr"><b>${fmt(x.tgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px">${book>0?fmtD(x.tgtVal):'—'}</span></td><td class="tr">${openTxt}</td><td class="tr" style="font-size:11px">${lvls}</td></tr>`;
-    }).join('');
-    opensBlock=`
-    <div style="font-weight:700;font-size:12.5px;margin:16px 0 3px">🎯 Targets to open <span style="color:#9ca3af;font-weight:400;font-size:11px">— recommended, not yet held (${opens.length})</span></div>
-    <div style="overflow-x:auto"><table><thead><tr><th>Ticker</th><th class="tr">Target</th><th class="tr">Open</th><th class="tr">Entry · Stop · TP</th></tr></thead><tbody>${orows}</tbody></table></div>`;
-  }
+  // Target names ••••3900 doesn't hold yet used to get a "🎯 Targets to open" strip here. They're on the
+  // Plan tab now (status "to open"), with the entry/stop/TP the strip carried — the hand-off below still
+  // places them, so nothing is lost by not re-listing them on a card about what the account holds.
   // deploy / rebalance hand-off (targets the agentic account; fractional, dollar-market at the open)
   const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]&&!execMap[x.sym]);
   const washBlocked=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&washMap[x.sym]);
@@ -2652,11 +2632,10 @@ function renderAgenticCard(){
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">One tracker for your <b>agentic account (••••3900)</b>: each holding's live position, trailing performance (day / YTD / unrealized P&L), the weekly target's <b>drift</b> + rebalance <b>trade</b>, and the <b>TP/stop</b> I monitor. Target is long-only, <b>unlevered</b>, ${targetSrc==='research'?`from the <b>weekly deep multi-factor research</b> (momentum · quality · growth · catalyst → adversarial verify)${targetAsOf?` · as of ${targetAsOf}`:''}`:`built on-the-fly from top picks + mega-cap leaders + an SPY/QQQ core + held (interim, until the research target lands)`}, capped at <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b>/name. <b>Drift</b> flags a name past the <b>${AGENTIC_DRIFT}pp</b> rebalance trigger; brackets are monitor-only (fractional positions can't carry resting stops). <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</span></div>
-    ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">Showing the <b>target weights</b> only — the producer hasn't captured ••••3900 yet. The account's live cash, holdings, drift, and performance appear here after the next scheduled run picks it up.</div>`}
-    ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your one-tap confirm</b>'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The drift table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
-    ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The recommended target is below — deploy it with the button.</div>`:'')}
-    ${opensBlock}
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day / YTD / unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
+    ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The producer hasn't captured ••••3900 yet — the account's live cash, holdings and performance appear here after the next scheduled run picks it up. The target itself is on the Plan tab.</div>`}
+    ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your one-tap confirm</b>'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
+    ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The target it would deploy into is on the Plan tab — the button below places it.</div>`:'')}
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> ('+(washMap[x.sym]&&washMap[x.sym].account==='main'?'loss in ••••0741':'loss in ••••3900')+' · until '+washUntilLbl(x.sym)+')').join(' · ')} — a taxable account of yours realized a loss on ${washBlocked.length>1?'these':'this'} within the last 30 days; the IRS wash-sale window spans your accounts, so a rebuy here would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
     ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry zone':'below entry zone')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify; a name trading above its entry zone waits for the pullback the research priced in. Small misses are tolerated (±${ENTRY_TOL_PCT}%/${ENTRY_PREM_PCT}%) and zones older than ${ENTRY_STALE_D}d go advisory${_zonesStale?` — <b>the current zones are ${_zoneAge}d old, so entry checks are OFF</b>`:''}. Deferred weight waits in the ${'VTI'} placeholder rather than cash. Target weight unchanged. Education only.</div>`:''}
     ${parkedNow?`<div class="fund-note"><b>🅿️ Waiting ground:</b> ${fmtD(A.parked.dollars)} of deferred weight is parked in <b>${A.parked.vehicle||AG_PARK_VEHICLE}</b> on behalf of ${(A.parked.forNames||[]).map(s=>'<b>'+s+'</b>').join(', ')||'a deferred name'} — released to fund ${((A.parked.forNames||[]).length>1)?'them':'it'} once the deferral clears, so it is held, never exited. <span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')">See the plan →</span></div>`:''}
@@ -3682,19 +3661,17 @@ window.switchTab=switchTab;
       <li><b>Grade</b> logs it against what happened next and against SPY — the account's own track record.</li>
     </ul>`},
   'agentic portfolio': { tag:'Accounts', t:'Agentic Portfolio', h:`
-    <p>The <b>target blueprint</b> for the agentic account (••••3900) — a separate, unlevered limited-margin account (instant settlement, no borrowing), distinct from your margin book. It shows the recommended basket and how far the account's <i>actual</i> holdings have drifted from it.</p>
-    <div class="hsub">Where the target comes from</div>
-    <ul>
-      <li>Primarily the <b>weekly deep-research output</b> — a multi-factor screen (momentum / quality / growth / catalyst + valuation) that's adversarially verified before it lands.</li>
-      <li>If that's absent, a fallback builds a sector-diversified, long-only, unlevered target from your top picks, a mega-cap bench, an index core, and whatever the account already holds.</li>
-    </ul>
+    <p>What the agentic account (••••3900) actually <b>holds</b> — a separate, unlevered limited-margin account (instant settlement, no borrowing), distinct from your margin book.</p>
     <div class="hsub">Reading the table</div>
     <ul>
-      <li><span class="hk">Target $ / %</span> — the recommended weight. <span class="hk">Now $ / %</span> — what the account actually holds today.</li>
-      <li><span class="hk">Trade (±sh ≈ ±$)</span> — the buy/sell to close the gap. <span class="hk">Drift</span> flags any name past the <b>5pp</b> rebalance trigger.</li>
-      <li><span class="hk">TP / Stop</span> — monitor-only bracket levels (fractional positions can't hold resting stops).</li>
+      <li><span class="hk">Position</span> — the holding's value and its share of the book, with cost basis under the ticker.</li>
+      <li><span class="hk">Day / YTD</span> — day move from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</li>
+      <li><span class="hk">Unreal. P&amp;L</span> — gain or loss against cost. <span class="hk">Trade</span> — the buy/sell that would bring this name to its target weight, or the reason it's deferred.</li>
+      <li>A holding tagged <span class="hk">off-target</span> isn't in the current research target and would be exited; <span class="hk">waiting ground</span> is the parking placeholder, which is held on purpose, never exited.</li>
     </ul>
-    <p>The <b>🤖 hand-off button</b> carries a deploy/rebalance prompt that places fractional dollar orders after your review. Below the target sits a <b>per-holding performance</b> table (cost basis, Day %, YTD %, unrealized P&amp;L).</p>` },
+    <div class="hsub">Where the target lives</div>
+    <p>Target weights, entry zones, stop/TP levels and every deferral moved to the <b>Plan tab's Agentic side</b> — they were the same numbers in two places, and the wider table pushed P&amp;L and Day/YTD off a phone screen. This card answers "what do I own and how is it doing"; the Plan tab answers "what happens next and why".</p>
+    <p>The <b>🤖 hand-off button</b> carries a deploy/rebalance prompt that places fractional dollar orders after your review.</p>` },
   'action center': { tag:'Plan', t:'Action Center', h:`
     <p>The decide-and-act surface: a ranked feed of live signals, then a concrete cash-raising-and-redeploying plan. It's portfolio-derived, so it populates whether you open this tab before or after the portfolio finishes loading.</p>
     <div class="hsub">Two tiers</div>
