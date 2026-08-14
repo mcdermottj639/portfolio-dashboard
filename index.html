@@ -711,7 +711,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v110'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v111'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -925,6 +925,55 @@ function clusterSums(enriched,totalVal){
   return out;
 }
 
+/* ─── Live-quote splice ───────────────────────────────────────────────────────────────────────
+   The producer fetches daily historicals ONCE a day (FETCH_ALL) and carries them forward, so on
+   any run where that fetch didn't land, `data.hist.day` trails the live quotes — and every
+   bar-derived figure silently ages with it. Observed 2026-08-13: the daily series ended on a real
+   Aug 11 bar (plus an `interpolated` Aug 12 placeholder that fetchHist already drops) while the
+   snapshot itself was built Aug 13 post-close. Holdings YTD read +10.00% against a true +15.4%,
+   SPY +12.79% against +13.85% — and because the lag hit the book harder than the benchmark, the
+   card claimed the portfolio was 2.8pp BEHIND SPY when it was ~1.6pp ahead.
+
+   So: append the live quote as one final bar, dated from the snapshot's own ET date. Both sides of
+   every comparison get it, which is the property that actually matters here.
+
+   ATOMIC BY DESIGN — splice every series or none. `betaFromHist`/`corrGroups` align return series
+   by TAIL INDEX (`slice(-n)`), not by date, so giving SPY today's bar while one holding lacks a
+   live quote would shift that holding's entire return series a day out of phase and quietly
+   corrupt beta and correlation. A uniformly stale map is merely lagging; a half-spliced one is
+   wrong. If any series can't be priced we leave the whole map alone.
+
+   The appended bar carries `live:true` so closing-basis consumers can opt out — `gradePick` does,
+   since the Track Record grades picks on CLOSES and already takes the live price as its own
+   argument (splicing it into `bars` would both double-count it and let an intraday print trip a
+   stop that never closed through). */
+function _snapETDate(){
+  const g=(window.__DATA&&window.__DATA.generatedAt)||null;
+  const d=g?new Date(g):new Date();
+  if(isNaN(d))return null;
+  // en-CA gives YYYY-MM-DD; the bars are ET trading days, so the snapshot's ET date is the match.
+  try{ return d.toLocaleDateString('en-CA',{timeZone:'America/New_York'}); }catch(e){ return d.toISOString().slice(0,10); }
+}
+function spliceLiveBars(map){
+  const asOf=_snapETDate(); if(!asOf)return map;
+  const syms=Object.keys(map).filter(s=>Array.isArray(map[s])&&map[s].length);
+  if(!syms.length)return map;
+  const px={};
+  for(const s of syms){
+    const q=(typeof azQuote==='function')?azQuote(s):null;
+    const p=q?parseFloat(q.last_trade_price||q.last_extended_hours_trade_price||0):0;
+    if(!(p>0))return map;                 // one unquotable name ⇒ splice nothing (see above)
+    px[s]=p;
+  }
+  for(const s of syms){
+    const ser=map[s], last=ser[ser.length-1];
+    if(!last||!last.t)continue;
+    if(last.t<asOf) ser.push({t:asOf,c:px[s],live:true});
+    else if(last.live) last.c=px[s];       // already spliced this pass — keep it current
+  }
+  return map;
+}
+
 /* ─── Equity historicals → YTD-normalized % series ─── */
 async function fetchHist(symbols){
   const start=new Date(new Date().getFullYear(),0,1).toISOString().replace(/\.\d+Z$/,'Z');
@@ -940,7 +989,7 @@ async function fetchHist(symbols){
       }
     }catch(e){}
   }
-  return out;
+  return spliceLiveBars(out);
 }
 async function fetchHistG(symbols,start,interval){
   const out={};
@@ -1538,7 +1587,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
       <span class="legend-item"><span class="legend-dot" style="background:${C.qqq}"></span>QQQ</span>
       ${agModeled?`<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Agentic${agReal?' (— real · ⋯ modeled)':' (⋯ modeled)'}</span>`:''}
     </div>
-    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the agentic account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
+    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). <b>It says nothing about your entry prices</b> — a name can be well up on the year and still be a loss for you if you bought it after the run. Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity. Every line's final point is today's live price, so the daily bars lagging a session can't quietly age this card.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the agentic account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
     ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
       <div><div class="snap-lbl">10yr Treasury</div><div style="font-size:16px;font-weight:700">${macroData.tenYrYield?fmt(macroData.tenYrYield,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">Fed Funds</div><div style="font-size:16px;font-weight:700">${macroData.fedFunds?fmt(macroData.fedFunds,2)+'%':'—'}</div></div>
@@ -5624,7 +5673,9 @@ function renderPicksCards(){
    close at/below the stop is a stop-out. Current return is planned entry → latest price. */
 function gradePick(pk,bars,live,ts){
   const entry=pk.entryRef||pk.basePrice, tp1=pk.tp1, tp2=pk.tp2, sl=pk.sl;
-  const series=(bars||[]).filter(b=>!ts||b.t>=ts).map(b=>b.c).filter(c=>c>0);
+  // CLOSING basis: drop the spliced live bar (see spliceLiveBars) — `live` is already this
+  // function's own argument, and an intraday print must not trip a stop nothing closed through.
+  const series=(bars||[]).filter(b=>!b.live).filter(b=>!ts||b.t>=ts).map(b=>b.c).filter(c=>c>0);
   let status='OPEN',hitT1=false;
   for(const c of series){
     if(sl!=null&&c<=sl){ status=hitT1?'TP1':'STOPPED'; break; }

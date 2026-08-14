@@ -142,7 +142,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v110** (`pf-v110`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v111** (`pf-v111`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -223,6 +223,25 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   price chart's volume bars silently never drew for Railway-refreshed names). The Analyze **"Price &amp;
   Levels"** volume bars are data-gated: they draw (and the header lists "· volume") only when the symbol's
   bars actually carry volume — older `{t,c}` snapshots show none until a fresh run repopulates it.
+- **`data.hist.day` can trail the live quotes by days — `fetchHist` splices the live bar on (v111).**
+  Historicals are fetched once a day (FETCH_ALL) and carried forward, so any run whose historicals fetch
+  didn't land leaves the daily series behind while `data.quotes` stays current — and every bar-derived
+  figure silently ages with it. **Caught live on 2026-08-13:** the series ended on a real **Aug 11** bar
+  (plus an `interpolated:true` Aug 12 placeholder — `fetchHist` already drops those) while the snapshot
+  was built Aug 13 post-close. Holdings YTD read **+10.00%** against a true **+15.48%**, SPY **+12.79%**
+  against **+13.85%**, and because two sessions of an IREN gap ($39.75→$44.77) hit the book far harder
+  than the benchmark, the card claimed the portfolio was 2.8pp **behind** SPY when it was ~1.6pp **ahead**.
+  `spliceLiveBars(map)` now appends the live quote as a final bar dated from the snapshot's own ET date
+  (`_snapETDate`, `en-CA` in `America/New_York`), and `fetchHist` returns through it — so the YTD tile,
+  Performance vs Benchmark, RSI/SMA, beta and the agentic SPY window all read current. Two invariants,
+  both load-bearing: **(a) the splice is ATOMIC** — every series or none, because `betaFromHist`/
+  `corrGroups` align returns by TAIL INDEX (`slice(-n)`), not by date, so pricing SPY but not one holding
+  would shift that holding's whole series a day out of phase and quietly corrupt beta/correlation (a
+  uniformly stale map merely lags; a half-spliced one is *wrong*) — hence a single unquotable symbol
+  aborts the whole splice; **(b) the appended bar carries `live:true` and `gradePick` filters it out**,
+  because the Track Record grades picks on CLOSES and already takes the live price as its own argument —
+  splicing it into `bars` would double-count it AND let an intraday print trip a stop nothing closed
+  through. `fetchHistG` (the chart modal's week/month series) is deliberately NOT spliced.
 - **The Portfolio background-enrichment block is fault-isolated** (`load()`'s `(async()=>{…})` wraps each
   render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
   spinner forever. Don't "simplify" the guards away.
