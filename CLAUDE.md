@@ -142,7 +142,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v111** (`pf-v111`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v112** (`pf-v112`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -359,6 +359,18 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   jump-nav** skips cards hidden by the inactive side (`hiddenWithin`) and rebuilds on toggle
   (`window.__navRebuild`), so chips always match what's on screen. Privacy masking already scoped to
   `#page-portfolio`, so it covers the agentic side for free.
+- **The card jump-nav is a COLLAPSIBLE disclosure, collapsed by default (v112).** Expanded, the chip row
+  wrapped to five lines on a phone (~158px) and pushed each page's first real card below the fold — on
+  the Accounts tab it buried the account switcher, the margin banner and the hero. `build()` now emits a
+  `.card-nav-toggle` header (`🧭 Jump to section` · card count · chevron) over a `.card-nav-chips` div
+  that CSS hides unless the nav carries `data-open="1"`; collapsed it is one ~40px row. Three deliberate
+  choices: **open/closed is ONE preference across all five pages**, persisted as `pf_nav_open`
+  (`setNavOpen` walks every page's nav) — a per-page state reads as a bug when the next tab comes back
+  expanded; **tapping a chip does NOT close the panel**, so it behaves like an ordinary disclosure and
+  stays put if you like it open; and `build()` calls `applyOpen(nav, navOpen())` after every
+  `innerHTML` write, since a rebuild replaces the markup and would otherwise silently reset the state.
+  Colours come from `--surface-2`/`--text`, so the gold theme needs no override. Analyze still shows no
+  nav until a ticker is analyzed (the pre-existing `cards.length<2` rule).
 - **Card parity across the two account sides (v101):** the agentic side now carries the SAME analytics
   cards as the self-directed side — snapshot tiles, 🗺️ Holdings Heatmap, 🛡️ Risk & Diversification,
   🗂 Allocation, 💵 Income & Tax, 📡 Technical Signals, 📋 Fundamentals — plus its own 📈 Account

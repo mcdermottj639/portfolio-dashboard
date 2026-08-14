@@ -259,7 +259,16 @@ html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
 .chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; text-decoration: none; }
 .chat-btn:active { opacity: 0.85; }
 /* Per-page quick-nav: chip row that jumps to each card in the section */
-.card-nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 10px; margin-bottom: 2px; }
+/* Quick-nav: a disclosure, collapsed by default. Open, the chip row wrapped to 5 lines on a phone
+   and pushed the actual page content below the fold on every tab. Colours come from the shared
+   surface/text vars so the gold theme needs no override. */
+.card-nav { padding: 2px 0 10px; margin-bottom: 2px; }
+.card-nav-toggle { display: flex; align-items: center; gap: 7px; width: 100%; font-size: 12px; font-weight: 700; padding: 7px 11px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; text-align: left; font-family: inherit; }
+.card-nav-toggle .cn-count { margin-left: auto; font-size: 11px; font-weight: 600; opacity: 0.55; }
+.card-nav-toggle .cn-chev { font-size: 9px; opacity: 0.6; transition: transform 0.18s; }
+.card-nav[data-open="1"] .card-nav-toggle .cn-chev { transform: rotate(180deg); }
+.card-nav-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.card-nav:not([data-open="1"]) .card-nav-chips { display: none; }
 .card-nav-chip { flex: 0 1 auto; font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .card-nav-chip:active { background: #6366f1; color: #fff; }
 /* ── Card help popovers: a "?" in each card header opens a teaching modal ── */
@@ -711,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v111'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v112'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3454,12 +3463,29 @@ window.switchTab=switchTab;
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
 })();
 
-/* Per-page quick-nav: a chip row at the top of each page listing every card's title.
+/* Per-page quick-nav: a collapsible chip list at the top of each page listing every card's title.
    Tap a chip to (expand if collapsed and) smooth-scroll to that card. Rebuilds itself
    when a page's cards change (debounced), so dynamic pages like Analyze stay in sync. */
 (function(){
   var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze'];
   var NAVSEQ=0; // globally-unique card ids so re-renders never collide with stale ids
+  /* Open/closed is ONE preference across every page, persisted — a nav that came back expanded on
+     the next tab (or collapsed on the tab you'd just opened it on) reads as a bug, not a per-page
+     setting. Default collapsed: expanded, the chips wrapped to 5 rows on a phone and pushed the
+     page's actual first card below the fold. Tapping a chip deliberately does NOT close the panel,
+     so it behaves like an ordinary disclosure and stays put if you like it open. */
+  var NAV_KEY='pf_nav_open';
+  function navOpen(){ try{ return localStorage.getItem(NAV_KEY)==='1'; }catch(e){ return false; } }
+  function applyOpen(nav,v){
+    nav.setAttribute('data-open',v?'1':'0');
+    var b=nav.querySelector('.card-nav-toggle'); if(b)b.setAttribute('aria-expanded',v?'true':'false');
+  }
+  function setNavOpen(v){
+    try{ localStorage.setItem(NAV_KEY,v?'1':'0'); }catch(e){}
+    PAGES.forEach(function(id){ var el=document.getElementById(id); if(!el)return;
+      var n=el.querySelector(':scope > .card-nav'); if(n)applyOpen(n,v); });
+  }
+  window.__navToggle=function(){ setNavOpen(!navOpen()); };
   function titleOf(card){
     var t=card.querySelector(':scope > .card-title'); if(!t)return null;
     var c=t.cloneNode(true);
@@ -3511,7 +3537,10 @@ window.switchTab=switchTab;
     var html='';
     for(i=0;i<cards.length;i++){ var c=cards[i]; c.card.id='navc-'+(++NAVSEQ); // fresh unique id every build
       html+='<button class="card-nav-chip" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
-    nav.innerHTML=html;
+    nav.innerHTML='<button class="card-nav-toggle" type="button" onclick="__navToggle()">'
+      +'<span>🧭 Jump to section</span><span class="cn-count">'+cards.length+'</span><span class="cn-chev">▼</span></button>'
+      +'<div class="card-nav-chips">'+html+'</div>';
+    applyOpen(nav,navOpen());   // a rebuild replaces the markup — re-assert the saved state
   }
   function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); }); }
   /* The observer watches childList only, so a pure visibility flip (the Accounts toggle) has to
