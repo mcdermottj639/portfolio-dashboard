@@ -711,7 +711,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v109'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v110'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1358,11 +1358,35 @@ function renderSnapshot(stats, betaInfo, opts){
   const mUse = cashVal<0 ? Math.abs(cashVal) : 0;
   const mPct = equityVal>0 ? mUse/equityVal*100 : 0;
   const mColor = mPct>30?'#ef4444':mPct>15?'#f97316':'#10b981';
+  /* Unrealized vs YTD — two different questions, and conflating them is what made this tile
+     misleading. `totalRet`/`totalPnL` is the unrealized mark on the lots you hold RIGHT NOW
+     (cost basis of the current shares), so an account that just redeployed a deposit shows a
+     near-zero "Total Return" while its real year is well up — realized gains and every closed
+     position are simply outside that number. Hence the explicit "on current lots" sub-line and a
+     separate YTD tile carrying the account's actual, deposit-adjusted year. */
+  const ytdLbl = O.cashTile ? 'YTD Return' : 'YTD (holdings)';
+  let ytdHtml;
+  if(O.cashTile){
+    // Agentic side: the real recorded account, time-weighted so deposits aren't profit — the same
+    // math the Account Performance card headlines, so the two surfaces can't disagree.
+    const Y=(typeof agenticYTDStats==='function')?agenticYTDStats((window.__DATA&&window.__DATA.agentic)||null):null;
+    const sinceLbl=Y&&Y.partial?(()=>{ try{ return new Date(String(Y.since).slice(0,10)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return String(Y.since).slice(0,10); } })():'';
+    ytdHtml = Y
+      ? `<div class="snap-val ${sc(Y.ret)}">${fmtP(Y.ret)}</div><div class="snap-sub">${fmtD(Y.pnl)} net of deposits${sinceLbl?` · since ${sinceLbl}`:''}</div>`
+      : `<div class="snap-val" style="color:#9ca3af">—</div><div class="snap-sub">needs 2+ recorded days</div>`;
+  } else {
+    // Self-directed side: no recorded account-equity series, so the honest YTD available is the
+    // benchmark card's modeled figure (today's holdings priced back to Jan 1). Labelled as such.
+    const P=(window.__SNAP&&window.__SNAP.perf)||null;
+    ytdHtml = (P&&P.portYTD!=null)
+      ? `<div class="snap-val ${sc(P.portYTD)}">${fmtP(P.portYTD)}</div><div class="snap-sub">at current weights${P.cov?` · ${fmt(P.cov,0)}% cov`:''}</div>`
+      : `<div class="snap-val" style="color:#9ca3af"><span class="spin-sm"></span></div><div class="snap-sub">indexing to Jan 1…</div>`;
+  }
   el.innerHTML=`<div class="snap-grid">
     <div class="snap"><div class="snap-lbl">${O.cashTile?'Account Value':'Buying Power'}</div><div class="snap-val">${fmtD(O.cashTile?totalVal:bpVal)}</div><div class="snap-sub">${O.cashTile?'Invested ':'Equity '}${fmtD(equityVal)}</div></div>
     <div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val ${sc(dayPnL)}">${fmtD(dayPnL)}</div><div class="snap-sub ${sc(dayPnLP)}">${fmtP(dayPnLP)} today</div></div>
-    <div class="snap"><div class="snap-lbl">Total Return</div><div class="snap-val ${sc(totalPnL)}">${fmtP(totalRet)}</div><div class="snap-sub">${fmtD(totalPnL)} since cost</div></div>
-    <div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:${betaColor}">${betaTxt}</div><div class="snap-sub">vs S&P 500${betaInfo&&betaInfo.coverage?` · ${fmt(betaInfo.coverage,0)}% cov`:''}</div></div>
+    <div class="snap"><div class="snap-lbl">Unrealized</div><div class="snap-val ${sc(totalPnL)}">${fmtP(totalRet)}</div><div class="snap-sub">${fmtD(totalPnL)} on current lots</div></div>
+    <div class="snap"><div class="snap-lbl">${ytdLbl}</div>${ytdHtml}</div>
     ${O.cashTile
       // The agentic account can't borrow (limited margin = instant settlement only), so "Margin
       // Used: None" is a wasted tile there — idle cash is the number that actually drives its next
@@ -1370,6 +1394,7 @@ function renderSnapshot(stats, betaInfo, opts){
       ? (()=>{ const cPct=totalVal>0?Math.max(0,cashVal)/totalVal*100:0;
           return `<div class="snap"><div class="snap-lbl">Idle Cash</div><div class="snap-val" style="color:${cPct>=15?'#f97316':'#10b981'}">${fmt(cPct,1)}%</div><div class="snap-sub">${fmtD(Math.max(0,cashVal))} uninvested</div>${cPct>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(cPct*4,100)}%;background:${cPct>=15?'#f97316':'#10b981'}"></div></div>`:''}</div>`; })()
       : `<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:${mUse>0?mColor:'#10b981'}">${mUse>0?fmt(mPct,1)+'%':'None'}</div><div class="snap-sub">${mUse>0?fmtD(mUse)+' borrowed':'No leverage'}</div>${mUse>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(mPct*2,100)}%;background:${mColor}"></div></div>`:''}</div>`}
+    <div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:${betaColor}">${betaTxt}</div><div class="snap-sub">vs S&P 500${betaInfo&&betaInfo.coverage?` · ${fmt(betaInfo.coverage,0)}% cov`:''}</div></div>
   </div>`;
 }
 
@@ -1426,6 +1451,23 @@ function agenticPerfStats(AG, spySeries){
            netFlow, firstEquity, lastEquity, pnl:lastEquity-firstEquity-netFlow, days };
 }
 window.agenticPerfStats=agenticPerfStats;
+
+/* YTD slice of the same deposit-adjusted math, for the snapshot's YTD tile.
+   Rebases agenticPerfStats' chained growth to the first recorded point of the CURRENT calendar
+   year, so a mid-year deposit still can't read as profit. `partial` is true when recording began
+   after the year did — the tile then says "since {date}" rather than implying a full-year figure,
+   because Robinhood publishes no account-equity history and it cannot be backfilled. */
+function agenticYTDStats(AG){
+  const st=agenticPerfStats(AG,null); if(!st)return null;
+  const jan=String(new Date().getFullYear())+'-01-01';
+  const i0=st.EH.findIndex(e=>String(e.t).slice(0,10)>=jan);
+  const last=st.EH.length-1;
+  if(i0<0||i0>=last)return null;
+  return { ret:(st.mult[last]/st.mult[i0]-1)*100,
+           pnl:st.EH[last].equity-st.EH[i0].equity-(st.cumFlows[last]-st.cumFlows[i0]),
+           since:st.EH[i0].t, partial:String(st.EH[i0].t).slice(0,10)>jan };
+}
+window.agenticYTDStats=agenticYTDStats;
 
 function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const el=document.getElementById('perf-content'); if(!el)return;

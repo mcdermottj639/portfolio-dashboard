@@ -131,7 +131,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
   test suite before pushing (see "Verify before shipping").
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v109** (`pf-v109`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v110** (`pf-v110`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
   `<html>`, persisted as `pf_theme`; legacy `dark`/`neon` prefs auto-migrate to `gold` in the boot script +
   `toggleTheme()`). Gold is a **rich-gold-on-true-black** dark variant — body + card/tile surfaces are
@@ -342,7 +342,20 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   floor is **`AG_MIN_POS` (1), not `SMALL_THR` (250)** — this book is fractional (~$150 names) and a
   $250 floor would empty every table; and the snapshot's 5th tile is **Idle Cash %** instead of Margin
   Used (the account can't borrow, so "Margin: None" was a dead tile — idle cash is what actually
-  drives its next rebalance). The heatmap keeps **per-instance state** (`_hmS` keyed by suffix) so the
+  drives its next rebalance). **Six tiles since v110** — value · day · **Unrealized** · **YTD Return** ·
+  idle-cash/margin · beta (beta moved to the last slot, which used to sit empty). The renamed
+  **Unrealized** tile was called "Total Return", and that label was actively misleading: it is the mark
+  on the lots you hold *right now* (`totalPnL`/`totalRet` off current cost basis), so realized gains and
+  every closed position sit outside it — the agentic account read **+0.98% · $100.22** two days after a
+  $5,000 deposit was redeployed, while its real year was +5.51% / $252 with another $233 already
+  realized. The new **YTD Return** tile carries the honest number per side: agentic reads
+  **`agenticYTDStats()`** — the calendar-year slice of `agenticPerfStats()`'s chained, deposit-adjusted
+  growth (same math, rebased to the first recorded point of the year, `partial` → the sub-line says
+  "since {date}" because the equity series can't be backfilled), so the tile and the 📈 Account
+  Performance card can't disagree; the self-directed side has no recorded equity series, so it reuses
+  the benchmark card's modeled `__SNAP.perf.portYTD` and labels it **"YTD (holdings) · at current
+  weights"**. That side's tile therefore fills in on the *second* `renderSnapshot` call (after
+  `renderPerformance` stashes `perf`) — it shows a spinner until then, by design. The heatmap keeps **per-instance state** (`_hmS` keyed by suffix) so the
   two mounts' Day/P&L toggles don't move together. **Income & Tax is scoped**: `accountRollup(..., scope)`
   filters accounts, so the self-directed side keeps the all-account view + By-Account table while the
   agentic side shows only ••••3900 (no one-row table, its own harvest floor, options premium hidden —
