@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v112'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v113'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1827,261 +1827,392 @@ function renderIncomeTax(income, harvest, ovMap, opts){
     <div class="cov-note">Dividends/ex-div from covered holdings (top names)${agOnly?'':' in each account'}. Margin ••••0741 harvest floor is a $${SMALL_THR} position; the agentic ••••3900 account uses the rebalance planner's floor (a loss ≥ the greater of $${AG_TLH_MIN} or ${AG_TLH_PCT}% of cost). ${R&&R.source==='robinhood'?'Realized figures are broker-reported per account (get_realized_pnl) — informational, not a tax document. ':(R&&R.approx?'Realized stock gains are an average-cost estimate from order history (no tax-lot/wash-sale adjustment) — confirm against your Robinhood tax documents. ':'')}Harvesting realizes a loss to offset gains — avoid rebuying the same security within 30 days (wash-sale rule), in EITHER account. Not tax advice.</div>`;
 }
 
-/* The plan tier of the Action Center. Three steps: RAISE cash (harvest losers + right-size
-   any over-weight winner — winners are no longer off-limits) → REDEPLOY the pooled proceeds to
-   pull risk down → GUARDRAILS (standing trim/stop rules). Trims are triggered by a hard weight
-   cap, not a guess on the stock; RSI/valuation only flavour the "why now". rsiMap/ovMap/earningsMap
-   are optional (decorators) so the function renders on the first pass before they're fetched. */
 const PLAN_SINGLE_CAP=0.25, PLAN_CLUSTER_CAP=0.40; // max % of equity for one name / one correlated cluster
 const PLAN_MAX_LEVERAGE=1.5; // redeploy may borrow up to this total leverage (exposure/equity); 1.5× = ≤50¢ debt per $1 equity
-/* #9 — one source of truth for a pick's tradeable levels (live price, entry zone, limit, stop, TP1).
-   The Action Plan's redeploy ticket and the Top-3 pick card both read this, so a pick can never show
-   one entry zone in the card and a different limit in the plan. */
-function pickLevels(p){
-  const live=(typeof _picksLive!=='undefined'&&_picksLive[p.ticker]&&_picksLive[p.ticker].price)||0;
-  const px=live||p.basePrice||0;
-  const rng=(typeof parseRange==='function'?parseRange(p.entry):null);
-  const stop=(p.sl&&p.sl.price)?p.sl.price:(px?px*0.90:0);
-  const tp1=(p.tp1&&p.tp1.price)||null;
-  const zone=p.entry||(px?('≤ $'+fmt(px,px>=1?2:4)):'—');
-  const limit=(rng&&rng.hi)?rng.hi:px;
-  return {px,zone,limit,stop,tp1,rng,live:!!live};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SELF-DIRECTED ••••0741 — the AGGRESSIVE GROWTH mandate  (v113)
+   ═══════════════════════════════════════════════════════════════════════════
+   The two real accounts run OPPOSITE mandates, and the Action Center used to
+   ignore that. It hard-coded ONE objective — pull beta down — and drew its
+   redeploy ideas from the producer's OVERSOLD mean-reversion screen. On this
+   book that rendered as "sell everything that's red, then buy low-β ballast +
+   bonds/gold + three value names": a de-risking plan running on the account
+   whose entire purpose is concentrated, high-beta growth. (••••3900 is the
+   guarded, diversified one; its rulebook lives in producer/AGENTIC.md and it
+   is NOT what this side should imitate.)
+
+   Three things were structurally wrong, and each is fixed below:
+     1. EXITS were driven by the SIGN OF P&L (`pnlD<0`). In a levered high-beta
+        book everything is red on any red week, so the plan read as "liquidate."
+        Exits are now a THESIS test (`sdBroken`) — trend genuinely rolled over,
+        or a hard stop breached. Red-but-intact is a HOLD, not a sell.
+     2. CAPS were measured against gross exposure, not equity. With margin debt
+        those differ enormously: a name at 49% of exposure was 79% of what the
+        owner actually owns. Every cap here is a % of EQUITY.
+     3. The redeploy UNIVERSE was the oversold screen, which by construction
+        cannot surface "the big players" — it looks for things that fell. This
+        side now ranks on MOMENTUM (relative strength vs SPY + trend state +
+        proximity to highs), which is the lens that finds leadership.
+
+   Owner-set dials (2026-08-14, "full send"): concentrated, 1.6× ceiling. */
+const SD_SINGLE_CAP=0.50;   // max % of EQUITY in one name
+const SD_CLUSTER_CAP=0.80;  // max % of EQUITY in one correlated cluster
+const SD_MAX_LEVERAGE=1.60; // exposure/equity ceiling — this book may borrow, but not without bound
+const SD_HOUSE_MONEY=2.0;   // after a name doubles, sell the cost basis and let the rest run free
+const SD_WASH_DAYS=30;      // wash-sale window (calendar days)
+/* Where the deployable pool goes. Owner-set 2026-08-14. No bond/gold sleeve on
+   this side at all — ballast is the agentic account's job, not this one's. */
+const SD_SLEEVES=[
+  {k:'core',w:0.30,n:4,label:'Core — the big players',   hint:'megacap AI/compute leadership; the base of the book'},
+  {k:'sat', w:0.45,n:4,label:'High-beta satellites',      hint:'the second derivative — more torque, every one on a stop'},
+  {k:'asym',w:0.15,n:2,label:'Asymmetric',                hint:'smallest size, sized to be allowed to go to zero'},
+  {k:'cash',w:0.10,n:0,label:'Dry powder',                hint:'cash for the drawdowns a book like this WILL hand you'},
+];
+/* The aggressive bench — this mandate's universe, the counterpart of
+   producer/leaders.mjs for the agentic side. Curated on purpose: it declares
+   what "the big players" means for this account rather than inferring it. A
+   name here is only ever a CANDIDATE — it still has to earn its slot on the
+   momentum score, clear the caps, and carry fresh data (see sdMomentum). */
+const SD_BENCH={
+  NVDA:'core', AVGO:'core', TSM:'core', MSFT:'core', META:'core', GOOGL:'core', AMZN:'core',
+  ORCL:'core', MU:'core',  KLAC:'core', NXPI:'core', CRWD:'core', PLTR:'core', APP:'core',
+  NFLX:'core', QCOM:'core', CRM:'core', ADBE:'core', AAPL:'core', AMD:'core',  MRVL:'core', AMAT:'core',
+  IREN:'sat', CIFR:'sat', WULF:'sat', CLSK:'sat', NBIS:'sat', VRT:'sat',  MTSI:'sat', RBLX:'sat',
+  TSLA:'sat', GFS:'sat',  IBIT:'sat', AMKR:'sat', TTMI:'sat', CRDO:'sat', SMCI:'sat',
+  SPCX:'asym', INIO:'asym', GNRC:'asym', ALB:'asym',
+};
+/* Data-quality gates for the momentum lens. These are LOAD-BEARING, not
+   defensive padding — without them the lens is actively dangerous.
+   `data.hist.day` is only refreshed for symbols in the producer's current
+   fetch rotation (holdings + market ETFs + the live picks universe), so a name
+   that rotated out keeps whatever series it had when it left. On 2026-08-14
+   that meant MU/WULF/NBIS carried bars ending 2026-06-18…22 — ~8 weeks stale
+   — and because each of those series happened to STOP AT ITS HIGH, a naive
+   scorer read them as "0.0% off the high, +182pp relative strength" and ranked
+   all three a perfect 10.00, straight to the top of the buy list. They were
+   phantoms: the series simply never recorded what came next. So a symbol must
+   carry a LIVE QUOTE (else it can't be priced or limit-ordered anyway) and
+   bars no older than SD_AGING_DAYS; 11–35 days old still scores but takes a
+   confidence haircut and can never outrank a fresh name. Anything staler
+   ABSTAINS — it is reported as needing a data refresh, never scored. */
+const SD_FRESH_DAYS=10, SD_AGING_DAYS=35, SD_MIN_BARS=100, SD_AGING_CONF=0.75;
+/* A floor on what may reach a buy ticket at all. Without it a sleeve fills itself from whatever
+   ranks least-badly in its tier: the first live run wanted to put $1,492 into TSLA at 1.2/10
+   (−41pp vs SPY over six months) and $1,727 into GNRC at 2.4/10, purely because nothing better
+   carried that tier. A momentum mandate that buys the least-bad decliner is just the oversold
+   screen wearing a different hat. Below this, the sleeve holds cash and says why. */
+const SD_MIN_SCORE=5.0;
+
+/* ─── Momentum lens (consumer-side, reads only what the snapshot already has) ───
+   Memoized per snapshot. Every component is optional and the weights renormalize
+   over whatever is present (the `flowScore` abstain pattern) — but a name with
+   fewer than two components returns no score rather than a fake middling one. */
+let _sdMomCache={}, _sdMomKey=null;
+function _sdMom(){ const k=(window.__DATA&&window.__DATA.generatedAt)||''; if(_sdMomKey!==k){_sdMomKey=k;_sdMomCache={};} return _sdMomCache; }
+function _sdCloses(sym){
+  const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{};
+  const out=[];
+  for(const b of (h[sym]||[])){
+    if(b&&b.interpolated)continue;                       // placeholder bars carry no information
+    const c=parseFloat(b&&b.close_price!=null?b.close_price:(b&&b.c));
+    if(!(c>0))continue;
+    out.push({c,t:String((b&&(b.begins_at||b.t))||'').slice(0,10)});
+  }
+  return out;
 }
-/* Build a pick-shaped object from a scored top-10 CANDIDATE row (which carries no hand-built levels)
-   so the Action Plan can backfill its redeploy sleeve when the 3 vetted picks don't fill it. Levels
-   are SYNTHESIZED from the 50-DMA (same pullback/stop machinery as the oversold addCand fallback) and
-   flagged synth:true so the UI labels them "screen backfill", not dressed up as equals to the top 3. */
-function synthPickFromCandidate(c, smaMap){
-  if(!c||!c.ticker)return null;
-  const live=(typeof _picksLive!=='undefined'&&_picksLive[c.ticker]&&_picksLive[c.ticker].price)||0;
-  const px=live||c.price||0; if(!(px>0))return null;
-  const s=smaMap&&smaMap[c.ticker];
-  const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
-  const entryLo=(s!=null&&isFinite(s))?Math.min(px,s*0.98):px*0.97;
-  const tp1=px+2*(px-stop); // a 2R target so the buy ticket carries a level; estimate only
-  const d=v=>+fmt(v,v>=1?2:4);
-  return { ticker:c.ticker, company:c.company, sector:c.sector, signal:'SCREEN', synth:true,
-    basePrice:c.price, entry:'$'+fmt(entryLo,entryLo>=1?2:4)+' – $'+fmt(px,px>=1?2:4),
-    tp1:{price:d(tp1)}, sl:{price:d(stop)}, rr:c.rr, composite:c.composite, rsi:c.rsi };
+const _sdSma=(a,n)=>a.length<n?null:a.slice(-n).reduce((s,x)=>s+x,0)/n;
+const _sdRet=(a,n)=>a.length<n+1?null:(a[a.length-1]/a[a.length-1-n]-1)*100;
+const _sdLin=(v,lo,hi)=>Math.max(0,Math.min(10,(v-lo)/(hi-lo)*10));
+function sdMomentum(sym){
+  const C=_sdMom(); if(C[sym]!==undefined)return C[sym];
+  const mk=o=>(C[sym]=o);
+  const bars=_sdCloses(sym);
+  const q=(typeof azQuote==='function')?azQuote(sym):null;
+  const px=q?parseFloat(q.last_trade_price||q.last_extended_hours_trade_price||0):0;
+  if(!(px>0))                return mk({sym,score:null,reason:'no live quote'});
+  if(bars.length<SD_MIN_BARS)return mk({sym,px,score:null,reason:`only ${bars.length} daily bars`});
+  const asOf=_snapETDate(), last=bars[bars.length-1].t;
+  const age=(asOf&&last)?Math.round((new Date(asOf+'T00:00:00Z')-new Date(last+'T00:00:00Z'))/864e5):null;
+  if(age==null||age>SD_AGING_DAYS) return mk({sym,px,score:null,age,reason:`price history is ${age==null?'undated':age+' days'} stale`});
+  const stale=age>SD_FRESH_DAYS, conf=stale?SD_AGING_CONF:1;
+  const c=bars.map(b=>b.c);
+  const s50=_sdSma(c,50), s100=_sdSma(c,100), prev50=_sdSma(c.slice(0,-20),50);
+  // 52wk isn't available from a YTD daily series — the trailing window is the honest proxy, and the
+  // live price joins the high so a name printing a new high reads 0% rather than a stale positive.
+  const hi=Math.max(px,...c.slice(-154)), fromHi=(px/hi-1)*100;
+  const spy=_sdCloses('SPY').map(b=>b.c);
+  const r3=_sdRet(c,63), r6=_sdRet(c,126), sp3=_sdRet(spy,63), sp6=_sdRet(spy,126);
+  const rs3=(r3!=null&&sp3!=null)?r3-sp3:null, rs6=(r6!=null&&sp6!=null)?r6-sp6:null;
+  const rr=[]; for(let i=1;i<c.length;i++)rr.push(c[i]/c[i-1]-1);
+  const mu=rr.reduce((s,x)=>s+x,0)/rr.length;
+  const vol=Math.sqrt(rr.reduce((s,x)=>s+(x-mu)*(x-mu),0)/Math.max(1,rr.length-1))*Math.sqrt(252)*100;
+  const parts=[]; const add=(w,v)=>{ if(v!=null&&isFinite(v))parts.push([w,v]); };
+  add(0.30, rs6!=null?_sdLin(rs6,-20,30):null);          // 6-month leadership vs SPY — the big one
+  add(0.25, rs3!=null?_sdLin(rs3,-15,20):null);          // 3-month, so a fresh leader isn't penalized
+  add(0.25, (s50&&s100)?( _sdLin((px/s50-1)*100,-12,12)*0.45
+                        + _sdLin((s50/s100-1)*100,-8,8)*0.35
+                        + (prev50?_sdLin((s50/prev50-1)*100,-6,6):5)*0.20 ):null);
+  add(0.20, _sdLin(fromHi,-45,0));                       // near highs = leadership (inverse of the oversold screen)
+  if(parts.length<2) return mk({sym,px,score:null,age,reason:'not enough history to score'});
+  const W=parts.reduce((s,[w])=>s+w,0);
+  const score=parts.reduce((s,[w,v])=>s+w*v,0)/W;
+  return mk({sym,px,score,rank:score*conf,conf,stale,age,bars:bars.length,cov:parts.length,
+             s50,s100,rs3,rs6,fromHi,vol,tier:SD_BENCH[sym]||null});
 }
-/* #5 — deep-link from a plan add to its Top-3 card (and a brief highlight so it's findable). */
-function jumpToPick(t){ try{ const el=document.getElementById('pickcard-'+t); if(!el)return;
-  el.scrollIntoView({behavior:'smooth',block:'center'});
-  const o=el.style.boxShadow; el.style.boxShadow='0 0 0 2px #6366f1'; setTimeout(()=>{el.style.boxShadow=o;},1500);
-}catch(e){} }
-window.jumpToPick=jumpToPick;
+/* A vol-scaled stop: the same 12% stop is a hair-trigger on a 114%-vol miner and
+   slack on a 28%-vol megacap, so the distance scales with the name's own vol. */
+function sdStop(m){ const v=(m&&m.vol)||40; return (m.px)*(1-Math.max(0.12,Math.min(0.35,v/300))); }
+/* THESIS test — the exit rule that replaced `pnlD<0`. Two ways to be broken:
+   the intermediate trend has rolled over AND price is DECISIVELY under the long
+   anchor, or a hard stop is breached. "Decisively" is vol-scaled: a 114%-vol
+   name sitting 6% under its 100-DMA is inside its own noise, not broken —
+   without that buffer this rule fires on exactly the volatility the mandate is
+   built to hold. (The producer's `trendGate` uses the 200-DMA; a YTD daily
+   series can't reach 200 bars, so the 100-DMA is the long anchor here.) */
+function sdBroken(sym, costBasisPx){
+  const m=sdMomentum(sym);
+  if(!m||m.score==null) return {broken:false, why:null, m};
+  const buf=Math.max(5,Math.min(20,(m.vol||40)/8));
+  if(m.s50!=null&&m.s100!=null&&m.s50<m.s100&&m.px<m.s100*(1-buf/100))
+    return {broken:true, why:`50-DMA rolled under the 100-DMA and price is ${fmt(Math.abs((m.px/m.s100-1)*100),0)}% below it (past its ${fmt(buf,0)}% noise band)`, m};
+  if(costBasisPx>0&&m.px<=costBasisPx*(1-0.25))
+    return {broken:true, why:`down ${fmt(Math.abs((m.px/costBasisPx-1)*100),0)}% from cost — through the 25% stop`, m};
+  return {broken:false, why:null, m};
+}
+/* Wash-sale guard for THIS book — the self-directed side never had one. Reads the
+   producer's cross-account realized-loss ledger (v105) and deliberately does NOT
+   filter by account: the IRS window is per TAXPAYER, so a loss booked in ••••3900
+   blocks a rebuy here just as one booked here blocks the agentic executor. */
+function sdWashMap(){
+  const out={}, A=(window.__DATA&&window.__DATA.agentic)||{};
+  const today=_snapETDate();
+  if(!today) return out;
+  for(const e of (Array.isArray(A.recentLosses)?A.recentLosses:[])){
+    if(!e||!e.sym||!e.date)continue;
+    const days=Math.round((new Date(today+'T00:00:00Z')-new Date(e.date+'T00:00:00Z'))/864e5);
+    if(!(days>=0&&days<SD_WASH_DAYS))continue;
+    const clear=new Date(new Date(e.date+'T00:00:00Z').getTime()+SD_WASH_DAYS*864e5).toISOString().slice(0,10);
+    const cur=out[e.sym]||(out[e.sym]={clear,realized:0,accts:new Set()});
+    cur.realized+=(+e.realized||0);
+    cur.accts.add(e.account==='agentic'?'••••3900':'••••0741');
+    if(clear>cur.clear)cur.clear=clear;
+  }
+  return out;
+}
+/* The plan tier of the Action Center, rebuilt for the SELF-DIRECTED AGGRESSIVE mandate (v113).
+   Three steps, same shape as before because the shape was fine — the physics underneath were not:
+     1 · CUT WHAT'S BROKEN — a thesis test, not the sign of P&L. Plus cap trims measured on EQUITY.
+     2 · DEPLOY INTO THE MANDATE — four aggressive sleeves fed by the momentum lens (sdMomentum),
+         never by the oversold screen. Wash-blocked and broken names can't reach a buy ticket.
+     3 · GUARDRAILS — the standing rulebook for a concentrated, levered, high-beta book.
+   rsiMap/ovMap/earningsMap/smaMap stay optional decorators so this renders on the first pass. */
 function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap, earningsMap, smaMap){
   const el=document.getElementById('plan-content'); if(!el)return;
   rsiMap=rsiMap||{}; ovMap=ovMap||{}; earningsMap=earningsMap||{}; smaMap=smaMap||{};
-  const eq=enriched.reduce((s,p)=>s+Math.max(p.val,0),0)||1;
-  const beta=betaInfo&&betaInfo.beta!=null?betaInfo.beta:null;
-  const perSym=betaInfo&&betaInfo.perSym?betaInfo.perSym:null;
-  const onMargin=(()=>{ try{ return (window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.cashVal<0); }catch(e){ return false; } })();
-  const marginAmt=onMargin?Math.abs(window.__SNAP.stats.cashVal):0;
-  const P=v=>'$'+fmt(v, v>=1?2:4); // price label (finer precision under $1)
+  const P=v=>'$'+fmt(v, v>=1?2:4);
+  const st=(window.__SNAP&&window.__SNAP.stats)||{};
+  const held=enriched.filter(p=>p.val>0&&p.px>0);
+  const exposure=held.reduce((s,p)=>s+p.val,0);
+  /* EQUITY = what you actually own (account value). Every cap below is a % of THIS, not of gross
+     exposure — with margin debt the two diverge enormously, and that gap is the whole risk story. */
+  const equity=(+st.totalVal>0)?+st.totalVal:exposure;
+  const cashVal=+st.cashVal||0, onMargin=cashVal<0, debt=onMargin?Math.abs(cashVal):0;
+  const cashAvail=Math.max(0,cashVal), bpVal=Math.max(0,+st.bpVal||0);
+  const lev=equity>0?exposure/equity:0;
+  const beta=(betaInfo&&betaInfo.beta!=null)?betaInfo.beta:null;
+  const wash=sdWashMap();
 
-  // 1a · Harvest losers — banks a loss, frees cash, offsets gains realized in 1b.
-  //      Exit is marketable (a GTC limit at the live price): the point is the loss + freed cash, not a few cents.
-  const harv=enriched.filter(p=>p.val>=SMALL_THR&&p.pnlD<0&&p.px>0).sort((a,b)=>a.pnlD-b.pnlD);
-  const harvProceeds=harv.reduce((s,p)=>s+p.val,0), bankedLoss=harv.reduce((s,p)=>s+p.pnlD,0); // bankedLoss ≤ 0
-  const harvRows=harv.map(p=>`<tr><td><span class="sym">${p.symbol}</span></td><td class="tr">${fmt(p.qty,p.qty<1?3:2)}</td><td class="tr">${P(p.px)}</td><td class="tr">${fmtD(p.val)}</td><td class="tr"><span class="neg">${fmtD(p.pnlD)}</span> <span style="color:#9ca3af">(${fmtP(p.pnlP)})</span></td></tr>`).join('');
+  /* ── 1 · Classify every holding: broken (exit) vs intact (hold) ─────────────────────────── */
+  const rows=held.map(p=>{ const b=sdBroken(p.symbol,p.avg); return {p,m:b.m,broken:b.broken,why:b.why}; });
+  const exits=rows.filter(r=>r.broken).sort((a,b)=>b.p.val-a.p.val);
+  const exitSet=new Set(exits.map(r=>r.p.symbol));
+  const keep=rows.filter(r=>!exitSet.has(r.p.symbol));
+  const exitProceeds=exits.reduce((s,r)=>s+r.p.val,0);
+  const exitPl=exits.reduce((s,r)=>s+r.p.pnlD,0);
 
-  // 1b · Right-size winners — trim only the EXCESS above the single-name cap (shackle removed).
-  //      Trigger = concentration; RSI/fwd-P/E only annotate urgency. Limit = live price, worked GTC into strength.
-  const trims=enriched.filter(p=>p.val>=SMALL_THR&&p.px>0&&p.val/eq>PLAN_SINGLE_CAP).map(p=>{
-    const excess=p.val-PLAN_SINGLE_CAP*eq;
-    const sh=Math.floor(excess/p.px);
-    const proceeds=sh*p.px, gain=sh*(p.px-p.avg);
-    const rsi=rsiMap[p.symbol], fpe=parseFloat(ovMap[p.symbol]&&ovMap[p.symbol].ForwardPE)||null;
-    const why=[]; if(rsi>=70)why.push('RSI '+fmt(rsi,0)); if(fpe&&fpe>50)why.push('fwd P/E '+fmt(fpe,0));
-    return {p,sh,proceeds,gain,curPct:p.val/eq*100,why};
-  }).filter(t=>t.sh>0&&t.proceeds>=SMALL_THR).sort((a,b)=>b.proceeds-a.proceeds);
-  const trimProceeds=trims.reduce((s,t)=>s+t.proceeds,0), realizedGain=trims.reduce((s,t)=>s+t.gain,0);
-  const trimRows=trims.map(t=>`<tr><td><span class="sym">${t.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.curPct,0)}%→${fmt(PLAN_SINGLE_CAP*100,0)}%</span></td><td class="tr">${t.sh}</td><td class="tr">${P(t.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.gain>=0?'pos':'neg'}">${fmtD(t.gain)}</span>${t.why.length?` <span style="color:#9ca3af">· ${t.why.join(' · ')}</span>`:''}</td></tr>`).join('');
+  /* 1b · Cap trims, on EQUITY. A name that is already exiting is NEVER also trimmed — the old plan
+     put an over-cap loser in both tables and summed both proceeds, overstating the pool by the whole
+     value of those shares. One name, one decision. */
+  const trimNeed={};
+  for(const r of keep){ const over=r.p.val-equity*SD_SINGLE_CAP; if(over>0)trimNeed[r.p.symbol]=over; }
+  /* 1c · Cluster cap, also on equity. Shed from the WEAKEST momentum member first — if the complex
+     has to come down, it should come down where leadership is thinnest. */
+  const clVal={};
+  for(const r of keep){ const c=(typeof clusterFor==='function')?clusterFor(r.p.symbol):null; if(c)clVal[c]=(clVal[c]||0)+r.p.val; }
+  const overClusters=[];
+  for(const [cl,v] of Object.entries(clVal)){
+    let need=v-equity*SD_CLUSTER_CAP; if(need<=0)continue;
+    overClusters.push({cl,pct:v/equity*100,shed:need});
+    const mem=keep.filter(r=>clusterFor(r.p.symbol)===cl)
+                  .sort((a,b)=>(((a.m&&a.m.score)!=null?a.m.score:0)-((b.m&&b.m.score)!=null?b.m.score:0)));
+    for(const r of mem){ if(need<=0)break;
+      const already=trimNeed[r.p.symbol]||0, room=Math.max(0,r.p.val-already);
+      const take=Math.min(room,need); if(take>0){ trimNeed[r.p.symbol]=already+take; need-=take; } }
+  }
+  const trims=Object.keys(trimNeed).map(sym=>{
+    const r=keep.find(x=>x.p.symbol===sym); if(!r)return null;
+    const sh=Math.floor(trimNeed[sym]/r.p.px); if(sh<=0)return null;
+    const proceeds=sh*r.p.px, pl=sh*(r.p.px-r.p.avg);
+    const why=[]; if(r.p.val>equity*SD_SINGLE_CAP)why.push(fmt(r.p.val/equity*100,0)+'% of equity');
+    const c=clusterFor(sym); if(c&&overClusters.some(o=>o.cl===c))why.push(c+' over '+fmt(SD_CLUSTER_CAP*100,0)+'%');
+    return {r,sh,proceeds,pl,why};
+  }).filter(Boolean).sort((a,b)=>b.proceeds-a.proceeds);
+  const trimProceeds=trims.reduce((s,t)=>s+t.proceeds,0), trimPl=trims.reduce((s,t)=>s+t.pl,0);
 
-  const freed=harvProceeds+trimProceeds;
-  const netTaxable=realizedGain+bankedLoss; // gain realized trimming, offset by harvested loss
-  // #6 — deployable pool = cash raised from sells + idle settled cash + margin borrowed up to a fixed
-  // LEVERAGE CAP (`PLAN_MAX_LEVERAGE`, 1.5×). The cap is anchored to your own equity, not the broker's
-  // shifting buying-power offer: allowed fresh loan = (lev−1)×equity = 0.5×equity, i.e. ≤ 50¢ of debt per
-  // $1 you own. We only add leverage from a flat start; when already on margin (cashVal<0) the plan
-  // deleverages instead (marginUse 0, pay the loan down first below). Never beyond what the broker lends.
-  const cashAvail=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.cashVal)||0); }catch(e){ return 0; } })();
-  const bpv=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.bpVal)||0); }catch(e){ return 0; } })();
-  const equityBase=(()=>{ try{ return Math.max(0,(window.__SNAP&&window.__SNAP.stats&&window.__SNAP.stats.equityVal)||0); }catch(e){ return 0; } })();
-  const marginCap=onMargin?0:(PLAN_MAX_LEVERAGE-1)*equityBase; // $ we may borrow before hitting the leverage cap
-  const brokerRoom=Math.max(0,bpv-cashAvail);                  // what the broker will actually lend on top of cash
-  const marginUse=Math.min(marginCap,brokerRoom);
-  const pool=freed+cashAvail+marginUse;
-  const poolParts=[]; if(cashAvail>0)poolParts.push(fmtD(cashAvail)+' cash'); if(marginUse>0)poolParts.push(fmtD(marginUse)+` margin (≤${fmt(PLAN_MAX_LEVERAGE,1)}×)`);
-  const poolInclTxt=poolParts.length?` · incl. ${poolParts.join(' + ')}`:'';
-  const poolNote=marginUse>0
-    ? ` The pool borrows up to your ${fmt(PLAN_MAX_LEVERAGE,1)}× leverage cap — ${fmtD(marginUse)} of margin (≤ ${fmt((PLAN_MAX_LEVERAGE-1)*100,0)}¢ of debt per $1 of equity) on top of cash. That's leverage: a 10% market drop hits a ${fmt(PLAN_MAX_LEVERAGE,1)}× book ~${fmt(PLAN_MAX_LEVERAGE*10,0)}%. Size to your own risk tolerance.`
-    : (cashAvail>0?' The pool is freed cash + idle settled cash — no margin used here.':'');
-
-  // Concrete sell tickets (cash-raising): trims worked into strength, losers exited marketable.
+  const freed=exitProceeds+trimProceeds;          // ONE pass — no shares counted twice
+  const netTaxable=exitPl+trimPl;
   const sellOrders=[
-    ...trims.map(t=>({side:'SELL',sym:t.p.symbol,qty:t.sh,limit:t.p.px,note:'trim to '+fmt(PLAN_SINGLE_CAP*100,0)+'% — GTC limit, sell into strength'})),
-    ...harv.map(p=>({side:'SELL',sym:p.symbol,qty:+fmt(p.qty,p.qty<1?3:2),limit:p.px,note:'harvest the loss — marketable exit'}))
+    ...exits.map(r=>({side:'SELL',sym:r.p.symbol,qty:+fmt(r.p.qty,r.p.qty<1?3:2),limit:r.p.px,note:'exit — thesis broken'})),
+    ...trims.map(t=>({side:'SELL',sym:t.r.p.symbol,qty:t.sh,limit:t.r.p.px,note:'trim to cap — GTC limit, sell into strength'})),
   ];
 
-  // Step 2 helpers — ballast (lowest-β held), defensive sleeves, oversold high-conviction add.
-  const lowBeta=perSym?enriched.filter(p=>p.val>0&&p.px>0&&perSym[p.symbol]!=null&&perSym[p.symbol]<0.9).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>a.b-b.b):[];
-  const defensive=enriched.filter(p=>p.val>0&&p.px>0&&(ASSET_MAP[p.symbol]==='Bonds'||ASSET_MAP[p.symbol]==='Gold/Commodities')).sort((a,b)=>b.val-a.val);
-  const defName=defensive.length?defensive.slice(0,2).map(p=>p.symbol).join(' / ')+' (held)':'short-duration Treasuries or a defensive sector ETF';
-  // Don't pitch adding to a name we're simultaneously trimming for concentration or harvesting (wash-sale).
-  const raiseSet=new Set([...trims.map(t=>t.p.symbol),...harv.map(p=>p.symbol)]);
-  const addCand=enriched.filter(p=>p.val>=SMALL_THR&&p.px>0&&!raiseSet.has(p.symbol)&&rsiMap[p.symbol]!=null&&rsiMap[p.symbol]<=33&&p.pnlP>-40).sort((a,b)=>rsiMap[a.symbol]-rsiMap[b.symbol])[0]||null;
-  // The redeploy's high-conviction sleeve targets the Plan & Picks list directly — but as a SET, not a
-  // single name. Up to 3 ideas you're not already over-weight in (and not simultaneously trimming/
-  // harvesting), diversified by sector AND correlated cluster, skipping any that would pile onto a cluster
-  // already over the cap. PRIMARY = the 3 vetted picks (hand-built levels); when those don't fill the
-  // sleeve (held at cap / hot cluster / sector collision), BACKFILL from the scored top-10 candidates
-  // (synthesized 50-DMA levels, labelled "screen backfill") rather than dumping the remainder to cash.
-  const heldPct={},heldVal={}; enriched.forEach(p=>{ if(p.val>0){ heldPct[p.symbol]=p.pct; heldVal[p.symbol]=p.val; } });
-  const clPctOf=(sym)=>{ try{ const c=clusterFor(sym); return c&&clusters[c]?clusters[c].pct:0; }catch(e){ return 0; } };
-  const pickPickTickers=new Set(((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).map(p=>p&&p.ticker).filter(Boolean));
-  const pickAdds=(()=>{
-    const out=[],usedSec=new Set();
-    const eligible=(ticker,sector)=>{
-      if(!ticker)return false;
-      if(raiseSet.has(ticker))return false;                                     // #2 — not a name we're raising from
-      if(heldPct[ticker]!=null&&heldPct[ticker]>=PLAN_SINGLE_CAP*100)return false; // already at the single-name cap
-      if(clPctOf(ticker)>=PLAN_CLUSTER_CAP*100)return false;                     // #2 — would worsen an over-cap cluster
-      const sec=String(sector||'').split('·')[0].trim();
-      if(sec&&usedSec.has(sec))return false;                                    // #1 — sector-diversify the set
-      return true;
-    };
-    const mark=(sector)=>{ const sec=String(sector||'').split('·')[0].trim(); if(sec)usedSec.add(sec); };
-    // Primary: the 3 vetted picks with full hand-built levels.
-    const picks=((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]);
-    for(let i=0;i<picks.length&&out.length<3;i++){ const p=picks[i]; if(!p||!p.ticker)continue;
-      if(!eligible(p.ticker,p.sector))continue; mark(p.sector); out.push({p,rank:i+1,backfill:false}); }
-    // Backfill: only if the vetted picks left the sleeve unfilled — reach into the scored top-10.
-    if(out.length<3){ const cands=((typeof PICK_CANDIDATES!=='undefined'&&Array.isArray(PICK_CANDIDATES))?PICK_CANDIDATES:[]);
-      for(let i=0;i<cands.length&&out.length<3;i++){ const c=cands[i]; if(!c||!c.ticker)continue;
-        if(pickPickTickers.has(c.ticker))continue;                              // already weighed as a top-3 pick
-        if(c.downtrend)continue;                                                // trend gate — never redeploy into a confirmed downtrend
-        if(c.cooldown)continue;                                                 // cooldown gate — never redeploy into a name we just stopped out on
-        if(!eligible(c.ticker,c.sector))continue;
-        const sp=synthPickFromCandidate(c,smaMap); if(!sp)continue;
-        mark(c.sector); out.push({p:sp,rank:c.rank||(i+1),backfill:true}); } }
-    return out;
-  })();
-  // #7 — historical conviction from the graded Track Record, surfaced inline on the redeploy.
-  const trk=(typeof picksTrackStats==='function')?picksTrackStats():null;
-  // Buy-entry levels anchored to the 50-day average: pullback zone + a starter limit at the live price.
-  const anchor=(p)=>{ const s=smaMap[p.symbol]; const px=p.px;
-    if(s==null||!isFinite(s)) return {note:`starter limit ≤ ${P(px)}`, zone:`≤ ${P(px)}`};
-    if(px<=s) return {note:`below its 50-DMA ${P(s)} — buy ≤ ${P(px)}, a reclaim of ${P(s)} confirms`, zone:`${P(Math.min(px,s*0.98))}–${P(px)}`};
-    return {note:`extended above its 50-DMA ${P(s)} — scale: ½ ≤ ${P(px)}, ½ on a dip toward ${P(s)}`, zone:`${P(s)}–${P(px)}`};
-  };
+  /* ── 2 · The deployable pool ─────────────────────────────────────────────────────────────── */
+  const payDown=onMargin?Math.min(freed,debt):0;   // proceeds net against the loan at the broker
+  const expAfter=exposure-freed;
+  const roomToCap=Math.max(0,SD_MAX_LEVERAGE*equity-expAfter);
+  const brokerRoom=Math.max(0,bpVal-cashAvail);
+  const marginUse=Math.min(roomToCap,brokerRoom);
+  const pool=(freed-payDown)+cashAvail+marginUse;
 
-  // Step 3 helpers — top holdings, biggest cluster, fragile (highest-β) leg, near-term earnings.
-  const top=[...enriched].filter(p=>p.val>0).sort((a,b)=>b.val-a.val);
-  const t1=top[0]||{symbol:'—',val:0}, t2=top[1]||{symbol:'—',val:0};
-  const t1p=t1.val/eq*100, t2p=t2.val/eq*100;
-  const bigCl=Object.entries(clusters).filter(([,c])=>c.matched&&c.matched.length>1).sort((a,b)=>b[1].pct-a[1].pct)[0]||null;
-  const fragile=perSym?enriched.filter(p=>p.val>0&&p.pct>=1.5&&perSym[p.symbol]!=null).map(p=>({p,b:perSym[p.symbol]})).sort((a,b)=>b.b-a.b)[0]:null;
-  const earnT=[t1,t2].map(t=>({t,e:earningsMap[t.symbol]})).filter(x=>x.e&&x.e.daysAway!=null&&x.e.daysAway<=21).sort((a,b)=>a.e.daysAway-b.e.daysAway);
+  /* ── The momentum lens: rank the mandate's universe, then gate it ────────────────────────── */
+  const heldSyms=new Set(held.map(p=>p.symbol));
+  const universe=[...new Set([...Object.keys(SD_BENCH),...heldSyms])];
+  const tierOf=(m)=>SD_BENCH[m.sym]||(m.vol<50?'core':(m.vol<80?'sat':'asym'));
+  const scored=[], abstained=[];
+  for(const s of universe){ const m=sdMomentum(s); if(!m)continue;
+    if(m.score==null){ if(SD_BENCH[s])abstained.push({sym:s,reason:m.reason}); continue; }
+    scored.push({...m,tier:tierOf(m)}); }
+  scored.sort((a,b)=>b.rank-a.rank);
+
+  // Value of each name / cluster AFTER step 1, so the buy legs respect the caps they just enforced.
+  const afterVal={}; for(const r of rows) afterVal[r.p.symbol]=exitSet.has(r.p.symbol)?0:(r.p.val-(trimNeed[r.p.symbol]||0));
+  const clAfter={}; for(const s of Object.keys(afterVal)){ const c=clusterFor(s); if(c)clAfter[c]=(clAfter[c]||0)+afterVal[s]; }
+  const sellingNow=new Set([...exitSet,...trims.map(t=>t.r.p.symbol)]);
+
+  const blocked=[];   // why an otherwise-good name can't be bought right now
+  const eligible=scored.filter(m=>{
+    if(sellingNow.has(m.sym)){ return false; }                       // never buy what we're selling
+    if(wash[m.sym]){ blocked.push({sym:m.sym,kind:'wash',t:wash[m.sym]}); return false; }
+    const br=sdBroken(m.sym,0); if(br.broken){ blocked.push({sym:m.sym,kind:'broken',why:br.why}); return false; }
+    if((afterVal[m.sym]||0)>=equity*SD_SINGLE_CAP){ blocked.push({sym:m.sym,kind:'cap'}); return false; }
+    return true;
+  });
+
+  /* Only names clearing the momentum floor may be bought; the rest are named so the reader can see
+     what was considered and rejected rather than wondering why a sleeve is empty. */
+  const byTier={core:[],sat:[],asym:[]}, belowBar=[];
+  for(const m of eligible){ if(!byTier[m.tier])continue;
+    if(m.score>=SD_MIN_SCORE)byTier[m.tier].push(m); else belowBar.push(m); }
+  /* An empty sleeve's weight cascades UP toward core (asym → sat → core) rather than being forced
+     into a name that failed the screen. If no sleeve qualifies, it all stays as dry powder — "there
+     is no leadership to buy today" is a legitimate answer and a much better one than a bad fill. */
+  const wOf={core:0,sat:0,asym:0}; let carry=0;
+  for(const k of ['asym','sat','core']){ const S=SD_SLEEVES.find(x=>x.k===k);
+    if(byTier[k].length){ wOf[k]=S.w+carry; carry=0; } else carry+=S.w; }
+
+  /* Allocate each sleeve INVERSE-VOL across its top names: a 114%-vol miner and a 39%-vol megacap
+     do not belong in the book at the same dollar size, even at the same conviction. */
+  const buys=[], sleeveRows=[];
+  for(const S of SD_SLEEVES){
+    if(S.k==='cash')continue;
+    const w=wOf[S.k], cands=byTier[S.k].slice(0,S.n);
+    if(!cands.length){ sleeveRows.push({S,w:0,picks:[],none:true}); continue; }
+    const bucket=pool*w;
+    const inv=cands.map(m=>1/Math.max(15,m.vol||40)), sInv=inv.reduce((a,b)=>a+b,0);
+    const picks=[];
+    cands.forEach((m,i)=>{
+      let d=bucket*(inv[i]/sInv);
+      const capRoom=Math.max(0,equity*SD_SINGLE_CAP-(afterVal[m.sym]||0));
+      const c=clusterFor(m.sym);
+      const clRoom=c?Math.max(0,equity*SD_CLUSTER_CAP-(clAfter[c]||0)):Infinity;
+      const capped=Math.min(d,capRoom,clRoom);
+      const sh=Math.floor(capped/m.px); if(sh<=0){ picks.push({m,sh:0,d:0,noRoom:true}); return; }
+      const dollars=sh*m.px;
+      if(c)clAfter[c]=(clAfter[c]||0)+dollars;
+      afterVal[m.sym]=(afterVal[m.sym]||0)+dollars;
+      const stop=sdStop(m), tgt=m.px+3*(m.px-stop);
+      const er=(typeof azEarn==='function')?azEarn(m.sym):null;
+      const erWarn=(er&&er.days!=null&&er.days>=0&&er.days<=10)?` <span style="color:#b45309">⚠️ earnings in ${er.days===0?'<1d':er.days+'d'}</span>`:'';
+      picks.push({m,sh,d:dollars,stop,tgt,erWarn,cappedBy:capped<d?(capRoom<=clRoom?'name cap':'cluster cap'):null});
+      buys.push({side:'BUY',sym:m.sym,qty:sh,limit:m.px,stop:+stop.toFixed(2),note:S.label+' · momentum '+fmt(m.score,1)+'/10'});
+    });
+    sleeveRows.push({S,w,picks});
+  }
+  const deployed=buys.reduce((s,o)=>s+o.qty*o.limit,0);
+  const undeployed=Math.max(0,pool-deployed);
+  // Badge any buy that is ALSO one of today's vetted picks, so the Top-3 cards can say so.
+  try{ const m={}; const pk=new Set(((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).map(p=>p&&p.ticker));
+    buys.forEach(o=>{ if(pk.has(o.sym))m[o.sym]={rank:null,shares:o.qty,dollars:o.qty*o.limit}; });
+    window.__PLAN_ADDS=m; if(document.getElementById('picks-cards')&&typeof renderPicksCards==='function')renderPicksCards();
+  }catch(e){}
+
+  /* ── 3 · Guardrail inputs ────────────────────────────────────────────────────────────────── */
+  /* Concentration is reported over what you'd still HOLD — a name being exited wholesale is not
+     "your largest position", and quoting it as one contradicted the trim table right above it. */
+  const top=keep.map(r=>r.p).sort((a,b)=>b.val-a.val), t1=top[0]||null;
+  const houseMoney=held.filter(p=>p.avg>0&&p.px>=p.avg*SD_HOUSE_MONEY).sort((a,b)=>b.val-a.val);
+  const earnSoon=held.map(p=>({p,e:earningsMap[p.symbol]})).filter(x=>x.e&&x.e.daysAway!=null&&x.e.daysAway<=14).sort((a,b)=>a.e.daysAway-b.e.daysAway);
+  const levTxt=lev>=SD_MAX_LEVERAGE?'<span class="neg">over the ceiling</span>':(lev>1.01?'<span style="color:#b45309">levered</span>':'unlevered');
+
+  const washStrip=Object.keys(wash).length?`<div class="fund-note" style="margin-top:8px">🚫 <b>Wash-sale hold</b> — ${Object.entries(wash).map(([s,w])=>`<b>${s}</b> (loss ${fmtD(w.realized)} in ${[...w.accts].join(' + ')}, clear ${w.clear})`).join(' · ')}. Blocked from every buy ticket below until the window closes. The window is per <i>taxpayer</i>, so a loss in either account blocks a rebuy in both. Not tax advice — check your lots.</div>`:'';
 
   el.innerHTML=`
-    <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">A standing playbook — <b>raise cash</b> (harvest losers <i>and</i> right-size any over-weight winner) → <b>redeploy</b> to pull risk down → <b>guardrails</b>. Winners are trimmed only where one name is above <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> of equity: position discipline, not a call to sell a good stock.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}</div>
+    <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">
+      <b>Mandate: aggressive growth.</b> This book runs concentrated and high-beta on purpose — ballast, bonds and diversification are the <span class="dp-link" onclick="switchTab('portfolio')">agentic account's</span> job, not this one's. So the plan <b>cuts what's broken, not what's red</b>, and redeploys into momentum leadership rather than into the oversold screen.
+      Caps are on <b>equity</b> — ≤${fmt(SD_SINGLE_CAP*100,0)}% per name, ≤${fmt(SD_CLUSTER_CAP*100,0)}% per cluster, ≤${fmt(SD_MAX_LEVERAGE,2)}× leverage.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}
+    </div>
 
-    <div class="col-title">1 · Raise cash <span class="card-hint">(≈ ${fmtD(freed)} freed)</span></div>
-    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Harvest losers${harv.length?` — frees ${fmtD(harvProceeds)}, banks ${fmtD(bankedLoss)} loss`:''}</div>
-    ${harv.length?`<table><thead><tr><th>Sell</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">Loss banked</th></tr></thead><tbody>${harvRows}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(harvProceeds)}</td><td class="tr neg">${fmtD(bankedLoss)}</td></tr></tbody></table>`:`<div class="tech-empty">No positions in the red above $${SMALL_THR}.</div>`}
-    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Right-size winners — any name above ${fmt(PLAN_SINGLE_CAP*100,0)}% of equity</div>
-    ${trims.length?`<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">Realized gain · why now</th></tr></thead><tbody>${trimRows}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${realizedGain>=0?'pos':'neg'}">${fmtD(realizedGain)}</td></tr></tbody></table>`:`<div class="tech-empty">No single name is above ${fmt(PLAN_SINGLE_CAP*100,0)}% of equity — nothing forced to trim.${top[0]?` Largest is ${t1.symbol} at ${fmt(t1p,1)}%.`:''}</div>`}
-    ${trims.length?`<div class="fund-note">Tax netting: the trims realize ≈ <b>${fmtD(realizedGain)}</b> of gains${harv.length?`, offset by the ${fmtD(bankedLoss)} loss banked above → <b>net taxable ≈ ${fmtD(netTaxable)}</b>`:''}. ${harv.length?(netTaxable<0?'The harvest more than covers the gain — the excess loss carries forward. ':'Harvesting alongside the trim is what keeps the tax bill small. ')+'Mind the 30-day wash-sale window on the harvested names. ':'Gains are taxable — favour long-term lots (held &gt; 1yr) or pair with a loss harvest when one appears. '}Not tax advice.</div>`:(harv.length?`<div class="fund-note">Wash-sale: don’t rebuy the harvested names for 30 days. The real win is redeploying the proceeds out of the concentrated book.</div>`:'')}
-    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Raise cash for the redeploy plan — harvest losers + right-size over-weight winners'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
+    <div class="snap-grid" style="margin-bottom:12px">
+      <div class="snap-tile"><div class="st-label">Exposure</div><div class="st-value">${fmtD(exposure)}</div></div>
+      <div class="snap-tile"><div class="st-label">Your equity</div><div class="st-value">${fmtD(equity)}</div></div>
+      <div class="snap-tile"><div class="st-label">Leverage</div><div class="st-value">${fmt(lev,2)}×</div><div class="st-sub">${levTxt} · cap ${fmt(SD_MAX_LEVERAGE,2)}×</div></div>
+      <div class="snap-tile"><div class="st-label">${onMargin?'Margin debt':'Idle cash'}</div><div class="st-value">${fmtD(onMargin?debt:cashAvail)}</div><div class="st-sub">BP ${fmtD(bpVal)}</div></div>
+    </div>
 
-    <div class="col-title" style="margin-top:14px">2 · Redeploy the pool <span class="card-hint">(≈ ${fmtD(pool)} to put to work${poolInclTxt})</span></div>
-    ${(()=>{
-      if(pool<=0) return `<div class="tech-empty">Nothing freed above and no cash or margin headroom — no redeploy step until Step 1 raises cash.</div>`;
-      // Margin clears automatically when Step 1's sells settle — so carve it off the top as already-spent,
-      // then split the remainder. Tilt to ballast when beta is high.
-      const payDown=onMargin?Math.min(freed,marginAmt):0; // the loan nets down against sale proceeds at the broker
-      const rem=pool-payDown;
-      const hiBeta=beta!=null&&beta>1.1;
-      let wB=hiBeta?0.55:0.45, wD=0.30, wO=hiBeta?0.15:0.25;
-      const sz=f=>` <span style="color:#9ca3af">≈ ${fmtD(f)}</span>`;
-      const rows=[], buyOrders=[];
-      const bar=()=>rows.length?'border-top:1px solid var(--surface-2)':'';
-      if(payDown>0) rows.push(`<div style="padding:6px 0"><b style="color:#0969da">After clearing margin</b>${sz(payDown)} — selling above automatically pays your loan down first (it nets against the proceeds at the broker — not a separate order); only the rest below is new buying power.</div>`);
-      // Low-beta ballast → concrete buy on the lowest-β held name.
-      const bT=lowBeta.length?lowBeta[0].p:null;
-      if(bT){ const d=rem*wB, q=Math.floor(d/bT.px), a=anchor(bT); if(q>0){ buyOrders.push({side:'BUY',sym:bT.symbol,qty:q,limit:bT.px,zone:a.zone,note:'low-β ballast'});
-        rows.push(`<div style="padding:6px 0;${bar()}"><b style="color:#0969da">Low-beta ballast</b>${sz(d)} — <b>buy ~${q} sh ${bT.symbol}</b> (β ≈ ${fmt(lowBeta[0].b,2)}) · limit ${a.zone} · ${a.note}. Most direct way to pull portfolio beta down.</div>`); }
-        else rows.push(`<div style="padding:6px 0;${bar()}"><b style="color:#0969da">Low-beta ballast</b>${sz(d)} — add to ${bT.symbol} (β ≈ ${fmt(lowBeta[0].b,2)}, held). Most direct way to pull beta down.</div>`); }
-      else rows.push(`<div style="padding:6px 0;${bar()}"><b style="color:#0969da">Low-beta ballast</b>${sz(rem*wB)} — a broad-market or low-β holding. Most direct way to pull portfolio beta down.</div>`);
-      // Defensive income → concrete buy on the largest held bond/gold sleeve.
-      const dT=defensive.length?defensive[0]:null;
-      if(dT){ const d=rem*wD, q=Math.floor(d/dT.px), a=anchor(dT); if(q>0){ buyOrders.push({side:'BUY',sym:dT.symbol,qty:q,limit:dT.px,zone:a.zone,note:'defensive sleeve'});
-        rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(d)} — <b>buy ~${q} sh ${dT.symbol}</b> · limit ${a.zone}. Ballast + yield, low correlation to the growth book.</div>`); }
-        else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(d)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>`); }
-      else rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Defensive income</b>${sz(rem*wD)} — ${defName}. Ballast + yield, low correlation to the growth book.</div>`);
-      // High-conviction sleeve → redeploy across today's top picks (#1–#3 from pickAdds), each with its
-      // OWN entry/stop (read from pickLevels so the plan and the card never disagree), sized risk-based
-      // (#3, 1% of book at the stop) and clamped so an add can't push a name past the single-name cap and
-      // can't outrun the bucket it draws on. Earnings inside the swing window get flagged (#4). Falls back
-      // to an oversold held name, then cash.
-      const convBucket=rem*wO;
-      const riskBudget=totalVal*0.01; // 1% of book at risk per add — matches the pick-card buy ticket
-      const planAdds=[];              // {sym,px,zone,limit,stop,tp1,rank,shares,dollars,why,erWarn}
-      if(pickAdds.length){
-        const per=convBucket/pickAdds.length;
-        for(const x of pickAdds){ const p=x.p, lv=pickLevels(p), px=lv.px; if(!(px>0))continue;
-          const room=(PLAN_SINGLE_CAP*eq)-(heldVal[p.ticker]||0);                 // $ before this name hits the cap
-          const capSh=Math.floor(Math.max(0,room)/px);
-          const bucketSh=Math.floor(per/px);
-          const riskSh=(lv.stop>0&&px>lv.stop)?Math.floor(riskBudget/(px-lv.stop)):bucketSh;
-          const q=Math.max(0,Math.min(bucketSh,capSh,riskSh));                    // #3 — risk-based AND cap-aware AND pool-bounded
-          const er=(typeof azEarn==='function')?azEarn(p.ticker):null;           // #4 — earnings inside the swing window
-          const erWarn=(er&&er.days!=null&&er.days>=0&&er.days<=14)?` <span style="color:#b45309">⚠️ earnings in ${er.days===0?'<1d':er.days+'d'} — size for the gap or wait for the print</span>`:'';
-          const why=x.backfill
-            ? `<b>#${x.rank} screen</b> <span style="color:#9ca3af">(backfill)</span>${p.rsi!=null?' · RSI '+p.rsi:''} — synth entry ${lv.zone}, stop ${P(lv.stop)}. 50-DMA estimate, not a hand-built setup.`
-            : `<b>#${x.rank} pick</b>${p.signal?' · '+p.signal:''} — entry ${lv.zone}${lv.tp1?`, target $${lv.tp1}`:''}, stop ${P(lv.stop)}`;
-          planAdds.push({sym:p.ticker,px,zone:lv.zone,limit:lv.limit,stop:lv.stop,tp1:lv.tp1,rank:x.rank,backfill:x.backfill,shares:q,dollars:q*px,erWarn,why});
-        }
-      } else if(addCand){ const px=addCand.px, a=anchor(addCand), s=smaMap[addCand.symbol];
-        const stop=(s!=null&&isFinite(s)&&s<px)?Math.min(s*0.97,px*0.93):px*0.90;
-        const q=Math.floor(convBucket/px);
-        planAdds.push({sym:addCand.symbol,px,zone:a.zone,limit:px,stop,tp1:null,rank:null,shares:q,dollars:q*px,erWarn:'',
-          why:`oversold (RSI ${fmt(rsiMap[addCand.symbol],0)}) · limit ${a.zone}, stop ${P(stop)} — a dip-buy rather than parking it all in cash`});
-      }
-      const deployed=planAdds.reduce((s,a)=>s+a.dollars,0);
-      // #5 — stash the plan's sized PRIMARY picks (not synth backfills, which have no Top-3 card) so the
-      // cards can badge "the plan picked this"; repaint them.
-      try{ const m={}; planAdds.forEach(a=>{ if(a.rank&&!a.backfill&&a.shares>0)m[a.sym]={rank:a.rank,shares:a.shares,dollars:a.dollars}; }); window.__PLAN_ADDS=m;
-        if(document.getElementById('picks-cards')&&typeof renderPicksCards==='function')renderPicksCards(); }catch(e){}
-      if(planAdds.length){
-        const nReal=planAdds.filter(a=>a.rank&&!a.backfill).length, nBack=planAdds.filter(a=>a.backfill).length;
-        const convL=(trk&&trk.hitRate!=null&&(trk.wins+trk.losses)>=3)?` <span style="color:#9ca3af">· track record: ${trk.hitRate}% hit TP1+${trk.avgRet!=null?', avg '+(trk.avgRet>=0?'+':'')+fmt(trk.avgRet,1)+'%':''} (${trk.wins+trk.losses} resolved)</span>`:'';
-        const scope=planAdds.length>1?`split across ${planAdds.length} ideas`:`into a single idea`;
-        const backNote=nBack>0?` <span style="color:#9ca3af">(${nReal} vetted pick${nReal===1?'':'s'}${nBack?`, ${nBack} screen backfill from the top 10`:''})</span>`:'';
-        const hdr=`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">High-conviction add${planAdds.length>1?'s':''}</b>${sz(convBucket)} — ${scope}${backNote}${convL}:</div>`;
-        const items=planAdds.map(a=>{ const lbl=(a.rank&&!a.backfill)?`<span class="dp-link" onclick="jumpToPick('${a.sym}')">${a.sym}</span>`:a.sym;
-          return `<div style="padding:5px 0 5px 10px;font-size:12px;line-height:1.45;border-top:1px dashed var(--surface-2)">${a.shares>0?`<b>buy ~${a.shares} sh ${lbl}</b> <span style="color:#9ca3af">≈ ${fmtD(a.dollars)}</span>`:`<b>${lbl}</b> <span style="color:#9ca3af">(no size — already at your cap / risk budget)</span>`} · ${a.why}${a.erWarn}</div>`; }).join('');
-        rows.push(hdr+items);
-        planAdds.forEach(a=>{ if(a.shares>0)buyOrders.push({side:'BUY',sym:a.sym,qty:a.shares,limit:a.limit,zone:a.zone,stop:a.stop,note:a.backfill?('screen backfill · #'+a.rank+' of top 10'):a.rank?('high-conviction add · #'+a.rank+' pick'):'oversold high-conviction add'}); });
-        const leftover=convBucket-deployed;
-        if(leftover>convBucket*0.15) rows.push(`<div style="padding:5px 0 5px 10px;font-size:11.5px;color:#9ca3af;border-top:1px dashed var(--surface-2)">Cap/risk limits leave ≈ ${fmtD(leftover)} of this sleeve undeployed — hold as cash for pullbacks.</div>`);
-      } else {
-        try{ window.__PLAN_ADDS={}; }catch(e){}
-        rows.push(`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">Cash cushion</b>${sz(convBucket)} — ${onMargin?'hold against the margin; dry powder for pullbacks.':'dry powder for pullbacks and to stay nimble.'}</div>`);
-      }
-      const buyBtn=buyOrders.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buyOrders,'Redeploy the freed cash into ballast / defensive / high-conviction names'),'🤖 Build '+(buyOrders.length>1?('these '+buyOrders.length+' buys'):'this buy')+' with Claude')}</div>`:'';
-      return `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">${rows.join('')}<div class="fund-note">${payDown>0?'Margin paid down first, then a ':'A '}${hiBeta?'beta-tilted':'balanced'} split of the remaining ${fmtD(rem)}. Buys are sized from each bucket at the live price; the 50-day average is the pullback anchor.${poolNote} Indicative — re-check the live mark and your buying power before each fill.</div>${buyBtn}</div>`;
-    })()}
+    <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
+    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
+    ${exits.length
+      ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}</div></td><td class="tr">${fmt(r.p.qty,r.p.qty<1?3:2)}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.p.val)}</td><td class="tr"><span class="${r.p.pnlD>=0?'pos':'neg'}">${fmtD(r.p.pnlD)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
+      : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`}
+    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Cap trims — concentration, measured on equity</div>
+    ${trims.length
+      ? `<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L · why</th></tr></thead><tbody>${trims.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.r.p.val/equity*100,0)}%→${fmt(Math.max(0,(t.r.p.val-t.proceeds))/equity*100,0)}%</span></td><td class="tr">${t.sh}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span>${t.why.length?` <span style="color:#9ca3af">· ${t.why.join(' · ')}</span>`:''}</td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${trimPl>=0?'pos':'neg'}">${fmtD(trimPl)}</td></tr></tbody></table>`
+      : `<div class="tech-empty">No name is above ${fmt(SD_SINGLE_CAP*100,0)}% of equity and no cluster above ${fmt(SD_CLUSTER_CAP*100,0)}%.${top[0]?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`}
+    ${(exits.length||trims.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
+    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Cut broken theses and trim to the aggressive-mandate caps in the self-directed account'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
 
-    <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(standing trim &amp; stop rules)</span></div>
+    <div class="col-title" style="margin-top:14px">2 · Deploy into the mandate <span class="card-hint">(≈ ${fmtD(pool)} to put to work)</span></div>
+    ${pool<=0
+      ? `<div class="tech-empty">Nothing freed above, no idle cash, and you're at the ${fmt(SD_MAX_LEVERAGE,2)}× leverage ceiling — no room to add until step 1 raises cash or the book grows into the cap.</div>`
+      : `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
+      ${payDown>0?`<div style="padding:6px 0"><b style="color:#0969da">Loan clears first</b> <span style="color:#9ca3af">≈ ${fmtD(payDown)}</span> — the sells net against your margin balance automatically at the broker (not a separate order); the pool below is then re-borrowed against the larger, less concentrated book. Net effect is a <b>rotation</b>, not a deleverage: ${fmt(lev,2)}× before → ≈ ${fmt(equity>0?(expAfter+deployed)/equity:0,2)}× after.</div>`:''}
+      ${sleeveRows.map(({S,w,picks,none})=>{
+        if(none)return `<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">${S.label}</b> <span style="color:#9ca3af">— nothing here clears the ${fmt(SD_MIN_SCORE,1)}/10 momentum floor with current data; its ${fmt(S.w*100,0)}% ${S.k==='core'?'stays as dry powder':'moves up a sleeve'} rather than forcing a fill.</span></div>`;
+        const hdr=`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">${S.label}</b> <span style="color:#9ca3af">≈ ${fmtD(pool*w)} · ${fmt(w*100,0)}%${w>S.w?` (incl. ${fmt((w-S.w)*100,0)}% cascaded up)`:''} — ${S.hint}</span></div>`;
+        return hdr+picks.map(x=>{
+          const m=x.m, s=x.m.stale?` <span style="color:#b45309" title="price history is ${m.age}d old">· aged data</span>`:'';
+          if(x.noRoom)return `<div style="padding:5px 0 5px 10px;font-size:12px;border-top:1px dashed var(--surface-2)"><b>${m.sym}</b> <span style="color:#9ca3af">(no size — already at your name/cluster cap)</span></div>`;
+          return `<div style="padding:5px 0 5px 10px;font-size:12px;line-height:1.45;border-top:1px dashed var(--surface-2)"><b>buy ~${x.sh} sh ${m.sym}</b> <span style="color:#9ca3af">≈ ${fmtD(x.d)}</span> · momentum <b>${fmt(m.score,1)}</b>/10${s} — limit ${P(m.px)}, stop ${P(x.stop)} <span style="color:#9ca3af">(${fmt((1-x.stop/m.px)*100,0)}%, vol-scaled)</span>, target ${P(x.tgt)}<div style="color:#9ca3af;font-size:11px;margin-top:2px">${m.rs6!=null?`6m vs SPY ${m.rs6>=0?'+':''}${fmt(m.rs6,1)}pp · `:''}${m.rs3!=null?`3m ${m.rs3>=0?'+':''}${fmt(m.rs3,1)}pp · `:''}${fmt(Math.abs(m.fromHi),0)}% off high · vol ${fmt(m.vol,0)}%${x.cappedBy?` · sized down by the ${x.cappedBy}`:''}</div>${x.erWarn}</div>`;
+        }).join('');
+      }).join('')}
+      <div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">${SD_SLEEVES.find(s=>s.k==='cash').label}</b> <span style="color:#9ca3af">≈ ${fmtD(undeployed)} — ${SD_SLEEVES.find(s=>s.k==='cash').hint}</span></div>
+      <div class="fund-note">Ranked by <b>momentum</b>, not oversold-ness: 6- and 3-month relative strength vs SPY, trend state (price vs 50-DMA, 50 vs 100-DMA and its slope), and proximity to the trailing high. Sleeve dollars are split <b>inverse to volatility</b>, so a 100%-vol name doesn't take the same size as a 30%-vol one, then clamped by the name and cluster caps.${marginUse>0?` The pool borrows <b>${fmtD(marginUse)}</b> to reach your ${fmt(SD_MAX_LEVERAGE,2)}× ceiling — that is leverage, and a 10% drop hits a ${fmt(SD_MAX_LEVERAGE,2)}× book ~${fmt(SD_MAX_LEVERAGE*10,0)}%.`:''} Indicative — re-check the live mark and buying power before each fill.</div>
+      ${buys.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buys,'Deploy into the self-directed aggressive mandate — momentum-ranked core / satellite / asymmetric sleeves'),'🤖 Build '+(buys.length>1?('these '+buys.length+' buys'):'this buy')+' with Claude')}</div>`:''}
+    </div>`}
+    ${washStrip}
+    ${blocked.length?`<div class="fund-note" style="margin-top:8px">⏸ <b>Held back this pass</b> — ${blocked.map(b=>b.kind==='wash'?`<b>${b.sym}</b> wash-sale to ${b.t.clear}`:(b.kind==='broken'?`<b>${b.sym}</b> broken trend`:`<b>${b.sym}</b> at its cap`)).join(' · ')}.</div>`:''}
+    ${belowBar.length?`<div class="cov-note" style="margin-top:6px">📊 Under the ${fmt(SD_MIN_SCORE,1)}/10 momentum floor, so not bought — ${belowBar.slice(0,10).sort((a,b)=>b.score-a.score).map(m=>`${m.sym} <span style="opacity:.7">${fmt(m.score,1)}</span>`).join(', ')}${belowBar.length>10?`, +${belowBar.length-10} more`:''}. They stay on the bench and come back the moment they lead again.</div>`:''}
+    ${abstained.length?`<div class="cov-note" style="margin-top:6px">📉 ${abstained.length} bench name${abstained.length===1?'':'s'} sat this one out for want of current data — ${abstained.slice(0,8).map(a=>`${a.sym} <span style="opacity:.7">(${a.reason})</span>`).join(', ')}${abstained.length>8?`, +${abstained.length-8} more`:''}. The producer only refreshes daily bars for names in its current fetch rotation, so a name that rotates out goes stale; scoring it anyway would rank a months-old series as if it were today's. They return automatically once the producer quotes them again.</div>`:''}
+
+    <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(what keeps an aggressive book alive)</span></div>
     <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
-      <div style="padding:4px 0">▸ Any one name tops <b>${fmt(PLAN_SINGLE_CAP*100,0)}%</b> of equity → trim the excess (Step 1b sizes it) <span style="color:#9ca3af">(now ${t1.symbol} ${fmt(t1p,1)}% / ${t2.symbol} ${fmt(t2p,1)}%)</span>.</div>
-      ${bigCl?`<div style="padding:4px 0">▸ <b>${bigCl[0]}</b> cluster tops <b>${fmt(PLAN_CLUSTER_CAP*100,0)}%</b> combined → de-risk across the group <span style="color:#9ca3af">(now ${fmt(bigCl[1].pct,1)}%)</span>.</div>`:''}
-      <div style="padding:4px 0">▸ A holding’s <b>RSI &gt; 75</b> → trim into strength (see Technical Signals / the Do-now tier).</div>
-      ${fragile&&fragile.b>=1.5?`<div style="padding:4px 0">▸ <b>${fragile.p.symbol}</b> (β ≈ ${fmt(fragile.b,1)}) is your highest-beta leg — the fragile one — set a <b>~−20% trailing stop</b>.</div>`:''}
-      <div style="padding:4px 0">▸ ${earnT.length?`<b>${earnT[0].t.symbol}</b> reports in ${earnT[0].e.daysAway}d (${earnT[0].e.reportDate||'soon'}) — decide hold-through vs trim before the print.`:`Reassess around <b>${t1.symbol}/${t2.symbol} earnings</b> — hold-through vs trim.`}</div>
+      <div style="padding:4px 0">▸ Leverage stays under <b>${fmt(SD_MAX_LEVERAGE,2)}×</b> <span style="color:#9ca3af">(now ${fmt(lev,2)}×${lev>=SD_MAX_LEVERAGE?' — over, step 1 brings it back':''})</span>. Leverage on top of high beta is what actually ends accounts like this one.</div>
+      <div style="padding:4px 0">▸ One name ≤ <b>${fmt(SD_SINGLE_CAP*100,0)}%</b> of equity, one cluster ≤ <b>${fmt(SD_CLUSTER_CAP*100,0)}%</b>${t1||overClusters.length?` <span style="color:#9ca3af">(now ${t1?`${t1.symbol} ${fmt(t1.val/equity*100,1)}%`:''}${t1&&overClusters.length?' · ':''}${overClusters.length?`${overClusters[0].cl} ${fmt(overClusters[0].pct,0)}%`:''})</span>`:''}.</div>
+      <div style="padding:4px 0">▸ Every satellite carries a <b>vol-scaled stop</b> (≈12–35% below entry). Concentrated and stopless is the combination that doesn't recover.</div>
+      <div style="padding:4px 0">▸ <b>House money</b> — once a name doubles, sell the original cost basis and let the rest run free. ${houseMoney.length?`<span style="color:#9ca3af">${houseMoney[0].symbol} is at ${fmt(houseMoney[0].px/houseMoney[0].avg,1)}× cost — eligible now.</span>`:'<span style="color:#9ca3af">Nothing at 2× cost yet.</span>'}</div>
+      <div style="padding:4px 0">▸ <b>Never add to a broken trend.</b> Down is not the same as cheap — averaging into a rolled-over name is how a satellite becomes the whole book.</div>
+      <div style="padding:4px 0">▸ ${earnSoon.length?`<b>${earnSoon[0].p.symbol}</b> reports in ${earnSoon[0].e.daysAway}d (${earnSoon[0].e.reportDate||'soon'}) — high-beta names gap hard; size for it or wait for the print.`:'Around earnings on a high-beta name: size for the gap or wait for the print.'}</div>
     </div>`;
 }
 
