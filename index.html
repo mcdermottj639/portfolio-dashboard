@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v114'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v115'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2054,9 +2054,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     const r=keep.find(x=>x.p.symbol===sym); if(!r)return null;
     const sh=Math.floor(trimNeed[sym]/r.p.px); if(sh<=0)return null;
     const proceeds=sh*r.p.px, pl=sh*(r.p.px-r.p.avg);
-    const why=[]; if(r.p.val>equity*SD_SINGLE_CAP)why.push(fmt(r.p.val/equity*100,0)+'% of equity');
-    const c=clusterFor(sym); if(c&&overClusters.some(o=>o.cl===c))why.push(c+' over '+fmt(SD_CLUSTER_CAP*100,0)+'%');
-    return {r,sh,proceeds,pl,why};
+    return {r,sh,proceeds,pl};
   }).filter(Boolean).sort((a,b)=>b.proceeds-a.proceeds);
   const trimProceeds=trims.reduce((s,t)=>s+t.proceeds,0), trimPl=trims.reduce((s,t)=>s+t.pl,0);
 
@@ -2164,10 +2162,10 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     </div>
 
     <div class="snap-grid" style="margin-bottom:12px">
-      <div class="snap-tile"><div class="st-label">Exposure</div><div class="st-value">${fmtD(exposure)}</div></div>
-      <div class="snap-tile"><div class="st-label">Your equity</div><div class="st-value">${fmtD(equity)}</div></div>
-      <div class="snap-tile"><div class="st-label">Leverage</div><div class="st-value">${fmt(lev,2)}×</div><div class="st-sub">${levTxt} · cap ${fmt(SD_MAX_LEVERAGE,2)}×</div></div>
-      <div class="snap-tile"><div class="st-label">${onMargin?'Margin debt':'Idle cash'}</div><div class="st-value">${fmtD(onMargin?debt:cashAvail)}</div><div class="st-sub">BP ${fmtD(bpVal)}</div></div>
+      <div class="snap"><div class="snap-lbl">Exposure</div><div class="snap-val">${fmtD(exposure)}</div><div class="snap-sub">what the book controls</div></div>
+      <div class="snap"><div class="snap-lbl">Your equity</div><div class="snap-val">${fmtD(equity)}</div><div class="snap-sub">what you actually own</div></div>
+      <div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val">${fmt(lev,2)}×</div><div class="snap-sub">${levTxt} · cap ${fmt(SD_MAX_LEVERAGE,2)}×</div></div>
+      <div class="snap"><div class="snap-lbl">${onMargin?'Margin debt':'Idle cash'}</div><div class="snap-val">${fmtD(onMargin?debt:cashAvail)}</div><div class="snap-sub">buying power ${fmtD(bpVal)}</div></div>
     </div>
 
     <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
@@ -2177,7 +2175,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`}
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Cap trims — concentration, measured on equity</div>
     ${trims.length
-      ? `<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${trims.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.r.p.val/equity*100,0)}%→${fmt(Math.max(0,(t.r.p.val-t.proceeds))/equity*100,0)}%</span>${t.why.length?`<div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${t.why.join(' · ')}</div>`:''}</td><td class="tr">${t.sh}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${trimPl>=0?'pos':'neg'}">${fmtD(trimPl)}</td></tr></tbody></table>`
+      ? `<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${trims.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.r.p.val/equity*100,0)}%→${fmt(Math.max(0,(t.r.p.val-t.proceeds))/equity*100,0)}%</span></td><td class="tr">${t.sh}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${trimPl>=0?'pos':'neg'}">${fmtD(trimPl)}</td></tr></tbody></table>`
       : `<div class="tech-empty">No name is above ${fmt(SD_SINGLE_CAP*100,0)}% of equity and no cluster above ${fmt(SD_CLUSTER_CAP*100,0)}%.${top[0]?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`}
     ${(exits.length||trims.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
     ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Cut broken theses and trim to the aggressive-mandate caps in the self-directed account'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}

@@ -142,7 +142,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v114** (`pf-v114`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v115** (`pf-v115`).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
