@@ -130,6 +130,17 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   `main`, so unmerged work simply never takes effect. Open a PR only when the owner asks for one, or
   when a change is large/risky enough that a reviewable diff is genuinely worth the round trip. Run the
   test suite before pushing (see "Verify before shipping").
+- **ALWAYS MERGE — finishing a change means landing it on `main` (standing rule, 2026-08-14).** A
+  Claude-on-the-web session is often launched pinned to its own per-task branch
+  (`claude/<slug>`); that pin governs where you *develop*, not where the work *ends*. When the change
+  is verified, fast-forward or merge that branch into `main` in the same session
+  (`git fetch origin main && git push origin <branch>:main`, or a real merge if `main` moved) and
+  say so. **Do not ask first, and do not hand back a green branch as if it were done** — GitHub Pages
+  serves `main`, so an unmerged commit is invisible to the phone, and the producer + agentic executor
+  both read `main`, so unmerged producer code silently never runs. Leaving work on a branch is a
+  half-finished task, not a cautious one. The only exceptions: the owner explicitly asks for a PR, or
+  the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
+  NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
   `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v110** (`pf-v110`).
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
