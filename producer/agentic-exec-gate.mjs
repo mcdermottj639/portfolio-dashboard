@@ -45,7 +45,12 @@ function readParked() {
     const f = join(dirname(fileURLToPath(import.meta.url)), 'agentic-parked.json');
     if (!existsSync(f)) return null;
     const p = JSON.parse(readFileSync(f, 'utf8'));
-    return (p && +p.dollars > 0) ? { vehicle: p.vehicle || 'VTI', dollars: +p.dollars, forNames: p.forNames || [], since: p.since || null } : null;
+    // A readable ledger is AUTHORITATIVE, including zero: dollars 0 means "nothing parked" (e.g. the
+    // waiting ground was reclassified into the target) and must beat the snapshot's stale copy — the
+    // old `>0` test made a deliberate zero read as "no data", fall through to the snapshot, and
+    // resurrect the stale parked block every pass. Fall back only when the file is missing/corrupt.
+    if (!p || !Number.isFinite(+p.dollars)) return null;
+    return { vehicle: p.vehicle || 'VTI', dollars: Math.max(0, +p.dollars), forNames: p.forNames || [], since: p.since || null };
   } catch { return null; }
 }
 import { planHash, nextAction, MIN_TURNOVER, TICKET_STALE_DAYS } from './agentic-pending.mjs';

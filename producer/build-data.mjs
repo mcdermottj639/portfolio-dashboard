@@ -349,8 +349,12 @@ const data = {
     // pattern as the target/decision ledgers — committed file wins, prior snapshot is the fallback.
     try {
       const pk = JSON.parse(readFileSync(new URL('./agentic-parked.json', import.meta.url), 'utf8'));
-      if (pk && +pk.dollars > 0) data.agentic.parked = { vehicle: pk.vehicle || 'VTI', dollars: +pk.dollars, forNames: pk.forNames || [], since: pk.since || null };
-      else if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked;
+      // The committed ledger is authoritative INCLUDING ZERO — a reclassified/emptied waiting ground
+      // (dollars 0) must not resurrect the prior snapshot's stale parked block. Prior-snapshot
+      // fallback applies only when the file itself is missing or unreadable.
+      if (pk && Number.isFinite(+pk.dollars)) {
+        if (+pk.dollars > 0) data.agentic.parked = { vehicle: pk.vehicle || 'VTI', dollars: +pk.dollars, forNames: pk.forNames || [], since: pk.since || null };
+      } else if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked;
     } catch { if (prior && prior.agentic && prior.agentic.parked) data.agentic.parked = prior.agentic.parked; }
   }
   // ── Wash-sale ledger (taxable accounts) = data.agentic.recentLosses [{sym,date,realized?,avgCost?,exitPx,account?}],
