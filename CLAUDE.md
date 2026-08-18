@@ -142,7 +142,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v115** (`pf-v115`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v116** (`pf-v116`).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -263,6 +263,24 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   check the last bar's date against `_snapETDate()`, never just `bars.length`. The real fix is producer-side
   (a growth bench quoted + bar-fetched every run, the `leaders.mjs` pattern); until then the lens is honest
   but narrow, and it says so on the card.
+- **Robinhood's `equity_value` is GROSS long market value — the account's equity is `total_value` (v116).**
+  The payload is `total_value = equity_value + options_value + cash`, and on a margin book `cash` is the
+  loan (negative), so the two diverge by the whole debt. On 2026-08-18 the self-directed account read
+  `equity_value 29,906.51` / `options_value −591` / `cash −11,282.65` / `total_value 18,032.86`. The
+  snapshot **Margin Used** tile, the red margin banner, the Action Center `MARGIN` alert and the Kyle
+  export all divided the loan by `equity_value` while *labelling it "% of equity"* — reporting **37.7%**
+  where the true debt-to-equity is **62.6%**. It understated leverage by exactly the leverage factor,
+  which is the one number that must never be flattered. All four now divide by **`netEq`**
+  (`stats.netEq` = `total_value`, falling back to `equity_value + cash`), the margin tile carries the
+  leverage multiple (`1.66×`) in its sub-line, and the tile's colour thresholds were retuned to the new
+  basis (>50% red ≈ 1.5×, >25% amber ≈ 1.25× — the old 30/15 against the gross denominator was a far
+  laxer bar than it looked). The Plan tab's `renderActionPlan` (v113) already did this correctly
+  (`const equity=+st.totalVal`), which is precisely why the two surfaces disagreed: the plan said
+  **1.58× / cap 1.60×** while the tile above it said a comfortable 37.7%. Also relabelled: the Buying
+  Power tile's sub-line called `equity_value` "Equity" — it is **"Holdings"**. **Any new percentage-of-
+  equity figure must use `netEq`**, never `equityVal`/`equity_value`. (Still on the gross basis by
+  deliberate choice: the Day Change tile's `dayPnLP`, which is the *holdings'* price return, not the
+  account's — a levered book's equity moved ~1.66× that. Worth revisiting.)
 - **The Portfolio background-enrichment block is fault-isolated** (`load()`'s `(async()=>{…})` wraps each
   render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
   spinner forever. Don't "simplify" the guards away.

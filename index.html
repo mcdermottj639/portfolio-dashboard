@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v115'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v116'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1350,7 +1350,9 @@ function buildKyleHTML(){
   const t1p=t1.val/eq*100, t2p=t2.val/eq*100;
   const clOf=n=>S.clusters[n]?S.clusters[n].val/eq*100:0;
   const ai=clOf('AI Semiconductor'), cr=clOf('Crypto / AI Compute'); const aiCombo=ai+cr;
-  const mUse=st.cashVal<0?Math.abs(st.cashVal):0; const mPct=st.equityVal>0?mUse/st.equityVal*100:0;
+  const mUse=st.cashVal<0?Math.abs(st.cashVal):0;
+  const netEq=(+st.netEq>0)?+st.netEq:(+st.totalVal>0?+st.totalVal:Math.max(0,(+st.equityVal||0)+(+st.cashVal||0)));
+  const mPct=netEq>0?mUse/netEq*100:0;   // debt ÷ equity — never ÷ gross exposure (see load())
   const betaTxt=beta!=null?beta.toFixed(2):'—';
   const stress=v=>beta!=null?((v*beta>=0?'+':'')+ (v*beta).toFixed(1)+'%'):'—';
   const P=S.perf||{labels:[],port:[],spy:[],qqq:[],portYTD:null,spyYTD:null,qqqYTD:null};
@@ -1377,8 +1379,8 @@ function buildKyleHTML(){
       +'<div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val '+sc(st.dayPnL)+'">'+fmtD(st.dayPnL)+'</div><div class="snap-sub '+sc(st.dayPnLP)+'">'+fmtP(st.dayPnLP)+' today</div></div>'
       +'<div class="snap"><div class="snap-lbl">Total Return</div><div class="snap-val '+sc(st.totalPnL)+'">'+fmtP(st.totalRet)+'</div><div class="snap-sub">'+fmtD(st.totalPnL)+' since cost</div></div>'
       +'<div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:'+(beta!=null&&beta>1.2?'#cf222e':'#1f2328')+'">'+betaTxt+'</div><div class="snap-sub">vs 1.00 market · '+cov+'% cov</div></div>'
-      +'<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:'+(mUse>0?'#cf222e':'#1a7f37')+'">'+(mUse>0?mPct.toFixed(1)+'%':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No leverage')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct*2,100).toFixed(0)+'%;background:#cf222e"></div></div>':'')+'</div>'
-      +'</div><div class="snap" style="margin-top:8px"><div class="snap-lbl">Equity / Buying Power</div><div class="snap-val">'+fmtD(st.equityVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">equity</span> · '+fmtD(st.bpVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">BP</span></div></div></div>'
+      +'<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:'+(mUse>0?'#cf222e':'#1a7f37')+'">'+(mUse>0?mPct.toFixed(1)+'%':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No leverage')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:#cf222e"></div></div>':'')+'</div>'
+      +'</div><div class="snap" style="margin-top:8px"><div class="snap-lbl">Equity / Holdings / Buying Power</div><div class="snap-val">'+fmtD(netEq)+' <span style="font-size:13px;color:#8c959f;font-weight:600">equity</span> · '+fmtD(st.equityVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">holdings</span> · '+fmtD(st.bpVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">BP</span></div></div></div>'
     +'<div class="section"><div class="stitle">📈 Performance vs Benchmark <span class="badge">YTD</span></div><div class="card"><div class="perf3"><div><div class="p-l">Your holdings*</div><div class="p-v '+sc(P.portYTD)+'">'+pct(P.portYTD)+'</div></div><div><div class="p-l">Nasdaq (QQQ)</div><div class="p-v '+sc(P.qqqYTD)+'">'+pct(P.qqqYTD)+'</div></div><div><div class="p-l">S&amp;P 500 (SPY)</div><div class="p-v '+sc(P.spyYTD)+'">'+pct(P.spyYTD)+'</div></div></div><div class="chart-wrap"><canvas id="perf"></canvas></div><div class="legend-row"><span><span class="ldot" style="background:#6e40c9"></span>Your holdings</span><span><span class="ldot" style="background:#2da44e"></span>QQQ</span><span><span class="ldot" style="background:#9ca3af"></span>SPY</span></div><div class="note">*Price return of your top holdings ('+(S.perf?Math.round(S.perf.cov||cov):cov)+'% of equity) at current weights, indexed to Jan 1 — like-for-like vs the index, not a time-weighted account return.</div></div></div>'
     +'<div class="section"><div class="stitle">🛡️ Risk &amp; Concentration</div><div class="card"><div><span class="stress '+(beta!=null?'neg':'')+'">'+stress(-10)+'</span> <span style="font-size:12px;color:#656d76">est. move if the market falls 10%'+(beta!=null?' (beta '+betaTxt+')':'')+'</span></div><div class="scn-grid"><div class="scn"><div class="scn-l">Market −5%</div><div class="scn-v neg">'+stress(-5)+'</div></div><div class="scn"><div class="scn-l">Market −10%</div><div class="scn-v neg">'+stress(-10)+'</div></div><div class="scn"><div class="scn-l">Market −20%</div><div class="scn-v neg">'+stress(-20)+'</div></div></div><div class="rl"><span>Largest — <b>'+t1.symbol+'</b></span><b>'+t1p.toFixed(1)+'%</b></div><div class="rl"><span>2nd — <b>'+t2.symbol+'</b></span><b>'+t2p.toFixed(1)+'%</b></div><div class="rl"><span>Effective # of bets (1/HHI)</span><b>'+effN.toFixed(1)+' <span style="font-weight:400;color:#8c959f">of '+nPos+'</span></b></div></div>'
       +(aiCombo>40?'<div class="callout">⚠️ <b>~'+aiCombo.toFixed(0)+'% of equity sits in AI/compute-correlated names</b> (AI-semis '+ai.toFixed(1)+'% + crypto/AI-compute '+cr.toFixed(1)+'%). '+t1.symbol+' + '+t2.symbol+' alone are <b>'+(t1p+t2p).toFixed(0)+'%</b>. They move together'+(mUse>0?', and '+mPct.toFixed(0)+'% margin amplifies it':'')+'. Effective diversification ≈ '+effN.toFixed(0)+' bets, not '+nPos+'.</div>':'')
@@ -1411,11 +1413,17 @@ function renderSnapshot(stats, betaInfo, opts){
   const O=opts||{};
   const el=document.getElementById('snap-content'+(O.sfx||'')); if(!el)return;
   const {totalVal,equityVal,cashVal,bpVal,dayPnL,dayPnLP,totalPnL,totalRet,marginPct}=stats;
+  /* See load(): `equityVal` is GROSS long market value, `netEq` is what you actually own. Margin is
+     a fraction of the latter — the two diverge by the whole loan on a levered book. */
+  const netEq=(+stats.netEq>0)?+stats.netEq:(totalVal>0?totalVal:Math.max(0,equityVal+cashVal));
   const betaTxt = betaInfo&&betaInfo.beta!=null ? fmt(betaInfo.beta,2) : '<span class="spin-sm"></span>';
   const betaColor = betaInfo&&betaInfo.beta!=null ? (betaInfo.beta>1.2?'#ef4444':betaInfo.beta>1?'#f97316':'#10b981') : '#9ca3af';
   const mUse = cashVal<0 ? Math.abs(cashVal) : 0;
-  const mPct = equityVal>0 ? mUse/equityVal*100 : 0;
-  const mColor = mPct>30?'#ef4444':mPct>15?'#f97316':'#10b981';
+  const mPct = netEq>0 ? mUse/netEq*100 : 0;          // debt ÷ equity, i.e. (leverage − 1)
+  const mLev = netEq>0 ? (netEq-cashVal)/netEq : 0;    // non-cash assets ÷ equity
+  /* Thresholds are debt-to-equity, so they read as leverage: 25% ≈ 1.25×, 50% ≈ 1.5×. They were
+     30/15 against the gross denominator, which is a far laxer bar than it looked. */
+  const mColor = mPct>50?'#ef4444':mPct>25?'#f97316':'#10b981';
   /* Unrealized vs YTD — two different questions, and conflating them is what made this tile
      misleading. `totalRet`/`totalPnL` is the unrealized mark on the lots you hold RIGHT NOW
      (cost basis of the current shares), so an account that just redeployed a deposit shows a
@@ -1441,7 +1449,7 @@ function renderSnapshot(stats, betaInfo, opts){
       : `<div class="snap-val" style="color:#9ca3af"><span class="spin-sm"></span></div><div class="snap-sub">indexing to Jan 1…</div>`;
   }
   el.innerHTML=`<div class="snap-grid">
-    <div class="snap"><div class="snap-lbl">${O.cashTile?'Account Value':'Buying Power'}</div><div class="snap-val">${fmtD(O.cashTile?totalVal:bpVal)}</div><div class="snap-sub">${O.cashTile?'Invested ':'Equity '}${fmtD(equityVal)}</div></div>
+    <div class="snap"><div class="snap-lbl">${O.cashTile?'Account Value':'Buying Power'}</div><div class="snap-val">${fmtD(O.cashTile?totalVal:bpVal)}</div><div class="snap-sub">${O.cashTile?'Invested ':'Holdings '}${fmtD(equityVal)}</div></div>
     <div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val ${sc(dayPnL)}">${fmtD(dayPnL)}</div><div class="snap-sub ${sc(dayPnLP)}">${fmtP(dayPnLP)} today</div></div>
     <div class="snap"><div class="snap-lbl">Unrealized</div><div class="snap-val ${sc(totalPnL)}">${fmtP(totalRet)}</div><div class="snap-sub">${fmtD(totalPnL)} on current lots</div></div>
     <div class="snap"><div class="snap-lbl">${ytdLbl}</div>${ytdHtml}</div>
@@ -1451,7 +1459,7 @@ function renderSnapshot(stats, betaInfo, opts){
       // rebalance (the deploy-cash trigger fires around 5% of book).
       ? (()=>{ const cPct=totalVal>0?Math.max(0,cashVal)/totalVal*100:0;
           return `<div class="snap"><div class="snap-lbl">Idle Cash</div><div class="snap-val" style="color:${cPct>=15?'#f97316':'#10b981'}">${fmt(cPct,1)}%</div><div class="snap-sub">${fmtD(Math.max(0,cashVal))} uninvested</div>${cPct>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(cPct*4,100)}%;background:${cPct>=15?'#f97316':'#10b981'}"></div></div>`:''}</div>`; })()
-      : `<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:${mUse>0?mColor:'#10b981'}">${mUse>0?fmt(mPct,1)+'%':'None'}</div><div class="snap-sub">${mUse>0?fmtD(mUse)+' borrowed':'No leverage'}</div>${mUse>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(mPct*2,100)}%;background:${mColor}"></div></div>`:''}</div>`}
+      : `<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:${mUse>0?mColor:'#10b981'}">${mUse>0?fmt(mPct,1)+'%':'None'}</div><div class="snap-sub">${mUse>0?`${fmtD(mUse)} borrowed · ${fmt(mLev,2)}×`:'No leverage'}</div>${mUse>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(mPct,100)}%;background:${mColor}"></div></div>`:''}</div>`}
     <div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:${betaColor}">${betaTxt}</div><div class="snap-sub">vs S&P 500${betaInfo&&betaInfo.coverage?` · ${fmt(betaInfo.coverage,0)}% cov`:''}</div></div>
   </div>`;
 }
@@ -1620,7 +1628,10 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
 
 /* ═══ Action Feed (merged alerts + recommendations) ═══ */
 function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earningsMap){
-  const A=[]; const cash=parseFloat(port.cash||0); const equity=parseFloat(port.equity_value||1);
+  /* `equity_value` is GROSS long market value; the account's equity is `total_value` (see load()).
+     Dividing the loan by the gross figure understated the margin alert by the leverage factor. */
+  const A=[]; const cash=parseFloat(port.cash||0); const grossVal=parseFloat(port.equity_value||1);
+  const equity=parseFloat(port.total_value||0)||Math.max(1,grossVal+cash);
   const add=(o)=>A.push(o);
   if(cash<-1000){ const mp=Math.abs(cash)/equity*100; const t=[...enriched].filter(p=>p.pct>3&&p.px>0).sort((a,b)=>b.val-a.val)[0]; add({pr:0,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'MARGIN',title:`Margin in use — ${fmtD(Math.abs(cash))} (${fmt(mp,1)}% of equity)`,detail:t?`A drawdown is amplified by leverage. Trimming ~${Math.ceil(Math.abs(cash)/t.px)} sh of ${t.symbol} (~${fmtD(t.px)}) would clear it.`:`Leverage amplifies losses — top priority.`}); }
   const crits=[...enriched].filter(p=>p.pct>10&&p.px>0).sort((a,b)=>b.pct-a.pct);
@@ -2554,7 +2565,7 @@ function renderAgenticAnalytics(){
   const syms=ag.map(p=>p.symbol);
   const dy=agenticDay(A);
   const totalPnL=ag.reduce((s,p)=>s+p.pnlD,0), totalCost=ag.reduce((s,p)=>s+p.cost,0);
-  const stats={ totalVal:book, equityVal:invested, cashVal:cash, bpVal:+A.buyingPower||cash,
+  const stats={ totalVal:book, equityVal:invested, netEq:book, cashVal:cash, bpVal:+A.buyingPower||cash,
     dayPnL:dy?dy.d:0, dayPnLP:(dy&&book-dy.d>0)?(dy.d/(book-dy.d)*100):0,
     totalPnL, totalRet:totalCost>0?(totalPnL/totalCost)*100:0, marginPct:0 };
   const guard=(label,fn)=>{ try{ return fn(); }catch(e){ try{console.warn('[render]',label,e&&e.message);}catch(_){} } };
@@ -3400,14 +3411,24 @@ async function load(){
     const totalRet=totalCost>0?(totalPnL/totalCost)*100:0;
     const dayPnL=enriched.reduce((s,p)=>s+(p.dayD||0),0);
     const dayPnLP=equityVal>0?dayPnL/(equityVal-dayPnL)*100:0;
-    const marginPct=equityVal>0?(Math.abs(Math.min(cashVal,0))/equityVal)*100:0;
-    const stats={totalVal,equityVal,cashVal,bpVal,dayPnL,dayPnLP,totalPnL,totalRet,marginPct};
+    /* NET EQUITY vs GROSS EXPOSURE — Robinhood's `equity_value` is the LONG MARKET VALUE of the
+       stock positions, NOT the account's equity: total_value = equity_value + options_value + cash,
+       and on this book cash is NEGATIVE (the margin loan). On 2026-08-18 that read 29,906.51 gross
+       against 18,032.86 actually owned. Dividing the $11,282.65 loan by the gross figure reported
+       "37.7% of equity" when the true debt-to-equity is 62.6% — it understated leverage by exactly
+       the leverage factor, which is the one number that must never be flattered. Every margin/
+       leverage percentage is a fraction of `netEq` (what you'd walk away with), matching the caps
+       the Plan tab already enforces (`renderActionPlan`, v113). */
+    const netEq=totalVal>0?totalVal:Math.max(0,equityVal+cashVal);
+    const marginPct=netEq>0?(Math.abs(Math.min(cashVal,0))/netEq)*100:0;
+    const leverage=netEq>0?(netEq-cashVal)/netEq:0;   // all non-cash assets / equity
+    const stats={totalVal,equityVal,netEq,cashVal,bpVal,dayPnL,dayPnLP,totalPnL,totalRet,marginPct,leverage};
     const SNAP_DATE=(window.__DATA&&window.__DATA.generatedAtLabel)||new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
     window.__SNAP={stats,clusters,enriched,port,date:SNAP_DATE,betaInfo:null,alloc:null,income:null,harvest:null,perf:null,rsiMap:null,smaMap:null,ovMap:null,earn:null};
     const smalls=enriched.filter(p=>p.val>0&&p.val<SMALL_THR);
 
     app.innerHTML=`
-      ${cashVal<0?`<div class="margin-banner"><div style="font-size:20px">⚠️</div><div><div class="mb-text">Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))}. Leverage amplifies both gains and losses — see Risk below.</div></div></div>`:''}
+      ${cashVal<0?`<div class="margin-banner"><div style="font-size:20px">⚠️</div><div><div class="mb-text">Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))} against ${fmtD(netEq)} of your own money — ${fmt(leverage,2)}× leverage. Amplifies both gains and losses — see Risk below.</div></div></div>`:''}
       <div class="header"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="h-label">Total Portfolio Value</div><div class="h-value">${fmtD(totalVal)}</div><div class="h-tag">Robinhood · Individual Margin</div></div><button id="kyle-btn" class="kyle-btn" onclick="pushToKyle()">📲 Push to Kyle</button></div></div>
       <div class="card" data-sec="snapshot"><div id="snap-content"></div></div>
       <div class="card" data-sec="holdings"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
