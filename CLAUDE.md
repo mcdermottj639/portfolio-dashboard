@@ -142,7 +142,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v117** (`pf-v117`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v118** (`pf-v118`).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -294,7 +294,18 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   carrying positive cash — internally inconsistent with the real payload — so the margin banner and the
   Margin Used tile were **never exercised in local preview**, which is how this survived. It now emits
   `total_value = equity_value + cash`, and **`PF_SAMPLE_MARGIN=1`** generates a levered fixture
-  (cash −11,282.65) so those surfaces can actually be eyeballed.
+  (cash −11,282.65, buying power 16,976.33 — the real account's, so the fixture reproduces the reported
+  screen exactly) so those surfaces can actually be eyeballed.
+  **v118 — the tile is called LEVERAGE, because "Margin Used" was ambiguous, not just miscomputed.**
+  Robinhood's buying-power screen stacks **Margin total $28,258.98** over **Margin used $11,282.65**, so
+  that *name* reads as **line utilisation** (loan ÷ credit line = **39.9%**), while the risk number is
+  loan ÷ equity (**63.2%**). Both are legitimate; the old tile borrowed RH's label for the other one's
+  denominator — and 37.7% landed near 39.9% by coincidence, which is why it never looked obviously
+  broken. The tile now headlines `63.2% · 1.63×` with `39.9% of $28,258.98 line` beneath. **The margin
+  line is not in the payload** — it is exactly `buying_power + loan` (verified to the penny against the
+  app). Corroboration that `netEq` is the right basis: RH's own **margin buffer** (57.74% / $10,258.26)
+  only reproduces against equity ≈ `total_value` — modelling it as `equity − 25% maintenance × LMV`
+  gives 58.4% off `total_value` and nothing sane off `equity_value`.
 - **The Portfolio background-enrichment block is fault-isolated** (`load()`'s `(async()=>{…})` wraps each
   render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
   spinner forever. Don't "simplify" the guards away.

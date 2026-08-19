@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v117'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v118'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1354,6 +1354,8 @@ function buildKyleHTML(){
   const netEq=(+st.netEq>0)?+st.netEq:(+st.totalVal>0?+st.totalVal:Math.max(0,(+st.equityVal||0)+(+st.cashVal||0)));
   const mPct=netEq>0?mUse/netEq*100:0;   // debt ÷ equity — never ÷ gross exposure (see load())
   const kyleDayGross=(st.dayPnLPGross!=null&&Math.abs(st.dayPnLPGross-(+st.dayPnLP||0))>=0.05)?st.dayPnLPGross:null;
+  const kBp=Math.max(0,+st.bpVal||0), kLine=(mUse>0&&kBp>0)?kBp+mUse:0;
+  const kUtil=kLine>0?mUse/kLine*100:null, kLev=netEq>0?(netEq-(+st.cashVal||0))/netEq:0;
   const betaTxt=beta!=null?beta.toFixed(2):'—';
   const stress=v=>beta!=null?((v*beta>=0?'+':'')+ (v*beta).toFixed(1)+'%'):'—';
   const P=S.perf||{labels:[],port:[],spy:[],qqq:[],portYTD:null,spyYTD:null,qqqYTD:null};
@@ -1380,7 +1382,7 @@ function buildKyleHTML(){
       +'<div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val '+sc(st.dayPnL)+'">'+fmtD(st.dayPnL)+'</div><div class="snap-sub '+sc(st.dayPnLP)+'">'+fmtP(st.dayPnLP)+' today'+(kyleDayGross!=null?' <span style="color:#8c959f">· holdings '+fmtP(kyleDayGross)+'</span>':'')+'</div></div>'
       +'<div class="snap"><div class="snap-lbl">Total Return</div><div class="snap-val '+sc(st.totalPnL)+'">'+fmtP(st.totalRet)+'</div><div class="snap-sub">'+fmtD(st.totalPnL)+' since cost</div></div>'
       +'<div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:'+(beta!=null&&beta>1.2?'#cf222e':'#1f2328')+'">'+betaTxt+'</div><div class="snap-sub">vs 1.00 market · '+cov+'% cov</div></div>'
-      +'<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:'+(mUse>0?'#cf222e':'#1a7f37')+'">'+(mUse>0?mPct.toFixed(1)+'%':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No leverage')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:#cf222e"></div></div>':'')+'</div>'
+      +'<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:'+(mUse>0?'#cf222e':'#1a7f37')+'">'+(mUse>0?mPct.toFixed(1)+'% · '+kLev.toFixed(2)+'\u00d7':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No borrowing')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:#cf222e"></div></div>':'')+(kUtil!=null?'<div class="snap-sub">'+kUtil.toFixed(1)+'% of '+fmtD(kLine)+' line</div>':'')+'</div>'
       +'</div><div class="snap" style="margin-top:8px"><div class="snap-lbl">Equity / Holdings / Buying Power</div><div class="snap-val">'+fmtD(netEq)+' <span style="font-size:13px;color:#8c959f;font-weight:600">equity</span> · '+fmtD(st.equityVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">holdings</span> · '+fmtD(st.bpVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">BP</span></div></div></div>'
     +'<div class="section"><div class="stitle">📈 Performance vs Benchmark <span class="badge">YTD</span></div><div class="card"><div class="perf3"><div><div class="p-l">Your holdings*</div><div class="p-v '+sc(P.portYTD)+'">'+pct(P.portYTD)+'</div></div><div><div class="p-l">Nasdaq (QQQ)</div><div class="p-v '+sc(P.qqqYTD)+'">'+pct(P.qqqYTD)+'</div></div><div><div class="p-l">S&amp;P 500 (SPY)</div><div class="p-v '+sc(P.spyYTD)+'">'+pct(P.spyYTD)+'</div></div></div><div class="chart-wrap"><canvas id="perf"></canvas></div><div class="legend-row"><span><span class="ldot" style="background:#6e40c9"></span>Your holdings</span><span><span class="ldot" style="background:#2da44e"></span>QQQ</span><span><span class="ldot" style="background:#9ca3af"></span>SPY</span></div><div class="note">*Price return of your top holdings ('+(S.perf?Math.round(S.perf.cov||cov):cov)+'% of equity) at current weights, indexed to Jan 1 — like-for-like vs the index, not a time-weighted account return.</div></div></div>'
     +'<div class="section"><div class="stitle">🛡️ Risk &amp; Concentration</div><div class="card"><div><span class="stress '+(beta!=null?'neg':'')+'">'+stress(-10)+'</span> <span style="font-size:12px;color:#656d76">est. move if the market falls 10%'+(beta!=null?' (beta '+betaTxt+')':'')+'</span></div><div class="scn-grid"><div class="scn"><div class="scn-l">Market −5%</div><div class="scn-v neg">'+stress(-5)+'</div></div><div class="scn"><div class="scn-l">Market −10%</div><div class="scn-v neg">'+stress(-10)+'</div></div><div class="scn"><div class="scn-l">Market −20%</div><div class="scn-v neg">'+stress(-20)+'</div></div></div><div class="rl"><span>Largest — <b>'+t1.symbol+'</b></span><b>'+t1p.toFixed(1)+'%</b></div><div class="rl"><span>2nd — <b>'+t2.symbol+'</b></span><b>'+t2p.toFixed(1)+'%</b></div><div class="rl"><span>Effective # of bets (1/HHI)</span><b>'+effN.toFixed(1)+' <span style="font-weight:400;color:#8c959f">of '+nPos+'</span></b></div></div>'
@@ -1422,6 +1424,14 @@ function renderSnapshot(stats, betaInfo, opts){
   const mUse = cashVal<0 ? Math.abs(cashVal) : 0;
   const mPct = netEq>0 ? mUse/netEq*100 : 0;          // debt ÷ equity, i.e. (leverage − 1)
   const mLev = netEq>0 ? (netEq-cashVal)/netEq : 0;    // non-cash assets ÷ equity
+  /* Two legitimate denominators, and conflating them is what made "Margin Used" ambiguous. Robinhood's
+     buying-power screen stacks "Margin total" over "Margin used", so THAT name reads as line
+     utilisation (loan ÷ credit line). The risk number is loan ÷ equity. The tile is therefore called
+     **Leverage** — no name collision — and carries utilisation on its own line. `margin total` isn't in
+     the payload but is exactly buying_power + loan (verified against the app: 16,976.33 + 11,282.65 =
+     28,258.98). RH's own "margin buffer %" divides by equity too, so mPct shares its basis. */
+  const mLine = (mUse>0 && bpVal>0) ? bpVal+mUse : 0;
+  const mUtil = mLine>0 ? mUse/mLine*100 : null;
   /* Day % headlines the EQUITY basis (see load()). The holdings basis rides along only when leverage
      makes the two differ — on an unlevered book they're the same number and printing it twice is noise. */
   const dayGross = (stats.dayPnLPGross!=null && Math.abs(stats.dayPnLPGross-dayPnLP)>=0.05) ? stats.dayPnLPGross : null;
@@ -1463,7 +1473,7 @@ function renderSnapshot(stats, betaInfo, opts){
       // rebalance (the deploy-cash trigger fires around 5% of book).
       ? (()=>{ const cPct=totalVal>0?Math.max(0,cashVal)/totalVal*100:0;
           return `<div class="snap"><div class="snap-lbl">Idle Cash</div><div class="snap-val" style="color:${cPct>=15?'#f97316':'#10b981'}">${fmt(cPct,1)}%</div><div class="snap-sub">${fmtD(Math.max(0,cashVal))} uninvested</div>${cPct>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(cPct*4,100)}%;background:${cPct>=15?'#f97316':'#10b981'}"></div></div>`:''}</div>`; })()
-      : `<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:${mUse>0?mColor:'#10b981'}">${mUse>0?fmt(mPct,1)+'%':'None'}</div><div class="snap-sub">${mUse>0?`${fmtD(mUse)} borrowed · ${fmt(mLev,2)}×`:'No leverage'}</div>${mUse>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(mPct,100)}%;background:${mColor}"></div></div>`:''}</div>`}
+      : `<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:${mUse>0?mColor:'#10b981'}">${mUse>0?`${fmt(mPct,1)}% <span style="font-size:13px;font-weight:700;opacity:.75">· ${fmt(mLev,2)}×</span>`:'None'}</div><div class="snap-sub">${mUse>0?`${fmtD(mUse)} borrowed`:'No borrowing'}</div>${mUse>0?`<div class="gauge"><div class="gauge-fill" style="width:${Math.min(mPct,100)}%;background:${mColor}"></div></div>`:''}${mUtil!=null?`<div class="snap-sub">${fmt(mUtil,1)}% of ${fmtD(mLine)} line</div>`:''}</div>`}
     <div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:${betaColor}">${betaTxt}</div><div class="snap-sub">vs S&P 500${betaInfo&&betaInfo.coverage?` · ${fmt(betaInfo.coverage,0)}% cov`:''}</div></div>
   </div>`;
 }

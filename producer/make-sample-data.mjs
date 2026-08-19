@@ -77,7 +77,10 @@ recorded[makeKey(RH + 'get_portfolio', { account_number: 'ACCT' })] = {
     total_value: totalVal.toFixed(2),
     equity_value: equityVal.toFixed(2),
     cash: cash.toFixed(2),
-    buying_power: { buying_power: Math.max(0, totalVal * 2 - equityVal).toFixed(2) },
+    /* In margin mode use the real account's buying power, so the fixture reproduces the reported
+       screen exactly: margin total = buying_power + loan = 16,976.33 + 11,282.65 = 28,258.98, which
+       is the figure the Leverage tile's "% of line" divides by. */
+    buying_power: { buying_power: (process.env.PF_SAMPLE_MARGIN ? 16976.33 : Math.max(0, totalVal * 2 - equityVal)).toFixed(2) },
   } },
 };
 
