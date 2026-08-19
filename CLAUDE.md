@@ -142,7 +142,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v116** (`pf-v116`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v117** (`pf-v117`).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -278,9 +278,23 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   (`const equity=+st.totalVal`), which is precisely why the two surfaces disagreed: the plan said
   **1.58× / cap 1.60×** while the tile above it said a comfortable 37.7%. Also relabelled: the Buying
   Power tile's sub-line called `equity_value` "Equity" — it is **"Holdings"**. **Any new percentage-of-
-  equity figure must use `netEq`**, never `equityVal`/`equity_value`. (Still on the gross basis by
-  deliberate choice: the Day Change tile's `dayPnLP`, which is the *holdings'* price return, not the
-  account's — a levered book's equity moved ~1.66× that. Worth revisiting.)
+  equity figure must use `netEq`**, never `equityVal`/`equity_value`.
+  **v117 finished the job on Day Change.** `dayPnLP` was the last gross-basis figure — the *holdings'*
+  price return, not the account's, so a levered book's real day was the leverage factor worse: on
+  2026-08-18 the tile read **−6.06%** against a true **−9.67%**. It is now `dayPnL/(netEq−dayPnL)`, with
+  the holdings basis kept as `stats.dayPnLPGross` and shown as a grey "· holdings −6.06%" **only when
+  the two differ by ≥0.05pp** (i.e. only on margin — on an unlevered book they're the same number and
+  printing it twice is noise). The agentic side already divided by `book` (= equity), so it was correct
+  and is untouched. Note the sub-tile that CANNOT be fixed the same way: **YTD (holdings)** is the
+  benchmark card's *modeled* price return of today's holdings indexed to Jan 1 — levering it would need
+  a margin-balance history the broker never exposes, and multiplying by *today's* leverage would invent
+  a number. It stays on the holdings basis and now says **"unlevered"** in its sub-line so the two tiles
+  don't silently disagree.
+  **`make-sample-data.mjs` was complicit** and is fixed too: it set `total_value = equity_value` while
+  carrying positive cash — internally inconsistent with the real payload — so the margin banner and the
+  Margin Used tile were **never exercised in local preview**, which is how this survived. It now emits
+  `total_value = equity_value + cash`, and **`PF_SAMPLE_MARGIN=1`** generates a levered fixture
+  (cash −11,282.65) so those surfaces can actually be eyeballed.
 - **The Portfolio background-enrichment block is fault-isolated** (`load()`'s `(async()=>{…})` wraps each
   render in a `guard()`). Keep it that way — without it, one throw leaves every card below it stuck on its
   spinner forever. Don't "simplify" the guards away.

@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v116'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v117'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1353,6 +1353,7 @@ function buildKyleHTML(){
   const mUse=st.cashVal<0?Math.abs(st.cashVal):0;
   const netEq=(+st.netEq>0)?+st.netEq:(+st.totalVal>0?+st.totalVal:Math.max(0,(+st.equityVal||0)+(+st.cashVal||0)));
   const mPct=netEq>0?mUse/netEq*100:0;   // debt ÷ equity — never ÷ gross exposure (see load())
+  const kyleDayGross=(st.dayPnLPGross!=null&&Math.abs(st.dayPnLPGross-(+st.dayPnLP||0))>=0.05)?st.dayPnLPGross:null;
   const betaTxt=beta!=null?beta.toFixed(2):'—';
   const stress=v=>beta!=null?((v*beta>=0?'+':'')+ (v*beta).toFixed(1)+'%'):'—';
   const P=S.perf||{labels:[],port:[],spy:[],qqq:[],portYTD:null,spyYTD:null,qqqYTD:null};
@@ -1376,7 +1377,7 @@ function buildKyleHTML(){
   return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"><title>Portfolio</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"><\/script><style>'+css+'</style></head><body>'
     +'<div class="header"><h1>📊 Portfolio</h1><div class="hv">'+fmtD(st.totalVal)+'</div><div class="asof"><span class="dot"></span> As of '+S.date+' · pushed live from desktop</div></div>'
     +'<div class="section"><div class="snap-grid">'
-      +'<div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val '+sc(st.dayPnL)+'">'+fmtD(st.dayPnL)+'</div><div class="snap-sub '+sc(st.dayPnLP)+'">'+fmtP(st.dayPnLP)+' today</div></div>'
+      +'<div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val '+sc(st.dayPnL)+'">'+fmtD(st.dayPnL)+'</div><div class="snap-sub '+sc(st.dayPnLP)+'">'+fmtP(st.dayPnLP)+' today'+(kyleDayGross!=null?' <span style="color:#8c959f">· holdings '+fmtP(kyleDayGross)+'</span>':'')+'</div></div>'
       +'<div class="snap"><div class="snap-lbl">Total Return</div><div class="snap-val '+sc(st.totalPnL)+'">'+fmtP(st.totalRet)+'</div><div class="snap-sub">'+fmtD(st.totalPnL)+' since cost</div></div>'
       +'<div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:'+(beta!=null&&beta>1.2?'#cf222e':'#1f2328')+'">'+betaTxt+'</div><div class="snap-sub">vs 1.00 market · '+cov+'% cov</div></div>'
       +'<div class="snap"><div class="snap-lbl">Margin Used</div><div class="snap-val" style="color:'+(mUse>0?'#cf222e':'#1a7f37')+'">'+(mUse>0?mPct.toFixed(1)+'%':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No leverage')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:#cf222e"></div></div>':'')+'</div>'
@@ -1421,6 +1422,9 @@ function renderSnapshot(stats, betaInfo, opts){
   const mUse = cashVal<0 ? Math.abs(cashVal) : 0;
   const mPct = netEq>0 ? mUse/netEq*100 : 0;          // debt ÷ equity, i.e. (leverage − 1)
   const mLev = netEq>0 ? (netEq-cashVal)/netEq : 0;    // non-cash assets ÷ equity
+  /* Day % headlines the EQUITY basis (see load()). The holdings basis rides along only when leverage
+     makes the two differ — on an unlevered book they're the same number and printing it twice is noise. */
+  const dayGross = (stats.dayPnLPGross!=null && Math.abs(stats.dayPnLPGross-dayPnLP)>=0.05) ? stats.dayPnLPGross : null;
   /* Thresholds are debt-to-equity, so they read as leverage: 25% ≈ 1.25×, 50% ≈ 1.5×. They were
      30/15 against the gross denominator, which is a far laxer bar than it looked. */
   const mColor = mPct>50?'#ef4444':mPct>25?'#f97316':'#10b981';
@@ -1445,12 +1449,12 @@ function renderSnapshot(stats, betaInfo, opts){
     // benchmark card's modeled figure (today's holdings priced back to Jan 1). Labelled as such.
     const P=(window.__SNAP&&window.__SNAP.perf)||null;
     ytdHtml = (P&&P.portYTD!=null)
-      ? `<div class="snap-val ${sc(P.portYTD)}">${fmtP(P.portYTD)}</div><div class="snap-sub">at current weights${P.cov?` · ${fmt(P.cov,0)}% cov`:''}</div>`
+      ? `<div class="snap-val ${sc(P.portYTD)}">${fmtP(P.portYTD)}</div><div class="snap-sub">at current weights · unlevered${P.cov?` · ${fmt(P.cov,0)}% cov`:''}</div>`
       : `<div class="snap-val" style="color:#9ca3af"><span class="spin-sm"></span></div><div class="snap-sub">indexing to Jan 1…</div>`;
   }
   el.innerHTML=`<div class="snap-grid">
     <div class="snap"><div class="snap-lbl">${O.cashTile?'Account Value':'Buying Power'}</div><div class="snap-val">${fmtD(O.cashTile?totalVal:bpVal)}</div><div class="snap-sub">${O.cashTile?'Invested ':'Holdings '}${fmtD(equityVal)}</div></div>
-    <div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val ${sc(dayPnL)}">${fmtD(dayPnL)}</div><div class="snap-sub ${sc(dayPnLP)}">${fmtP(dayPnLP)} today</div></div>
+    <div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val ${sc(dayPnL)}">${fmtD(dayPnL)}</div><div class="snap-sub ${sc(dayPnLP)}">${fmtP(dayPnLP)} today${dayGross!=null?` <span style="color:#9ca3af">· holdings ${fmtP(dayGross)}</span>`:''}</div></div>
     <div class="snap"><div class="snap-lbl">Unrealized</div><div class="snap-val ${sc(totalPnL)}">${fmtP(totalRet)}</div><div class="snap-sub">${fmtD(totalPnL)} on current lots</div></div>
     <div class="snap"><div class="snap-lbl">${ytdLbl}</div>${ytdHtml}</div>
     ${O.cashTile
@@ -3410,7 +3414,12 @@ async function load(){
     const totalPnL=enriched.reduce((s,p)=>s+p.pnlD,0), totalCost=enriched.reduce((s,p)=>s+p.cost,0);
     const totalRet=totalCost>0?(totalPnL/totalCost)*100:0;
     const dayPnL=enriched.reduce((s,p)=>s+(p.dayD||0),0);
-    const dayPnLP=equityVal>0?dayPnL/(equityVal-dayPnL)*100:0;
+    /* Day % is quoted on EQUITY, like every other percentage here — a levered book's equity moves by
+       the leverage factor more than its holdings do, and the smaller number is the flattering one.
+       On 2026-08-18 the holdings moved −6.06% while the account itself was down −9.67%. The holdings
+       basis is kept as `dayPnLPGross` and shown alongside whenever the two differ (i.e. on margin),
+       because "what my stocks did" is still a real question — it just isn't "what I made today". */
+    const dayPnLPGross=equityVal>0?dayPnL/(equityVal-dayPnL)*100:0;
     /* NET EQUITY vs GROSS EXPOSURE — Robinhood's `equity_value` is the LONG MARKET VALUE of the
        stock positions, NOT the account's equity: total_value = equity_value + options_value + cash,
        and on this book cash is NEGATIVE (the margin loan). On 2026-08-18 that read 29,906.51 gross
@@ -3420,9 +3429,10 @@ async function load(){
        leverage percentage is a fraction of `netEq` (what you'd walk away with), matching the caps
        the Plan tab already enforces (`renderActionPlan`, v113). */
     const netEq=totalVal>0?totalVal:Math.max(0,equityVal+cashVal);
+    const dayPnLP=(netEq-dayPnL)>0?dayPnL/(netEq-dayPnL)*100:0;
     const marginPct=netEq>0?(Math.abs(Math.min(cashVal,0))/netEq)*100:0;
     const leverage=netEq>0?(netEq-cashVal)/netEq:0;   // all non-cash assets / equity
-    const stats={totalVal,equityVal,netEq,cashVal,bpVal,dayPnL,dayPnLP,totalPnL,totalRet,marginPct,leverage};
+    const stats={totalVal,equityVal,netEq,cashVal,bpVal,dayPnL,dayPnLP,dayPnLPGross,totalPnL,totalRet,marginPct,leverage};
     const SNAP_DATE=(window.__DATA&&window.__DATA.generatedAtLabel)||new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
     window.__SNAP={stats,clusters,enriched,port,date:SNAP_DATE,betaInfo:null,alloc:null,income:null,harvest:null,perf:null,rsiMap:null,smaMap:null,ovMap:null,earn:null};
     const smalls=enriched.filter(p=>p.val>0&&p.val<SMALL_THR);

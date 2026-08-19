@@ -24,8 +24,14 @@ const POS = [
 const BENCH = [ { symbol: 'SPY', px: 612.4 }, { symbol: 'QQQ', px: 548.9 } ];
 
 const equityVal = POS.reduce((s, p) => s + p.px * (+p.quantity), 0);
-const totalVal = equityVal;       // no margin in the sample
-const cash = 1200.0;
+/* Mirror the real payload contract: total_value = equity_value + options_value + cash. `equity_value`
+   is GROSS long market value, so on margin (cash < 0) the two diverge by the whole loan — the fixture
+   used to set total_value = equity_value and carry positive cash, which is internally inconsistent and
+   meant the margin banner / Margin Used tile were never exercised in local preview. That is how the
+   v116 "37.7% of equity" bug (loan ÷ gross exposure) survived. `PF_SAMPLE_MARGIN=1` renders a levered
+   book so those surfaces can be eyeballed. */
+const cash = process.env.PF_SAMPLE_MARGIN ? -11282.65 : 1200.0;
+const totalVal = equityVal + cash;
 
 // --- build a deterministic ~120-bar daily series from Jan 1, trending to current px ---
 function series(symbol, endPx, drift) {
@@ -71,7 +77,7 @@ recorded[makeKey(RH + 'get_portfolio', { account_number: 'ACCT' })] = {
     total_value: totalVal.toFixed(2),
     equity_value: equityVal.toFixed(2),
     cash: cash.toFixed(2),
-    buying_power: { buying_power: (cash * 2).toFixed(2) },
+    buying_power: { buying_power: Math.max(0, totalVal * 2 - equityVal).toFixed(2) },
   } },
 };
 
