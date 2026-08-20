@@ -30,7 +30,10 @@ const q = (last, prev) => ({ last_trade_price: String(last), adjusted_previous_c
 const bars = (n, base) => Array.from({ length: n }, (_, i) => ({ begins_at: `2026-06-${10 + i}T13:30:00Z`, close_price: String(base + i), interpolated: false }));
 
 const FIXTURES = {
-  'portfolio.json': { data: { total_value: '1000.00' } },
+  // The self-directed account. `total_value` is the account's EQUITY (v116) — equity_value is gross
+  // long market value and omits the loan. options_value rides along so the flow inference can
+  // subtract an options mark move rather than reading it as a transfer.
+  'portfolio.json': { data: { total_value: '1000.00', equity_value: '1200.00', options_value: '-597', cash: '397.00' } },
   'positions.json': { data: { positions: [{ symbol: 'AAA', quantity: '1', average_buy_price: '95' }] } },
   // Fresh quotes cover AAA only — BBB must carry forward from the prior snapshot.
   // AAA jumps to +9.1% on the day (prior snapshot had it at +1.0%) → a day-move alert must fire.
@@ -82,6 +85,14 @@ const prior = {
     equityHistory: [{ t: '2026-07-01', equity: 1050, cumFlow: 0 }],
     // A phantom entry from the old position-diff inference (a wrong-account fetch booked it).
     recentLosses: [{ sym: 'ZZZ', date: new Date(Date.now() - 5 * 24 * 3600e3).toISOString().slice(0, 10), avgCost: 50, exitPx: 44 }],
+  },
+  // Self-directed account, one day back: equity 900 holding 1 sh AAA @100. Today it is 1000 with AAA
+  // at 108 — only +$8 of that is price, so ~$92 is an external deposit and must land in cumFlow
+  // rather than in the account's return.
+  main: {
+    asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), equity: 900, cash: 300, optionsValue: -597,
+    positions: [{ symbol: 'AAA', qty: 1, px: 100 }],
+    equityHistory: [{ t: '2026-07-01', equity: 900, cumFlow: 0, optionsValue: -597 }],
   },
   // The stale owner-typed margin-only figure the broker fetch must supersede.
   realized: { year: '2026 YTD', equity: 2335, options: 0, total: 2335, approx: true },
@@ -158,6 +169,16 @@ try {
   const newPt = agEH[agEH.length - 1];
   eq('agentic equity point recorded', newPt.equity, 3080);
   eq('deposit inferred into cumFlow (not counted as return)', Math.abs(newPt.cumFlow - 1950) < 1, true);
+
+  // Self-directed account equity recorded forward, through the SAME module as the agentic one — this
+  // is what makes the Accounts tab's two YTD tiles the same kind of number (v119).
+  const mnEH = out.main.equityHistory;
+  const mnPt = mnEH[mnEH.length - 1];
+  eq('main equity recorded from total_value, not equity_value', mnPt.equity, 1000);
+  eq('main deposit inferred into cumFlow', Math.abs(mnPt.cumFlow - 92) < 1, true);
+  eq('main options value recorded for the next run to difference', mnPt.optionsValue, -597);
+  eq('main positions kept for the next flow inference', out.main.positions[0].symbol, 'AAA');
+  eq('main history appended, not replaced', mnEH.length, 2);
 
   // Realized P&L is now per account and broker-sourced — the stale owner figure must NOT win.
   eq('realized is broker-sourced when the fetch landed', out.realized.source, 'robinhood');

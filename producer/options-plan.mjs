@@ -21,7 +21,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { ideaTargets } from './options.mjs';
+import { ideaTargets, sharesLockedByShortCalls } from './options.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -41,9 +41,26 @@ for (const f of readdirSync(RAW).filter((x) => /^quotes.*\.json$/.test(x))) {
     const q = it.quote ?? it; if (q && (q.symbol || q.ticker)) pxBySym[q.symbol || q.ticker] = parseFloat(q.last_trade_price);
   }
 }
-const holdings100 = Object.entries(sharesBySym).filter(([, s]) => s >= 100)
-  .map(([symbol, shares]) => ({ symbol, shares, px: pxBySym[symbol] })).filter((h) => h.px)
-  .sort((a, b) => b.shares * b.px - a.shares * a.px).slice(0, 3);
+/* Mirror options-build.mjs exactly: only shares NOT already backing a short call can carry a new
+   covered call. If the two disagreed, the agent would price a contract the build then discards (or
+   worse, the build would emit an idea with no live quote). */
+let openLegs = [];
+for (const f of ['options-positions.json', 'options-orders.json']) {
+  if (!existsSync(join(RAW, f))) continue;
+  const d = unwrap(readJSON(join(RAW, f)));
+  if (f === 'options-positions.json') openLegs.push(...(d.data?.positions ?? d.positions ?? []));
+  else for (const o of (d.data?.orders ?? d.orders ?? [])) {
+    if (!['queued', 'confirmed', 'partially_filled', 'unconfirmed'].includes(o.state)) continue;
+    for (const l of (o.legs || [])) openLegs.push({ chain_symbol: o.chain_symbol, quantity: o.quantity,
+      option_type: l.option_type, direction: l.side === 'sell' ? 'credit' : 'debit' });
+  }
+}
+const lockedBySym = sharesLockedByShortCalls(openLegs);
+const holdings100 = Object.entries(sharesBySym)
+  .map(([symbol, shares]) => ({ symbol, shares, px: pxBySym[symbol],
+    freeShares: Math.max(0, shares - (lockedBySym[symbol] || 0)) }))
+  .filter((h) => h.px && h.freeShares >= 100)
+  .sort((a, b) => b.freeShares * b.px - a.freeShares * a.px).slice(0, 3);
 
 const targets = ideaTargets(picks, holdings100);
 console.log(`Option idea contracts to price (${targets.length}) — save quotes to producer/raw/option-quotes.json:\n`);

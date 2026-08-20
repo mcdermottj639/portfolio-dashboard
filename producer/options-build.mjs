@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { analyzeLeg, buildIdeas } from './options.mjs';
+import { analyzeLeg, buildIdeas, sharesLockedByShortCalls, positionPremium, orderPremium } from './options.mjs';
 import { decryptEnvelope } from './emit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,8 +50,15 @@ for (const f of readdirSync(RAW).filter((x) => /^quotes.*\.json$/.test(x))) {
 const posQById = {};
 if (existsSync(join(RAW, 'option-pos-quotes.json'))) {
   const d = unwrap(readJSON(join(RAW, 'option-pos-quotes.json')));
-  for (const q of (Array.isArray(d) ? d : (d.data?.results ?? d.results ?? d.quotes ?? []))) {
-    const id = q.instrument_id || q.id || q.option_id; if (id) posQById[id] = q.quote ?? q;
+  /* get_option_quotes returns results[] of `{ quote:{instrument_id,…}, close:{…} }` — the id lives
+     INSIDE `quote`, not on the wrapper. Reading it off the wrapper silently yielded `undefined` for
+     every row, so posQById never populated and enrichLive was a no-op: your own contracts showed no
+     mark, no greeks, no P&L, no IV (hence a flat netDelta of 0 and ivRank 0 on a 97%-IV name) while
+     the idea quotes — saved pre-normalized by the agent — worked fine. Look in both places. */
+  for (const row of (Array.isArray(d) ? d : (d.data?.results ?? d.results ?? d.quotes ?? []))) {
+    const q = row.quote ?? row;
+    const id = q.instrument_id || q.id || q.option_id || row.instrument_id || row.id || row.option_id;
+    if (id) posQById[id] = q;
   }
 }
 function enrichLive(a, optionId) {
@@ -64,7 +71,10 @@ function enrichLive(a, optionId) {
   a.gamma = q.gamma != null ? +num(q.gamma).toFixed(4) : null;
   a.iv = q.implied_volatility != null ? +(num(q.implied_volatility) * 100).toFixed(0) : null;
   a.openInterest = num(q.open_interest);
-  if (q.break_even_price != null) a.breakeven = num(q.break_even_price);
+  /* RH's break_even_price is the LONG-side breakeven off today's mark (strike + mark), not off the
+     premium YOU took in. For a position we already know our own basis, so ours wins; only borrow
+     theirs when we have no premium (e.g. a leg with no recorded fill price). */
+  if (q.break_even_price != null && a.perShare == null) a.breakeven = num(q.break_even_price);
   if (a.mark != null && a.perShare != null)
     a.pnl = +(((a.side === 'short' ? (a.perShare - a.mark) : (a.mark - a.perShare)) * 100 * (a.contracts || 1))).toFixed(0);
   if (a.delta != null) a.assignProb = Math.round(Math.abs(a.delta) * 100); // ≈ chance ITM at expiry
@@ -101,11 +111,9 @@ function analyzeOrder(o) {
   const sym = o.chain_symbol; const px = pxBySym[sym];
   if (px == null) return { underlying: sym, type: leg.option_type, side: leg.side === 'sell' ? 'short' : 'long',
     strike: num(leg.strike_price), expiration: leg.expiration_date, contracts: num(o.quantity) || 1,
-    premium: num(o.premium), state: o.state, summary: `Underlying quote unavailable for ${sym}.`, underlyingPx: null };
-  const a = analyzeLeg(leg, px, sharesBySym[sym] || 0, {
-    quantity: o.quantity, premium: num(o.premium), direction: o.direction,
-    chain_symbol: sym, costBasis: costBySym[sym],
-  });
+    premium: orderPremium(o), state: o.state, summary: `Underlying quote unavailable for ${sym}.`, underlyingPx: null };
+  const a = analyzeLeg(leg, px, sharesBySym[sym] || 0, { quantity: o.quantity, premium: orderPremium(o),
+    direction: o.direction, chain_symbol: sym, costBasis: costBySym[sym] });
   a.state = o.state; a.openingStrategy = o.opening_strategy || o.closing_strategy || null;
   a.costBasis = costBySym[sym] != null ? +costBySym[sym] : null;
   a.limitPrice = num(o.price);
@@ -128,7 +136,8 @@ if (existsSync(join(RAW, 'options-positions.json'))) {
   positions = (d.data?.positions ?? d.positions ?? []).map((p) => {
     const ref = legByOptId[p.option_id]; if (!ref) return null;
     const a = analyzeLeg(ref.leg, pxBySym[p.chain_symbol] || 0, sharesBySym[p.chain_symbol] || 0,
-      { quantity: p.quantity, premium: num(p.average_price) * 100 * (num(p.quantity) || 1), direction: ref.o.direction, chain_symbol: p.chain_symbol, costBasis: costBySym[p.chain_symbol] });
+      { quantity: p.quantity, premium: positionPremium(p), direction: ref.o.direction,
+        chain_symbol: p.chain_symbol, costBasis: costBySym[p.chain_symbol] });
     a.costBasis = costBySym[p.chain_symbol] != null ? +costBySym[p.chain_symbol] : null;
     enrichLive(a, p.option_id);
     a.rollAlert = rollAlert(a);
@@ -156,9 +165,17 @@ else {
     }
   } catch { /* no prior / wrong passphrase → covered-call ideas only, as before */ }
 }
-const holdings100 = Object.entries(sharesBySym).filter(([, sh]) => sh >= 100)
-  .map(([symbol, shares]) => ({ symbol, underlying: symbol, shares, px: pxBySym[symbol] }))
-  .filter((h) => h.px).sort((a, b) => b.shares * b.px - a.shares * a.px).slice(0, 3);
+/* Covered-call ideas may only be written against UNPLEDGED shares. Both open positions and pending
+   sell-to-open orders reserve collateral, so both count — otherwise a queued order would be double
+   sold. `freeShares` gates the ≥100 filter; `shares` is kept for display. */
+const lockedBySym = sharesLockedByShortCalls([...positions, ...pending]);
+const holdings100 = Object.entries(sharesBySym)
+  .map(([symbol, shares]) => ({ symbol, underlying: symbol, shares, px: pxBySym[symbol],
+    freeShares: Math.max(0, shares - (lockedBySym[symbol] || 0)) }))
+  .filter((h) => h.px && h.freeShares >= 100)
+  .sort((a, b) => b.freeShares * b.px - a.freeShares * a.px).slice(0, 3);
+for (const [sym, lk] of Object.entries(lockedBySym))
+  console.log(`options: ${sym} — ${lk} sh pledged to open/pending short calls, ${Math.max(0, (sharesBySym[sym] || 0) - lk)} free for new covered calls`);
 
 // Per-symbol annualized realized vol from daily historicals (when present this run) — sharpens
 // the estimate-path premiums vs a flat 0.55/0.60 proxy. On light runs (no hist-day raw) this is
@@ -209,6 +226,14 @@ if (existsSync(join(RAW, 'picks.json'))) {
 // carried a live IV: your positions/pending + the idea quotes. build-data.mjs accumulates these
 // into a rolling per-symbol history and derives an IV RANK (where today sits in the trailing range)
 // so the consumer can show whether options are currently cheap or rich.
+/* A held contract with no live quote is a SILENT failure mode: the card still renders, just with no
+   mark, no greeks, no P&L and no IV — which is how the v119 keying bug survived. Say so in the log.
+   Either step 2b didn't run, or the ids didn't match. */
+{
+  const missing = [...positions, ...pending].filter((a) => a && a.mark == null);
+  if (missing.length) console.warn(`⚠️  options: ${missing.length} of ${positions.length + pending.length} own contract(s) have NO live quote (${missing.map((a) => a.underlying).join(', ')}) — greeks/P&L/IV will be blank and portfolio netDelta will read 0. Check PRODUCER.md step 2b wrote producer/raw/option-pos-quotes.json for these option_ids.`);
+}
+
 const ivObserved = {};
 const noteIv = (sym, ivPct) => { if (sym && ivPct != null && Number.isFinite(ivPct)) ivObserved[sym] = ivPct; };
 for (const a of [...pending, ...positions]) noteIv(a.underlying, a.iv);

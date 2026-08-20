@@ -1,0 +1,89 @@
+// Recorded account-equity history — the ONE place that knows how a self-funded account's real,
+// deposit-immune return is recorded. Pure + unit-tested.
+//
+// WHY THIS EXISTS. Robinhood publishes no account-equity-history endpoint, so an account's actual
+// return cannot be backfilled — it can only be RECORDED FORWARD, one point per day, from the day the
+// producer starts looking. And it exposes no transfers feed either, so a deposit is indistinguishable
+// from profit unless we infer it: a $1,000 → $3,500 funding jump otherwise reads as a bogus +250%
+// (the bug that prompted the agentic version of this in v92).
+//
+// THE INFERENCE. A deposit lands in cash without a matching position change; price moves and internal
+// buys/sells do not. So
+//     flow ≈ ΔEquity − Σ(priorQty × price move)
+// Internal buys and sells net to ~0 (cash out, shares in), and a gap where quantities didn't change
+// is exact. Only moves past a noise floor count as a flow, so ordinary P&L and rounding don't
+// register. The running total is stored as `cumFlow` on each point; the consumer chains per-step
+// returns with those deltas neutralized, giving a time-weighted return.
+//
+// USED BY BOTH ACCOUNTS. The agentic book (••••3900) and the self-directed book (••••0741) record
+// the same shape through the same code, so the two YTD figures cannot drift apart in their math —
+// only in their inputs. On a MARGIN account, `equity` must be the account's own equity
+// (`total_value`), never gross long market value: `equity_value` omits the loan, and dividing by it
+// understates every return by exactly the leverage factor (see CLAUDE.md v116).
+
+const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+
+export const HISTORY_CAP = 260;          // ~1 trading year
+export const FLOW_FLOOR_ABS = 40;        // $ — below this it's rounding, not a transfer
+export const FLOW_FLOOR_PCT = 0.08;      // …or 8% of the prior equity, whichever is larger
+
+/* The noise floor scales with the book so a small account isn't spammed by ordinary P&L, but it is
+   also CAPPED in absolute terms: at 8% a $60k book would need a $4,800 move before a transfer
+   registered, which is larger than most real deposits. Past FLOW_FLOOR_CAP the percentage term
+   stops growing. */
+export const FLOW_FLOOR_CAP = 750;
+
+export function flowThreshold(priorEquity) {
+  const pct = FLOW_FLOOR_PCT * Math.max(0, priorEquity || 0);
+  return Math.max(FLOW_FLOOR_ABS, Math.min(pct, FLOW_FLOOR_CAP));
+}
+
+/* Net external cash flow (deposits − withdrawals) between two snapshots of the same account.
+   Returns 0 when it can't tell, or when the move is inside the noise floor.
+
+   `optionsValue`/`priorOptionsValue` are optional and matter only on the self-directed book, which
+   is the one that trades options: `total_value = equity_value + options_value + cash`, so a short
+   call's mark moving is P&L that the SHARE price-move sum cannot see. Left unsubtracted, a $300
+   swing on three contracts looks exactly like a $300 deposit. (Robinhood reports a short book's
+   options_value as negative — it's a liability — which is handled for free by differencing.) */
+export function inferFlow(priorEquity, priorPositions, equity, positions, optionsValue, priorOptionsValue) {
+  if (typeof priorEquity !== 'number' || typeof equity !== 'number') return 0;
+  if (!Array.isArray(priorPositions)) return 0;
+  const nowPx = Object.fromEntries((positions || []).map((p) => [p.symbol, p.px]));
+  let priceMove = 0;
+  for (const pp of priorPositions) {
+    if (!pp || !pp.symbol || !(pp.qty > 0) || typeof pp.px !== 'number') continue;
+    const np = nowPx[pp.symbol];
+    const px1 = (typeof np === 'number' && np > 0) ? np : pp.px;
+    priceMove += pp.qty * (px1 - pp.px);
+  }
+  const optMove = (typeof optionsValue === 'number' && typeof priorOptionsValue === 'number')
+    ? (optionsValue - priorOptionsValue) : 0;
+  const flow = (equity - priorEquity) - priceMove - optMove;
+  return Math.abs(flow) >= flowThreshold(priorEquity) ? +flow.toFixed(2) : 0;
+}
+
+/* Append today's point. One point per UTC day, LATEST WINS (an intraday re-run overwrites rather
+   than appending, so a 13-run day doesn't become 13 points). `cumFlow` carries forward from the last
+   point that has one; points recorded before the field existed simply have none, and the consumer's
+   implausible-jump fallback covers those.
+   Returns { history, flow, cumFlow } — `flow` is this step's inferred transfer (0 = none detected),
+   for logging. */
+export function appendEquityPoint({ prev, day, equity, positions, priorEquity, priorPositions,
+                                    optionsValue, priorOptionsValue }) {
+  const eq = num(equity);
+  const history = (Array.isArray(prev) ? prev : []).filter((e) => e && e.t);
+  if (!(eq > 0) || !day) return { history: history.slice(-HISTORY_CAP), flow: 0, cumFlow: null };
+  const last = history.length ? history[history.length - 1] : null;
+  const priorCum = (last && typeof last.cumFlow === 'number') ? last.cumFlow : 0;
+  const flow = inferFlow(priorEquity, priorPositions, eq, positions, optionsValue, priorOptionsValue);
+  const cumFlow = flow ? +(priorCum + flow).toFixed(2) : priorCum;
+  const out = history.filter((e) => e.t !== day);
+  const point = { t: day, equity: +eq.toFixed(2), cumFlow };
+  // Recorded so the NEXT run can difference it (raw/ is wiped every run — the snapshot is the only
+  // place this can live). Omitted entirely on an account with no options book.
+  if (typeof optionsValue === 'number') point.optionsValue = +optionsValue.toFixed(2);
+  out.push(point);
+  out.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
+  return { history: out.slice(-HISTORY_CAP), flow, cumFlow };
+}

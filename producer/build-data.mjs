@@ -22,6 +22,7 @@ import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
+import { appendEquityPoint } from './equityseries.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades } from './realizedpnl.mjs';
 
@@ -295,38 +296,74 @@ const data = {
   // options.ivHistory. The consumer overlays this as the REAL agentic performance line on the Portfolio
   // "Performance vs Benchmark" chart, spliced onto a synthetic modeled lead-in (its current holdings
   // priced back to Jan 1). Carried forward verbatim when there's no positive equity to record.
+  // The mechanics (one point per UTC day, the deposit inference, the cumFlow running total) live in
+  // equityseries.mjs so this account and the self-directed one below record IDENTICALLY — the two
+  // YTD figures the consumer shows can then differ only in their inputs, never in their math.
   if (data.agentic && data.agentic.equity > 0) {
-    const prevEq = (prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) ? prior.agentic.equityHistory.slice() : [];
-    const day = new Date(data.generatedAt).toISOString().slice(0, 10);
-    // ── Infer NET EXTERNAL CASH FLOW (deposits − withdrawals) since the prior snapshot and store it as a
-    // running cumulative on each point, so the consumer can report a deposit-immune, time-weighted return
-    // instead of raw equity/e0 (a $1k→$3.5k funding jump otherwise reads as a bogus +250%). Robinhood
-    // exposes no transfers feed, so we INFER: a deposit lands in cash without a matching position change,
-    // whereas price moves and internal buys/sells don't. flow ≈ ΔEquity − Σ(priorQty × price move); buys
-    // ↔ sells net to ~0, and overnight/weekend gaps are exact since qty is unchanged. Only flows past a
-    // noise floor count. Legacy points (recorded before this field) have no cumFlow — the consumer's
-    // implausible-jump fallback strips those. Carried verbatim in the else-branch, preserving cumFlow.
-    const priorCum = (() => { const h = prior && prior.agentic && prior.agentic.equityHistory; if (Array.isArray(h) && h.length && typeof h[h.length - 1].cumFlow === 'number') return h[h.length - 1].cumFlow; return 0; })();
-    let cumFlow = priorCum;
-    if (prior && prior.agentic && typeof prior.agentic.equity === 'number' && Array.isArray(prior.agentic.positions)) {
-      const nowPx = Object.fromEntries((data.agentic.positions || []).map((p) => [p.symbol, p.px]));
-      let priceMove = 0;
-      for (const pp of prior.agentic.positions) {
-        if (!pp || !pp.symbol || !(pp.qty > 0) || typeof pp.px !== 'number') continue;
-        const np = nowPx[pp.symbol]; const px1 = (typeof np === 'number' && np > 0) ? np : pp.px;
-        priceMove += pp.qty * (px1 - pp.px);
-      }
-      const flow = (data.agentic.equity - prior.agentic.equity) - priceMove;
-      const thresh = Math.max(40, 0.08 * (prior.agentic.equity || 0)); // ignore normal P&L / rounding noise
-      if (Math.abs(flow) >= thresh) { cumFlow = +(priorCum + flow).toFixed(2); console.log(`agentic: inferred net external cash flow ${fmtMoney(flow)} (cumFlow ${fmtMoney(cumFlow)}) — excluded from performance`); }
-    }
-    const filtered = prevEq.filter((e) => e && e.t !== day);
-    filtered.push({ t: day, equity: data.agentic.equity, cumFlow });
-    filtered.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
-    data.agentic.equityHistory = filtered.slice(-260);
+    const r = appendEquityPoint({
+      prev: (prior && prior.agentic && prior.agentic.equityHistory) || [],
+      day: new Date(data.generatedAt).toISOString().slice(0, 10),
+      equity: data.agentic.equity, positions: data.agentic.positions,
+      priorEquity: prior && prior.agentic ? prior.agentic.equity : null,
+      priorPositions: prior && prior.agentic ? prior.agentic.positions : null,
+    });
+    data.agentic.equityHistory = r.history;
+    if (r.flow) console.log(`agentic: inferred net external cash flow ${fmtMoney(r.flow)} (cumFlow ${fmtMoney(r.cumFlow)}) — excluded from performance`);
   } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {
     data.agentic.equityHistory = prior.agentic.equityHistory.slice(-260);
   }
+  // ── Self-directed account (••••0741) real equity history = data.main ──────────────────────────
+  // The Accounts tab's YTD tile used to show two DIFFERENT kinds of number on the two sides: the
+  // agentic side reported the account's real, deposit-adjusted return, while the self-directed side
+  // reported the benchmark card's MODELLED figure — today's holdings priced back to Jan 1 at current
+  // weights. That isn't the account's year at all. It ignores every position opened or closed since
+  // January, it ignores realized P&L, and (worst on this book) it is a holdings-price return, so it
+  // is blind to leverage: the same 1.66× that made "Margin Used" understate risk in v116 makes a
+  // modelled return understate the real swing by exactly the leverage factor.
+  //
+  // So this account now records forward exactly like the agentic one, through the same module.
+  // EQUITY IS `total_value`, never `equity_value` (v116) — on a margin book those differ by the whole
+  // loan. Robinhood publishes no account-equity history, so this CANNOT be backfilled; the consumer
+  // says "since {date}" until a full year accrues, and falls back to the modelled figure (clearly
+  // labelled) while fewer than two points exist.
+  {
+    const eqTotal = parseFloat(portfolio.total_value ?? '');
+    const optVal = parseFloat(portfolio.options_value ?? '');
+    const cashVal = parseFloat(portfolio.cash ?? '') || 0;
+    const pxOf = (sym) => { const q = quotes[sym]; if (!q) return 0;
+      return parseFloat(q.last_extended_hours_trade_price || q.last_trade_price || q.adjusted_previous_close || q.previous_close || 0) || 0; };
+    const mainPos = (Array.isArray(positions) ? positions : []).map((p) => {
+      const symbol = p.symbol || p.ticker;
+      const qty = parseFloat(p.quantity ?? p.qty ?? 0) || 0;
+      const avgCost = parseFloat(p.average_buy_price ?? p.average_cost ?? 0) || 0;
+      const px = pxOf(symbol) || avgCost;
+      return { symbol, qty, px };
+    }).filter((p) => p.symbol && p.qty > 0);
+    if (Number.isFinite(eqTotal) && eqTotal > 0) {
+      const priorMain = (prior && prior.main) || null;
+      const r = appendEquityPoint({
+        prev: (priorMain && priorMain.equityHistory) || [],
+        day: new Date(data.generatedAt).toISOString().slice(0, 10),
+        equity: eqTotal, positions: mainPos,
+        priorEquity: priorMain && typeof priorMain.equity === 'number' ? priorMain.equity : null,
+        priorPositions: priorMain ? priorMain.positions : null,
+        optionsValue: Number.isFinite(optVal) ? optVal : undefined,
+        priorOptionsValue: priorMain && typeof priorMain.optionsValue === 'number' ? priorMain.optionsValue : undefined,
+      });
+      data.main = {
+        asOf: data.generatedAt, equity: +eqTotal.toFixed(2), cash: +cashVal.toFixed(2),
+        optionsValue: Number.isFinite(optVal) ? +optVal.toFixed(2) : null,
+        // Kept only so the NEXT run can difference prices for the flow inference — not rendered.
+        positions: mainPos, equityHistory: r.history,
+      };
+      if (r.flow) console.log(`main: inferred net external cash flow ${fmtMoney(r.flow)} (cumFlow ${fmtMoney(r.cumFlow)}) — excluded from performance`);
+      console.log(`main: equity ${fmtMoney(eqTotal)} recorded · ${r.history.length} day${r.history.length === 1 ? '' : 's'} of history`);
+    } else if (prior && prior.main) {
+      data.main = { ...prior.main, asOf: data.generatedAt };
+      console.warn('⚠️  main: portfolio.total_value missing/invalid — carrying the prior equity history forward unchanged.');
+    }
+  }
+
   // ── Idle-cash clock (v102) = data.agentic.cashIdleSince ────────────────────────────────────────
   // The deploy planner's idle deadline needs to know HOW LONG cash has been sitting, and raw/ is wiped
   // every run, so the clock can only live in the snapshot (the ivHistory/ledger pattern). Semantics:

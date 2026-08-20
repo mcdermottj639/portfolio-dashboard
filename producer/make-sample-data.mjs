@@ -20,7 +20,21 @@ const POS = [
   { symbol: 'MSFT', quantity: '18',  average_buy_price: '410.00', px: 498.2, prev: 495.0 },
   { symbol: 'AAPL', quantity: '30',  average_buy_price: '180.00', px: 296.0, prev: 299.3 },
   { symbol: 'GLD',  quantity: '25',  average_buy_price: '210.00', px: 252.7, prev: 251.9 },
+  /* A 100+ share, underwater, high-vol name — the only kind that can carry a covered call. Without
+     one, NOTHING in local preview exercised the option-collateral rules: no idea could be generated,
+     no position could pledge shares, and the Plan tab's "held back by your own covered calls" path
+     was unreachable. Mirrors the real ••••0741 IREN lot (350 sh @ $46.94, 300 of them pledged). */
+  { symbol: 'IREN', quantity: '350', average_buy_price: '46.94', px: 42.85, prev: 42.84 },
 ];
+/* `PF_SAMPLE_CONCENTRATED=1` shrinks the rest of the book so IREN breaches the 50% single-name cap
+   by MORE than its 50 unpledged shares can cover. That is the case the reserve exists for and the
+   only way to see it: the plan must trim what it can, then say plainly that the remaining overage is
+   locked behind the covered calls and name buying them back as the way out. Same pattern as
+   PF_SAMPLE_MARGIN — the default fixture stays a normal book. */
+if (process.env.PF_SAMPLE_CONCENTRATED) {
+  POS.splice(POS.findIndex((p) => p.symbol === 'GLD'), 1);
+  POS.find((p) => p.symbol === 'AAPL').quantity = '10';
+}
 const BENCH = [ { symbol: 'SPY', px: 612.4 }, { symbol: 'QQQ', px: 548.9 } ];
 
 const equityVal = POS.reduce((s, p) => s + p.px * (+p.quantity), 0);
@@ -189,28 +203,52 @@ picks.markets = {
 };
 
 // --- sample Options (pending covered call + directional ideas) ---
+/* A QUEUED sell-to-open on the same IREN lot. It reserves collateral just like a filled one — the
+   shares are spoken for the moment the order is live — so the fixture keeps the pledge internally
+   consistent: 2 open contracts + 1 pending = 300 of the 350 shares, leaving 50 free. `premium` is
+   the whole order's credit ($3.40/sh × 100 × 1). */
 const optPending = [ analyzeLeg(
-  { chain_symbol:'IREN', side:'sell', option_type:'call', strike_price:'70', expiration_date:'2026-07-17' },
-  60.02, 174, { quantity:1, premium:340, direction:'credit', chain_symbol:'IREN', costBasis:49.37 }) ];
+  { chain_symbol:'IREN', side:'sell', option_type:'call', strike_price:'52', expiration_date:'2026-09-18' },
+  42.85, 350, { quantity:1, premium:340, direction:'credit', chain_symbol:'IREN', costBasis:46.94 }) ];
 optPending[0].state='queued';
-Object.assign(optPending[0], { mark:3.45, bid:3.40, ask:3.50, delta:0.35, theta:-0.114, vega:0.082, gamma:0.0125, iv:102, ivRank:68, openInterest:10412, assignProb:35, itm:false, costBasis:49.37, limitPrice:3.40, live:true });
+Object.assign(optPending[0], { mark:3.45, bid:3.40, ask:3.50, delta:0.35, theta:-0.114, vega:0.082, gamma:0.0125, iv:102, ivRank:68, openInterest:10412, assignProb:35, itm:false, costBasis:46.94, limitPrice:3.40, live:true });
+/* IREN is passed with freeShares 50, so the generator must DECLINE to write a fourth call on it and
+   fall through to GRAB. That refusal is the fix under test — before it, the sample cheerfully
+   offered a covered call on shares that were already pledged. */
 const sampleIdeas = buildIdeas(picks.candidates, [
-  { symbol:'IREN', underlying:'IREN', shares:174, px:60.02 },
+  { symbol:'IREN', underlying:'IREN', shares:350, freeShares:50, px:42.85 },
   { symbol:'GRAB', underlying:'GRAB', shares:124, px:4.50 },
 ], { NFLX:'77.33', PEP:'142.5', KLAC:'261.1', GRAB:'4.50' }, {
   // sample live quotes so preview shows the LIVE path (real producer fills these from RH)
   NFLX:{ strike:81, expiration:'2026-07-17', mark:3.45, bid:3.40, ask:3.50, breakeven:84.45, iv:1.02, delta:0.35, theta:-0.118, vega:0.090, gamma:0.011, openInterest:10412, volume:2969, popLong:0.20 },
-  IREN:{ strike:65, expiration:'2026-07-17', mark:4.10, bid:4.00, ask:4.20, breakeven:69.10, iv:0.95, delta:0.42, theta:-0.131, vega:0.077, gamma:0.013, openInterest:8800, volume:1500, popLong:0.30 },
 });
 // sample IV ranks so preview shows the cheap/rich badge
 const sampleIvRank = { NFLX:62, IREN:68, PEP:24, KLAC:55, GRAB:71 };
 sampleIdeas.ideas.forEach((i) => { if (sampleIvRank[i.underlying] != null) i.ivRank = sampleIvRank[i.underlying]; });
+/* Two OPEN short calls against the 350-share IREN lot; a third is queued below, so 300 of the 350
+   shares are pledged and 50 are free. This is the real
+   account's position, and it makes every option-collateral surface reachable in local preview: the
+   Plan tab must hold those 300 shares back from any exit or cap trim (selling them would leave the
+   calls NAKED), and the idea generator must decline to write a fourth call on 50 free shares.
+   Units mirror the real payload and are the whole point of the fixture: `premium` is the WHOLE
+   position's credit in dollars ($2.92/sh × 100 × 2 = $584) and `perShare` is per share. Confusing
+   the two by 100× is precisely the bug that reported an $87,600 credit on an $876 trade. */
+const optPositions = [{
+  underlying: 'IREN', type: 'call', side: 'short', contracts: 2, strike: 50, expiration: '2026-09-11',
+  dte: 22, premium: 584, perShare: 2.92, covered: true, itm: false, moneyness: 'OTM -14.3%',
+  breakeven: 52.92, maxProfit: 1196, underlyingPx: 42.85, costBasis: 46.94,
+  mark: 1.99, bid: 1.81, ask: 2.17, delta: 0.32, theta: -0.088, vega: 0.038, gamma: 0.0327,
+  iv: 102, openInterest: 966, pnl: 186, assignProb: 32, live: true, ivRank: 41,
+  summary: 'Covered call — income trade. Keep the $584 premium; 200 sh capped at $50 until 2026-09-11.',
+  rollAlert: null,
+}];
 const options = {
-  asOf: new Date().toISOString(), pending: optPending, positions: [],
+  asOf: new Date().toISOString(), pending: optPending, positions: optPositions,
   history: [{ symbol: 'AMC', net: -61, trades: 2, date: '2024-05-17' }], realized: -61,
   ideas: sampleIdeas,
   ivObserved: { NFLX:102, IREN:95, PEP:31, KLAC:48 }, ivRank: sampleIvRank,
-  exposure: { positions:1, contracts:1, netDelta:-35, cspCash:0, sharesCapped:100, openPremium:345 },
+  premiumYTD: 924,
+  exposure: { positions:2, contracts:3, netDelta:-99, cspCash:0, sharesCapped:300, openPremium:743 },
 };
 
 // --- sample news sentiment (Analyze tab News card; real producer fills from AV NEWS_SENTIMENT) ---
@@ -258,6 +296,30 @@ const data = {
   },
   // Sample agentic account so the Agentic Portfolio card renders populated in local preview
   // (real runs emit this from agentic-portfolio.json/agentic-positions.json in build-data.mjs).
+  /* The self-directed account's REAL recorded equity history — the same shape build-data.mjs writes
+     from get_portfolio.total_value, so the Accounts tab's YTD tile and the "This account since …"
+     stat render in preview instead of falling back to the modelled figure (which is what they did
+     before this account had a series at all). Anchored to the SPY bar dates for the same reason the
+     agentic one is: a now-relative history would sit past the last bar and every benchmark
+     comparison would show "—", masking whether the code path works. Carries a mid-series deposit so
+     the deposit-adjusted math is exercised, and an `optionsValue` on each point so the flow
+     inference's options term is visible in the fixture. */
+  main: (() => {
+    const spy = hist.day.SPY || [];
+    const dates = spy.slice(-15).map((b) => String(b.begins_at || b.t).slice(0, 10));
+    const DEPOSIT = 2000, AT = 6;
+    const start = +(totalVal - DEPOSIT - 640).toFixed(2);   // ends on today's equity, ~$640 earned
+    const out = []; let cumFlow = 0;
+    dates.forEach((t, n) => {
+      if (n === AT) cumFlow += DEPOSIT;
+      const grown = start * (1 + 0.0052 * n) + (n % 2 ? 22 : -14);
+      out.push({ t, equity: +(grown + cumFlow).toFixed(2), cumFlow, optionsValue: -597 });
+    });
+    out[out.length - 1].equity = +totalVal.toFixed(2);      // end exactly on the live figure
+    return { asOf: new Date().toISOString(), equity: +totalVal.toFixed(2), cash: +cash.toFixed(2),
+      optionsValue: -597, positions: POS.map((p) => ({ symbol: p.symbol, qty: +p.quantity, px: p.px })),
+      equityHistory: out };
+  })(),
   agentic: (() => {
     // Priced FROM the fixture's own quotes — the real producer prices agentic positions off the
     // same quote table, and two consumer surfaces cross-check them in preview: the day-move hero

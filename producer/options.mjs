@@ -41,7 +41,12 @@ export function analyzeLeg(leg, underlyingPx, sharesOwned = 0, opts = {}) {
   const qty = Math.abs(num(opts.quantity ?? leg.quantity ?? 1)) || 1;
   const contracts = qty;                       // 1 contract = 100 shares
   const isShort = side === 'sell' || opts.direction === 'credit';
-  const premium = num(opts.premium) != null ? num(opts.premium) : null; // total $ for the order
+  /* `opts.premium` is the TOTAL dollars for the whole order/position — a MAGNITUDE, never signed.
+     Robinhood reports a short position's average_price as a negative number (a credit), and every
+     formula below already knows the direction from `isShort`; letting that sign through inverts the
+     breakeven (a $50 covered call sold for $2.92 broke even at $47.08 instead of $52.92) and turns
+     maxProfit negative. Callers hand us a magnitude, and we defend it here too. */
+  const premium = num(opts.premium) != null ? Math.abs(num(opts.premium)) : null;
   const perSh = premium != null ? premium / (100 * contracts) : null;
   const covered = cp === 'call' && isShort ? sharesOwned >= 100 * contracts : null;
   const itm = cp === 'call' ? underlyingPx > strike : underlyingPx < strike;
@@ -72,6 +77,54 @@ export function analyzeLeg(leg, underlyingPx, sharesOwned = 0, opts = {}) {
   };
 }
 
+/* ── Premium normalization — the one place that knows Robinhood's option money units ──────────────
+   Verified against live payloads (IREN, 3 × $50 call sold at $2.92/sh):
+     order    price "2.92"  premium "292.00"  processed_premium "876"  trade_value_multiplier "100"
+     position average_price "-292.0000"       quantity "3.0000"        trade_value_multiplier "100"
+   So an order's `premium` is PER CONTRACT (price × multiplier) and `processed_premium` is the whole
+   filled order; a position's `average_price` is PER CONTRACT and SIGNED (negative = credit received).
+
+   Both call sites had this wrong in opposite directions. Positions multiplied the already-multiplied
+   average_price by 100 again — the covered call reported a $87,600 credit on an $876 trade, which
+   flowed straight into the card's "Credit" line, the payoff diagram, maxProfit and the exposure
+   roll-up's open-premium tile. Orders passed the per-contract figure as if it were the order total,
+   understating a multi-contract order by exactly its contract count.
+
+   `analyzeLeg` wants the TOTAL dollars as a magnitude; direction comes from the leg's side. */
+export const positionPremium = (p) => {
+  const per = num(p.average_price);                       // per contract, signed
+  if (per == null) return null;
+  return Math.abs(per) * (Math.abs(num(p.quantity)) || 1);
+};
+export const orderPremium = (o) => {
+  const processed = num(o.processed_premium);             // whole order, actual fills
+  if (processed != null && processed !== 0) return Math.abs(processed);
+  const per = num(o.premium);                             // per contract
+  if (per == null) return null;
+  return Math.abs(per) * (Math.abs(num(o.quantity)) || 1);
+};
+
+// Shares already pledged as collateral against SHORT CALLS you hold — 100 per contract.
+// Two consumers depend on this and must agree: the covered-call idea generator (offering a call on
+// shares that are already capped is an idea you cannot actually place — the account has 350 IREN
+// shares but 300 of them back three open $50 calls, so only 50 are free, i.e. zero further
+// contracts), and the self-directed plan's exit/trim sizing (selling collateral turns a covered
+// call into a NAKED one, which is open-ended risk on a margin book). Accepts either the analyzed
+// leg shape (`{underlying,side,type,contracts}`) or a raw Robinhood position row.
+export function sharesLockedByShortCalls(positions) {
+  const locked = {};
+  for (const p of (positions || [])) {
+    if (!p) continue;
+    const sym = p.underlying || p.chain_symbol || p.symbol;
+    const isShort = p.side === 'short' || p.type === 'short' || p.direction === 'credit';
+    const isCall = p.type === 'call' || p.option_type === 'call';
+    if (!sym || !isShort || !isCall) continue;
+    const qty = Math.abs(num(p.contracts ?? p.quantity) || 0);
+    if (qty > 0) locked[sym] = (locked[sym] || 0) + qty * 100;
+  }
+  return locked;
+}
+
 // The contracts the ideas want priced — used by options-plan.mjs to tell the agent
 // exactly which chains to look up, and by buildIdeas to match live quotes.
 //   picks: Daily Picks candidates (oversold, bullish). holdings: [{symbol,shares,px}].
@@ -89,10 +142,15 @@ export function ideaTargets(picks, holdings) {
       px: c.price, rsi: c.rsi, composite: c.composite });
   }
   for (const h of (holdings || [])) {
-    if (h.shares < 100 || !h.px) continue;
+    /* `freeShares` — shares NOT already backing an open short call. Callers pass it; when they
+       don't we fall back to the raw count (old behavior). Without this the idea generator happily
+       suggests selling a call against collateral that is already pledged, which the broker would
+       treat as a second, NAKED short call. */
+    const free = h.freeShares != null ? h.freeShares : h.shares;
+    if (!(free >= 100) || !h.px) continue;
     targets.push({ underlying: h.symbol, kind: 'covered_call', type: 'call', direction: 'Income',
       strategy: 'Covered call', expiration, dte, targetStrike: Math.round(h.px * 1.12), targetDelta: 0.30,
-      px: h.px, shares: h.shares });
+      px: h.px, shares: h.shares, freeShares: free });
   }
   // Cash-secured puts on the next oversold names (distinct underlyings from the long calls,
   // so live quotes don't collide) — get paid to potentially own them ~7% cheaper.
@@ -165,8 +223,11 @@ export function buildIdeas(picks, holdings, quotesBySym = {}, liveBySym = {}, iv
       base.income = +(prem * 100).toFixed(0);
       base.annYield = px > 0 ? Math.round((prem / px) * (365 / t.dte) * 100) : null;
       base.shares = Math.floor(t.shares || 0);
+      // Uncommitted shares — what you could actually write against right now.
+      base.freeShares = Math.floor(t.freeShares != null ? t.freeShares : base.shares);
+      const pledged = base.shares - base.freeShares;
       base.thesis = [
-        `You own ${base.shares} sh of ${t.underlying} — sell the $${strike} call (~${t.dte}d) for ~$${base.income} income${L ? ` (live mark $${prem.toFixed(2)})` : ' (est)'}.`,
+        `You own ${base.shares} sh of ${t.underlying}${pledged > 0 ? ` (${pledged} already backing open short calls — ${base.freeShares} free)` : ''} — sell the $${strike} call (~${t.dte}d) for ~$${base.income} income${L ? ` (live mark $${prem.toFixed(2)})` : ' (est)'}.`,
         `Caps 100 sh at $${strike} (+${((strike / px - 1) * 100).toFixed(0)}%)${base.annYield != null ? `, ≈${base.annYield}% annualized` : ''}. Keep premium + shares if it expires below.`,
         L ? `Δ${base.delta ?? '—'} · Θ${base.theta ?? '—'} · IV ${base.iv ?? '—'}% · OI ${base.openInterest ?? '—'}.` : `Defined-risk income — the premium cushions a pullback while you keep the shares below the strike.`,
       ];
@@ -226,7 +287,8 @@ function structuredIdeas(picks, holdings, quotesBySym = {}, ivBySym = {}, expira
     });
   }
   // Collar on the largest 100+ share holding.
-  const big = (holdings || []).filter((h) => h.shares >= 100 && h.px)
+  // A collar sells a call too, so it needs 100 UNPLEDGED shares — same reservation as above.
+  const big = (holdings || []).filter((h) => (h.freeShares != null ? h.freeShares : h.shares) >= 100 && h.px)
     .sort((a, b) => b.shares * b.px - a.shares * a.px)[0];
   if (big) {
     const px = num(quotesBySym[big.symbol || big.underlying]) || big.px;

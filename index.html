@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v118'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v119'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1444,22 +1444,30 @@ function renderSnapshot(stats, betaInfo, opts){
      near-zero "Total Return" while its real year is well up — realized gains and every closed
      position are simply outside that number. Hence the explicit "on current lots" sub-line and a
      separate YTD tile carrying the account's actual, deposit-adjusted year. */
-  const ytdLbl = O.cashTile ? 'YTD Return' : 'YTD (holdings)';
+  /* BOTH sides now report the same KIND of number: the account's own recorded, deposit-adjusted,
+     time-weighted return (acctYTDStats over the producer's forward-recorded equity series). They
+     used to disagree in kind, not just in value — the self-directed side showed the benchmark
+     card's MODELLED figure (today's holdings priced back to Jan 1 at current weights), which is
+     blind to everything traded during the year, to realized P&L, and — on a 1.6× book — to
+     leverage itself. Robinhood publishes no account-equity history, so the self-directed series
+     starts the day the producer began recording it and cannot be backfilled; until it has two
+     points the modelled figure still shows, explicitly labelled as modelled. */
+  const ytdSrc = O.cashTile ? ((window.__DATA&&window.__DATA.agentic)||null) : ((window.__DATA&&window.__DATA.main)||null);
+  const Y = (typeof acctYTDStats==='function') ? acctYTDStats(ytdSrc) : null;
+  const ytdLbl = Y ? 'YTD Return' : (O.cashTile ? 'YTD Return' : 'YTD (holdings)');
   let ytdHtml;
-  if(O.cashTile){
-    // Agentic side: the real recorded account, time-weighted so deposits aren't profit — the same
-    // math the Account Performance card headlines, so the two surfaces can't disagree.
-    const Y=(typeof agenticYTDStats==='function')?agenticYTDStats((window.__DATA&&window.__DATA.agentic)||null):null;
-    const sinceLbl=Y&&Y.partial?(()=>{ try{ return new Date(String(Y.since).slice(0,10)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return String(Y.since).slice(0,10); } })():'';
-    ytdHtml = Y
-      ? `<div class="snap-val ${sc(Y.ret)}">${fmtP(Y.ret)}</div><div class="snap-sub">${fmtD(Y.pnl)} net of deposits${sinceLbl?` · since ${sinceLbl}`:''}</div>`
-      : `<div class="snap-val" style="color:#9ca3af">—</div><div class="snap-sub">needs 2+ recorded days</div>`;
+  if(Y){
+    const sinceLbl=Y.partial?(()=>{ try{ return new Date(String(Y.since).slice(0,10)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return String(Y.since).slice(0,10); } })():'';
+    ytdHtml = `<div class="snap-val ${sc(Y.ret)}">${fmtP(Y.ret)}</div><div class="snap-sub">${fmtD(Y.pnl)} net of deposits${sinceLbl?` · since ${sinceLbl}`:''}</div>`;
+  } else if(O.cashTile){
+    ytdHtml = `<div class="snap-val" style="color:#9ca3af">—</div><div class="snap-sub">needs 2+ recorded days</div>`;
   } else {
-    // Self-directed side: no recorded account-equity series, so the honest YTD available is the
-    // benchmark card's modeled figure (today's holdings priced back to Jan 1). Labelled as such.
+    // Recording has just started (or this snapshot predates data.main) — fall back to the modelled
+    // figure rather than a dash, and say plainly that it is modelled, not the account's year.
     const P=(window.__SNAP&&window.__SNAP.perf)||null;
+    const started=!!(window.__DATA&&window.__DATA.main&&(window.__DATA.main.equityHistory||[]).length);
     ytdHtml = (P&&P.portYTD!=null)
-      ? `<div class="snap-val ${sc(P.portYTD)}">${fmtP(P.portYTD)}</div><div class="snap-sub">at current weights · unlevered${P.cov?` · ${fmt(P.cov,0)}% cov`:''}</div>`
+      ? `<div class="snap-val ${sc(P.portYTD)}">${fmtP(P.portYTD)}</div><div class="snap-sub">modelled · holdings at current weights, unlevered${started?' · real tracking starts tomorrow':''}</div>`
       : `<div class="snap-val" style="color:#9ca3af"><span class="spin-sm"></span></div><div class="snap-sub">indexing to Jan 1…</div>`;
   }
   el.innerHTML=`<div class="snap-grid">
@@ -1498,16 +1506,23 @@ function buildNorm(series){ if(!series||series.length<2)return null; const c0=se
    Both surfaces (the Portfolio benchmark chart's "Agentic since" stat and the Agentic account page's
    performance card) call this, so they can never disagree. Returns null when fewer than 2 points
    have been recorded. `spySeries` is an optional [{t,c}] daily series for the same-window benchmark. */
-function agenticPerfStats(AG, spySeries){
+function acctPerfStats(AG, spySeries){
   const EH=(AG&&Array.isArray(AG.equityHistory))?AG.equityHistory.slice().filter(e=>e&&e.equity>0).sort((a,b)=>a.t<b.t?-1:1):[];
   if(EH.length<2)return null;
-  const FLOW_JUMP=0.20;   // >20% in one recorded step isn't a market move for this ETF/leader basket
+  /* The implausible-jump fallback is for LEGACY points only — those recorded before the producer
+     annotated cumFlow, where a deposit is indistinguishable from a return. Once both ends of a step
+     carry cumFlow the transfer is already subtracted, and applying the threshold anyway would zero
+     out a genuine move. That matters on the self-directed book: it is high-beta and ~1.6× levered,
+     so a >20% recorded step is a bad Tuesday, not a mystery deposit, and silently discarding it
+     would understate exactly the volatility this account is built to take. */
+  const FLOW_JUMP=0.20;
   const mult=[1], cumFlows=[0];
   for(let i=1;i<EH.length;i++){
     const prev=EH[i-1], cur=EH[i];
-    const flow=(typeof cur.cumFlow==='number'&&typeof prev.cumFlow==='number')?(cur.cumFlow-prev.cumFlow):0;
+    const tagged=(typeof cur.cumFlow==='number'&&typeof prev.cumFlow==='number');
+    const flow=tagged?(cur.cumFlow-prev.cumFlow):0;
     let r=prev.equity>0?((cur.equity-flow)/prev.equity-1):0;
-    if(!isFinite(r)||Math.abs(r)>FLOW_JUMP)r=0;
+    if(!isFinite(r)||(!tagged&&Math.abs(r)>FLOW_JUMP))r=0;
     mult.push(mult[i-1]*(1+r));
     cumFlows.push(cumFlows[i-1]+(cur.equity-prev.equity*(1+r)));
   }
@@ -1530,15 +1545,16 @@ function agenticPerfStats(AG, spySeries){
   return { EH, mult, cumFlows, flows, ret:(mult[mult.length-1]-1)*100, spy, since:EH[0].t,
            netFlow, firstEquity, lastEquity, pnl:lastEquity-firstEquity-netFlow, days };
 }
-window.agenticPerfStats=agenticPerfStats;
+window.acctPerfStats=acctPerfStats;
+window.agenticPerfStats=acctPerfStats;   // legacy name, same function
 
 /* YTD slice of the same deposit-adjusted math, for the snapshot's YTD tile.
    Rebases agenticPerfStats' chained growth to the first recorded point of the CURRENT calendar
    year, so a mid-year deposit still can't read as profit. `partial` is true when recording began
    after the year did — the tile then says "since {date}" rather than implying a full-year figure,
    because Robinhood publishes no account-equity history and it cannot be backfilled. */
-function agenticYTDStats(AG){
-  const st=agenticPerfStats(AG,null); if(!st)return null;
+function acctYTDStats(AG){
+  const st=acctPerfStats(AG,null); if(!st)return null;
   const jan=String(new Date().getFullYear())+'-01-01';
   const i0=st.EH.findIndex(e=>String(e.t).slice(0,10)>=jan);
   const last=st.EH.length-1;
@@ -1547,7 +1563,8 @@ function agenticYTDStats(AG){
            pnl:st.EH[last].equity-st.EH[i0].equity-(st.cumFlows[last]-st.cumFlows[i0]),
            since:st.EH[i0].t, partial:String(st.EH[i0].t).slice(0,10)>jan };
 }
-window.agenticYTDStats=agenticYTDStats;
+window.acctYTDStats=acctYTDStats;
+window.agenticYTDStats=acctYTDStats;     // legacy name, same function
 
 function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
   const el=document.getElementById('perf-content'); if(!el)return;
@@ -1586,7 +1603,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
     }
     // Real recorded line: mult[] is the deposit-adjusted growth factor (see agenticPerfStats above —
     // shared with the Agentic account page so the two surfaces can't drift apart).
-    const st=agenticPerfStats(AG, spy);
+    const st=acctPerfStats(AG, spy);
     if(st&&agModeled){
       const EH=st.EH, mult=st.mult;
       const firstT=dkey(st.since);
@@ -1603,12 +1620,19 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
     grid:_thm==='gold'?'rgba(210,180,120,0.10)':_thm==='dark'?'rgba(255,255,255,0.06)':'#f3f4f6',
     tick:_thm==='gold'?'#b9ad92':'#9ca3af', ag:_thm==='gold'?'#3fcf94':'#0891b2' };
   const agDateLbl=agSince?(()=>{ try{ return new Date(dkey(agSince.since)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return dkey(agSince.since); } })():'';
+  /* The self-directed account's OWN recorded return, on the same footing as the agentic one. It sits
+     beside the modelled "Your holdings YTD" deliberately: the two answer different questions and the
+     card is where that difference should be visible, rather than leaving the snapshot tile above
+     silently disagreeing with the figure here (the v117 lesson). */
+  const mdSince=(typeof acctPerfStats==='function')?acctPerfStats((window.__DATA&&window.__DATA.main)||null,spy):null;
+  const mdDateLbl=mdSince?(()=>{ try{ return new Date(dkey(mdSince.since)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); }catch(e){ return dkey(mdSince.since); } })():'';
   el.innerHTML=`
     <div class="perf-head">
       <div class="perf-metric"><div class="pm-l">Your holdings YTD*</div><div class="pm-v ${sc(portYTD)}">${portYTD!=null?fmtP(portYTD):'—'}</div></div>
       <div class="perf-metric"><div class="pm-l">S&P 500 (SPY)</div><div class="pm-v ${sc(spyYTD)}">${fmtP(spyYTD)}</div></div>
       <div class="perf-metric"><div class="pm-l">Nasdaq-100 (QQQ)</div><div class="pm-v ${sc(qqqYTD)}">${fmtP(qqqYTD)}</div></div>
       <div class="perf-metric"><div class="pm-l">Total return since cost</div><div class="pm-v ${sc(stats.totalPnL)}">${fmtP(stats.totalRet)}</div></div>
+      ${mdSince?`<div class="perf-metric"><div class="pm-l">This account since ${mdDateLbl}</div><div class="pm-v ${sc(mdSince.ret)}">${fmtP(mdSince.ret)}</div>${mdSince.spy!=null?`<div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">SPY ${fmtP(mdSince.spy)} same window</div>`:''}</div>`:''}
       ${agSince?`<div class="perf-metric"><div class="pm-l">Agentic since ${agDateLbl}</div><div class="pm-v ${sc(agSince.ret)}">${fmtP(agSince.ret)}</div>${agSince.spy!=null?`<div class="pm-sub" style="font-size:10.5px;color:var(--nx-muted,#9ca3af);margin-top:2px">SPY ${fmtP(agSince.spy)} same window</div>`:''}</div>`:''}
     </div>
     <div class="chart-wrap"><canvas id="perf-chart"></canvas></div>
@@ -1618,7 +1642,7 @@ function renderPerformance(histMap, enriched, coveredSyms, macroData, stats){
       <span class="legend-item"><span class="legend-dot" style="background:${C.qqq}"></span>QQQ</span>
       ${agModeled?`<span class="legend-item"><span class="legend-dot" style="background:${C.ag}"></span>Agentic${agReal?' (— real · ⋯ modeled)':' (⋯ modeled)'}</span>`:''}
     </div>
-    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). <b>It says nothing about your entry prices</b> — a name can be well up on the year and still be a loss for you if you bought it after the run. Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity. Every line's final point is today's live price, so the daily bars lagging a session can't quietly age this card.${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the agentic account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
+    <div class="fund-note">*Price-return of your <b>current</b> holdings held at today's weights from Jan 1 — a like-for-like comparison vs the index, not a time-weighted account return (purchase history isn't available from the broker). <b>It says nothing about your entry prices</b> — a name can be well up on the year and still be a loss for you if you bought it after the run. Covers ${fmt(wsum>0?(wsum/enriched.reduce((s,p)=>s+Math.max(p.val,0),0)*100):0,0)}% of equity. Every line's final point is today's live price, so the daily bars lagging a session can't quietly age this card.${mdSince?` <b>This account since ${mdDateLbl}</b> is the different, harder number: your real account equity, deposit-adjusted and time-weighted, including everything you traded and any leverage you carried — which is why it can differ sharply from the modelled figure. It only runs from ${mdDateLbl} because the broker publishes no account-equity history, so it can't be backfilled.`:''}${agModeled?` <b style="color:${C.ag}">Agentic</b> overlays the agentic account (••••3900): <b>⋯ dotted</b> = modeled (its current holdings priced back to Jan 1); ${agReal?`<b>— solid</b> = real tracked return since ${agDateLbl}, <b>deposit-adjusted</b> (cash you add or withdraw isn't counted as a gain — this is a time-weighted return, not the raw account balance).`:`real tracking begins once a few daily snapshots accumulate.`}`:''}</div>
     ${macroData?`<div class="macro-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--surface-2)">
       <div><div class="snap-lbl">10yr Treasury</div><div style="font-size:16px;font-weight:700">${macroData.tenYrYield?fmt(macroData.tenYrYield,2)+'%':'—'}</div></div>
       <div><div class="snap-lbl">Fed Funds</div><div style="font-size:16px;font-weight:700">${macroData.fedFunds?fmt(macroData.fedFunds,2)+'%':'—'}</div></div>
@@ -1647,7 +1671,17 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
   const A=[]; const cash=parseFloat(port.cash||0); const grossVal=parseFloat(port.equity_value||1);
   const equity=parseFloat(port.total_value||0)||Math.max(1,grossVal+cash);
   const add=(o)=>A.push(o);
-  if(cash<-1000){ const mp=Math.abs(cash)/equity*100; const t=[...enriched].filter(p=>p.pct>3&&p.px>0).sort((a,b)=>b.val-a.val)[0]; add({pr:0,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'MARGIN',title:`Margin in use — ${fmtD(Math.abs(cash))} (${fmt(mp,1)}% of equity)`,detail:t?`A drawdown is amplified by leverage. Trimming ~${Math.ceil(Math.abs(cash)/t.px)} sh of ${t.symbol} (~${fmtD(t.px)}) would clear it.`:`Leverage amplifies losses — top priority.`}); }
+  /* Name a paydown candidate the owner could ACTUALLY sell: shares backing a covered call are not
+     available, and pointing at them is how you talk someone into a naked short call. Pick the
+     largest position with enough free shares to matter, and size the suggestion to what's free. */
+  if(cash<-1000){ const mp=Math.abs(cash)/equity*100;
+    const lk=(typeof sdLockedShares==='function')?sdLockedShares():{};
+    const freeOf=p=>Math.max(0,(+p.qty||0)-((lk[p.symbol]&&lk[p.symbol].shares)||0));
+    const t=[...enriched].filter(p=>p.pct>3&&p.px>0&&freeOf(p)*p.px>=250).sort((a,b)=>freeOf(b)*b.px-freeOf(a)*a.px)[0];
+    const need=t?Math.ceil(Math.abs(cash)/t.px):0, canSell=t?Math.floor(freeOf(t)):0;
+    const sh=Math.min(need,canSell);
+    add({pr:0,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'MARGIN',title:`Margin in use — ${fmtD(Math.abs(cash))} (${fmt(mp,1)}% of equity)`,
+      detail:t?`A drawdown is amplified by leverage. Selling ~${sh} sh of ${t.symbol} (~${fmtD(t.px)}) ${sh>=need?'would clear it':`covers ${fmtD(sh*t.px)} of it${lk[t.symbol]?` — the rest of ${t.symbol} is pledged to your covered calls`:`, the largest single position that's free to sell`}`}.`:`Leverage amplifies losses — top priority.`}); }
   const crits=[...enriched].filter(p=>p.pct>10&&p.px>0).sort((a,b)=>b.pct-a.pct);
   for(const p of crits.slice(0,2)){ const fpe=parseFloat(ovMap[p.symbol]?.ForwardPE)||null; const vN=fpe&&fpe>60?` Fwd P/E ${fmt(fpe,0)} adds valuation risk.`:''; add({pr:1,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'TRIM',title:`${p.symbol} is ${fmt(p.pct,1)}% of the book`,detail:`Single-name concentration is critical. A 20% drop in ${p.symbol} alone takes the portfolio down ~${fmt(p.pct*0.2,1)}%.${vN}`}); }
   const upE=Object.entries(earningsMap||{}).filter(([s,e])=>enriched.find(p=>p.symbol===s&&p.val>=SMALL_THR)&&e.daysAway<=14).sort((a,b)=>a[1].daysAway-b[1].daysAway);
@@ -2025,6 +2059,24 @@ function sdWashMap(){
   }
   return out;
 }
+/* Shares pledged as collateral against your OWN open/pending short calls — 100 per contract.
+   The plan is free to say "exit IREN" on the thesis; it is NOT free to sell the shares backing three
+   open $50 calls, because those shares are what makes them COVERED. Sell them and the broker leaves
+   you short naked calls on a levered margin book — open-ended risk above the strike, which is exactly
+   the failure mode every cap in this mandate exists to prevent. So collateral is reserved out of both
+   exits and cap trims, and the alternative (buy the call back / roll it, THEN sell) is named instead.
+   Mirrors producer/options.mjs `sharesLockedByShortCalls` — keep the two in step. */
+function sdLockedShares(){
+  const out={}, O=(window.__DATA&&window.__DATA.options)||{};
+  for(const o of [...(O.positions||[]),...(O.pending||[])]){
+    if(!o||o.side!=='short'||o.type!=='call')continue;
+    const sym=o.underlying; const sh=(Math.abs(+o.contracts||0))*100; if(!sym||sh<=0)continue;
+    const cur=out[sym]||(out[sym]={shares:0,contracts:0,legs:[]});
+    cur.shares+=sh; cur.contracts+=Math.abs(+o.contracts||0);
+    cur.legs.push({strike:o.strike,expiration:o.expiration,contracts:Math.abs(+o.contracts||0)});
+  }
+  return out;
+}
 /* The plan tier of the Action Center, rebuilt for the SELF-DIRECTED AGGRESSIVE mandate (v113).
    Three steps, same shape as before because the shape was fine — the physics underneath were not:
      1 · CUT WHAT'S BROKEN — a thesis test, not the sign of P&L. Plus cap trims measured on EQUITY.
@@ -2050,11 +2102,24 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
 
   /* ── 1 · Classify every holding: broken (exit) vs intact (hold) ─────────────────────────── */
   const rows=held.map(p=>{ const b=sdBroken(p.symbol,p.avg); return {p,m:b.m,broken:b.broken,why:b.why}; });
-  const exits=rows.filter(r=>r.broken).sort((a,b)=>b.p.val-a.p.val);
-  const exitSet=new Set(exits.map(r=>r.p.symbol));
+  const locked=sdLockedShares();
+  /* Sellable = shares you could actually deliver today. P&L is pro-rated by the fraction sold, since
+     p.pnlD is the whole position's unrealized mark. */
+  const sellableOf=(p)=>Math.max(0,(+p.qty||0)-((locked[p.symbol]&&locked[p.symbol].shares)||0));
+  const broken=rows.filter(r=>r.broken).sort((a,b)=>b.p.val-a.p.val);
+  for(const r of broken){
+    const sellQty=Math.min(r.p.qty,sellableOf(r.p));
+    const frac=r.p.qty>0?sellQty/r.p.qty:0;
+    r.sellQty=sellQty; r.sellVal=r.p.val*frac; r.sellPl=r.p.pnlD*frac;
+    r.lock=locked[r.p.symbol]||null;
+  }
+  const exits=broken.filter(r=>r.sellQty>0);
+  // Broken but fully pledged — a real decision the plan must still surface, not a silent omission.
+  const lockedExits=broken.filter(r=>r.sellQty<=0);
+  const exitSet=new Set(broken.map(r=>r.p.symbol));   // one name, one decision — blocked ones included
   const keep=rows.filter(r=>!exitSet.has(r.p.symbol));
-  const exitProceeds=exits.reduce((s,r)=>s+r.p.val,0);
-  const exitPl=exits.reduce((s,r)=>s+r.p.pnlD,0);
+  const exitProceeds=exits.reduce((s,r)=>s+r.sellVal,0);
+  const exitPl=exits.reduce((s,r)=>s+r.sellPl,0);
 
   /* 1b · Cap trims, on EQUITY. A name that is already exiting is NEVER also trimmed — the old plan
      put an over-cap loser in both tables and summed both proceeds, overstating the pool by the whole
@@ -2075,18 +2140,23 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       const already=trimNeed[r.p.symbol]||0, room=Math.max(0,r.p.val-already);
       const take=Math.min(room,need); if(take>0){ trimNeed[r.p.symbol]=already+take; need-=take; } }
   }
+  const trimShort=[];   // over-cap names the collateral reserve stops us trimming all the way down
   const trims=Object.keys(trimNeed).map(sym=>{
     const r=keep.find(x=>x.p.symbol===sym); if(!r)return null;
-    const sh=Math.floor(trimNeed[sym]/r.p.px); if(sh<=0)return null;
+    const want=Math.floor(trimNeed[sym]/r.p.px);
+    const sh=Math.min(want,Math.floor(sellableOf(r.p)));
+    if(want>sh)trimShort.push({sym,short:(want-sh)*r.p.px,lock:locked[sym]||null});
+    if(sh<=0)return null;
     const proceeds=sh*r.p.px, pl=sh*(r.p.px-r.p.avg);
-    return {r,sh,proceeds,pl};
+    return {r,sh,proceeds,pl,capped:want>sh};
   }).filter(Boolean).sort((a,b)=>b.proceeds-a.proceeds);
   const trimProceeds=trims.reduce((s,t)=>s+t.proceeds,0), trimPl=trims.reduce((s,t)=>s+t.pl,0);
 
   const freed=exitProceeds+trimProceeds;          // ONE pass — no shares counted twice
   const netTaxable=exitPl+trimPl;
   const sellOrders=[
-    ...exits.map(r=>({side:'SELL',sym:r.p.symbol,qty:+fmt(r.p.qty,r.p.qty<1?3:2),limit:r.p.px,note:'exit — thesis broken'})),
+    ...exits.map(r=>({side:'SELL',sym:r.p.symbol,qty:+fmt(r.sellQty,r.sellQty<1?3:2),limit:r.p.px,
+      note:'exit — thesis broken'+(r.lock?` (only the ${fmt(r.sellQty,2)} sh not backing your ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'})`:'')})),
     ...trims.map(t=>({side:'SELL',sym:t.r.p.symbol,qty:t.sh,limit:t.r.p.px,note:'trim to cap — GTC limit, sell into strength'})),
   ];
 
@@ -2196,12 +2266,26 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
     ${exits.length
-      ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}</div></td><td class="tr">${fmt(r.p.qty,r.p.qty<1?3:2)}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.p.val)}</td><td class="tr"><span class="${r.p.pnlD>=0?'pos':'neg'}">${fmtD(r.p.pnlD)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
-      : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`}
+      ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</div></td><td class="tr">${fmt(r.sellQty,r.sellQty<1?3:2)}${r.lock?`<div style="color:#9ca3af;font-size:10px">of ${fmt(r.p.qty,2)}</div>`:''}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.sellVal)}</td><td class="tr"><span class="${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
+      : (lockedExits.length
+        /* Same trap as the trims empty state: a broken name whose shares are ALL pledged never
+           reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
+        ? `<div class="tech-empty">${lockedExits.map(r=>r.p.symbol).join(', ')} ${lockedExits.length===1?'reads':'read'} broken, but every share is collateral for your covered calls — see below for how to unwind it. Nothing else here is broken.</div>`
+        : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`)}
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Cap trims — concentration, measured on equity</div>
     ${trims.length
-      ? `<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${trims.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.r.p.val/equity*100,0)}%→${fmt(Math.max(0,(t.r.p.val-t.proceeds))/equity*100,0)}%</span></td><td class="tr">${t.sh}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${trimPl>=0?'pos':'neg'}">${fmtD(trimPl)}</td></tr></tbody></table>`
-      : `<div class="tech-empty">No name is above ${fmt(SD_SINGLE_CAP*100,0)}% of equity and no cluster above ${fmt(SD_CLUSTER_CAP*100,0)}%.${top[0]?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`}
+      ? `<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${trims.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.r.p.val/equity*100,0)}%→${fmt(Math.max(0,(t.r.p.val-t.proceeds))/equity*100,0)}%</span></td><td class="tr">${t.sh}${t.capped?`<div style="color:#b45309;font-size:10px">capped — collateral</div>`:''}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${trimPl>=0?'pos':'neg'}">${fmtD(trimPl)}</td></tr></tbody></table>`
+      : (trimShort.length
+        /* An over-cap name whose trim the collateral reserve zeroed out leaves `trims` empty — but
+           saying "no name is above the cap" there would flatly contradict the callout right below,
+           and the reader would be right to trust neither. Name the real situation instead. */
+        ? `<div class="tech-empty">${trimShort.map(t=>t.sym).join(', ')} ${trimShort.length===1?'is':'are'} above the ${fmt(SD_SINGLE_CAP*100,0)}% cap, but every share is pledged to your covered calls — nothing can be trimmed until those are closed or rolled (see below).${t1?` ${t1.symbol} is ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`
+        : `<div class="tech-empty">No name is above ${fmt(SD_SINGLE_CAP*100,0)}% of equity and no cluster above ${fmt(SD_CLUSTER_CAP*100,0)}%.${top[0]?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`)}
+    ${(lockedExits.length||trimShort.length)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
+      <b>🔒 Held back by your own covered calls.</b>
+      ${lockedExits.map(r=>`<div style="padding:3px 0">${r.p.symbol} reads broken, but all ${fmt(r.p.qty,2)} sh back ${r.lock?r.lock.contracts:0} short call${r.lock&&r.lock.contracts===1?'':'s'}${r.lock&&r.lock.legs[0]?` ($${r.lock.legs[0].strike} exp ${r.lock.legs[0].expiration})`:''}. To exit, <b>buy the call${r.lock&&r.lock.contracts===1?'':'s'} back first</b> (or let ${r.lock&&r.lock.contracts===1?'it':'them'} expire), then sell the shares — selling first leaves you short naked calls.</div>`).join('')}
+      ${trimShort.map(t=>`<div style="padding:3px 0">${t.sym} can only be trimmed part-way — ${fmtD(t.short)} of the cap overage sits in shares pledged to ${t.lock?t.lock.contracts:0} short call${t.lock&&t.lock.contracts===1?'':'s'}. Roll or close ${t.lock&&t.lock.contracts===1?'it':'them'} to free the rest; until then the name stays above its cap.</div>`).join('')}
+    </div>`:''}
     ${(exits.length||trims.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
     ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Cut broken theses and trim to the aggressive-mandate caps in the self-directed account'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
 
@@ -2231,6 +2315,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(what keeps an aggressive book alive)</span></div>
     <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
       <div style="padding:4px 0">▸ Leverage stays under <b>${fmt(SD_MAX_LEVERAGE,2)}×</b> <span style="color:#9ca3af">(now ${fmt(lev,2)}×${lev>=SD_MAX_LEVERAGE?' — over, step 1 brings it back':''})</span>. Leverage on top of high beta is what actually ends accounts like this one.</div>
+      <div style="padding:4px 0">▸ <b>Never sell covered-call collateral.</b> Shares backing a short call are what make it covered; sell them and the call goes naked, with open-ended risk above the strike. Buy the call back or roll it first, then sell the stock${Object.keys(locked).length?` <span style="color:#9ca3af">(now ${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')} pledged)</span>`:''}.</div>
       <div style="padding:4px 0">▸ One name ≤ <b>${fmt(SD_SINGLE_CAP*100,0)}%</b> of equity, one cluster ≤ <b>${fmt(SD_CLUSTER_CAP*100,0)}%</b>${t1||overClusters.length?` <span style="color:#9ca3af">(now ${t1?`${t1.symbol} ${fmt(t1.val/equity*100,1)}%`:''}${t1&&overClusters.length?' · ':''}${overClusters.length?`${overClusters[0].cl} ${fmt(overClusters[0].pct,0)}%`:''})</span>`:''}.</div>
       <div style="padding:4px 0">▸ Every satellite carries a <b>vol-scaled stop</b> (≈12–35% below entry). Concentrated and stopless is the combination that doesn't recover.</div>
       <div style="padding:4px 0">▸ <b>House money</b> — once a name doubles, sell the original cost basis and let the rest run free. ${houseMoney.length?`<span style="color:#9ca3af">${houseMoney[0].symbol} is at ${fmt(houseMoney[0].px/houseMoney[0].avg,1)}× cost — eligible now.</span>`:'<span style="color:#9ca3af">Nothing at 2× cost yet.</span>'}</div>
@@ -2629,7 +2714,7 @@ function renderAgenticPerf(){
   const A=(window.__DATA&&window.__DATA.agentic)||null;
   const {cash,invested,equity}=agenticBook(A);
   const spySer=(typeof azSeries==='function')?azSeries('SPY'):[];
-  const st=A?agenticPerfStats(A,spySer):null;
+  const st=A?acctPerfStats(A,spySer):null;
   if(!st){
     el.innerHTML=`<div class="box-info" style="border-radius:10px;padding:10px 13px;font-size:12.5px">
       <b>Tracking hasn't started yet.</b> This account's return is measured from its <i>recorded</i> equity history — Robinhood publishes no account-equity history, so the producer records one point per day going forward and it can't be backfilled. Two days of snapshots and the chart appears here.</div>
