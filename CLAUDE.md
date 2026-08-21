@@ -143,7 +143,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v119** (`pf-v119`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v120** (`pf-v120`).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -560,7 +560,15 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   section exactly when the next card starts filling the screen, and "whichever card covers the most pixels"
   tips to the *next* section whenever the current one is short (a compact Allocation card handed you off to
   Income); **(c) the nav-chip `topOffset()` delegates to `__pfTopOffset`** — once the switcher became
-  sticky, any jump computed off the tab bar alone parks the target card underneath it. First visit to a
+  sticky, any jump computed off the tab bar alone parks the target card underneath it; **(d) the region
+  ABOVE the first `data-sec` card is its own section, `SEC_TOP` (`'__top'`), which lands at scroll 0
+  (v120)** — neither hero (nor the self-directed margin banner) carries a `data-sec`, so `_currentSec`
+  used to answer `snapshot` for the whole top of the page, and switching accounts while sitting at the
+  very top scrolled the incoming side DOWN to its snapshot tiles, **cutting the account balance off
+  screen** — the reader had not scrolled at all, yet the app jumped. `_currentSec` now returns `SEC_TOP`
+  whenever the first tagged card's top is still below `__pfTopOffset()`, and `_landOnSec` treats it as a
+  successful landing at 0 (so the settle pass still holds the top while the incoming cards fill).
+  First visit to a
   side also runs `_settleOnSec` (re-place for ~1.2s, cancelled by any real scroll input) because that
   side's cards are still filling in and everything above the target grows.
   **Both sides run the SAME card order (v106)** — hero → snapshot tiles → *holdings table* → *performance*

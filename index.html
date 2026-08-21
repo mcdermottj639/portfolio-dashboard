@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v119'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v120'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2383,10 +2383,19 @@ try{ _syncTabbarH(); if(document.readyState==='loading')document.addEventListene
    fills the most pixels" tips to the NEXT section whenever the current one is short — a compact
    Allocation card would hand you off to Income. Topmost-still-visible matches how people read. */
 const SEC_EDGE=40;
+/* Not every pixel of a side is inside a tagged section: BOTH heroes (the account-value headline)
+   and the self-directed margin banner sit ABOVE the first `data-sec` card and carry no key of
+   their own. Matching them to 'snapshot' — the old behaviour — meant that switching accounts while
+   sitting at the very top scrolled the incoming side DOWN to its snapshot tiles, cutting the
+   balance off the screen: the reader hadn't scrolled at all, yet the app jumped. So the region
+   above the first section is its own answer, '__top', which lands at scroll 0 on either side. */
+const SEC_TOP='__top';
 function _currentSec(rootId){
   const root=document.getElementById(rootId); if(!root)return null;
   const cut=__pfTopOffset()+SEC_EDGE; let last=null;
   const els=root.querySelectorAll('[data-sec]');
+  // Anything above the first tagged section still on screen ⇒ the reader is in the hero region.
+  if(els.length&&els[0].getBoundingClientRect().top>__pfTopOffset())return SEC_TOP;
   for(let i=0;i<els.length;i++){
     if(els[i].getBoundingClientRect().bottom>cut)return els[i].getAttribute('data-sec');
     last=els[i].getAttribute('data-sec');
@@ -2395,6 +2404,10 @@ function _currentSec(rootId){
 }
 function _landOnSec(rootId,sec){
   const root=document.getElementById(rootId); if(!root||!sec)return false;
+  // The hero region has no card to align to — the top of the page IS the target. Returned as a
+  // success so the caller still runs the settle pass (harmless at 0, and it holds the top while
+  // the incoming side's cards fill in rather than letting a growing layout nudge it).
+  if(sec===SEC_TOP){ window.scrollTo(0,0); return true; }
   const place=()=>{
     let i=SEC_ORDER.indexOf(sec), el=root.querySelector('[data-sec="'+sec+'"]');
     while(!el&&i>0){ i--; el=root.querySelector('[data-sec="'+SEC_ORDER[i]+'"]'); }
