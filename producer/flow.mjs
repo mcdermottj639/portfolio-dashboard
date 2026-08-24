@@ -35,6 +35,21 @@ export const FLOW_WEIGHTS = { revision: 0.40, insider: 0.30, surprise: 0.20, awa
 export const MIN_COMPONENTS = 2;      // below this the sleeve abstains rather than guessing
 export const INSIDER_WINDOW_DAYS = 90;
 export const MIN_CLUSTER = 3;         // distinct insiders acting the same way to count as a cluster
+// Insider sell-intensity calibration (v121). See insiderScore for why the old direction-only read
+// saturated at a constant ~3.2 for nearly every large cap.
+export const INSIDER_BASELINE_MIN_DAYS = 120;      // shorter history than this can't calibrate a pace
+export const INSIDER_MIN_BASELINE_DOLLARS = 50000; // a baseline thinner than this is noise to divide by
+export const INSIDER_STALE_DAYS = 150;             // newest open-market filing older than this ⇒ abstain
+export const INSIDER_SELL_SLOPE = 1.0;             // score points per doubling of the normal sell pace
+// ASYMMETRIC CAPS, for the same reason insiderScore treats buys and sells asymmetrically. Heavy selling
+// can cost 3 points; a COLLAPSE in selling earns at most 1, because "nobody sold" is far weaker evidence
+// than "somebody bought" — and a single 10%-owner can dominate a baseline all by itself (LLY's is the
+// Lilly Endowment, a foundation whose selling is portfolio management, not an opinion about the company).
+export const INSIDER_HEAVY_CAP = 3;                // ≥8× the normal pace is as bearish as it gets
+export const INSIDER_QUIET_CAP = 1;                // ≤half the normal pace is as bullish as it gets
+export const INSIDER_UNCALIBRATED_NUDGE = 0.5;     // uncalibrated selling: a nudge, never the old floor
+export const INSIDER_PRICE_SANITY_FACTOR = 10;     // reject rows priced >10× off the feed's own median
+export const INSIDER_PRICE_SANITY_MIN_ROWS = 5;    // below this a median is too unstable to police with
 
 // ---- 1. Analyst revision momentum -----------------------------------------
 // Finnhub /stock/recommendation → [{ period:'2026-08-01', strongBuy, buy, hold, sell, strongSell }, …]
@@ -96,16 +111,52 @@ export function revisionScore(recommendation, { lookbackMonths = 3 } = {}) {
 // all-sell window lands mildly bearish (~3.5-4), an all-buy cluster still reaches the top of the scale.
 export function insiderScore(transactions, sentiment, { asOf, windowDays = INSIDER_WINDOW_DAYS } = {}) {
   const today = asOf || new Date().toISOString().slice(0, 10);
-  const tx = rows(transactions).filter((t) => {
+  // Open-market P/S only, non-derivative, real size, not future-dated. Mechanical codes ('A' grants,
+  // 'M'/'X' exercises, 'G' gifts, 'F' withholding) carry no opinion and dominate the raw feed.
+  const all = rows(transactions).filter((t) => {
     if (!t || t.isDerivative) return false;
     const code = String(t.transactionCode || '').toUpperCase();
     if (code !== 'P' && code !== 'S') return false;
     if (!t.transactionDate) return false;
-    const age = daysBetween(today, t.transactionDate);
-    if (!(age >= 0 && age <= windowDays)) return false;
+    if (!(daysBetween(today, t.transactionDate) >= 0)) return false;   // drop future-dated provider junk
     return num(t.change) != null && num(t.change) !== 0;
   });
+  if (!all.length) return null;
+
+  // PROVIDER PRICE SANITY (v121). Every row here is dollarized as |change| × transactionPrice, so ONE
+  // corrupt price silently dominates a sum. Live case: two LLY rows carried transactionPrice ≈ 1,031,415
+  // on a stock trading ~$1,185 — a 1000× scaling error — which alone accounted for $75.8B of an
+  // $79.4B "baseline" and made every subsequent window look 2000× quieter than normal, i.e. spuriously
+  // BULLISH. That is the original saturation bug's mirror image and is more dangerous, so it is policed
+  // here rather than absorbed downstream. The test is the row's price against the FEED'S OWN median
+  // price, which is scale-free and survives a year of genuine price movement; it deliberately does NOT
+  // reject rows for being large in DOLLARS, because a genuinely enormous sale is real signal (Bezos sold
+  // 1.2M AMZN shares at a perfectly normal $286 on 2026-08-03 — that must survive).
+  const priced = all.filter((t) => (num(t.transactionPrice) || 0) > 0);
+  let clean = priced;
+  if (priced.length >= INSIDER_PRICE_SANITY_MIN_ROWS) {
+    const px = priced.map((t) => num(t.transactionPrice)).sort((a, b) => a - b);
+    const medPx = px[Math.floor(px.length / 2)];
+    const hi = medPx * INSIDER_PRICE_SANITY_FACTOR, lo = medPx / INSIDER_PRICE_SANITY_FACTOR;
+    clean = priced.filter((t) => { const q = num(t.transactionPrice); return q >= lo && q <= hi; });
+  }
+  const dropped = all.length - clean.length;
+  if (!clean.length) return null;
+
+  // ANCHOR THE WINDOW TO THE NEWEST FILING, NOT TO TODAY. Form 4s land days-to-weeks after the trade,
+  // so a today-anchored window is systematically under-filled relative to an older, fully-filed
+  // baseline — which would bias EVERY name toward "insiders have gone quiet". Anchoring both spans to
+  // the same filed frontier removes that bias. A feed whose newest open-market filing is older than
+  // INSIDER_STALE_DAYS has no current opinion in it at all, so it abstains.
+  const dates = clean.map((t) => String(t.transactionDate)).sort();
+  const anchor = dates[dates.length - 1];
+  const anchorAge = Math.round(daysBetween(today, anchor));
+  if (anchorAge > INSIDER_STALE_DAYS) return null;
+
+  const inWindow = (t) => { const a = daysBetween(anchor, t.transactionDate); return a >= 0 && a <= windowDays; };
+  const tx = clean.filter(inWindow);
   if (!tx.length) return null;
+  const priorTx = clean.filter((t) => daysBetween(anchor, t.transactionDate) > windowDays);
 
   // Net each insider across the window, then count PEOPLE (not filings) on each side — five filings by
   // one officer is one opinion, not five.
@@ -122,10 +173,44 @@ export function insiderScore(transactions, sentiment, { asOf, windowDays = INSID
   let buyers = 0, sellers = 0;
   for (const net of byPerson.values()) { if (net > 0) buyers++; else if (net < 0) sellers++; }
 
-  // Dollar tilt, with the buy/sell asymmetry applied on the way to a score.
-  const totalD = buyD + sellD;
-  const tilt = totalD > 0 ? (buyD - sellD) / totalD : (buyers - sellers) / Math.max(1, buyers + sellers);
-  let score = 5 + (tilt > 0 ? 4.0 * tilt : 1.0 * tilt);
+  // ---- SELL INTENSITY vs the name's OWN baseline (the v121 fix) -------------------------------
+  // The old scorer read the DIRECTION of the dollar tilt. For a large cap that is a constant: insiders
+  // sell continuously and essentially never buy on the open market, so tilt pinned at −1 and the score
+  // saturated in a 3.0–3.5 band for 12 of 13 covered names — a uniform offset that cancels out of any
+  // ranking, i.e. 30% of the composite's weight measuring nothing. (Live probe: NVDA had 405 open-market
+  // sells and ZERO buys across 11 months.) The information is not THAT insiders sold, it is whether they
+  // sold unusually HARD for this company — the same probe showed NVDA's monthly open-market sales ranging
+  // $133K to $507M, a 3000× spread the old score collapsed to one number.
+  // So: compare the window's sell RATE to the trailing rate from the same feed. Normal run-rate ⇒ ~5
+  // (no information), a multiple of it ⇒ bearish, a collapse in selling ⇒ mildly bullish.
+  const spanDays = (list) => {
+    if (!list.length) return 0;
+    const ds = list.map((t) => String(t.transactionDate)).sort();
+    return Math.max(1, Math.round(daysBetween(anchor, ds[0])) - windowDays);
+  };
+  const priorSellD = priorTx.reduce((a, t) => { const c = num(t.change); return c < 0 ? a + Math.abs(c) * (num(t.transactionPrice) || 0) : a; }, 0);
+  const baselineDays = spanDays(priorTx);
+  const calibrated = baselineDays >= INSIDER_BASELINE_MIN_DAYS && priorSellD >= INSIDER_MIN_BASELINE_DOLLARS;
+
+  let score = 5, sellIntensity = null;
+  if (calibrated) {
+    const windowRate = sellD / windowDays;
+    const baseRate = priorSellD / baselineDays;
+    sellIntensity = r2(windowRate / baseRate);
+    // log2 so each DOUBLING of the normal rate costs a fixed number of points. Capped both ways (see
+    // INSIDER_HEAVY_CAP / INSIDER_QUIET_CAP) so one outlier filing can't drive the score to zero and a
+    // quiet quarter can't manufacture a strong bullish read out of an absence.
+    const lr = sellIntensity > 0 ? clamp(Math.log2(sellIntensity), -INSIDER_QUIET_CAP, INSIDER_HEAVY_CAP) : -INSIDER_QUIET_CAP;
+    score = 5 - lr * INSIDER_SELL_SLOPE;
+  } else if (sellD > 0) {
+    // Not enough history to say whether this selling is unusual. A small nudge, NOT the old saturated
+    // floor — an uncalibrated read must not masquerade as a strong bearish signal.
+    score = 5 - INSIDER_UNCALIBRATED_NUDGE;
+  }
+
+  // Buys stay asymmetrically strong: insiders buy for one reason and sell for a dozen (diversification,
+  // taxes, 10b5-1 plans). Don't "simplify" this back to symmetry.
+  if (buyD > 0) score += 4.0 * (buyD / (buyD + sellD));
 
   const cluster = buyers >= MIN_CLUSTER ? 'buy' : (sellers >= MIN_CLUSTER ? 'sell' : null);
   if (cluster === 'buy') score += 1.0;
@@ -138,14 +223,24 @@ export function insiderScore(transactions, sentiment, { asOf, windowDays = INSID
   const mspr = msprRows.length ? num(msprRows[0].mspr) : null;
   if (mspr != null) score += 0.5 * clamp(mspr / 100, -1, 1);
 
+  // The window closed over a quarter ago: real, but no longer a statement about the present.
+  const stale = anchorAge > windowDays;
+  if (stale) score = 5 + (score - 5) * 0.5;
+
+  const intensityNote = sellIntensity == null ? 'sell pace uncalibrated (too little history)'
+    : sellIntensity >= 2 ? `selling ${r2(sellIntensity)}× its own normal pace`
+    : sellIntensity <= 0.5 ? `selling has slowed to ${r2(sellIntensity)}× normal`
+    : 'selling near its own normal pace';
   return {
     score: r2(clamp(score, 0, 10)),
     buyers, sellers, cluster, filings: tx.length,
     buyDollars: Math.round(buyD), sellDollars: Math.round(sellD),
+    sellIntensity, baselineDays: calibrated ? baselineDays : null, calibrated,
+    anchor, anchorAge, stale, droppedRows: dropped,
     mspr: mspr == null ? null : r2(mspr),
     note: cluster
-      ? `${cluster === 'buy' ? 'CLUSTER BUY' : 'cluster sell'} — ${cluster === 'buy' ? buyers : sellers} insiders in ${windowDays}d`
-      : `${buyers} buyer(s) / ${sellers} seller(s) in ${windowDays}d`,
+      ? `${cluster === 'buy' ? 'CLUSTER BUY' : 'cluster sell'} — ${cluster === 'buy' ? buyers : sellers} insiders in ${windowDays}d; ${intensityNote}`
+      : `${buyers} buyer(s) / ${sellers} seller(s) in ${windowDays}d; ${intensityNote}`,
   };
 }
 

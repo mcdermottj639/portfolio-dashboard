@@ -78,7 +78,11 @@ const sellCluster = { data: buyCluster.data.map((t) => ({ ...t, change: -t.chang
 const is = insiderScore(sellCluster, null, { asOf: ASOF });
 eq('insider counts distinct sellers', is.sellers, 3);
 eq('insider flags a sell cluster', is.cluster, 'sell');
-near('all-sell cluster is bearish but muted', is.score, 3.5);
+// 4.0 = neutral 5 − the UNCALIBRATED nudge (0.5) − the sell-cluster adjustment (0.5). This fixture has
+// no history before its window, so sell INTENSITY can't be calibrated and the score must stay near
+// neutral rather than asserting a strong bearish read it hasn't earned.
+near('uncalibrated all-sell cluster sits just below neutral', is.score, 4.0);
+ok('an uncalibrated read says so', is.calibrated === false && is.sellIntensity === null);
 ok('sell side moves far less than buy side from neutral', (5 - is.score) * 3 < (ib.score - 5));
 // Regression (live-data calibration): routine large-cap selling must NOT read as maximally bearish. The
 // first live run scored NVDA and JPM at 0.9/10 on all-sell windows — a constant drag on every megacap
@@ -121,6 +125,104 @@ const sentNeg = { data: [{ year: 2026, month: 7, mspr: -100 }, { year: 2026, mon
 const ibNeg = insiderScore(buyCluster, sentNeg, { asOf: ASOF });
 eq('mspr picks the latest month', ibNeg.mspr, -100);
 ok('negative mspr trims a buy cluster but leaves it bullish', ibNeg.score < ib.score && ibNeg.score > 5);
+
+// ---- insider SELL INTENSITY (v121 fix) -------------------------------------
+// THE BUG THIS REPLACES: the old scorer read the DIRECTION of the dollar tilt, which for a large cap is
+// a constant — insiders sell continuously and essentially never buy on the open market, so tilt pinned
+// at −1 and the score saturated. On the live 2026-08-24 snapshot 12 of 13 covered names scored between
+// 3.00 and 3.50, i.e. 30% of the flow composite's weight was a uniform offset that cancels out of any
+// ranking. A live probe of NVDA showed 405 open-market sells / ZERO buys over 11 months, with monthly
+// sale dollars ranging $133K to $507M — a 3000× spread the old score collapsed to one number.
+// The three fixtures below are ALL all-sell windows with identical structure, differing ONLY in how hard
+// the insiders sold relative to that name's own trailing pace. The old scorer gave all three the same
+// number; the whole point of the fix is that it no longer does.
+const IASOF = '2026-08-04';
+// Baseline: $1,010,000 of open-market sales before the window, spanning 202 days ⇒ $5,000/day normal pace.
+const baseSells = [
+  { name: 'OLD A', change: -5000, transactionCode: 'S', transactionDate: '2025-10-01', transactionPrice: 100 },
+  { name: 'OLD B', change: -3000, transactionCode: 'S', transactionDate: '2026-01-15', transactionPrice: 100 },
+  { name: 'OLD C', change: -2100, transactionCode: 'S', transactionDate: '2026-03-01', transactionPrice: 100 },
+];
+// Window = the 90d ending at the newest filing (2026-07-20). Normal pace over it = 90 × $5,000 = $450,000.
+const win = (a, b) => [
+  { name: 'EXEC ONE', change: -a, transactionCode: 'S', transactionDate: '2026-07-20', transactionPrice: 100 },
+  { name: 'EXEC TWO', change: -b, transactionCode: 'S', transactionDate: '2026-06-15', transactionPrice: 100 },
+];
+const atPace   = insiderScore({ data: [...baseSells, ...win(2500, 2000)] }, null, { asOf: IASOF }); // $450k = 1.0×
+const hardSell = insiderScore({ data: [...baseSells, ...win(10000, 8000)] }, null, { asOf: IASOF }); // $1.8M = 4.0×
+const goneQuiet= insiderScore({ data: [...baseSells, ...win(625, 500)] }, null, { asOf: IASOF });    // $112.5k = 0.25×
+
+ok('baseline calibrates when history is long and thick enough', atPace.calibrated === true && atPace.baselineDays === 202);
+near('selling at its own normal pace carries NO information ⇒ neutral', atPace.score, 5.0);
+near('sell intensity is measured as a ratio to the name\'s own pace', atPace.sellIntensity, 1.0);
+near('4× the normal sell pace ⇒ bearish (log2 4 = 2 points)', hardSell.score, 3.0);
+// 6.0, not 7.0: the QUIET cap is 1 point where the HEAVY cap is 3. An absence of selling is weak
+// evidence — and one 10%-owner (LLY's baseline is dominated by the Lilly Endowment, a foundation)
+// can set a whole baseline by itself, so pausing must not read as strongly as buying.
+near('selling collapsing to a quarter of normal ⇒ mildly bullish', goneQuiet.score, 6.0);
+ok('heavy selling is punished harder than quiet selling is rewarded',
+  (5 - hardSell.score) > (goneQuiet.score - 5));
+// The regression that matters: three all-sell windows, three DIFFERENT scores.
+ok('all-sell windows now DISCRIMINATE instead of saturating',
+  new Set([atPace.score, hardSell.score, goneQuiet.score]).size === 3);
+ok('the discriminating spread is material, not cosmetic', (goneQuiet.score - hardSell.score) >= 2.5);
+
+// One outlier filing must not drive the score to zero: intensity is capped at 8× normal (log2 → 3).
+const berserk = insiderScore({ data: [...baseSells, ...win(500000, 400000)] }, null, { asOf: IASOF });
+ok('extreme selling is capped, not floored at 0', berserk.score >= 1.5 && berserk.score <= 2.5);
+ok('but extreme still scores below merely-heavy', berserk.score < hardSell.score);
+
+// FORM 4 LAG: filings land days-to-weeks after the trade, so a TODAY-anchored window is systematically
+// under-filled versus an older, fully-filed baseline — which would bias every name toward "gone quiet".
+// The window is anchored to the newest filing instead. Under the old today-anchored rule this fixture
+// (newest filing 100 days before asOf) returned null and the name silently lost its insider component.
+const lagged = insiderScore({ data: [
+  { name: 'EXEC ONE', change: -2500, transactionCode: 'S', transactionDate: '2026-04-26', transactionPrice: 100 },
+  { name: 'EXEC TWO', change: -2000, transactionCode: 'S', transactionDate: '2026-04-01', transactionPrice: 100 },
+] }, null, { asOf: IASOF });
+ok('a lagged-but-recent feed still produces a read', lagged !== null);
+eq('the window anchors to the newest filing', lagged.anchor, '2026-04-26');
+ok('a window that closed over a quarter ago is flagged stale', lagged.stale === true);
+ok('and a stale read is damped toward neutral', Math.abs(lagged.score - 5) < Math.abs(is.score - 5));
+
+// …but a feed with no open-market filing inside INSIDER_STALE_DAYS has no current opinion in it.
+const ancient = insiderScore({ data: [
+  { name: 'EXEC ONE', change: -2500, transactionCode: 'S', transactionDate: '2025-11-01', transactionPrice: 100 },
+] }, null, { asOf: IASOF });
+eq('a feed with no filing inside the stale horizon abstains', ancient, null);
+
+// A thin baseline must not be divided by — it would manufacture enormous intensities from noise.
+const thinBase = insiderScore({ data: [
+  { name: 'OLD A', change: -1, transactionCode: 'S', transactionDate: '2025-10-01', transactionPrice: 100 },
+  ...win(2500, 2000),
+] }, null, { asOf: IASOF });
+ok('a baseline below the dollar floor stays uncalibrated', thinBase.calibrated === false);
+ok('and an uncalibrated read never fakes an intensity', thinBase.sellIntensity === null);
+
+// Buys keep their asymmetry ON TOP of the intensity term: a name selling at 4× normal that ALSO has
+// open-market buyers must not read as bearishly as the same name with no buyers at all.
+const hardSellWithBuyers = insiderScore({ data: [
+  ...baseSells, ...win(10000, 8000),
+  { name: 'BUYER ONE', change: 12000, transactionCode: 'P', transactionDate: '2026-07-10', transactionPrice: 100 },
+] }, null, { asOf: IASOF });
+ok('open-market buying offsets heavy selling', hardSellWithBuyers.score > hardSell.score);
+
+// PROVIDER PRICE CORRUPTION: a 1000×-scaled transactionPrice must not set the baseline. Live case — two
+// LLY rows carried price ≈1,031,415 on a ~$1,185 stock, contributing $75.8B of a $79.4B baseline and
+// making every later window look 2000× quieter, i.e. spuriously BULLISH.
+const corruptBase = [
+  ...baseSells,
+  { name: 'FOUNDATION', change: -55908, transactionCode: 'S', transactionDate: '2025-11-14', transactionPrice: 1031415 },
+];
+const corrupted = insiderScore({ data: [...corruptBase, ...win(2500, 2000)] }, null, { asOf: IASOF });
+eq('the corrupt row is dropped', corrupted.droppedRows, 1);
+near('and the read matches the clean baseline', corrupted.score, atPace.score);
+// …while a genuinely ENORMOUS sale at a NORMAL price survives (Bezos: 1.2M AMZN shares at $286).
+const whale = insiderScore({ data: [...baseSells,
+  { name: 'BEZOS JEFFREY P', change: -1209649, transactionCode: 'S', transactionDate: '2026-07-20', transactionPrice: 286 },
+] }, null, { asOf: IASOF });
+eq('a huge sale at a sane price is NOT dropped', whale.droppedRows, 0);
+ok('and it reads as heavy selling', whale.score < 3);
 
 // ---- surpriseScore ---------------------------------------------------------
 const earn = [
