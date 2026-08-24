@@ -2,6 +2,7 @@
 // producer ever runs. Deterministic (no randomness). The real snapshot replaces this.
 // Run: node producer/make-sample-data.mjs   (writes ../data.json)
 import { writeFileSync } from 'node:fs';
+import { makeDecision, gradeDecisions } from './agentic-ledger.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
@@ -270,6 +271,9 @@ const data = {
   generatedAt: now.toISOString(),
   generatedAtLabel: 'SAMPLE DATA · ' + now.toISOString().slice(0, 16).replace('T', ' ') + ' UTC',
   sample: true,
+  // v121: the regime input for deployment pacing. PF_SAMPLE_VIX=33 (or 25) exercises the stressed /
+  // elevated banner + the stretched idle-cash deadline; default is a calm tape, which renders nothing.
+  vix: { v: +(process.env.PF_SAMPLE_VIX || 15.9), asOf: now.toISOString().slice(0, 10) },
   recorded,
   quotes,
   hist,
@@ -360,6 +364,38 @@ const data = {
     // for: the IRS window is per taxpayer, so it must block a rebuy in the agentic account too.
     recentLosses: [{ sym: 'GOOGL', date: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 9); return d.toISOString().slice(0, 10); })(), realized: -84.2, account: 'main' }],
     lossSource: 'trades',
+    // v121: a graded decision ledger WITH sleeve drivers, so the Rebalance Log's "By research sleeve"
+    // strip renders in preview instead of sitting invisible. Built through the REAL gradeDecisions /
+    // makeDecision path rather than hand-written, so the fixture can't drift from the shipped shape.
+    decisions: (() => {
+      const d = (n) => { const x = new Date(now); x.setUTCDate(x.getUTCDate() - n); return x.toISOString().slice(0, 10); };
+      const tgt = { names: [
+        { ticker: 'SPY', drivers: ['quality'] },
+        { ticker: 'NVDA', drivers: ['momentum', 'growth'] },
+        { ticker: 'GOOGL', drivers: ['quality', 'valuation'] },
+        { ticker: 'LLY', drivers: ['growth'] },
+      ]};
+      const decs = [
+        makeDecision({ date: d(38), book: 9000, spyAt: 690, target: tgt, rationale: 'initial deploy into the verified target',
+          buys: [{ sym: 'SPY', dollars: 900, shares: 1.2, price: 700 }, { sym: 'NVDA', dollars: 700, shares: 3.4, price: 205 }] }),
+        makeDecision({ date: d(24), book: 9600, spyAt: 715, target: tgt, rationale: 'deposit deployed',
+          buys: [{ sym: 'GOOGL', dollars: 600, shares: 1.8, price: 330 }, { sym: 'NVDA', dollars: 400, shares: 1.9, price: 210 }] }),
+        makeDecision({ date: d(11), book: 10050, spyAt: 733, target: tgt, rationale: 'drift top-up',
+          buys: [{ sym: 'LLY', dollars: 500, shares: 0.8, price: 620 }, { sym: 'GOOGL', dollars: 300, shares: 0.9, price: 335 }] }),
+      ];
+      return gradeDecisions(decs, quotes, now.toISOString().slice(0, 10));
+    })(),
+    // ── v121 fixtures: the surfaces added with the drawdown breaker / regime pacing / sleeve
+    //    attribution. A surface that can't be previewed rots (the v116 lesson), so each of these
+    //    exists purely so the local preview exercises the new card states.
+    //    PF_SAMPLE_DRAWDOWN=soft|hard trips the book-level breaker banner + its guardrail row.
+    drawdown: (() => {
+      const lvl = String(process.env.PF_SAMPLE_DRAWDOWN || '').toLowerCase();
+      if (lvl !== 'soft' && lvl !== 'hard') return { dd: -0.016, level: 'ok', peakT: now.toISOString().slice(0, 10), points: 39, insufficient: false, note: 'book -1.6% from its peak — deployment normal' };
+      const dd = lvl === 'hard' ? -0.141 : -0.093;
+      return { dd, level: lvl, peakT: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 21); return d.toISOString().slice(0, 10); })(),
+        points: 39, insufficient: false, note: `book ${(dd * 100).toFixed(1)}% from its peak — new deployment paused` };
+    })(),
     pending: { id: now.toISOString().slice(0, 10) + '-sample', created: now.toISOString().slice(0, 10), status: 'proposed',
       autoEligible: false, turnover: 1420.5, book: equity, taxSummary: { gains: 61.4, losses: -22.8, net: 38.6 },
       legs: { sells: [{ sym: 'V', kind: 'trim', dollars: 62.4 }], buysNow: [{ sym: 'SPY', dollars: 48.1 }, { sym: 'LLY', dollars: 120.6 }], buysT1: [] } },

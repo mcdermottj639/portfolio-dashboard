@@ -145,7 +145,7 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v120** (`pf-v120`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v121** (`pf-v121`).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -175,6 +175,10 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
   `finnhub.io` / `financialmodelingprep.com` if using the supplementary providers or the flow layer).
 
 ## Local dev / preview (no live connectors)
+- **v121 preview flags:** `PF_SAMPLE_DRAWDOWN=soft|hard` trips the book-level drawdown banner + guardrail
+  row, `PF_SAMPLE_VIX=33` (or 25) the stressed/elevated regime banner. The sample ledger now carries
+  graded decisions **with sleeve drivers** (built through the real `makeDecision`/`gradeDecisions`, so the
+  fixture can't drift from the shipped shape) so the Rebalance Log's "By research sleeve" strip renders.
 - `node producer/make-sample-data.mjs` writes a **plaintext** sample `data.json` (fake holdings) so
   the consumer renders without the real encrypted snapshot or any MCP access. Two env flags widen what
   it exercises, because the default fixture left whole surfaces unreachable in preview:

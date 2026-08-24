@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v120'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v121'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3003,6 +3003,31 @@ window.renderAgenticCard=renderAgenticCard;
    how the loop runs. It deliberately does NOT restate the holdings/drift table (that's the Agentic
    Portfolio card one tab over) — a card that exists twice is the v99 mistake this repo already made
    once. Read-only: it renders state the producer/executor own, and places nothing. */
+/* ── Book-level drawdown + market-regime banners (v121) ────────────────────────────────────────
+   BOTH are BOOK-level states, not per-name deferrals, so they render as a banner above the per-name
+   list rather than as rows in it — a book-wide halt shown as 9 identical rows reads as 9 problems.
+   The drawdown figure is computed ONCE in the producer (build-data → data.agentic.drawdown, from
+   drawdown.mjs) and only displayed here, so this card and the executor can never disagree about it. */
+const AG_DD_SOFT_PCT=-8, AG_DD_HARD_PCT=-12, AG_DD_RESUME_PCT=-6;
+const AG_SLEEVE_MIN_N=4;   // mirrors SLEEVE_MIN_N in producer/agentic-ledger.mjs — keep the two in step
+const AG_VIX_ELEVATED=22, AG_VIX_STRESSED=30;
+function agRegime(){ const v=+(((window.__DATA||{}).vix||{}).v); if(!isFinite(v)||v<=0)return null;
+  return v>=AG_VIX_STRESSED?'stressed':v>=AG_VIX_ELEVATED?'elevated':'calm'; }
+function agDrawdownBanner(){
+  const d=((window.__DATA||{}).agentic||{}).drawdown; if(!d||!d.level||d.level==='ok')return '';
+  const pct=d.dd!=null?(d.dd*100).toFixed(1)+'%':'—';
+  const hard=d.level==='hard';
+  return `<div class="fund-note" style="margin:0 0 10px;background:${hard?'#fef2f2':'#fffbeb'};border-color:${hard?'#fecaca':'#fde68a'}">
+    <b>${hard?'🛑':'⚠️'} Book drawdown — ${hard?'HARD':'SOFT'} tier:</b> the account is <b>${pct}</b> below its peak${d.peakT?` (${dLbl(d.peakT)})`:''}, past the ${hard?AG_DD_HARD_PCT:AG_DD_SOFT_PCT}% threshold, so <b>every new buy is paused</b> regardless of what any individual name's thesis says${hard?`, and defensive cash is being raised to <b>20% of book</b> (losses first)`:''}. Deferred dollars stay in <b>cash</b>, not the ${AG_PARK_VEHICLE} waiting ground — the placeholder is 100% equity beta, so parking there during a drawdown would be backwards. Deployment resumes once the book recovers above <b>${AG_DD_RESUME_PCT}%</b> (not at ${AG_DD_SOFT_PCT}% — the gap stops it flickering on and off). This is measured <b>deposit-adjusted</b>: a deposit cannot cancel it by pushing raw equity to a new high.</div>`;
+}
+function agRegimeBanner(){
+  const r=agRegime(); if(!r||r==='calm')return '';
+  const v=(((window.__DATA||{}).vix||{}).v);
+  const st=r==='stressed';
+  return `<div class="fund-note" style="margin:0 0 10px;background:#fffbeb;border-color:#fde68a">
+    <b>🌡️ ${st?'Stressed':'Elevated'} tape (VIX ${v}):</b> deployment <b>pacing</b> is stretched — the idle-cash deadline goes from ${AG_IDLE_DEPLOY_D}d to <b>${Math.round(AG_IDLE_DEPLOY_D*(st?2:1.5))}d</b>${st?`, the forced tranche halves to <b>${(AG_IDLE_TRANCHE_PCT/2)}%</b>, and a name whose entry zones have gone advisory is deferred rather than bought unbanded`:''}. Regime only changes <b>how fast</b> cash goes in — never which names are chosen, and never a sell.</div>`;
+}
+
 function renderAgenticPlan(){
   const host=document.getElementById('plan-agentic-app'); if(!host)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
@@ -3137,6 +3162,7 @@ function renderAgenticPlan(){
   const blockedCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blocked?blocked+' name'+(blocked===1?'':'s')+' deferred':'nothing deferred'}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do.</div>
+      ${agDrawdownBanner()}${agRegimeBanner()}
       ${blockList.length?blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):
         `<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
       ${zonesStale?`<div class="fund-note" style="margin:10px 0 0;background:#fffbeb;border-color:#fde68a"><b>⚠️ Entry zones are advisory:</b> this target is <b>${zoneAge}d</b> old (over the ${AG_ENTRY_STALE_D}-day limit), so the entry-band checks are <b>off</b>. When a whole target reads out-of-band at once, the guard is measuring its own staleness rather than the companies. <b>Below-stop</b> still binds — that one is the real thesis-broken signal.</div>`:
@@ -3175,6 +3201,9 @@ function renderAgenticPlan(){
       ${rule('🚫','PDT guard','nothing bought today is sold today','Limited margin makes this a margin account for FINRA, and the book is under $25k with an hourly executor — so zero round trips, categorically, rather than counting day trades.')}
       ${rule('🪙','Dust floor',fmtD(AG_MIN_BUY)+' minimum buy','A ticket once placed a $1.80 order. Below this the spread and the bookkeeping cost more than the position is worth.')}
       ${rule('⏱','Idle-cash deadline',AG_IDLE_DEPLOY_D+' days','Nothing ever forced cash IN, so "wait for a pullback" had no expiry and a rising market could strand a deposit indefinitely. Past the deadline the bands are waived and cash deploys in '+AG_IDLE_TRANCHE_PCT+'% tranches.')}
+      ${rule('🛑','Book drawdown breaker',AG_DD_SOFT_PCT+'% pause / '+AG_DD_HARD_PCT+'% raise cash','Every other rule here is per-NAME; this is the only one that looks at the whole book. Past '+AG_DD_SOFT_PCT+'% below its peak no new money goes in at all, and deferred dollars stay in cash rather than the waiting ground. Past '+AG_DD_HARD_PCT+'% it also raises cash to 20% of book, losses first. Measured deposit-adjusted, so funding the account cannot cancel it, and it resumes only above '+AG_DD_RESUME_PCT+'%.')}
+      ${rule('🌡️','Regime pacing','VIX '+AG_VIX_ELEVATED+' / '+AG_VIX_STRESSED,'The idle-cash deadline used to fire identically at VIX 12 and VIX 35. Elevated stretches it ×1.5, stressed ×2 and halves the tranche. It paces deployment only — it never picks names, sizes positions, or blocks a sell.')}
+      ${rule('🧮','Cluster caps see through the index','SPY/'+AG_PARK_VEHICLE+'/QQQ composition counts','A book could hold 44.8% megacap-tech directly, add 20% SPY on top, and still report itself inside the '+AG_CLUSTER_CAP+'% cap while really carrying ~54%. Caps now count what is inside the index sleeves — and a breach trims the DIRECT names, never the index ballast, since that is the diversifier.')}
       ${rule('🔓','No leverage','unlevered 1×','Limited margin grants instant settlement only. The account cannot borrow, so the book is its own equity.')}
     </div></div>`;
 
@@ -3223,7 +3252,26 @@ function renderAgenticLog(){
   const s=D.stats||{};
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Contribution</b> = dollar-weighted price move since the decision (a trim that then fell counts positive); <b>vs SPY</b> = the same window's alpha. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
     <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
-  el.innerHTML=hdr+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  el.innerHTML=hdr+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+/* Sleeve attribution (v121) — which research sleeve is actually earning its keep. Every target name
+   carries `drivers` (the sleeves that scored ≥7) and the ledger stamps them onto each BUY leg AT
+   DECISION TIME, so this answers "did the names a sleeve backed outperform?" rather than "what did we
+   buy". Two honesty rules, both deliberate: a sleeve under the minimum sample is rendered as
+   "not yet measurable" and NEVER as a finding (attribution over two trades is noise, and a card that
+   prints it as signal is worse than one that says nothing); and legs recorded before drivers existed
+   carry none and are simply absent — the history is not backfilled or guessed at. */
+function agSleeveStrip(D){
+  const S=D&&D.sleeves; if(!S||!Object.keys(S).length) return '';
+  const ent=Object.entries(S).sort((a,b)=>(b[1].alphaPct==null?-99:b[1].alphaPct)-(a[1].alphaPct==null?-99:a[1].alphaPct));
+  const solid=ent.filter(([,v])=>!v.thin), thin=ent.filter(([,v])=>v.thin);
+  const one=([k,v])=>`<span style="display:inline-block;margin:0 10px 4px 0"><b>${k}</b> ${v.alphaPct==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${v.alphaPct>=0?'#065f46':'#991b1b'};font-weight:600">${v.alphaPct>=0?'+':''}${fmt(v.alphaPct,1)}pp</span>`} <span style="color:#9ca3af;font-size:10.5px">(${fmtD(v.dollars)}, ${v.n} buy${v.n===1?'':'s'})</span></span>`;
+  return `<div class="fund-note" style="margin:0 0 8px">
+    <b>🔬 By research sleeve</b> <span style="color:#9ca3af;font-size:10.5px">— alpha vs SPY on the buys each sleeve backed</span><br>
+    ${solid.length?solid.map(one).join(''):'<span style="color:#9ca3af">Nothing has enough graded buys yet.</span>'}
+    ${thin.length?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Not yet measurable (under ${AG_SLEEVE_MIN_N} graded buys): ${thin.map(([k,v])=>`${k} (${v.n})`).join(', ')} — shown so they aren't mistaken for absent, not as a result.</div>`:''}
+    <div style="margin-top:6px;font-size:10.5px;color:var(--text);opacity:.7">A buy backed by more than one sleeve splits its dollars evenly between them. This is what makes a sleeve <i>removable</i>: the <b>flow</b> sleeve is measured here while its allocation weight is still 0, so it can be judged on evidence before it ever moves a dollar.</div>
+  </div>`;
 }
 window.renderAgenticLog=renderAgenticLog;
 

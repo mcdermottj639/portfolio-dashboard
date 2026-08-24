@@ -22,6 +22,7 @@ import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
+import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint } from './equityseries.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades } from './realizedpnl.mjs';
@@ -311,6 +312,16 @@ const data = {
     if (r.flow) console.log(`agentic: inferred net external cash flow ${fmtMoney(r.flow)} (cumFlow ${fmtMoney(r.cumFlow)}) — excluded from performance`);
   } else if (data.agentic && prior && prior.agentic && Array.isArray(prior.agentic.equityHistory)) {
     data.agentic.equityHistory = prior.agentic.equityHistory.slice(-260);
+  }
+  // ── data.agentic.drawdown (v121) — the book-level circuit breaker, computed ONCE here ─────────
+  // The consumer needs this to explain why the executor has stopped deploying, and the exec gate needs
+  // it to decide. Computing it in the producer (rather than re-deriving it in index.html) means the card
+  // and the planner can never disagree about what the drawdown IS — the same reasoning behind
+  // acctPerfStats being shared. Deposit-adjusted and memoryless; see drawdown.mjs.
+  if (data.agentic && Array.isArray(data.agentic.equityHistory)) {
+    const dd = bookDrawdown(data.agentic.equityHistory);
+    data.agentic.drawdown = { dd: dd.dd, level: dd.level, peakT: dd.peakT, points: dd.points, insufficient: dd.insufficient, note: dd.note };
+    if (dd.level !== 'ok') console.warn(`agentic DRAWDOWN ${dd.level.toUpperCase()}: ${dd.note}`);
   }
   // ── Self-directed account (••••0741) real equity history = data.main ──────────────────────────
   // The Accounts tab's YTD tile used to show two DIFFERENT kinds of number on the two sides: the
