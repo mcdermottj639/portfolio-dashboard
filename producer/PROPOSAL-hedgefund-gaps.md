@@ -35,8 +35,10 @@ which research sleeve earns its keep.
 - **Update CLAUDE.md + AGENTIC.md in the same change** (standing rule), and this file's status
   line per phase as phases land.
 - **Land on `main`** when verified (ALWAYS MERGE rule) — unmerged producer code never runs.
-- Phases are independent unless noted. Suggested order: **1 → 2 → 4 → 6**, with **3** and **5** as
-  owner-gated switches. Each phase should be its own commit (or few) so a phase can be reverted alone.
+- Phases are independent unless noted. Suggested order: **1 → 2 → 4 → 6**, then the Phase 5
+  decoupling. **Both owner gates are now decided: Phase 3 is DECLINED (keep VTI) and Phase 5 is HOLD
+  (do not flip FLOW_WEIGHT — build the recording decoupling instead).** Read those two sections for
+  what that means for Phase 2. Each phase should be its own commit (or few) so a phase can be reverted alone.
 
 ---
 
@@ -128,7 +130,15 @@ deep-loss, stops at the cash floor; parking suspended under soft; <2 recorded po
 
 ---
 
-## Phase 3 — ⚖️ OWNER: park vehicle → SGOV (yield on waiting capital)
+## Phase 3 — ⚖️ OWNER: park vehicle → SGOV — **DECLINED 2026-08-24. Keep VTI. Do not implement.**
+
+> **Owner decision (2026-08-24): keep VTI.** Do not change `PARK_VEHICLE`. The rest of this section
+> is retained only as the record of what was proposed and why it was turned down. **Consequence:
+> Phase 2's parking-suspension rule is now load-bearing** — with an equity-beta park vehicle,
+> deferred dollars MUST stay in cash while the drawdown breaker is soft, or "wait, the market looks
+> risky" money keeps taking full market risk. Implement that branch exactly as specced in Phase 2.
+
+### (declined) original proposal
 
 **Problem.** Deferred dollars ("too extended / wash-blocked / earnings — wait") sit in VTI: 100%
 equity beta on money that is waiting precisely because equities looked risky. Funds hold waiting
@@ -190,17 +200,65 @@ advisory-band buys; sells unaffected.
 
 ---
 
-## Phase 5 — ⚖️ OWNER: flip `FLOW_WEIGHT` 0 → 0.10
+## Phase 5 — ⚖️ OWNER: `FLOW_WEIGHT` — **HOLD AT 0. Do not flip. Decouple recording instead.**
 
-One line in `.claude/workflows/agentic-research.js` (documented there and in CLAUDE.md as *the*
-switch). Precondition the owner asked for: a burn-in review — before flipping, eyeball 2–3 weeks of
-`data.flow` for the known failure modes recorded in `PROPOSAL-flow-signals.md` (the all-sell
-megacap insider drag, sparse-name abstention working). If flipped, update CLAUDE.md's flow rows
-("DISPLAY-ONLY" clauses) and the Flow card's burn-in copy in `index.html` (version bump). The other
-five sleeves scale proportionally — no other code changes. Congressional clusters stay at zero
-weight permanently regardless.
+> **Owner decision (2026-08-24): do NOT flip to 0.10 yet.** The burn-in review was run against the
+> live 2026-08-24 snapshot and the signal did not clear. Implement the **decoupling** below instead;
+> the flip becomes a later, evidence-gated decision.
 
----
+### Burn-in result (2026-08-24, decrypted live snapshot — this is the evidence, don't re-litigate it from memory)
+
+16 symbols carried flow; 10 of the agentic target's 12 names covered (SPY/VTI correctly absent —
+index vehicles have no Form 4s or analyst revisions). Zero abstentions. Component spreads:
+
+```
+insider   3.00 3.00 3.08 3.10 3.28 3.29 3.33 3.48 3.50 3.50 3.50 3.50 10.0   (n=13)
+revision  5.20 5.86 6.07 6.10 6.13 6.18 6.21 6.24 6.25 6.27 6.35 6.42 6.66 6.69 6.88 7.08  (n=16)
+composite 3.96 .. 7.97 (mean 5.68)
+```
+
+**12 of 13 insider scores fall inside a 0.50-point band; 14 of 16 revision scores inside ~1.0 point.**
+Those two components carry **70% of the flow composite's weight** (revision 40 / insider 30) and are
+therefore contributing almost no ranking information — a near-constant term shifts every name equally
+and cancels out of a ranking. The composite's real variance comes from surprise (20) and award (10).
+This is precisely the failure mode CLAUDE.md documents ("a constant drag on every megacap rather than
+a discriminator"); the buy/sell asymmetry fix raised the insider *level* (~0.9 → ~3.2) without making
+it *discriminate*. Flipping now would weight a signal that currently reduces to "PEAD + federal
+contract awards, diluted by two dead terms."
+
+Note the flip is **low-risk, not dangerous** — at 0.10 flow moves a composite by only 0.40–0.80 pts.
+The objection is that it buys complexity for an unmeasured signal, not that it would break allocation.
+
+Also observed: AAPL and UNH carried `asOf 2026-08-12` (12 days stale) while the other 14 were current.
+Minor, but see the Gotchas lesson about stale per-symbol data being read as signal.
+
+### What to build instead — decouple RECORDING from WEIGHTING
+
+`FLOW_WEIGHT > 0` currently gates two independent things in `.claude/workflows/agentic-research.js`:
+(a) flow entering the composite, and (b) flow being recorded into each finalist's `sleeves` object
+(line ~182) and the verify prompt. Separate them:
+
+- Keep `const FLOW_WEIGHT = 0` — the composite and the allocation stay **exactly** as today.
+- **Always** record `flow` into `sleeves` when a score exists — drop the `FLOW_WEIGHT>0` guard from
+  the `sleeves:{…}` spread so it reads `...(s.f!=null?{flow:s.f}:{})`. Leave the composite line
+  (~144-145) and `scale` untouched.
+- Leave the verify-prompt guard (~170) as is: an unweighted sleeve should not steer the skeptic.
+- `flowWeight: FLOW_WEIGHT` in the returned payload stays, so downstream can tell weighted from
+  observed-only. `finalize-target.mjs` then tags `drivers:['flow']` on names scoring ≥7 exactly as it
+  does for the other sleeves — **without flow having influenced whether the name was bought.**
+
+That makes Phase 6 a clean natural experiment: did names that happened to carry high flow scores
+actually outperform? Answer that with real n before spending composite weight on it.
+
+### The later flip — gate it on evidence, not the calendar
+
+Flip to 0.10 only when Phase 6 attribution shows flow discriminating over a meaningful sample
+(≥ ~8 graded buys carrying a `flow` driver), **and** the two dead components have been addressed —
+either re-weighted toward where the information actually is, or the insider term dropped to a flag
+(the `lobbyingFlag` precedent) rather than a scored input. Re-running the burn-in query above is the
+check; a fresh decrypt takes seconds. Congressional clusters stay at zero weight permanently
+regardless. If flipped, update CLAUDE.md's flow rows ("DISPLAY-ONLY" clauses) and the Flow card's
+burn-in copy in `index.html` (version bump).
 
 ## Phase 6 — Sleeve attribution (`agentic-ledger.mjs` + Rebalance Log)
 
