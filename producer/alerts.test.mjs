@@ -66,5 +66,32 @@ eq('no fresh snapshot → no alerts', computeAlerts(snap({}), null), []);
 eq('messages are human-readable strings',
   computeAlerts(snap({ TSM: q(104, 100) }), snap({ TSM: q(109, 100) }), ['TSM'])[0].msg.includes('TSM'), true);
 
+// ---- book-level drawdown tier changes (v121) --------------------------------
+// The breaker silently stops deploying and, at the hard tier, SELLS — the most consequential thing the
+// system does unasked. It must reach the owner through the same push path as a stop crossing.
+{
+  const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
+  const dsnap = (level, dd) => ({ quotes: {}, agentic: { positions: [], drawdown: { level, dd } } });
+  const dkinds = (a) => a.map((x) => x.kind);
+  const ok2soft = computeAlerts(dsnap('ok', -0.02), dsnap('soft', -0.091));
+  ok('tripping into soft alerts', dkinds(ok2soft).includes('agentic-drawdown'));
+  ok('…and says deferred cash is not parked', /not parked/.test(ok2soft.find((x) => x.kind === 'agentic-drawdown').msg));
+  const soft2hard = computeAlerts(dsnap('soft', -0.09), dsnap('hard', -0.132));
+  ok('escalating to hard alerts', dkinds(soft2hard).includes('agentic-drawdown'));
+  ok('…and warns that it is selling', /defensive cash/.test(soft2hard.find((x) => x.kind === 'agentic-drawdown').msg));
+  // TRANSITION-BASED: no alert while the tier merely persists, or the owner is paged every 30 minutes.
+  ok('no alert while the tier is unchanged', computeAlerts(dsnap('soft', -0.09), dsnap('soft', -0.10)).length === 0);
+  ok('no alert when never tripped', computeAlerts(dsnap('ok', -0.01), dsnap('ok', -0.02)).length === 0);
+  // Recovery is as material as the trip — "the executor is buying again" must not be silent.
+  const recover = computeAlerts(dsnap('soft', -0.085), dsnap('ok', -0.041));
+  ok('recovery alerts too', dkinds(recover).includes('agentic-drawdown-recover'));
+  ok('…and says deployment resumes', /resumes/.test(recover[0].msg));
+  ok('hard → soft is reported as an easing, not a clear',
+    /hard → soft/.test(computeAlerts(dsnap('hard', -0.13), dsnap('soft', -0.09))[0].msg));
+  // Missing drawdown block on either side ⇒ silent (fails open, like the breaker itself).
+  ok('a snapshot without a drawdown block is silent',
+    computeAlerts({ quotes: {}, agentic: { positions: [] } }, dsnap('soft', -0.09)).length === 0);
+}
+
 console.log(fail ? `\n${fail} FAILED (${pass} passed)` : `all ${pass} checks passed ✅`);
 process.exit(fail ? 1 : 0);

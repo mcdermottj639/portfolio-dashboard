@@ -33,6 +33,34 @@ export function computeAlerts(prior, fresh, heldSyms = []) {
   const pq = prior.quotes || {}, fq = fresh.quotes || {};
   const P = (s) => px(pq[s]), F = (s) => px(fq[s]);
 
+  // 0. BOOK-LEVEL DRAWDOWN TIER CHANGE (v121). Transition-based like every other alert here: it fires on
+  //    the pass where the tier CHANGES, not every run while the breaker is tripped. This is the single
+  //    most consequential thing the automated system can do without being asked — it silently stops
+  //    deploying, and at the hard tier it SELLS — so it must reach the owner through the same push path
+  //    as a stop crossing rather than only appearing on a card nobody has open. Recovery is announced
+  //    too: "the executor is buying again" is exactly as material as "it stopped".
+  {
+    const rank = { ok: 0, soft: 1, hard: 2 };
+    const pl = ((prior.agentic || {}).drawdown || {}).level;
+    const fl = ((fresh.agentic || {}).drawdown || {}).level;
+    const fd = ((fresh.agentic || {}).drawdown || {}).dd;
+    if (pl && fl && pl !== fl && rank[fl] != null && rank[pl] != null) {
+      const pct = fd != null ? `${(fd * 100).toFixed(1)}%` : '—';
+      const worse = rank[fl] > rank[pl];
+      alerts.push({
+        kind: worse ? 'agentic-drawdown' : 'agentic-drawdown-recover',
+        symbol: null, level: fl, from: pl, dd: fd,
+        msg: worse
+          ? (fl === 'hard'
+            ? `🛑 Agentic book ${pct} below its peak — HARD drawdown tier: new buys paused and defensive cash being raised to 20% of book (losses first).`
+            : `⚠️ Agentic book ${pct} below its peak — drawdown breaker tripped: new deployment paused, deferred cash stays in cash (not parked).`)
+          : (fl === 'ok'
+            ? `✅ Agentic book recovered to ${pct} from peak — drawdown breaker cleared, normal deployment resumes.`
+            : `↗️ Agentic drawdown eased to ${pct} (hard → soft) — defensive selling stops; new buys still paused.`),
+      });
+    }
+  }
+
   // 1. Agentic-account bracket crossings (stop/target from the committed research target).
   const tgt = {};
   for (const n of (fresh.agentic && fresh.agentic.target && fresh.agentic.target.names) || []) {
