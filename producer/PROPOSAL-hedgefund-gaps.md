@@ -1,6 +1,26 @@
 # PROPOSAL — Institutional-practice gap closures for the agentic account (••••3900)
 
-**Status: BUILD SPEC — approved for implementation, not yet built.** Written 2026-08-24 from the
+**Status: IMPLEMENTED 2026-08-24 (v121).** All phases landed on `main`; this file is kept as the design
+record and the rationale trail. What shipped, and how it differed from the spec:
+
+| Phase | Outcome |
+|---|---|
+| **0 — insider scoring** (not in the original spec) | **Done.** Added after the burn-in review found the real defect: the scorer read sell DIRECTION, a constant for large caps, so 12 of 13 names sat in a 0.50-pt band. Now measures sell INTENSITY vs the name's own baseline. Live rescoring: 0 of 13 in that band, spread 1.5–6.0. |
+| **1 — look-through caps** | **Done**, with real ETF compositions (SPY 37.5% / QQQ 42.4% / VTI 31.1%). Uncovered and fixed a pre-existing bug: the final normalization was silently undoing the caps (JPM capped to 22% came out at 24.2%). `agentic-deploy.mjs` needed no change — it buys only toward target weights, so it inherits the caps. |
+| **2 — drawdown breaker** | **Done.** Soft −8% / hard −12% / resume −6%. The parking suspension uses a new `parkNewOn` flag, NOT `parkingOn` — flipping the latter would liquidate the existing waiting ground as an orphan. |
+| **3 — SGOV park vehicle** | **Declined by owner.** VTI retained. This is exactly why Phase 2's cash-not-parking rule is load-bearing. |
+| **4 — regime pacing** | **Done.** `data.vix` + `marketRegime`; deadline ×1.5/×2, tranche halved when stressed, plus a `regime` deferral for stressed-tape-with-advisory-bands. |
+| **5 — `FLOW_WEIGHT`** | **Closed as already-satisfied — no code change.** The observe-only attribution path already existed; the only gated path is model-facing and must stay gated. See the finding below. `FLOW_WEIGHT` remains **0**. |
+| **6 — sleeve attribution** | **Done.** `makeDecision` stamps drivers at decision time; `gradeDecisions` returns per-sleeve alpha vs SPY; thin sleeves labelled, never presented as findings. |
+
+Not done, and deliberately so: nothing here touched the self-directed `SD_*` mandate, and no shorting,
+hedging or leverage was added to ••••3900. Open follow-up: attribution reads empty until the next
+rebalance (30 existing buy legs carry no drivers and are not backfilled), and a full producer dry run
+could not be executed in the implementing session — the Robinhood MCP connector was disconnected, so
+`raw/portfolio.json` was unavailable. `validate.mjs` was run against the real committed snapshot instead
+and passed; the first live scheduled run is the remaining end-to-end check.
+
+**Original status: BUILD SPEC — approved for implementation, not yet built.** Written 2026-08-24 from the
 hedge-fund-vs-agentic gap analysis (session branch `claude/hedge-fund-vs-agentic-x1rl3n`). The
 implementing session should read this whole file first, then CLAUDE.md's Gotchas, then the files
 named in each phase. Owner decision points are marked **⚖️ OWNER** — implement the recommended
