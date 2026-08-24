@@ -133,7 +133,7 @@ if (drawdown.level !== 'ok') console.error(`[exec-gate] drawdown ${drawdown.leve
 
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},
-  washMap, parked: readParked() || A.parked || null, drawdown,
+  washMap, parked: readParked() || A.parked || null, drawdown, vix: data.vix || null,
   // Churn governor: recent buys/sells from the committed decisions ledger drive the min-hold and
   // re-entry cooldown. The executor OVERLAYS today's live fills (get_equity_orders) on top — the
   // ledger can't see an order placed since its last append (AGENTIC.md executor step 3c).

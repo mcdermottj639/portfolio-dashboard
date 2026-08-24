@@ -131,6 +131,25 @@ export const ENTRY_ZONE_STALE_DAYS = 7; // zones older than this go ADVISORY (ba
 // could leave a deposit uninvested indefinitely — a loss that never shows up as a loss. Past the
 // deadline the entry bands are waived (stop/earnings/wash/policy still bind) and the idle cash is
 // deployed a TRANCHE at a time, so it averages in instead of picking a single day.
+// ── Regime-aware deployment PACING (v121) ──────────────────────────────────────────────────────
+// The idle-cash deadline forced money in after N days regardless of tape: it fired identically at VIX 12
+// and VIX 35. Funds pace deployment by regime; so does this now. Deliberately narrow — regime NEVER
+// picks names or sizes positions (that is the research workflow's job), it only stretches or shrinks the
+// pacing dials. Bands: matches the consumer's azVix labels so the app and the planner say the same thing.
+export const REGIME_ELEVATED_VIX = 22;
+export const REGIME_STRESSED_VIX = 30;
+export const REGIME_STRETCH = { calm: 1, elevated: 1.5, stressed: 2 };      // × the idle-cash deadline
+export const REGIME_TRANCHE_SCALE = { calm: 1, elevated: 1, stressed: 0.5 }; // × the forced tranche size
+// `vix` = data.vix from the snapshot. Missing/unparseable ⇒ 'calm' ⇒ today's behaviour exactly (fails
+// open, the fetchgate posture: one un-paced deployment is cheaper than a planner frozen on a bad parse).
+export function marketRegime(vix) {
+  const v = vix && typeof vix === 'object' ? parseFloat(vix.v) : parseFloat(vix);
+  if (!Number.isFinite(v) || v <= 0) return 'calm';
+  if (v >= REGIME_STRESSED_VIX) return 'stressed';
+  if (v >= REGIME_ELEVATED_VIX) return 'elevated';
+  return 'calm';
+}
+
 export const CASH_IDLE_DEPLOY_DAYS = 10;  // calendar-tracked idle days before deployment is forced
 export const CASH_IDLE_TRANCHE_PCT = 34;  // % of idle cash per forced pass (~thirds)
 export const CASH_IDLE_SWEEP_FLOOR = 250; // …below this, stop tranching and deploy the remainder
@@ -184,8 +203,11 @@ export function planDeployment(input = {}) {
   const {
     target = {}, positions = [], cash = 0, quotes = {},
     earnings = {}, washMap = {}, policy = null, crossActivity = {}, accountActivity = {},
-    parked = null, drawdown = null, opts = {},
+    parked = null, drawdown = null, vix = null, opts = {},
   } = input;
+  // Regime pacing (v121). Never touches WHICH names are bought — only how fast idle cash is forced in.
+  const regime = opts.regime || marketRegime(vix);
+  const regimeStretch = REGIME_STRETCH[regime] ?? 1;
   // BOOK-LEVEL DRAWDOWN BREAKER (v121). `drawdown` = bookDrawdown(data.agentic.equityHistory) from
   // drawdown.mjs, supplied by the exec gate. Absent/insufficient ⇒ 'ok' ⇒ today's behaviour exactly.
   const ddLevel = (drawdown && drawdown.level) || 'ok';
@@ -219,7 +241,8 @@ export function planDeployment(input = {}) {
   // The deadline's clock keeps running, but it cannot FORCE cash in while the breaker is tripped —
   // "deploy the backlog because 10 days passed" and "the book is in a drawdown" resolve in favour of
   // the drawdown. It resumes forcing the moment the breaker clears, with the elapsed days intact.
-  const idleOverdue = idleDays != null && idleDays >= (opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS) && !ddSoft;
+  const idleDeadline = +(((opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS) * regimeStretch).toFixed(2));
+  const idleOverdue = idleDays != null && idleDays >= idleDeadline && !ddSoft;
   // Past the deadline the BANDS are waived — but never the hard guards (stop/earnings/wash/policy).
   const bandsActive = gapReverify && !zonesStale && !idleOverdue;
   const names = (target.names || []).filter((n) => n && n.ticker).map((n) => ({ ...n, ticker: String(n.ticker).toUpperCase() }));
@@ -318,6 +341,15 @@ export function planDeployment(input = {}) {
       if (ddSoft) {
         deferred.push({ sym, reason: 'drawdown', dollars: gap,
           detail: `book is ${ddPct} from its peak (${drawdown && drawdown.peakT || 'n/a'}) — new deployment paused until it recovers above ${(AG_DRAWDOWN_RESUME * 100).toFixed(0)}%; deferred cash is NOT parked (the placeholder is equity beta)` });
+        continue;
+      }
+      // STRESSED TAPE + ADVISORY BANDS. Zones go advisory once the target is stale (>7d), which means
+      // the entry discipline is switched off exactly when price is moving fastest. In a calm tape that
+      // is an acceptable trade (stale zones would otherwise defer the whole book — the v102 lesson); in
+      // a stressed one, buying with no band at all is the worst version of both. Wait for fresh zones.
+      if (regime === 'stressed' && zonesStale && gapReverify) {
+        deferred.push({ sym, reason: 'regime', dollars: gap,
+          detail: `VIX ${vix && vix.v ? vix.v : '≥' + REGIME_STRESSED_VIX} (stressed) and this target's entry zones are ${zoneAgeDays}d old, so the band check is advisory — waiting for a fresh target rather than buying unbanded into a stressed tape` });
         continue;
       }
       if (washMap[sym]) {
@@ -493,7 +525,7 @@ export function planDeployment(input = {}) {
   //    of the settled cash per pass, so the backlog averages in over several sessions instead of landing
   //    on one arbitrary day. Sale proceeds are NOT tranched — those are a rebalance already in motion.
   //    Below the sweep floor tranching would never finish (thirds of a shrinking balance), so we sweep.
-  const tranchePct = opts.cashIdleTranchePct ?? CASH_IDLE_TRANCHE_PCT;
+  const tranchePct = +(((opts.cashIdleTranchePct ?? CASH_IDLE_TRANCHE_PCT) * (REGIME_TRANCHE_SCALE[regime] ?? 1)).toFixed(2));
   const sweepFloor = opts.cashIdleSweepFloor ?? CASH_IDLE_SWEEP_FLOOR;
   const tranching = idleOverdue && settledNow > sweepFloor;
   const cashThisPass = tranching ? +(settledNow * tranchePct / 100).toFixed(2) : settledNow;
@@ -610,6 +642,7 @@ export function planDeployment(input = {}) {
   return { book, cash: +settledNow.toFixed(2), deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, ddRaises, sells,
     proceeds, buysNeedProceeds, blockedSells, taxSummary, turnover, autoCap, autoEligible, entryPolicy, parking,
     drawdown: drawdown ? { dd: drawdown.dd, level: drawdown.level, peakT: drawdown.peakT, note: drawdown.note } : null,
+    regime: { regime, vix: vix && vix.v != null ? vix.v : null, idleDeadlineDays: idleDeadline, tranchePct },
     deferred, deferredCash: +deferredCash.toFixed(2), spent: +spent.toFixed(2), cashLeft, warnings, summary };
 }
 

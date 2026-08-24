@@ -1,10 +1,11 @@
 // Offline unit checks for agentic-deploy.mjs — no network, no I/O. Run: node producer/agentic-deploy.test.mjs
-import { planDeployment, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY } from './agentic-deploy.mjs';
+import { planDeployment, marketRegime, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY } from './agentic-deploy.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
 const near = (label, got, want, tol = 1) => { if (Math.abs(got - want) <= tol) pass++; else { fail++; console.error(`✗ ${label}\n    got ${got} want ~${want}`); } };
 const find = (arr, sym) => arr.find((x) => x.sym === sym);
+const eqr = (label, got, want) => { if (got === want) pass++; else { fail++; console.error(`✗ ${label}\n    got ${got} want ${want}`); } };
 
 const target = { driftTriggerPp: 5, names: [
   { ticker: 'SPY',   weightPct: 25, entry: '740-750',  stop: 690,  target: 815 },
@@ -505,6 +506,68 @@ ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 
     pdt.blockedSells.some((b) => b.sym === 'BBB' && b.blocked === 'day-trade'));
   ok('…with a warning that the floor was not reached',
     pdt.warnings.some((w) => /cash floor/.test(w)));
+}
+
+// ---- REGIME-AWARE PACING (v121) ---------------------------------------------
+{
+  const rq = { SPY: 747, NVDA: 209 };
+  const rt = { asOf: '2026-07-23', driftTriggerPp: 5, names: [
+    { ticker: 'SPY',  weightPct: 50, entry: '740-750', stop: 690 },
+    { ticker: 'NVDA', weightPct: 50, entry: '205-215', stop: 190 },
+  ]};
+  const mk = (vix, extra = {}) => planDeployment({
+    target: extra.target || rt, positions: [], cash: 3000, quotes: rq, vix,
+    opts: { asOf: '2026-07-23', ...(extra.opts || {}) },
+  });
+
+  eqr('missing VIX ⇒ calm (fails open to current behaviour)', marketRegime(null), 'calm');
+  eqr('unparseable VIX ⇒ calm', marketRegime({ v: 'n/a' }), 'calm');
+  eqr('VIX 14 ⇒ calm', marketRegime({ v: 14 }), 'calm');
+  eqr('VIX 22 ⇒ elevated (boundary)', marketRegime({ v: 22 }), 'elevated');
+  eqr('VIX 27 ⇒ elevated', marketRegime({ v: 27 }), 'elevated');
+  eqr('VIX 30 ⇒ stressed (boundary)', marketRegime({ v: 30 }), 'stressed');
+  eqr('VIX 41 ⇒ stressed', marketRegime({ v: 41 }), 'stressed');
+  eqr('a bare number works too', marketRegime(33), 'stressed');
+
+  // The deadline stretches; the tranche shrinks only when stressed.
+  near('calm keeps the 10d deadline', mk({ v: 14 }).regime.idleDeadlineDays, 10, 0.01);
+  near('elevated stretches it to 15d', mk({ v: 25 }).regime.idleDeadlineDays, 15, 0.01);
+  near('stressed stretches it to 20d', mk({ v: 33 }).regime.idleDeadlineDays, 20, 0.01);
+  near('calm keeps the full tranche', mk({ v: 14 }).regime.tranchePct, 34, 0.01);
+  near('stressed halves the tranche', mk({ v: 33 }).regime.tranchePct, 17, 0.01);
+
+  // 12 idle days: past the calm deadline, inside the stressed one.
+  const calmForced = mk({ v: 14 }, { opts: { cashIdleDays: 12 } });
+  const stressForced = mk({ v: 33 }, { opts: { cashIdleDays: 12 } });
+  ok('calm: 12 idle days forces the backlog in', calmForced.buys.length > 0);
+  ok('stressed: the same 12 days does NOT yet force it', stressForced.regime.idleDeadlineDays > 12);
+  // …but a long enough wait still deploys — pacing stretches the deadline, it never removes it.
+  const stressEventually = mk({ v: 33 }, { opts: { cashIdleDays: 25 } });
+  ok('stressed still deploys once its stretched deadline passes', stressEventually.buys.length > 0);
+
+  // Regime NEVER changes WHICH names are bought in a normal (non-stale) target.
+  const calmBuys = mk({ v: 14 }).buys.map((b) => b.sym).sort().join(',');
+  const stressBuys = mk({ v: 33 }).buys.map((b) => b.sym).sort().join(',');
+  eqr('regime does not change the buy SET on a fresh target', stressBuys, calmBuys);
+
+  // …but a STRESSED tape plus ADVISORY (stale) bands defers: buying unbanded into a stressed tape is
+  // the worst of both. A stale target in a CALM tape still buys (the v102 lesson: stale zones must not
+  // defer the whole book).
+  const staleT = { ...rt, asOf: '2026-06-01' };   // >7d old ⇒ zones advisory
+  const staleCalm = mk({ v: 14 }, { target: staleT });
+  const staleStress = mk({ v: 33 }, { target: staleT });
+  ok('stale zones in a calm tape still deploy', staleCalm.buys.length > 0);
+  ok('stale zones in a stressed tape defer', staleStress.buys.length === 0);
+  ok('…with reason regime', staleStress.deferred.every((d) => d.reason === 'regime'));
+  ok('…explaining both halves', /stressed/.test(find(staleStress.deferred, 'SPY').detail) && /advisory/.test(find(staleStress.deferred, 'SPY').detail));
+
+  // Regime never blocks a sell.
+  const sellStress = planDeployment({
+    target: staleT, quotes: { ...rq, ORCL: 100 }, cash: 0,
+    positions: [{ symbol: 'ORCL', qty: 20, avgCost: 90 }], vix: { v: 40 },
+    opts: { asOf: '2026-07-23' },
+  });
+  ok('a stressed tape never blocks an off-target exit', !!find(sellStress.exits, 'ORCL'));
 }
 
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);

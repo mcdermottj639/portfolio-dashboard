@@ -532,6 +532,35 @@ const data = {
     if (Object.keys(fetchDays).length) data.fetchDays = fetchDays;
   }
 
+  // ── data.vix (v121) — the regime input for deployment pacing ──────────────────────────────────
+  // VIX is already recorded (the Markets tab's Macro Signals read it straight out of `recorded`), but
+  // only the CONSUMER could parse it, so the producer-side deploy planner had no way to see the tape.
+  // Surfacing it as a small top-level block lets agentic-deploy pace deployment by regime without the
+  // exec gate having to re-implement the AV response parsing. ADDITIVE — nothing keys on it, so the
+  // replay contract and validate.mjs are untouched. Carried forward like every other block, and simply
+  // absent when unparseable, which the planner treats as 'calm' (fails open to today's behaviour).
+  {
+    const parseAVLite = (v) => {           // mirrors index.html's parseAV coalescing order
+      if (!v) return null;
+      if (v.structuredContent) return v.structuredContent;
+      if (Array.isArray(v.content) && v.content[0] && v.content[0].text) { try { return JSON.parse(v.content[0].text); } catch { return null; } }
+      if (typeof v.result === 'string') { try { return JSON.parse(v.result); } catch { return null; } }
+      return v;
+    };
+    let vix = null;
+    try {
+      const d = parseAVLite(recorded[avKey('INDEX_DATA', { symbol: 'VIX', interval: 'daily' })]);
+      const arr = d && (d.data || (Array.isArray(d) ? d : null));
+      if (Array.isArray(arr) && arr.length) {
+        const v = parseFloat(arr[0].close ?? arr[0].Close ?? arr[0]['4. close'] ?? 0);
+        if (Number.isFinite(v) && v > 0) vix = { v: +v.toFixed(2), asOf: arr[0].date || arr[0].Date || new Date(data.generatedAt).toISOString().slice(0, 10) };
+      }
+    } catch { /* unparseable → carry forward / absent */ }
+    const carried = prior && prior.vix;
+    if (vix) data.vix = vix;
+    else if (carried) data.vix = carried;
+  }
+
   const flowDir = join(RAWDIR, 'flow');
   const flowDay = new Date(data.generatedAt).toISOString().slice(0, 10);
   const symbols = (prior && prior.flow && prior.flow.symbols) ? { ...prior.flow.symbols } : {};
