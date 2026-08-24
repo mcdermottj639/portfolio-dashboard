@@ -27,7 +27,25 @@ export const CLUSTERS = {
   'staples':      ['PG', 'WMT', 'COST', 'KO', 'PEP'],
   'energy':       ['XOM', 'CVX', 'SHEL', 'CNQ', 'COP'],
 };
-export const INDEX_SYMS = ['SPY', 'QQQ', 'VOO', 'IVV', 'DIA', 'IWM'];
+export const INDEX_SYMS = ['SPY', 'QQQ', 'VTI', 'VOO', 'IVV', 'DIA', 'IWM'];
+
+// LOOK-THROUGH COMPOSITION (v121). The cluster caps used to count only DIRECT holdings, so a book could
+// hold 44.8% megacap-tech directly, add 20% SPY + 5% VTI on top, and still report itself inside a "48%"
+// cap while true exposure was ~52%. Funds measure exposure THROUGH their index vehicles; so do we now.
+// Fractions = that cluster's share of the vehicle's assets, from Alpha Vantage ETF_PROFILE on 2026-08-24
+// (SPY and QQQ read directly; VTI derived as SPY × 0.83 — a total-market fund holds every S&P name at its
+// S&P weight times the S&P's share of total US market cap, calibrated against VTI's observed NVDA 6.32%
+// and AAPL 5.84% against SPY's 7.90% / 6.79%, i.e. ratios 0.800 and 0.860).
+// REVIEW ~ANNUALLY, like market.mjs's holiday calendar. A vehicle that is NOT listed here contributes
+// ZERO look-through — that is the old direct-only behaviour for that vehicle, which is NOT conservative,
+// so add a vehicle here before allocating to it (DIA and IWM are deliberately absent: unused today).
+export const LOOKTHROUGH = {
+  SPY: { 'megacap-tech': 0.375, banks: 0.037, pharma: 0.030, staples: 0.027, energy: 0.018, payments: 0.016 },
+  VOO: { 'megacap-tech': 0.375, banks: 0.037, pharma: 0.030, staples: 0.027, energy: 0.018, payments: 0.016 },
+  IVV: { 'megacap-tech': 0.375, banks: 0.037, pharma: 0.030, staples: 0.027, energy: 0.018, payments: 0.016 },
+  VTI: { 'megacap-tech': 0.311, banks: 0.031, pharma: 0.025, staples: 0.022, energy: 0.015, payments: 0.013 },
+  QQQ: { 'megacap-tech': 0.424, staples: 0.052 },
+};
 
 // Per-cluster ceiling (% of book). Uncapped clusters (and singletons) fall back to the single-name cap.
 export const CLUSTER_CAPS = {
@@ -45,6 +63,25 @@ export const BASE_SINGLE_CAP = 25;   // hard ceiling for any single non-index na
 export const FLOOR_PCT = 3.5;        // don't bother holding a sub-floor sliver
 const REF_RANGE = 0.42;              // a "normal" large-cap 52wk range / price; names wider than this get docked
 const MIN_VOL_SCALE = 0.55;          // never dock a single-name cap below 55% of base on vol alone
+
+// Direct + look-through exposure per cluster. `names` = [{ticker, weightPct}].
+// Returns { [cluster]: {direct, lookThrough, total} }. An index vehicle contributes its own weight to the
+// 'index' bucket's `direct` AND spreads its composition into the real clusters' `lookThrough`.
+export function clusterExposure(names) {
+  const out = {};
+  const bucket = (cl) => (out[cl] || (out[cl] = { direct: 0, lookThrough: 0, total: 0 }));
+  for (const n of names || []) {
+    const t = String((n && n.ticker) || '').toUpperCase();
+    const w = num(n && n.weightPct);
+    if (!t || !(w > 0)) continue;
+    bucket(clusterOf(t)).direct += w;
+    const lt = LOOKTHROUGH[t];
+    if (lt) for (const [cl, frac] of Object.entries(lt)) bucket(cl).lookThrough += w * frac;
+  }
+  for (const e of Object.values(out)) e.total = +(e.direct + e.lookThrough).toFixed(4);
+  for (const e of Object.values(out)) { e.direct = +e.direct.toFixed(4); e.lookThrough = +e.lookThrough.toFixed(4); }
+  return out;
+}
 
 export function clusterOf(sym) {
   const s = String(sym || '').toUpperCase();
@@ -95,35 +132,95 @@ export function riskAdjustWeights(names, opts = {}) {
     if (capped) notes.push(`${it.ticker} capped to ${it._nameCap}% (vol-scaled single-name cap)`);
   });
 
-  // 2. Cluster caps — clamp any over-cap cluster proportionally, spill to headroom names elsewhere.
+  // 2. Cluster caps — enforced on DIRECT + LOOK-THROUGH exposure, but only DIRECT members are trimmed.
+  // That asymmetry is deliberate and will look like a bug otherwise: SPY/VTI are the diversifier, so a
+  // fat index core must SHRINK how much direct megacap can be stacked on top of it, not itself be sold.
+  const indexBorne = new Set();
   for (let pass = 0; pass < 8; pass++) {
-    const byCluster = groupSum(items);
+    const exp = clusterExposure(items);
     let violated = false;
-    for (const [cl, sum] of Object.entries(byCluster)) {
+    for (const [cl, e] of Object.entries(exp)) {
       const cap = clusterCaps[cl];
-      if (cap == null || sum <= cap + 1e-6) continue;
-      violated = true;
-      const scale = cap / sum;
+      if (cap == null || e.total <= cap + 1e-6) continue;
       const members = items.filter((it) => it._cluster === cl);
-      const freed = sum - cap;
+      if (!members.length || e.direct <= 1e-6) {
+        // The breach is entirely index-borne — there is no direct position to trim. Say so once and
+        // move on; looping here would spin without converging.
+        if (!indexBorne.has(cl)) {
+          indexBorne.add(cl);
+          notes.push(`${cl} is ${e.total.toFixed(1)}% vs its ${cap}% cap entirely via index look-through — no direct position to trim`);
+        }
+        continue;
+      }
+      violated = true;
+      const allowedDirect = Math.max(0, cap - e.lookThrough);
+      const scale = allowedDirect / e.direct;
+      const freed = e.direct - allowedDirect;
       members.forEach((it) => { it.weightPct = +(it.weightPct * scale).toFixed(4); });
-      notes.push(`${cl} cluster trimmed ${freed.toFixed(1)}pp to its ${cap}% cap (${members.map((m) => m.ticker).join('/')})`);
-      // redistribute freed weight to names/clusters with headroom (index first, then singletons/under-cap)
+      notes.push(`${cl} cluster trimmed ${freed.toFixed(1)}pp to its ${cap}% cap — ${e.direct.toFixed(1)}% direct + ${e.lookThrough.toFixed(1)}% via index look-through (${members.map((m) => m.ticker).join('/')})`);
       redistribute(items, freed, clusterCaps);
     }
     if (!violated) break;
   }
 
-  // 3. Drop sub-floor slivers created by trimming, then normalize to 100%.
+  // 3. Drop sub-floor slivers created by trimming, then bring the book to 100% WITHOUT undoing the caps.
   let kept = items.filter((it) => it._isIndex || it.weightPct >= FLOOR_PCT - 1e-6);
   const dropped = items.filter((it) => !(it._isIndex || it.weightPct >= FLOOR_PCT - 1e-6));
   dropped.forEach((it) => notes.push(`${it.ticker} dropped (${it.weightPct.toFixed(1)}% < ${FLOOR_PCT}% floor after caps)`));
-  const total = kept.reduce((s, it) => s + it.weightPct, 0) || 1;
-  kept.forEach((it) => { it.weightPct = +(it.weightPct * 100 / total).toFixed(2); });
+
+  // A BLANKET re-normalization here silently UNDOES step 2: capping frees weight, the book then sums to
+  // less than 100, and scaling every name back up by the same factor re-inflates the very names just
+  // trimmed. Observed on a 70%-megacap fixture: JPM was capped to 22% and came out at 24.2%. So the
+  // shortfall is filled through the SAME cap-aware redistribution used above, and only a genuinely
+  // un-placeable remainder is parked — visibly — in the index sleeve.
+  const totalOf = (list) => list.reduce((a, it) => a + it.weightPct, 0);
+  const t0 = totalOf(kept);
+  if (t0 > 100 + 1e-6) {
+    kept.forEach((it) => { it.weightPct = +(it.weightPct * 100 / t0).toFixed(4); });  // scaling DOWN is always cap-safe
+  } else if (t0 < 100 - 1e-6) {
+    redistribute(kept, 100 - t0, clusterCaps);
+    const t1 = totalOf(kept);
+    if (t1 < 100 - 1e-6) {
+      const rem = 100 - t1;
+      const idx = kept.filter((it) => it._isIndex).sort((a, b) => b.weightPct - a.weightPct)[0];
+      if (idx) {
+        idx.weightPct = +(idx.weightPct + rem).toFixed(4);
+        notes.push(`${rem.toFixed(1)}pp had no cap headroom anywhere — parked in ${idx.ticker} (which raises its look-through contribution)`);
+      } else {
+        const t2 = totalOf(kept) || 1;
+        kept.forEach((it) => { it.weightPct = +(it.weightPct * 100 / t2).toFixed(4); });
+        notes.push(`${rem.toFixed(1)}pp had no cap headroom and there is no index sleeve to park it in — weights scaled up and caps MAY be exceeded`);
+      }
+    }
+  }
+  // Final 2dp rounding, with any residual rounding drift absorbed by the largest holding.
+  kept.forEach((it) => { it.weightPct = +it.weightPct.toFixed(2); });
+  const drift = +(100 - totalOf(kept)).toFixed(2);
+  if (Math.abs(drift) >= 0.01 && kept.length) {
+    const big = kept.slice().sort((a, b) => b.weightPct - a.weightPct)[0];
+    big.weightPct = +(big.weightPct + drift).toFixed(2);
+  }
+  // Report any cluster still over its cap after the fill (an honest residual, not a silent one).
+  {
+    const finalExp = clusterExposure(kept);
+    for (const [cl, e] of Object.entries(finalExp)) {
+      const cap = clusterCaps[cl];
+      if (cap != null && e.total > cap + 0.5) {
+        notes.push(`RESIDUAL: ${cl} ends at ${e.total.toFixed(1)}% vs its ${cap}% cap (${e.direct.toFixed(1)}% direct + ${e.lookThrough.toFixed(1)}% look-through) — no headroom existed elsewhere`);
+      }
+    }
+  }
 
   const clusters = groupSum(kept);
+  const exposure = clusterExposure(kept);
   const out = kept.map(({ _cluster, _isIndex, _nameCap, ...rest }) => rest);
-  return { names: out, notes, clusters: Object.fromEntries(Object.entries(clusters).map(([k, v]) => [k, +v.toFixed(2)])) };
+  return {
+    names: out, notes,
+    // `clusters` stays DIRECT-only for back-compat with existing callers/tests; `exposure` carries the
+    // direct / look-through / total split that the caps are actually enforced against.
+    clusters: Object.fromEntries(Object.entries(clusters).map(([k, v]) => [k, +v.toFixed(2)])),
+    exposure,
+  };
 }
 
 // --- helpers ---
@@ -141,12 +238,27 @@ function waterfill(items, capOf, onCap) {
   }
 }
 function redistribute(items, amount, clusterCaps) {
-  // give `amount` (pp) to names with cluster+name headroom, proportional to remaining room; index last-resort
-  const byCluster = groupSum(items);
+  // give `amount` (pp) to names with cluster+name headroom, proportional to remaining room
+  const exp = clusterExposure(items);
   const room = (it) => {
     const nameRoom = it._nameCap - it.weightPct;
-    const cap = it._isIndex ? Infinity : clusterCaps[it._cluster];
-    const clRoom = cap == null ? Infinity : cap - (byCluster[it._cluster] || 0);
+    let clRoom;
+    if (it._isIndex) {
+      // LOAD-BEARING: an index vehicle is not infinitely absorbent. Adding x to SPY adds x×0.375 to
+      // megacap-tech look-through, so dumping freed megacap weight into the index would re-breach the
+      // very cap we just enforced — an oscillation that only terminated because the pass loop is bounded.
+      // Its room is the tightest of its own look-through headroom across every cluster it feeds.
+      const lt = LOOKTHROUGH[it.ticker];
+      clRoom = Infinity;
+      if (lt) for (const [cl, frac] of Object.entries(lt)) {
+        const cap = clusterCaps[cl];
+        if (cap == null || !(frac > 0)) continue;
+        clRoom = Math.min(clRoom, (cap - ((exp[cl] && exp[cl].total) || 0)) / frac);
+      }
+    } else {
+      const cap = clusterCaps[it._cluster];
+      clRoom = cap == null ? Infinity : cap - ((exp[it._cluster] && exp[it._cluster].total) || 0);
+    }
     return Math.max(0, Math.min(nameRoom, clRoom));
   };
   let targets = items.filter((it) => room(it) > 1e-6);
