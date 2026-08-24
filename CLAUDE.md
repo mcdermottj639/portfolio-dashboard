@@ -694,7 +694,7 @@ Two hazards this table exists to prevent, both hit in the 2026-08-24 audit:
   date or condition that clears it, plus whether zones have gone advisory), **🅿️ The waiting ground**
   (`data.agentic.parked` — the VTI ledger), **📏 Guardrails** (the standing rulebook: cluster/vol caps,
   min-hold, re-entry cooldown, wash window, earnings blackout, entry band, drift trigger, auto tier, PDT,
-  dust floor, idle-cash deadline, no leverage), and **🔁 How the loop runs**. This exists because `parked`,
+  dust floor, idle-cash deadline, no leverage), and **🔁 How the loop runs**. The hero also carries a **📖 The whole plan** button (v123) → `openHelp('agentic-whole-plan')`: one plain-English walkthrough of the entire agentic model — the six sleeves, the adversarial verify, sizing + the correlation/vol/look-through caps, every reason a trade gets blocked, the drawdown breaker, the waiting ground, regime pacing, the tax treatment, and an explicit "what it will never do" list. Written for someone who has never seen the app, so it doubles as the thing to hand a person who asks how it works; it reuses the shared help modal (one `HELP` registry entry + one button — no new modal machinery). This exists because `parked`,
   `phaseOut`, `cashIdleSince`, `target.dropped` and the whole rulebook were rendered **nowhere** — they
   lived only in `AGENTIC.md`, i.e. not on the phone. Read-only: it reports what the automated system
   intends and why, and places nothing.
