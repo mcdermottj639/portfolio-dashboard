@@ -276,6 +276,10 @@ html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
 .help-btn:hover { opacity: 1; color: var(--accent); }
 .card-title.collapsible .help-btn { margin-left: auto; }
 .card-title.collapsible .chevron { margin-left: 8px; }
+.wp-btn { appearance:none; border:1px solid var(--border,#d1d5db); background:var(--surface-2,#f3f4f6); color:var(--text,#111827);
+  font-size:12.5px; font-weight:650; padding:7px 13px; border-radius:999px; cursor:pointer; line-height:1.2; }
+.wp-btn:hover { filter:brightness(1.06); }
+html[data-theme="gold"] .wp-btn { background:#141414; border-color:rgba(212,175,55,.42); color:#f5e7c1; }
 .help-modal { position: fixed; inset: 0; z-index: 100000; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); padding: 18px; }
 .help-modal.open { display: flex; }
 .help-box { background: var(--hb-bg, #fff); color: var(--text); width: 100%; max-width: 460px; max-height: 84vh; overflow-y: auto; border-radius: 16px; padding: 20px 20px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.4); -webkit-overflow-scrolling: touch; }
@@ -720,7 +724,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v122'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v123'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3090,6 +3094,7 @@ function renderAgenticPlan(){
         <div class="ph-label">Agentic Strategy · ••••3900</div>
         <div class="ph-date">Target as of ${T.asOf||'—'}</div>
         <div class="ph-stale">Research target <span style="color:${ageCol};font-weight:600">${ageTxt||'—'}</span> · ${rows.length} names · refreshed weekly (or early on a deposit / big move) · executor checks hourly</div>
+        <div style="margin-top:10px"><button type="button" class="wp-btn" onclick="openHelp('agentic-whole-plan')">📖 The whole plan</button></div>
       </div>
     </div>`;
 
@@ -4087,6 +4092,51 @@ window.switchTab=switchTab;
     </ul>
     <div class="hsub">Cost</div>
     <p>Releasing is a real short-term taxable sale, so releases are floored, sized to the actual shortfall, and run through the same losses-first ordering and day-trade guard as any other sell.</p>`},
+  'agentic-whole-plan': { tag:'Plan · Agentic', t:'The whole plan — how ••••3900 runs itself', h:`
+    <p><b>A second, separate brokerage account that invests itself.</b> Research picks the names, code decides when the trades actually happen, and a robot places them on a schedule. It is deliberately the <i>cautious</i> book: no borrowing, no options, diversified, and slow to change its mind. (The other account, ••••0741, runs the opposite mandate on purpose — concentrated and aggressive. A change that makes one look like the other is a bug.)</p>
+
+    <div class="hsub">The loop, once around</div>
+    <ul>
+      <li><span class="hk">1 · Research (weekly, Mondays)</span> — Several independent analyses run in parallel over a fresh universe: <b>momentum</b>, <b>quality</b>, <b>growth</b>, <b>catalyst</b>, and <b>valuation</b>. Each scores every candidate 0-10. A sixth, <b>flow</b> (who is actually buying/selling — analyst revisions, insider filings, earnings surprises), is measured but currently carries <b>zero weight</b> until it proves itself.</li>
+      <li><span class="hk">2 · Adversarial check</span> — Every finalist is handed to a separate skeptic whose job is to <i>refute</i> it, not confirm it. It answers two things separately: is this a business worth owning at <i>some</i> price, and is <i>today's</i> price any good. That split matters — "great company, wrong price" shrinks the position instead of vetoing it, so an expensive market yields a smaller book rather than an empty one.</li>
+      <li><span class="hk">3 · Sizing, with hard caps</span> — Conviction proposes weights; deterministic code disposes. Names that move together are capped as one bet (the big AI/tech complex ≤48% combined), wilder names get smaller slots than steady ones for the same conviction, and the caps count what is <i>inside</i> index funds too — 20% SPY quietly carries a lot of the same megacap tech.</li>
+      <li><span class="hk">4 · Execution (hourly, weekdays)</span> — A robot compares the target to what the account actually holds and writes a ticket: sells first, then buys. Small routine tickets it places unattended; anything larger is pushed to the phone for a one-tap confirm. It places nothing outside that.</li>
+      <li><span class="hk">5 · Grading</span> — Every rebalance is logged and scored against what happened next <i>and</i> against the S&P 500, so the strategy can be judged rather than just repeated.</li>
+    </ul>
+
+    <div class="hsub">Why it often does nothing</div>
+    <p>Most hourly checks end in "no action", and that is the design working. A trade is blocked when any of these is true:</p>
+    <ul>
+      <li><span class="hk">Earnings within ~7 days</span> — wait for the print rather than gamble on it.</li>
+      <li><span class="hk">Price outside the entry band</span> — too expensive means wait for the pullback; well below the plan means re-check the thesis before buying a falling knife.</li>
+      <li><span class="hk">Wash-sale window (30 days)</span> — if a loss was booked on that name recently in <i>either</i> account, rebuying wastes the tax deduction. The IRS counts per person, not per account.</li>
+      <li><span class="hk">Bought or sold too recently</span> — a 14-day minimum hold and a 14-day re-entry cooldown. Added after two disagreeing weekly targets flipped nearly the whole book in 48 hours, every leg taxable.</li>
+      <li><span class="hk">Sold something today</span> — nothing bought today is sold today, so the account can never accumulate day-trades it isn't allowed to have.</li>
+      <li><span class="hk">The whole book is down too much</span> — see below.</li>
+    </ul>
+
+    <div class="hsub">The circuit breaker</div>
+    <p>Every rule above is about <i>one name</i>. One rule is about the <b>entire account</b>: if the book falls <b>8%</b> below its high, all new buying stops — no matter how good any individual idea looks. At <b>12%</b> it also raises cash to 20% of the book, selling losers first. Buying only resumes above <b>−6%</b>, not at −8%, so it can't flicker on and off around the line.</p>
+    <p>Two details that took real care: the drop is measured <b>after removing deposits</b>, so adding money can never mask a decline (a deposit would otherwise push the balance to a "new high" at the worst possible moment); and while it's tripped, money waits in <b>cash</b> rather than the usual placeholder fund, since that placeholder is itself 100% stock market.</p>
+
+    <div class="hsub">The waiting ground</div>
+    <p>When a name is blocked, its dollars don't sit idle — they wait in a broad-market fund (VTI) and are released to buy the real name once it clears. VTI specifically, not SPY: SPY is already part of the target, so parking there would hide the placeholder inside a real position.</p>
+
+    <div class="hsub">Reading the tape</div>
+    <p>Deployment is paced by how jumpy the market is. In a calm market, idle cash is forced in after 10 days; when volatility is elevated that stretches to 15, and when it's stressed, 20 days and in half-sized pieces. This changes only <i>how fast</i> money goes in — never which names are chosen, and it never delays a sale.</p>
+
+    <div class="hsub">Taxes</div>
+    <p>This is a taxable account, and every position is short-term, so tax is treated as a real cost rather than an afterthought: sales are ordered losses-first, positions underwater past a threshold are harvested deliberately, each ticket estimates its own tax impact, and the wash-sale ledger spans both accounts.</p>
+
+    <div class="hsub">What it will never do</div>
+    <ul>
+      <li>Borrow money or use leverage — the account is unlevered, always.</li>
+      <li>Short a stock, or trade options.</li>
+      <li>Place a large trade without a confirmation from the owner.</li>
+      <li>Sell shares that are backing an obligation, or take a trade that breaks a rule above because a target "said so".</li>
+    </ul>
+
+    <p style="margin-top:12px;opacity:.8"><b>The honest summary:</b> a disciplined, diversified, unlevered strategy that trades rarely, explains every refusal, keeps its own scorecard, and stops itself when the whole book is falling. It is not a prediction engine and it is not guaranteed to make money — it is a set of rules applied consistently, which is mostly what separates a strategy from a series of impulses. Not financial advice.</p>` },
   'guardrails': { tag:'Plan · Agentic', t:'Guardrails', h:`
     <p>The standing rules the automated executor cannot cross. Each is enforced in code, and most were added after a specific mistake.</p>
     <div class="hsub">Why they exist</div>
