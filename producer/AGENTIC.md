@@ -150,7 +150,11 @@ target is committed) disposes, adding two caps conviction alone ignored:
 
 ## Decision ledger — the account's own track record (v93)
 Every owner-confirmed deploy/rebalance is appended to **`producer/agentic-decisions.json`** (`makeDecision`
-in `agentic-ledger.mjs`: `{date, kind, trades:[{sym,side,dollars,priceAt}], spyAt, rationale}`). `build-data.mjs`
+in `agentic-ledger.mjs`: `{date, kind, trades:[{sym,side,dollars,priceAt,drivers}], spyAt, rationale}`). **Always pass
+`target` (the committed `agentic-target.json`)** — `makeDecision` stamps each BUY leg with that name's
+`drivers`, which is what the sleeve attribution below measures. It must be stamped AT DECISION TIME: a leg
+looked up later against whatever target is current would be attributed to a thesis that did not pick it, so
+legs written without it are excluded from attribution rather than reconstructed. `build-data.mjs`
 grades each vs live quotes + SPY (dollar-weighted contribution, alpha, ahead/behind/open) and attaches it as
 `data.agentic.decisions` for the consumer's **🧾 Rebalance Log** card — so we learn whether each allocation call
 actually worked, the same way the picks screen grades its Track Record. **When you place a confirmed rebalance,
@@ -201,7 +205,8 @@ PRODUCER.md, re-paste the prompt in `SCHEDULING.md` once.)
 workflow → pipe its `allocation` through **`finalize-target.mjs`** (risk-caps enforced) → commit the new
 `agentic-target.json` → build the ticket with **`agentic-deploy.mjs`** (earnings/gap/wash-sale deferrals) →
 propose it for confirmation. On confirm + place, **append the decision** to `agentic-decisions.json`
-(`makeDecision`, with `spyAt`) so the Rebalance Log can grade it.
+(`makeDecision`, with `spyAt` **and `target`** — the target supplies each buy leg's `drivers` for sleeve
+attribution) so the Rebalance Log can grade it.
 
 ## The executor — the self-driving loop (v96)
 A **separate scheduled Claude session** (hourly during market hours — cron `20 14-20 * * 1-5` UTC, its own
@@ -243,7 +248,9 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       Fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.
       If a sell is still pending, leave the ticket at `sells-placed`; the next pass places the rest.
    e. Advance the ticket (`advanceTicket` → `sells-placed`, then `buys-placed`/`done`), **append the
-      decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt`), commit + push both files,
+      decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt` **and `target`** — without the
+      target the buy legs carry no `drivers` and that rebalance is invisible to sleeve attribution
+      forever; it cannot be backfilled), commit + push both files,
       PushNotification the fill report.
    f. **PARKING LEDGER (v102) — do not skip this.** If the plan carried a `parking.parked` leg (a buy
       flagged `parked: true`) or a `parking.released` leg (`kind: 'park-release'`), rewrite

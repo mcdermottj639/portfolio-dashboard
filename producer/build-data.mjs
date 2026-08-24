@@ -503,6 +503,10 @@ const data = {
       const graded = gradeDecisions(decisions.decisions, quotes, asOfDay);
       data.agentic.decisions = graded;
       console.log(`agentic decisions: ${graded.stats.total} logged · ${graded.stats.resolved} resolved (${graded.stats.ahead} ahead)${graded.stats.avgAlpha != null ? ` · avg alpha ${graded.stats.avgAlpha}%` : ''}`);
+      // Sleeve attribution (v121) — which research sleeve is actually earning its keep. Thin sleeves are
+      // labelled rather than hidden, so a small-n figure is never mistaken for a finding.
+      const sv = Object.entries(graded.sleeves || {}).sort((a, b) => (b[1].alphaPct ?? -99) - (a[1].alphaPct ?? -99));
+      if (sv.length) console.log(`agentic sleeves: ${sv.map(([k, v]) => `${k} ${v.alphaPct != null ? `${v.alphaPct > 0 ? '+' : ''}${v.alphaPct}pp α` : 'n/a'} (n=${v.n}${v.thin ? ', thin' : ''})`).join(' · ')}`);
     } else if (prior && prior.agentic && prior.agentic.decisions) {
       data.agentic.decisions = prior.agentic.decisions;
     }

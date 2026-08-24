@@ -410,7 +410,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       **`PushNotification`** the owner the ticket.
    6. **Place NOTHING** — execution is alert & one-tap-confirm; the owner confirms in a session. On a
       confirmed placement, **append the decision** to `producer/agentic-decisions.json` (`makeDecision`,
-      with `spyAt`) so the Rebalance Log grades it.
+      with `spyAt` **and `target`**, so each buy leg carries its `drivers` for sleeve attribution) so the
+      Rebalance Log grades it.
 
    Best-effort, same rule as steps 5–6: `data.json` is already published, so on ANY failure (workflow
    error, rate-limit, push blip) **just stop** — the existing target stands and it retries next week. This

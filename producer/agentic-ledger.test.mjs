@@ -1,9 +1,11 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
 const near = (label, got, want, tol = 0.2) => { if (got != null && Math.abs(got - want) <= tol) pass++; else { fail++; console.error(`✗ ${label}\n    got ${got} want ~${want}`); } };
+const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.stringify(want);
+  if (g === w) pass++; else { fail++; console.error(`✗ ${label}\n    got  ${g}\n    want ${w}`); } };
 
 const dec = {
   id: 'd1', date: '2026-07-01', kind: 'deploy', targetAsOf: '2026-06-29', book: 3500, spyAt: 700, rationale: 'initial deploy',
@@ -57,6 +59,57 @@ ok('a TRIM stamps lastSellDate', act.GE.lastSellDate === '2026-08-10' && act.AAP
 ok('a BUY stamps lastBuyDate', act.GE.lastBuyDate === '2026-08-12' && act.AAPL.lastBuyDate === '2026-08-10');
 ok('decisions outside the window are ignored', !act.OLD);
 ok('empty ledger → empty map', Object.keys(activityFromDecisions([], { asOf: '2026-08-12' })).length === 0);
+
+// ---- SLEEVE ATTRIBUTION (v121) ----------------------------------------------
+// The question that makes a sleeve REMOVABLE: did the names it backed actually outperform?
+{
+  const T = { names: [
+    { ticker: 'AAA', drivers: ['momentum', 'quality'] },
+    { ticker: 'BBB', drivers: ['momentum'] },
+    { ticker: 'CCC', drivers: ['valuation'] },
+  ]};
+  // drivers are stamped at DECISION time from the then-current target…
+  const d1 = makeDecision({ date: '2026-07-01', book: 10000, spyAt: 700, target: T,
+    buys: [{ sym: 'AAA', dollars: 1000, shares: 10, price: 100 }, { sym: 'CCC', dollars: 1000, shares: 10, price: 100 }] });
+  eq('a buy leg records the drivers of the name it was bought for',
+    d1.trades.find((t) => t.sym === 'AAA').drivers, ['momentum', 'quality']);
+  eq('a name absent from the target records none',
+    d1.trades.find((t) => t.sym === 'CCC').drivers, ['valuation']);
+  // …and a TRIM never carries them: a trim is not an expression of the sleeve that picked the name.
+  const d2 = makeDecision({ date: '2026-07-01', book: 10000, spyAt: 700, target: T,
+    buys: [], trims: [{ sym: 'AAA', dollars: 500, shares: 5, price: 100 }] });
+  ok('a trim leg carries no drivers', d2.trades[0].drivers === undefined);
+  // No target supplied ⇒ no drivers, rather than a guess.
+  const d3 = makeDecision({ date: '2026-07-01', book: 10000, spyAt: 700, buys: [{ sym: 'AAA', dollars: 1000, price: 100 }] });
+  ok('no target ⇒ no drivers (never reconstructed later)', d3.trades[0].drivers === undefined);
+
+  // Roll-up: AAA +20%, CCC -10%, SPY +5% over the window.
+  const g = gradeDecisions([d1], { AAA: 120, CCC: 90, SPY: 735 }, '2026-08-01');
+  const sl = g.sleeves;
+  ok('sleeves are reported', !!sl && !!sl.momentum && !!sl.valuation);
+  // AAA (+20% price, alpha +15pp) had TWO drivers, so its $1000 splits $500 each.
+  near('a two-driver leg splits its dollars 1/k', sl.momentum.dollars, 500, 0.01);
+  near('momentum inherits AAA\'s alpha vs SPY', sl.momentum.alphaPct, 15, 0.01);
+  near('quality sees the same leg', sl.quality.alphaPct, 15, 0.01);
+  near('valuation carries CCC alone', sl.valuation.dollars, 1000, 0.01);
+  near('…and its alpha is negative', sl.valuation.alphaPct, -15, 0.01);
+  ok('a sleeve with too few graded buys is flagged thin, not presented as a finding', sl.momentum.thin === true);
+  ok('thin is keyed off SLEEVE_MIN_N', SLEEVE_MIN_N >= 3);
+
+  // Legs written before drivers existed are EXCLUDED, never guessed at.
+  const legacy = { id: 'x', date: '2026-07-01', spyAt: 700, trades: [{ sym: 'AAA', side: 'BUY', dollars: 5000, priceAt: 100 }] };
+  const gl = gradeDecisions([legacy], { AAA: 200, SPY: 735 }, '2026-08-01');
+  eq('a legacy leg with no drivers contributes to no sleeve', Object.keys(gl.sleeves), []);
+
+  // Enough buys and the thin flag clears.
+  const many = Array.from({ length: 4 }, (_, i) => makeDecision({
+    date: `2026-07-0${i + 1}`, book: 10000, spyAt: 700, target: T,
+    buys: [{ sym: 'BBB', dollars: 400, shares: 4, price: 100 }] }));
+  const gm = gradeDecisions(many, { BBB: 110, SPY: 700 }, '2026-08-01');
+  ok('4 graded buys clears the thin flag', gm.sleeves.momentum.thin === false);
+  near('single-driver legs keep their whole dollars', gm.sleeves.momentum.dollars, 1600, 0.01);
+  near('and the alpha is the price move when SPY was flat', gm.sleeves.momentum.alphaPct, 10, 0.01);
+}
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

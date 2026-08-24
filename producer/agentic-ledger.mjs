@@ -37,7 +37,8 @@ export function gradeDecision(dec, quotesNow = {}, asOf) {
       const side = String(t.side || 'BUY').toUpperCase();
       contribPct = (side === 'SELL' || side === 'TRIM') ? -retPct : retPct;
     }
-    return { sym, side: String(t.side || 'BUY').toUpperCase(), dollars: num(t.dollars), priceAt, priceNow, retPct, contribPct };
+    return { sym, side: String(t.side || 'BUY').toUpperCase(), dollars: num(t.dollars), priceAt, priceNow, retPct, contribPct,
+      ...(Array.isArray(t.drivers) && t.drivers.length ? { drivers: t.drivers } : {}) };
   });
 
   // dollar-weighted average decision contribution across trades that priced
@@ -58,6 +59,50 @@ export function gradeDecision(dec, quotesNow = {}, asOf) {
   return { ...dec, grade: { byTrade, avgContrib, spyRet, alpha, daysSince, verdict } };
 }
 
+// Minimum graded buys per sleeve before its attribution means anything. Attribution over two trades is
+// noise, and a card that prints it as though it were signal is worse than one that says "not yet".
+export const SLEEVE_MIN_N = 4;
+
+// Which research sleeve is actually earning its keep? Every target name carries `drivers` (the sleeves
+// that scored ≥7, derived deterministically in finalize-target.mjs), and makeDecision stamps them onto
+// each BUY leg at decision time. Rolling those up answers the question that makes a sleeve REMOVABLE:
+// did the names a sleeve backed actually outperform? Dollar-weighted, and measured as alpha vs SPY over
+// the same window so a sleeve isn't credited for a rising tape.
+//
+// A leg with k drivers splits its dollars 1/k across them. That is crude — it cannot separate a name
+// that momentum carried from one quality carried when both tagged it — but it is unbiased and needs no
+// extra data. Anything cleverer (regression on sleeve scores) needs far more decisions than this account
+// will generate in a year.
+export function sleeveStats(gradedDecisions = []) {
+  const acc = {};
+  for (const d of gradedDecisions) {
+    const spyRet = d.grade ? d.grade.spyRet : null;
+    for (const t of (d.grade && d.grade.byTrade) || []) {
+      if (t.side !== 'BUY' || !Array.isArray(t.drivers) || !t.drivers.length) continue;
+      if (t.contribPct == null || !(t.dollars > 0)) continue;
+      const share = t.dollars / t.drivers.length;
+      const alpha = spyRet != null ? t.contribPct - spyRet : null;
+      for (const dv of t.drivers) {
+        const a = acc[dv] || (acc[dv] = { n: 0, dollars: 0, _cw: 0, _aw: 0, _an: 0 });
+        a.n += 1; a.dollars += share;
+        a._cw += t.contribPct * share;
+        if (alpha != null) { a._aw += alpha * share; a._an += share; }
+      }
+    }
+  }
+  const out = {};
+  for (const [k, a] of Object.entries(acc)) {
+    out[k] = {
+      n: a.n,
+      dollars: +a.dollars.toFixed(2),
+      contribPct: a.dollars > 0 ? +(a._cw / a.dollars).toFixed(2) : null,
+      alphaPct: a._an > 0 ? +(a._aw / a._an).toFixed(2) : null,
+      thin: a.n < SLEEVE_MIN_N,   // true ⇒ report it as "not yet measurable", never as a finding
+    };
+  }
+  return out;
+}
+
 export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const graded = decisions.map((d) => gradeDecision(d, quotesNow, asOf))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
@@ -65,13 +110,24 @@ export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const ahead = resolved.filter((d) => d.grade.verdict === 'ahead').length;
   const withAlpha = resolved.filter((d) => d.grade.alpha != null);
   const avgAlpha = withAlpha.length ? +(withAlpha.reduce((s, d) => s + d.grade.alpha, 0) / withAlpha.length).toFixed(2) : null;
-  return { decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha } };
+  const sleeves = sleeveStats(graded);
+  return { decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves };
 }
 
 // Build a new decision record from a deployment/rebalance plan (agent calls this on confirm, then appends).
-export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, spyAt, rationale, buys = [], trims = [] }) {
+// SLEEVE ATTRIBUTION (v121). `target` (the then-current agentic-target.json) is optional; when supplied,
+// each BUY leg records the `drivers` of the target name it was bought for. It MUST be stamped here, at
+// decision time, and never reconstructed later by looking the symbol up in whatever target happens to be
+// current — that would attribute a trade to a thesis that did not pick it. Buys only: a trim/exit is not
+// an expression of the sleeve that originally justified the name. Legs written before this existed simply
+// carry no `drivers` and are excluded from attribution rather than guessed at.
+export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, spyAt, rationale, buys = [], trims = [], target = null }) {
+  const driversOf = (sym) => {
+    const n = ((target && target.names) || []).find((x) => x && String(x.ticker).toUpperCase() === String(sym).toUpperCase());
+    return (n && Array.isArray(n.drivers) && n.drivers.length) ? n.drivers.slice() : null;
+  };
   const trades = [
-    ...buys.map((b) => ({ sym: String(b.sym).toUpperCase(), side: 'BUY', dollars: num(b.dollars), shares: num(b.shares), priceAt: num(b.price ?? b.priceAt), weightBefore: num(b.weightNow), weightAfter: num(b.weightTarget) })),
+    ...buys.map((b) => { const d = driversOf(b.sym); return ({ sym: String(b.sym).toUpperCase(), side: 'BUY', dollars: num(b.dollars), shares: num(b.shares), priceAt: num(b.price ?? b.priceAt), weightBefore: num(b.weightNow), weightAfter: num(b.weightTarget), ...(d ? { drivers: d } : {}) }); }),
     ...trims.map((t) => ({ sym: String(t.sym).toUpperCase(), side: 'TRIM', dollars: num(t.dollars), shares: num(t.shares), priceAt: num(t.price ?? t.priceAt), weightBefore: num(t.weightNow), weightAfter: num(t.weightTarget) })),
   ];
   return { id: `${date}-${kind}`, date, kind, targetAsOf: targetAsOf || null, book: num(book), equityAtDecision: num(equity), spyAt: num(spyAt), rationale: rationale || '', trades };
