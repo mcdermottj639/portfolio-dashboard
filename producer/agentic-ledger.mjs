@@ -126,6 +126,12 @@ export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, 
     const n = ((target && target.names) || []).find((x) => x && String(x.ticker).toUpperCase() === String(sym).toUpperCase());
     return (n && Array.isArray(n.drivers) && n.drivers.length) ? n.drivers.slice() : null;
   };
+  // LOUD, because the omission is invisible and permanent. A rebalance appended without `target` can
+  // never be attributed to a sleeve — the stamp is decision-time only — and nothing downstream errors,
+  // so without this warning the loss is silent. Shows up in the executor's run log.
+  if (!target && buys.length) {
+    console.warn(`[agentic-ledger] makeDecision(${date}) called WITHOUT \`target\` — ${buys.length} buy leg(s) will carry no drivers and this rebalance is permanently invisible to sleeve attribution. Pass the committed agentic-target.json (the exec gate writes it into raw/agentic-plan.json as \`target\`).`);
+  }
   const trades = [
     ...buys.map((b) => { const d = driversOf(b.sym); return ({ sym: String(b.sym).toUpperCase(), side: 'BUY', dollars: num(b.dollars), shares: num(b.shares), priceAt: num(b.price ?? b.priceAt), weightBefore: num(b.weightNow), weightAfter: num(b.weightTarget), ...(d ? { drivers: d } : {}) }); }),
     ...trims.map((t) => ({ sym: String(t.sym).toUpperCase(), side: 'TRIM', dollars: num(t.dollars), shares: num(t.shares), priceAt: num(t.price ?? t.priceAt), weightBefore: num(t.weightNow), weightAfter: num(t.weightTarget) })),

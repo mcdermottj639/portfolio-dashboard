@@ -208,6 +208,24 @@ propose it for confirmation. On confirm + place, **append the decision** to `age
 (`makeDecision`, with `spyAt` **and `target`** — the target supplies each buy leg's `drivers` for sleeve
 attribution) so the Rebalance Log can grade it.
 
+## Book-level drawdown breaker (v121)
+The only guard here that looks at the WHOLE book — everything else (stops, entry bands, min-hold) is
+name-scoped. `drawdown.mjs` reads the recorded, **deposit-adjusted** equity series; `build-data.mjs`
+publishes it as `data.agentic.drawdown` and `agentic-exec-gate.mjs` feeds it to the planner.
+
+| tier | trips at | what changes |
+|---|---|---|
+| `soft` | ≤ −8% from the deposit-adjusted peak | Every new buy defers with reason `drawdown`. Deferred dollars stay in **cash — not parked in VTI** (the placeholder is 100% equity beta, so parking "the market is falling" money there is backwards). The idle-cash deadline is paused; its clock keeps running. |
+| `hard` | ≤ −12% | Soft, plus `drawdown-raise` sells lifting cash to **20% of book, losses first**. |
+| clear | back **above −6%** | Not at −8%: the gap is hysteresis, or the breaker chatters and redeploys into what it just refused. |
+
+Load-bearing details: **sells, exits and TLH are never blocked** — de-risking must always be possible.
+The breaker does **not** override the PDT day-trade guard or the 14-day min-hold; it warns when the cash
+floor cannot be reached rather than forcing past them. It **fails open** below 5 recorded points (the
+equity series cannot be backfilled, so a young account is thin by definition, and a breaker that stopped
+on thin data would freeze a new book forever). Tier CHANGES — including recoveries — are pushed to the
+owner by `alerts.mjs` through the normal producer push path, so the executor should not re-push them.
+
 ## The executor — the self-driving loop (v96)
 A **separate scheduled Claude session** (hourly during market hours — cron `20 14-20 * * 1-5` UTC, its own
 trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
@@ -248,9 +266,19 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       Fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.
       If a sell is still pending, leave the ticket at `sells-placed`; the next pass places the rest.
    e. Advance the ticket (`advanceTicket` → `sells-placed`, then `buys-placed`/`done`), **append the
-      decision** to `agentic-decisions.json` (`makeDecision`, with `spyAt` **and `target`** — without the
-      target the buy legs carry no `drivers` and that rebalance is invisible to sleeve attribution
-      forever; it cannot be backfilled), commit + push both files,
+      decision** to `agentic-decisions.json`, commit + push both files,
+
+      > **`makeDecision` takes `spyAt` AND `target`. Both. Every time.**
+      > `target` is the committed `agentic-target.json` — and the exec gate already hands it to you:
+      > `producer/raw/agentic-plan.json` carries it as `target`, so pass that straight through. It
+      > stamps each BUY leg with the name's `drivers[]`, which is the only input the Rebalance Log's
+      > sleeve attribution has. **Omit it and that rebalance is invisible to attribution permanently** —
+      > the stamp is decision-time only and cannot be backfilled, because a leg matched against a later
+      > target would be credited to a thesis that did not pick it. Nothing errors when it is missing;
+      > `makeDecision` logs a loud warning instead, so check the run output.
+      > (The executor Routine's own prompt predates this and says only "with `spyAt`" — it is bound to a
+      > persistent session and cannot be edited. **This runbook wins**, exactly as that prompt instructs.)
+
       PushNotification the fill report.
    f. **PARKING LEDGER (v102) — do not skip this.** If the plan carried a `parking.parked` leg (a buy
       flagged `parked: true`) or a `parking.released` leg (`kind: 'park-release'`), rewrite

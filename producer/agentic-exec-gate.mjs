@@ -73,7 +73,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const idle = (why) => { console.log(`EXEC_IDLE (${why})`); process.exit(30); };
 const act = (mode, payload) => {
   mkdirSync(join(__dirname, 'raw'), { recursive: true });
-  writeFileSync(join(__dirname, 'raw', 'agentic-plan.json'), JSON.stringify({ mode, today, ...payload }, null, 2));
+  // `target` is written into the plan ON PURPOSE (v121): makeDecision needs it to stamp each BUY leg's
+  // `drivers[]` for sleeve attribution, and that stamp cannot be backfilled. Carrying it here means the
+  // executor never has to go find the committed target — and, more importantly, it does not depend on
+  // the executor Routine's prompt wording, which is bound to a persistent session and cannot be edited.
+  writeFileSync(join(__dirname, 'raw', 'agentic-plan.json'), JSON.stringify({ mode, today, target: (A && A.target) || null, ...payload }, null, 2));
   console.log(`${mode} (${payload.reason || ''})`);
   process.exit(0);
 };

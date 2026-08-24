@@ -82,6 +82,28 @@ producer to a credentialed cron unless the user explicitly accepts storing RH lo
    owner a rebalance proposal** (places nothing — alert & one-tap-confirm). Fault-isolated like step 5;
    never gates the publish. See `AGENTIC.md` / `PRODUCER.md` step 7. Adds no Robinhood writes (reads only).
 
+## The agentic loop — which Routine exercises what (2026-08-24)
+Four scheduled jobs drive ••••3900, and **a feature only works if the Routine that runs it knows about
+it.** That is not automatic: a Routine's prompt is stored server-side, not in this repo, so shipping code
+here does NOT update it. This table is the map; re-check it whenever a piece is added.
+
+| Routine (cron, UTC) | What it runs | v121 pieces it carries |
+|---|---|---|
+| **Portfolio dashboard refresh** (`35 * * * *`) | `preflight` → fetch → `run.mjs` | fetches **VIX every run** (light + full) → `data.vix` (regime); `build-data` emits **`data.agentic.drawdown`**; `alerts.mjs` pushes the **drawdown tier change** through the existing post-publish push |
+| **Agentic weekly research** (`12 11 * * 1`) | `agentic-due` → `agentic-research` workflow → **`finalize-target.mjs`** | **look-through cluster caps**, the two-strike phase-out, and the **`drivers[]`** tags every downstream attribution depends on |
+| **Agentic executor** (`20 14-20 * * 1-5`) | `agentic-exec-gate` → ticket state machine | consumes the **drawdown** + **regime** reads; `makeDecision` stamps **sleeve drivers** |
+| **Flow burn-in decision** (one-shot 2026-09-02) | evaluates whether `FLOW_WEIGHT` earns 0.10 | reads the **sleeve attribution** roll-up; knows the 2026-08-24 insider fix **reset the burn-in clock** |
+
+Two hazards this table exists to prevent, both hit in the 2026-08-24 audit:
+- **The weekly Routine used to hand-write `agentic-target.json`**, bypassing `finalize-target.mjs` — which
+  silently skipped the risk caps, the phase-out AND `drivers[]`. Fixed; the prompt now names the runbook
+  as source of truth. **Never hand-write that file.**
+- **The executor Routine's prompt CANNOT be edited** (it is bound to a persistent session), and it still
+  says only "`makeDecision`, with `spyAt`". So the `target` requirement is enforced three other ways
+  instead of by prompt: the exec gate writes `target` into `raw/agentic-plan.json`, `AGENTIC.md` step 3e
+  carries a blockquote that overrides the prompt, and `makeDecision` **logs a loud warning** when it is
+  called with buys but no target. Prefer code-level guards over prompt wording for anything load-bearing.
+
 ## Key files
 | File | Role |
 |---|---|
