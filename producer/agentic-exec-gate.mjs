@@ -36,6 +36,7 @@ import { dirname, join } from 'node:path';
 import { isMarketOpen, etDate } from './market.mjs';
 import { decryptEnvelope } from './emit.mjs';
 import { planDeployment } from './agentic-deploy.mjs';
+import { bookDrawdown } from './drawdown.mjs';
 
 // The committed index-parking ledger (see producer/agentic-parked.json). Read here rather than off the
 // snapshot so a park/release the executor wrote THIS session is visible on the very next pass, instead
@@ -123,9 +124,16 @@ for (const e of A.recentLosses || []) {
   const until = new Date(Date.parse(e.date + 'T00:00:00Z') + 30 * 86400000).toISOString().slice(0, 10);
   if (until > today && (!washMap[e.sym] || until > washMap[e.sym].until)) washMap[e.sym] = { until, date: e.date, account: e.account || 'agentic' };
 }
+// BOOK-LEVEL DRAWDOWN BREAKER (v121). Computed here, from the committed snapshot's recorded equity
+// series, and handed to the planner. Deposit-adjusted and memoryless by construction (drawdown.mjs), so
+// the gate needs no state of its own — which matters because the executor may only ever commit
+// agentic-pending / agentic-decisions / agentic-parked. Fails OPEN on a thin series.
+const drawdown = bookDrawdown(A.equityHistory || []);
+if (drawdown.level !== 'ok') console.error(`[exec-gate] drawdown ${drawdown.level.toUpperCase()}: ${drawdown.note}`);
+
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},
-  washMap, parked: readParked() || A.parked || null,
+  washMap, parked: readParked() || A.parked || null, drawdown,
   // Churn governor: recent buys/sells from the committed decisions ledger drive the min-hold and
   // re-entry cooldown. The executor OVERLAYS today's live fills (get_equity_orders) on top — the
   // ledger can't see an order placed since its last append (AGENTIC.md executor step 3c).

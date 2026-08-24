@@ -72,6 +72,7 @@
 // review_equity_order → confirm → place (auto ≤ cap, owner-confirmed above; see AGENTIC.md).
 
 import { policyBlackout, POLICY_BLACKOUT_DAYS } from './policy.mjs';
+import { AG_DD_CASH_FLOOR, AG_DRAWDOWN_RESUME } from './drawdown.mjs';
 
 export const EARNINGS_BLACKOUT_DAYS = 7;
 export { POLICY_BLACKOUT_DAYS };
@@ -183,12 +184,25 @@ export function planDeployment(input = {}) {
   const {
     target = {}, positions = [], cash = 0, quotes = {},
     earnings = {}, washMap = {}, policy = null, crossActivity = {}, accountActivity = {},
-    parked = null, opts = {},
+    parked = null, drawdown = null, opts = {},
   } = input;
+  // BOOK-LEVEL DRAWDOWN BREAKER (v121). `drawdown` = bookDrawdown(data.agentic.equityHistory) from
+  // drawdown.mjs, supplied by the exec gate. Absent/insufficient ⇒ 'ok' ⇒ today's behaviour exactly.
+  const ddLevel = (drawdown && drawdown.level) || 'ok';
+  const ddSoft = ddLevel === 'soft' || ddLevel === 'hard';
+  const ddHard = ddLevel === 'hard';
+  const ddPct = drawdown && drawdown.dd != null ? (drawdown.dd * 100).toFixed(1) + '%' : null;
   // `parked` = {vehicle, dollars, forNames:[]} carried in the snapshot (data.agentic.parked). Dollars
   // already sitting in the vehicle ON BEHALF of deferred names — excluded from drift, released on clear.
   const parkVehicle = String(opts.parkVehicle || (parked && parked.vehicle) || PARK_VEHICLE).toUpperCase();
   const parkingOn = opts.park !== false;
+  // SUSPEND NEW PARKS while the breaker is tripped — but ONLY new parks. `parkingOn` itself must stay
+  // true, because it also gates the off-target-exit exemption for the vehicle: flipping it would make
+  // the planner liquidate the existing waiting ground as an "orphan" the moment a drawdown started,
+  // which is the infinite park→liquidate churn the exemption exists to prevent. Releases stay allowed
+  // (moving money OUT of the placeholder is de-risking). The park vehicle is 100% equity beta, so
+  // routing "the market is falling" money into it is precisely backwards — deferred cash stays CASH.
+  const parkNewOn = parkingOn && !ddSoft;
   const parkMin = opts.parkMin ?? PARK_MIN;
   const parkedNow = Math.max(0, num(parked && parked.dollars) || 0);
   const blackout = opts.earningsBlackoutDays ?? EARNINGS_BLACKOUT_DAYS;
@@ -202,7 +216,10 @@ export function planDeployment(input = {}) {
   // Idle-cash deadline. `cashIdleDays` comes from data.agentic.cashIdleSince (build-data tracks the
   // first date deployable cash crossed the floor and stayed there); absent → no deadline, old behavior.
   const idleDays = num(opts.cashIdleDays);
-  const idleOverdue = idleDays != null && idleDays >= (opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS);
+  // The deadline's clock keeps running, but it cannot FORCE cash in while the breaker is tripped —
+  // "deploy the backlog because 10 days passed" and "the book is in a drawdown" resolve in favour of
+  // the drawdown. It resumes forcing the moment the breaker clears, with the elapsed days intact.
+  const idleOverdue = idleDays != null && idleDays >= (opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS) && !ddSoft;
   // Past the deadline the BANDS are waived — but never the hard guards (stop/earnings/wash/policy).
   const bandsActive = gapReverify && !zonesStale && !idleOverdue;
   const names = (target.names || []).filter((n) => n && n.ticker).map((n) => ({ ...n, ticker: String(n.ticker).toUpperCase() }));
@@ -296,6 +313,13 @@ export function planDeployment(input = {}) {
       // deferral — its weight shouldn't attract parked dollars either.
       if (n.phaseOut) continue;
       // guardrails (order = most-blocking first)
+      // BOOK-LEVEL DRAWDOWN outranks every name-level guard: it is a statement about the whole book, so
+      // no per-name verdict can argue past it. Deferred dollars stay in CASH (see parkNewOn above).
+      if (ddSoft) {
+        deferred.push({ sym, reason: 'drawdown', dollars: gap,
+          detail: `book is ${ddPct} from its peak (${drawdown && drawdown.peakT || 'n/a'}) — new deployment paused until it recovers above ${(AG_DRAWDOWN_RESUME * 100).toFixed(0)}%; deferred cash is NOT parked (the placeholder is equity beta)` });
+        continue;
+      }
       if (washMap[sym]) {
         const where = washMap[sym].account === 'main' ? 'in the self-directed account (cross-account wash)' : 'in this account';
         deferred.push({ sym, reason: 'wash-sale', detail: `loss booked recently ${where}; rebuy blocked to ${washMap[sym].until || '?'}`, until: washMap[sym].until, dollars: gap });
@@ -416,6 +440,45 @@ export function planDeployment(input = {}) {
     }
   }
 
+  // 1d. HARD-TIER DEFENSIVE CASH (v121). Below AG_DRAWDOWN_HARD the breaker stops being passive: it
+  //     raises cash to a floor. Ordering is LOSSES FIRST, exactly like every other sell path here — the
+  //     tax benefit is real and it is also the least-conviction end of the book. Everything routes
+  //     through sellBlocked(), so the PDT day-trade guard and the 14d min-hold still bind; min-hold's
+  //     existing ≤-10% deep-loss exemption means the positions this most wants to sell are usually the
+  //     ones it CAN sell. It deliberately does NOT force past min-hold on a small loser: churn control
+  //     and risk control are both real, and a 14-day-old position is not what put the book in a
+  //     drawdown. Names already exiting/harvesting this ticket are skipped so nothing is sold twice.
+  const ddRaises = [];
+  if (ddHard && opts.drawdownRaise !== false) {
+    const floorPct = opts.ddCashFloorPct ?? AG_DD_CASH_FLOOR;
+    const already = new Set([...exits, ...harvests, ...trims].map((x) => x.sym));
+    const cashNow = Math.max(0, num(cash) || 0);
+    const wanted = +(book * floorPct / 100).toFixed(2);
+    let need = +(wanted - cashNow - [...exits, ...harvests, ...trims].reduce((a, x) => a + x.dollars, 0)).toFixed(2);
+    if (need > 0) {
+      const rows = Object.entries(held)
+        .filter(([sym, h]) => !already.has(sym) && sym !== parkVehicle && h.qty > 0 && h.px > 0 && h.value >= (opts.minExit ?? MIN_EXIT))
+        .map(([sym, h]) => {
+          const plPct = h.avgCost > 0 ? +((h.px / h.avgCost - 1) * 100).toFixed(2) : null;
+          return { sym, h, plPct: plPct == null ? 0 : plPct };
+        })
+        .sort((a, b) => a.plPct - b.plPct);   // most-underwater first
+      for (const { sym, h, plPct } of rows) {
+        if (need <= 0) break;
+        const dollars = +Math.min(h.value, need).toFixed(2);
+        if (dollars < (opts.minExit ?? MIN_EXIT)) continue;
+        const shares = +(dollars / h.px).toFixed(6);
+        const pl = h.avgCost != null ? +((h.px - h.avgCost) * shares).toFixed(2) : null;
+        const row = { sym, kind: 'drawdown-raise', dollars, shares, price: h.px, pl, plPct, term: 'short',
+          note: `book ${ddPct} from its peak — raising defensive cash to ${floorPct}% of book (losses first)` };
+        if (sellBlocked(row)) continue;
+        ddRaises.push(row);
+        need = +(need - dollars).toFixed(2);
+      }
+      if (need > 0) warnings.push(`drawdown hard tier: could not reach the ${floorPct}% cash floor — ${money(need)} short after the PDT and min-hold guards (they are not overridden by the breaker)`);
+    }
+  }
+
   // 2. distribute the deployable pool across eligible buys, proportional to each name's gap and capped
   //    at the gap (never overshoot target → never breach the target's risk caps).
   //
@@ -424,7 +487,7 @@ export function planDeployment(input = {}) {
   //    Harvested names were already pulled from `candidates`, so a harvest still can't fund its own
   //    wash-triggering rebuy. `buysT1` stays in the result as an empty array for wire-compatibility
   //    with tickets written under the old two-leg model (see the header note).
-  const proceeds = +([...exits, ...harvests, ...trims].reduce((s, x) => s + x.dollars, 0)).toFixed(2);
+  const proceeds = +([...exits, ...harvests, ...trims, ...ddRaises].reduce((s, x) => s + x.dollars, 0)).toFixed(2);
   const settledNow = Math.max(0, num(cash) || 0);
   //    FORCED TRANCHE (v102): when the idle-cash deadline has passed we deliberately deploy only a slice
   //    of the settled cash per pass, so the backlog averages in over several sessions instead of landing
@@ -487,7 +550,7 @@ export function planDeployment(input = {}) {
   //     (Park only fires when there was no release, so spent here is cash-funded by construction.)
   const parkableCash = +(cashThisPass + proceeds - spent).toFixed(2);
   const parkableNeed = deferred.filter((d) => d.sym !== parkVehicle).reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
-  if (parkingOn && !parkLegs.release && parkableCash >= parkMin && parkableNeed >= parkMin) {
+  if (parkNewOn && !parkLegs.release && parkableCash >= parkMin && parkableNeed >= parkMin) {
     const dollars = +Math.min(parkableCash, parkableNeed).toFixed(2);
     const px = pxOf(parkVehicle);
     if (!(px > 0)) warnings.push(`index parking unavailable: no live quote for ${parkVehicle} in the snapshot — deferred cash stays in cash this pass (producer must quote the park vehicle every run)`);
@@ -510,7 +573,7 @@ export function planDeployment(input = {}) {
 
   // 3. tax-aware combined sell order (losses first — harvest what we're selling anyway — then smallest
   //    gain first) + the ticket's ST tax picture and the executor's autonomy tier.
-  const sells = [...exits, ...harvests, ...trims].sort((a, b) => (a.pl ?? 0) - (b.pl ?? 0));
+  const sells = [...exits, ...harvests, ...trims, ...ddRaises].sort((a, b) => (a.pl ?? 0) - (b.pl ?? 0));
   const realizedGain = +sells.reduce((s, x) => s + Math.max(0, x.pl || 0), 0).toFixed(2);
   const realizedLoss = +sells.reduce((s, x) => s + Math.min(0, x.pl || 0), 0).toFixed(2);
   const taxSummary = { realizedGain, realizedLoss, net: +(realizedGain + realizedLoss).toFixed(2), term: 'short',
@@ -543,13 +606,14 @@ export function planDeployment(input = {}) {
   const parking = { vehicle: parkVehicle, enabled: parkingOn, before: +parkedNow.toFixed(2), after: +parkedAfter.toFixed(2),
     parked: parkLegs.park, released: parkLegs.release,
     forNames: deferred.filter((d) => d.sym !== parkVehicle).map((d) => d.sym) };
-  const summary = buildSummary({ buys, buysT1, trims, exits, harvests, deferred, spent, cashLeft, book, taxSummary, turnover, buysNeedProceeds, parking });
-  return { book, cash: +settledNow.toFixed(2), deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, sells,
+  const summary = buildSummary({ buys, buysT1, trims, exits, harvests, ddRaises, deferred, spent, cashLeft, book, taxSummary, turnover, buysNeedProceeds, parking, drawdown });
+  return { book, cash: +settledNow.toFixed(2), deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, ddRaises, sells,
     proceeds, buysNeedProceeds, blockedSells, taxSummary, turnover, autoCap, autoEligible, entryPolicy, parking,
+    drawdown: drawdown ? { dd: drawdown.dd, level: drawdown.level, peakT: drawdown.peakT, note: drawdown.note } : null,
     deferred, deferredCash: +deferredCash.toFixed(2), spent: +spent.toFixed(2), cashLeft, warnings, summary };
 }
 
-function buildSummary({ buys, buysT1 = [], trims, exits = [], harvests = [], deferred, spent, cashLeft, taxSummary, turnover, buysNeedProceeds, parking = null }) {
+function buildSummary({ buys, buysT1 = [], trims, exits = [], harvests = [], ddRaises = [], deferred, spent, cashLeft, taxSummary, turnover, buysNeedProceeds, parking = null, drawdown = null }) {
   const parts = [];
   const sellBits = [
     ...exits.map((x) => x.kind === 'park-release'
@@ -557,7 +621,13 @@ function buildSummary({ buys, buysT1 = [], trims, exits = [], harvests = [], def
       : `${x.sym} ${moneyS(x.dollars)} exit`),
     ...harvests.map((x) => `${x.sym} ${moneyS(x.dollars)} harvest`),
     ...trims.map((t) => `${t.sym} ${moneyS(t.dollars)} trim`),
+    ...ddRaises.map((x) => `${x.sym} ${moneyS(x.dollars)} defensive raise`),
   ];
+  // The breaker leads the summary when it is tripped — it is the reason the rest of the ticket looks
+  // the way it does, so reading it last would be reading the ticket backwards.
+  if (drawdown && drawdown.level && drawdown.level !== 'ok') {
+    parts.push(`⚠️ DRAWDOWN ${drawdown.level.toUpperCase()}: ${drawdown.note || `book ${(drawdown.dd * 100).toFixed(1)}% from its peak`}.`);
+  }
   if (sellBits.length) parts.push(`Sell first (losses first): ${sellBits.join(', ')}.`);
   if (buys.length) parts.push(`Then deploy ${moneyS(spent)}${buysNeedProceeds ? ' (cash + these proceeds, same session — limited margin)' : ' of settled cash'}: ${buys.map((b) => `${b.sym} ${moneyS(b.dollars)}`).join(', ')}.`);
   else if (!sellBits.length) parts.push('No eligible buys this pass.');

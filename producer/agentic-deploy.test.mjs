@@ -399,5 +399,113 @@ ok('…its weight does not park', po.parking.parked === null);
 near('…while the live names still deploy to target', po.spent, 500, 1);
 ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 && REENTRY_COOLDOWN_DAYS === 14);
 
+
+// ---- BOOK-LEVEL DRAWDOWN BREAKER (v121) -------------------------------------
+{
+  const dq = { SPY: 747, NVDA: 209, GOOGL: 360, VTI: 380 };
+  const dt = { asOf: '2026-07-23', driftTriggerPp: 5, names: [
+    { ticker: 'SPY',   weightPct: 40, entry: '740-750', stop: 690 },
+    { ticker: 'NVDA',  weightPct: 35, entry: '205-215', stop: 190 },
+    { ticker: 'GOOGL', weightPct: 25, entry: '352-368', stop: 320 },
+  ]};
+  const mk = (level, extra = {}) => planDeployment({
+    target: dt, positions: extra.positions || [], cash: extra.cash ?? 3000, quotes: dq,
+    parked: extra.parked || null,
+    drawdown: level ? { level, dd: level === 'hard' ? -0.14 : -0.09, peakT: '2026-06-01', note: 'test' } : null,
+    opts: { asOf: '2026-07-23', ...(extra.opts || {}) },
+  });
+
+  const okRun = mk(null);
+  ok('no drawdown input ⇒ buys proceed exactly as before', okRun.buys.length > 0);
+  ok('…and nothing is deferred for drawdown', !okRun.deferred.some((d) => d.reason === 'drawdown'));
+  ok("level 'ok' behaves identically to no input", mk('ok').buys.length === okRun.buys.length);
+
+  const soft = mk('soft');
+  ok('soft tier: no new buys at all', soft.buys.length === 0);
+  ok('soft tier: every target name is deferred with reason drawdown',
+    ['SPY', 'NVDA', 'GOOGL'].every((t) => { const d = find(soft.deferred, t); return d && d.reason === 'drawdown'; }));
+  ok('soft tier: the deferral explains itself with the book figure',
+    find(soft.deferred, 'SPY').detail.includes('from its peak'));
+  ok('soft tier: the summary leads with the breaker', /DRAWDOWN SOFT/.test(soft.summary));
+
+  // THE POINT of keeping deferred money in cash: the park vehicle is 100% equity beta, so routing
+  // "the market is falling" dollars into it defeats the purpose. (Owner kept VTI over SGOV, which is
+  // exactly why this rule is load-bearing rather than cosmetic.)
+  ok('soft tier: deferred cash is NOT parked', !soft.parking || !soft.parking.park);
+  ok('soft tier: cash actually stays in cash', soft.cashLeft >= 2900);
+
+  // INVARIANT: suspending parking must NOT make the planner treat an EXISTING waiting ground as an
+  // off-target orphan. Flipping the whole parking flag would do exactly that — liquidating the
+  // placeholder the moment a drawdown began, the infinite park→liquidate churn the exemption prevents.
+  const withPark = mk('soft', {
+    positions: [{ symbol: 'VTI', qty: 2, avgCost: 375 }],
+    parked: { vehicle: 'VTI', dollars: 760, forNames: ['NVDA'] },
+  });
+  ok('soft tier: an existing waiting ground is NOT exited as an orphan', !find(withPark.exits, 'VTI'));
+  ok('soft tier: …and is not trimmed either', !find(withPark.trims, 'VTI'));
+
+  // The idle-cash deadline must not force money in while the breaker is tripped.
+  const idleOk = mk(null, { opts: { cashIdleDays: 30 } });
+  const idleSoft = mk('soft', { opts: { cashIdleDays: 30 } });
+  ok('the idle-cash deadline forces deployment when the book is healthy', idleOk.buys.length > 0);
+  ok('…but is paused by the breaker', idleSoft.buys.length === 0);
+
+  // Sells are never blocked by the breaker — de-risking must always be possible.
+  const softExit = planDeployment({
+    target: dt, quotes: { ...dq, ORCL: 100 }, cash: 0,
+    positions: [{ symbol: 'ORCL', qty: 20, avgCost: 90 }],
+    drawdown: { level: 'soft', dd: -0.09, peakT: '2026-06-01' },
+    opts: { asOf: '2026-07-23' },
+  });
+  ok('soft tier: an off-target exit still happens (de-risking is never blocked)', !!find(softExit.exits, 'ORCL'));
+}
+{
+  // HARD TIER — raise defensive cash, losses first, through the existing guards.
+  const dq = { AAA: 100, BBB: 100, CCC: 100 };
+  const hard = planDeployment({
+    target: { asOf: '2026-07-23', driftTriggerPp: 5, names: [
+      { ticker: 'AAA', weightPct: 34, entry: '90-110', stop: 50 },
+      { ticker: 'BBB', weightPct: 33, entry: '90-110', stop: 50 },
+      { ticker: 'CCC', weightPct: 33, entry: '90-110', stop: 50 },
+    ]},
+    // Losses deliberately SHALLOWER than the TLH floor (max($75, 5% of cost)) so this exercises the
+    // drawdown raise itself. A deeper loser is harvested by the existing TLH path first, which already
+    // raises cash — worth knowing: the two paths compose rather than double-selling.
+    positions: [
+      { symbol: 'AAA', qty: 30, avgCost: 90 },    // +11% winner
+      { symbol: 'BBB', qty: 30, avgCost: 103 },   // −2.9%  ← least-bad first: sold first
+      { symbol: 'CCC', qty: 30, avgCost: 102 },   // −2.0%
+    ],
+    cash: 0, quotes: dq,
+    drawdown: { level: 'hard', dd: -0.14, peakT: '2026-06-01', note: 'test' },
+    opts: { asOf: '2026-07-23' },
+  });
+  ok('hard tier: defensive cash is raised', hard.ddRaises.length > 0);
+  ok('hard tier: the most-underwater name is sold first', hard.ddRaises[0].sym === 'BBB');
+  ok('hard tier: raises appear in the combined sells list', hard.sells.some((x) => x.kind === 'drawdown-raise'));
+  ok('hard tier: raises count toward turnover', hard.turnover > 0);
+  ok('hard tier: the tax summary sees the realized loss', hard.taxSummary.realizedLoss < 0);
+  ok('hard tier: it does not sell more than the floor needs', hard.ddRaises.reduce((a, x) => a + x.dollars, 0) <= 9000 * 0.20 + 1);
+  ok('hard tier: still no new buys', hard.buys.length === 0);
+  const raised = hard.ddRaises.reduce((a, x) => a + x.dollars, 0);
+  near('hard tier: raises roughly reach the 20% cash floor', raised, 9000 * 0.20, 60);
+  ok('hard tier: the summary announces it', /DRAWDOWN HARD/.test(hard.summary));
+
+  // The breaker does NOT override the churn/PDT guards — a name bought today can't be sold today.
+  const pdt = planDeployment({
+    target: { asOf: '2026-07-23', names: [{ ticker: 'BBB', weightPct: 100, entry: '90-110', stop: 50 }] },
+    positions: [{ symbol: 'BBB', qty: 30, avgCost: 103 }],
+    cash: 0, quotes: { BBB: 100 },
+    accountActivity: { BBB: { lastBuyDate: '2026-07-23' } },
+    drawdown: { level: 'hard', dd: -0.14, peakT: '2026-06-01' },
+    opts: { asOf: '2026-07-23' },
+  });
+  ok('hard tier: the PDT day-trade guard still binds', !pdt.ddRaises.some((x) => x.sym === 'BBB'));
+  ok('…and the block is reported rather than silently dropped',
+    pdt.blockedSells.some((b) => b.sym === 'BBB' && b.blocked === 'day-trade'));
+  ok('…with a warning that the floor was not reached',
+    pdt.warnings.some((w) => /cash floor/.test(w)));
+}
+
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);
