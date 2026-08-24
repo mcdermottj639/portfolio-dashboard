@@ -720,7 +720,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v121'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v122'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2961,7 +2961,12 @@ function renderAgenticCard(){
   // Plan tab now (status "to open"), with the entry/stop/TP the strip carried — the hand-off below still
   // places them, so nothing is lost by not re-listing them on a card about what the account holds.
   // deploy / rebalance hand-off (targets the agentic account; fractional, dollar-market at the open)
-  const buys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]&&!execMap[x.sym]);
+  // v122: the book-level drawdown breaker gates the hand-off's BUY leg, mirroring agentic-deploy.mjs —
+  // without this the card offered a buy list the executor would refuse (card/executor disagreement).
+  // Sells/exits/trims stay untouched: de-risking is never blocked.
+  const _dd=(A&&A.drawdown)||{}; const ddPaused=_dd.level==='soft'||_dd.level==='hard';
+  const allBuys=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&!washMap[x.sym]&&!execMap[x.sym]);
+  const buys=ddPaused?[]:allBuys;
   const washBlocked=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&washMap[x.sym]);
   const execDeferred=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='BUY'&&x.delta>=holdThr&&execMap[x.sym]&&!washMap[x.sym]);
   const sells=chosen.filter(x=>book>0&&x.shares!=null&&x.side==='SELL'&&-x.delta>=holdThr);
@@ -2978,6 +2983,8 @@ function renderAgenticCard(){
   if(sells.length){ L.push('TRIM toward target (place with the exits, before the buys):'); sells.forEach(x=>L.push('• SELL ~'+shFmt(x.shares)+' sh '+x.sym+' ≈ '+fmtD(Math.abs(x.delta))+plTag(estPl(x.sym,Math.abs(x.delta)))+' → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(buys.length){ L.push('BUY toward target (≈, dollar-market) — place AFTER the sells above have filled; settled cash plus those proceeds fund these in the SAME session (limited margin, instant settlement):'); buys.forEach(x=>L.push('• BUY '+fmtD(Math.abs(x.delta))+' of '+x.sym+' (~'+shFmt(x.shares)+' sh near '+P(x.px)+') → target '+fmt(x.tgt,0)+'%')); L.push(''); }
   if(allSellPl.length) L.push('Est. short-term tax impact of the sells: '+fmtD(taxGain)+' gains'+(taxLoss<0?' − '+fmtD(Math.abs(taxLoss))+' harvested losses':'')+' = net '+(taxGain+taxLoss>=0?'+':'−')+fmtD(Math.abs(taxGain+taxLoss))+' (ST, ordinary income; before any cross-account wash effects — check the margin account for buys of the same names within 30 days before harvesting a loss). Not tax advice.','');
+  if(ddPaused&&allBuys.length){ L.push('PAUSED — book-level drawdown breaker ('+_dd.level.toUpperCase()+'): the account is '+(_dd.dd!=null?(_dd.dd*100).toFixed(1)+'%':'—')+' below its deposit-adjusted peak, so place NO new buys this session (the hourly executor is refusing them too). Deferred dollars stay in CASH — do not park them in '+AG_PARK_VEHICLE+'. Buys resume once the book recovers above '+AG_DD_RESUME_PCT+'%:');
+    allBuys.forEach(x=>L.push('• ON HOLD '+x.sym+' (target '+fmt(x.tgt,0)+'%)')); L.push(''); }
   if(washBlocked.length){ L.push('DO NOT BUY YET — wash-sale window (a taxable account of yours realized a loss on these within 30 days; the IRS window spans accounts, so rebuying here disallows the loss). Skip these until the date shown, then revisit:'); washBlocked.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — loss booked '+washAcctLbl(x.sym)+', wash-sale until '+washUntilLbl(x.sym))); L.push(''); }
   if(execDeferred.length){ L.push('DEFER — execution discipline (target weight kept, buy waits; do NOT place these today):'); execDeferred.forEach(x=>L.push('• HOLD OFF '+x.sym+' (target '+fmt(x.tgt,0)+'%) — '+execMap[x.sym].note)); L.push(''); }
   L.push((targetSrc==='research'?('Target from the weekly deep multi-factor research (momentum/quality/growth/catalyst → adversarial verify)'+(targetAsOf?', as of '+targetAsOf:'')):'Interim heuristic target (top picks + mega-cap leaders + SPY/QQQ core + held)')+', long-only, capped at '+fmt(PLAN_SINGLE_CAP*100,0)+'%/name. Re-check live marks + buying power before each fill. Education only — not financial advice.');
@@ -2991,6 +2998,7 @@ function renderAgenticCard(){
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> ('+(washMap[x.sym]&&washMap[x.sym].account==='main'?'loss in ••••0741':'loss in ••••3900')+' · until '+washUntilLbl(x.sym)+')').join(' · ')} — a taxable account of yours realized a loss on ${washBlocked.length>1?'these':'this'} within the last 30 days; the IRS wash-sale window spans your accounts, so a rebuy here would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
     ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry zone':'below entry zone')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify; a name trading above its entry zone waits for the pullback the research priced in. Small misses are tolerated (±${ENTRY_TOL_PCT}%/${ENTRY_PREM_PCT}%) and zones older than ${ENTRY_STALE_D}d go advisory${_zonesStale?` — <b>the current zones are ${_zoneAge}d old, so entry checks are OFF</b>`:''}. Deferred weight waits in the ${'VTI'} placeholder rather than cash. Target weight unchanged. Education only.</div>`:''}
     ${parkedNow?`<div class="fund-note"><b>🅿️ Waiting ground:</b> ${fmtD(A.parked.dollars)} of deferred weight is parked in <b>${A.parked.vehicle||AG_PARK_VEHICLE}</b> on behalf of ${(A.parked.forNames||[]).map(s=>'<b>'+s+'</b>').join(', ')||'a deferred name'} — released to fund ${((A.parked.forNames||[]).length>1)?'them':'it'} once the deferral clears, so it is held, never exited. <span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')">See the plan →</span></div>`:''}
+    ${ddPaused?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>${_dd.level==='hard'?'🛑':'⚠️'} Drawdown breaker (${_dd.level}):</b> new buys are paused book-wide${_dd.dd!=null?` (${(_dd.dd*100).toFixed(1)}% from peak)`:''} — the hand-off below lists them as ON HOLD. Sells still execute. <span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')">Details →</span></div>`:''}
     <div style="margin-top:8px">${chatBtn('agentic-deploy',handoff,'🤖 '+(investedNow>0?'Rebalance ••••3900 to this target':'Deploy ••••3900 into this target')+' with Claude')}</div>`;
 }
 window.renderAgenticCard=renderAgenticCard;
