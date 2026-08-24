@@ -121,11 +121,21 @@ const valOf=(u)=>{ let peS; const pe=u.pe; if(!(pe>0))peS=2.5; else if(pe<=12)pe
 // the ONLY line to change — set it to 0.10 once the burn-in is complete (see PROPOSAL-flow-signals.md
 // §8 and the burn-in note in producer/AGENTIC.md). The remaining five sleeves scale proportionally, so
 // their relative standing is identical either way.
-// FLOW_WEIGHT gates EVERY path from flow data into the allocation — the composite, the sleeve line and
+// FLOW_WEIGHT gates every path from flow data into the ALLOCATION — the composite, the sleeve line and
 // notes in the verify prompt, and the sleeve scores handed to synthesis. At 0 the layer is genuinely
 // inert: the target is byte-identical to what it would have been without this sleeve. That is what makes
 // the burn-in a real control — if flow leaked into the model's judgment while nominally "off", there
 // would be no clean before/after to evaluate at the decision point.
+//
+// TWO PATHS, AND THE DISTINCTION IS DELIBERATE — DO NOT COLLAPSE THEM (v121):
+//   • MODEL-FACING (gated by FLOW_WEIGHT): the composite, the verify prompt's sleeve notes, and
+//     `forSynth[].sleeves` below. These reach an LLM's judgment, so at weight 0 they must stay dark.
+//   • MEASUREMENT-FACING (NEVER gated): the `f` field on `ranked`, returned unconditionally in
+//     `ranking`. finalize-target.mjs reads it into `drivers:['flow']` for any name scoring ≥7, so the
+//     Rebalance Log's sleeve attribution accumulates evidence about flow WITHOUT flow having influenced
+//     which names were bought. That is a clean natural experiment — "did the names that happened to
+//     score high on flow actually outperform?" — and it is the only thing that can ever justify turning
+//     the weight on. Gating this path too would leave the burn-in with nothing to measure at its end.
 // (The congressional block below is separate: zero score weight PERMANENTLY, verify-stage context only.)
 const FLOW_WEIGHT = 0     // ← 0 during burn-in; 0.10 after. Nothing else needs to change.
 const FLOWMAP = (args && args.flow) || {}

@@ -41,6 +41,14 @@ ok('a name with no strong sleeve carries no drivers', !('drivers' in nameOf(r, '
 // The flow sleeve must be attributable the moment it earns weight, and absent when it abstains.
 ok('flow appears as a driver when it scores high', nameOf(r, 'NVDA').drivers.includes('flow'));
 ok('flow is not a driver when it merely exists', !nameOf(r, 'JPM').drivers.includes('flow'));
+// LOAD-BEARING (v121): this attribution path is NOT gated by FLOW_WEIGHT, and must never become gated.
+// The workflow keeps flow dark to the MODEL during the burn-in (composite, verify prompt, synthesis
+// input) but returns the raw score in `ranking` regardless — so the Rebalance Log can measure whether
+// high-flow names actually outperformed WITHOUT flow having influenced which names were bought. Gate
+// this too and the burn-in ends with nothing to evaluate, which is the only thing that could ever
+// justify turning the weight on.
+ok('flow is attributed for MEASUREMENT even while its allocation weight is 0',
+  nameOf(r, 'NVDA').drivers.includes('flow'));
 
 // Attribution is optional: without `ranked` the target is byte-identical to the pre-v95 shape.
 const noRank = finalizeTarget(ALLOC, base);

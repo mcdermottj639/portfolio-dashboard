@@ -232,7 +232,25 @@ The objection is that it buys complexity for an unmeasured signal, not that it w
 Also observed: AAPL and UNH carried `asOf 2026-08-12` (12 days stale) while the other 14 were current.
 Minor, but see the Gotchas lesson about stale per-symbol data being read as signal.
 
-### What to build instead — decouple RECORDING from WEIGHTING
+### FINDING (2026-08-24, during implementation): the decoupling ALREADY EXISTS — nothing to build
+
+The recommendation below was written from a misread of which path `FLOW_WEIGHT` gates. Verified in code
+and by running `finalizeTarget`: the workflow's `ranked` objects carry `f` **unconditionally**, `ranking`
+returns it **unconditionally**, and `finalize-target.mjs`'s `driversFor` already reads `r.f` and tags
+`drivers:['flow']` at ≥7 — all while `FLOW_WEIGHT` is 0. The observe-only experiment is already running,
+and `finalize-target.test.mjs` already asserted it (now with an explicit regression naming the property).
+
+The ONLY `FLOW_WEIGHT`-gated path is `forSynth[].sleeves`, which feeds the synthesis LLM. That one must
+**stay** gated: un-gating it would leak flow into the model's judgment while the sleeve is nominally off,
+destroying the clean before/after the burn-in exists to produce. So the change proposed below would have
+made things worse, not better. Implemented instead: a comment in `agentic-research.js` naming the two
+paths (model-facing = gated; measurement-facing = never gated) so neither is "tidied" into the other.
+
+**Phase 5 is therefore CLOSED as already-satisfied.** The flip decision is unchanged — HOLD at 0 until
+Phase 6 attribution produces evidence and the two dead components are addressed (the insider one now is;
+see the 2026-08-24 `flow.mjs` saturation fix).
+
+### (superseded) What was proposed — decouple RECORDING from WEIGHTING
 
 `FLOW_WEIGHT > 0` currently gates two independent things in `.claude/workflows/agentic-research.js`:
 (a) flow entering the composite, and (b) flow being recorded into each finalist's `sleeves` object
