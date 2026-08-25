@@ -724,7 +724,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v123'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v124'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2523,7 +2523,8 @@ const AG_EARN_BLACKOUT_D=7,      // EARNINGS_BLACKOUT_DAYS — no NEW money ≤7
       AG_IDLE_SWEEP_FLOOR=250,   // CASH_IDLE_SWEEP_FLOOR
       AG_PARK_VEHICLE='VTI',     // PARK_VEHICLE — the waiting ground
       AG_PARK_MIN=100,           // PARK_MIN
-      AG_CLUSTER_CAP=48;         // riskweights.mjs CLUSTER_CAPS['megacap-tech']
+      AG_CLUSTER_CAP=48,         // riskweights.mjs CLUSTER_CAPS['megacap-tech']
+      AG_DEFENSIVE_MIN=15;       // riskweights.mjs AG_DEFENSIVE_MIN — the book's only FLOOR (v124)
 const agToday=()=>new Date().toISOString().slice(0,10);
 /* Best live price for a name in the agentic book: the held position's mark → today's pick scan →
    the recorded quote. Shared so the card and the Plan page price the same guards identically. */
@@ -3025,6 +3026,16 @@ const AG_SLEEVE_MIN_N=4;   // mirrors SLEEVE_MIN_N in producer/agentic-ledger.mj
 const AG_VIX_ELEVATED=22, AG_VIX_STRESSED=30;
 function agRegime(){ const v=+(((window.__DATA||{}).vix||{}).v); if(!isFinite(v)||v<=0)return null;
   return v>=AG_VIX_STRESSED?'stressed':v>=AG_VIX_ELEVATED?'elevated':'calm'; }
+/* Live defensive read for the Guardrails row (v124). The producer computes this ONCE in
+   finalize-target.mjs → agentic-target.json `defensive`, so the card and the executor can never
+   disagree about how much ballast the book carries — the same discipline the drawdown figure follows.
+   Renders nothing when the target predates the field, so an older snapshot degrades to the plain rule. */
+function agDefensiveNote(){
+  const d=(((window.__DATA||{}).agentic||{}).target||{}).defensive;
+  if(!d||typeof d.total!=='number')return '';
+  const short=+d.shortfall>0.5;
+  return ' · now '+d.total.toFixed(1)+'%'+(short?' ⚠️ short '+(+d.shortfall).toFixed(1)+'pp':' ✅');
+}
 function agDrawdownBanner(){
   const d=((window.__DATA||{}).agentic||{}).drawdown; if(!d||!d.level||d.level==='ok')return '';
   const pct=d.dd!=null?(d.dd*100).toFixed(1)+'%':'—';
@@ -3204,6 +3215,7 @@ function renderAgenticPlan(){
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div>
       ${rule('🧬','Correlation-cluster cap',AG_CLUSTER_CAP+'% megacap-tech','A "sector-diversified" label hid the fact that NVDA/MSFT/GOOGL/AMZN/META/AAPL all trade as one bet. Payments cap 20%, staples 25%; index is uncapped.')}
       ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
+      ${rule('🛡️','Defensive floor','≥'+AG_DEFENSIVE_MIN+'% of book'+agDefensiveNote(),'Every other rule on this card is a CEILING — this is the only floor. Nothing previously made the book own a stabilizer, so a target could hold 0% staples, 0% utilities and 0% healthcare forever: the composite weights momentum and growth at 0.44 combined against valuation\'s 0.18, so an expensive fast name always outranks a cheap stable one. Counts staples, utilities, telecom, REITs, managed care and low-vol vehicles — but only if the name actually trades like one (52wk range no wider than a normal large-cap), so a high-multiple healthcare name does not qualify on its GICS label alone. SPY/'+AG_PARK_VEHICLE+' count only through their small defensive sleeves.')}
       ${rule('⏳','Min-hold',AG_MIN_HOLD_D+' days','A name bought inside the window is not exited or trimmed. Overridden only by a business-broken verdict, a loss past −10% (risk control outranks churn control), or a harvest/park release. Added after two consecutive targets flipped the whole book in 48 hours.')}
       ${rule('🔁','Re-entry cooldown',AG_REENTRY_D+' days','A name this account sold inside the window is not rebought — it covers the gain-sells the 30-day wash ledger cannot see. The weight parks in '+AG_PARK_VEHICLE+' meanwhile.')}
       ${rule('🧾','Wash-sale window',AG_WASH_WINDOW_D+' days, cross-account','The IRS window is per taxpayer, so the ledger reads BOTH taxable books. A loss booked in ••••0741 blocks a rebuy here — the exact trade that partially disallowed a −$431 NVDA loss once.')}

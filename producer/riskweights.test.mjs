@@ -1,5 +1,6 @@
 // Offline unit checks for riskweights.mjs — no network, no I/O. Run: node producer/riskweights.test.mjs
-import { riskAdjustWeights, clusterOf, volScaledCap, volProxy, CLUSTER_CAPS, BASE_SINGLE_CAP, clusterExposure } from './riskweights.mjs';
+import { riskAdjustWeights, clusterOf, volScaledCap, volProxy, CLUSTER_CAPS, BASE_SINGLE_CAP, clusterExposure,
+  isDefensive, defensiveExposure, AG_DEFENSIVE_MIN, DEFENSIVE_MAX_VOL } from './riskweights.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -137,6 +138,99 @@ ok('no cluster in the compliant book exceeds its cap', Object.entries(clean.clus
 // --- extra fields (thesis/entry/stop) are preserved through the transform ---
 const preserved = riskAdjustWeights([{ ticker: 'NVDA', weightPct: 50, px: 209, hi: 236, lo: 164, thesis: 'keepme', stop: 190 }, { ticker: 'SPY', weightPct: 50, px: 747, hi: 760, lo: 600 }]);
 ok('non-weight fields survive', (preserved.names.find((n) => n.ticker === 'NVDA') || {}).thesis === 'keepme');
+
+// --- v124: the singleton loophole -----------------------------------------------------------------
+// A high-beta AI name absent from CLUSTERS used to be its own uncapped singleton, so it counted ZERO
+// against the 48% megacap-tech cap while trading as another expression of the same bet.
+ok('TSLA/PLTR/NOW/ANET/TSM now count against the megacap-tech cap',
+  ['TSLA', 'PLTR', 'NOW', 'ANET', 'TSM', 'MU', 'CRWD'].every((t) => clusterOf(t) === 'megacap-tech'));
+ok('defensive clusters exist at all', clusterOf('NEE') === 'utilities' && clusterOf('O') === 'reits'
+  && clusterOf('VZ') === 'telecom' && clusterOf('KO') === 'staples' && clusterOf('SCHD') === 'low-vol');
+{
+  // The loophole, demonstrated: 30% megacap + 25% of AI names that were formerly singletons.
+  const e = clusterExposure([
+    { ticker: 'NVDA', weightPct: 15 }, { ticker: 'MSFT', weightPct: 15 },
+    { ticker: 'PLTR', weightPct: 13 }, { ticker: 'TSLA', weightPct: 12 },
+  ]);
+  near('formerly-singleton AI names roll into one cluster', e['megacap-tech'].direct, 55, 0.01);
+  ok('…which is now visibly over the cap', e['megacap-tech'].total > CLUSTER_CAPS['megacap-tech']);
+}
+
+// --- v124: defensive floor ------------------------------------------------------------------------
+// The vol gate is what makes cluster membership honest. LLY is GICS healthcare, but a ~0.54 range/price
+// is wider than the market — counting it as ballast would let the floor be met by the very kind of
+// position it exists to offset.
+ok('a tight staples name is defensive', isDefensive({ ticker: 'KO', px: 70, hi: 74, lo: 60 }));
+ok('a wide-range pharma name is NOT defensive', !isDefensive({ ticker: 'LLY', px: 1152, hi: 1249, lo: 624 }));
+ok('a megacap-tech name is never defensive', !isDefensive({ ticker: 'MSFT', px: 388, hi: 400, lo: 380 }));
+ok('vol gate is anchored to the same reference range as the caps', DEFENSIVE_MAX_VOL === 0.42);
+ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive('PG') && !isDefensive('NVDA'));
+{
+  // Index sleeves carry defensive weight and must be seen through, exactly like the caps.
+  const e = defensiveExposure([{ ticker: 'SPY', weightPct: 100 }]);
+  ok('100% SPY reads as defensive only through look-through', e.direct === 0 && e.lookThrough > 5);
+}
+{
+  // THE LIVE 2026-08-18 TARGET SHAPE. Nine names, zero qualifying defensives — the gap this floor closes.
+  const r = riskAdjustWeights([
+    { ticker: 'SPY', weightPct: 20, px: 747, hi: 760, lo: 600 },
+    { ticker: 'AMZN', weightPct: 14, px: 238, hi: 278, lo: 196 },
+    { ticker: 'MSFT', weightPct: 13, px: 388, hi: 555, lo: 349 },
+    { ticker: 'NVDA', weightPct: 11, px: 209, hi: 236, lo: 164 },
+    { ticker: 'GOOGL', weightPct: 10, px: 324, hi: 408, lo: 188 },
+    { ticker: 'LLY', weightPct: 11, px: 1152, hi: 1249, lo: 624 },
+    { ticker: 'V', weightPct: 11, px: 352, hi: 365, lo: 293 },
+    { ticker: 'JPM', weightPct: 10, px: 348, hi: 351, lo: 279 },
+  ]);
+  ok('a book with no qualifying defensive name is flagged, never faked',
+    r.defensive.shortfall > 5 && r.notes.some((n) => /NO qualifying defensive name/.test(n)));
+  ok('…and no weight is fabricated to hide it', Math.abs(r.names.reduce((a, n) => a + n.weightPct, 0) - 100) < 0.6);
+}
+{
+  // Top-up path: a real but undersized defensive sleeve is raised toward the floor, funded by the
+  // non-defensive names, and the book still sums to 100.
+  const r = riskAdjustWeights([
+    { ticker: 'SPY', weightPct: 15, px: 747, hi: 760, lo: 600 },
+    { ticker: 'NVDA', weightPct: 20, px: 209, hi: 236, lo: 164 },
+    { ticker: 'MSFT', weightPct: 20, px: 388, hi: 555, lo: 349 },
+    { ticker: 'JPM', weightPct: 20, px: 348, hi: 351, lo: 279 },
+    { ticker: 'V', weightPct: 20, px: 352, hi: 365, lo: 293 },
+    { ticker: 'KO', weightPct: 5, px: 70, hi: 74, lo: 60 },
+  ]);
+  ok('the defensive sleeve is topped up toward the floor',
+    (r.names.find((n) => n.ticker === 'KO') || {}).weightPct > 5);
+  ok('…to at least the floor', r.defensive.total >= AG_DEFENSIVE_MIN - 0.6);
+  ok('…and a note records the move', r.notes.some((n) => /defensive floor: moved/.test(n)));
+  near('…with the book still at 100%', r.names.reduce((a, n) => a + n.weightPct, 0), 100, 0.6);
+  ok('…and no cluster pushed over its cap by the top-up',
+    Object.entries(r.exposure).every(([c, e]) => CLUSTER_CAPS[c] == null || e.total <= CLUSTER_CAPS[c] + 0.6));
+}
+{
+  // The top-up must respect the RECEIVING cluster's own cap, pooling the two staples names rather than
+  // letting each see the whole headroom. The floor is set deliberately unreachable (staples caps at 25%),
+  // so the correct behaviour is: fill to the cap, stop, and say so.
+  const r = riskAdjustWeights([
+    { ticker: 'SPY', weightPct: 20, px: 747, hi: 760, lo: 600 },
+    { ticker: 'NVDA', weightPct: 30, px: 209, hi: 236, lo: 164 },
+    { ticker: 'JPM', weightPct: 30, px: 348, hi: 351, lo: 279 },
+    { ticker: 'KO', weightPct: 10, px: 70, hi: 74, lo: 60 },
+    { ticker: 'PG', weightPct: 10, px: 147, hi: 167, lo: 137 },
+  ], { defensiveMin: 60 });
+  ok('an unreachable floor cannot breach the receiving cluster cap',
+    r.exposure['staples'].total <= CLUSTER_CAPS['staples'] + 0.6);
+  ok('…but it does fill that cluster to its cap on the way',
+    r.exposure['staples'].total > 20);
+  ok('…and the residual is disclosed rather than tolerated',
+    r.notes.some((n) => /DEFENSIVE SHORTFALL/.test(n)));
+}
+{
+  const off = riskAdjustWeights([
+    { ticker: 'NVDA', weightPct: 60, px: 209, hi: 236, lo: 164 },
+    { ticker: 'SPY', weightPct: 40, px: 747, hi: 760, lo: 600 },
+  ], { defensiveMin: 0 });
+  ok('defensiveMin:0 disables the floor entirely (no note, old behaviour)',
+    !off.notes.some((n) => /DEFENSIVE/i.test(n)) && off.defensive.shortfall === 0);
+}
 
 console.log(`\nriskweights.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

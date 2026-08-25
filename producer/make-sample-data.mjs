@@ -353,7 +353,14 @@ const data = {
       { ticker: 'V',     weightPct: 18, sector: 'Financial Services', thesis: 'Toll booth on card volume; steady compounder.' },
       { ticker: 'GOOGL', weightPct: 18, sector: 'Communication Services', thesis: 'Search cash flows fund the cloud/AI build.' },
       { ticker: 'LLY',   weightPct: 12, sector: 'Healthcare', entry: '$610 – $630', stop: 585, target: 690, thesis: 'Incretin franchise still supply-constrained.' },
-    ] },
+    ],
+      // v124: the defensive read finalize-target.mjs now emits. Deliberately SHORT of the 15% floor —
+      // this fixture holds no qualifying defensive name (LLY's range disqualifies it, exactly as in the
+      // live book), so the Plan tab's Guardrails row renders its ⚠️ shortfall state in preview rather
+      // than the silent satisfied one. Set PF_SAMPLE_DEFENSIVE=1 for a book that clears the floor.
+      defensive: process.env.PF_SAMPLE_DEFENSIVE
+        ? { direct: 16.4, lookThrough: 3.1, total: 19.5, floor: 15, shortfall: 0 }
+        : { direct: 0, lookThrough: 3.1, total: 3.1, floor: 15, shortfall: 11.9 } },
     // ── Plan-tab (v108) fixtures: the executor/planner state the agentic PLAN page reads. Without
     //    these, local preview shows every card in its empty state and the deferral/parking/ticket
     //    paths go unexercised. Mirrors the shapes build-data.mjs emits from the committed

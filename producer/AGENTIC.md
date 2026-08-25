@@ -148,6 +148,55 @@ target is committed) disposes, adding two caps conviction alone ignored:
 - **Vol-scaled single-name cap** — a wider 52wk range → a smaller max weight for the same conviction, so
   10% in LLY (a single drug stock into an earnings print) isn't sized like 10% in SPY.
 
+### The singleton loophole, closed (v124)
+A ticker absent from `CLUSTERS` falls through to its own `single:<SYM>` cluster, which carries **no
+correlation cap at all**. That is right for a genuinely idiosyncratic name, but the list only ever held the
+fourteen names the research universe happened to contain — so a high-multiple AI name that co-moves with the
+complex tick for tick (**TSLA, PLTR, NOW, CRWD, ANET, MU, TSM, SMCI**…) counted **zero** against the 48% cap.
+A book could sit at 44.8% direct megacap and stack more of the *same bet* on top while reporting itself
+compliant. Membership is now about **co-movement, not GICS labels or market cap** — TSM is a semi, TSLA an
+automaker and NOW a software firm, and all three trade as the AI bet. Adding a name can only ever *tighten*
+a cap, so err toward inclusion. Defensive clusters (`utilities`, `reits`, `telecom`, `low-vol`) were added at
+the same time; every one of those names used to be an uncapped singleton too — the mirror image of the hole.
+
+## Defensive floor — the book's only FLOOR (v124)
+Every risk control above is a **ceiling**. Until v124 there was no floor of any kind, and that asymmetry was
+the gap: the caps stop the book over-owning the AI complex, but **nothing ever made it own a stabilizer**.
+The only downturn responses that existed were reactive and cash-based — the drawdown breaker pauses buying at
+−8% and raises cash at −12%, i.e. *after* the book is already down, and regime pacing only slows deployment.
+Neither rotates. So a target could legitimately hold 0% staples, 0% utilities and 0% healthcare in perpetuity
+and the composite would never object: momentum + growth carry **0.44** of the weight against valuation's
+**0.18**, so an expensive fast name structurally outranks a cheap stable one.
+
+**`AG_DEFENSIVE_MIN` = 15% of book** (owner-set mandate dial, ••••3900 only), enforced in
+`riskweights.mjs` and applied by `finalize-target.mjs` — the same "workflow proposes, this disposes" contract
+the caps use. The synthesis prompt *asks* for defensive weight; this is the **guarantee**.
+
+- **What counts.** Cluster membership (`staples · utilities · telecom · reits · health-svc · pharma · low-vol`)
+  names the candidate set; a **vol gate** makes it honest. A name must also trade no wilder than a normal
+  large-cap (`DEFENSIVE_MAX_VOL` = 0.42 range/price, the same reference the vol-scaled caps use). **LLY is the
+  case that matters**: GICS healthcare, in the `pharma` cluster, but a ~0.54 range — counting it as ballast
+  would let the floor be satisfied by exactly the kind of position it exists to offset.
+- **Index sleeves count only partially**, through `LOOKTHROUGH`, so a big SPY core cannot satisfy the floor on
+  its own (~10% of the sleeve is defensive). Those fractions are deliberately rounded **down** — under-crediting
+  the index makes the floor demand more explicit ballast, which is the safe direction to be wrong in.
+- **It moves weight, it never creates it.** Donors are the non-defensive, non-index names, floored at
+  `FLOOR_PCT`. The index sleeve is deliberately **not** a donor: it carries defensive look-through itself, so
+  trimming it would partly undo the top-up being made.
+- **It never breaches a ceiling.** The floor runs *after* the cluster caps, and receiver capacity is pooled
+  **per cluster** — two staples names each see the whole staples headroom, so summing their name-room would
+  overshoot the 25% cap.
+- **It never fabricates a holding.** If the allocation contains no qualifying defensive name, the shortfall is
+  **reported** (`target.defensive.shortfall`, a `DEFENSIVE SHORTFALL:` note in `method`, and the Plan tab's
+  Guardrails row) — never invented. That failure mode points at the real fix: the **universe** the research was
+  shown. The fallback universe in `.claude/workflows/agentic-research.js` previously contained zero utilities,
+  zero REITs, zero telecom and one staples-ish name, so "hold some ballast" was not an answer the process could
+  physically give. A defensive block is now carried there, and **any fresh `args.universe` must carry one too**.
+
+Measured against the live 2026-08-18 target, the book was **2.4% defensive** (all of it look-through from
+SPY/VTI; zero explicit) against a 15% floor. Set `defensiveMin: 0` to disable the floor entirely — that
+restores pre-v124 behaviour exactly.
+
 ## Decision ledger — the account's own track record (v93)
 Every owner-confirmed deploy/rebalance is appended to **`producer/agentic-decisions.json`** (`makeDecision`
 in `agentic-ledger.mjs`: `{date, kind, trades:[{sym,side,dollars,priceAt,drivers}], spyAt, rationale}`). **Always pass

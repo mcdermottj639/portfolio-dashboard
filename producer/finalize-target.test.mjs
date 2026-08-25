@@ -103,5 +103,54 @@ ok('phaseOuts/dropped are surfaced to the caller',
 ok('without a prior target the shape is unchanged (no dropped key)',
   !('dropped' in finalizeTarget(ALLOC, base).target));
 
+// --- v124: the defensive floor reaches the committed target -----------------------------------------
+{
+  // A megacap-only allocation, i.e. the shape every recent live target has had.
+  const noDef = finalizeTarget({ picks: [
+    { ticker: 'SPY', sector: 'Miscellaneous', weightPct: 20, entryZone: '740-760', stop: 690, target: 830, thesis: 'ballast' },
+    { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 25, entryZone: '208-216', stop: 190, target: 258, thesis: 'ai' },
+    { ticker: 'MSFT', sector: 'Technology Services', weightPct: 25, entryZone: '450-465', stop: 410, target: 560, thesis: 'azure' },
+    { ticker: 'JPM', sector: 'Finance', weightPct: 30, entryZone: '350-366', stop: 331, target: 400, thesis: 'bank' },
+  ] }, { book: 10000, universe: [
+    { t: 'SPY', px: 747, hi: 760, lo: 600 }, { t: 'NVDA', px: 209, hi: 236, lo: 164 },
+    { t: 'MSFT', px: 388, hi: 555, lo: 349 }, { t: 'JPM', px: 348, hi: 351, lo: 279 },
+  ] });
+  ok('the committed target carries a defensive block', noDef.target.defensive
+    && typeof noDef.target.defensive.total === 'number' && noDef.target.defensive.floor === 15);
+  ok('a megacap-only book is reported SHORT of the floor, not quietly passed',
+    noDef.target.defensive.shortfall > 5);
+  ok('…and the shortfall reaches the method line the runbook prints',
+    /DEFENSIVE SHORTFALL/.test(noDef.target.method));
+}
+{
+  // Same book, but the research actually included ballast — the floor is satisfied and says nothing.
+  const withDef = finalizeTarget({ picks: [
+    { ticker: 'SPY', sector: 'Miscellaneous', weightPct: 20, entryZone: '740-760', stop: 690, target: 830, thesis: 'ballast' },
+    { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 22, entryZone: '208-216', stop: 190, target: 258, thesis: 'ai' },
+    { ticker: 'MSFT', sector: 'Technology Services', weightPct: 20, entryZone: '450-465', stop: 410, target: 560, thesis: 'azure' },
+    { ticker: 'JPM', sector: 'Finance', weightPct: 18, entryZone: '350-366', stop: 331, target: 400, thesis: 'bank' },
+    { ticker: 'KO', sector: 'Consumer Non-Durables', weightPct: 10, entryZone: '68-72', stop: 62, target: 82, thesis: 'staple' },
+    { ticker: 'NEE', sector: 'Utilities', weightPct: 10, entryZone: '74-78', stop: 66, target: 90, thesis: 'utility' },
+  ] }, { book: 10000, universe: [
+    { t: 'SPY', px: 747, hi: 760, lo: 600 }, { t: 'NVDA', px: 209, hi: 236, lo: 164 },
+    { t: 'MSFT', px: 388, hi: 555, lo: 349 }, { t: 'JPM', px: 348, hi: 351, lo: 279 },
+    { t: 'KO', px: 70, hi: 74, lo: 60 }, { t: 'NEE', px: 75, hi: 86, lo: 61 },
+  ] });
+  ok('a book that carries real ballast clears the floor', withDef.target.defensive.shortfall === 0);
+  ok('…and no shortfall is reported on the method line', !/DEFENSIVE SHORTFALL/.test(withDef.target.method));
+  ok('…with the defensive names still in the committed target',
+    withDef.target.names.some((n) => n.ticker === 'KO') && withDef.target.names.some((n) => n.ticker === 'NEE'));
+  ok('weights still normalize to ~100', Math.abs(withDef.target.names.reduce((a, n) => a + n.weightPct, 0) - 100) < 1);
+}
+{
+  // The dial is overridable, and 0 restores exactly the pre-v124 behaviour.
+  const off = finalizeTarget({ picks: [
+    { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 60, entryZone: '208-216', stop: 190, target: 258, thesis: 'ai' },
+    { ticker: 'SPY', sector: 'Miscellaneous', weightPct: 40, entryZone: '740-760', stop: 690, target: 830, thesis: 'ballast' },
+  ] }, { book: 10000, defensiveMin: 0 });
+  ok('defensiveMin:0 disables the floor', off.target.defensive.shortfall === 0
+    && !/DEFENSIVE SHORTFALL/.test(off.target.method));
+}
+
 console.log(`\nfinalize-target.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

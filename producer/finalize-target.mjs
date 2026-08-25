@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { riskAdjustWeights } from './riskweights.mjs';
+import { riskAdjustWeights, AG_DEFENSIVE_MIN } from './riskweights.mjs';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -93,7 +93,11 @@ export function finalizeTarget(allocation, meta = {}) {
       });
     }
   }
-  const adj = riskAdjustWeights([...named, ...phaseOuts]);
+  // DEFENSIVE FLOOR (v124) — see the header note above DEFENSIVE_CLUSTERS in riskweights.mjs. The
+  // synthesis prompt asks the research for defensive weight; this is the deterministic guarantee, exactly
+  // as the cluster/vol caps are. meta.defensiveMin overrides the mandate dial (0 disables it).
+  const defensiveMin = meta.defensiveMin != null ? +meta.defensiveMin : AG_DEFENSIVE_MIN;
+  const adj = riskAdjustWeights([...named, ...phaseOuts], { defensiveMin });
   // ATTRIBUTION (v95): tag each name with the sleeves that actually earned it a slot, derived
   // DETERMINISTICALLY from the workflow's sleeve scores rather than trusted from the model's prose. This
   // is what lets the Rebalance Log eventually answer "is the flow sleeve earning its weight?" — and
@@ -126,12 +130,15 @@ export function finalizeTarget(allocation, meta = {}) {
     book: meta.book != null ? Math.round(meta.book) : null,
     driftTriggerPp: meta.driftTriggerPp != null ? meta.driftTriggerPp : 5,
     names,
+    // What ballast the book actually carries, and against what floor. Emitted so the shortfall is visible
+    // on the Plan tab and in the run log rather than only inside a `method` string nobody re-reads.
+    defensive: adj.defensive,
     // Why prior names left the target — the deploy planner reads 'business-broken' entries to unlock
     // its min-hold (a broken thesis exits regardless of position age). Only present when a prior
     // target was supplied, so pre-governor callers see an unchanged shape.
     ...(prior ? { dropped } : {}),
   };
-  return { target: out, notes: adj.notes, clusters: adj.clusters, phaseOuts: phaseOuts.map((p) => p.ticker), dropped };
+  return { target: out, notes: adj.notes, clusters: adj.clusters, defensive: adj.defensive, phaseOuts: phaseOuts.map((p) => p.ticker), dropped };
 }
 
 // --- CLI ---
@@ -151,7 +158,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     try { const pf = join(__dirname, 'agentic-target.json'); if (existsSync(pf)) prior = JSON.parse(readFileSync(pf, 'utf8')); } catch { prior = null; }
   }
   const heldArg = flag('held');
-  const { target, notes, clusters, phaseOuts, dropped } = finalizeTarget(allocation, {
+  const { target, notes, clusters, defensive, phaseOuts, dropped } = finalizeTarget(allocation, {
     book: flag('book') != null ? +flag('book') : (allocation.book || null),
     asOf: flag('asOf'),
     ranked: raw.ranking || null,   // present when fed the whole workflow return → enables `drivers`
@@ -161,6 +168,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   });
   console.log('risk-adjust notes:', notes.length ? notes.join('\n  ') : '(none — allocation already within caps)');
   console.log('cluster weights:', JSON.stringify(clusters));
+  console.log('defensive:', `${defensive.total.toFixed(1)}% (${defensive.direct.toFixed(1)}% direct + ${defensive.lookThrough.toFixed(1)}% via index) vs a ${defensive.floor}% floor`
+    + (defensive.shortfall > 0.5 ? `  ⚠️  SHORT ${defensive.shortfall.toFixed(1)}pp` : '  ✅'));
   if (phaseOuts.length) console.log('phase-out retained (strike 1):', phaseOuts.join(', '));
   if (dropped.length) console.log('dropped:', dropped.map((d) => `${d.ticker} (${d.reason})`).join(', '));
   console.log(JSON.stringify(target, null, 2));
