@@ -432,6 +432,15 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       > (The executor Routine's own prompt predates this and says only "with `spyAt`" — it is bound to a
       > persistent session and cannot be edited. **This runbook wins**, exactly as that prompt instructs.)
 
+      **Also stamp `completedAt` (ISO, the last fill's timestamp) on the ticket when you close it.**
+      The gate reads it to refuse re-planning against a snapshot that predates those fills. Caught live
+      2026-08-25: minutes after a $1,380 ticket filled, the next pass printed `EXEC_AUTO` for the
+      IDENTICAL $1,380 plan — the producer had not republished, so the snapshot still showed pre-trade
+      cash (live cash was $23.75). **The 5%-book-move abort does NOT catch this**: converting cash to
+      equity barely moves book value (-0.07% in that case) while deployable cash collapses, so the check
+      that guards against a moving market is blind to a ticket you just executed. Without the stamp the
+      gate falls back to a coarse "closed today" test — that only costs idle passes, never a bad trade.
+
       PushNotification the fill report.
    f. **PARKING LEDGER (v102) — do not skip this.** If the plan carried a `parking.parked` leg (a buy
       flagged `parked: true`) or a `parking.released` leg (`kind: 'park-release'`), rewrite
