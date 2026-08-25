@@ -45,8 +45,9 @@
 //
 // SECTORS use the same FactSet-style strings the research workflow and Robinhood fundamentals return,
 // because the workflow's finalist cut is `max 2 per sector` — a mislabelled sector silently changes
-// how many of a theme can reach the verify stage. The Routine SHOULD overwrite these from live
-// fundamentals when it has them; the value here is the fallback and the diversity budget.
+// how many of a theme can reach the verify stage. **The Routine must USE these labels, not
+// Robinhood's** — RH files REITs under "Finance" and GE under "Electronic Technology", which breaks
+// the max-2-per-sector budget (rule recorded in PRODUCER.md step 7.2 and the Routine prompt).
 export const RESEARCH_UNIVERSE = [
   // ── Electronic Technology (semis, hardware) ──────────────────────────────────────────────────
   { sym: 'NVDA', sector: 'Electronic Technology', tier: 'core' },
@@ -250,7 +251,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const n = maxArg === 'all' ? RESEARCH_UNIVERSE.length : (maxArg != null ? +maxArg : DEFAULT_SLICE);
   const slice = universeSlice(n);
   if (argv.includes('--symbols')) {
-    console.log(slice.map((r) => r.sym).join(','));
+    // The gold diversifier rides along AFTER the slice (never displacing a scoreable name): it cannot
+    // make the finalist cut — quality/growth/catalyst are meaningless for bullion, so it scores ~5.0 —
+    // but finalize-target.mjs injects it structurally and prices its entry/stop from the universe row.
+    // Without this, a scheduled research run writes the sleeve with entry "core hold" and stop null
+    // (found by the 2026-08-25 verify pass). DIVERSIFIER_SYMS[0] in riskweights.mjs is the vehicle.
+    console.log([...slice.map((r) => r.sym), 'GLDM'].join(','));
   } else if (argv.includes('--stats')) {
     const bySec = {};
     for (const r of slice) bySec[r.sector] = (bySec[r.sector] || 0) + 1;
