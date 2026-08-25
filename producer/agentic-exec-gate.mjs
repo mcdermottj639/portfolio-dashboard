@@ -128,6 +128,26 @@ if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idle(
 const ageH = data.generatedAt ? (Date.now() - Date.parse(data.generatedAt)) / 3.6e6 : Infinity;
 if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
 
+// ── SNAPSHOT-PREDATES-FILLS GUARD (2026-08-25) ──────────────────────────────────────────────────
+// Caught live: minutes after ticket 2026-08-25-2m67b0 filled ($1,380 of cash → 5 positions), the next
+// pass re-planned the IDENTICAL $1,380 ticket, because the producer had not yet republished and the
+// snapshot still showed the pre-trade cash. The executor's 5%-book-move abort does NOT catch this —
+// converting cash to equity leaves book value essentially unchanged (-0.07% in the live case) while
+// deployable cash goes from $1,404 to $24. Left unguarded it would re-propose a double-buy EVERY pass
+// until the next producer run.
+//
+// Deterministic fix: a completed ticket whose fills the snapshot cannot yet reflect makes this snapshot
+// unusable for fresh planning. `completedAt` is an ISO stamp the executor writes on close; older
+// tickets fall back to a date comparison, which is conservative (it can only idle a pass, never trade).
+if (ticket && ticket.status === 'done') {
+  const snapT = Date.parse(data.generatedAt || 0);
+  const doneT = ticket.completedAt ? Date.parse(ticket.completedAt) : NaN;
+  // Precise when `completedAt` is present. Legacy tickets (no stamp) fall back to "closed today" —
+  // coarse, but it can only cost an idle pass, and the producer republishes hourly.
+  const staleVsFills = Number.isFinite(doneT) ? snapT < doneT : String(ticket.created || '') === String(today);
+  if (staleVsFills) idle(`snapshot predates ticket ${ticket.id}'s fills — re-planning now would double-buy; waiting for the producer to republish`);
+}
+
 // recentLosses spans BOTH taxable accounts since v105 (each entry tagged `account`) — a loss realized
 // in the self-directed margin book blocks an agentic rebuy just the same (per-taxpayer IRS window).
 const washMap = {};
