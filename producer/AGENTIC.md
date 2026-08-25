@@ -40,7 +40,7 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 | Account **values / drift** (card `Now`) | **hourly** (each producer run, market hours — `35 * * * *` UTC) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
 | Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
-| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $1,000 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
+| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $10,000 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
 | **Event triggers (v93)** | every run (deposit / earnings gap) | `agentic-triggers.mjs` (in `build-data.mjs`) → `raw/agentic-triggers.json`: a **`deploy-cash`** push when idle/new cash crosses ~5% of book, and a **`refreshResearch`** flag that runs the research EARLY (before the weekly gate) on a deposit or a ≥6% held-name gap. So the account reacts to deposits + earnings, not just the 7-day clock. |
 
 ## The standing flow (owner-ratified 2026-08-11)
@@ -54,11 +54,13 @@ Cash never waits idle by design — a deferral changes WHERE the money waits, no
 
 ## Execution policy — **TIERED AUTO** (owner-approved 2026-08-07; supersedes confirm-everything)
 The owner signed off on a two-tier policy so the account is **self-sufficient** for routine upkeep:
-- **Auto tier:** a ticket with **turnover ≤ `AUTO_TURNOVER_CAP` ($1,000 — raised from $500 on 2026-08-11,
-  owner: routine top-ups kept landing just over the old cap and stalling on a confirm)** may be executed **unattended**
+- **Auto tier:** a ticket with **turnover ≤ `AUTO_TURNOVER_CAP` ($10,000 — history: $500 → $1,000 on
+  2026-08-11 (top-ups kept stalling on a confirm) → $10,000 on 2026-08-25, owner: "i dont like that i
+  have to approve everything — make it all auto up to $10k")** may be executed **unattended**
   by the executor (below) — placed, logged to the decision ledger, and reported by PushNotification
-  *after* the fact. Routine drift top-ups, small TLH harvests, deploying a modest deposit.
-- **Confirm tier:** anything larger (a full restructure, a big deposit) goes out as a **push + one-tap
+  *after* the fact. On a ~$10k book that covers full-book rebalances, not just routine upkeep.
+- **Confirm tier:** anything larger (today, only a ticket bigger than the whole book — e.g. deploying
+  a large fresh deposit) goes out as a **push + one-tap
   confirm** — the ticket sits in `agentic-pending.json` as `proposed` until the owner confirms (in any
   session: "confirm the pending rebalance") or it goes stale (5 days → re-planned at fresh prices).
 - **Kill switch:** `PF_AGENTIC_AUTO=off` in the executor's environment idles the whole executor.
@@ -504,5 +506,5 @@ Three linked rules the planner enforces, all added 2026-08-11 after a live re-ve
 
 ## Robinhood writes from this account
 The **executor** (above) is the only thing that places orders here: unattended within the **auto tier**
-(≤ $1,000 turnover/ticket), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900
+(≤ $10,000 turnover/ticket since 2026-08-25), owner-confirmed above it. The **data producer** remains READ-ONLY on ••••3900
 (it only fetches for display; its only Robinhood writes anywhere are the two watchlist syncs).
