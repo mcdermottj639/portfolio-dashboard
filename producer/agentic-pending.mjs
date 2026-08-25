@@ -50,10 +50,29 @@ export function makeTicket(plan, { asOf } = {}) {
     },
     taxSummary: plan.taxSummary || null,
     deferred: (plan.deferred || []).map((d) => ({ sym: d.sym, reason: d.reason, until: d.until || null })),
+    // BLOCKED SELLS (2026-08-25) — the other half of "why did the plan do that". `deferred` is BUY-side
+    // only, so a ticket whose entire sell leg was suppressed by the PDT guard or the 14d min-hold
+    // rendered as a pure buy list with no explanation anywhere. That happened for real: the 08-25
+    // ticket's JPM + GE exits (and five overweight trims) were all held at day 13 of the min-hold —
+    // every one of them bought on 08-12 — and the owner reasonably read a deposit followed by buys-only
+    // as the sells having silently failed. The planner already computed this; the ticket just dropped
+    // it on the floor, and raw/agentic-plan.json is wiped every run, so the ticket is the ONLY place
+    // it can survive to reach the phone.
+    blockedSells: (plan.blockedSells || []).map(slimBlock),
+    // Same reasoning for the run-level warnings: they carry the idle-cash deadline, stale-zone and
+    // parking notes that explain the shape of a ticket. Capped so a pathological run can't bloat the
+    // committed file — the executor commits this on every pass.
+    warnings: (plan.warnings || []).slice(0, 12),
     history: [{ at: asOf || null, to: 'proposed' }],
   };
 }
 const slim = (x) => ({ sym: x.sym, kind: x.kind || 'buy', dollars: round2(x.dollars), shares: x.shares ?? null, price: x.price ?? null, pl: x.pl ?? null, note: x.note || null });
+// `kind` = what the sell WOULD have been (exit/trim/harvest/drawdown-raise); `blocked` = which guard
+// stopped it; `until` = the date it clears. Keeping all three is what lets the card say "the JPM exit
+// is held by the min-hold until 08-26" instead of just "nothing was sold".
+const slimBlock = (x) => ({ sym: x.sym, kind: x.kind || 'sell', blocked: x.blocked || null,
+  dollars: round2(x.dollars), pl: x.pl ?? null, plPct: x.plPct ?? null,
+  until: x.until || null, heldDays: x.heldDays ?? null, note: x.note || null });
 function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; } return h; }
 
 const TRANSITIONS = {

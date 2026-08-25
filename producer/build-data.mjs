@@ -26,6 +26,7 @@ import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint } from './equityseries.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades } from './realizedpnl.mjs';
+import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -498,6 +499,23 @@ const data = {
         if (ticket && ticket.status && !['done', 'aborted'].includes(ticket.status)) {
           data.agentic.pending = ticket;
           console.log(`agentic pending ticket: ${ticket.id} · ${ticket.status} · turnover ${fmtMoney(ticket.turnover || 0)}`);
+        }
+        // BLOCKED SELLS ride OUTSIDE `pending` (v126), because the line above deliberately omits a
+        // done/aborted ticket — and a FINISHED ticket is exactly when this matters most. On 2026-08-25
+        // the ticket reached `done` (its buys filled) while both exits sat blocked by the min-hold; had
+        // these hitched to `pending` they'd have been dropped at that instant and the owner would still
+        // have had no explanation on the phone. `pending` keeps its "in flight" meaning; this is a
+        // separate, small block the Plan tab reads on its own.
+        //
+        // SELF-EXPIRING by `until` rather than by ticket age: a block is worth showing only while it is
+        // still IN FORCE. Once the unlock date passes the guard has released and the next plan emits the
+        // real sell, so a stale row would claim a trade is held when it is simply queued.
+        const et = etDate();
+        const live = (ticket && Array.isArray(ticket.blockedSells) ? ticket.blockedSells : [])
+          .filter((b) => b && b.sym && (!b.until || String(b.until).slice(0, 10) > et));
+        if (live.length) {
+          data.agentic.blockedSells = { ticket: ticket.id || null, created: ticket.created || null, status: ticket.status || null, items: live };
+          console.log(`agentic blocked sells: ${live.map((b) => `${b.sym} (${b.blocked}→${b.until || '?'})`).join(', ')}`);
         }
       }
     } catch { /* unreadable ticket never breaks a build */ }

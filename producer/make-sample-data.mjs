@@ -411,7 +411,34 @@ const data = {
     })(),
     pending: { id: now.toISOString().slice(0, 10) + '-sample', created: now.toISOString().slice(0, 10), status: 'proposed',
       autoEligible: false, turnover: 1420.5, book: equity, taxSummary: { gains: 61.4, losses: -22.8, net: 38.6 },
-      legs: { sells: [{ sym: 'V', kind: 'trim', dollars: 62.4 }], buysNow: [{ sym: 'SPY', dollars: 48.1 }, { sym: 'LLY', dollars: 120.6 }], buysT1: [] } },
+      legs: { sells: [{ sym: 'V', kind: 'trim', dollars: 62.4 }], buysNow: [{ sym: 'SPY', dollars: 48.1 }, { sym: 'LLY', dollars: 120.6 }], buysT1: [] },
+      // Sell-side blocks, so the Plan tab's "Sells held back" list is reachable in preview rather than
+      // only appearing on a live ticket. One of each guard: a min-hold on an off-target EXIT (the 08-25
+      // case — the exit the planner wanted and the churn governor held at day 13) and a PDT block on a
+      // trim of a name bought earlier the same session.
+      blockedSells: [
+        { sym: 'JPM', kind: 'exit', blocked: 'min-hold', dollars: 1211.37, pl: 1.54, plPct: 0.1,
+          until: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(),
+          heldDays: 13, note: 'bought 13d ago (min-hold 14d) — churn guard' },
+        { sym: 'NVDA', kind: 'trim', blocked: 'day-trade', dollars: 94.2, pl: null, plPct: null,
+          until: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(),
+          heldDays: 0, note: 'bought earlier today — selling now would be a day trade (PDT)' },
+      ],
+      warnings: ['2 sell(s) held by the 14d min-hold (JPM) — churn guard: positions opened within the window aren\'t flipped by the next research refresh'] },
+    /* The block the CONSUMER actually reads (v126). build-data emits this OUTSIDE `pending`, because a
+       done/aborted ticket is stripped from `pending` and a finished ticket is precisely when a held-back
+       sell still needs explaining. Mirrored here so preview exercises the real path, not the fallback —
+       and marked `done` deliberately, which is the 08-25 shape: buys filled, ticket closed, exits still
+       held. Kept in step with the `pending.blockedSells` rows above. */
+    blockedSells: { ticket: now.toISOString().slice(0, 10) + '-sample', created: now.toISOString().slice(0, 10), status: 'done',
+      items: [
+        { sym: 'JPM', kind: 'exit', blocked: 'min-hold', dollars: 1211.37, pl: 1.54, plPct: 0.1,
+          until: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(),
+          heldDays: 13, note: 'bought 13d ago (min-hold 14d) — churn guard' },
+        { sym: 'NVDA', kind: 'trim', blocked: 'day-trade', dollars: 94.2, pl: null, plPct: null,
+          until: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); })(),
+          heldDays: 0, note: 'bought earlier today — selling now would be a day trade (PDT)' },
+      ] },
     // Sample real equity history (~2 trading weeks) so the consumer's REAL agentic line, the
     // "Agentic since" stat and the Account Performance card all render. Includes a mid-series
     // $250 DEPOSIT (annotated via the running cumFlow, exactly as build-data.mjs infers it) so the

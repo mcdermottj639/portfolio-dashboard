@@ -355,6 +355,11 @@ const mh = planDeployment({ ...pdtArgs, accountActivity: { MSFT: { lastBuyDate: 
 ok('an exit of a name bought 2d ago is min-hold blocked',
   !find(mh.exits, 'MSFT') && find(mh.blockedSells, 'MSFT') && find(mh.blockedSells, 'MSFT').blocked === 'min-hold');
 ok('…the note names the unlock date', /2026-08-23/.test(find(mh.blockedSells, 'MSFT').note));
+// STRUCTURED alongside the prose (2026-08-25): the ticket now persists these and the Plan tab renders
+// them, so the unlock date has to be a field — re-parsing it back out of the sentence would be absurd.
+ok('…and carries the unlock date + age as fields, not just prose',
+  find(mh.blockedSells, 'MSFT').until === '2026-08-23' && find(mh.blockedSells, 'MSFT').heldDays === 2);
+ok('a day-trade block carries an unlock date too', find(pdt.blockedSells, 'MSFT').until === '2026-08-12');
 ok('…and a churn-guard warning is raised', mh.warnings.some((w) => /min-hold/.test(w)));
 ok('…its proceeds are NOT counted as funding', mh.proceeds === 0);
 

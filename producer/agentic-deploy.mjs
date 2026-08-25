@@ -276,7 +276,10 @@ export function planDeployment(input = {}) {
   };
   const dayTradeBlock = (row) => {
     if (opts.dayTradeGuard === false || !boughtToday(row.sym)) return false;
-    blockedSells.push({ ...row, blocked: 'day-trade',
+    // `until` is STRUCTURED alongside the prose note so the consumer can render a date rather than
+    // re-parse the sentence. The PDT block clears on the next session — calendar-wise that is simply
+    // "not today", so the next day is the honest answer here (a weekend just slides it to the open).
+    blockedSells.push({ ...row, blocked: 'day-trade', until: addDays(opts.asOf, 1),
       note: `bought earlier today — selling now would be a day trade (PDT: this account is under $25k), deferred to the next session` });
     return true;
   };
@@ -300,8 +303,9 @@ export function planDeployment(input = {}) {
     if (row.plPct != null && row.plPct <= exemptLoss) return false;   // deep loss: risk control wins
     const d = daysSinceActivity(row.sym, 'lastBuyDate');
     if (d == null || d < 0 || d >= minHoldDays) return false;         // day 0 already caught by PDT block
-    blockedSells.push({ ...row, blocked: 'min-hold',
-      note: `bought ${d}d ago (min-hold ${minHoldDays}d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks ${addDays(accountActivity[row.sym].lastBuyDate, minHoldDays)} (a business-broken drop or a ≤${exemptLoss}% loss would override)` });
+    const unlocks = addDays(String(accountActivity[row.sym].lastBuyDate).slice(0, 10), minHoldDays);
+    blockedSells.push({ ...row, blocked: 'min-hold', until: unlocks, heldDays: d,
+      note: `bought ${d}d ago (min-hold ${minHoldDays}d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks ${unlocks} (a business-broken drop or a ≤${exemptLoss}% loss would override)` });
     return true;
   };
   const sellBlocked = (row) => dayTradeBlock(row) || minHoldBlock(row);

@@ -23,6 +23,32 @@ ok('legs are slimmed but complete', t.legs.sells.length === 2 && t.legs.buysNow.
 ok('tax summary rides along', t.taxSummary.net === 61);
 ok('deferred names ride along', t.deferred[0].sym === 'NVDA' && t.deferred[0].until === '2026-09-03');
 
+// ── blocked sells (2026-08-25) ──
+// The 08-25 regression: the planner suppressed BOTH exits (min-hold, day 13) and the ticket kept only
+// `deferred`, which is buy-side — so a deposit-funded, buys-only ticket carried no trace of the sells it
+// had wanted to make. raw/agentic-plan.json is wiped every run, so if the ticket drops these they are
+// gone for good and the Plan tab has nothing to render.
+const blk = makeTicket({ ...plan,
+  blockedSells: [
+    { sym: 'JPM', kind: 'exit', blocked: 'min-hold', dollars: 1211.374, pl: 1.5, plPct: 0.1, until: '2026-08-26', heldDays: 13, note: 'bought 13d ago' },
+    { sym: 'SPY', kind: 'trim', blocked: 'day-trade', dollars: 40, until: '2026-08-26', note: 'bought today' },
+  ],
+  warnings: ['1 sell(s) held by the 14d min-hold (JPM)'],
+}, { asOf: '2026-08-25' });
+ok('blocked sells are persisted onto the ticket', blk.blockedSells.length === 2);
+ok('each block keeps guard, unlock date and what it would have been',
+  blk.blockedSells[0].blocked === 'min-hold' && blk.blockedSells[0].until === '2026-08-26'
+  && blk.blockedSells[0].kind === 'exit' && blk.blockedSells[0].heldDays === 13);
+ok('block dollars are rounded like every other leg', blk.blockedSells[0].dollars === 1211.37);
+ok('run warnings ride along', blk.warnings.length === 1 && /min-hold/.test(blk.warnings[0]));
+ok('a plan with no blocks still yields empty arrays, never undefined',
+  Array.isArray(t.blockedSells) && t.blockedSells.length === 0 && Array.isArray(t.warnings));
+ok('warnings are capped so the committed ticket cannot bloat',
+  makeTicket({ ...plan, warnings: Array.from({ length: 40 }, (_, i) => 'w' + i) }, { asOf: '2026-08-25' }).warnings.length === 12);
+// A block is NOT a trade: it must not move the fingerprint, or an unchanged plan would re-propose
+// every pass simply because a guard's day-count ticked over.
+ok('blocked sells do not change the plan hash', planHash(plan) === planHash({ ...plan, blockedSells: blk.blockedSells }));
+
 // ── planHash: stable, order-insensitive, sensitive to material change ──
 ok('hash is deterministic', planHash(plan) === planHash({ ...plan }));
 ok('hash ignores sell order', planHash(plan) === planHash({ ...plan, sells: [...plan.sells].reverse() }));

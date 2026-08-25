@@ -431,6 +431,15 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `phaseOut:true`, not exited), and writes **`producer/agentic-target.json`** (shape per `AGENTIC.md`), then
       `git add producer/agentic-target.json && git commit && git push origin main` (next run's
       `build-data.mjs` embeds it as `data.agentic.target`).
+      **Check `target.dropped` after writing, and expect it to be non-empty whenever a name left the book.**
+      Drops are detected by diffing against `prior.names`, and the CLI reads the COMMITTED target as prior —
+      so a SECOND finalize run the same day (fixing a band, adding a sleeve) sees a prior that already lacks
+      the dropped name and would once have written `dropped: []`, erasing the record. Since v126 a prior
+      record is carried forward while the name is still held and still absent, tagged `carried:true` with its
+      original `since`. If you re-run finalize, re-check that the drop reasons are still there — a
+      `business-broken` entry is the only thing that unlocks the deploy planner's 14-day min-hold, so losing
+      it strands a broken thesis in the book for two more weeks. (This bit us on 2026-08-25: three runs that
+      day left JPM/GE dropped with no recorded reason.)
    5. Build the rebalance ticket with **`agentic-deploy.mjs`** (`planDeployment` — applies the **Tax &
       regulation rules** in `AGENTIC.md` as code: earnings-blackout, gap-through-entry re-verify,
       wash-sale, cash-flow-first, sells-before-buys, and the v98 PDT day-trade guard). If `.buys`/`.trims` are non-empty,

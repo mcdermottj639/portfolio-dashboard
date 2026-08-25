@@ -264,5 +264,20 @@
     "floor": 5,
     "shortfall": 0
   },
-  "dropped": []
+  "dropped": [
+    {
+      "ticker": "JPM",
+      "reason": "phase-out-complete",
+      "detail": "absent from two consecutive research targets",
+      "since": "2026-08-25",
+      "restored": true
+    },
+    {
+      "ticker": "GE",
+      "reason": "phase-out-complete",
+      "detail": "absent from two consecutive research targets",
+      "since": "2026-08-25",
+      "restored": true
+    }
+  ]
 }

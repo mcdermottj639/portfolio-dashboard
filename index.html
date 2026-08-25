@@ -733,7 +733,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v125'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v126'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3345,7 +3345,6 @@ function renderAgenticPlan(){
   // ── 3. what's blocked and why ────────────────────────────────────────────────────────────────
   const washRows=rows.filter(x=>washMap[x.sym]);
   const execRows=rows.filter(x=>execMap[x.sym]);
-  const blocked=washRows.length+execRows.length;
   const blockList=[
     ...washRows.map(x=>{ const w=washMap[x.sym];
       return {sym:x.sym,tag:'wash-sale',col:'#92400e',bg:'#fef3c7',
@@ -3355,12 +3354,44 @@ function renderAgenticPlan(){
       const clears=e.reason==='earnings'?`after the ${dLbl(e.until)} print`:e.reason==='above-entry'?`on a pullback into ${x._entry||'the entry zone'}`:e.reason==='below-entry'?'after a thesis re-verify':'after a thesis re-verify';
       return {sym:x.sym,tag:e.reason.replace('-',' '),col:'#92400e',bg:'#fef3c7',why:e.note.charAt(0).toUpperCase()+e.note.slice(1)+'.',clears}; })
   ];
+  // SELL-SIDE BLOCKS (2026-08-25). Everything above is BUY-side: `washMap`/`execMap` are computed from
+  // the TARGET, so a name the target no longer contains — the exact thing an exit sells — cannot appear
+  // in them at all. A ticket whose entire sell leg was suppressed therefore rendered as a pure buy list
+  // with nothing anywhere saying why, which is precisely how the 08-25 ticket read: a $1,400 deposit,
+  // five buys, and the JPM + GE exits silently held at day 13 of the 14-day min-hold. The planner
+  // computed those blocks all along; the ticket now carries them, and since raw/ is wiped on every run
+  // the ticket is the only place they can survive to reach the phone. The consumer CANNOT recompute this
+  // itself — the min-hold needs per-name lastBuyDate, which the snapshot doesn't carry.
+  // Read `data.agentic.blockedSells` FIRST, not `pending.blockedSells`: build-data omits a done/aborted
+  // ticket from `pending` entirely, and a FINISHED ticket is exactly the case that needs explaining (the
+  // 08-25 ticket reached `done` the moment its buys filled, while both exits were still held). The
+  // `pending` path stays as a fallback so an in-flight ticket still renders if the block is ever absent.
+  const blkSrc=(A&&A.blockedSells&&Array.isArray(A.blockedSells.items))?A.blockedSells
+    :((pend&&Array.isArray(pend.blockedSells)&&pend.blockedSells.length)?{items:pend.blockedSells,created:pend.created,status:pend.status}:null);
+  const sellBlocks=blkSrc?blkSrc.items.filter(b=>b&&b.sym):[];
+  const SB_KIND={exit:'exit',trim:'trim',harvest:'tax harvest','drawdown-raise':'defensive raise','park-release':'park release'};
+  const sellBlockHtml=sellBlocks.map(b=>{
+    const amt=fmtD(Math.abs(+b.dollars||0)), what=SB_KIND[b.kind]||b.kind||'sell';
+    const why=b.blocked==='min-hold'
+      ? `Its <b>${what}</b> (${amt}) is held by the <b>${AG_MIN_HOLD_D}-day min-hold</b>${b.heldDays!=null?` — this position was opened <b>${b.heldDays} day${b.heldDays===1?'':'s'} ago</b>`:''}. A just-opened position isn't flipped by the next research refresh; only a business-broken verdict or a loss past −10% overrides it.`
+      : b.blocked==='day-trade'
+      ? `Its <b>${what}</b> (${amt}) was bought earlier the same session. Selling it now would book a day trade, and this account sits under the $25k PDT threshold — so it waits for the next session.`
+      : `Its <b>${what}</b> (${amt}) was held back: ${b.note||'blocked by an execution guard'}.`;
+    const clears=b.until?`unlocks ${dLbl(b.until)}`:'unlocks next session';
+    return `<div class="act-item" style="background:#dbeafe55;border-color:#bfdbfe"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:#1e40af;color:#fff">${b.blocked==='day-trade'?'PDT guard':(b.blocked||'held')}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${why} <span style="color:#9ca3af">— ${clears}.</span></div></div></div>`;
+  }).join('');
+  const nBuy=blockList.length, nSell=sellBlocks.length;
+  const blockHint=(nBuy||nSell)
+    ? [nBuy?nBuy+' buy'+(nBuy===1?'':'s')+' deferred':'',nSell?nSell+' sell'+(nSell===1?'':'s')+' held':''].filter(Boolean).join(' · ')
+    : 'nothing deferred';
   const blockedCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blocked?blocked+' name'+(blocked===1?'':'s')+' deferred':'nothing deferred'}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
+    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blockHint}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do.</div>
       ${agDrawdownBanner()}${agRegimeBanner()}
-      ${blockList.length?blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):
-        `<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
+      ${(blockList.length||sellBlockHtml)?'':`<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
+      ${blockList.length?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:0 0 6px">🛒 Buys deferred</div>`+blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):''}
+      ${sellBlockHtml?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:${blockList.length?'12px':'0'} 0 6px">💸 Sells held back <span style="color:#9ca3af;font-weight:400">· from the ${blkSrc&&blkSrc.created?dLbl(blkSrc.created):'latest'} ticket${blkSrc&&(blkSrc.status==='done'||blkSrc.status==='aborted')?' ('+blkSrc.status+')':''}</span></div>`+sellBlockHtml
+        +`<div class="fund-note" style="margin:8px 0 0">These are sells the planner <b>wanted</b> to make and a guard stopped — not failures. The weight is unchanged; the trade re-plans on the first pass after the date above. De-risking is never blocked this way: a business-broken verdict or a loss past −10% overrides the min-hold, and the drawdown breaker never blocks a sell at all.</div>`:''}
       ${zonesStale?`<div class="fund-note" style="margin:10px 0 0;background:#fffbeb;border-color:#fde68a"><b>⚠️ Entry zones are advisory:</b> this target is <b>${zoneAge}d</b> old (over the ${AG_ENTRY_STALE_D}-day limit), so the entry-band checks are <b>off</b>. When a whole target reads out-of-band at once, the guard is measuring its own staleness rather than the companies. <b>Below-stop</b> still binds — that one is the real thesis-broken signal.</div>`:
         `<div class="fund-note" style="margin:10px 0 0">Entry checks are <b>live</b> (target is ${zoneAge==null?'—':zoneAge+'d'} old, limit ${AG_ENTRY_STALE_D}d): a name more than <b>${AG_ENTRY_TOL_PCT}%</b> below its entry floor defers for a re-verify, more than <b>${AG_ENTRY_PREM_PCT}%</b> above its ceiling waits for a pullback. Small misses are tolerated on purpose — a 0.2% miss parking a position is how cash gets stranded.</div>`}
     </div></div>`;
@@ -4274,6 +4305,13 @@ window.switchTab=switchTab;
       <li><span class="hk">below stop</span> — trading at or below the target's stop: the setup is broken, not cheap.</li>
       <li><span class="hk">below / above entry</span> — outside the research's entry band. Too cheap means re-verify the thesis; too rich means wait for the pullback the research priced in.</li>
     </ul>
+    <div class="hsub">Sells get held back too</div>
+    <p>The reasons above are all <b>buy</b>-side. A planned <i>sell</i> — an exit, a trim, a harvest — can be held by two guards of its own, and the "Sells held back" list shows them with the date each clears:</p>
+    <ul>
+      <li><span class="hk">min-hold</span> — the position was opened within the last 14 days. A name bought this week isn't flipped by next week's research refresh; only a business-broken verdict or a loss past −10% overrides it.</li>
+      <li><span class="hk">PDT guard</span> — it was bought earlier the same session, so selling now would book a day trade. The account is under $25k, so the rule is categorical: zero round trips.</li>
+    </ul>
+    <p>This matters because it explains a ticket that is <b>all buys and no sells</b>. If new cash arrives while every planned sell sits inside its window, the buys fund themselves from that cash and the sells simply re-plan on the first pass after their unlock date. Nothing failed.</p>
     <div class="hsub">Why zones expire</div>
     <p>Entry zones older than 7 days go <b>advisory</b>. When most of a target reads out-of-band at once, the guard is measuring its own staleness, not the companies. Below-stop still binds.</p>`},
   'the waiting ground': { tag:'Plan · Agentic', t:'The waiting ground', h:`

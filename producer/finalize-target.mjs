@@ -23,6 +23,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // non-negative, so `drivers` stays a short, meaningful list rather than tagging every sleeve.
 export const DRIVER_THRESHOLD = 7;
 
+// How long a carried-forward `dropped` record stays alive when the name is still held and still absent
+// from the target. The natural terminator is the exit itself (a name that leaves the book leaves this
+// list), so this is only a backstop against an entry living forever because `held` was never supplied —
+// long enough to outlast the min-hold + re-entry windows it exists to inform, short enough to expire.
+export const DROP_RETENTION_DAYS = 90;
+const daysBetween = (a, b) => Math.round((Date.parse(String(b).slice(0, 10)) - Date.parse(String(a).slice(0, 10))) / 86400000);
+
 // ── Churn governor: two-strike phase-out (2026-08-12) ───────────────────────────────────────────
 // The weekly research is memoryless — each run builds a target from scratch, so a name sitting at
 // 51/49 conviction flips fully in or out of the book week to week. Live cost: the 08-05 target
@@ -169,20 +176,21 @@ export function finalizeTarget(allocation, meta = {}) {
     .map((v) => [String(v.t || v.ticker || '').toUpperCase(), v]));
   const dropped = [];
   const phaseOuts = [];
+  const asOfStr = meta.asOf || etDate();
   if (prior) {
     const newSyms = new Set(named.map((n) => n.ticker));
     for (const p of prior.names) {
       if (!p || !p.ticker) continue;
       const sym = String(p.ticker).toUpperCase();
       if (newSyms.has(sym)) continue;
-      if (heldSet && !heldSet.has(sym)) { dropped.push({ ticker: sym, reason: 'not-held' }); continue; }
+      if (heldSet && !heldSet.has(sym)) { dropped.push({ ticker: sym, reason: 'not-held', since: asOfStr }); continue; }
       const v = verdictMap[sym];
       const rec = String((v && (v.rec || v.recommendation)) || '').toLowerCase();
       if (v && (v.businessOk === false || rec === 'avoid')) {
-        dropped.push({ ticker: sym, reason: 'business-broken', detail: (v.risk || v.biggestRisk || '') });
+        dropped.push({ ticker: sym, reason: 'business-broken', detail: (v.risk || v.biggestRisk || ''), since: asOfStr });
         continue;
       }
-      if (p.phaseOut) { dropped.push({ ticker: sym, reason: 'phase-out-complete', detail: 'absent from two consecutive research targets' }); continue; }
+      if (p.phaseOut) { dropped.push({ ticker: sym, reason: 'phase-out-complete', detail: 'absent from two consecutive research targets', since: asOfStr }); continue; }
       phaseOuts.push({
         ticker: sym, sector: p.sector || '', weightPct: +p.weightPct || 0,
         entry: p.entry || '', stop: p.stop != null ? +p.stop : null, target: p.target != null ? +p.target : null,
@@ -190,6 +198,27 @@ export function finalizeTarget(allocation, meta = {}) {
         thesis: `PHASE-OUT (churn governor) — dropped by the ${meta.asOf || 'latest'} research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: ${p.thesis || '(no prior thesis)'}`,
         px: p.px ?? (uni[sym] && uni[sym].px), hi: p.hi ?? (uni[sym] && uni[sym].hi), lo: p.lo ?? (uni[sym] && uni[sym].lo),
       });
+    }
+    // CARRY FORWARD THE PRIOR DROP RECORDS (2026-08-25) — the loop above can only detect a drop by
+    // comparing against `prior.names`, so re-running finalize against its OWN output ERASES the record:
+    // the second run's prior already lacks the dropped name, nothing is "missing", and `dropped` comes
+    // back empty. That is not hypothetical — it happened on 2026-08-25, when three finalize runs landed
+    // the same day (research refresh → entry bands → gold sleeve) and the JPM/GE `phase-out-complete`
+    // entries written by the first were overwritten by the second and third. Benign that day (the reason
+    // was phase-out, and min-hold binds either way), but `business-broken` is the ONE reason that unlocks
+    // the planner's 14-day min-hold — silently losing it would strand a broken thesis in the book for
+    // two more weeks. So a prior record survives while it is still true: the name is still absent from
+    // the target, still held (when we're told what's held), and the record hasn't aged out.
+    const seen = new Set(dropped.map((d) => d.ticker));
+    for (const d of (prior.dropped || [])) {
+      if (!d || !d.ticker) continue;
+      const sym = String(d.ticker).toUpperCase();
+      if (seen.has(sym) || newSyms.has(sym)) continue;            // re-included, or freshly re-detected
+      if (heldSet && !heldSet.has(sym)) continue;                 // already exited — the record is spent
+      const since = d.since || prior.asOf || null;
+      if (since && daysBetween(since, asOfStr) > DROP_RETENTION_DAYS) continue;
+      dropped.push({ ...d, ticker: sym, since, carried: true });
+      seen.add(sym);
     }
   }
   // DEFENSIVE FLOOR (v124) — see the header note above DEFENSIVE_CLUSTERS in riskweights.mjs. The

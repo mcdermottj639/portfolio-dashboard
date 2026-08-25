@@ -393,6 +393,18 @@ Cheap by construction: every run starts with the deterministic gate and exits im
    commit + push to `main`, and PushNotification the owner a one-tap summary (sells → buys, turnover, est
    ST tax net). Place nothing. (An owner later confirming = set status `confirmed`, commit; the next
    executor pass places it.)
+
+   > **ALWAYS build the ticket with `makeTicket` — never hand-write it (v126).** Since v126 the ticket
+   > carries `blockedSells` and `warnings` alongside the legs: the sells the planner WANTED to make and
+   > the guard that stopped each (min-hold / PDT), with the unlock date. `raw/agentic-plan.json` is wiped
+   > every run, so the ticket is the only thing that carries them to the Plan tab's "💸 Sells held back"
+   > list. Hand-writing a ticket, or copying only `legs`, silently reverts the 08-25 failure mode: a
+   > deposit-funded, buys-only ticket with the suppressed exits explained nowhere, which reads to the
+   > owner as the sells having failed. `advanceTicket` spreads the whole ticket, so every later
+   > transition preserves them for free — only a hand-built one loses them.
+   > **When the push summary's sell leg is empty but `blockedSells` is not, SAY SO in the notification**
+   > ("2 sells held by the min-hold to Aug 26"). A buys-only ticket arriving right after a deposit is the
+   > exact shape that looks broken.
 3. **`EXEC_AUTO` / `EXEC_TRADE`** — live pre-checks, then place:
    a. Re-fetch the account (`get_portfolio`/`get_equity_positions`) + fresh quotes; abort if the book moved
       > 5% from the plan's basis (re-plan next pass).

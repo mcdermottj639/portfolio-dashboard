@@ -104,6 +104,38 @@ ok('phaseOuts/dropped are surfaced to the caller',
 ok('without a prior target the shape is unchanged (no dropped key)',
   !('dropped' in finalizeTarget(ALLOC, base).target));
 
+// ---- dropped records survive a same-day re-run (2026-08-25) -----------------
+// The bug: drops are detected ONLY by diffing against `prior.names`, and the CLI reads the COMMITTED
+// target as prior — so re-running finalize against its own output finds nothing missing and writes
+// `dropped: []`. Three runs landed on 2026-08-25 (research refresh → entry bands → gold sleeve) and the
+// JPM/GE records from the first were erased by the second. Benign for a phase-out, NOT benign for
+// 'business-broken', which is the single reason that unlocks the deploy planner's 14-day min-hold.
+{
+  const rerunPrior = { ...churn.target };                       // exactly what run #1 committed
+  const stillHeld = ['GE', 'UNH', 'AAPL', 'V', 'SPY', 'NVDA', 'JPM'];
+  const rerun = finalizeTarget(ALLOC, { ...base, prior: rerunPrior, held: stillHeld });
+  const r = (t) => (rerun.target.dropped.find((d) => d.ticker === t) || {});
+  ok('re-run carries the business-broken record forward', r('AAPL').reason === 'business-broken');
+  ok('re-run carries the phase-out-complete record forward', r('UNH').reason === 'phase-out-complete');
+  ok('carried records are marked as such', r('AAPL').carried === true && !!r('AAPL').since);
+  ok('the carried record keeps its ORIGINAL date, not the re-run date', r('AAPL').since === '2026-08-04');
+  ok('a carried record is not duplicated', rerun.target.dropped.filter((d) => d.ticker === 'AAPL').length === 1);
+  // The record's job ends when the position does — otherwise a spent 'business-broken' entry would keep
+  // the min-hold unlocked for a name the account no longer owns.
+  const exited = finalizeTarget(ALLOC, { ...base, prior: rerunPrior, held: stillHeld.filter((s) => s !== 'AAPL') });
+  ok('a record for an already-exited name is dropped', !exited.target.dropped.some((d) => d.ticker === 'AAPL'));
+  // A name the research re-includes is no longer dropped, carried record or not.
+  const readmit = finalizeTarget({ picks: [...ALLOC.picks, { ticker: 'AAPL', sector: 'Electronic Technology', weightPct: 8, entryZone: '300-312', stop: 284, target: 340, thesis: 're-included' }] },
+    { ...base, prior: rerunPrior, held: stillHeld });
+  ok('a re-included name loses its carried drop record', !readmit.target.dropped.some((d) => d.ticker === 'AAPL'));
+  // Freshly-detected beats carried: run #1's own detection must still win on a conflict.
+  ok('a freshly-detected drop is not shadowed by a carried one',
+    churn.target.dropped.filter((d) => d.ticker === 'AAPL').length === 1 && !churn.target.dropped.find((d) => d.ticker === 'AAPL').carried);
+  // Retention backstop: without `held` there is no natural terminator, so an aged record must expire.
+  const aged = finalizeTarget(ALLOC, { ...base, asOf: '2027-01-01', prior: rerunPrior });
+  ok('a record past the retention window expires', !aged.target.dropped.some((d) => d.ticker === 'AAPL'));
+}
+
 // --- v124: the defensive floor reaches the committed target -----------------------------------------
 {
   // A megacap-only allocation, i.e. the shape every recent live target has had.

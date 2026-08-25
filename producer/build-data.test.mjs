@@ -133,6 +133,25 @@ mkdirSync(RAW, { recursive: true });
 if (hadData) copyFileSync(DATA, BAK);
 const fixturePaths = Object.keys(FIXTURES).map((f) => join(RAW, f));
 
+// The COMMITTED rebalance ticket (v126). Swapped for a fixture and restored in `finally`, like data.json
+// — it lives in producer/, not raw/, so it must be put back. Status is deliberately `done`: build-data
+// strips a done ticket out of `data.agentic.pending`, and that is exactly when a held-back sell still
+// needs explaining (the 2026-08-25 ticket closed the moment its buys filled while both exits sat
+// blocked). If `blockedSells` ever hitches back onto `pending`, this fixture catches it.
+const TICKET = join(__dirname, 'agentic-pending.json');
+const TBAK = join(RAW, '.agentic-pending.testbak');
+const hadTicket = existsSync(TICKET);
+if (hadTicket) copyFileSync(TICKET, TBAK);
+const farFuture = '2099-01-01', longPast = '2020-01-01';
+writeFileSync(TICKET, JSON.stringify({
+  id: 'TEST-TICKET', created: '2026-07-31', status: 'done', turnover: 100, planHash: 's[]b[]t[]',
+  legs: { sells: [], buysNow: [], buysT1: [] },
+  blockedSells: [
+    { sym: 'AAA', kind: 'exit', blocked: 'min-hold', dollars: 500, until: farFuture, heldDays: 13, note: 'still held' },
+    { sym: 'BBB', kind: 'trim', blocked: 'day-trade', dollars: 40, until: longPast, note: 'already cleared' },
+  ],
+}));
+
 let stdout = '';
 try {
   writeFileSync(DATA, JSON.stringify(prior));
@@ -219,6 +238,17 @@ try {
   const today = new Date(out.generatedAt).toISOString().slice(0, 10);
   eq('extfund stamp set when fresh sidecars landed', out.fetchDays.extfund, today);
   eq('av stamp carried forward when av did not run', out.fetchDays.av, '2026-07-30');
+
+  // Blocked sells (v126) — the reason a planned exit did NOT happen has to survive to the consumer.
+  eq('a done ticket is still stripped from pending', out.agentic.pending, undefined);
+  eq('…but its blocked sells are emitted separately', out.agentic.blockedSells.items.map((b) => b.sym), ['AAA']);
+  eq('an expired block is filtered out (the guard already released)',
+    out.agentic.blockedSells.items.some((b) => b.sym === 'BBB'), false);
+  eq('the guard, unlock date and would-have-been kind all reach the consumer',
+    [out.agentic.blockedSells.items[0].blocked, out.agentic.blockedSells.items[0].until, out.agentic.blockedSells.items[0].kind],
+    ['min-hold', farFuture, 'exit']);
+  eq('the source ticket is identified so the card can date it',
+    [out.agentic.blockedSells.ticket, out.agentic.blockedSells.status], ['TEST-TICKET', 'done']);
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);
@@ -227,6 +257,9 @@ try {
 } finally {
   // ALWAYS restore the real (encrypted) data.json and remove fixtures + test artifacts.
   if (hadData) { copyFileSync(BAK, DATA); unlinkSync(BAK); }
+  // Restore the real committed ticket — it is NOT gitignored, so leaving the fixture behind would
+  // stage a fake rebalance ticket into the repo.
+  if (hadTicket) { copyFileSync(TBAK, TICKET); unlinkSync(TBAK); } else { try { unlinkSync(TICKET); } catch {} }
   for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json'), join(EXTDIR, 'overview-AAA.json')]) { try { unlinkSync(p); } catch {} }
 }
 
