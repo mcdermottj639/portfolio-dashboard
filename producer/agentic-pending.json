@@ -1,160 +1,90 @@
 {
-  "id": "2026-08-12-1aqszr",
-  "created": "2026-08-12",
-  "status": "done",
+  "id": "2026-08-25-2m67b0",
+  "created": "2026-08-25",
+  "status": "proposed",
   "autoEligible": false,
-  "turnover": 8974.82,
-  "book": 10337.86,
-  "planHash": "s[AAPL:792,UNH:589,V:362]b[AMZN:1034,GE:930,GOOGL:354,JPM:376,LLY:827,MSFT:1241,SHEL:1034,SPY:1108,VTI:327]t[]",
+  "turnover": 1380.37,
+  "book": 11624.51,
+  "planHash": "s[]b[GLDM:326,JNJ:464,KO:433,SPY:26,VTI:131]t[]",
   "legs": {
-    "sells": [
-      {
-        "sym": "AAPL",
-        "kind": "exit",
-        "dollars": 792.37,
-        "shares": 2.612314,
-        "price": 303.32,
-        "pl": -7.18,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "UNH",
-        "kind": "exit",
-        "dollars": 589.39,
-        "shares": 1.452636,
-        "price": 405.74,
-        "pl": 1.37,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "V",
-        "kind": "exit",
-        "dollars": 362.4,
-        "shares": 0.998421,
-        "price": 362.97,
-        "pl": 15.2,
-        "note": "not in the current target — exit funds the underweight names"
-      }
-    ],
+    "sells": [],
     "buysNow": [
       {
         "sym": "SPY",
         "kind": "buy",
-        "dollars": 1108.1,
-        "shares": 1.4337,
-        "price": 772.89,
+        "dollars": 26.49,
+        "shares": 0.0346,
+        "price": 766.41,
         "pl": null,
-        "note": "9.3% → 20% target"
-      },
-      {
-        "sym": "MSFT",
-        "kind": "buy",
-        "dollars": 1240.54,
-        "shares": 2.4947,
-        "price": 497.28,
-        "pl": null,
-        "note": "0.0% → 12% target"
-      },
-      {
-        "sym": "JPM",
-        "kind": "buy",
-        "dollars": 375.91,
-        "shares": 1.035,
-        "price": 363.19,
-        "pl": null,
-        "note": "8.4% → 12% target"
-      },
-      {
-        "sym": "AMZN",
-        "kind": "buy",
-        "dollars": 1033.79,
-        "shares": 3.7989,
-        "price": 272.13,
-        "pl": null,
-        "note": "0.0% → 10% target"
-      },
-      {
-        "sym": "SHEL",
-        "kind": "buy",
-        "dollars": 1033.79,
-        "shares": 11.5237,
-        "price": 89.71,
-        "pl": null,
-        "note": "0.0% → 10% target"
-      },
-      {
-        "sym": "GE",
-        "kind": "buy",
-        "dollars": 930.41,
-        "shares": 2.5251,
-        "price": 368.46,
-        "pl": null,
-        "note": "0.0% → 9% target"
-      },
-      {
-        "sym": "LLY",
-        "kind": "buy",
-        "dollars": 827.03,
-        "shares": 0.685,
-        "price": 1207.375,
-        "pl": null,
-        "note": "0.0% → 8% target"
-      },
-      {
-        "sym": "GOOGL",
-        "kind": "buy",
-        "dollars": 353.61,
-        "shares": 1.0278,
-        "price": 344.03,
-        "pl": null,
-        "note": "4.6% → 8% target"
+        "note": "17.6% → 18.05% target"
       },
       {
         "sym": "VTI",
-        "kind": "park",
-        "dollars": 327.48,
-        "shares": 0.8572,
-        "price": 382.04,
+        "kind": "buy",
+        "dollars": 131.19,
+        "shares": 0.3466,
+        "price": 378.455,
         "pl": null,
-        "note": "waiting ground — holds $327.48 of deferred weight (NVDA) in VTI instead of cash; released when they clear"
+        "note": "2.7% → 4.75% target"
+      },
+      {
+        "sym": "JNJ",
+        "kind": "buy",
+        "dollars": 464.21,
+        "shares": 1.7118,
+        "price": 271.1825,
+        "pl": null,
+        "note": "0.0% → 7.13% target"
+      },
+      {
+        "sym": "KO",
+        "kind": "buy",
+        "dollars": 432.95,
+        "shares": 4.7134,
+        "price": 91.855,
+        "pl": null,
+        "note": "0.0% → 6.65% target"
+      },
+      {
+        "sym": "GLDM",
+        "kind": "buy",
+        "dollars": 325.53,
+        "shares": 3.5632,
+        "price": 91.36,
+        "pl": null,
+        "note": "0.0% → 5% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 16.57,
-    "realizedLoss": -7.18,
-    "net": 9.39,
+    "realizedGain": 0,
+    "realizedLoss": 0,
+    "net": 0,
     "term": "short",
-    "note": "harvested losses offset the gains — net is ST, taxed as ordinary income"
+    "note": null
   },
   "deferred": [
     {
-      "sym": "NVDA",
-      "reason": "wash-sale",
-      "until": "2026-08-28"
+      "sym": "MA",
+      "reason": "above-entry",
+      "until": null
+    },
+    {
+      "sym": "V",
+      "reason": "reentry",
+      "until": "2026-08-26"
+    },
+    {
+      "sym": "BKNG",
+      "reason": "above-entry",
+      "until": null
     }
   ],
   "history": [
     {
-      "at": "2026-08-12",
+      "at": "2026-08-25",
       "to": "proposed"
-    },
-    {
-      "at": "2026-08-12",
-      "to": "confirmed"
-    },
-    {
-      "at": "2026-08-12",
-      "to": "buys-placed"
-    },
-    {
-      "at": "2026-08-12",
-      "to": "done"
     }
-  ],
-  "confirmedAt": "2026-08-12",
-  "confirmedBy": "pre-authorization: AGENTIC.md §executor 2026-08-12 block (owner, 2026-08-11 — post-deposit deployment; guard satisfied: target asOf 2026-08-11)",
-  "buys-placedAt": "2026-08-12",
-  "doneAt": "2026-08-12"
+  ]
 }
