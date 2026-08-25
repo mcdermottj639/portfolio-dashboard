@@ -1,5 +1,5 @@
 // Offline unit checks for finalize-target.mjs — no network. Run: node producer/finalize-target.test.mjs
-import { finalizeTarget, DRIVER_THRESHOLD } from './finalize-target.mjs';
+import { finalizeTarget, DRIVER_THRESHOLD, entryDiscountFor, tightenEntryByQuality, AG_ENTRY_Q_OK, AG_ENTRY_Q_MAX } from './finalize-target.mjs';
 
 let pass = 0, fail = 0;
 const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -179,6 +179,53 @@ ok('without a prior target the shape is unchanged (no dropped key)',
   const noVol = finalizeTarget({ picks }, { book: 10000 });
   ok('…and without px/hi/lo the gate cannot bind (documents the failure mode)',
     noVol.defensive.direct > withVol.defensive.direct);
+}
+
+// --- ENTRY-QUALITY → ENTRY BAND (2026-08-25) ---------------------------------------------------------
+// entryQuality shrank the WEIGHT but never moved the entry ZONE, and the v102 prompt tells the model to
+// set reachable zones — so it brackets spot and a 3/10 entry executed at market exactly like a 9/10 one.
+{
+  ok('a fair-or-better entry demands no discount', entryDiscountFor(6) === 0 && entryDiscountFor(9) === 0);
+  ok('a poor entry demands a real one', entryDiscountFor(3) > 0.04 && entryDiscountFor(3) < 0.05);
+  ok('the demand is CAPPED so the zone stays reachable (v102: a deep zone reads as never-buy)',
+    entryDiscountFor(0) === AG_ENTRY_Q_MAX);
+  ok('a missing/garbage verdict changes nothing', entryDiscountFor(null) === 0 && entryDiscountFor(undefined) === 0);
+
+  const t = tightenEntryByQuality({ ticker: 'MA', px: 600, entry: '$565-$604' }, 3);
+  ok('the ceiling lands below spot', t.entryTightened.to < 600);
+  ok('…by exactly the demanded discount', Math.abs(t.entryTightened.to - 600 * (1 - entryDiscountFor(3))) < 0.02);
+  ok('…and the rewritten zone still parses first-two-numbers as lo,hi (agentic-deploy contract)', (() => {
+    const m = String(t.entry).replace(/,/g, '').match(/\d+(\.\d+)?/g);
+    return +m[0] < +m[1] && Math.abs(+m[1] - t.entryTightened.to) < 0.02;
+  })());
+  ok('…keeping the model\'s band width', Math.abs((t.entryTightened.to - +String(t.entry).match(/\d+(\.\d+)?/g)[0]) - 39) < 0.5);
+
+  const already = tightenEntryByQuality({ ticker: 'X', px: 600, entry: '$500-$520' }, 3);
+  ok('a zone the model already set tighter is left alone (never loosens)', already.entryTightened === undefined);
+
+  const def = tightenEntryByQuality({ ticker: 'KO', px: 92, entry: '$85-$93' }, 2, { exempt: true });
+  ok('a defensive-floor name is exempt even on a terrible entry', def.entryTightened === undefined);
+
+  const noPx = tightenEntryByQuality({ ticker: 'Y', entry: '$10-$12' }, 2);
+  ok('no spot price ⇒ no change (never guess a band)', noPx.entryTightened === undefined);
+}
+{
+  const picks = [
+    { ticker: 'MA', sector: 'Finance', weightPct: 50, thesis: 'x', entryZone: '$565-$604', stop: 1, target: 2 },
+    { ticker: 'KO', sector: 'Consumer Non-Durables', weightPct: 50, thesis: 'x', entryZone: '$85-$93', stop: 1, target: 2 },
+  ];
+  const universe = [{ t: 'MA', px: 600, hi: 601, lo: 464 }, { t: 'KO', px: 92, hi: 92.5, lo: 65 }];
+  const verdicts = [
+    { t: 'MA', businessOk: true, entryQuality: 3, rec: 'hold' },
+    { t: 'KO', businessOk: true, entryQuality: 2, rec: 'hold' },
+  ];
+  const r = finalizeTarget({ picks }, { universe, verdicts, book: 10000 });
+  const ma = r.target.names.find((n) => n.ticker === 'MA');
+  const ko = r.target.names.find((n) => n.ticker === 'KO');
+  ok('the non-defensive poor entry is tightened end-to-end', /entry-quality 3\/10/.test(ma.entry));
+  ok('…and the defensive one carrying the floor is NOT', !/entry-quality/.test(ko.entry));
+  ok('…with the tightening reported, not silent', r.entryBands.some((x) => x.startsWith('MA ')));
+  ok('…and never reported for the exempt name', !r.entryBands.some((x) => x.startsWith('KO ')));
 }
 
 console.log(`\nfinalize-target.test: ${pass} passed, ${fail} failed`);

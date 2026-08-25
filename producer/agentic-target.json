@@ -33,10 +33,16 @@
       "ticker": "MSFT",
       "sector": "Technology Services",
       "weightPct": 9.5,
-      "entry": "$460-$494 (spot $487.31)",
+      "entry": "$438.69-$472.69 (entry-quality 4/10 → ceiling held 3.0% under the $487.31 spot; was $460-$494 (spot $487.31))",
       "stop": 437,
       "target": 553,
       "thesis": "Quality 9.5 + growth 7.8 — Azure +40%, AI revenue +123%, net margin expanding 35.6%→39.7% on a AAA balance sheet — but entryQuality 4 (+15.5% over a still-falling 200-DMA with the death cross unrepaired), so this is a HOLD at the prior target's weight, trimmed from the held 11.95%, with no top-up above the band.",
+      "entryTightened": {
+        "from": 494,
+        "to": 472.69,
+        "discountPct": 3,
+        "entryQuality": 4
+      },
       "drivers": [
         "quality",
         "momentum",
@@ -48,10 +54,16 @@
       "ticker": "AMZN",
       "sector": "Retail Trade",
       "weightPct": 9.5,
-      "entry": "$248-$266 (spot $262.07; 50-DMA $250.14 anchors the low end)",
+      "entry": "$240.14-$258.14 (entry-quality 5/10 → ceiling held 1.5% under the $262.07 spot; was $248-$266 (spot $262.07; 50-DMA $250.14 anchors the low end))",
       "stop": 234,
       "target": 300,
       "thesis": "Growth 8.0 + quality 8.6 with the best entry in the megacap sleeve (entryQuality 5, haircut 0.78): RSI ~34, only +4.8% over the 50-DMA, revenue accelerating to +19.6% and gross margin expanded four straight years — the one megacap here that is genuinely not chased.",
+      "entryTightened": {
+        "from": 266,
+        "to": 258.14,
+        "discountPct": 1.5,
+        "entryQuality": 5
+      },
       "drivers": [
         "quality",
         "growth",
@@ -77,10 +89,16 @@
       "ticker": "GOOGL",
       "sector": "Technology Services",
       "weightPct": 7,
-      "entry": "$330-$353 (spot $348.06; rising 200-DMA ~$333 at the low end)",
+      "entry": "$314.62-$337.62 (entry-quality 4/10 → ceiling held 3.0% under the $348.06 spot; was $330-$353 (spot $348.06; rising 200-DMA ~$333 at the low end))",
       "stop": 312,
       "target": 408,
       "thesis": "Quality 9.5 + growth 8.3 (revenue +24.2% and accelerating, Cloud +82% and supply-constrained), but momentum 5.6 with price under a falling 50-DMA and the widest 52wk range in the book (0.58 → vol-scaled cap 17.97%) — down-weighted from the held 8.22% on entryQuality 4, explicitly not exited.",
+      "entryTightened": {
+        "from": 353,
+        "to": 337.62,
+        "discountPct": 3,
+        "entryQuality": 4
+      },
       "drivers": [
         "quality",
         "growth",
@@ -105,10 +123,16 @@
       "ticker": "LLY",
       "sector": "Health Technology",
       "weightPct": 6.5,
-      "entry": "$1,175-$1,258 (spot $1,246.93; 50-DMA $1,181 at the low end)",
+      "entry": "$1126.52-$1209.52 (entry-quality 4/10 → ceiling held 3.0% under the $1246.93 spot; was $1,175-$1,258 (spot $1,246.93; 50-DMA $1,181 at the low end))",
       "stop": 1120,
       "target": 1400,
       "thesis": "Growth 8.6 + catalyst 8.8 (revenue +47.7%, two large beats) on the strongest incretin franchise, but a 0.48 range/price means it is NOT defensive ballast despite the GICS label and draws a vol-scaled cap of 21.9%; entryQuality 4 with consensus only ~2% above spot takes it from the held 8.35% down to 6.5%.",
+      "entryTightened": {
+        "from": 1258,
+        "to": 1209.52,
+        "discountPct": 3,
+        "entryQuality": 4
+      },
       "drivers": [
         "quality",
         "catalyst",
@@ -120,10 +144,16 @@
       "ticker": "SHEL",
       "sector": "Energy Minerals",
       "weightPct": 6.5,
-      "entry": "$86.00-$93.75 (spot $93.00; 50-DMA ~$85.50 at the low end)",
+      "entry": "$81.06-$88.81 (entry-quality 3/10 → ceiling held 4.5% under the $93.00 spot; was $86.00-$93.75 (spot $93.00; 50-DMA ~$85.50 at the low end))",
       "stop": 83.5,
       "target": 104,
       "thesis": "Best valuation sleeve in the set (6.6) plus growth/catalyst 8.0 — #1 global LNG position, ~14% implied ROE, best-of-majors returns, $700m of structural cost cuts tracking the top of guidance; peak-cycle Brent and a retest of five-month overhead supply mean the weight comes down from the held 10.47%, not out, and its prior phase-out reverses at zero cost.",
+      "entryTightened": {
+        "from": 93.75,
+        "to": 88.81,
+        "discountPct": 4.5,
+        "entryQuality": 3
+      },
       "drivers": [
         "growth",
         "catalyst",
@@ -135,10 +165,16 @@
       "ticker": "NVDA",
       "sector": "Electronic Technology",
       "weightPct": 6,
-      "entry": "$196-$214 (spot $208.48; 200-DMA $195.34 at the low end) — deferred until after the 08-26 print",
+      "entry": "$181.1-$199.1 (entry-quality 3/10 → ceiling held 4.5% under the $208.48 spot; was $196-$214 (spot $208.48; 200-DMA $195.34 at the low end) — deferred until after the 08-26 print)",
       "stop": 186,
       "target": 236.5,
       "thesis": "Quality 9.8 + growth 9.6 — the strongest fundamental pair in the entire survivor set on 74.9% gross margin and +85% YoY revenue — but catalyst 3.5 with earnings 2026-08-26 inside the deploy planner's own 7-day blackout; trimmed from the held 7.49% and takes no new money until the print is in hand.",
+      "entryTightened": {
+        "from": 214,
+        "to": 199.1,
+        "discountPct": 4.5,
+        "entryQuality": 3
+      },
       "drivers": [
         "quality",
         "growth"
@@ -148,10 +184,16 @@
       "ticker": "MA",
       "sector": "Finance",
       "weightPct": 6,
-      "entry": "$565-$604 (spot $599.86)",
+      "entry": "$533.87-$572.87 (entry-quality 3/10 → ceiling held 4.5% under the $599.86 spot; was $565-$604 (spot $599.86))",
       "stop": 539,
       "target": 667,
       "thesis": "Highest composite in the set (7.73) on quality 9.7 + momentum 8.7 + catalyst 8.2 — revenue +14.1%, net income +18.6%, net margin expanding to 47.3% with zero present deterioration — but entryQuality 3 retesting eleven-month overhead supply at RSI 73, so the conviction is expressed at 6.0% (below the prior target's 7.79%) with a near-spot band rather than an unreachable 50-DMA zone.",
+      "entryTightened": {
+        "from": 604,
+        "to": 572.87,
+        "discountPct": 4.5,
+        "entryQuality": 3
+      },
       "drivers": [
         "quality",
         "momentum",
@@ -163,10 +205,16 @@
       "ticker": "V",
       "sector": "Finance",
       "weightPct": 5.5,
-      "entry": "$358-$385 (spot $382.41; 50-DMA ~$354 just under the floor)",
+      "entry": "$338.2-$365.2 (entry-quality 3/10 → ceiling held 4.5% under the $382.41 spot; was $358-$385 (spot $382.41; 50-DMA ~$354 just under the floor))",
       "stop": 348,
       "target": 425,
       "thesis": "Quality 9.8 (the highest single sleeve score here) + momentum 8.6 — ~63% ROE, near-zero capital intensity, $9.2B returned last quarter, and the stablecoin-disintermediation bear case is actively not manifesting (stablecoin-linked card volume +200% YoY); entryQuality 3 at a 52wk high set yesterday takes the size to 5.5% from the prior 7.48%, payments cluster held to 11.9% of 20%.",
+      "entryTightened": {
+        "from": 385,
+        "to": 365.2,
+        "discountPct": 4.5,
+        "entryQuality": 3
+      },
       "drivers": [
         "quality",
         "momentum",
@@ -177,10 +225,16 @@
       "ticker": "BKNG",
       "sector": "Consumer Services",
       "weightPct": 5,
-      "entry": "$196-$215 (spot $213.36; the $189-195 gap-fill/50-DMA sits just under the floor)",
+      "entry": "$184.76-$203.76 (entry-quality 3/10 → ceiling held 4.5% under the $213.36 spot; was $196-$215 (spot $213.36; the $189-195 gap-fill/50-DMA sits just under the floor))",
       "stop": 188,
       "target": 245,
       "thesis": "The cycle's one challenger add — momentum 9.2 (highest in the set) + quality 8.8 + valuation 5.1 on an asset-light, high-ROIC, ~$8B-FCF franchise in a sector the book owns nowhere else; guided deceleration to +4-6% and entryQuality 3 into an unfilled earnings gap hold it to the 5% floor, where a full position's worth of thesis risk costs the book only 5pp.",
+      "entryTightened": {
+        "from": 215,
+        "to": 203.76,
+        "discountPct": 4.5,
+        "entryQuality": 3
+      },
       "drivers": [
         "momentum",
         "quality",
@@ -196,16 +250,5 @@
     "floor": 15,
     "shortfall": 0
   },
-  "dropped": [
-    {
-      "ticker": "JPM",
-      "reason": "phase-out-complete",
-      "detail": "absent from two consecutive research targets"
-    },
-    {
-      "ticker": "GE",
-      "reason": "phase-out-complete",
-      "detail": "absent from two consecutive research targets"
-    }
-  ]
+  "dropped": []
 }

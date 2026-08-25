@@ -159,6 +159,26 @@ automaker and NOW a software firm, and all three trade as the AI bet. Adding a n
 a cap, so err toward inclusion. Defensive clusters (`utilities`, `reits`, `telecom`, `low-vol`) were added at
 the same time; every one of those names used to be an uncapped singleton too — the mirror image of the hole.
 
+## Entry bands are derived from the verdict, not from the prose (2026-08-25)
+`entryQuality` sizes a position — that is the v102 design and it is right. What it did NOT do was change
+**when** the name is bought. The zone came from the model, and the v102 prompt (correctly) demands
+*reachable* zones, so the model sets zones that BRACKET spot; the deploy planner's `above-entry` deferral
+then never fires and a 3/10 entry executes at market exactly like a 9/10 one.
+
+Measured on the 2026-08-25 run: **all 16 verdicts scored 2-5, ten of them exactly 3**, against a tape that
+really was extended (25 of 60 universe names in the top quartile of their 52-week range; V/MA/KO/JNJ at
+97-99% of theirs). Every entry zone still enclosed spot. Five new positions would have opened on one day.
+
+`finalize-target.mjs` now computes the ceiling deterministically — `AG_ENTRY_Q_OK` 6 / `AG_ENTRY_Q_STEP`
+1.5% per point / `AG_ENTRY_Q_MAX` 8% — and rewrites the zone, so a poor entry defers and parks instead of
+buying. Guards: **bounded** (a deep zone reads as never-buy), the **idle-cash deadline still backstops it**
+(delays a buy, never vetoes one), **never loosens** the model's own tighter zone, **defensive-floor names
+are exempt** (parked weight goes to VTI at 100% equity beta — deferring ballast is backwards), and
+**absent ≠ zero** (an unscored name keeps its zone rather than drawing the maximum haircut).
+
+Read the distribution with care: ten identical scores means the LEVEL is informative and the RANKING is
+not. Use it to judge the tape, never to rank which name has the better entry.
+
 ## The screening funnel — bench, cut, and the challenger quota (2026-08-25)
 Six committed research cycles (2026-06-29 → 08-18) selected **14 distinct names in seven weeks**. Seven of
 them appeared in five or more of six targets — SPY/GOOGL/NVDA/JPM in **all six**. The apparent variety at
