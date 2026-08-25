@@ -94,15 +94,29 @@ here does NOT update it. This table is the map; re-check it whenever a piece is 
 | **Agentic executor** (`20 14-20 * * 1-5`) | `agentic-exec-gate` → ticket state machine | consumes the **drawdown** + **regime** reads; `makeDecision` stamps **sleeve drivers** |
 | **Flow burn-in decision** (one-shot 2026-09-02) | evaluates whether `FLOW_WEIGHT` earns 0.10 | reads the **sleeve attribution** roll-up; knows the 2026-08-24 insider fix **reset the burn-in clock** |
 
-Two hazards this table exists to prevent, both hit in the 2026-08-24 audit:
+**A Routine's prompt IS editable — use `update_trigger` (claude-code-remote MCP), don't work around it.**
+Prompts live server-side, so shipping code here does not update them; but `list_triggers` + `update_trigger`
+edit them in place, keeping the Routine's id and run history. The ONE exception is a Routine bound to a
+persistent session (`persistent_session_id` set in `list_triggers` — the **executor** is; the weekly
+research one is NOT). Check the field before concluding you can't edit something. Getting this wrong is
+expensive in a specific way: on 2026-08-25 the research bench was widened in code while the Routine's step 3
+still said "the mega-cap LEADERS bench from `producer/leaders.mjs`", which would have made the entire change
+inert on the next run. The prompt was updated the same session.
+
+Three hazards this table exists to prevent:
 - **The weekly Routine used to hand-write `agentic-target.json`**, bypassing `finalize-target.mjs` — which
   silently skipped the risk caps, the phase-out AND `drivers[]`. Fixed; the prompt now names the runbook
   as source of truth. **Never hand-write that file.**
-- **The executor Routine's prompt CANNOT be edited** (it is bound to a persistent session), and it still
+- **A code change that a Routine's prompt still contradicts is not shipped.** Anything that alters what a
+  Routine FEEDS the pipeline — the universe it assembles, the args it passes, the files it writes — needs
+  the prompt edited in the same change, not just the runbook. (The runbook helps only because these prompts
+  explicitly name it as source of truth; a step that names a specific file or command overrides it.)
+- **The executor Routine's prompt genuinely cannot be edited** (bound to a persistent session), and it still
   says only "`makeDecision`, with `spyAt`". So the `target` requirement is enforced three other ways
   instead of by prompt: the exec gate writes `target` into `raw/agentic-plan.json`, `AGENTIC.md` step 3e
   carries a blockquote that overrides the prompt, and `makeDecision` **logs a loud warning** when it is
-  called with buys but no target. Prefer code-level guards over prompt wording for anything load-bearing.
+  called with buys but no target. For a persistent-bound Routine, prefer code-level guards over prompt
+  wording for anything load-bearing.
 
 ## Key files
 | File | Role |
