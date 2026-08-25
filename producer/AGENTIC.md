@@ -306,11 +306,16 @@ never disturb the daily `data.json` publish (same isolation as the watchlist syn
 1. `node producer/agentic-due.mjs` → `AGENTIC_DUE` (target ≥ 7d old / missing) or `AGENTIC_NOT_DUE`
    (skip; ~zero cost). The gate keys off `agentic-target.json`'s `asOf`, so it fires ~once a week and
    self-heals if a run is missed.
-2. On DUE: assemble a fresh universe (oversold scan finalists + `leaders.mjs` bench + ••••3900 holdings),
-   run the **`agentic-research`** workflow (`args:{universe, book, flow, polClusters}` — pass
-   `data.flow.symbols` and `data.flow.polClusters` from the fresh snapshot so the flow sleeve and the verify
-   stage see them), pipe the result through **`finalize-target.mjs`** (which re-enforces the risk caps and
-   writes the `drivers:[]` attribution when given `ranking`), and commit + push `agentic-target.json`.
+2. On DUE: assemble a fresh universe — **`node producer/research-universe.mjs --symbols --max 60` ∪ the
+   ••••3900 holdings, and nothing else** (2026-08-25). NOT `leaders.mjs` (that is the consumer's Plan-page
+   bench, 19 names / 16 megacap — screening it produced 14 distinct names in seven weeks), and NOT the
+   Daily Picks (20% social — self-directed only). Use `research-universe.mjs`'s sector labels rather than
+   Robinhood's, since `sec` is the co-movement budget behind the max-2-per-sector finalist rule.
+   Run the **`agentic-research`** workflow (`args:{universe, book, held, priorTarget, flow, polClusters}` —
+   `held`+`priorTarget` are NOT optional: they are the churn governor AND they drive the challenger quota),
+   then pipe the **WHOLE return** through **`finalize-target.mjs`** — not just `.allocation`, because its
+   `ranking` array carries the px/hi/lo that both the defensive vol gate and the verdict-derived entry
+   bands need — and commit + push `agentic-target.json`.
    While reviewing catalysts, add any newly-confirmed dated policy event to **`producer/policy.json`**
    (schema + rules in `policy.mjs`; high-impact entries need a source URL) and commit it in the same change.
 3. Compute drift vs the new target, apply the **Tax & regulation rules** above, and **`PushNotification`
