@@ -1,45 +1,144 @@
 {
-  "asOf": "2026-08-18",
-  "method": "Nine-name, sector-diversified book built almost entirely from incumbents that re-verified: NVDA/GOOGL/MSFT/AMZN (megacap-tech cluster, 44.8% — under the 48% cap) hold roughly their current weights rather than being added to, since three of the four (NVDA earnings Aug 26, MSFT's live capex/FCF debate, GOOGL's post-rally extension) carry explicit 'don't chase' entry verdicts; AMZN gets the sleeve's largest slot purely on having the cleanest entry (a normal pullback, not chased). LLY and GOOGL are both sized below where their composite rank alone would put them because of vol-scaling. V and MA are new adds, paired at the 20% payments-cluster cap, to refill the Finance sleeve using capital freed by JPM's exit. SPY (20.0%) and VTI (5.0%) are both held essentially flat versus today despite an overbought/near-ATH entry read on the index itself — 'don't chase' argues against ADDING fresh dollars, not against holding the existing, already-appropriately-sized core position. JPM, GE and SHEL are absent from this cycle's verified-survivor set — no adversarial verdict asserting a broken thesis for any of the three was provided, only their exclusion from the research universe's top-10 finalist cut; per the churn governor, a held name missing from the new target without a businessOk:false verdict should phase out over one cycle, not be treated as a hard thesis break. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps) | phase-out retained (churn governor, strike 1): JPM, SHEL, GE",
+  "asOf": "2026-08-25",
+  "method": "Thirteen names across nine sectors plus two index sleeves, built with the current book as the null hypothesis: all eight held survivors (SPY, VTI, MSFT, AMZN, GOOGL, NVDA, LLY, SHEL) are RETAINED and only re-weighted — SHEL's and the megacaps' verdicts are all businessOk:true, and SHEL's phase-out reverses at zero cost because nothing was ever sold — while MA and V carry over from the prior target still undeployed, so the only taxable exits are JPM and GE, which complete their two-strike phase-out by failing to return from adversarial verify for a second consecutive cycle; I cannot claim either thesis is broken, only that neither was re-verified, and that is the single place this allocation spends turnover (~$2,090, which funds the defensive floor). The megacap-tech complex lands at 40.7% of book — 32.0% direct (MSFT 9.5 / AMZN 9.5 / GOOGL 7.0 / NVDA 6.0, every one trimmed from its held weight on entryQuality 3-5) plus 8.7% look-through via SPY/VTI — against the 48% cap, and the defensive floor is met EXPLICITLY rather than by index accident at 17.5%: 14.5% direct in JNJ 7.5% (pharma, 0.38 range/price) and KO 7.0% (staples, 0.30 — the tightest vol in the book), plus ~3.0% through the index sleeves, versus the 15% floor; LLY is deliberately NOT counted as ballast at a 0.48 range and is vol-capped to 6.5%. Posture is de-concentration without abandoning the mandate — payments 11.9%, pharma 14.7%, energy 6.9%, all well inside their caps — with poor entries expressed as SIZE (MA 6.0% vs a prior 7.79%, V 5.5% vs 7.48%, BKNG held to the 5% floor) and reachable near-spot bands rather than deep zones that would strand cash, and NVDA's 6.0% takes no new money until the 2026-08-26 print clears the deploy planner's own earnings blackout. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)",
   "account": "AGENTIC",
-  "book": 10254,
+  "book": 10192,
   "driftTriggerPp": 5,
   "names": [
     {
       "ticker": "SPY",
-      "sector": "Miscellaneous",
-      "weightPct": 15.27,
-      "entry": "$745-765 (near the 50-DMA ~$749)",
-      "stop": 690,
-      "target": 830,
-      "thesis": "Index ballast (momentum 9.3, uncapped cluster) held flat near its current 20.16% weight — RSI ~83/near-ATH argues against adding fresh dollars here, not against holding the existing, already-right-sized core position.",
+      "sector": "Index",
+      "weightPct": 19,
+      "entry": "$748-$772 (spot ~$766.58; core hold, buy at market)",
+      "stop": 688,
+      "target": 860,
+      "thesis": "Uncapped index ballast and the book's beta anchor — the one sleeve the correlation caps never trim, and the diversifier every cluster cap is measured against; trimmed slightly from the held 20.04% to fund the defensive floor.",
       "drivers": [
-        "momentum",
         "quality"
       ]
     },
     {
-      "ticker": "AMZN",
-      "sector": "Retail Trade",
-      "weightPct": 10.53,
-      "entry": "$248-258 (near the 50-DMA ~$248)",
-      "stop": 225,
-      "target": 300,
-      "thesis": "AWS margin expansion (37% growth, 39.4% margin) is the real driver behind an EPS line distorted by the Anthropic mark-to-market gain; best entry quality (5/10, a normal pullback, not chased) of the megacap sleeve earns it the largest single slot inside the 48% cluster cap.",
+      "ticker": "VTI",
+      "sector": "Index",
+      "weightPct": 5,
+      "entry": "$368-$382 (spot ~$378.40)",
+      "stop": 340,
+      "target": 425,
+      "thesis": "Second index sleeve and the executor's waiting ground (PARK_VEHICLE) — total-market ballast tracking a different index than SPY, so the two are never substantially identical for wash-sale purposes; nudged up from the held 3.11% to absorb residual weight rather than concentrate it.",
       "drivers": [
-        "growth",
-        "momentum",
         "quality"
       ]
     },
     {
       "ticker": "MSFT",
       "sector": "Technology Services",
-      "weightPct": 9.47,
-      "entry": "$450-465 (further capex-driven weakness before stabilizing)",
-      "stop": 410,
-      "target": 560,
-      "thesis": "Azure re-acceleration + top-tier quality/growth (quality 9.3, growth 8.3), held near its current 11.71% weight; FY27 capex guide, a negative-FCF quarter and a pending Copilot-adoption securities suit argue against ADDING into a still-unresolved capex debate.",
+      "weightPct": 9.5,
+      "entry": "$460-$494 (spot $487.31)",
+      "stop": 437,
+      "target": 553,
+      "thesis": "Quality 9.5 + growth 7.8 — Azure +40%, AI revenue +123%, net margin expanding 35.6%→39.7% on a AAA balance sheet — but entryQuality 4 (+15.5% over a still-falling 200-DMA with the death cross unrepaired), so this is a HOLD at the prior target's weight, trimmed from the held 11.95%, with no top-up above the band.",
+      "drivers": [
+        "quality",
+        "momentum",
+        "growth",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "AMZN",
+      "sector": "Retail Trade",
+      "weightPct": 9.5,
+      "entry": "$248-$266 (spot $262.07; 50-DMA $250.14 anchors the low end)",
+      "stop": 234,
+      "target": 300,
+      "thesis": "Growth 8.0 + quality 8.6 with the best entry in the megacap sleeve (entryQuality 5, haircut 0.78): RSI ~34, only +4.8% over the 50-DMA, revenue accelerating to +19.6% and gross margin expanded four straight years — the one megacap here that is genuinely not chased.",
+      "drivers": [
+        "quality",
+        "growth",
+        "momentum",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "JNJ",
+      "sector": "Health Technology",
+      "weightPct": 7.5,
+      "entry": "$256-$277 (spot $273.04; 50-DMA ~$255 at the low end)",
+      "stop": 246,
+      "target": 305,
+      "thesis": "Quality 9.0 + momentum 8.0, and the book's primary DEFENSIVE anchor — pharma cluster at a 0.38 range/price, i.e. it actually trades like ballast, which is exactly what LLY does not; entryQuality 2 (97% of range, trading through consensus) is why it sizes at 7.5% and not more.",
+      "drivers": [
+        "quality",
+        "momentum",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "GOOGL",
+      "sector": "Technology Services",
+      "weightPct": 7,
+      "entry": "$330-$353 (spot $348.06; rising 200-DMA ~$333 at the low end)",
+      "stop": 312,
+      "target": 408,
+      "thesis": "Quality 9.5 + growth 8.3 (revenue +24.2% and accelerating, Cloud +82% and supply-constrained), but momentum 5.6 with price under a falling 50-DMA and the widest 52wk range in the book (0.58 → vol-scaled cap 17.97%) — down-weighted from the held 8.22% on entryQuality 4, explicitly not exited.",
+      "drivers": [
+        "quality",
+        "growth",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "KO",
+      "sector": "Consumer Non-Durables",
+      "weightPct": 7,
+      "entry": "$85.50-$92.75 (spot $91.99; 50-DMA $84.50 just under the floor)",
+      "stop": 83,
+      "target": 101,
+      "thesis": "Quality 9.1 + catalyst 8.0 and the staples half of the defensive floor — 0.30 range/price, the tightest vol in the allocation, 30% operating margins and $10B+ FCF; entryQuality 2 (RSI 73 at a 52wk high set yesterday) caps the slot rather than vetoing a name the floor genuinely needs.",
+      "drivers": [
+        "quality",
+        "momentum",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "LLY",
+      "sector": "Health Technology",
+      "weightPct": 6.5,
+      "entry": "$1,175-$1,258 (spot $1,246.93; 50-DMA $1,181 at the low end)",
+      "stop": 1120,
+      "target": 1400,
+      "thesis": "Growth 8.6 + catalyst 8.8 (revenue +47.7%, two large beats) on the strongest incretin franchise, but a 0.48 range/price means it is NOT defensive ballast despite the GICS label and draws a vol-scaled cap of 21.9%; entryQuality 4 with consensus only ~2% above spot takes it from the held 8.35% down to 6.5%.",
+      "drivers": [
+        "quality",
+        "catalyst",
+        "growth",
+        "momentum"
+      ]
+    },
+    {
+      "ticker": "SHEL",
+      "sector": "Energy Minerals",
+      "weightPct": 6.5,
+      "entry": "$86.00-$93.75 (spot $93.00; 50-DMA ~$85.50 at the low end)",
+      "stop": 83.5,
+      "target": 104,
+      "thesis": "Best valuation sleeve in the set (6.6) plus growth/catalyst 8.0 — #1 global LNG position, ~14% implied ROE, best-of-majors returns, $700m of structural cost cuts tracking the top of guidance; peak-cycle Brent and a retest of five-month overhead supply mean the weight comes down from the held 10.47%, not out, and its prior phase-out reverses at zero cost.",
+      "drivers": [
+        "growth",
+        "catalyst",
+        "momentum",
+        "quality"
+      ]
+    },
+    {
+      "ticker": "NVDA",
+      "sector": "Electronic Technology",
+      "weightPct": 6,
+      "entry": "$196-$214 (spot $208.48; 200-DMA $195.34 at the low end) — deferred until after the 08-26 print",
+      "stop": 186,
+      "target": 236.5,
+      "thesis": "Quality 9.8 + growth 9.6 — the strongest fundamental pair in the entire survivor set on 74.9% gross margin and +85% YoY revenue — but catalyst 3.5 with earnings 2026-08-26 inside the deploy planner's own 7-day blackout; trimmed from the held 7.49% and takes no new money until the print is in hand.",
       "drivers": [
         "quality",
         "growth"
@@ -48,126 +147,65 @@
     {
       "ticker": "MA",
       "sector": "Finance",
-      "weightPct": 7.79,
-      "entry": "$530-540 (near the 50-DMA)",
-      "stop": 490,
-      "target": 600,
-      "thesis": "Second payments-duopoly leg (quality 9.4, momentum 7.5), new add paired with V at the 20% payments-cluster cap; same fee-compression/stablecoin overhang as V but a marginally cleaner entry (no near-term earnings binary).",
+      "weightPct": 6,
+      "entry": "$565-$604 (spot $599.86)",
+      "stop": 539,
+      "target": 667,
+      "thesis": "Highest composite in the set (7.73) on quality 9.7 + momentum 8.7 + catalyst 8.2 — revenue +14.1%, net income +18.6%, net margin expanding to 47.3% with zero present deterioration — but entryQuality 3 retesting eleven-month overhead supply at RSI 73, so the conviction is expressed at 6.0% (below the prior target's 7.79%) with a near-spot band rather than an unreachable 50-DMA zone.",
       "drivers": [
         "quality",
-        "growth",
-        "momentum"
-      ]
-    },
-    {
-      "ticker": "LLY",
-      "sector": "Health Technology",
-      "weightPct": 7.79,
-      "entry": "$1,110-1,140 (pullback toward support)",
-      "stop": 1020,
-      "target": 1290,
-      "thesis": "GLP-1 volume leadership (momentum 8.7, quality 8.7, growth 8.5) sized down relative to its composite rank for the widest 52-wk range in the book plus a chased 89th-percentile entry — thesis intact, sizing reflects price-war margin compression, not a break.",
-      "drivers": [
         "momentum",
-        "quality",
+        "catalyst",
         "growth"
       ]
     },
     {
       "ticker": "V",
       "sector": "Finance",
-      "weightPct": 7.48,
-      "entry": "$345-352 (near the 50-DMA ~$349)",
-      "stop": 315,
-      "target": 400,
-      "thesis": "Payments duopoly quality (quality 9.3), new add refilling the Finance sleeve vacated by this cycle's non-survivors; capped with MA at 20% combined given the live DOJ debit-monopolization suit and stablecoin disintermediation debate.",
+      "weightPct": 5.5,
+      "entry": "$358-$385 (spot $382.41; 50-DMA ~$354 just under the floor)",
+      "stop": 348,
+      "target": 425,
+      "thesis": "Quality 9.8 (the highest single sleeve score here) + momentum 8.6 — ~63% ROE, near-zero capital intensity, $9.2B returned last quarter, and the stablecoin-disintermediation bear case is actively not manifesting (stablecoin-linked card volume +200% YoY); entryQuality 3 at a 52wk high set yesterday takes the size to 5.5% from the prior 7.48%, payments cluster held to 11.9% of 20%.",
       "drivers": [
         "quality",
         "momentum",
-        "growth"
+        "catalyst"
       ]
     },
     {
-      "ticker": "GOOGL",
-      "sector": "Technology Services",
-      "weightPct": 7.33,
-      "entry": "$325-335",
-      "stop": 298,
-      "target": 390,
-      "thesis": "Cloud/AI re-acceleration and top-tier quality (quality 9.2, growth 8.7) offset by the widest 52-wk range of any survivor — vol-scaled below its composite rank; entry set on a pullback, not the current mid-recovery extension.",
+      "ticker": "BKNG",
+      "sector": "Consumer Services",
+      "weightPct": 5,
+      "entry": "$196-$215 (spot $213.36; the $189-195 gap-fill/50-DMA sits just under the floor)",
+      "stop": 188,
+      "target": 245,
+      "thesis": "The cycle's one challenger add — momentum 9.2 (highest in the set) + quality 8.8 + valuation 5.1 on an asset-light, high-ROIC, ~$8B-FCF franchise in a sector the book owns nowhere else; guided deceleration to +4-6% and entryQuality 3 into an unfilled earnings gap hold it to the 5% floor, where a full position's worth of thesis risk costs the book only 5pp.",
       "drivers": [
+        "momentum",
         "quality",
         "growth",
-        "momentum"
-      ]
-    },
-    {
-      "ticker": "VTI",
-      "sector": "Miscellaneous",
-      "weightPct": 3.82,
-      "entry": "$365-378",
-      "stop": 335,
-      "target": 410,
-      "thesis": "Small broad-market ballast/parking-vehicle stake held flat near its current 3.13% (rounded to the 5% floor) — same overbought/valuation caution as SPY argues against adding, not against holding.",
-      "drivers": [
-        "momentum",
-        "quality"
-      ]
-    },
-    {
-      "ticker": "NVDA",
-      "sector": "Electronic Technology",
-      "weightPct": 6.87,
-      "entry": "$208-216 (pre-earnings pullback / near-term support)",
-      "stop": 190,
-      "target": 258,
-      "thesis": "AI-compute leader (momentum 8.4, quality 9.5, growth 9.7) kept near its current 8.04% weight rather than added to — Aug 26 earnings binary and a bear-case analyst target already at spot argue for sizing the long-run custom-ASIC-erosion risk, not chasing today's price.",
-      "drivers": [
-        "growth",
-        "quality",
-        "momentum"
-      ]
-    },
-    {
-      "ticker": "JPM",
-      "sector": "Finance",
-      "weightPct": 9.16,
-      "entry": "350-366 (spot 362.50; 50-DMA ~334 is the deeper add)",
-      "stop": 331,
-      "target": 400,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Momentum 8.3 + catalyst 8.5 best-of-breed bank at peak-cycle numbers; sized down for the fresh-high chase (entryQuality 3) rather than benched.",
-      "drivers": [
-        "momentum",
-        "growth"
-      ]
-    },
-    {
-      "ticker": "SHEL",
-      "sector": "Energy Minerals",
-      "weightPct": 7.63,
-      "entry": "86-92 (spot 90.71)",
-      "stop": 82,
-      "target": 102,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Valuation 7.8 + momentum 7.9 — the book's cheapest sleeve profile and its inflation/energy diversifier; preferred over CNQ (better P/B, buybacks, same cycle exposure).",
-      "drivers": [
-        "momentum"
-      ]
-    },
-    {
-      "ticker": "GE",
-      "sector": "Electronic Technology",
-      "weightPct": 6.87,
-      "entry": "355-372 (spot 368.06; 5.4% off the Aug-6 high, RSI cooled to 55)",
-      "stop": 336,
-      "target": 419,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Momentum 8.4 / quality 8.5 / catalyst 8.5 triple-sleeve aerospace aftermarket annuity; valuation 3.3 (43x, decade-high multiple) caps the slot despite the cleanest tactical entry in the set.",
-      "drivers": [
-        "momentum"
+        "catalyst"
       ]
     }
   ],
-  "dropped": []
+  "defensive": {
+    "direct": 14.5,
+    "lookThrough": 3.001,
+    "total": 17.501,
+    "floor": 15,
+    "shortfall": 0
+  },
+  "dropped": [
+    {
+      "ticker": "JPM",
+      "reason": "phase-out-complete",
+      "detail": "absent from two consecutive research targets"
+    },
+    {
+      "ticker": "GE",
+      "reason": "phase-out-complete",
+      "detail": "absent from two consecutive research targets"
+    }
+  ]
 }

@@ -152,5 +152,34 @@ ok('without a prior target the shape is unchanged (no dropped key)',
     && !/DEFENSIVE SHORTFALL/.test(off.target.method));
 }
 
+// --- REGRESSION (2026-08-25): the vol gate must actually BIND on the whole-workflow-return path -------
+// finalize-target's CLI feeds `raw.ranking` in as its universe. That array carries px/hi/lo ONLY because
+// the workflow's return projection was widened to include them; when it did not, `volProxy` fell back to
+// the neutral REF_RANGE, every defensive-cluster name passed the width test regardless of how it traded,
+// and LLY (52wk range/price 0.48) counted as ballast — satisfying the 15% floor with precisely the kind
+// of high-vol position the floor exists to offset. Live run of 2026-08-25 reported 21.0% direct
+// defensive when the honest figure was 14.5%.
+{
+  const picks = [
+    { ticker: 'LLY', sector: 'Health Technology', weightPct: 40, thesis: 'x', entryZone: '', stop: 1, target: 2 },
+    { ticker: 'MSFT', sector: 'Technology Services', weightPct: 60, thesis: 'x', entryZone: '', stop: 1, target: 2 },
+  ];
+  // LLY: (1292.65 - 694.23) / 1246.93 = 0.48 — wider than the ~0.42 gate.
+  const universe = [
+    { t: 'LLY', px: 1246.93, hi: 1292.65, lo: 694.23 },
+    { t: 'MSFT', px: 487.31, hi: 553.72, lo: 349.20 },
+  ];
+  const withVol = finalizeTarget({ picks }, { universe, book: 10000 });
+  ok('a wide-range pharma name does NOT count as defensive when px/hi/lo are supplied',
+    withVol.defensive.direct < 1);
+  ok('…so the floor reports a real shortfall rather than a satisfied one',
+    withVol.defensive.shortfall > 5);
+
+  // The bug: same allocation, no universe ⇒ neutral vol fallback ⇒ LLY sails through the gate.
+  const noVol = finalizeTarget({ picks }, { book: 10000 });
+  ok('…and without px/hi/lo the gate cannot bind (documents the failure mode)',
+    noVol.defensive.direct > withVol.defensive.direct);
+}
+
 console.log(`\nfinalize-target.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

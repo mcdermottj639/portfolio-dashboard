@@ -162,6 +162,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     book: flag('book') != null ? +flag('book') : (allocation.book || null),
     asOf: flag('asOf'),
     ranked: raw.ranking || null,   // present when fed the whole workflow return → enables `drivers`
+    // Same array doubles as the universe: it carries px/hi/lo, which the vol gate NEEDS. Without this
+    // the gate cannot bind — volProxy falls back to the neutral REF_RANGE and every defensive-cluster
+    // name passes regardless of how wide it trades, which is the one failure the gate exists to stop.
+    universe: raw.universe || raw.ranking || null,
     prior,
     held: heldArg ? heldArg.split(',').map((s) => s.trim()).filter(Boolean) : null,
     verdicts: raw.verdicts || null, // the workflow return's adversarial verdicts → business-broken drops
