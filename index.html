@@ -60,6 +60,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .margin-banner { background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px; }
 .mb-text { font-size: 13px; color: #991b1b; font-weight: 600; }
 .mb-sub  { font-size: 12px; color: #b91c1c; margin-top: 3px; line-height: 1.4; }
+/* Calm variant — a loan INSIDE the owner's band is a fact, not an alarm. Alarm styling on the
+   normal state of a book designed to carry margin just teaches the reader to skip the banner. */
+.margin-banner.calm { background: var(--surface-2); border-color: #d0d7de; }
+.margin-banner.calm .mb-text { color: var(--text); }
+.margin-banner.calm .mb-sub  { color: #6b7280; }
 
 .card { background: white; border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); scroll-margin-top: 92px; }
 .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
@@ -444,6 +449,8 @@ html[data-theme="dark"] .small-chip{ background:#3a2f0a; color:#fde68a; }
 html[data-theme="dark"] .pk-sig.buy{ background:#06371f; color:#34d399; }
 html[data-theme="dark"] .pk-sig.cautious{ background:#3a2f0a; color:#fde68a; }
 html[data-theme="dark"] .margin-banner{ background:#2a1414; border-color:#7f1d1d; }
+html[data-theme="dark"] .margin-banner.calm{ background:#202124; border-color:#3a3a3f; }
+html[data-theme="dark"] .margin-banner.calm .mb-sub{ color:#9a9aa0; }
 html[data-theme="dark"] .inc-tile{ background:#0c2417; border-color:#14532d; }
 html[data-theme="dark"] .harvest-tile{ background:#2a1414; border-color:#7f1d1d; }
 html[data-theme="dark"] #pf-fresh{ background:#161616!important; color:#9a9aa0!important; border-color:#242427!important; }
@@ -557,6 +564,8 @@ html[data-theme="gold"] .picks-hero::after{ bottom:9px; right:9px; border-left:n
 html[data-theme="gold"] .h-tag{ background:rgba(227,192,116,.14); border:1px solid rgba(227,192,116,.32); color:#f0e2c2; }
 /* tinted components — gold-theme variants so they never fall back to light blocks */
 html[data-theme="gold"] .margin-banner{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
+html[data-theme="gold"] .margin-banner.calm{ background:#0e0e0f; border-color:rgba(227,192,116,.28); }
+html[data-theme="gold"] .margin-banner.calm .mb-sub{ color:#a89873; }
 html[data-theme="gold"] .inc-tile{ background:rgba(6,55,31,.4); border-color:#14532d; }
 html[data-theme="gold"] .inc-lbl{ color:#34d399; } html[data-theme="gold"] .inc-val{ color:#a7f3d0; } html[data-theme="gold"] .inc-sub{ color:#6ee7b7; }
 html[data-theme="gold"] .harvest-tile{ background:rgba(127,29,29,.22); border-color:#7f1d1d; }
@@ -724,7 +733,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v124'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v125'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1386,7 +1395,10 @@ function buildKyleHTML(){
       +'<div class="snap"><div class="snap-lbl">Day Change</div><div class="snap-val '+sc(st.dayPnL)+'">'+fmtD(st.dayPnL)+'</div><div class="snap-sub '+sc(st.dayPnLP)+'">'+fmtP(st.dayPnLP)+' today'+(kyleDayGross!=null?' <span style="color:#8c959f">· holdings '+fmtP(kyleDayGross)+'</span>':'')+'</div></div>'
       +'<div class="snap"><div class="snap-lbl">Total Return</div><div class="snap-val '+sc(st.totalPnL)+'">'+fmtP(st.totalRet)+'</div><div class="snap-sub">'+fmtD(st.totalPnL)+' since cost</div></div>'
       +'<div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:'+(beta!=null&&beta>1.2?'#cf222e':'#1f2328')+'">'+betaTxt+'</div><div class="snap-sub">vs 1.00 market · '+cov+'% cov</div></div>'
-      +'<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:'+(mUse>0?'#cf222e':'#1a7f37')+'">'+(mUse>0?mPct.toFixed(1)+'% · '+kLev.toFixed(2)+'\u00d7':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No borrowing')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:#cf222e"></div></div>':'')+(kUtil!=null?'<div class="snap-sub">'+kUtil.toFixed(1)+'% of '+fmtD(kLine)+' line</div>':'')+'</div>'
+      /* Figures unchanged (v116/v118 bases); only the verdict COLOUR follows the owner's bands
+         (2026-08-25) — this book carries a loan by design, so painting any loan red said nothing. */
+      +(function(){ var kCol=mUse<=0?'#1a7f37':(kUtil==null?'#8c959f':(kUtil>SD_UTIL_MAX*100?'#cf222e':kUtil>SD_UTIL_CRUISE*100?'#bc4c00':'#1a7f37'));
+        return '<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:'+kCol+'">'+(mUse>0?mPct.toFixed(1)+'% · '+kLev.toFixed(2)+'\u00d7':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No borrowing')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:'+kCol+'"></div></div>':'')+(kUtil!=null?'<div class="snap-sub">'+kUtil.toFixed(1)+'% of '+fmtD(kLine)+' line · cruise '+(SD_UTIL_CRUISE*100).toFixed(0)+' / max '+(SD_UTIL_MAX*100).toFixed(0)+'</div>':'')+'</div>'; })()
       +'</div><div class="snap" style="margin-top:8px"><div class="snap-lbl">Equity / Holdings / Buying Power</div><div class="snap-val">'+fmtD(netEq)+' <span style="font-size:13px;color:#8c959f;font-weight:600">equity</span> · '+fmtD(st.equityVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">holdings</span> · '+fmtD(st.bpVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">BP</span></div></div></div>'
     +'<div class="section"><div class="stitle">📈 Performance vs Benchmark <span class="badge">YTD</span></div><div class="card"><div class="perf3"><div><div class="p-l">Your holdings*</div><div class="p-v '+sc(P.portYTD)+'">'+pct(P.portYTD)+'</div></div><div><div class="p-l">Nasdaq (QQQ)</div><div class="p-v '+sc(P.qqqYTD)+'">'+pct(P.qqqYTD)+'</div></div><div><div class="p-l">S&amp;P 500 (SPY)</div><div class="p-v '+sc(P.spyYTD)+'">'+pct(P.spyYTD)+'</div></div></div><div class="chart-wrap"><canvas id="perf"></canvas></div><div class="legend-row"><span><span class="ldot" style="background:#6e40c9"></span>Your holdings</span><span><span class="ldot" style="background:#2da44e"></span>QQQ</span><span><span class="ldot" style="background:#9ca3af"></span>SPY</span></div><div class="note">*Price return of your top holdings ('+(S.perf?Math.round(S.perf.cov||cov):cov)+'% of equity) at current weights, indexed to Jan 1 — like-for-like vs the index, not a time-weighted account return.</div></div></div>'
     +'<div class="section"><div class="stitle">🛡️ Risk &amp; Concentration</div><div class="card"><div><span class="stress '+(beta!=null?'neg':'')+'">'+stress(-10)+'</span> <span style="font-size:12px;color:#656d76">est. move if the market falls 10%'+(beta!=null?' (beta '+betaTxt+')':'')+'</span></div><div class="scn-grid"><div class="scn"><div class="scn-l">Market −5%</div><div class="scn-v neg">'+stress(-5)+'</div></div><div class="scn"><div class="scn-l">Market −10%</div><div class="scn-v neg">'+stress(-10)+'</div></div><div class="scn"><div class="scn-l">Market −20%</div><div class="scn-v neg">'+stress(-20)+'</div></div></div><div class="rl"><span>Largest — <b>'+t1.symbol+'</b></span><b>'+t1p.toFixed(1)+'%</b></div><div class="rl"><span>2nd — <b>'+t2.symbol+'</b></span><b>'+t2p.toFixed(1)+'%</b></div><div class="rl"><span>Effective # of bets (1/HHI)</span><b>'+effN.toFixed(1)+' <span style="font-weight:400;color:#8c959f">of '+nPos+'</span></b></div></div>'
@@ -1439,9 +1451,12 @@ function renderSnapshot(stats, betaInfo, opts){
   /* Day % headlines the EQUITY basis (see load()). The holdings basis rides along only when leverage
      makes the two differ — on an unlevered book they're the same number and printing it twice is noise. */
   const dayGross = (stats.dayPnLPGross!=null && Math.abs(stats.dayPnLPGross-dayPnLP)>=0.05) ? stats.dayPnLPGross : null;
-  /* Thresholds are debt-to-equity, so they read as leverage: 25% ≈ 1.25×, 50% ≈ 1.5×. They were
-     30/15 against the gross denominator, which is a far laxer bar than it looked. */
-  const mColor = mPct>50?'#ef4444':mPct>25?'#f97316':'#10b981';
+  /* Every FIGURE on this tile is unchanged (v116/v118: loan ÷ netEq, line = buying_power + loan) —
+     only the colour thresholds moved (2026-08-25). They used to be debt-to-equity 50/25, which
+     painted this book permanently red at a level the owner deliberately runs. Colour now tracks the
+     owner's BANDS on the line: red only over the ceiling, amber over cruise. With no line derivable
+     the tile stays neutral rather than guessing a verdict. */
+  const mColor = mUse>0 ? sdUtilColor(mUtil!=null?mUtil/100:null) : '#10b981';
   /* Unrealized vs YTD — two different questions, and conflating them is what made this tile
      misleading. `totalRet`/`totalPnL` is the unrealized mark on the lots you hold RIGHT NOW
      (cost basis of the current shares), so an account that just redeployed a deposit shows a
@@ -1676,23 +1691,58 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
   const equity=parseFloat(port.total_value||0)||Math.max(1,grossVal+cash);
   const add=(o)=>A.push(o);
   /* Name a paydown candidate the owner could ACTUALLY sell: shares backing a covered call are not
-     available, and pointing at them is how you talk someone into a naked short call. Pick the
-     largest position with enough free shares to matter, and size the suggestion to what's free. */
-  if(cash<-1000){ const mp=Math.abs(cash)/equity*100;
+     available, and pointing at them is how you talk someone into a naked short call. Size the
+     suggestion to what's free, and pick the WEAKEST-MOMENTUM name — not the largest, which is how
+     this alert came to say "sell PLTR" (the biggest position, 9.8/10 and leading) while the plan's
+     own paydown table correctly sourced from the weakest. Two surfaces naming different sells for
+     the same loan is worse than either one alone; both now shed where leadership is thinnest. */
+  /* Margin is judged against the owner's BANDS on the credit line (2026-08-25), not against a
+     leverage cap: below cruise this feed is SILENT, between cruise and the ceiling it is one amber
+     informational line, and only above the ceiling is it a red do-now. Firing red on any loan at all
+     — which is what `cash<-1000` did — trained the owner to ignore the alert on a book whose whole
+     design is to carry one. */
+  const M=sdMargin(equity,grossVal,cash,parseFloat((port.buying_power&&port.buying_power.buying_power)||0));
+  const callTxt=M.callDrop!=null?`Est. margin-call distance ≈ a ${fmt(M.callDrop*100,0)}% uniform drop (25% maintenance).`:'';
+  if(M.debt>0){
     const lk=(typeof sdLockedShares==='function')?sdLockedShares():{};
     const freeOf=p=>Math.max(0,(+p.qty||0)-((lk[p.symbol]&&lk[p.symbol].shares)||0));
-    const t=[...enriched].filter(p=>p.pct>3&&p.px>0&&freeOf(p)*p.px>=250).sort((a,b)=>freeOf(b)*b.px-freeOf(a)*a.px)[0];
-    const need=t?Math.ceil(Math.abs(cash)/t.px):0, canSell=t?Math.floor(freeOf(t)):0;
-    const sh=Math.min(need,canSell);
-    add({pr:0,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'MARGIN',title:`Margin in use — ${fmtD(Math.abs(cash))} (${fmt(mp,1)}% of equity)`,
-      detail:t?`A drawdown is amplified by leverage. Selling ~${sh} sh of ${t.symbol} (~${fmtD(t.px)}) ${sh>=need?'would clear it':`covers ${fmtD(sh*t.px)} of it${lk[t.symbol]?` — the rest of ${t.symbol} is pledged to your covered calls`:`, the largest single position that's free to sell`}`}.`:`Leverage amplifies losses — top priority.`}); }
-  const crits=[...enriched].filter(p=>p.pct>10&&p.px>0).sort((a,b)=>b.pct-a.pct);
-  for(const p of crits.slice(0,2)){ const fpe=parseFloat(ovMap[p.symbol]?.ForwardPE)||null; const vN=fpe&&fpe>60?` Fwd P/E ${fmt(fpe,0)} adds valuation risk.`:''; add({pr:1,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'TRIM',title:`${p.symbol} is ${fmt(p.pct,1)}% of the book`,detail:`Single-name concentration is critical. A 20% drop in ${p.symbol} alone takes the portfolio down ~${fmt(p.pct*0.2,1)}%.${vN}`}); }
+    const overLine=(M.util!=null)?(M.util>SD_UTIL_MAX?M.debt-SD_UTIL_MAX*M.line:0)
+                                 :Math.max(0,grossVal-SD_LEV_FALLBACK*equity);
+    if(overLine>0){
+      const scoreOf=p=>{ const mm=(typeof sdMomentum==='function')?sdMomentum(p.symbol):null;
+                         return (mm&&mm.score!=null)?mm.score:99; };   // unscored never volunteers ahead of a scored laggard
+      const t=[...enriched].filter(p=>p.px>0&&freeOf(p)*p.px>=250)
+        .sort((a,b)=>(scoreOf(a)-scoreOf(b))||(freeOf(b)*b.px-freeOf(a)*a.px))[0];
+      const need=t?Math.ceil(overLine/t.px):0, canSell=t?Math.floor(freeOf(t)):0, sh=Math.min(need,canSell);
+      add({pr:0,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'MARGIN',
+        title:M.util!=null?`Over your ${fmt(SD_UTIL_MAX*100,0)}% ceiling — ${fmtD(M.debt)} is ${fmt(M.util*100,1)}% of your ${fmtD(M.line)} line`
+                          :`Leverage ${fmt(M.lev,2)}× — past the ${fmt(SD_LEV_FALLBACK,2)}× fallback ceiling (no buying-power figure, so the line can't be derived)`,
+        detail:`Raising ≈ ${fmtD(overLine)} brings you back inside the band.${t?` Selling ~${sh} sh of ${t.symbol} (~${fmtD(t.px)}) ${sh>=need?'would do it':`covers ${fmtD(sh*t.px)} of it${lk[t.symbol]?` — the rest of ${t.symbol} is pledged to your covered calls`:`, the largest freely sellable position`}`}.`:''} ${callTxt}`});
+    } else if(M.util!=null&&M.util>SD_UTIL_CRUISE){
+      add({pr:3,icon:'🟠',c:'#f97316',bg:'#ffedd5',fg:'#9a3412',tag:'MARGIN',
+        title:`Loan ${fmtD(M.debt)} — ${fmt(M.util*100,1)}% of your ${fmtD(M.line)} line`,
+        detail:`Above your ${fmt(SD_UTIL_CRUISE*100,0)}% cruise band, below the ${fmt(SD_UTIL_MAX*100,0)}% ceiling — nothing to do, this is the band you chose. ${fmtD(Math.max(0,SD_UTIL_MAX*M.line-M.debt))} of headroom left. ${callTxt}`});
+    }
+  }
+  /* Concentration alone is NOT an alert on this side — a leader at 90% of equity is the mandate
+     working. What is dangerous is size WITHOUT leadership, so this fires only when a big name is
+     also broken or under the momentum floor. (PLTR at 9.0/10 stays silent; IREN at 1.4/10 does not.) */
+  const conc=[...enriched].filter(p=>p.px>0&&equity>0&&p.val>equity*SD_CONC_FLAG).map(p=>{
+      const mm=(typeof sdMomentum==='function')?sdMomentum(p.symbol):null;
+      const br=(typeof sdBroken==='function')?sdBroken(p.symbol,p.avg):null;
+      return {p, mm, br, pctEq:p.val/equity*100,
+              weak:!!((br&&br.broken)||(mm&&mm.score!=null&&mm.score<SD_MIN_SCORE))};
+    }).filter(x=>x.weak).sort((a,b)=>b.pctEq-a.pctEq);
+  const critSet=new Set(conc.map(x=>x.p.symbol));
+  for(const x of conc.slice(0,2)){ const p=x.p; const fpe=parseFloat(ovMap[p.symbol]?.ForwardPE)||null; const vN=fpe&&fpe>60?` Fwd P/E ${fmt(fpe,0)} adds valuation risk.`:'';
+    const wN=(x.br&&x.br.broken)?`its trend is broken (${x.br.why})`:`momentum is ${fmt(x.mm&&x.mm.score!=null?x.mm.score:0,1)}/10, under the ${fmt(SD_MIN_SCORE,1)} floor`;
+    add({pr:1,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'TRIM',title:`${p.symbol} is ${fmt(x.pctEq,1)}% of equity and not leading`,
+      detail:`Size isn't the problem here — size plus weakness is: ${wN}. A 20% drop in ${p.symbol} alone takes the account down ~${fmt(x.pctEq*0.2,1)}%.${vN}`}); }
   const upE=Object.entries(earningsMap||{}).filter(([s,e])=>enriched.find(p=>p.symbol===s&&p.val>=SMALL_THR)&&e.daysAway<=14).sort((a,b)=>a[1].daysAway-b[1].daysAway);
   for(const [s,e] of upE.slice(0,3)){ const p=enriched.find(x=>x.symbol===s); const u=e.daysAway<=3?'IMMINENT':e.daysAway<=7?'THIS WEEK':'UPCOMING'; add({pr:2,icon:'🗓️',c:'#6366f1',bg:'#ede9fe',fg:'#4c1d95',tag:'EARNINGS',title:`${s} reports in ${e.daysAway}d (${e.reportDate}) — ${u}`,detail:`You hold ${fmtD(p?.val||0)} (${fmt(p?.pct||0,1)}%). Decide: hold through, trim, or set a stop.${e.estimate?` Est EPS $${parseFloat(e.estimate).toFixed(2)}.`:''}`}); }
-  const ob=[...enriched].filter(p=>rsiMap[p.symbol]>=72&&p.pct>3&&p.px>0&&!crits.find(c=>c.symbol===p.symbol)).sort((a,b)=>rsiMap[b.symbol]-rsiMap[a.symbol]);
+  const ob=[...enriched].filter(p=>rsiMap[p.symbol]>=72&&p.pct>3&&p.px>0&&!critSet.has(p.symbol)).sort((a,b)=>rsiMap[b.symbol]-rsiMap[a.symbol]);
   for(const p of ob.slice(0,2)){ add({pr:3,icon:'🟠',c:'#f97316',bg:'#ffedd5',fg:'#9a3412',tag:'OVERBOUGHT',title:`${p.symbol} RSI ${fmt(rsiMap[p.symbol],0)} — extended`,detail:`At ${fmt(p.pct,1)}% (${fmtD(p.val)}). Momentum is hot; consider trimming into strength rather than adding.`}); }
-  const win=[...enriched].filter(p=>p.pnlP>40&&p.pct>4&&p.px>0&&!crits.find(c=>c.symbol===p.symbol)&&!(rsiMap[p.symbol]>=72)).sort((a,b)=>b.pnlP-a.pnlP);
+  const win=[...enriched].filter(p=>p.pnlP>40&&p.pct>4&&p.px>0&&!critSet.has(p.symbol)&&!(rsiMap[p.symbol]>=72)).sort((a,b)=>b.pnlP-a.pnlP);
   for(const p of win.slice(0,1)){ const n=Math.max(1,Math.floor(p.qty*0.25)); add({pr:4,icon:'🟢',c:'#10b981',bg:'#d1fae5',fg:'#065f46',tag:'TAKE PROFIT',title:`${p.symbol} up ${fmt(p.pnlP,0)}% from cost`,detail:`Trim 25% (~${n} sh @ ${fmtD(p.px)}) → locks ${fmtD(n*(p.px-p.avg))} gain, raises ${fmtD(n*p.px)} cash.`}); }
   const os=[...enriched].filter(p=>rsiMap[p.symbol]<=30&&p.pct>1&&p.pnlP>-40&&p.px>0).sort((a,b)=>rsiMap[a.symbol]-rsiMap[b.symbol]);
   for(const p of os.slice(0,1)){ add({pr:4,icon:'🟢',c:'#10b981',bg:'#d1fae5',fg:'#065f46',tag:'ADD',title:`${p.symbol} RSI ${fmt(rsiMap[p.symbol],0)} — oversold`,detail:`If the thesis holds, a high-conviction add point. Avg cost ${fmtD(p.avg)}, now ${fmtD(p.px)}.`}); }
@@ -1918,12 +1968,30 @@ const PLAN_MAX_LEVERAGE=1.5; // redeploy may borrow up to this total leverage (e
         side now ranks on MOMENTUM (relative strength vs SPY + trend state +
         proximity to highs), which is the lens that finds leadership.
 
-   Owner-set dials (2026-08-14, "full send"): concentrated, 1.6× ceiling. */
-const SD_SINGLE_CAP=0.50;   // max % of EQUITY in one name
-const SD_CLUSTER_CAP=0.80;  // max % of EQUITY in one correlated cluster
-const SD_MAX_LEVERAGE=1.60; // exposure/equity ceiling — this book may borrow, but not without bound
+   Owner-set dials (2026-08-14, "full send"): concentrated, 1.6× ceiling.
+
+   REVISED 2026-08-25 — BANDS ON THE LINE, NOT A LEVERAGE CAP. The 1.6× ceiling and the
+   50%/80%-of-equity caps were risk dials overriding the mandate they were supposed to serve. On
+   2026-08-25 the plan told the owner to sell PLTR — bought that morning, momentum 9.0/10, trend
+   fully intact — purely because it was 98% of equity and the book sat at 1.79×. Nothing about the
+   POSITION was wrong; a dial was. The owner's instruction: "i dont mind using 50% or even up to
+   70% of my margin. its a gamble account and if i sell at a loss so be it."
+   So margin posture is now measured the way Robinhood shows it to him — utilisation of the CREDIT
+   LINE — with two bands: cruise (deploy freely up to it) and a hard ceiling (the only thing besides
+   a broken thesis that can force a sell). Concentration is REPORTED, never policed: the plan may
+   not generate a single sell order from size alone. Precedent for measure-but-don't-bind is
+   producer/riskweights.mjs `LOOKTHROUGH_ENFORCE=false`. */
+const SD_UTIL_CRUISE=0.50;  // comfort band — the plan deploys margin up to here on its own
+const SD_UTIL_MAX=0.70;     // hard ceiling — ONLY above this does the plan raise cash from margin
+const SD_LEV_FALLBACK=2.0;  // exposure/equity ceiling used ONLY when the line can't be derived (no buying-power figure)
+const SD_MARGIN_APR=0.0575; // ≈ RH Gold rate — DISPLAY ONLY (carry-cost estimate; never fetched, never binds)
+const SD_SINGLE_MAX_X=0.60; // sizing clamp on NEW money: no BUY takes a name past this % of exposure. Not a cap — nothing sells for being large.
+const SD_CONC_FLAG=0.50;    // % of EQUITY at which a name gets a concentration READOUT (advisory) — never an order
 const SD_HOUSE_MONEY=2.0;   // after a name doubles, sell the cost basis and let the rest run free
 const SD_WASH_DAYS=30;      // wash-sale window (calendar days)
+/* The AI/compute complex — named so the concentration readout can state the real macro bet in one
+   line. On this book it is very nearly the whole book, and that is the design, not a defect. */
+const SD_AI_CLUSTERS=['AI Semiconductor','Crypto / AI Compute','Software / SaaS','Big Tech'];
 /* Where the deployable pool goes. Owner-set 2026-08-14. No bond/gold sleeve on
    this side at all — ballast is the agentic account's job, not this one's. */
 const SD_SLEEVES=[
@@ -2026,6 +2094,30 @@ function sdMomentum(sym){
 /* A vol-scaled stop: the same 12% stop is a hair-trigger on a 114%-vol miner and
    slack on a 28%-vol megacap, so the distance scales with the name's own vol. */
 function sdStop(m){ const v=(m&&m.vol)||40; return (m.px)*(1-Math.max(0.12,Math.min(0.35,v/300))); }
+/* Uniform drop that would take the account to a ~25% maintenance call: after a fall of d,
+   equity−LMV·d = 0.25·LMV(1−d) ⇒ d = (equity − 0.25·LMV)/(0.75·LMV). ESTIMATE ONLY — Robinhood's
+   real requirement is per-name and runs well above 25% on volatile stock, so this is the optimistic
+   end of the range, never a promise. */
+function sdCallDrop(equity, lmv){ return (lmv>0&&equity>0)?Math.max(0,(equity-0.25*lmv)/(0.75*lmv)):null; }
+/* Margin posture — ONE derivation, shared by the plan, the do-now feed and the Accounts banner, so
+   they cannot disagree about what "over the ceiling" means. The LINE is the number Robinhood shows
+   the owner ("Margin total") and it is NOT in the payload: it is exactly buying_power + loan (the
+   v118 identity, verified to the penny against the app). `util` = loan ÷ line. When there is no
+   buying-power figure the line is unknowable — util is then null and every caller falls back to the
+   SD_LEV_FALLBACK exposure/equity ceiling AND says so, rather than inventing a denominator. */
+function sdMargin(equity, exposure, cashVal, bpVal){
+  const cash=+cashVal||0, bp=Math.max(0,+bpVal||0);
+  const debt=cash<0?Math.abs(cash):0, cashAvail=Math.max(0,cash);
+  const line=(debt>0&&bp>0)?bp+debt:0;
+  return { debt, cashAvail, bp, line,
+    util: line>0?debt/line:null,
+    brokerRoom: Math.max(0,bp-cashAvail),
+    lev: equity>0?exposure/equity:0,
+    callDrop: sdCallDrop(equity,exposure) };
+}
+/* Colour by BAND, not by the old debt/equity thresholds: on this side leverage inside the owner's
+   band is the mandate working, so amber starts at cruise and red only at the ceiling. */
+function sdUtilColor(util){ return util==null?'#9ca3af':(util>SD_UTIL_MAX?'#ef4444':util>SD_UTIL_CRUISE?'#f97316':'#10b981'); }
 /* THESIS test — the exit rule that replaced `pnlD<0`. Two ways to be broken:
    the intermediate trend has rolled over AND price is DECISIVELY under the long
    anchor, or a hard stop is breached. "Decisively" is vol-scaled: a 114%-vol
@@ -2068,7 +2160,7 @@ function sdWashMap(){
    open $50 calls, because those shares are what makes them COVERED. Sell them and the broker leaves
    you short naked calls on a levered margin book — open-ended risk above the strike, which is exactly
    the failure mode every cap in this mandate exists to prevent. So collateral is reserved out of both
-   exits and cap trims, and the alternative (buy the call back / roll it, THEN sell) is named instead.
+   exits and the margin paydown, and the alternative (buy the call back / roll it, THEN sell) is named instead.
    Mirrors producer/options.mjs `sharesLockedByShortCalls` — keep the two in step. */
 function sdLockedShares(){
   const out={}, O=(window.__DATA&&window.__DATA.options)||{};
@@ -2083,7 +2175,8 @@ function sdLockedShares(){
 }
 /* The plan tier of the Action Center, rebuilt for the SELF-DIRECTED AGGRESSIVE mandate (v113).
    Three steps, same shape as before because the shape was fine — the physics underneath were not:
-     1 · CUT WHAT'S BROKEN — a thesis test, not the sign of P&L. Plus cap trims measured on EQUITY.
+     1 · CUT WHAT'S BROKEN — a thesis test, not the sign of P&L. Plus the margin-ceiling paydown
+         and a concentration READOUT (advisory — concentration never generates an order on this side).
      2 · DEPLOY INTO THE MANDATE — four aggressive sleeves fed by the momentum lens (sdMomentum),
          never by the oversold screen. Wash-blocked and broken names can't reach a buy ticket.
      3 · GUARDRAILS — the standing rulebook for a concentrated, levered, high-beta book.
@@ -2125,52 +2218,73 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const exitProceeds=exits.reduce((s,r)=>s+r.sellVal,0);
   const exitPl=exits.reduce((s,r)=>s+r.sellPl,0);
 
-  /* 1b · Cap trims, on EQUITY. A name that is already exiting is NEVER also trimmed — the old plan
-     put an over-cap loser in both tables and summed both proceeds, overstating the pool by the whole
-     value of those shares. One name, one decision. */
-  const trimNeed={};
-  for(const r of keep){ const over=r.p.val-equity*SD_SINGLE_CAP; if(over>0)trimNeed[r.p.symbol]=over; }
-  /* 1c · Cluster cap, also on equity. Shed from the WEAKEST momentum member first — if the complex
-     has to come down, it should come down where leadership is thinnest. */
-  const clVal={};
-  for(const r of keep){ const c=(typeof clusterFor==='function')?clusterFor(r.p.symbol):null; if(c)clVal[c]=(clVal[c]||0)+r.p.val; }
-  const overClusters=[];
-  for(const [cl,v] of Object.entries(clVal)){
-    let need=v-equity*SD_CLUSTER_CAP; if(need<=0)continue;
-    overClusters.push({cl,pct:v/equity*100,shed:need});
-    const mem=keep.filter(r=>clusterFor(r.p.symbol)===cl)
-                  .sort((a,b)=>(((a.m&&a.m.score)!=null?a.m.score:0)-((b.m&&b.m.score)!=null?b.m.score:0)));
-    for(const r of mem){ if(need<=0)break;
-      const already=trimNeed[r.p.symbol]||0, room=Math.max(0,r.p.val-already);
-      const take=Math.min(room,need); if(take>0){ trimNeed[r.p.symbol]=already+take; need-=take; } }
+  /* 1b · MARGIN-CEILING PAYDOWN — the only forced sell on this side besides a broken thesis, and it
+     fires solely above SD_UTIL_MAX. This replaced the old equity-based name/cluster cap trims: those
+     sold a leader for being large, which on 2026-08-25 meant "sell the PLTR you bought this morning
+     at 9.0/10 momentum" — a dial overruling the mandate. Sourced from the WEAKEST-momentum sellable
+     holdings first: if the book has to come down, it comes down where leadership is thinnest.
+     The figure is INDICATIVE — the line is held constant while sizing the raise, but selling stock
+     reduces collateral, so the real line moves down with it. */
+  const M=sdMargin(equity,exposure,cashVal,bpVal);
+  const utilKnown=M.util!=null;
+  const payNeed=utilKnown ? Math.max(0,M.debt-SD_UTIL_MAX*M.line)
+                          : Math.max(0,exposure-SD_LEV_FALLBACK*equity);   // no line ⇒ fallback ceiling, and the UI says so
+  const soldVal={};                 // symbol → dollars sold in 1b, so the buy legs size against the right book
+  const payRows=[]; let payShort=0;
+  if(payNeed>0){
+    let need=payNeed-exitProceeds;  // proceeds from 1a already net against the loan at the broker
+    const donors=keep.slice().sort((a,b)=>(((a.m&&a.m.score)!=null?a.m.score:0)-((b.m&&b.m.score)!=null?b.m.score:0)));
+    for(const r of donors){ if(need<=0)break;
+      const free=Math.floor(sellableOf(r.p)); if(free<=0||!(r.p.px>0))continue;
+      const want=Math.ceil(need/r.p.px), sh=Math.min(free,want); if(sh<=0)continue;
+      const proceeds=sh*r.p.px, pl=sh*(r.p.px-r.p.avg);
+      payRows.push({r,sh,proceeds,pl,capped:sh<want,lock:locked[r.p.symbol]||null});
+      soldVal[r.p.symbol]=(soldVal[r.p.symbol]||0)+proceeds;
+      need-=proceeds; }
+    payShort=Math.max(0,need);      // collateral reserve (or simply not enough free stock) left some overage standing
   }
-  const trimShort=[];   // over-cap names the collateral reserve stops us trimming all the way down
-  const trims=Object.keys(trimNeed).map(sym=>{
-    const r=keep.find(x=>x.p.symbol===sym); if(!r)return null;
-    const want=Math.floor(trimNeed[sym]/r.p.px);
-    const sh=Math.min(want,Math.floor(sellableOf(r.p)));
-    if(want>sh)trimShort.push({sym,short:(want-sh)*r.p.px,lock:locked[sym]||null});
-    if(sh<=0)return null;
-    const proceeds=sh*r.p.px, pl=sh*(r.p.px-r.p.avg);
-    return {r,sh,proceeds,pl,capped:want>sh};
-  }).filter(Boolean).sort((a,b)=>b.proceeds-a.proceeds);
-  const trimProceeds=trims.reduce((s,t)=>s+t.proceeds,0), trimPl=trims.reduce((s,t)=>s+t.pl,0);
+  const payProceeds=payRows.reduce((s,t)=>s+t.proceeds,0), payPl=payRows.reduce((s,t)=>s+t.pl,0);
 
-  const freed=exitProceeds+trimProceeds;          // ONE pass — no shares counted twice
-  const netTaxable=exitPl+trimPl;
+  /* 1c · CONCENTRATION READOUT — advisory, never an order. Same precedent as
+     producer/riskweights.mjs `LOOKTHROUGH_ENFORCE=false`: measure and disclose, don't bind. On this
+     side the concentration IS the mandate; what the reader needs is the size of the bet stated
+     plainly plus the level that protects it, not a cap that liquidates a winner. */
+  const concRows=keep.filter(r=>equity>0&&r.p.val>equity*SD_CONC_FLAG)
+    .sort((a,b)=>b.p.val-a.p.val)
+    .map(r=>({ r, pctEq:r.p.val/equity*100, hit:(r.p.val/equity*100)*0.2,
+               stop:(r.m&&r.m.px>0)?sdStop(r.m):null,
+               score:(r.m&&r.m.score!=null)?r.m.score:null }));
+  const aiVal=keep.filter(r=>SD_AI_CLUSTERS.indexOf((typeof clusterFor==='function')?clusterFor(r.p.symbol):null)>=0)
+                  .reduce((s,r)=>s+r.p.val,0);
+
+  const freed=exitProceeds+payProceeds;          // ONE pass — no shares counted twice
+  const netTaxable=exitPl+payPl;
   const sellOrders=[
     ...exits.map(r=>({side:'SELL',sym:r.p.symbol,qty:+fmt(r.sellQty,r.sellQty<1?3:2),limit:r.p.px,
       note:'exit — thesis broken'+(r.lock?` (only the ${fmt(r.sellQty,2)} sh not backing your ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'})`:'')})),
-    ...trims.map(t=>({side:'SELL',sym:t.r.p.symbol,qty:t.sh,limit:t.r.p.px,note:'trim to cap — GTC limit, sell into strength'})),
+    ...payRows.map(t=>({side:'SELL',sym:t.r.p.symbol,qty:t.sh,limit:t.r.p.px,note:`raise cash — back under the ${fmt(SD_UTIL_MAX*100,0)}% margin ceiling`})),
   ];
 
   /* ── 2 · The deployable pool ─────────────────────────────────────────────────────────────── */
+  /* The pool borrows only up to the CRUISE band — the level the owner is comfortable running at
+     without thinking about it. Everything between cruise and the ceiling is deliberately NOT
+     spent here; it is offered separately as "press room", because borrowing into the top fifth of
+     the line is a decision he makes, not one the plan makes for him. */
   const payDown=onMargin?Math.min(freed,debt):0;   // proceeds net against the loan at the broker
   const expAfter=exposure-freed;
-  const roomToCap=Math.max(0,SD_MAX_LEVERAGE*equity-expAfter);
-  const brokerRoom=Math.max(0,bpVal-cashAvail);
-  const marginUse=Math.min(roomToCap,brokerRoom);
+  const debtAfter=Math.max(0,M.debt-payDown);
+  const roomToCruise=utilKnown ? Math.max(0,SD_UTIL_CRUISE*M.line-debtAfter)
+                               : Math.max(0,SD_LEV_FALLBACK*equity-expAfter);
+  const marginUse=Math.min(roomToCruise,M.brokerRoom);
   const pool=(freed-payDown)+cashAvail+marginUse;
+  /* Press room: what's left between cruise and the ceiling, net of what the pool already borrows —
+     subtracting `marginUse` is what stops the two figures double-counting the same dollars. */
+  /* Suppressed while a paydown is in flight — offering "you could borrow more" in the same breath as
+     "you are over your ceiling" is incoherent — and floored at PRESS_MIN so a few dollars of residual
+     line doesn't render a whole block. */
+  const PRESS_MIN=100;
+  const pressRaw=utilKnown ? Math.min(Math.max(0,SD_UTIL_MAX*M.line-debtAfter-marginUse),Math.max(0,M.brokerRoom-marginUse)) : 0;
+  const pressRoom=(payNeed>0||pressRaw<PRESS_MIN)?0:pressRaw;
 
   /* ── The momentum lens: rank the mandate's universe, then gate it ────────────────────────── */
   const heldSyms=new Set(held.map(p=>p.symbol));
@@ -2182,17 +2296,18 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     scored.push({...m,tier:tierOf(m)}); }
   scored.sort((a,b)=>b.rank-a.rank);
 
-  // Value of each name / cluster AFTER step 1, so the buy legs respect the caps they just enforced.
-  const afterVal={}; for(const r of rows) afterVal[r.p.symbol]=exitSet.has(r.p.symbol)?0:(r.p.val-(trimNeed[r.p.symbol]||0));
-  const clAfter={}; for(const s of Object.keys(afterVal)){ const c=clusterFor(s); if(c)clAfter[c]=(clAfter[c]||0)+afterVal[s]; }
-  const sellingNow=new Set([...exitSet,...trims.map(t=>t.r.p.symbol)]);
+  // Value of each name AFTER step 1 — the book the buy legs size against.
+  const baseAfter={}; for(const r of rows) baseAfter[r.p.symbol]=exitSet.has(r.p.symbol)?0:Math.max(0,r.p.val-(soldVal[r.p.symbol]||0));
+  const sellingNow=new Set([...exitSet,...payRows.map(t=>t.r.p.symbol)]);
 
   const blocked=[];   // why an otherwise-good name can't be bought right now
+  /* No name/cluster CAP filter here any more (2026-08-25). A leader being large is not a reason to
+     stop buying it on this side — the sizing clamp inside the allocator is the whole restraint, and
+     it shrinks a leg rather than vetoing a name. */
   const eligible=scored.filter(m=>{
     if(sellingNow.has(m.sym)){ return false; }                       // never buy what we're selling
     if(wash[m.sym]){ blocked.push({sym:m.sym,kind:'wash',t:wash[m.sym]}); return false; }
     const br=sdBroken(m.sym,0); if(br.broken){ blocked.push({sym:m.sym,kind:'broken',why:br.why}); return false; }
-    if((afterVal[m.sym]||0)>=equity*SD_SINGLE_CAP){ blocked.push({sym:m.sym,kind:'cap'}); return false; }
     return true;
   });
 
@@ -2209,35 +2324,64 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     if(byTier[k].length){ wOf[k]=S.w+carry; carry=0; } else carry+=S.w; }
 
   /* Allocate each sleeve INVERSE-VOL across its top names: a 114%-vol miner and a 39%-vol megacap
-     do not belong in the book at the same dollar size, even at the same conviction. */
-  const buys=[], sleeveRows=[];
-  for(const S of SD_SLEEVES){
-    if(S.k==='cash')continue;
-    const w=wOf[S.k], cands=byTier[S.k].slice(0,S.n);
-    if(!cands.length){ sleeveRows.push({S,w:0,picks:[],none:true}); continue; }
-    const bucket=pool*w;
-    const inv=cands.map(m=>1/Math.max(15,m.vol||40)), sInv=inv.reduce((a,b)=>a+b,0);
-    const picks=[];
-    cands.forEach((m,i)=>{
-      let d=bucket*(inv[i]/sInv);
-      const capRoom=Math.max(0,equity*SD_SINGLE_CAP-(afterVal[m.sym]||0));
-      const c=clusterFor(m.sym);
-      const clRoom=c?Math.max(0,equity*SD_CLUSTER_CAP-(clAfter[c]||0)):Infinity;
-      const capped=Math.min(d,capRoom,clRoom);
-      const sh=Math.floor(capped/m.px); if(sh<=0){ picks.push({m,sh:0,d:0,noRoom:true}); return; }
-      const dollars=sh*m.px;
-      if(c)clAfter[c]=(clAfter[c]||0)+dollars;
-      afterVal[m.sym]=(afterVal[m.sym]||0)+dollars;
-      const stop=sdStop(m), tgt=m.px+3*(m.px-stop);
-      const er=(typeof azEarn==='function')?azEarn(m.sym):null;
-      const erWarn=(er&&er.days!=null&&er.days>=0&&er.days<=10)?` <span style="color:#b45309">⚠️ earnings in ${er.days===0?'<1d':er.days+'d'}</span>`:'';
-      picks.push({m,sh,d:dollars,stop,tgt,erWarn,cappedBy:capped<d?(capRoom<=clRoom?'name cap':'cluster cap'):null});
-      buys.push({side:'BUY',sym:m.sym,qty:sh,limit:m.px,stop:+stop.toFixed(2),note:S.label+' · momentum '+fmt(m.score,1)+'/10'});
-    });
-    sleeveRows.push({S,w,picks});
+     do not belong in the book at the same dollar size, even at the same conviction. Factored into a
+     pure-ish function because it is run TWICE — once on the cruise pool, once on pool+press room —
+     and the press block renders only the delta. Each run starts from `baseAfter`, never from the
+     other run's state. */
+  function sdAllocate(budget){
+    const after={}; for(const k of Object.keys(baseAfter))after[k]=baseAfter[k];
+    /* Sizing denominator = the book this pass would END with. The clamp exists because an
+       inverse-vol split still piles a sleeve into whichever leader it likes best; it is a rule for
+       NEW money and NEVER a reason to sell. The cluster clamp is gone on purpose — this whole book
+       is one cluster by design, and the sleeves' 4/4/2 structure plus inverse-vol IS the diversifier. */
+    const expTarget=Math.max(1,expAfter+Math.max(0,budget));
+    const buys=[], sleeveRows=[];
+    for(const S of SD_SLEEVES){
+      if(S.k==='cash')continue;
+      const w=wOf[S.k], cands=byTier[S.k].slice(0,S.n);
+      if(!cands.length){ sleeveRows.push({S,w:0,picks:[],none:true}); continue; }
+      const bucket=Math.max(0,budget)*w;
+      const inv=cands.map(m=>1/Math.max(15,m.vol||40)), sInv=inv.reduce((a,b)=>a+b,0)||1;
+      const picks=[];
+      cands.forEach((m,i)=>{
+        const d=bucket*(inv[i]/sInv);
+        const room=Math.max(0,SD_SINGLE_MAX_X*expTarget-(after[m.sym]||0));
+        const sized=Math.min(d,room);
+        const sh=(m.px>0)?Math.floor(sized/m.px):0;
+        if(sh<=0){ picks.push({m,sh:0,d:0,noRoom:true,atMax:room<d}); return; }
+        const dollars=sh*m.px;
+        after[m.sym]=(after[m.sym]||0)+dollars;
+        const stop=sdStop(m), tgt=m.px+3*(m.px-stop);
+        const er=(typeof azEarn==='function')?azEarn(m.sym):null;
+        const erWarn=(er&&er.days!=null&&er.days>=0&&er.days<=10)?` <span style="color:#b45309">⚠️ earnings in ${er.days===0?'<1d':er.days+'d'}</span>`:'';
+        picks.push({m,sh,d:dollars,stop,tgt,erWarn,cappedBy:sized<d?'sizing clamp':null});
+        buys.push({side:'BUY',sym:m.sym,qty:sh,limit:m.px,stop:+stop.toFixed(2),note:S.label+' · momentum '+fmt(m.score,1)+'/10'});
+      });
+      sleeveRows.push({S,w,picks});
+    }
+    const deployed=buys.reduce((s,o)=>s+o.qty*o.limit,0);
+    return {buys,sleeveRows,deployed};
   }
-  const deployed=buys.reduce((s,o)=>s+o.qty*o.limit,0);
+  const A1=sdAllocate(pool);
+  const buys=A1.buys, sleeveRows=A1.sleeveRows, deployed=A1.deployed;
   const undeployed=Math.max(0,pool-deployed);
+
+  /* ── Press room — the owner's call, not the plan's ───────────────────────────────────────── */
+  const A2=pressRoom>0?sdAllocate(pool+pressRoom):null;
+  const pressLegs=A2?A2.buys.map(b=>{ const b1=buys.find(x=>x.sym===b.sym);
+      const q=b.qty-(b1?b1.qty:0); return q>0?{...b,qty:q}:null; }).filter(Boolean):[];
+  const borrowed=pressLegs.reduce((s,o)=>s+o.qty*o.limit,0);
+  const pressCarry=(debtAfter+borrowed)*SD_MARGIN_APR/12;
+  const lmvNow=expAfter+deployed;
+  const callNow=sdCallDrop(equity,lmvNow), callPressed=sdCallDrop(equity,lmvNow+borrowed);
+
+  /* ── Rotation advisory — torque without more margin. Text only; it places nothing. ───────── */
+  const rotFrom=keep.filter(r=>r.m&&r.m.score!=null&&r.m.score<SD_MIN_SCORE&&r.p.px>0
+                               &&sellableOf(r.p)*r.p.px>=250&&!sellingNow.has(r.p.symbol))
+                    .sort((a,b)=>sellableOf(b.p)*b.p.px-sellableOf(a.p)*a.p.px)[0]||null;
+  const rotTo=[...byTier.core,...byTier.sat].filter(m=>m.score>=7).sort((a,b)=>b.rank-a.rank)[0]||null;
+  const rotation=(rotFrom&&rotTo&&rotTo.sym!==rotFrom.p.symbol)
+    ? {from:rotFrom,to:rotTo,dollars:sellableOf(rotFrom.p)*rotFrom.p.px} : null;
   // Badge any buy that is ALSO one of today's vetted picks, so the Top-3 cards can say so.
   try{ const m={}; const pk=new Set(((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).map(p=>p&&p.ticker));
     buys.forEach(o=>{ if(pk.has(o.sym))m[o.sym]={rank:null,shares:o.qty,dollars:o.qty*o.limit}; });
@@ -2250,21 +2394,26 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const top=keep.map(r=>r.p).sort((a,b)=>b.val-a.val), t1=top[0]||null;
   const houseMoney=held.filter(p=>p.avg>0&&p.px>=p.avg*SD_HOUSE_MONEY).sort((a,b)=>b.val-a.val);
   const earnSoon=held.map(p=>({p,e:earningsMap[p.symbol]})).filter(x=>x.e&&x.e.daysAway!=null&&x.e.daysAway<=14).sort((a,b)=>a.e.daysAway-b.e.daysAway);
-  const levTxt=lev>=SD_MAX_LEVERAGE?'<span class="neg">over the ceiling</span>':(lev>1.01?'<span style="color:#b45309">levered</span>':'unlevered');
+  const utilPct=utilKnown?M.util*100:null;
+  const utilCol=sdUtilColor(M.util);
+  const utilSub=utilKnown
+    ? `${fmt(utilPct,1)}% of line · cruise ${fmt(SD_UTIL_CRUISE*100,0)} / max ${fmt(SD_UTIL_MAX*100,0)}`
+    : (M.debt>0?`line unknown · ${fmt(SD_LEV_FALLBACK,2)}× fallback`:'unlevered');
+  const headroom=utilKnown?Math.max(0,SD_UTIL_MAX*M.line-M.debt):null;
 
   const washStrip=Object.keys(wash).length?`<div class="fund-note" style="margin-top:8px">🚫 <b>Wash-sale hold</b> — ${Object.entries(wash).map(([s,w])=>`<b>${s}</b> (loss ${fmtD(w.realized)} in ${[...w.accts].join(' + ')}, clear ${w.clear})`).join(' · ')}. Blocked from every buy ticket below until the window closes. The window is per <i>taxpayer</i>, so a loss in either account blocks a rebuy in both. Not tax advice — check your lots.</div>`:'';
 
   el.innerHTML=`
     <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">
       <b>Mandate: aggressive growth.</b> This book runs concentrated and high-beta on purpose — ballast, bonds and diversification are the <span class="dp-link" onclick="switchTab('portfolio')">agentic account's</span> job, not this one's. So the plan <b>cuts what's broken, not what's red</b>, and redeploys into momentum leadership rather than into the oversold screen.
-      Caps are on <b>equity</b> — ≤${fmt(SD_SINGLE_CAP*100,0)}% per name, ≤${fmt(SD_CLUSTER_CAP*100,0)}% per cluster, ≤${fmt(SD_MAX_LEVERAGE,2)}× leverage.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}
+      <b>Margin is a tool here, not a sin</b>: it is measured as utilisation of your credit line, in two bands — cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% (deploy freely) and a hard ceiling at ${fmt(SD_UTIL_MAX*100,0)}%. The only sells this plan generates are <b>broken theses</b> and, above ${fmt(SD_UTIL_MAX*100,0)}%, a paydown. <b>Concentration is reported, not policed</b> — no name is ever sold here for being large.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% market drop ≈ ${fmtP(-10*beta)}.`:''}
     </div>
 
     <div class="snap-grid" style="margin-bottom:12px">
       <div class="snap"><div class="snap-lbl">Exposure</div><div class="snap-val">${fmtD(exposure)}</div><div class="snap-sub">what the book controls</div></div>
       <div class="snap"><div class="snap-lbl">Your equity</div><div class="snap-val">${fmtD(equity)}</div><div class="snap-sub">what you actually own</div></div>
-      <div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val">${fmt(lev,2)}×</div><div class="snap-sub">${levTxt} · cap ${fmt(SD_MAX_LEVERAGE,2)}×</div></div>
-      <div class="snap"><div class="snap-lbl">${onMargin?'Margin debt':'Idle cash'}</div><div class="snap-val">${fmtD(onMargin?debt:cashAvail)}</div><div class="snap-sub">buying power ${fmtD(bpVal)}</div></div>
+      <div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:${M.debt>0?utilCol:'#10b981'}">${fmt(lev,2)}×</div><div class="snap-sub">${utilSub}</div></div>
+      <div class="snap"><div class="snap-lbl">${onMargin?'Margin debt':'Idle cash'}</div><div class="snap-val">${fmtD(onMargin?debt:cashAvail)}</div><div class="snap-sub">${onMargin?(headroom!=null?`${fmtD(headroom)} room to your ${fmt(SD_UTIL_MAX*100,0)}% line`:`buying power ${fmtD(bpVal)} · line not derivable`):`buying power ${fmtD(bpVal)}`}</div></div>
     </div>
 
     <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
@@ -2272,30 +2421,38 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     ${exits.length
       ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</div></td><td class="tr">${fmt(r.sellQty,r.sellQty<1?3:2)}${r.lock?`<div style="color:#9ca3af;font-size:10px">of ${fmt(r.p.qty,2)}</div>`:''}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.sellVal)}</td><td class="tr"><span class="${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
       : (lockedExits.length
-        /* Same trap as the trims empty state: a broken name whose shares are ALL pledged never
+        /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
            reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
         ? `<div class="tech-empty">${lockedExits.map(r=>r.p.symbol).join(', ')} ${lockedExits.length===1?'reads':'read'} broken, but every share is collateral for your covered calls — see below for how to unwind it. Nothing else here is broken.</div>`
         : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`)}
-    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Cap trims — concentration, measured on equity</div>
-    ${trims.length
-      ? `<table><thead><tr><th>Trim</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${trims.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">${fmt(t.r.p.val/equity*100,0)}%→${fmt(Math.max(0,(t.r.p.val-t.proceeds))/equity*100,0)}%</span></td><td class="tr">${t.sh}${t.capped?`<div style="color:#b45309;font-size:10px">capped — collateral</div>`:''}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(trimProceeds)}</td><td class="tr ${trimPl>=0?'pos':'neg'}">${fmtD(trimPl)}</td></tr></tbody></table>`
-      : (trimShort.length
-        /* An over-cap name whose trim the collateral reserve zeroed out leaves `trims` empty — but
-           saying "no name is above the cap" there would flatly contradict the callout right below,
-           and the reader would be right to trust neither. Name the real situation instead. */
-        ? `<div class="tech-empty">${trimShort.map(t=>t.sym).join(', ')} ${trimShort.length===1?'is':'are'} above the ${fmt(SD_SINGLE_CAP*100,0)}% cap, but every share is pledged to your covered calls — nothing can be trimmed until those are closed or rolled (see below).${t1?` ${t1.symbol} is ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`
-        : `<div class="tech-empty">No name is above ${fmt(SD_SINGLE_CAP*100,0)}% of equity and no cluster above ${fmt(SD_CLUSTER_CAP*100,0)}%.${top[0]?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}% of equity.`:''}</div>`)}
-    ${(lockedExits.length||trimShort.length)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
+    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Margin posture — bands on your credit line</div>
+    ${payRows.length
+      ? `<table><thead><tr><th>Raise cash</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${payRows.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">weakest momentum${t.r.m&&t.r.m.score!=null?` ${fmt(t.r.m.score,1)}/10`:''}</span></td><td class="tr">${t.sh}${t.capped?`<div style="color:#b45309;font-size:10px">capped — collateral</div>`:''}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(payProceeds)}</td><td class="tr ${payPl>=0?'pos':'neg'}">${fmtD(payPl)}</td></tr></tbody></table>
+        <div class="fund-note">${utilKnown?`Your loan is ${fmtD(M.debt)} — <b>${fmt(utilPct,1)}%</b> of your ${fmtD(M.line)} line, over the ${fmt(SD_UTIL_MAX*100,0)}% ceiling by ≈ <b>${fmtD(payNeed)}</b>.`:`No buying-power figure in this snapshot, so the line can't be derived — this falls back to the ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×), which is a cruder test.`} Sourced from the weakest-momentum names you can actually deliver. <b>Indicative</b>: selling stock also shrinks the collateral behind the line, so the line moves with it.${payShort>0?` ${fmtD(payShort)} of the raise can't be reached from freely sellable shares — see below.`:''}</div>`
+      : `<div class="tech-empty">${M.debt>0
+          ? (utilKnown
+            ? `Your loan is <b>${fmtD(M.debt)}</b> = <b>${fmt(utilPct,1)}%</b> of your ${fmtD(M.line)} line — inside your band (cruise ${fmt(SD_UTIL_CRUISE*100,0)} / max ${fmt(SD_UTIL_MAX*100,0)}). <b>No forced selling.</b> ${fmtD(headroom)} of headroom to the ceiling.${M.callDrop!=null?` Est. margin-call distance ≈ a <b>${fmt(M.callDrop*100,0)}%</b> uniform drop from here (25% maintenance — Robinhood's real requirement runs higher on volatile names).`:''}`
+            : `You're carrying ${fmtD(M.debt)}, but this snapshot has no buying-power figure so your credit line can't be derived. Falling back to the ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling: now ${fmt(lev,2)}× — inside it, no forced selling.`)
+          : `No margin drawn. Nothing to pay down.`}</div>`}
+    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Concentration — reported, not policed</div>
+    ${concRows.length||aiVal>0
+      ? `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
+        ${concRows.map(c=>`<div style="padding:5px 0;border-top:1px dashed var(--surface-2)"><b>${c.r.p.symbol}</b> is <b>${fmt(c.pctEq,0)}%</b> of equity <span style="color:#9ca3af">(${fmtD(c.r.p.val)})</span> — a −20% ${c.r.p.symbol} day ≈ <b class="neg">−${fmt(c.hit,1)}%</b> of the account at ${fmt(lev,2)}× leverage.${c.stop?` <span style="color:#9ca3af">The protection is the level, not a trim: vol-scaled stop ≈ ${P(c.stop)} (${fmt((1-c.stop/c.r.m.px)*100,0)}% below).</span>`:''}${c.score!=null?` <span style="color:#9ca3af">Momentum ${fmt(c.score,1)}/10.</span>`:''}</div>`).join('')}
+        ${aiVal>0?`<div style="padding:5px 0;border-top:1px dashed var(--surface-2)"><b>AI / compute complex</b> ${fmtD(aiVal)} — <b>${fmt(equity>0?aiVal/equity*100:0,0)}%</b> of equity, ${fmt(exposure>0?aiVal/exposure*100:0,0)}% of exposure. One macro bet, by design.</div>`:''}
+        <div class="fund-note">Stated, not acted on. Nothing here generates an order: on this side a large position that is still leading is the mandate working, and selling it to satisfy a percentage would be a dial overruling the strategy. Size becomes a <i>problem</i> when the name stops leading — that's what the broken-thesis test above and the vol-scaled stops are for.</div>
+      </div>`
+      : `<div class="tech-empty">No holding is above ${fmt(SD_CONC_FLAG*100,0)}% of equity.${t1?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}%.`:''}</div>`}
+    ${(lockedExits.length||payShort>0)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
       <b>🔒 Held back by your own covered calls.</b>
       ${lockedExits.map(r=>`<div style="padding:3px 0">${r.p.symbol} reads broken, but all ${fmt(r.p.qty,2)} sh back ${r.lock?r.lock.contracts:0} short call${r.lock&&r.lock.contracts===1?'':'s'}${r.lock&&r.lock.legs[0]?` ($${r.lock.legs[0].strike} exp ${r.lock.legs[0].expiration})`:''}. To exit, <b>buy the call${r.lock&&r.lock.contracts===1?'':'s'} back first</b> (or let ${r.lock&&r.lock.contracts===1?'it':'them'} expire), then sell the shares — selling first leaves you short naked calls.</div>`).join('')}
-      ${trimShort.map(t=>`<div style="padding:3px 0">${t.sym} can only be trimmed part-way — ${fmtD(t.short)} of the cap overage sits in shares pledged to ${t.lock?t.lock.contracts:0} short call${t.lock&&t.lock.contracts===1?'':'s'}. Roll or close ${t.lock&&t.lock.contracts===1?'it':'them'} to free the rest; until then the name stays above its cap.</div>`).join('')}
+      ${payShort>0?`<div style="padding:3px 0">${fmtD(payShort)} of the margin paydown can't be raised — the remaining shares are pledged to your short calls${Object.keys(locked).length?` (${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')})`:''}. Roll or close them to free the stock; until then the loan stays above your ${fmt(SD_UTIL_MAX*100,0)}% ceiling.</div>`:''}
     </div>`:''}
-    ${(exits.length||trims.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
-    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,'Cut broken theses and trim to the aggressive-mandate caps in the self-directed account'),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
+    ${(exits.length||payRows.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
+    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,`Cut broken theses${payRows.length?` and raise ≈ ${fmtD(payNeed)} to get back under the ${fmt(SD_UTIL_MAX*100,0)}% margin-line ceiling`:''} in the self-directed account`),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
 
     <div class="col-title" style="margin-top:14px">2 · Deploy into the mandate <span class="card-hint">(≈ ${fmtD(pool)} to put to work)</span></div>
     ${pool<=0
-      ? `<div class="tech-empty">Nothing freed above, no idle cash, and you're at the ${fmt(SD_MAX_LEVERAGE,2)}× leverage ceiling — no room to add until step 1 raises cash or the book grows into the cap.</div>`
+      ? `<div class="tech-empty">Nothing freed above, no idle cash${utilKnown?`, and the loan is ${utilPct>SD_UTIL_MAX*100?`past your ${fmt(SD_UTIL_MAX*100,0)}% ceiling`:`already at your ${fmt(SD_UTIL_CRUISE*100,0)}% cruise band`} (${fmt(utilPct,1)}% of the ${fmtD(M.line)} line)`:`, and no margin room could be derived`} — no new money to deploy until step 1 raises cash or the book grows.${pressRoom>0?` You can still <b>press to the ${fmt(SD_UTIL_MAX*100,0)}% ceiling</b> — see below.`:''}</div>`
       : `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
       ${payDown>0?`<div style="padding:6px 0"><b style="color:#0969da">Loan clears first</b> <span style="color:#9ca3af">≈ ${fmtD(payDown)}</span> — the sells net against your margin balance automatically at the broker (not a separate order); the pool below is then re-borrowed against the larger, less concentrated book. Net effect is a <b>rotation</b>, not a deleverage: ${fmt(lev,2)}× before → ≈ ${fmt(equity>0?(expAfter+deployed)/equity:0,2)}× after.</div>`:''}
       ${sleeveRows.map(({S,w,picks,none})=>{
@@ -2303,24 +2460,39 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
         const hdr=`<div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">${S.label}</b> <span style="color:#9ca3af">≈ ${fmtD(pool*w)} · ${fmt(w*100,0)}%${w>S.w?` (incl. ${fmt((w-S.w)*100,0)}% cascaded up)`:''} — ${S.hint}</span></div>`;
         return hdr+picks.map(x=>{
           const m=x.m, s=x.m.stale?` <span style="color:#b45309" title="price history is ${m.age}d old">· aged data</span>`:'';
-          if(x.noRoom)return `<div style="padding:5px 0 5px 10px;font-size:12px;border-top:1px dashed var(--surface-2)"><b>${m.sym}</b> <span style="color:#9ca3af">(no size — already at your name/cluster cap)</span></div>`;
+          if(x.noRoom)return `<div style="padding:5px 0 5px 10px;font-size:12px;border-top:1px dashed var(--surface-2)"><b>${m.sym}</b> <span style="color:#9ca3af">(no size — ${x.atMax?`already at the ${fmt(SD_SINGLE_MAX_X*100,0)}%-of-book sizing clamp`:'the sleeve slice rounds to under a share'})</span></div>`;
           return `<div style="padding:5px 0 5px 10px;font-size:12px;line-height:1.45;border-top:1px dashed var(--surface-2)"><b>buy ~${x.sh} sh ${m.sym}</b> <span style="color:#9ca3af">≈ ${fmtD(x.d)}</span> · momentum <b>${fmt(m.score,1)}</b>/10${s} — limit ${P(m.px)}, stop ${P(x.stop)} <span style="color:#9ca3af">(${fmt((1-x.stop/m.px)*100,0)}%, vol-scaled)</span>, target ${P(x.tgt)}<div style="color:#9ca3af;font-size:11px;margin-top:2px">${m.rs6!=null?`6m vs SPY ${m.rs6>=0?'+':''}${fmt(m.rs6,1)}pp · `:''}${m.rs3!=null?`3m ${m.rs3>=0?'+':''}${fmt(m.rs3,1)}pp · `:''}${fmt(Math.abs(m.fromHi),0)}% off high · vol ${fmt(m.vol,0)}%${x.cappedBy?` · sized down by the ${x.cappedBy}`:''}</div>${x.erWarn}</div>`;
         }).join('');
       }).join('')}
       <div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">${SD_SLEEVES.find(s=>s.k==='cash').label}</b> <span style="color:#9ca3af">≈ ${fmtD(undeployed)} — ${SD_SLEEVES.find(s=>s.k==='cash').hint}</span></div>
-      <div class="fund-note">Ranked by <b>momentum</b>, not oversold-ness: 6- and 3-month relative strength vs SPY, trend state (price vs 50-DMA, 50 vs 100-DMA and its slope), and proximity to the trailing high. Sleeve dollars are split <b>inverse to volatility</b>, so a 100%-vol name doesn't take the same size as a 30%-vol one, then clamped by the name and cluster caps.${marginUse>0?` The pool borrows <b>${fmtD(marginUse)}</b> to reach your ${fmt(SD_MAX_LEVERAGE,2)}× ceiling — that is leverage, and a 10% drop hits a ${fmt(SD_MAX_LEVERAGE,2)}× book ~${fmt(SD_MAX_LEVERAGE*10,0)}%.`:''} Indicative — re-check the live mark and buying power before each fill.</div>
+      <div class="fund-note">Ranked by <b>momentum</b>, not oversold-ness: 6- and 3-month relative strength vs SPY, trend state (price vs 50-DMA, 50 vs 100-DMA and its slope), and proximity to the trailing high. Sleeve dollars are split <b>inverse to volatility</b>, so a 100%-vol name doesn't take the same size as a 30%-vol one, then clamped so no single buy takes a name past ${fmt(SD_SINGLE_MAX_X*100,0)}% of the book — a sizing rule for new money, not a cap that ever sells anything.${marginUse>0?` The pool borrows <b>${fmtD(marginUse)}</b> to reach your ${fmt(SD_UTIL_CRUISE*100,0)}% cruise band${utilKnown?` (loan ${fmtD(debtAfter)} → ${fmtD(debtAfter+marginUse)} of the ${fmtD(M.line)} line)`:''} — that is leverage, and a 10% market drop hits a ${fmt(equity>0?(expAfter+deployed)/equity:0,2)}× book about ${fmt((equity>0?(expAfter+deployed)/equity:1)*10,0)}%.`:''} Indicative — re-check the live mark and buying power before each fill.</div>
       ${buys.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buys,'Deploy into the self-directed aggressive mandate — momentum-ranked core / satellite / asymmetric sleeves'),'🤖 Build '+(buys.length>1?('these '+buys.length+' buys'):'this buy')+' with Claude')}</div>`:''}
     </div>`}
+    ${pressRoom>0?`<div style="margin-top:12px;border-top:1px solid var(--surface-2);padding-top:10px">
+      <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin-bottom:6px">Press room — your call <span style="font-weight:600;opacity:.7">(optional · borrows to the ${fmt(SD_UTIL_MAX*100,0)}% ceiling)</span></div>
+      <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
+        <div style="padding:2px 0 6px">Beyond the cruise pool above there is ≈ <b>${fmtD(pressRoom)}</b> of line left before your ${fmt(SD_UTIL_MAX*100,0)}% ceiling. The plan does <b>not</b> spend it — pressing into the top of the line is a decision you make${pressLegs.length?'. If you did, the same sleeves would add:':', and today there is nothing to press into.'}</div>
+        ${pressLegs.length
+          ? pressLegs.map(o=>`<div style="padding:4px 0 4px 10px;font-size:12px;border-top:1px dashed var(--surface-2)"><b>+${o.qty} sh ${o.sym}</b> <span style="color:#9ca3af">≈ ${fmtD(o.qty*o.limit)}</span> — limit ${P(o.limit)}, stop ${P(o.stop)} <span style="color:#9ca3af">· ${o.note}</span></div>`).join('')
+          /* Room with nothing to buy is still worth saying — the alternative is silence about
+             several thousand dollars of line, which reads as though it isn't there. */
+          : `<div style="padding:4px 0 4px 10px;font-size:12px;border-top:1px dashed var(--surface-2);color:#9ca3af">Nothing clears the ${fmt(SD_MIN_SCORE,1)}/10 momentum floor with current data, so the room stays unused. Borrowing it into a name that failed the screen would be the worst of both.</div>`}
+        <div style="padding:6px 0 0"><b>The cost of pressing:</b> ≈ <b>${fmtD(pressLegs.length?borrowed:pressRoom)}</b> more borrowed → carry ≈ <b>${fmtD((debtAfter+(pressLegs.length?borrowed:pressRoom))*SD_MARGIN_APR/12)}/month</b> <span style="color:#9ca3af">(at ~${fmt(SD_MARGIN_APR*100,2)}% APR, approximate — the rate is not fetched)</span>${utilKnown?`, and utilisation ${fmt((debtAfter+marginUse)/M.line*100,1)}% → <b style="color:${sdUtilColor((debtAfter+marginUse+(pressLegs.length?borrowed:pressRoom))/M.line)}">${fmt((debtAfter+marginUse+(pressLegs.length?borrowed:pressRoom))/M.line*100,1)}%</b> of the line`:''}.</div>
+        ${(callNow!=null&&callPressed!=null&&pressLegs.length)?`<div style="padding:4px 0"><b>Margin-call distance:</b> a <b>${fmt(callNow*100,0)}%</b> uniform drop today → <b class="neg">${fmt(callPressed*100,0)}%</b> pressed <span style="color:#9ca3af">(est., 25% maintenance — Robinhood's real requirement runs higher on volatile names, so treat both as the optimistic end)</span>.</div>`:(callNow!=null?`<div style="padding:4px 0"><b>Margin-call distance:</b> a <b>${fmt(callNow*100,0)}%</b> uniform drop from here <span style="color:#9ca3af">(est., 25% maintenance — Robinhood's real requirement runs higher on volatile names)</span>.</div>`:'')}
+        <div class="fund-note">Advisory only — there is no order button here on purpose. The buy button above covers the cruise pool; anything past it you place deliberately.</div>
+      </div>
+    </div>`:''}
+    ${rotation?`<div class="fund-note" style="margin-top:8px">🔄 <b>Rotation — torque without more margin.</b> ≈ ${fmtD(rotation.dollars)} of <b>${rotation.from.p.symbol}</b> <span style="color:#9ca3af">(momentum ${fmt(rotation.from.m.score,1)}/10)</span> → <b>${rotation.to.sym}</b> <span style="color:#9ca3af">(${fmt(rotation.to.score,1)}/10)</span> moves the same dollars into leadership without borrowing a cent. Free (unpledged) shares only. Not an order — nothing below places it.</div>`:''}
     ${washStrip}
-    ${blocked.length?`<div class="fund-note" style="margin-top:8px">⏸ <b>Held back this pass</b> — ${blocked.map(b=>b.kind==='wash'?`<b>${b.sym}</b> wash-sale to ${b.t.clear}`:(b.kind==='broken'?`<b>${b.sym}</b> broken trend`:`<b>${b.sym}</b> at its cap`)).join(' · ')}.</div>`:''}
+    ${blocked.length?`<div class="fund-note" style="margin-top:8px">⏸ <b>Held back this pass</b> — ${blocked.map(b=>b.kind==='wash'?`<b>${b.sym}</b> wash-sale to ${b.t.clear}`:`<b>${b.sym}</b> broken trend`).join(' · ')}.</div>`:''}
     ${belowBar.length?`<div class="cov-note" style="margin-top:6px">📊 Under the ${fmt(SD_MIN_SCORE,1)}/10 momentum floor, so not bought — ${belowBar.slice(0,10).sort((a,b)=>b.score-a.score).map(m=>`${m.sym} <span style="opacity:.7">${fmt(m.score,1)}</span>`).join(', ')}${belowBar.length>10?`, +${belowBar.length-10} more`:''}. They stay on the bench and come back the moment they lead again.</div>`:''}
     ${abstained.length?`<div class="cov-note" style="margin-top:6px">📉 ${abstained.length} bench name${abstained.length===1?'':'s'} sat this one out for want of current data — ${abstained.slice(0,8).map(a=>`${a.sym} <span style="opacity:.7">(${a.reason})</span>`).join(', ')}${abstained.length>8?`, +${abstained.length-8} more`:''}. The producer only refreshes daily bars for names in its current fetch rotation, so a name that rotates out goes stale; scoring it anyway would rank a months-old series as if it were today's. They return automatically once the producer quotes them again.</div>`:''}
 
     <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(what keeps an aggressive book alive)</span></div>
     <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
-      <div style="padding:4px 0">▸ Leverage stays under <b>${fmt(SD_MAX_LEVERAGE,2)}×</b> <span style="color:#9ca3af">(now ${fmt(lev,2)}×${lev>=SD_MAX_LEVERAGE?' — over, step 1 brings it back':''})</span>. Leverage on top of high beta is what actually ends accounts like this one.</div>
+      <div style="padding:4px 0">▸ <b>Margin runs in bands on the line</b> — cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% (the plan deploys there on its own), hard ceiling ${fmt(SD_UTIL_MAX*100,0)}% (the only level that forces a sell). ${utilKnown?`<span style="color:#9ca3af">Now ${fmt(utilPct,1)}% of a ${fmtD(M.line)} line${utilPct>SD_UTIL_MAX*100?' — over, step 1 brings it back':(utilPct>SD_UTIL_CRUISE*100?' — inside the band, nothing to do':'')}.</span>`:(M.debt>0?`<span style="color:#9ca3af">No buying-power figure this snapshot, so the line can't be derived — falling back to a ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×).</span>`:'<span style="color:#9ca3af">No margin drawn.</span>')}${M.callDrop!=null?` <span style="color:#9ca3af">Est. margin-call distance ≈ ${fmt(M.callDrop*100,0)}% (25% maintenance).</span>`:''}</div>
       <div style="padding:4px 0">▸ <b>Never sell covered-call collateral.</b> Shares backing a short call are what make it covered; sell them and the call goes naked, with open-ended risk above the strike. Buy the call back or roll it first, then sell the stock${Object.keys(locked).length?` <span style="color:#9ca3af">(now ${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')} pledged)</span>`:''}.</div>
-      <div style="padding:4px 0">▸ One name ≤ <b>${fmt(SD_SINGLE_CAP*100,0)}%</b> of equity, one cluster ≤ <b>${fmt(SD_CLUSTER_CAP*100,0)}%</b>${t1||overClusters.length?` <span style="color:#9ca3af">(now ${t1?`${t1.symbol} ${fmt(t1.val/equity*100,1)}%`:''}${t1&&overClusters.length?' · ':''}${overClusters.length?`${overClusters[0].cl} ${fmt(overClusters[0].pct,0)}%`:''})</span>`:''}.</div>
+      <div style="padding:4px 0">▸ <b>Concentration is measured, not capped.</b> A leader that is 90% of equity and still leading is this mandate working; the protection is the <b>vol-scaled stop</b> under it, not a percentage that forces a sale. Nothing on this side sells a name for being large — only a broken thesis or the ${fmt(SD_UTIL_MAX*100,0)}% margin ceiling does.${t1?` <span style="color:#9ca3af">Largest now ${t1.symbol} ${fmt(t1.val/equity*100,1)}% of equity${aiVal>0?` · AI/compute complex ${fmt(equity>0?aiVal/equity*100:0,0)}%`:''}.</span>`:''}</div>
       <div style="padding:4px 0">▸ Every satellite carries a <b>vol-scaled stop</b> (≈12–35% below entry). Concentrated and stopless is the combination that doesn't recover.</div>
       <div style="padding:4px 0">▸ <b>House money</b> — once a name doubles, sell the original cost basis and let the rest run free. ${houseMoney.length?`<span style="color:#9ca3af">${houseMoney[0].symbol} is at ${fmt(houseMoney[0].px/houseMoney[0].avg,1)}× cost — eligible now.</span>`:'<span style="color:#9ca3af">Nothing at 2× cost yet.</span>'}</div>
       <div style="padding:4px 0">▸ <b>Never add to a broken trend.</b> Down is not the same as cheap — averaging into a rolled-over name is how a satellite becomes the whole book.</div>
@@ -2516,7 +2688,7 @@ const AG_EARN_BLACKOUT_D=7,      // EARNINGS_BLACKOUT_DAYS — no NEW money ≤7
       AG_WASH_WINDOW_D=30,       // WASH_WINDOW_DAYS — IRS wash-sale window
       AG_MIN_HOLD_D=14,          // MIN_HOLD_DAYS
       AG_REENTRY_D=14,           // REENTRY_COOLDOWN_DAYS
-      AG_AUTO_CAP=1000,          // AUTO_TURNOVER_CAP — unattended-execution ceiling per ticket
+      AG_AUTO_CAP=10000,         // AUTO_TURNOVER_CAP — unattended-execution ceiling per ticket (owner raised $1,000 → $10,000, 2026-08-25)
       AG_MIN_BUY=25,             // MIN_BUY — dust floor
       AG_IDLE_DEPLOY_D=10,       // CASH_IDLE_DEPLOY_DAYS — idle-cash deadline
       AG_IDLE_TRANCHE_PCT=34,    // CASH_IDLE_TRANCHE_PCT
@@ -3619,7 +3791,16 @@ async function load(){
     const smalls=enriched.filter(p=>p.val>0&&p.val<SMALL_THR);
 
     app.innerHTML=`
-      ${cashVal<0?`<div class="margin-banner"><div style="font-size:20px">⚠️</div><div><div class="mb-text">Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))} against ${fmtD(netEq)} of your own money — ${fmt(leverage,2)}× leverage. Amplifies both gains and losses — see Risk below.</div></div></div>`:''}
+      ${cashVal<0?(()=>{
+        /* Banded, not alarmed (2026-08-25). Every figure below is UNCHANGED — the v116/v118 bases
+           (loan ÷ netEq, line = buying_power + loan) are exactly as they were; only the styling and
+           the verdict move. A loan inside the owner's cruise/ceiling band gets the calm variant,
+           because red-on-normal is how a banner stops being read. */
+        const _M=sdMargin(netEq,equityVal,cashVal,bpVal);
+        const over=(_M.util!=null)?_M.util>SD_UTIL_MAX:(netEq>0&&equityVal/netEq>SD_LEV_FALLBACK);
+        const lineTxt=(_M.util!=null)?` · ${fmt(_M.util*100,1)}% of your ${fmtD(_M.line)} line`:'';
+        return `<div class="margin-banner${over?'':' calm'}"><div style="font-size:20px">${over?'⚠️':'📊'}</div><div><div class="mb-text">${over?`Over your ${fmt(SD_UTIL_MAX*100,0)}% ceiling: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)`:`Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)`}</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))} against ${fmtD(netEq)} of your own money — ${fmt(leverage,2)}× leverage${lineTxt}. ${over?`Above the ${fmt(SD_UTIL_MAX*100,0)}% line ceiling you set — the Plan tab sizes the paydown.`:(_M.util!=null?`Inside your band (cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% · max ${fmt(SD_UTIL_MAX*100,0)}%). Amplifies both gains and losses — see Risk below.`:`No buying-power figure this snapshot, so your credit line — and the band — can't be derived; this falls back to a ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity check. Amplifies both gains and losses — see Risk below.`)}</div></div></div>`;
+      })():''}
       <div class="header"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="h-label">Total Portfolio Value</div><div class="h-value">${fmtD(totalVal)}</div><div class="h-tag">Robinhood · Individual Margin</div></div><button id="kyle-btn" class="kyle-btn" onclick="pushToKyle()">📲 Push to Kyle</button></div></div>
       <div class="card" data-sec="snapshot"><div id="snap-content"></div></div>
       <div class="card" data-sec="holdings"><div class="card-title collapsible" data-toggle="b-pos" onclick="toggleSection('b-pos')"><span>📊 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-pos"><div id="pos-table"></div></div></div>
@@ -4185,13 +4366,18 @@ window.switchTab=switchTab;
       <li><span class="hk">Do-now</span> — the ranked live-signal feed (margin, concentration, earnings, overbought/oversold, correlated cluster, retail buzz).</li>
       <li><span class="hk">The-plan</span> — a structured 3-step plan.</li>
     </ul>
+    <p>This is the <b>self-directed ••••0741</b> book, and it runs the <b>aggressive</b> mandate — concentrated, high-beta, levered on purpose. Ballast and diversification are the agentic account's job. The plan reflects that: it cuts what's <i>broken</i>, not what's red.</p>
     <div class="hsub">The plan steps</div>
     <ul>
-      <li><b>Step 1 — Raise cash:</b> harvest losers and <b>trim the excess</b> of any name over the single-name cap (25%). Includes a tax-netting line (gains from trims offset by harvested losses → net taxable).</li>
-      <li><b>Step 2 — Redeploy:</b> pay down margin first if levered, then split the pool into ballast / defensive / high-conviction adds. The high-conviction sleeve flows into the Picks below — a diversified <i>set</i>, each sized risk-based (1% of book at its stop).</li>
-      <li><b>Step 3 — Guardrails:</b> standing rules — single-name cap, cluster cap (40%), trim above RSI 75, fragile-leg trailing stop, reassess into earnings.</li>
+      <li><b>Step 1 — Cut what's broken:</b> exits are a <b>thesis test</b> (50-DMA rolled under the 100-DMA with price decisively below it, or a −25% stop breach), never the sign of P&amp;L. Then <b>margin posture</b>, then a concentration <i>readout</i>. Includes a tax-netting line.</li>
+      <li><b>Step 2 — Deploy into the mandate:</b> the pool is split across momentum-ranked core / high-beta satellite / asymmetric sleeves, inverse-vol within each. A separate <b>press room</b> block shows what pressing to the ceiling would buy, what it costs to carry, and what it does to your margin-call distance — advisory, with no order button.</li>
+      <li><b>Step 3 — Guardrails:</b> the margin bands, never sell covered-call collateral, vol-scaled stops, house money at 2× cost, never add to a broken trend, size for earnings gaps.</li>
     </ul>
-    <p>Each step has a <b>🤖 hand-off button</b> that builds the order prompt. It's a framework, not advice.</p>` },
+    <div class="hsub">Margin: bands, not a cap</div>
+    <p>Margin is measured as <b>utilisation of your credit line</b> — the number Robinhood shows you (line = buying power + loan). Two bands: <b>cruise ${fmt(SD_UTIL_CRUISE*100,0)}%</b>, which the plan will deploy up to on its own, and a hard <b>ceiling ${fmt(SD_UTIL_MAX*100,0)}%</b>, the only level that makes the plan raise cash (from the weakest-momentum names you can actually deliver). Below cruise there is no alert at all.</p>
+    <div class="hsub">Concentration is reported, not policed</div>
+    <p>There is <b>no name cap and no cluster cap</b> on this side any more. A leader that is 90% of equity and still leading is the mandate working; selling it to satisfy a percentage is a risk dial overruling the strategy. What you get instead is the size of the bet stated plainly, the account-level impact of a −20% day in it, and the vol-scaled stop that is the actual protection. The <b>TRIM</b> alert fires only when a big position is <i>also</i> weak — size plus weakness, not size.</p>
+    <p>The buy and sell steps each have a <b>🤖 hand-off button</b> that builds the order prompt. It's a framework, not advice.</p>` },
   'top picks today': { tag:'Plan', t:'Top 3 Picks Today', h:`
     <p>The three highest-conviction ideas from today's scan, each with a full setup: thesis, entry zone, stop, and profit targets. These are the names the plan's high-conviction sleeve deploys into.</p>
     <div class="hsub">What each card gives you</div>

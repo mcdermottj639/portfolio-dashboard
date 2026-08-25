@@ -45,7 +45,13 @@ const equityVal = POS.reduce((s, p) => s + p.px * (+p.quantity), 0);
    meant the margin banner / Margin Used tile were never exercised in local preview. That is how the
    v116 "37.7% of equity" bug (loan ÷ gross exposure) survived. `PF_SAMPLE_MARGIN=1` renders a levered
    book so those surfaces can be eyeballed. */
-const cash = process.env.PF_SAMPLE_MARGIN ? -11282.65 : 1200.0;
+/* PF_SAMPLE_MARGIN=1 reproduces the real account's screen (loan 11,282.65 / bp 16,976.33 => a
+   28,258.98 line at 39.9% utilisation) — BELOW the owner's 50% cruise band, so it exercises the calm
+   banner and the press-room block. PF_SAMPLE_MARGIN=hot pushes the same line to ~75% utilisation
+   (21,194.24 / 7,064.74) so the over-the-ceiling red path — banner, MARGIN do-now, the step-1
+   paydown table — is reachable in preview too. Preview-only; neither figure reaches a real run. */
+const MARGIN_HOT = process.env.PF_SAMPLE_MARGIN === 'hot';
+const cash = MARGIN_HOT ? -21194.24 : (process.env.PF_SAMPLE_MARGIN ? -11282.65 : 1200.0);
 const totalVal = equityVal + cash;
 
 // --- build a deterministic ~120-bar daily series from Jan 1, trending to current px ---
@@ -95,7 +101,7 @@ recorded[makeKey(RH + 'get_portfolio', { account_number: 'ACCT' })] = {
     /* In margin mode use the real account's buying power, so the fixture reproduces the reported
        screen exactly: margin total = buying_power + loan = 16,976.33 + 11,282.65 = 28,258.98, which
        is the figure the Leverage tile's "% of line" divides by. */
-    buying_power: { buying_power: (process.env.PF_SAMPLE_MARGIN ? 16976.33 : Math.max(0, totalVal * 2 - equityVal)).toFixed(2) },
+    buying_power: { buying_power: (MARGIN_HOT ? 7064.74 : (process.env.PF_SAMPLE_MARGIN ? 16976.33 : Math.max(0, totalVal * 2 - equityVal))).toFixed(2) },
   } },
 };
 
