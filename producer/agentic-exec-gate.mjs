@@ -9,7 +9,7 @@
 //   exit 0  → actionable, mode on stdout:
 //     EXEC_TRADE   — an active ticket says place its sells + buys today (confirmed, or auto tier)
 //     EXEC_BUYS    — an active ticket's carried buy leg is due (sells placed) — place those buys
-//     EXEC_AUTO    — fresh plan within the auto tier (turnover ≤ $500) — create ticket + execute now
+//     EXEC_AUTO    — fresh plan within the auto tier (turnover ≤ AUTO_TURNOVER_CAP) — create ticket + execute now
 //     EXEC_PROPOSE — fresh plan above the auto tier — write ticket (proposed) + push for one-tap confirm
 //   exit 30 → EXEC_IDLE (nothing actionable / market closed / kill switch / stale or missing snapshot)
 //

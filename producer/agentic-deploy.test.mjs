@@ -132,7 +132,25 @@ ok('buys target the underweight names in one leg', !!find(fullBook.buys, 'AAPL')
 ok('no T+1 leg is emitted any more', fullBook.buysT1.length === 0);
 ok('buys are flagged as leaning on sale proceeds', fullBook.buysNeedProceeds === true);
 ok('turnover sums sells + buys', fullBook.turnover > 1200);
-ok('an over-cap ticket is NOT auto-eligible', fullBook.autoEligible === false && fullBook.turnover > AUTO_TURNOVER_CAP && fullBook.autoCap === AUTO_TURNOVER_CAP);
+// 2026-08-25 (owner): the auto tier is $10k, so a full-book rebalance on this ~$1.5k fixture is now
+// INSIDE it — the confirm tier survives only for tickets larger than the cap. The over-cap mechanism
+// itself is pinned separately below via the opts.autoCap override.
+ok('a full-book rebalance sits inside the $10k auto tier', fullBook.autoEligible === true && fullBook.turnover <= AUTO_TURNOVER_CAP && fullBook.autoCap === AUTO_TURNOVER_CAP);
+const overCap = planDeployment({
+  target: { driftTriggerPp: 5, names: [
+    { ticker: 'SPY',  weightPct: 40, entry: '740-750', stop: 690, target: 815 },
+    { ticker: 'AAPL', weightPct: 40, entry: '304-312', stop: 284, target: 340 },
+    { ticker: 'UNH',  weightPct: 20, entry: '398-412', stop: 366, target: 465 },
+  ]},
+  positions: [
+    { symbol: 'SPY',  qty: 1, avgCost: 700 },
+    { symbol: 'MSFT', qty: 2, avgCost: 400 },
+    { symbol: 'GE',   qty: 1, avgCost: 380 },
+  ],
+  cash: 50, quotes: { SPY: 750, AAPL: 309, UNH: 403, MSFT: 450, GE: 340 },
+  opts: { asOf: '2026-08-07', autoCap: 500 },
+});
+ok('a ticket over the cap is NOT auto-eligible (mechanism)', overCap.autoEligible === false && overCap.turnover > 500 && overCap.autoCap === 500);
 ok('summary mentions the exits and the tax net', /exit/.test(fullBook.summary) && /ST tax/.test(fullBook.summary));
 
 // Auto tier: small clean ticket within AUTO_TURNOVER_CAP is auto-eligible.
