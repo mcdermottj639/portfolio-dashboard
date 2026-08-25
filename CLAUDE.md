@@ -486,6 +486,19 @@ Three hazards this table exists to prevent:
   had never held three of those names — and the phantom NVDA loss wash-sale **blocked a real buy** for 30
   days. `get_pnl_trade_history` reports actual closing trades and can't drift like that; it is now the
   source (v98), the inference is Railway-only fallback, and the two **never mix** (`lossSource`).
+- **SOCIAL IS SELF-DIRECTED ONLY — and the leak path is the UNIVERSE, not the scoring (2026-08-25).** Retail
+  buzz is **20% of the Daily Picks composite** (`picks.mjs`: `tech .33 + fund .28 + rr .19 + social .20`),
+  which is correct — that engine feeds the ••••0741 swing book, where crowd attention is a real 4-8 week
+  signal. It is **absent from the agentic model entirely**: the sleeves are momentum .22 / quality .24 /
+  growth .22 / catalyst .14 / valuation .18 (+ flow at weight 0), and there is no reference to
+  social/ApeWisdom/buzz anywhere in `agentic-research.js`, `finalize-target`, `riskweights`,
+  `agentic-deploy`, `agentic-exec-gate`, `agentic-ledger` or `flow.mjs`. **The subtle part:** it never
+  needed a sleeve to get in. The weekly Routine used to seed its universe from "the current top Daily
+  Picks" — a socially-ranked list — so retail attention would have decided which names the agentic screen
+  was *shown*, which is the same lever as scoring them (the v102 "a screen can only buy what it is shown"
+  lesson, pointed the wrong way). PRODUCER.md step 7.2 and the Routine prompt now both say holdings ∪
+  research bench and nothing else. **When auditing whether a signal is "in" a model, check what feeds the
+  universe, not just what carries weight.**
 - **The research screen could not be judged, because it only ever saw one kind of name (2026-08-25).** Six
   committed research cycles selected **14 distinct names in seven weeks**; seven appeared in ≥5 of 6 targets
   (SPY/GOOGL/NVDA/JPM in all six). The tempting read — "it keeps re-confirming these, so they must be good" —

@@ -391,9 +391,20 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    2. If DUE: assemble a fresh candidate **universe**. **Start from the research bench, NOT `leaders.mjs`:**
       `node producer/research-universe.mjs --symbols --max 60` prints a comma-separated ticker list
       (sector-balanced across all 20 sectors; `--max all` for the full 137, `--stats` to see the split).
-      Union that with the day's oversold scan finalists (`scan.json` via `picks.mjs`) and the current
-      ••••3900 holdings (`agentic-positions.json`), then fetch live quotes/fundamentals for
-      sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
+      Union that with the current ••••3900 holdings (`agentic-positions.json`) — **and nothing else** —
+      then fetch live quotes/fundamentals for sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
+      **NO SOCIAL, and that means the Daily Picks too (owner decision, 2026-08-25).** The picks composite
+      is **20% social** (retail buzz via ApeWisdom — `picks.mjs`, `tech .33 + fund .28 + rr .19 + social .20`)
+      and it serves the SELF-DIRECTED swing book, where retail attention is a legitimate 4-8 week signal.
+      It has no place in the guarded, churn-governed ••••3900 model — **not in the scoring, and not in
+      deciding which names the screen is even shown**, since a screen can only pick what it sees. The
+      agentic sleeves are momentum .22 / quality .24 / growth .22 / catalyst .14 / valuation .18 (+ flow,
+      weight 0); none of them reads social, and seeding the universe from a social-ranked list would put it
+      back in through the side door.
+      **Sector labels come from `research-universe.mjs`, NOT Robinhood's.** RH files REITs (O/AMT/PLD) under
+      "Finance" — which would drop them into the same 2-slot budget as JPM/V/MA — and files GE under
+      "Electronic Technology" when it is aerospace. `sec` exists to be a *co-movement* budget for the
+      max-2-per-sector finalist rule, so the module's labels are the right ones for that job.
       **Why this changed (2026-08-25):** the bench used to be `leaders.mjs` — 19 names, 16 of them megacap
       or large-growth. Six research cycles over seven weeks selected **14 distinct names total**, seven of
       them in five-or-more of six targets. The screen wasn't re-confirming convictions, it had almost
