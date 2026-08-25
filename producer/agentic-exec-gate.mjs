@@ -55,6 +55,17 @@ function readParked() {
   } catch { return null; }
 }
 import { planHash, nextAction, MIN_TURNOVER, TICKET_STALE_DAYS } from './agentic-pending.mjs';
+
+// The canonical committed target (CLAUDE.md) — used by act() for the v121 drivers stamp and by step 2
+// to override the snapshot's cached copy. Missing/unreadable → null.
+function readTargetFile() {
+  try {
+    const f = join(dirname(fileURLToPath(import.meta.url)), 'agentic-target.json');
+    if (!existsSync(f)) return null;
+    const t = JSON.parse(readFileSync(f, 'utf8'));
+    return (t && Array.isArray(t.names) && t.names.length) ? t : null;
+  } catch { return null; }
+}
 import { activityFromDecisions } from './agentic-ledger.mjs';
 
 // Churn governor (2026-08-12): the committed decisions ledger tells the planner what this account
@@ -77,7 +88,10 @@ const act = (mode, payload) => {
   // `drivers[]` for sleeve attribution, and that stamp cannot be backfilled. Carrying it here means the
   // executor never has to go find the committed target — and, more importantly, it does not depend on
   // the executor Routine's prompt wording, which is bound to a persistent session and cannot be edited.
-  writeFileSync(join(__dirname, 'raw', 'agentic-plan.json'), JSON.stringify({ mode, today, target: (A && A.target) || null, ...payload }, null, 2));
+  // Read from the COMMITTED file, not the snapshot's `A`: act() also fires from the in-flight-ticket
+  // branch, which runs BEFORE `const A` initializes — referencing A here threw a TDZ ReferenceError on
+  // the first pass with an active ticket after v121 (caught live 2026-08-25; the file is canonical anyway).
+  writeFileSync(join(__dirname, 'raw', 'agentic-plan.json'), JSON.stringify({ mode, today, target: readTargetFile(), ...payload }, null, 2));
   console.log(`${mode} (${payload.reason || ''})`);
   process.exit(0);
 };
@@ -109,13 +123,7 @@ if (!A || !Array.isArray(A.positions)) idle('no agentic block in the snapshot');
 // is a cache stamped in by the last producer run. Prefer the file so a target promoted between producer
 // runs (e.g. an evening research refresh) reaches the very next executor pass instead of trading a
 // stale cache — and so a failed producer run can't leave the executor deploying against last week's book.
-try {
-  const tf = join(__dirname, 'agentic-target.json');
-  if (existsSync(tf)) {
-    const t = JSON.parse(readFileSync(tf, 'utf8'));
-    if (t && Array.isArray(t.names) && t.names.length) A.target = t;
-  }
-} catch { /* unreadable file → fall back to the snapshot's cached copy */ }
+{ const t = readTargetFile(); if (t) A.target = t; }
 if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idle('no research target');
 const ageH = data.generatedAt ? (Date.now() - Date.parse(data.generatedAt)) / 3.6e6 : Infinity;
 if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
