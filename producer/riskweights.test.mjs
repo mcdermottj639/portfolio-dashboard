@@ -1,6 +1,7 @@
 // Offline unit checks for riskweights.mjs — no network, no I/O. Run: node producer/riskweights.test.mjs
 import { riskAdjustWeights, clusterOf, volScaledCap, volProxy, CLUSTER_CAPS, BASE_SINGLE_CAP, clusterExposure,
-  isDefensive, defensiveExposure, AG_DEFENSIVE_MIN, DEFENSIVE_MAX_VOL } from './riskweights.mjs';
+  isDefensive, defensiveExposure, AG_DEFENSIVE_MIN, DEFENSIVE_MAX_VOL,
+  isDiversifier, diversifierExposure, AG_DIVERSIFIER_MIN, AG_DIVERSIFIER_MAX, LOOKTHROUGH_ENFORCE } from './riskweights.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -55,8 +56,12 @@ ok('explicit vol overrides the range proxy', volProxy({ px: 100, hi: 200, lo: 50
     { ticker: 'QQQ', weightPct: 90, px: 600, hi: 620, lo: 480 },
     { ticker: 'JPM', weightPct: 10, px: 348, hi: 351, lo: 279 },
   ], { clusterCaps: { 'megacap-tech': 20 } });
-  ok('an index-borne breach is reported, not silently trimmed',
-    r.notes.some((n) => /entirely via index look-through/.test(n)));
+  // With LOOKTHROUGH_ENFORCE off (owner decision 2026-08-25) an index-borne "breach" is not a breach at
+  // all — the caps bind on direct weight. What must survive is the REPORTING: the true total is still
+  // computed and disclosed, so turning enforcement off never turns measurement off.
+  ok('an index-borne concentration is still reported even though it no longer binds',
+    r.notes.some((n) => /inside index vehicles|entirely via index look-through/.test(n)));
+  ok('…and the look-through total is still computed', r.exposure['megacap-tech'].lookThrough > 30);
   const q = r.names.find((n) => n.ticker === 'QQQ');
   ok('and the index vehicle survives it', q && q.weightPct > 80);
 }
@@ -76,9 +81,9 @@ ok('explicit vol overrides the range proxy', volProxy({ px: 100, hi: 200, lo: 50
     { ticker: 'JPM',  weightPct: 10, px: 348, hi: 351, lo: 279 },
   ]);
   ok('normalization does not push a capped cluster back over its cap',
-    r.exposure['banks'].total <= CLUSTER_CAPS['banks'] + 0.6);
+    r.exposure['banks'].direct <= CLUSTER_CAPS['banks'] + 0.6);
   ok('any genuinely un-placeable remainder is disclosed, never silently absorbed',
-    r.exposure['megacap-tech'].total <= CLUSTER_CAPS['megacap-tech'] + 0.6
+    r.exposure['megacap-tech'].direct <= CLUSTER_CAPS['megacap-tech'] + 0.6
     || r.notes.some((n) => /^RESIDUAL:|no cap headroom/.test(n)));
   near('and the book still sums to 100%', r.names.reduce((a, n) => a + n.weightPct, 0), 100, 0.05);
 }
@@ -93,7 +98,7 @@ ok('explicit vol overrides the range proxy', volProxy({ px: 100, hi: 200, lo: 50
   ]);
   const e = r.exposure['megacap-tech'];
   ok('freed weight is not dumped back into the index to re-breach the cap',
-    e.total <= CLUSTER_CAPS['megacap-tech'] + 1.5 || r.notes.some((n) => /^RESIDUAL:/.test(n)));
+    e.direct <= CLUSTER_CAPS['megacap-tech'] + 1.5 || r.notes.some((n) => /^RESIDUAL:/.test(n)));
   near('weights still normalize to 100%', r.names.reduce((a, n) => a + n.weightPct, 0), 100, 0.5);
 }
 
@@ -112,10 +117,14 @@ const heavy = riskAdjustWeights([
 // and ~54% real, which is the whole bug.
 const techSum = heavy.clusters['megacap-tech'];
 const techExp = heavy.exposure['megacap-tech'];
-near('megacap-tech TOTAL exposure respects the ~48% cap', techExp.total, CLUSTER_CAPS['megacap-tech'], 1.5);
-ok('direct megacap sits below the cap because the index core eats into it',
-  techSum < CLUSTER_CAPS['megacap-tech'] - 3);
+// 2026-08-25: caps bind on DIRECT weight — an index is a different KIND of holding from a single-name
+// sector bet, so charging a broad-market diversifier against a sector cap penalises diversification.
+// The look-through total is still computed and reported; only what BINDS changed.
+near('megacap-tech DIRECT exposure respects the 48% cap', techExp.direct, CLUSTER_CAPS['megacap-tech'], 1.5);
+ok('the look-through total is still measured and is higher than direct', techExp.total > techExp.direct);
 ok('the index sleeve is what accounts for the difference', techExp.lookThrough > 3);
+ok('…and the gap is disclosed rather than dropped',
+  heavy.notes.some((n) => /inside index vehicles|look-through/.test(n)));
 // The index vehicle itself is never trimmed to satisfy a cluster cap — it is the diversifier.
 const spyOut = heavy.names.find((n) => n.ticker === 'SPY');
 ok('SPY is not trimmed by the megacap cluster cap', spyOut && spyOut.weightPct >= 14);
@@ -217,9 +226,9 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
     { ticker: 'PG', weightPct: 10, px: 147, hi: 167, lo: 137 },
   ], { defensiveMin: 60 });
   ok('an unreachable floor cannot breach the receiving cluster cap',
-    r.exposure['staples'].total <= CLUSTER_CAPS['staples'] + 0.6);
+    r.exposure['staples'].direct <= CLUSTER_CAPS['staples'] + 0.6);
   ok('…but it does fill that cluster to its cap on the way',
-    r.exposure['staples'].total > 20);
+    r.exposure['staples'].direct > 20);
   ok('…and the residual is disclosed rather than tolerated',
     r.notes.some((n) => /DEFENSIVE SHORTFALL/.test(n)));
 }
@@ -230,6 +239,59 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
   ], { defensiveMin: 0 });
   ok('defensiveMin:0 disables the floor entirely (no note, old behaviour)',
     !off.notes.some((n) => /DEFENSIVE/i.test(n)) && off.defensive.shortfall === 0);
+}
+
+// --- GOLD DIVERSIFIER SLEEVE (2026-08-25, owner mandate) ---------------------------------------------
+// The book's first non-equity holding. It exists for correlation, not return: the defensive floor buys
+// staples/pharma which still fall in a drawdown, and the drawdown breaker only acts after -8%.
+{
+  ok('the bullion vehicles are recognised', isDiversifier('GLDM') && isDiversifier('GLD') && isDiversifier('IAU'));
+  ok('an equity is not one — and neither are the MINERS, which carry equity beta',
+    !isDiversifier('NVDA') && !isDiversifier('GDX'));
+  ok('gold carries no sector/cluster exposure at all', clusterOf('GLDM').startsWith('single:'));
+
+  // NEVER FABRICATES — the same hard rule as the defensive floor.
+  const noGold = riskAdjustWeights([
+    { ticker: 'NVDA', weightPct: 50, px: 209, hi: 236, lo: 164 },
+    { ticker: 'JNJ', weightPct: 30, px: 273, hi: 276, lo: 173 },
+    { ticker: 'SPY', weightPct: 20, px: 747, hi: 760, lo: 600 },
+  ]);
+  ok('a book with no gold vehicle reports the shortfall instead of inventing a position',
+    noGold.diversifier.direct === 0 && noGold.diversifier.shortfall === AG_DIVERSIFIER_MIN);
+  ok('…and says so in the notes', noGold.notes.some((n) => /no gold vehicle/.test(n)));
+
+  const thin = riskAdjustWeights([
+    { ticker: 'NVDA', weightPct: 60, px: 209, hi: 236, lo: 164 },
+    { ticker: 'JNJ', weightPct: 20, px: 273, hi: 276, lo: 173 },
+    { ticker: 'SPY', weightPct: 19, px: 747, hi: 760, lo: 600 },
+    { ticker: 'GLDM', weightPct: 1, px: 92, hi: 110, lo: 67 },
+  ]);
+  ok('an under-weight sleeve is topped up to the floor',
+    thin.diversifier.direct >= AG_DIVERSIFIER_MIN - 0.5);
+
+  // Bounded on BOTH sides: exempt from the punitive vol-scaled cap (gold's range/price ~0.47 would cap
+  // the hedge exactly when volatility makes it useful), but never an overflow sink either.
+  const fat = riskAdjustWeights([
+    { ticker: 'GLDM', weightPct: 40, px: 92, hi: 110, lo: 67 },
+    { ticker: 'JNJ', weightPct: 30, px: 273, hi: 276, lo: 173 },
+    { ticker: 'SPY', weightPct: 30, px: 747, hi: 760, lo: 600 },
+  ]);
+  ok('gold is bounded by its own ceiling, not left unbounded',
+    fat.names.find((n) => n.ticker === 'GLDM').weightPct <= AG_DIVERSIFIER_MAX + 0.5);
+  ok('…and its ceiling is not the vol-scaled equity cap (which it would fail outright)',
+    AG_DIVERSIFIER_MAX !== volScaledCap({ ticker: 'GLDM', px: 92, hi: 110, lo: 67 }));
+
+  // The equity ballast must never be funded by selling the non-correlated sleeve.
+  const raid = riskAdjustWeights([
+    { ticker: 'NVDA', weightPct: 85, px: 209, hi: 236, lo: 164 },
+    { ticker: 'GLDM', weightPct: 15, px: 92, hi: 110, lo: 67 },
+  ], { defensiveMin: 15 });
+  ok('the defensive floor never raids the gold sleeve to fund itself',
+    raid.names.find((n) => n.ticker === 'GLDM').weightPct >= 9.5);
+
+  const off = riskAdjustWeights([{ ticker: 'NVDA', weightPct: 100, px: 209, hi: 236, lo: 164 }],
+    { diversifierMin: 0 });
+  ok('diversifierMin:0 is a real off switch', off.diversifier.shortfall === 0);
 }
 
 console.log(`\nriskweights.test: ${pass} passed, ${fail} failed`);

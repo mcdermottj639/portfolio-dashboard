@@ -159,6 +159,33 @@ automaker and NOW a software firm, and all three trade as the AI bet. Adding a n
 a cap, so err toward inclusion. Defensive clusters (`utilities`, `reits`, `telecom`, `low-vol`) were added at
 the same time; every one of those names used to be an uncapped singleton too — the mirror image of the hole.
 
+## Gold diversifier + index look-through (2026-08-25, two owner decisions)
+**Gold sleeve — `AG_DIVERSIFIER_MIN` 5% / `AG_DIVERSIFIER_MAX` 10%, vehicle GLDM.** The book's first
+non-equity holding. Every other downside control here is either equity ballast or reactive: the defensive
+floor buys staples and pharma, which still fall in a drawdown (~0.5-0.7 correlation to SPY), and the
+drawdown breaker only acts once the book is already −8%. Gold's equity correlation is ~0 and typically
+goes negative in exactly those episodes. Context: across BOTH accounts the household held zero commodity
+exposure while ••••0741 was five names of one AI/compute bet at ~1.6× and ••••3900 was 40.7% megacap-tech.
+
+It is placed by mandate, not by the model, because **the research cannot select it**: quality, growth and
+catalyst are meaningless for bullion, so gold scores the "no data" 5.0 on three of five sleeves and tops
+out at a 5.72 composite against a ~6.8 marginal finalist. `finalize-target.mjs` injects it structurally,
+the way SPY is handed to the synthesis as ballast.
+
+It has its **own floor**, not a share of the defensive one — gold's range/price (~0.47) fails the 0.42
+equity vol gate, and loosening that gate to admit it would also re-admit LLY at 0.48, the bug fixed the
+same morning. Exempt from the vol-scaled single-name cap (which would shrink the hedge hardest exactly
+when volatility makes it useful) but bounded by its own ceiling so it never becomes the overflow sink.
+Never a donor to the defensive floor. Never fabricated — an absent sleeve is reported. GDX is excluded on
+purpose (an equity, with the beta this sleeve exists to avoid); SLV is far too volatile to be ballast.
+
+**Look-through: reported, not enforced.** The cluster caps now bind on DIRECT weight. An index is a
+different kind of holding from a single-name sector bet, and charging a broad-market diversifier against a
+sector cap penalises diversification. The true direct/look-through/total split is still computed and
+disclosed in the notes and on the Plan card — only what BINDS changed. The trade: at the 48% megacap cap,
+direct can reach 48% with ~8-9pp more inside SPY/VTI, about 57% true. `LOOKTHROUGH_ENFORCE = true`
+restores the v121 behaviour.
+
 ## Entry bands are derived from the verdict, not from the prose (2026-08-25)
 `entryQuality` sizes a position — that is the v102 design and it is right. What it did NOT do was change
 **when** the name is bought. The zone came from the model, and the v102 prompt (correctly) demands

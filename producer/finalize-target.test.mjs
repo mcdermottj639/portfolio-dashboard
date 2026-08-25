@@ -55,8 +55,9 @@ const noRank = finalizeTarget(ALLOC, base);
 ok('no ranked → no drivers key at all', noRank.target.names.every((n) => !('drivers' in n)));
 eq('omitting ranked changes nothing else', JSON.stringify(noRank.target.names.map((n) => n.weightPct)),
   JSON.stringify(r.target.names.map((n) => n.weightPct)));
-// A ranked entry for a name that didn't make the allocation is simply unused.
-const extra = finalizeTarget(ALLOC, { ...base, ranked: [...RANKED, { t: 'ZZZZ', m: 10, q: 10, g: 10, c: 10, v: 10 }] });
+// A ranked entry for a name that didn't make the allocation is simply unused. (diversifierMin:0 keeps
+// this about ranked rows — the gold sleeve is injected by default and would otherwise change the count.)
+const extra = finalizeTarget(ALLOC, { ...base, diversifierMin: 0, ranked: [...RANKED, { t: 'ZZZZ', m: 10, q: 10, g: 10, c: 10, v: 10 }] });
 eq('unused ranked rows are ignored', extra.target.names.length, 3);
 
 // ---- risk caps still dispose over the model ---------------------------------
@@ -226,6 +227,32 @@ ok('without a prior target the shape is unchanged (no dropped key)',
   ok('…and the defensive one carrying the floor is NOT', !/entry-quality/.test(ko.entry));
   ok('…with the tightening reported, not silent', r.entryBands.some((x) => x.startsWith('MA ')));
   ok('…and never reported for the exempt name', !r.entryBands.some((x) => x.startsWith('KO ')));
+}
+
+// --- GOLD SLEEVE INJECTED STRUCTURALLY (2026-08-25) --------------------------------------------------
+// The research CANNOT select gold: quality/growth/catalyst are meaningless for a bullion trust, so it
+// takes the "no data" 5.0 on three of five sleeves and tops out at a 5.72 composite against a ~6.8
+// marginal finalist. A mandate dial places it, exactly as SPY is handed to the synthesis as ballast.
+{
+  const withGold = finalizeTarget(ALLOC, { ...base });
+  const g = withGold.target.names.find((n) => n.ticker === 'GLDM');
+  ok('a gold sleeve is injected when the allocation contains none', !!g);
+  ok('…at a real weight, inside the mandate band', g.weightPct >= 4 && g.weightPct <= 10.5);
+  ok('…tagged as a diversifier rather than an equity sector', g.sector === 'Diversifier');
+  ok('…and labelled a mandate sleeve, not a research pick', /mandate sleeve/.test(g.thesis));
+  ok('the read is emitted for the card and the run log',
+    withGold.target.diversifier && withGold.target.diversifier.floor > 0);
+
+  const off = finalizeTarget(ALLOC, { ...base, diversifierMin: 0 });
+  ok('diversifierMin:0 disables the injection entirely',
+    !off.target.names.some((n) => n.ticker === 'GLDM'));
+
+  // Never overrides a gold vehicle the allocation already carries (a different one, or a chosen weight).
+  const own = finalizeTarget({ picks: [...ALLOC.picks, { ticker: 'IAU', sector: 'Diversifier', weightPct: 8,
+    thesis: 'owner-chosen', entryZone: '$80-$90', stop: 70, target: 110 }] }, { ...base });
+  ok('an allocation that already holds gold is not given a second vehicle',
+    !own.target.names.some((n) => n.ticker === 'GLDM'));
+  ok('…and the one it chose survives', own.target.names.some((n) => n.ticker === 'IAU'));
 }
 
 console.log(`\nfinalize-target.test: ${pass} passed, ${fail} failed`);

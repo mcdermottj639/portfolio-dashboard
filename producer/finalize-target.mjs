@@ -13,7 +13,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { riskAdjustWeights, AG_DEFENSIVE_MIN, isDefensive } from './riskweights.mjs';
+import { riskAdjustWeights, AG_DEFENSIVE_MIN, isDefensive, isDiversifier,
+  DIVERSIFIER_SYMS, AG_DIVERSIFIER_MIN } from './riskweights.mjs';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -130,6 +131,36 @@ export function finalizeTarget(allocation, meta = {}) {
       px: p.px ?? u.px, hi: p.hi ?? u.hi, lo: p.lo ?? u.lo,
     };
   });
+  // ── GOLD SLEEVE, INJECTED STRUCTURALLY (2026-08-25) ────────────────────────────────────────────────
+  // Added here rather than asked of the synthesis, for the same reason SPY is handed to it as ballast
+  // ("add it, not a survivor"): the sleeves score quality/growth/catalyst, all of which are meaningless
+  // for a bullion trust, so gold takes the "no data" 5.0 on three of five and tops out at a 5.72
+  // composite against a ~6.8 marginal finalist. It CANNOT be selected by the research no matter how
+  // sound the idea — so a mandate dial places it and `riskAdjustWeights` sizes it into the 5-10% band.
+  // Never overrides a gold vehicle the allocation already contains; `meta.diversifierMin: 0` disables.
+  const divMin = meta.diversifierMin != null ? +meta.diversifierMin : AG_DIVERSIFIER_MIN;
+  if (divMin > 0 && !named.some((n) => isDiversifier(n.ticker))) {
+    const sym = meta.diversifierSym || DIVERSIFIER_SYMS[0];   // GLDM — same spot gold as GLD, ~1/4 the fee
+    const gpx = +((uni[sym] || {}).px) || 0;
+    // Inject the weight that survives normalization, not the floor itself. The allocation already sums to
+    // ~100, so appending exactly `divMin` and then re-normalizing lands BELOW the floor every time
+    // (5 → 5/105 → 4.76%). Solve for g such that g/(S+g) = divMin/100.
+    const sumNamed = named.reduce((a, n) => a + (+n.weightPct || 0), 0) || 100;
+    const injectAt = +(divMin * sumNamed / Math.max(1e-6, 100 - divMin)).toFixed(4);
+    named.push({
+      ticker: sym,
+      sector: 'Diversifier',
+      weightPct: injectAt,
+      // A core hold, banded wide like SPY: this is a correlation position, not a timing one, and the
+      // entry-quality tightening cannot touch it anyway (no verdict ⇒ no discount).
+      entry: gpx > 0 ? `$${(gpx * 0.94).toFixed(2)}-$${(gpx * 1.03).toFixed(2)} (core hold — buy at market)` : 'core hold — buy at market',
+      stop: gpx > 0 ? +(gpx * 0.82).toFixed(2) : null,
+      target: gpx > 0 ? +(gpx * 1.25).toFixed(2) : null,
+      thesis: 'Gold diversifier (mandate sleeve, not a research pick). The book\'s only non-equity holding and its only NON-CORRELATED one: the defensive floor buys staples/pharma, which still fall in a drawdown (~0.5-0.7 correlation to SPY), and the drawdown breaker only acts after the book is already down 8%. Sized by mandate between the 5% floor and 10% ceiling, never by the composite — the research sleeves cannot score bullion.',
+      px: gpx || undefined, hi: (uni[sym] || {}).hi, lo: (uni[sym] || {}).lo,
+    });
+  }
+
   // Two-strike phase-out (churn governor — see the header note). Runs BEFORE riskAdjustWeights so the
   // retained names participate in the renormalization and the caps hold over the whole book.
   const prior = (meta.prior && Array.isArray(meta.prior.names)) ? meta.prior : null;
@@ -165,7 +196,7 @@ export function finalizeTarget(allocation, meta = {}) {
   // synthesis prompt asks the research for defensive weight; this is the deterministic guarantee, exactly
   // as the cluster/vol caps are. meta.defensiveMin overrides the mandate dial (0 disables it).
   const defensiveMin = meta.defensiveMin != null ? +meta.defensiveMin : AG_DEFENSIVE_MIN;
-  const adj = riskAdjustWeights([...named, ...phaseOuts], { defensiveMin });
+  const adj = riskAdjustWeights([...named, ...phaseOuts], { defensiveMin, diversifierMin: divMin });
   // ATTRIBUTION (v95): tag each name with the sleeves that actually earned it a slot, derived
   // DETERMINISTICALLY from the workflow's sleeve scores rather than trusted from the model's prose. This
   // is what lets the Rebalance Log eventually answer "is the flow sleeve earning its weight?" — and
@@ -204,7 +235,13 @@ export function finalizeTarget(allocation, meta = {}) {
     method: (meta.method || (allocation && allocation.summary) || 'deep multi-factor research → adversarial verify → synthesis')
       + ' | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)'
       + (adj.notes.length ? ` — ${adj.notes.join('; ')}` : '')
-      + (phaseOuts.length ? ` | phase-out retained (churn governor, strike 1): ${phaseOuts.map((p) => p.ticker).join(', ')}` : ''),
+      + (phaseOuts.length ? ` | phase-out retained (churn governor, strike 1): ${phaseOuts.map((p) => p.ticker).join(', ')}` : '')
+      // The synthesis wrote its summary before the gold sleeve existed, so any percentages quoted in that
+      // prose predate it. Say so rather than let stale figures read as current — the `defensive`,
+      // `diversifier` and cluster blocks below are the authoritative numbers.
+      + (adj.diversifier && adj.diversifier.direct > 0
+        ? ` | ${adj.diversifier.direct.toFixed(1)}% gold diversifier added structurally AFTER synthesis (mandate sleeve — the sleeves cannot score bullion), so percentages quoted in the summary above predate it; the defensive/diversifier/cluster fields are authoritative`
+        : ''),
     account: meta.account || 'AGENTIC',
     book: meta.book != null ? Math.round(meta.book) : null,
     driftTriggerPp: meta.driftTriggerPp != null ? meta.driftTriggerPp : 5,
@@ -212,12 +249,16 @@ export function finalizeTarget(allocation, meta = {}) {
     // What ballast the book actually carries, and against what floor. Emitted so the shortfall is visible
     // on the Plan tab and in the run log rather than only inside a `method` string nobody re-reads.
     defensive: adj.defensive,
+    // Gold sits on its own axis — not an equity, no sector exposure, its own floor (it fails the
+    // equity-calibrated defensive vol gate at ~0.47 range/price, and loosening that gate to admit it
+    // would also re-admit LLY at 0.48 — the bug fixed earlier the same day).
+    diversifier: adj.diversifier,
     // Why prior names left the target — the deploy planner reads 'business-broken' entries to unlock
     // its min-hold (a broken thesis exits regardless of position age). Only present when a prior
     // target was supplied, so pre-governor callers see an unchanged shape.
     ...(prior ? { dropped } : {}),
   };
-  return { target: out, notes: adj.notes, entryBands: tightened, clusters: adj.clusters, defensive: adj.defensive, phaseOuts: phaseOuts.map((p) => p.ticker), dropped };
+  return { target: out, notes: adj.notes, entryBands: tightened, diversifier: adj.diversifier, clusters: adj.clusters, defensive: adj.defensive, phaseOuts: phaseOuts.map((p) => p.ticker), dropped };
 }
 
 // --- CLI ---
@@ -237,7 +278,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     try { const pf = join(__dirname, 'agentic-target.json'); if (existsSync(pf)) prior = JSON.parse(readFileSync(pf, 'utf8')); } catch { prior = null; }
   }
   const heldArg = flag('held');
-  const { target, notes, clusters, defensive, phaseOuts, dropped, entryBands } = finalizeTarget(allocation, {
+  const { target, notes, clusters, defensive, diversifier, phaseOuts, dropped, entryBands } = finalizeTarget(allocation, {
     book: flag('book') != null ? +flag('book') : (allocation.book || null),
     asOf: flag('asOf'),
     ranked: raw.ranking || null,   // present when fed the whole workflow return → enables `drivers`
@@ -254,6 +295,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log('defensive:', `${defensive.total.toFixed(1)}% (${defensive.direct.toFixed(1)}% direct + ${defensive.lookThrough.toFixed(1)}% via index) vs a ${defensive.floor}% floor`
     + (defensive.shortfall > 0.5 ? `  ⚠️  SHORT ${defensive.shortfall.toFixed(1)}pp` : '  ✅'));
   console.log('entry bands:', entryBands.length ? '\n  ' + entryBands.join('\n  ') : '(none tightened — all entries fair or better, or defensive-exempt)');
+  console.log('diversifier:', `${diversifier.direct.toFixed(1)}% gold vs a ${diversifier.floor}% floor`
+    + (diversifier.shortfall > 0.5 ? `  ⚠️  SHORT ${diversifier.shortfall.toFixed(1)}pp` : '  ✅'));
   if (phaseOuts.length) console.log('phase-out retained (strike 1):', phaseOuts.join(', '));
   if (dropped.length) console.log('dropped:', dropped.map((d) => `${d.ticker} (${d.reason})`).join(', '));
   console.log(JSON.stringify(target, null, 2));

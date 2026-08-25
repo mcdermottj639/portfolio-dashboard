@@ -1,6 +1,6 @@
 {
   "asOf": "2026-08-25",
-  "method": "Thirteen names across nine sectors plus two index sleeves, built with the current book as the null hypothesis: all eight held survivors (SPY, VTI, MSFT, AMZN, GOOGL, NVDA, LLY, SHEL) are RETAINED and only re-weighted — SHEL's and the megacaps' verdicts are all businessOk:true, and SHEL's phase-out reverses at zero cost because nothing was ever sold — while MA and V carry over from the prior target still undeployed, so the only taxable exits are JPM and GE, which complete their two-strike phase-out by failing to return from adversarial verify for a second consecutive cycle; I cannot claim either thesis is broken, only that neither was re-verified, and that is the single place this allocation spends turnover (~$2,090, which funds the defensive floor). The megacap-tech complex lands at 40.7% of book — 32.0% direct (MSFT 9.5 / AMZN 9.5 / GOOGL 7.0 / NVDA 6.0, every one trimmed from its held weight on entryQuality 3-5) plus 8.7% look-through via SPY/VTI — against the 48% cap, and the defensive floor is met EXPLICITLY rather than by index accident at 17.5%: 14.5% direct in JNJ 7.5% (pharma, 0.38 range/price) and KO 7.0% (staples, 0.30 — the tightest vol in the book), plus ~3.0% through the index sleeves, versus the 15% floor; LLY is deliberately NOT counted as ballast at a 0.48 range and is vol-capped to 6.5%. Posture is de-concentration without abandoning the mandate — payments 11.9%, pharma 14.7%, energy 6.9%, all well inside their caps — with poor entries expressed as SIZE (MA 6.0% vs a prior 7.79%, V 5.5% vs 7.48%, BKNG held to the 5% floor) and reachable near-spot bands rather than deep zones that would strand cash, and NVDA's 6.0% takes no new money until the 2026-08-26 print clears the deploy planner's own earnings blackout. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)",
+  "method": "Thirteen names across nine sectors plus two index sleeves, built with the current book as the null hypothesis: all eight held survivors (SPY, VTI, MSFT, AMZN, GOOGL, NVDA, LLY, SHEL) are RETAINED and only re-weighted — SHEL's and the megacaps' verdicts are all businessOk:true, and SHEL's phase-out reverses at zero cost because nothing was ever sold — while MA and V carry over from the prior target still undeployed, so the only taxable exits are JPM and GE, which complete their two-strike phase-out by failing to return from adversarial verify for a second consecutive cycle; I cannot claim either thesis is broken, only that neither was re-verified, and that is the single place this allocation spends turnover (~$2,090, which funds the defensive floor). The megacap-tech complex lands at 40.7% of book — 32.0% direct (MSFT 9.5 / AMZN 9.5 / GOOGL 7.0 / NVDA 6.0, every one trimmed from its held weight on entryQuality 3-5) plus 8.7% look-through via SPY/VTI — against the 48% cap, and the defensive floor is met EXPLICITLY rather than by index accident at 17.5%: 14.5% direct in JNJ 7.5% (pharma, 0.38 range/price) and KO 7.0% (staples, 0.30 — the tightest vol in the book), plus ~3.0% through the index sleeves, versus the 15% floor; LLY is deliberately NOT counted as ballast at a 0.48 range and is vol-capped to 6.5%. Posture is de-concentration without abandoning the mandate — payments 11.9%, pharma 14.7%, energy 6.9%, all well inside their caps — with poor entries expressed as SIZE (MA 6.0% vs a prior 7.79%, V 5.5% vs 7.48%, BKNG held to the 5% floor) and reachable near-spot bands rather than deep zones that would strand cash, and NVDA's 6.0% takes no new money until the 2026-08-26 print clears the deploy planner's own earnings blackout. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps) | 5.0% gold diversifier added structurally AFTER synthesis (mandate sleeve — the sleeves cannot score bullion), so percentages quoted in the summary above predate it; the defensive/diversifier/cluster fields are authoritative",
   "account": "AGENTIC",
   "book": 10192,
   "driftTriggerPp": 5,
@@ -8,7 +8,7 @@
     {
       "ticker": "SPY",
       "sector": "Index",
-      "weightPct": 19,
+      "weightPct": 18.05,
       "entry": "$748-$772 (spot ~$766.58; core hold, buy at market)",
       "stop": 688,
       "target": 860,
@@ -20,7 +20,7 @@
     {
       "ticker": "VTI",
       "sector": "Index",
-      "weightPct": 5,
+      "weightPct": 4.75,
       "entry": "$368-$382 (spot ~$378.40)",
       "stop": 340,
       "target": 425,
@@ -32,7 +32,7 @@
     {
       "ticker": "MSFT",
       "sector": "Technology Services",
-      "weightPct": 9.5,
+      "weightPct": 9.03,
       "entry": "$438.69-$472.69 (entry-quality 4/10 → ceiling held 3.0% under the $487.31 spot; was $460-$494 (spot $487.31))",
       "stop": 437,
       "target": 553,
@@ -53,7 +53,7 @@
     {
       "ticker": "AMZN",
       "sector": "Retail Trade",
-      "weightPct": 9.5,
+      "weightPct": 9.03,
       "entry": "$240.14-$258.14 (entry-quality 5/10 → ceiling held 1.5% under the $262.07 spot; was $248-$266 (spot $262.07; 50-DMA $250.14 anchors the low end))",
       "stop": 234,
       "target": 300,
@@ -74,7 +74,7 @@
     {
       "ticker": "JNJ",
       "sector": "Health Technology",
-      "weightPct": 7.5,
+      "weightPct": 7.13,
       "entry": "$256-$277 (spot $273.04; 50-DMA ~$255 at the low end)",
       "stop": 246,
       "target": 305,
@@ -88,7 +88,7 @@
     {
       "ticker": "GOOGL",
       "sector": "Technology Services",
-      "weightPct": 7,
+      "weightPct": 6.65,
       "entry": "$314.62-$337.62 (entry-quality 4/10 → ceiling held 3.0% under the $348.06 spot; was $330-$353 (spot $348.06; rising 200-DMA ~$333 at the low end))",
       "stop": 312,
       "target": 408,
@@ -108,7 +108,7 @@
     {
       "ticker": "KO",
       "sector": "Consumer Non-Durables",
-      "weightPct": 7,
+      "weightPct": 6.65,
       "entry": "$85.50-$92.75 (spot $91.99; 50-DMA $84.50 just under the floor)",
       "stop": 83,
       "target": 101,
@@ -122,7 +122,7 @@
     {
       "ticker": "LLY",
       "sector": "Health Technology",
-      "weightPct": 6.5,
+      "weightPct": 6.17,
       "entry": "$1126.52-$1209.52 (entry-quality 4/10 → ceiling held 3.0% under the $1246.93 spot; was $1,175-$1,258 (spot $1,246.93; 50-DMA $1,181 at the low end))",
       "stop": 1120,
       "target": 1400,
@@ -143,7 +143,7 @@
     {
       "ticker": "SHEL",
       "sector": "Energy Minerals",
-      "weightPct": 6.5,
+      "weightPct": 6.17,
       "entry": "$81.06-$88.81 (entry-quality 3/10 → ceiling held 4.5% under the $93.00 spot; was $86.00-$93.75 (spot $93.00; 50-DMA ~$85.50 at the low end))",
       "stop": 83.5,
       "target": 104,
@@ -164,7 +164,7 @@
     {
       "ticker": "NVDA",
       "sector": "Electronic Technology",
-      "weightPct": 6,
+      "weightPct": 5.7,
       "entry": "$181.1-$199.1 (entry-quality 3/10 → ceiling held 4.5% under the $208.48 spot; was $196-$214 (spot $208.48; 200-DMA $195.34 at the low end) — deferred until after the 08-26 print)",
       "stop": 186,
       "target": 236.5,
@@ -183,7 +183,7 @@
     {
       "ticker": "MA",
       "sector": "Finance",
-      "weightPct": 6,
+      "weightPct": 5.7,
       "entry": "$533.87-$572.87 (entry-quality 3/10 → ceiling held 4.5% under the $599.86 spot; was $565-$604 (spot $599.86))",
       "stop": 539,
       "target": 667,
@@ -204,7 +204,7 @@
     {
       "ticker": "V",
       "sector": "Finance",
-      "weightPct": 5.5,
+      "weightPct": 5.22,
       "entry": "$338.2-$365.2 (entry-quality 3/10 → ceiling held 4.5% under the $382.41 spot; was $358-$385 (spot $382.41; 50-DMA ~$354 just under the floor))",
       "stop": 348,
       "target": 425,
@@ -224,7 +224,7 @@
     {
       "ticker": "BKNG",
       "sector": "Consumer Services",
-      "weightPct": 5,
+      "weightPct": 4.75,
       "entry": "$184.76-$203.76 (entry-quality 3/10 → ceiling held 4.5% under the $213.36 spot; was $196-$215 (spot $213.36; the $189-195 gap-fill/50-DMA sits just under the floor))",
       "stop": 188,
       "target": 245,
@@ -241,13 +241,27 @@
         "growth",
         "catalyst"
       ]
+    },
+    {
+      "ticker": "GLDM",
+      "sector": "Diversifier",
+      "weightPct": 5,
+      "entry": "$86.39-$94.66 (core hold — buy at market)",
+      "stop": 75.36,
+      "target": 114.88,
+      "thesis": "Gold diversifier (mandate sleeve, not a research pick). The book's only non-equity holding and its only NON-CORRELATED one: the defensive floor buys staples/pharma, which still fall in a drawdown (~0.5-0.7 correlation to SPY), and the drawdown breaker only acts after the book is already down 8%. Sized by mandate between the 5% floor and 10% ceiling, never by the composite — the research sleeves cannot score bullion."
     }
   ],
   "defensive": {
-    "direct": 14.5,
-    "lookThrough": 3.001,
-    "total": 17.501,
+    "direct": 13.78,
+    "lookThrough": 2.851,
+    "total": 16.631,
     "floor": 15,
+    "shortfall": 0
+  },
+  "diversifier": {
+    "direct": 5,
+    "floor": 5,
     "shortfall": 0
   },
   "dropped": []

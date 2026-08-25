@@ -69,6 +69,10 @@ export const INDEX_SYMS = ['SPY', 'QQQ', 'VTI', 'VOO', 'IVV', 'DIA', 'IWM'];
 // published sector weights and have NOT been recalibrated against ETF_PROFILE — under-crediting the index
 // makes the floor demand MORE explicit defensive weight, which is the safe direction to be wrong in.
 // (Over-crediting would let a big SPY core satisfy the floor on paper while the book held no ballast.)
+// Owner dial (2026-08-25): false ⇒ caps bind on DIRECT weight only; the look-through totals are
+// still computed and reported. true ⇒ v121 behaviour, caps bind on direct + look-through.
+export const LOOKTHROUGH_ENFORCE = false;
+
 export const LOOKTHROUGH = {
   SPY: { 'megacap-tech': 0.375, banks: 0.037, pharma: 0.030, staples: 0.027, energy: 0.018, payments: 0.016,
          utilities: 0.022, reits: 0.018, telecom: 0.014, 'health-svc': 0.018 },
@@ -125,6 +129,55 @@ const MIN_VOL_SCALE = 0.55;          // never dock a single-name cap below 55% o
 // than the market — so counting it as ballast would let the floor be satisfied by exactly the kind of
 // position it exists to offset. A name must be in a defensive cluster AND trade no wilder than a normal
 // large-cap (DEFENSIVE_MAX_VOL) to count. Index sleeves contribute only through LOOKTHROUGH.
+// ── DIVERSIFIER SLEEVE — physical gold (2026-08-25, owner decision) ─────────────────────────────────
+// The first NON-EQUITY holding in this book, and it is here for one reason: correlation. Every other
+// downside control is either equity ballast or reactive. The defensive floor buys staples and pharma —
+// which still fall in a drawdown, just less (correlation to SPY ~0.5-0.7) — and the drawdown breaker
+// only acts AFTER the book is down 8%. Gold's equity correlation is ~0 and typically goes negative in
+// exactly the stress episodes the rest of the book is exposed to.
+//
+// Context that made this urgent rather than theoretical: across BOTH accounts the household held zero
+// commodity exposure, while ••••0741 was five names of one AI/compute bet at ~1.6x and ••••3900 was
+// 40.7% megacap-tech. That is close to a single trade.
+//
+// WHY IT CANNOT COME FROM THE RESEARCH. The sleeves score quality (ROE/margins/FCF), growth (revenue/
+// EPS) and catalyst (earnings) — all meaningless for a bullion trust. Gold would take the "no data" 5.0
+// on three of five sleeves and top out at a 5.72 composite against a ~6.8 marginal finalist: it is
+// ARITHMETICALLY incapable of being selected. So it is added structurally, exactly the way SPY is
+// ("add it, not a survivor"), and its weight is a mandate dial rather than a model output.
+//
+// SEPARATE FLOOR, NOT FOLDED INTO THE DEFENSIVE ONE. Gold's 52wk range/price is ~0.47, wider than the
+// 0.42 DEFENSIVE_MAX_VOL gate. Loosening that gate to admit gold would also admit LLY (0.48) and
+// re-create the exact bug fixed on 2026-08-25, where a high-vol pharma name satisfied the ballast
+// requirement. "Defensive equity" and "non-correlated asset" are different jobs; they get different
+// floors and are reported separately.
+//
+// VEHICLE: GLDM is the default — same spot-gold exposure as GLD at roughly a quarter the expense.
+// Miners (GDX) are deliberately NOT here: that is an equity with its own operating and financing risk,
+// and it carries equity beta the diversifier exists to avoid. Silver (SLV) is far too volatile
+// (range/price ~1.2) to function as ballast.
+export const DIVERSIFIER_SYMS = ['GLDM', 'GLD', 'IAU', 'SGOL'];
+export const AG_DIVERSIFIER_MIN = 5;   // % of book — owner-set mandate dial (••••3900 only); 0 disables
+// An explicit CEILING as well as a floor. Without it gold becomes the overflow sink: it is exempt from
+// the vol-scaled single-name cap, so every pp freed by a cluster trim lands here and a 5% mandate sleeve
+// quietly becomes 8-15%. A hedge should be sized by mandate, not by whatever spills out of the equity
+// book — and gold has no cash flow, so an oversized sleeve is a real drag in a rising tape.
+export const AG_DIVERSIFIER_MAX = 10;
+
+export function isDiversifier(sym) {
+  return DIVERSIFIER_SYMS.includes(String((sym && sym.ticker) || sym || '').toUpperCase());
+}
+
+// Gold carries no sector/cluster exposure at all — it is not an equity. Reported on its own axis.
+export function diversifierExposure(names) {
+  let direct = 0;
+  for (const n of names || []) {
+    const w = num(n && n.weightPct);
+    if (w > 0 && isDiversifier(n.ticker)) direct += w;
+  }
+  return { direct: +direct.toFixed(4) };
+}
+
 export const DEFENSIVE_CLUSTERS = ['staples', 'utilities', 'telecom', 'reits', 'health-svc', 'pharma', 'low-vol'];
 export const AG_DEFENSIVE_MIN = 15;   // % of book — owner-set mandate dial (••••3900 only)
 export const DEFENSIVE_MAX_VOL = REF_RANGE;  // a defensive name may not be wilder than a normal large-cap
@@ -214,26 +267,47 @@ export function riskAdjustWeights(names, opts = {}) {
     weightPct: num(n.weightPct),
     _cluster: clusterOf(n.ticker),
     _isIndex: INDEX_SYMS.includes(String(n.ticker).toUpperCase()),
-    _nameCap: INDEX_SYMS.includes(String(n.ticker).toUpperCase()) ? 100 : volScaledCap(n),
+    // Index ballast is uncapped; the gold diversifier gets its OWN band rather than the vol-scaled
+    // equity cap — gold's range/price (~0.47) would cap the hedge hardest exactly when volatility makes
+    // it most useful, which is backwards. Bounded above by AG_DIVERSIFIER_MAX so it never becomes the
+    // overflow sink for weight freed by cluster trims.
+    _nameCap: INDEX_SYMS.includes(String(n.ticker).toUpperCase()) ? 100
+      : isDiversifier(n.ticker) ? AG_DIVERSIFIER_MAX : volScaledCap(n),
   }));
   if (!items.length) return { names: [], notes: [], clusters: {} };
   const notes = [];
 
   // 1. Single-name vol-scaled caps (water-filling).
   waterfill(items, (it) => it._nameCap, (it, capped) => {
-    if (capped) notes.push(`${it.ticker} capped to ${it._nameCap}% (vol-scaled single-name cap)`);
+    if (capped) notes.push(`${it.ticker} capped to ${it._nameCap}% (${it._isDiv ? 'diversifier ceiling' : it._isIndex ? 'index' : 'vol-scaled single-name cap'})`);
   });
 
   // 2. Cluster caps — enforced on DIRECT + LOOK-THROUGH exposure, but only DIRECT members are trimmed.
   // That asymmetry is deliberate and will look like a bug otherwise: SPY/VTI are the diversifier, so a
   // fat index core must SHRINK how much direct megacap can be stacked on top of it, not itself be sold.
+  // LOOK-THROUGH IS REPORTED, NOT ENFORCED (owner decision, 2026-08-25). v121 enforced the caps on
+  // direct + look-through, on the reasoning that owning 20% SPY really is owning ~7.5% megacap-tech.
+  // The owner's call is that an INDEX is a different KIND of holding from a single-name sector bet —
+  // the sector caps exist to stop concentration in individual names within a theme, and charging a
+  // broad-market diversifier against them penalises the very thing that reduces concentration.
+  // So caps now bind on DIRECT weight, and `clusterExposure` still returns direct/lookThrough/total so
+  // the true figure keeps being computed, reported in the notes and rendered on the Plan card. Losing
+  // the measurement would be the real regression; this only changes what BINDS.
+  // KNOW THE TRADE: at the 48% megacap cap, direct can now reach 48% with roughly 8-9pp more sitting
+  // inside SPY/VTI — about 57% true exposure. Flip LOOKTHROUGH_ENFORCE back to true to restore v121.
   const indexBorne = new Set();
   for (let pass = 0; pass < 8; pass++) {
     const exp = clusterExposure(items);
     let violated = false;
     for (const [cl, e] of Object.entries(exp)) {
       const cap = clusterCaps[cl];
-      if (cap == null || e.total <= cap + 1e-6) continue;
+      const measured = LOOKTHROUGH_ENFORCE ? e.total : e.direct;
+      if (cap != null && e.total > cap + 1e-6 && !LOOKTHROUGH_ENFORCE && measured <= cap + 1e-6
+          && !indexBorne.has(cl)) {
+        indexBorne.add(cl);
+        notes.push(`${cl} is ${e.direct.toFixed(1)}% direct (within its ${cap}% cap) but ${e.total.toFixed(1)}% including ${e.lookThrough.toFixed(1)}pp held inside index vehicles — reported, not enforced`);
+      }
+      if (cap == null || measured <= cap + 1e-6) continue;
       const members = items.filter((it) => it._cluster === cl);
       if (!members.length || e.direct <= 1e-6) {
         // The breach is entirely index-borne — there is no direct position to trim. Say so once and
@@ -245,7 +319,7 @@ export function riskAdjustWeights(names, opts = {}) {
         continue;
       }
       violated = true;
-      const allowedDirect = Math.max(0, cap - e.lookThrough);
+      const allowedDirect = Math.max(0, LOOKTHROUGH_ENFORCE ? cap - e.lookThrough : cap);
       const scale = allowedDirect / e.direct;
       const freed = e.direct - allowedDirect;
       members.forEach((it) => { it.weightPct = +(it.weightPct * scale).toFixed(4); });
@@ -296,6 +370,32 @@ export function riskAdjustWeights(names, opts = {}) {
     }
   }
 
+  // 2c. DIVERSIFIER (GOLD) FLOOR (2026-08-25). Same shape as the defensive floor above and the same hard
+  // rule: it NEVER fabricates a holding. If the allocation contains no gold vehicle the shortfall is
+  // REPORTED, not invented — the fix is for the caller to add the sleeve structurally (finalize-target
+  // does), never for the weighting pass to conjure a position nobody chose. Funded from non-index,
+  // non-defensive names so the hedge is not paid for by selling the ballast it complements.
+  const divMin = opts.diversifierMin != null ? +opts.diversifierMin : AG_DIVERSIFIER_MIN;
+  if (divMin > 0) {
+    const have = diversifierExposure(items).direct;
+    if (have < divMin - 1e-6) {
+      const recv = items.filter((it) => it._isDiv);
+      if (!recv.length) {
+        notes.push(`diversifier floor: ${have.toFixed(1)}% vs a ${divMin}% minimum and the allocation holds no gold vehicle (${DIVERSIFIER_SYMS.join('/')}) — SHORT ${(divMin - have).toFixed(1)}pp, reported not fabricated`);
+      } else {
+        const donors = items.filter((it) => !it._isIndex && !it._isDiv && !isDefensive(it) && it.weightPct > FLOOR_PCT + 1e-6);
+        const pool = donors.reduce((a, it) => a + (it.weightPct - FLOOR_PCT), 0);
+        const move = Math.min(divMin - have, pool);
+        if (move > 1e-6) {
+          donors.forEach((it) => { it.weightPct = +(it.weightPct - (it.weightPct - FLOOR_PCT) / pool * move).toFixed(4); });
+          const per = move / recv.length;
+          recv.forEach((it) => { it.weightPct = +(it.weightPct + per).toFixed(4); });
+          notes.push(`diversifier floor: moved ${move.toFixed(1)}pp into ${recv.map((r) => r.ticker).join('/')} toward the ${divMin}% minimum (book was ${have.toFixed(1)}%)`);
+        }
+      }
+    }
+  }
+
   // 3. Drop sub-floor slivers created by trimming, then bring the book to 100% WITHOUT undoing the caps.
   let kept = items.filter((it) => it._isIndex || it.weightPct >= FLOOR_PCT - 1e-6);
   const dropped = items.filter((it) => !(it._isIndex || it.weightPct >= FLOOR_PCT - 1e-6));
@@ -338,8 +438,14 @@ export function riskAdjustWeights(names, opts = {}) {
     const finalExp = clusterExposure(kept);
     for (const [cl, e] of Object.entries(finalExp)) {
       const cap = clusterCaps[cl];
-      if (cap != null && e.total > cap + 0.5) {
-        notes.push(`RESIDUAL: ${cl} ends at ${e.total.toFixed(1)}% vs its ${cap}% cap (${e.direct.toFixed(1)}% direct + ${e.lookThrough.toFixed(1)}% look-through) — no headroom existed elsewhere`);
+      if (cap == null) continue;
+      // Judge the residual on the SAME basis the caps were enforced on, or every book with an index core
+      // reports a permanent false breach it has no way to clear.
+      const measured = LOOKTHROUGH_ENFORCE ? e.total : e.direct;
+      if (measured > cap + 0.5) {
+        notes.push(`RESIDUAL: ${cl} ends at ${measured.toFixed(1)}% vs its ${cap}% cap${LOOKTHROUGH_ENFORCE ? ` (${e.direct.toFixed(1)}% direct + ${e.lookThrough.toFixed(1)}% look-through)` : ''} — no headroom existed elsewhere`);
+      } else if (!LOOKTHROUGH_ENFORCE && e.total > cap + 0.5) {
+        notes.push(`FYI: ${cl} is ${e.direct.toFixed(1)}% direct (inside its ${cap}% cap) but ${e.total.toFixed(1)}% counting ${e.lookThrough.toFixed(1)}pp inside index vehicles — look-through is reported, not enforced (owner decision 2026-08-25)`);
       }
     }
   }
@@ -358,9 +464,13 @@ export function riskAdjustWeights(names, opts = {}) {
 
   const clusters = groupSum(kept);
   const exposure = clusterExposure(kept);
-  const out = kept.map(({ _cluster, _isIndex, _nameCap, _defRoom, ...rest }) => rest);
+  const out = kept.map(({ _cluster, _isIndex, _isDiv, _nameCap, _defRoom, ...rest }) => rest);
   return {
     names: out, notes, defensive,
+    // Gold sits on its OWN axis — it is not an equity, carries no sector exposure, and is measured
+    // against its own floor rather than the defensive one (different job, and it fails the equity vol gate).
+    diversifier: (() => { const d = diversifierExposure(out).direct;
+      return { direct: d, floor: divMin, shortfall: +Math.max(0, divMin - d).toFixed(2) }; })(),
     // `clusters` stays DIRECT-only for back-compat with existing callers/tests; `exposure` carries the
     // direct / look-through / total split that the caps are actually enforced against.
     clusters: Object.fromEntries(Object.entries(clusters).map(([k, v]) => [k, +v.toFixed(2)])),
