@@ -375,6 +375,79 @@
           "weightAfter": 0
         }
       ]
+    },
+    {
+      "id": "2026-08-25-deploy",
+      "date": "2026-08-25",
+      "kind": "deploy",
+      "targetAsOf": "2026-08-25",
+      "book": 11611.23,
+      "equityAtDecision": 11611.23,
+      "spyAt": 764.74,
+      "rationale": "Owner-confirmed ticket 2026-08-25-2m67b0 — deploy 1380.37 of settled cash into the 08-25 target. No sells, 0 tax. Pre-checks: book -0.11% vs plan basis; JNJ reports 10-13 and KO 10-20 (no blackout); no loss-sales so no cross-account wash check; no same-day orders (PDT clear). Deferred and NOT bought: MA + BKNG (above their entry bands) and V (14d re-entry cooldown, clears 08-26) — 1821.56 of intended weight held, no parking leg emitted this pass. JPM/GE phase-out exits stayed blocked by the 14d min-hold (churn governor).",
+      "trades": [
+        {
+          "sym": "JNJ",
+          "side": "BUY",
+          "dollars": 464.21,
+          "shares": 1.702024,
+          "priceAt": 272.7399,
+          "weightBefore": 0,
+          "weightAfter": 4,
+          "drivers": [
+            "quality",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "KO",
+          "side": "BUY",
+          "dollars": 432.95,
+          "shares": 4.723568,
+          "priceAt": 91.6574,
+          "weightBefore": 0,
+          "weightAfter": 3.73,
+          "drivers": [
+            "quality",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "GLDM",
+          "side": "BUY",
+          "dollars": 325.53,
+          "shares": 3.548436,
+          "priceAt": 91.739,
+          "weightBefore": 0,
+          "weightAfter": 2.8
+        },
+        {
+          "sym": "VTI",
+          "side": "BUY",
+          "dollars": 131.19,
+          "shares": 0.347339,
+          "priceAt": 377.6999,
+          "weightBefore": 3.7,
+          "weightAfter": 4.83,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 26.49,
+          "shares": 0.034639,
+          "priceAt": 764.7449,
+          "weightBefore": 15.1,
+          "weightAfter": 15.27,
+          "drivers": [
+            "quality"
+          ]
+        }
+      ]
     }
   ]
 }
