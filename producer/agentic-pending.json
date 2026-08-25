@@ -1,7 +1,7 @@
 {
   "id": "2026-08-25-2m67b0",
   "created": "2026-08-25",
-  "status": "confirmed",
+  "status": "done",
   "autoEligible": false,
   "turnover": 1380.37,
   "book": 11624.51,
@@ -89,7 +89,17 @@
     {
       "at": "2026-08-25",
       "to": "confirmed"
+    },
+    {
+      "at": "2026-08-25",
+      "to": "buys-placed"
+    },
+    {
+      "at": "2026-08-25",
+      "to": "done"
     }
   ],
-  "confirmedAt": "2026-08-25"
+  "confirmedAt": "2026-08-25",
+  "buys-placedAt": "2026-08-25",
+  "doneAt": "2026-08-25"
 }
