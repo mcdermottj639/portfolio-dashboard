@@ -388,9 +388,22 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       as DUE even on NOT_DUE. If NOT_DUE **and** `refreshResearch` is false, **skip the rest** (~zero cost).
       Separately, if the file has a **`deploy-cash`** trigger, `PushNotification` its `msg` (idle/new cash
       ready to deploy) — that push is independent of whether research re-runs.
-   2. If DUE: assemble a fresh candidate **universe** — the day's oversold scan finalists (`scan.json` via
-      `picks.mjs`) + the `leaders.mjs` mega-cap bench + current ••••3900 holdings (`agentic-positions.json`),
-      with live quotes/fundamentals for sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
+   2. If DUE: assemble a fresh candidate **universe**. **Start from the research bench, NOT `leaders.mjs`:**
+      `node producer/research-universe.mjs --symbols --max 60` prints a comma-separated ticker list
+      (sector-balanced across all 20 sectors; `--max all` for the full 137, `--stats` to see the split).
+      Union that with the day's oversold scan finalists (`scan.json` via `picks.mjs`) and the current
+      ••••3900 holdings (`agentic-positions.json`), then fetch live quotes/fundamentals for
+      sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
+      **Why this changed (2026-08-25):** the bench used to be `leaders.mjs` — 19 names, 16 of them megacap
+      or large-growth. Six research cycles over seven weeks selected **14 distinct names total**, seven of
+      them in five-or-more of six targets. The screen wasn't re-confirming convictions, it had almost
+      nothing else to look at. `leaders.mjs` stays what it is (the CONSUMER's Plan-page bench, quoted every
+      run); `research-universe.mjs` is the wide, weekly-only screening bench.
+      **Size discipline:** a name the sleeves can't fetch data for scores 5.0 and tops out at a **5.72**
+      composite, against a ~6.5-6.9 marginal finalist — i.e. it is arithmetically unable to make the cut,
+      so padding the list past what can be scored thins every sleeve's attention for nothing. 60 is what
+      today's Alpha Vantage 25/day cap supports; raise it only alongside feeding fundamentals in via
+      `args` (see the ceiling note in `research-universe.mjs`).
    3. Run the **`agentic-research`** workflow (`.claude/workflows/agentic-research.js`) with
       `args:{ universe:<that list>, book:<••••3900 equity from agentic-portfolio.json>,
       held:<[{t,w}] from agentic-positions.json — ticker + current % of book>,

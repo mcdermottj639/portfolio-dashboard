@@ -159,6 +159,56 @@ automaker and NOW a software firm, and all three trade as the AI bet. Adding a n
 a cap, so err toward inclusion. Defensive clusters (`utilities`, `reits`, `telecom`, `low-vol`) were added at
 the same time; every one of those names used to be an uncapped singleton too — the mirror image of the hole.
 
+## The screening funnel — bench, cut, and the challenger quota (2026-08-25)
+Six committed research cycles (2026-06-29 → 08-18) selected **14 distinct names in seven weeks**. Seven of
+them appeared in five or more of six targets — SPY/GOOGL/NVDA/JPM in **all six**. The apparent variety at
+the tail (MA, VTI, AAPL, UNH, one appearance each) was mostly the 08-05→08-12 churn incident, not discovery.
+
+**This was neither proof the screen worked nor proof it was broken, and that is the actual problem.** A
+landslide tells you nothing when one name is on the ballot: "these are the best names available" and "these
+were the only names shown" produce identical evidence. Three narrowing steps all pulled the same way:
+
+| step | what it was | why it biased |
+|---|---|---|
+| bench | `leaders.mjs`, 19 names | 16 of 19 megacap or large-growth |
+| composite | m .22 · q .24 · g .22 · c .14 · v .18 | momentum+growth **0.44** vs valuation **0.18** — a cheap stable name cannot out-rank an expensive fast one |
+| cut | top 10, max 2/sector | the sector cap was the *only* diversity rule |
+
+Widening any one alone got absorbed by the other two — a 2.4× wider universe moved **2 of 10** finalist
+slots. The accumulated cost was concentration nobody chose: on 2026-08-24 the book was **46.0%** one
+AI/big-tech bet (37.5% direct + 8.5% inside SPY/VTI) against a 48% ceiling, and **2.9%** defensive against
+the 15% floor. No individual pick was wrong; the total was never a decision.
+
+**The fix widens what is EVALUATED, never what is HELD.** Turnover is expensive here (short-term rates) and
+a stable core of good names is a legitimate outcome for this mandate — the churn governor exists precisely
+to protect it. So:
+- **`producer/research-universe.mjs`** — a wide screening bench (137 names / 20 sectors) with a
+  sector-balanced `universeSlice(n)`. `leaders.mjs` is untouched and keeps its own job (the consumer's
+  Plan-page bench, quoted every run). The Routine reads this instead — PRODUCER.md step 7.2.
+- **`producer/finalists.mjs`** — the cut goes **10 → 16**, and **5 of those 16 slots are RESERVED** for
+  names in neither the current book nor the prior target (`CHALLENGER_SLOTS`). Challengers share the same
+  per-sector budget, so five of them from one sector can't trade one concentration for another. If too few
+  non-incumbents qualify, the slots **backfill on merit** rather than shrinking the cut, and the shortfall
+  is reported. On the live ranking this took fresh names reaching adversarial verify from **1/10 to 7/16**
+  and sector coverage from 7 to 11 — **with every previous finalist still in the set**.
+- **Allocation widens to 12-15 names** (was 7-9): the defensive floor needs room, and a 16-name cut now
+  supplies enough verified survivors. On a ~$10k book 13 names is ~$780 each, far above the 3.5% sliver floor.
+
+Nothing here buys or sells anything. The adversarial verify, the incumbency framing ("displace an incumbent
+only when MATERIALLY stronger"), the 14-day min-hold and the re-entry cooldown all still decide what trades.
+The point is to make the incumbents' win **falsifiable**: if the seven are genuinely best they keep winning
+and that now means something; if they are not, it surfaces cheaply.
+
+**Universe size has a hard arithmetic ceiling — do not pad it.** The sleeve prompts fall back to "score 5.0,
+no data" for a name they cannot fetch, and such a name's composite tops out at `0.82×5 + 0.18×9` = **5.72**
+against a marginal finalist around **6.5-6.9**. It is *arithmetically incapable* of clearing the cut, so
+extra names beyond what can be scored only thin each sleeve's attention. Valuation is free at any size
+(pure code over px/pe/hi/lo); momentum is Robinhood-batched and cheap; **quality/growth/catalyst are the
+constraint at Alpha Vantage's 25/day free cap**. Hence the default slice of 60. To go meaningfully wider,
+feed fundamentals in via `args` — the pattern the flow sleeve already uses, and `extfund.mjs` already
+normalizes Finnhub/FMP into the same COMPANY_OVERVIEW shape (quotas ~250/day and 60/min vs AV's 25/day).
+**That work is not done.**
+
 ## Defensive floor — the book's only FLOOR (v124)
 Every risk control above is a **ceiling**. Until v124 there was no floor of any kind, and that asymmetry was
 the gap: the caps stop the book over-owning the AI complex, but **nothing ever made it own a stabilizer**.
