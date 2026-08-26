@@ -448,6 +448,100 @@
           ]
         }
       ]
+    },
+    {
+      "id": "2026-08-26-rebalance",
+      "date": "2026-08-26",
+      "kind": "rebalance",
+      "targetAsOf": "2026-08-25",
+      "book": 11585.45,
+      "equityAtDecision": 11585.45,
+      "spyAt": 764.94,
+      "rationale": "Two-strike phase-out completes: JPM and GE exit after failing to return from adversarial verify a second consecutive cycle — the exits the 08-25 ticket computed but could not place, held one day short of the 14d min-hold (both bought 08-12). Proceeds fund the defensive floor (JNJ 7.13%, KO 6.65%) and the gold diversifier sleeve (GLDM 5.0%), with AMZN topped to target. $1,028.66 of deferred weight for MA, V and BKNG (all above-entry) parks in VTI rather than sitting in cash. Realized ST: +$2.68 JPM gain, -$24.06 GE loss, net -$21.38.",
+      "trades": [
+        {
+          "sym": "VTI",
+          "side": "BUY",
+          "dollars": 1129.54,
+          "shares": 2.989268,
+          "priceAt": 377.865,
+          "weightBefore": 3.88,
+          "weightAfter": 4.75,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "JNJ",
+          "side": "BUY",
+          "dollars": 362.28,
+          "shares": 1.332187,
+          "priceAt": 271.9437,
+          "weightBefore": 4,
+          "weightAfter": 7.13,
+          "drivers": [
+            "quality",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "KO",
+          "side": "BUY",
+          "dollars": 340.68,
+          "shares": 3.746725,
+          "priceAt": 90.9274,
+          "weightBefore": 3.71,
+          "weightAfter": 6.65,
+          "drivers": [
+            "quality",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "GLDM",
+          "side": "BUY",
+          "dollars": 254.91,
+          "shares": 2.78959,
+          "priceAt": 91.379,
+          "weightBefore": 2.8,
+          "weightAfter": 5
+        },
+        {
+          "sym": "AMZN",
+          "side": "BUY",
+          "dollars": 49.36,
+          "shares": 0.190521,
+          "priceAt": 259.078,
+          "weightBefore": 8.6,
+          "weightAfter": 9.03,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "GE",
+          "side": "TRIM",
+          "dollars": 906.35,
+          "shares": 2.54865,
+          "priceAt": 355.6601,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "JPM",
+          "side": "TRIM",
+          "dollars": 1212.51,
+          "shares": 3.409419,
+          "priceAt": 355.6968,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }

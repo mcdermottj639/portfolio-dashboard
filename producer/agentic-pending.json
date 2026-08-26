@@ -1,68 +1,96 @@
 {
-  "id": "2026-08-25-2m67b0",
-  "created": "2026-08-25",
+  "id": "2026-08-26-l9rxr",
+  "created": "2026-08-26",
   "status": "done",
-  "autoEligible": false,
-  "turnover": 1380.37,
-  "book": 11624.51,
-  "planHash": "s[]b[GLDM:326,JNJ:464,KO:433,SPY:26,VTI:131]t[]",
+  "autoEligible": true,
+  "turnover": 4249.79,
+  "book": 11576.2,
+  "planHash": "s[GE:897,JPM:1217]b[AMZN:49,GLDM:255,JNJ:362,KO:341,VTI:101,VTI:1029]t[]",
   "legs": {
-    "sells": [],
-    "buysNow": [
+    "sells": [
       {
-        "sym": "SPY",
-        "kind": "buy",
-        "dollars": 26.49,
-        "shares": 0.0346,
-        "price": 766.41,
-        "pl": null,
-        "note": "17.6% → 18.05% target"
+        "sym": "GE",
+        "kind": "exit",
+        "dollars": 896.51,
+        "shares": 2.54865,
+        "price": 351.76,
+        "pl": -33.9,
+        "note": "not in the current target — exit funds the underweight names"
       },
+      {
+        "sym": "JPM",
+        "kind": "exit",
+        "dollars": 1216.51,
+        "shares": 3.409419,
+        "price": 356.81,
+        "pl": 6.68,
+        "note": "not in the current target — exit funds the underweight names"
+      }
+    ],
+    "buysNow": [
       {
         "sym": "VTI",
         "kind": "buy",
-        "dollars": 131.19,
-        "shares": 0.3466,
-        "price": 378.455,
+        "dollars": 100.88,
+        "shares": 0.2668,
+        "price": 378.13,
         "pl": null,
-        "note": "2.7% → 4.75% target"
+        "note": "3.9% → 4.75% target"
+      },
+      {
+        "sym": "AMZN",
+        "kind": "buy",
+        "dollars": 49.36,
+        "shares": 0.1901,
+        "price": 259.65,
+        "pl": null,
+        "note": "8.6% → 9.03% target"
       },
       {
         "sym": "JNJ",
         "kind": "buy",
-        "dollars": 464.21,
-        "shares": 1.7118,
-        "price": 271.1825,
+        "dollars": 362.28,
+        "shares": 1.3315,
+        "price": 272.09,
         "pl": null,
-        "note": "0.0% → 7.13% target"
+        "note": "4.0% → 7.13% target"
       },
       {
         "sym": "KO",
         "kind": "buy",
-        "dollars": 432.95,
-        "shares": 4.7134,
-        "price": 91.855,
+        "dollars": 340.68,
+        "shares": 3.7499,
+        "price": 90.85,
         "pl": null,
-        "note": "0.0% → 6.65% target"
+        "note": "3.7% → 6.65% target"
       },
       {
         "sym": "GLDM",
         "kind": "buy",
-        "dollars": 325.53,
-        "shares": 3.5632,
-        "price": 91.36,
+        "dollars": 254.91,
+        "shares": 2.7926,
+        "price": 91.2799,
         "pl": null,
-        "note": "0.0% → 5% target"
+        "note": "2.8% → 5% target"
+      },
+      {
+        "sym": "VTI",
+        "kind": "park",
+        "dollars": 1028.66,
+        "shares": 2.7204,
+        "price": 378.13,
+        "pl": null,
+        "note": "waiting ground — holds $1,028.66 of deferred weight (MA, V, BKNG) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0,
-    "realizedLoss": 0,
-    "net": 0,
+    "realizedGain": 6.68,
+    "realizedLoss": -33.9,
+    "net": -27.22,
     "term": "short",
-    "note": null
+    "note": "harvested losses offset the gains — net is ST, taxed as ordinary income"
   },
   "deferred": [
     {
@@ -72,8 +100,8 @@
     },
     {
       "sym": "V",
-      "reason": "reentry",
-      "until": "2026-08-26"
+      "reason": "above-entry",
+      "until": null
     },
     {
       "sym": "BKNG",
@@ -81,26 +109,36 @@
       "until": null
     }
   ],
+  "blockedSells": [],
+  "warnings": [
+    "3 name(s) deferred (MA, V, BKNG) — ~$1,813.99 of intended weight held pending earnings/re-verify/wash-sale",
+    "$1,028.66 of deferred weight parked in VTI rather than left in cash (MA, V, BKNG) — released when those names clear; unparking is a taxable ST sale"
+  ],
   "history": [
     {
-      "at": "2026-08-25",
+      "at": "2026-08-26",
       "to": "proposed"
     },
     {
-      "at": "2026-08-25",
+      "at": "2026-08-26",
       "to": "confirmed"
     },
     {
-      "at": "2026-08-25",
+      "at": "2026-08-26",
+      "to": "sells-placed"
+    },
+    {
+      "at": "2026-08-26",
       "to": "buys-placed"
     },
     {
-      "at": "2026-08-25",
+      "at": "2026-08-26",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-08-25",
-  "buys-placedAt": "2026-08-25",
-  "doneAt": "2026-08-25",
-  "completedAt": "2026-08-25T14:41:00.000Z"
+  "confirmedAt": "2026-08-26",
+  "sells-placedAt": "2026-08-26",
+  "buys-placedAt": "2026-08-26",
+  "doneAt": "2026-08-26",
+  "completedAt": "2026-08-26T14:28:30.000Z"
 }

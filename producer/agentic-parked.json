@@ -1,9 +1,13 @@
 {
   "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 0,
-  "forNames": [],
-  "since": null,
+  "dollars": 1028.66,
+  "forNames": [
+    "MA",
+    "V",
+    "BKNG"
+  ],
+  "since": "2026-08-26",
   "history": [
     {
       "date": "2026-08-12",
@@ -20,6 +24,17 @@
       "dollars": -320.53,
       "forNames": [],
       "note": "2026-08-18 research adopted the held VTI as a TARGET name (3.82%, thesis: ballast/parking-vehicle stake held flat) — the placeholder shares are absorbed into the target allocation. Zero trades, zero tax. Executing the gate plan instead would have sold 0.84368 VTI and rebought $321.20 VTI same-day: a pointless round trip (PDT count +1) and a same-day wash sale on a -$1.38 loss. Executor declined and reconciled the ledger."
+    },
+    {
+      "date": "2026-08-26",
+      "action": "park",
+      "dollars": 1028.66,
+      "forNames": [
+        "MA",
+        "V",
+        "BKNG"
+      ],
+      "note": "MA, V and BKNG all deferred above-entry by the v102 band; deferred weight parked in VTI at 377.865/sh (2.72 sh of the 2.989268-sh fill; the other 0.2688 sh is the target top-up 3.88%→4.75%). Ticket 2026-08-26-l9rxr. Released to fund each name as it clears — unparking is a taxable ST sale."
     }
   ]
 }
