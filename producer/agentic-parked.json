@@ -1,11 +1,10 @@
 {
   "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 1028.66,
+  "dollars": 485.99,
   "forNames": [
     "MA",
-    "V",
-    "BKNG"
+    "V"
   ],
   "since": "2026-08-26",
   "history": [
@@ -35,6 +34,15 @@
         "BKNG"
       ],
       "note": "MA, V and BKNG all deferred above-entry by the v102 band; deferred weight parked in VTI at 377.865/sh (2.72 sh of the 2.989268-sh fill; the other 0.2688 sh is the target top-up 3.88%→4.75%). Ticket 2026-08-26-l9rxr. Released to fund each name as it clears — unparking is a taxable ST sale."
+    },
+    {
+      "date": "2026-08-27",
+      "action": "release",
+      "dollars": -542.67,
+      "forNames": [
+        "BKNG"
+      ],
+      "note": "BKNG cleared its entry band; released 1.431148 VTI @ 379.8301 = $543.61 (realized +$1.78 ST) to fund the position at 4.75%. MA and V remain above-entry — $485.99 stays parked. Ticket 2026-08-27-x0zdxw."
     }
   ]
 }

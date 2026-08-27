@@ -1,96 +1,42 @@
 {
-  "id": "2026-08-26-l9rxr",
-  "created": "2026-08-26",
+  "id": "2026-08-27-x0zdxw",
+  "created": "2026-08-27",
   "status": "done",
   "autoEligible": true,
-  "turnover": 4249.79,
-  "book": 11576.2,
-  "planHash": "s[GE:897,JPM:1217]b[AMZN:49,GLDM:255,JNJ:362,KO:341,VTI:101,VTI:1029]t[]",
+  "turnover": 1091.44,
+  "book": 11553.06,
+  "planHash": "s[VTI:543]b[BKNG:549]t[]",
   "legs": {
     "sells": [
       {
-        "sym": "GE",
-        "kind": "exit",
-        "dollars": 896.51,
-        "shares": 2.54865,
-        "price": 351.76,
-        "pl": -33.9,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "JPM",
-        "kind": "exit",
-        "dollars": 1216.51,
-        "shares": 3.409419,
-        "price": 356.81,
-        "pl": 6.68,
-        "note": "not in the current target — exit funds the underweight names"
+        "sym": "VTI",
+        "kind": "park-release",
+        "dollars": 542.67,
+        "shares": 1.431148,
+        "price": 379.185,
+        "pl": 0.85,
+        "note": "release parked placeholder — funds BKNG"
       }
     ],
     "buysNow": [
       {
-        "sym": "VTI",
+        "sym": "BKNG",
         "kind": "buy",
-        "dollars": 100.88,
-        "shares": 0.2668,
-        "price": 378.13,
+        "dollars": 548.77,
+        "shares": 2.6784,
+        "price": 204.89,
         "pl": null,
-        "note": "3.9% → 4.75% target"
-      },
-      {
-        "sym": "AMZN",
-        "kind": "buy",
-        "dollars": 49.36,
-        "shares": 0.1901,
-        "price": 259.65,
-        "pl": null,
-        "note": "8.6% → 9.03% target"
-      },
-      {
-        "sym": "JNJ",
-        "kind": "buy",
-        "dollars": 362.28,
-        "shares": 1.3315,
-        "price": 272.09,
-        "pl": null,
-        "note": "4.0% → 7.13% target"
-      },
-      {
-        "sym": "KO",
-        "kind": "buy",
-        "dollars": 340.68,
-        "shares": 3.7499,
-        "price": 90.85,
-        "pl": null,
-        "note": "3.7% → 6.65% target"
-      },
-      {
-        "sym": "GLDM",
-        "kind": "buy",
-        "dollars": 254.91,
-        "shares": 2.7926,
-        "price": 91.2799,
-        "pl": null,
-        "note": "2.8% → 5% target"
-      },
-      {
-        "sym": "VTI",
-        "kind": "park",
-        "dollars": 1028.66,
-        "shares": 2.7204,
-        "price": 378.13,
-        "pl": null,
-        "note": "waiting ground — holds $1,028.66 of deferred weight (MA, V, BKNG) in VTI instead of cash; released when they clear"
+        "note": "0.0% → 4.75% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 6.68,
-    "realizedLoss": -33.9,
-    "net": -27.22,
+    "realizedGain": 0.85,
+    "realizedLoss": 0,
+    "net": 0.85,
     "term": "short",
-    "note": "harvested losses offset the gains — net is ST, taxed as ordinary income"
+    "note": null
   },
   "deferred": [
     {
@@ -102,43 +48,52 @@
       "sym": "V",
       "reason": "above-entry",
       "until": null
-    },
-    {
-      "sym": "BKNG",
-      "reason": "above-entry",
-      "until": null
     }
   ],
-  "blockedSells": [],
+  "blockedSells": [
+    {
+      "sym": "VTI",
+      "kind": "trim",
+      "blocked": "min-hold",
+      "dollars": 6.3,
+      "pl": 0.01,
+      "plPct": 0.16,
+      "until": "2026-09-09",
+      "heldDays": 1,
+      "note": "bought 1d ago (min-hold 14d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks 2026-09-09 (a business-broken drop or a ≤-10% loss would override)"
+    }
+  ],
   "warnings": [
-    "3 name(s) deferred (MA, V, BKNG) — ~$1,813.99 of intended weight held pending earnings/re-verify/wash-sale",
-    "$1,028.66 of deferred weight parked in VTI rather than left in cash (MA, V, BKNG) — released when those names clear; unparking is a taxable ST sale"
+    "2 name(s) deferred (MA, V) — ~$1,261.59 of intended weight held pending earnings/re-verify/wash-sale",
+    "1 sell(s) held by the 14d min-hold (VTI) — churn guard: positions opened within the window aren't flipped by the next research refresh",
+    "$0 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "released $542.67 from the VTI waiting ground to fund cleared names — realizes $0.85 ST"
   ],
   "history": [
     {
-      "at": "2026-08-26",
+      "at": "2026-08-27",
       "to": "proposed"
     },
     {
-      "at": "2026-08-26",
+      "at": "2026-08-27",
       "to": "confirmed"
     },
     {
-      "at": "2026-08-26",
+      "at": "2026-08-27",
       "to": "sells-placed"
     },
     {
-      "at": "2026-08-26",
+      "at": "2026-08-27",
       "to": "buys-placed"
     },
     {
-      "at": "2026-08-26",
+      "at": "2026-08-27",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-08-26",
-  "sells-placedAt": "2026-08-26",
-  "buys-placedAt": "2026-08-26",
-  "doneAt": "2026-08-26",
-  "completedAt": "2026-08-26T14:28:30.000Z"
+  "confirmedAt": "2026-08-27",
+  "sells-placedAt": "2026-08-27",
+  "buys-placedAt": "2026-08-27",
+  "doneAt": "2026-08-27",
+  "completedAt": "2026-08-27T14:24:00.000Z"
 }

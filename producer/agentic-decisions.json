@@ -542,6 +542,42 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "id": "2026-08-27-rebalance",
+      "date": "2026-08-27",
+      "kind": "rebalance",
+      "targetAsOf": "2026-08-25",
+      "book": 11596.3,
+      "equityAtDecision": 11596.3,
+      "spyAt": 769.24,
+      "rationale": "Waiting-ground release: BKNG traded back into its entry band (spot $205.94 vs a $203.76 ceiling + 2% premium), so $543.61 of the VTI placeholder parked on 08-26 was sold to fund the position at its full 4.75% target weight. Realized +$1.78 ST on the release. MA and V stay above-entry and keep $485.99 parked. The VTI trim the target also called for ($6.30) is held by the 14d min-hold to 2026-09-09 — dust either way.",
+      "trades": [
+        {
+          "sym": "BKNG",
+          "side": "BUY",
+          "dollars": 548.77,
+          "shares": 2.664658,
+          "priceAt": 205.9438,
+          "weightBefore": 0,
+          "weightAfter": 4.75,
+          "drivers": [
+            "momentum",
+            "quality",
+            "growth",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "VTI",
+          "side": "TRIM",
+          "dollars": 543.61,
+          "shares": 1.431148,
+          "priceAt": 379.8301,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }
