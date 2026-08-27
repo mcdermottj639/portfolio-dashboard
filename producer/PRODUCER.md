@@ -78,7 +78,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      accounts'** portfolio + positions (your main account **AND** the ••••3900 agentic account —
      resolve it via `get_accounts`, see the callout below; the `agentic-*.json` rows are EVERY-RUN,
      **not** FETCH_ALL-only), plus the ••••3900 `get_pnl_trade_history` row (the wash-sale ledger's
-     source — also EVERY-RUN), quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
+     source — also EVERY-RUN), the ••••0741 `get_equity_orders` row (the self-directed Rebalance
+     Log's source — also EVERY-RUN), quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
      fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
      forward from the prior snapshot automatically. Then go straight to step 4.
 
@@ -100,6 +101,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
+   | `mcp__claude_ai_Robinhood__get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<120 days ago, YYYY-MM-DD>" }` | `producer/raw/main-orders.json` | EVERY-RUN |
    | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
    | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
@@ -124,6 +126,29 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > executor bought NVDA back inside the 30-day window because its ledger only read ••••3900's (empty)
    > trade history — a real cross-account wash sale this row exists to prevent. `span: "3month"` (not
    > `ytd`) so the 31-day window stays covered across a year boundary.
+   > ### 🧾 `main-orders.json` feeds the SELF-DIRECTED Rebalance Log (v127)
+   > The agentic account's Rebalance Log is fed by its executor, which appends a record to
+   > `agentic-decisions.json` every time it confirms a rebalance. ••••0741 has no executor — the owner
+   > places its trades by hand — so a ledger waiting to be hand-appended on that side would be a card
+   > that stays empty forever. Its decisions are instead **DERIVED from this row**: every filled equity
+   > order, grouped into one record per ET trading day by `producer/maindecisions.mjs`, stamped with
+   > SPY's close that day, then graded through the **same** `gradeDecisions` the agentic side uses. Same
+   > card, same alpha, same ahead/behind/open verdicts.
+   >
+   > **Orders, never a position diff** — the lesson `agentic-trades.json` above records. A filled order
+   > is a fact with a price and a timestamp; a diff between two snapshots is an inference that goes
+   > catastrophically wrong the moment one fetch returns the wrong account. If this row fails, build-data
+   > derives NOTHING and carries the prior log forward; it never falls back to inference.
+   >
+   > **This endpoint PAGINATES, and that is load-bearing.** A live 120-day fetch on ••••0741 returned
+   > 200 orders reaching back only ~78 days, with a `next` cursor for the rest. The snapshot log sweeps
+   > out any in-window record the fresh fetch no longer reports (a cancelled or corrected fill), so a
+   > sweep keyed to the 120 days *requested* would have deleted six weeks of real, correctly-recorded
+   > history on every run. `deriveLog()` therefore keys the sweep to what the payload actually COVERS,
+   > and when a `next` cursor is present it also discards the payload's oldest day (the page boundary
+   > can fall mid-day, leaving that day's legs incomplete) in favour of what an earlier complete fetch
+   > already recorded. Widen `created_at_gte` freely; the code no longer depends on it being exact.
+   >
    > A failure on any of these rows is not fatal — build-data falls back to the prior snapshot's figures.
 
    > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)

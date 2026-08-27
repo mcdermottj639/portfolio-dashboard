@@ -3,6 +3,7 @@
 // Run: node producer/make-sample-data.mjs   (writes ../data.json)
 import { writeFileSync } from 'node:fs';
 import { makeDecision, gradeDecisions } from './agentic-ledger.mjs';
+import { decisionsFromOrders, spyClosesFrom } from './maindecisions.mjs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { makeKey, RH } from './key.mjs';
@@ -326,9 +327,32 @@ const data = {
       out.push({ t, equity: +(grown + cumFlow).toFixed(2), cumFlow, optionsValue: -597 });
     });
     out[out.length - 1].equity = +totalVal.toFixed(2);      // end exactly on the live figure
+    /* The self-directed Rebalance Log (Plan tab). Built by running the REAL derivation over a
+       synthetic get_equity_orders payload — same reasoning as the agentic ledger fixture above: a
+       hand-written `decisions` block would drift from the shipped shape the first time the record
+       changes, and the whole point of the fixture is to prove the code path renders. Anchored to the
+       SPY bar dates so each row actually finds a benchmark close and the "vs SPY" column is
+       exercised rather than showing "—". Deliberately covers all three kinds: a buys-only deploy, a
+       sells-only cash raise, and a two-sided rebalance. */
+    const orders = (() => {
+      const at = (i) => dates[i] + 'T18:00:00Z';   // 14:00 ET — unambiguously that ET date
+      const o = (symbol, side, qty, px, i) => ({ symbol, side, state: 'filled', placed_agent: 'user',
+        cumulative_quantity: String(qty), average_price: String(px), last_transaction_at: at(i) });
+      return { data: { orders: [
+        o('NVDA', 'buy', 12, 152.4, 1), o('MSFT', 'buy', 4, 471.0, 1),        // deploy
+        o('IREN', 'sell', 40, 49.1, 6),                                        // raise cash
+        o('AAPL', 'buy', 10, 283.5, 11), o('GLD', 'sell', 6, 244.0, 11),       // rebalance
+        // Excluded by design, so preview proves the filters bite: a DRIP fill and a cancelled order.
+        { symbol: 'SPY', side: 'buy', state: 'filled', placed_agent: 'drip', cumulative_quantity: '0.1', average_price: '700', last_transaction_at: at(11) },
+        { symbol: 'MSFT', side: 'sell', state: 'cancelled', placed_agent: 'user', cumulative_quantity: '0', average_price: null, last_transaction_at: at(11) },
+      ] } };
+    })();
+    const decisions = gradeDecisions(
+      decisionsFromOrders(orders, { spyCloses: spyClosesFrom(spy) }),
+      quotes, new Date().toISOString().slice(0, 10));
     return { asOf: new Date().toISOString(), equity: +totalVal.toFixed(2), cash: +cash.toFixed(2),
       optionsValue: -597, positions: POS.map((p) => ({ symbol: p.symbol, qty: +p.quantity, px: p.px })),
-      equityHistory: out };
+      equityHistory: out, decisions };
   })(),
   agentic: (() => {
     // Priced FROM the fixture's own quotes — the real producer prices agentic positions off the

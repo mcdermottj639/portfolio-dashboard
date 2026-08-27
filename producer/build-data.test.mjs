@@ -66,6 +66,22 @@ const FIXTURES = {
   // The SELF-DIRECTED book's closing trades (v105) — its losses must land in the SAME ledger tagged
   // 'main' (the cross-account wash guard: the real Jul-29 NVDA loss the agentic executor rebought
   // through on Aug-11). The gain must be ignored like any other.
+  // The SELF-DIRECTED account's filled equity orders — the source the Rebalance Log is DERIVED from
+  // (there is no executor on this side to append a ledger, so the broker's own order history is the
+  // record). One two-sided day → a 'rebalance'; a DRIP fill and a cancelled order that must both be
+  // dropped; a fill timestamped 02:00Z which is really the PREVIOUS evening in ET.
+  'main-orders.json': { data: { orders: [
+    { symbol: 'AAA', side: 'buy', state: 'filled', placed_agent: 'user', cumulative_quantity: '4', average_price: '100.00',
+      created_at: '2026-06-11T20:00:00Z', last_transaction_at: '2026-06-12T17:00:00Z' },
+    { symbol: 'BBB', side: 'sell', state: 'filled', placed_agent: 'user', cumulative_quantity: '3', average_price: '52.00',
+      created_at: '2026-06-12T14:00:00Z', last_transaction_at: '2026-06-12T18:00:00Z' },
+    { symbol: 'SPY', side: 'buy', state: 'filled', placed_agent: 'drip', cumulative_quantity: '0.1', average_price: '600.00',
+      last_transaction_at: '2026-06-12T18:00:00Z' },
+    { symbol: 'AAA', side: 'sell', state: 'cancelled', placed_agent: 'user', cumulative_quantity: '0', average_price: null,
+      last_transaction_at: '2026-06-12T18:00:00Z' },
+    { symbol: 'AAA', side: 'buy', state: 'filled', placed_agent: 'user', cumulative_quantity: '2', average_price: '96.00',
+      last_transaction_at: '2026-06-12T02:00:00Z' },
+  ] } },
   'main-trades.json': { data: { trades: [
     { timestamp: new Date(Date.now() - 4 * 24 * 3600e3).toISOString(), symbol: 'MMM', side: 'sell', quantity: '35', price: '195.53', realized_gain: '-431.76' },
     { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'DDD', side: 'sell', quantity: '5', price: '210.00', realized_gain: '250.00' },
@@ -76,8 +92,8 @@ const prior = {
   schemaVersion: 1,
   generatedAt: new Date(Date.now() - 24 * 3600e3).toISOString(),
   generatedAtLabel: 'test prior',
-  quotes: { AAA: q(100, 99), BBB: q(55, 54) },
-  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50) }, month: { AAA: bars(3, 80) } },
+  quotes: { AAA: q(100, 99), BBB: q(55, 54), SPY: q(660, 655) },
+  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: bars(5, 600) }, month: { AAA: bars(3, 80) } },
   recorded: {},
   agentic: {
     asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), cash: 50, buyingPower: 50, equity: 1050,
@@ -93,6 +109,16 @@ const prior = {
     asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), equity: 900, cash: 300, optionsValue: -597,
     positions: [{ symbol: 'AAA', qty: 1, px: 100 }],
     equityHistory: [{ t: '2026-07-01', equity: 900, cumFlow: 0, optionsValue: -597 }],
+    // The accumulated Rebalance Log. raw/ is wiped every run and the fetch only covers a window, so
+    // the snapshot is the only place older records can live. The 2026-01 record is OUTSIDE the sweep
+    // window and must survive untouched; the 2026-06-11 one is INSIDE it and the fresh derivation
+    // must replace it wholesale rather than leaving a phantom day the broker no longer reports.
+    decisions: { decisions: [
+      { id: '2026-06-11-sd', date: '2026-06-11', kind: 'deploy', source: 'orders', spyAt: 601,
+        trades: [{ sym: 'PHANTOM', side: 'BUY', dollars: 10, priceAt: 10 }] },
+      { id: '2026-01-15-sd', date: '2026-01-15', kind: 'deploy', source: 'orders', spyAt: 580,
+        trades: [{ sym: 'AAA', side: 'BUY', dollars: 500, priceAt: 90 }] },
+    ], stats: {} },
   },
   // The stale owner-typed margin-only figure the broker fetch must supersede.
   realized: { year: '2026 YTD', equity: 2335, options: 0, total: 2335, approx: true },
@@ -198,6 +224,22 @@ try {
   eq('main options value recorded for the next run to difference', mnPt.optionsValue, -597);
   eq('main positions kept for the next flow inference', out.main.positions[0].symbol, 'AAA');
   eq('main history appended, not replaced', mnEH.length, 2);
+
+  // ── Self-directed Rebalance Log, derived from filled orders (v127) ──────────────────────────
+  const sdLog = out.main.decisions.decisions;
+  const sdBy = Object.fromEntries(sdLog.map((d) => [d.date, d]));
+  eq('a two-sided trading day becomes one rebalance record', [sdBy['2026-06-12'].kind, sdBy['2026-06-12'].trades.map((t) => t.sym).sort()],
+    ['rebalance', ['AAA', 'BBB']]);
+  eq('a DRIP fill is not a decision', sdLog.some((d) => d.trades.some((t) => t.sym === 'SPY')), false);
+  eq('a cancelled order is not a decision', sdBy['2026-06-12'].trades.length, 2);
+  eq('a 02:00Z fill files under the previous ET day', sdBy['2026-06-11'].trades.map((t) => t.sym), ['AAA']);
+  eq("spyAt is stamped from that day's SPY close", sdBy['2026-06-12'].spyAt, 602);
+  eq('the log grades vs SPY through the SAME ledger as the agentic side',
+    [sdBy['2026-06-12'].grade.spyRet != null, sdBy['2026-06-12'].grade.alpha != null], [true, true]);
+  eq('a stale in-window record the broker no longer reports is swept',
+    sdLog.some((d) => d.trades.some((t) => t.sym === 'PHANTOM')), false);
+  eq('a record outside the sweep window carries forward', sdBy['2026-01-15'].trades[0].dollars, 500);
+  eq('log is newest-first', sdLog.map((d) => d.date), ['2026-06-12', '2026-06-11', '2026-01-15']);
 
   // Realized P&L is now per account and broker-sourced — the stale owner figure must NOT win.
   eq('realized is broker-sourced when the fetch landed', out.realized.source, 'robinhood');

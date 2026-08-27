@@ -22,6 +22,7 @@ import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
+import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint } from './equityseries.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
@@ -538,6 +539,44 @@ const data = {
       if (sv.length) console.log(`agentic sleeves: ${sv.map(([k, v]) => `${k} ${v.alphaPct != null ? `${v.alphaPct > 0 ? '+' : ''}${v.alphaPct}pp α` : 'n/a'} (n=${v.n}${v.thin ? ', thin' : ''})`).join(' · ')}`);
     } else if (prior && prior.agentic && prior.agentic.decisions) {
       data.agentic.decisions = prior.agentic.decisions;
+    }
+  }
+
+  // ── Self-directed rebalance log (data.main.decisions) ─────────────────────────────────────────
+  // The same card, the same grader, the same SPY alpha — but this account has no executor to append a
+  // ledger at confirm time, so the decisions are DERIVED from its real filled orders (see
+  // maindecisions.mjs for why orders and never a position diff, and why the date is the ET FILL).
+  // The log accumulates in the SNAPSHOT because raw/ is wiped every run and the fetch only covers a
+  // recent window — the ivHistory / congressional-ledger pattern.
+  if (data.main) {
+    const asOfDay = new Date(data.generatedAt).toISOString().slice(0, 10);
+    const priorLog = (prior && prior.main && prior.main.decisions && Array.isArray(prior.main.decisions.decisions))
+      ? prior.main.decisions.decisions : [];
+    const ordersFile = filesMatching(/^main-orders\.json$/)[0];
+    // Owner annotation (optional, committed): the manual half of "same process" — it can give a
+    // derived day a real rationale, never invent a day the broker has no orders for.
+    let owned = [];
+    try { const of = join(__dirname, 'main-decisions.json'); if (existsSync(of)) { const j = readJSON(of); if (Array.isArray(j.decisions)) owned = j.decisions; } } catch { owned = []; }
+    let ledger;
+    if (ordersFile) {
+      const spyCloses = spyClosesFrom((hist.day && hist.day.SPY) || []);
+      // deriveLog owns the pagination rule: get_equity_orders caps its page, so the sweep window is
+      // taken from what the payload actually covers — a fixed one would delete real history whenever
+      // the fetch came back short. See maindecisions.mjs.
+      const r = deriveLog(readJSON(ordersFile), { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS) });
+      ledger = mergeDecisions(r.decisions, priorLog, { windowFrom: r.windowFrom, committed: owned });
+      const noSpy = ledger.filter((d) => d.spyAt == null).length;
+      console.log(`self-directed decisions: ${r.decisions.length} trading day(s) derived from ${r.orders} filled order(s)${r.truncated ? ` · page truncated, sweeping only from ${r.windowFrom}` : ''} · ${ledger.length} in the log${noSpy ? ` · ${noSpy} without a SPY close (graded on absolute return)` : ''}`);
+    } else {
+      // No fetch this run ⇒ derive NOTHING and sweep nothing, or a missing file would erase the log.
+      ledger = mergeDecisions([], priorLog, { committed: owned });
+      if (priorLog.length) console.log(`self-directed decisions: no main-orders.json this run — carrying ${ledger.length} record(s) forward`);
+      else console.warn('self-directed decisions: no main-orders.json and nothing carried — the Rebalance Log will render empty (PRODUCER.md step 2).');
+    }
+    if (ledger.length) {
+      const graded = gradeDecisions(ledger, quotes, asOfDay);
+      data.main.decisions = graded;
+      console.log(`self-directed log: ${graded.stats.total} logged · ${graded.stats.resolved} resolved (${graded.stats.ahead} ahead)${graded.stats.avgAlpha != null ? ` · avg alpha ${graded.stats.avgAlpha}pp vs SPY` : ''}`);
     }
   }
 }
