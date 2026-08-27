@@ -733,7 +733,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v129'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v130'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3472,11 +3472,13 @@ function decMarkStrip(D,label){
     return `<span style="display:inline-block;margin:0 12px 4px 0"><b>${h}d</b> ${a==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${a>=0?'#065f46':'#991b1b'};font-weight:600">${a>=0?'+':''}${fmt(a,1)}pp</span>`} <span style="color:#9ca3af;font-size:10.5px">(${v.ahead}/${v.n} beat SPY)</span></span>`;
   };
   const missed=ent.reduce((s,[,v])=>Math.max(s,v.missed||0),0);
+  const bars=ent.some(([,v])=>v.fromBars>0);
   return `<div class="fund-note" style="margin:0 0 8px">
     <b>⏱️ Frozen outcomes</b> <span style="color:#9ca3af;font-size:10.5px">— each decision's alpha vs SPY measured AT the horizon and never re-marked</span><br>
     ${ent.map(one).join('')}
     ${!any?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Nothing measurable yet — this starts accruing from the first ${label} decision recorded live and builds from there.</div>`:''}
-    ${missed?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">${missed} earlier decision${missed===1?'':'s'} ${missed===1?'was':'were'} already past these horizons when tracking began, so ${missed===1?'it is':'they are'} counted as unmeasurable rather than scored on a window we never actually watched.</div>`:''}
+    ${bars?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Earlier decisions are measured from this snapshot's own <b>recorded daily closes</b> — real prices, close to close over exactly the window — so the record starts full rather than empty.</div>`:''}
+    ${missed?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">${missed} decision${missed===1?'':'s'} ${missed===1?'is':'are'} not measurable: ${missed===1?'its':'their'} price history doesn't reach the horizon (a name that left the book stops being tracked), and pricing off a series that simply <i>stops</i> would read its last day as the outcome. Counted as unknown, never scored.</div>`:''}
   </div>`;
 }
 

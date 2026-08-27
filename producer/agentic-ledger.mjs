@@ -118,6 +118,87 @@ export const MARK_HORIZONS = [5, 30, 90];
 // a producer outage; beyond it the measurement is simply not the one we claim to be taking.
 export const MARK_GRACE_DAYS = 5;
 
+// ── MEASURING A HORIZON FROM RECORDED CLOSES ──────────────────────────────────────────────────
+// A mark stamped live can only ever measure a horizon reached WHILE the producer was watching, so a
+// log that starts with backfilled history yields no statistics for months. It does not have to: the
+// snapshot already carries `data.hist.day` — real recorded daily closes — so the outcome of a June
+// decision at +30 days is ARITHMETIC ON PRICES WE ALREADY HAVE, not a guess. This computes it, and
+// it is preferred over the live basis wherever it can, because close-to-close is the consistent
+// measurement (a live stamp reads whatever the price happened to be at run time).
+//
+// THE ONE THING THAT MUST NOT HAPPEN is pricing off a STALE series. `data.hist.day` goes stale PER
+// SYMBOL — the producer only refreshes bars for names in its current fetch rotation, so a name that
+// rotated out keeps whatever series it had when it left, sometimes for months. A series that stops
+// mid-run stops at its own high; CLAUDE.md records the day that scored MU/WULF/NBIS a perfect 10.00
+// off exactly that. So the lookup requires a bar dated AT OR AFTER the target within a small window
+// and NEVER falls back to the last available bar: a name whose series does not reach the horizon is
+// simply not measurable, which is the correct answer.
+const MARK_BAR_WINDOW_DAYS = 5;   // the horizon can land on a weekend/holiday; a longer gap is a coverage hole
+
+// { SYM: [[day, close], …] } ascending. Skips `interpolated` placeholders and the consumer's spliced
+// `live` bar (neither is a close), and accepts BOTH bar shapes — raw Robinhood {begins_at,close_price}
+// and Railway's compact {t,c}. A hard `.begins_at` read throws on Railway data and gets swallowed.
+export function closeIndex(histDay = {}) {
+  const out = {};
+  for (const [sym, bars] of Object.entries(histDay || {})) {
+    if (!Array.isArray(bars)) continue;
+    const rows = [];
+    for (const b of bars) {
+      if (!b || b.interpolated === true || b.live === true) continue;
+      const day = String(b.begins_at || b.t || '').slice(0, 10);
+      const close = parseFloat(b.close_price ?? b.c);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(close) && close > 0) rows.push([day, close]);
+    }
+    if (rows.length) out[sym] = rows.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  }
+  return out;
+}
+
+// The close on the first recorded trading day AT OR AFTER `day`. Returns null past the window rather
+// than reaching backwards — see the stale-series note above.
+function closeAtOrAfter(series, day, window = MARK_BAR_WINDOW_DAYS) {
+  if (!series) return null;
+  const limit = shiftDayL(day, window);
+  for (let i = 0; i < series.length; i++) {
+    if (series[i][0] >= day) return series[i][0] <= limit ? { day: series[i][0], close: series[i][1] } : null;
+  }
+  return null;   // the series ends before the horizon — not yet measurable, possibly never
+}
+
+// One decision measured at date + h days, entirely from recorded closes. Returns null if it cannot be
+// measured cleanly. EVERY leg must price: a partial mark is not that day's outcome, and quietly
+// dropping the leg that happened to move the number is exactly how a statistic becomes a lie.
+export function markFromBars(dec, idx, h, asOf) {
+  const target = shiftDayL(dec.date, h);
+  if (asOf && target > asOf) return null;                 // the horizon is still in the future
+  const legs = Array.isArray(dec.trades) ? dec.trades : [];
+  if (!legs.length) return null;
+  let wSum = 0, cSum = 0;
+  for (const t of legs) {
+    const px = Number(t.priceAt), dollars = Math.abs(Number(t.dollars) || 0);
+    if (!(px > 0) || !(dollars > 0)) return null;
+    const hit = closeAtOrAfter(idx[String(t.sym || '').toUpperCase()], target);
+    if (!hit) return null;
+    const ret = ((hit.close - px) / px) * 100;
+    cSum += (String(t.side).toUpperCase() === 'BUY' ? ret : -ret) * dollars;
+    wSum += dollars;
+  }
+  if (!(wSum > 0)) return null;
+  const contribPct = +(cSum / wSum).toFixed(2);
+  const spyHit = dec.spyAt > 0 ? closeAtOrAfter(idx.SPY, target) : null;
+  const spyRet = spyHit ? +(((spyHit.close - dec.spyAt) / dec.spyAt) * 100).toFixed(2) : null;
+  return { at: (spyHit && spyHit.day) || target, days: h, contribPct, src: 'bars',
+    ...(spyRet != null ? { spyRet, alphaPct: +(contribPct - spyRet).toFixed(2) } : {}) };
+}
+
+// Local so this module stays standalone (maindecisions.mjs exports the same helper for its own use).
+function shiftDayL(day, delta) {
+  const d = new Date(String(day).slice(0, 10) + 'T00:00:00Z');
+  if (isNaN(d)) return day;
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
 // Carry prior marks forward and stamp any horizon newly reached. `priorDecisions` is the previous
 // snapshot's graded list (marks live in the snapshot, so they survive without a second store).
 //
@@ -127,18 +208,23 @@ export const MARK_GRACE_DAYS = 5;
 // a "5-day" result and quietly poison the very statistics this exists to produce. They are honestly
 // recorded as unmeasurable, and the forward record starts clean. (Recomputing them from `data.hist`
 // daily bars is possible and is the natural follow-up; it is NOT the same thing as guessing.)
-export function applyMarks(graded, priorDecisions = [], asOf) {
+export function applyMarks(graded, priorDecisions = [], asOf, { histDay = null } = {}) {
   const priorById = new Map();
   for (const d of priorDecisions || []) if (d && d.id && d.marks) priorById.set(d.id, d.marks);
+  const idx = histDay ? closeIndex(histDay) : null;
   const decisions = (graded.decisions || []).map((d) => {
     const marks = { ...(priorById.get(d.id) || {}) };
     const g = d.grade || {};
     for (const h of MARK_HORIZONS) {
       if (marks[h]) continue;                              // stamped once — never restamped
       if (g.daysSince == null || g.daysSince < h) continue; // not yet due
+      // Recorded closes first: they measure exactly the window, and they can reach BACK, so a
+      // backfilled log gets real statistics now instead of in three months.
+      const fromBars = idx ? markFromBars(d, idx, h, asOf) : null;
+      if (fromBars) { marks[h] = fromBars; continue; }
       if (g.daysSince > h + MARK_GRACE_DAYS) { marks[h] = { missed: true, firstSeenDays: g.daysSince }; continue; }
       if (g.avgContrib == null) continue;                  // unpriced: wait, don't record a false miss
-      marks[h] = { at: asOf, days: g.daysSince, contribPct: g.avgContrib,
+      marks[h] = { at: asOf, days: g.daysSince, contribPct: g.avgContrib, src: 'live',
         ...(g.spyRet != null ? { spyRet: g.spyRet } : {}), ...(g.alpha != null ? { alphaPct: g.alpha } : {}) };
     }
     return Object.keys(marks).length ? { ...d, marks } : d;
@@ -157,6 +243,7 @@ export function markStats(decisions = []) {
     const withAlpha = real.filter((m) => m.alphaPct != null);
     out[h] = {
       n: real.length,
+      fromBars: real.filter((m) => m.src === 'bars').length,
       missed: all.length - real.length,
       ahead: withAlpha.filter((m) => m.alphaPct >= 0).length,
       avgAlpha: withAlpha.length ? +(withAlpha.reduce((s, m) => s + m.alphaPct, 0) / withAlpha.length).toFixed(2) : null,

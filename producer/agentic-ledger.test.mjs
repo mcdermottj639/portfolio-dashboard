@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -150,6 +150,72 @@ ok('an unpriced decision records nothing at all at its horizon', !(unpriced.deci
 eq('markStats reports every horizon', Object.keys(markStats(at31.decisions)).map(Number), MARK_HORIZONS);
 eq('applyMarks leaves `grade` and `sleeves` untouched (purely additive)',
   [at31.stats.total, typeof at31.sleeves], [1, 'object']);
+
+
+// ── MARKS COMPUTED FROM RECORDED CLOSES ────────────────────────────────────────────────────────
+// A live-only stamp can measure only horizons reached while the producer was watching, so a
+// backfilled log yields nothing for months. data.hist.day already holds real closes, so the answer
+// is arithmetic on prices we have — NOT a guess. The danger is pricing off a STALE series.
+function shiftD(day, d) { const x = new Date(day + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + d); return x.toISOString().slice(0, 10); }
+const barsFor = (start, n, base, step) => Array.from({ length: n }, (_, i) => ({
+  begins_at: shiftD(start, i) + 'T00:00:00Z', close_price: String(base + i * step), interpolated: false }));
+
+// NVDA 200 → 230 over 30d (+15%); SPY 700 → 721 (+3%) ⇒ alpha +12pp, measured AT day 30.
+const HIST = { NVDA: barsFor('2026-06-01', 120, 200, 1), SPY: barsFor('2026-06-01', 120, 700, 0.7) };
+const oldDec = { id: 'b1', date: '2026-06-01', kind: 'deploy', spyAt: 700,
+  trades: [{ sym: 'NVDA', side: 'BUY', dollars: 1000, priceAt: 200 }] };
+
+// Graded "today" is far past every horizon: the live path calls all of these unmeasurable.
+const withBars = applyMarks(gradeDecisions([oldDec], { NVDA: 999, SPY: 999 }, '2026-08-27'), [], '2026-08-27', { histDay: HIST });
+const bm = withBars.decisions[0].marks;
+eq('a backfilled decision IS measurable from recorded closes', bm[30].missed, undefined);
+eq('…measured at the horizon, not at grading time', bm[30].days, 30);
+near('…contribution is the close-to-close move over exactly that window', bm[30].contribPct, 15);
+near('…and alpha is measured against SPY over the same window', bm[30].alphaPct, 12);
+eq('…and the basis is recorded so it can be told from a live stamp', bm[30].src, 'bars');
+ok('every horizon the bars cover backfills', !!bm[5] && !!bm[30]);
+// 2026-06-01 + 90d = 2026-08-30, past the 2026-08-27 grading date: not due, so not stamped.
+ok('a horizon whose target date is still ahead is left alone', !bm[90]);
+eq('markStats reports how many came from recorded closes', markStats(withBars.decisions)[30].fromBars, 1);
+
+// A horizon still in the FUTURE must not be reached for, even though later bars exist in the fixture.
+const future = applyMarks(gradeDecisions([{ ...oldDec, id: 'b2', date: '2026-08-25' }], { NVDA: 230, SPY: 721 }, '2026-08-27'), [], '2026-08-27', { histDay: HIST });
+ok('a horizon that has not arrived is not stamped', !(future.decisions[0].marks || {})[30]);
+
+// THE STALE-SERIES TRAP. A name that rotated out of the fetch keeps the series it had when it left,
+// and a series that stops mid-run stops at its own high — how MU/WULF/NBIS once scored a perfect
+// 10.00. The lookup must ABSTAIN, never reach backwards to the last available bar.
+const STALE = { NVDA: barsFor('2026-06-01', 10, 200, 12), SPY: HIST.SPY };   // ends 2026-06-10 at 308
+const stale = applyMarks(gradeDecisions([oldDec], { NVDA: 999, SPY: 999 }, '2026-08-27'), [], '2026-08-27', { histDay: STALE });
+eq('a series ending before the horizon is UNMEASURABLE, not priced off its last bar', stale.decisions[0].marks[30].missed, true);
+eq('…while the horizon its bars DO cover still measures', stale.decisions[0].marks[5].src, 'bars');
+eq('markFromBars returns null rather than a stale number', markFromBars(oldDec, closeIndex(STALE), 30, '2026-08-27'), null);
+
+// EVERY leg must price — dropping the leg that moved the number is how a statistic becomes a lie.
+const twoLeg = { id: 'b3', date: '2026-06-01', spyAt: 700, trades: [
+  { sym: 'NVDA', side: 'BUY', dollars: 1000, priceAt: 200 },
+  { sym: 'GONE', side: 'BUY', dollars: 9000, priceAt: 50 },
+]};
+eq('a decision with an unpriceable leg is not partially marked', markFromBars(twoLeg, closeIndex(HIST), 30, '2026-08-27'), null);
+
+const idxBoth = closeIndex({ X: [
+  { begins_at: '2026-06-01T00:00:00Z', close_price: '10' },
+  { t: '2026-06-02', c: 11 },
+  { begins_at: '2026-06-03T00:00:00Z', close_price: '99', interpolated: true },
+  { t: '2026-06-04', c: 88, live: true },
+  { begins_at: '2026-06-05T00:00:00Z', close_price: '0' },
+]});
+eq('closeIndex reads both bar shapes and drops placeholder/live/zero rows', idxBoth.X.map((r) => r[1]), [10, 11]);
+
+const sold = { id: 'b4', date: '2026-06-01', spyAt: 700, trades: [{ sym: 'DROP', side: 'SELL', dollars: 1000, priceAt: 100 }] };
+ok('a sell of a name that then FELL marks positive',
+  markFromBars(sold, closeIndex({ DROP: barsFor('2026-06-01', 60, 100, -1), SPY: HIST.SPY }), 30, '2026-08-27').contribPct > 0);
+
+// A stamped mark is still never recomputed, even once bars would answer differently.
+const first = applyMarks(gradeDecisions([oldDec], { NVDA: 230, SPY: 721 }, '2026-07-01'), [], '2026-07-01');
+const later = applyMarks(gradeDecisions([oldDec], { NVDA: 999, SPY: 999 }, '2026-08-27'), first.decisions, '2026-08-27', { histDay: HIST });
+eq('a previously stamped mark is not re-derived from bars', later.decisions[0].marks[5].src, first.decisions[0].marks[5].src);
+eq('…and keeps its original value', later.decisions[0].marks[5].contribPct, first.decisions[0].marks[5].contribPct);
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

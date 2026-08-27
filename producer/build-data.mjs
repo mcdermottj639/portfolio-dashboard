@@ -53,7 +53,7 @@ function logMarks(label, graded) {
   const ms = graded.markStats || {};
   const parts = Object.entries(ms)
     .filter(([, v]) => v.n || v.missed)
-    .map(([h, v]) => `${h}d n=${v.n}${v.avgAlpha != null ? ` ${v.avgAlpha > 0 ? '+' : ''}${v.avgAlpha}pp α` : ''}${v.missed ? ` (${v.missed} first seen too late to measure)` : ''}`);
+    .map(([h, v]) => `${h}d n=${v.n}${v.fromBars ? ` (${v.fromBars} from recorded closes)` : ''}${v.avgAlpha != null ? ` ${v.avgAlpha > 0 ? '+' : ''}${v.avgAlpha}pp α` : ''}${v.missed ? ` · ${v.missed} unmeasurable` : ''}`);
   if (parts.length) console.log(`${label} frozen marks: ${parts.join(' · ')}`);
 }
 
@@ -553,7 +553,7 @@ const data = {
     const asOfDay = new Date(data.generatedAt).toISOString().slice(0, 10);
     if (decisions && Array.isArray(decisions.decisions) && decisions.decisions.length) {
       const priorAgLog = (prior && prior.agentic && prior.agentic.decisions && prior.agentic.decisions.decisions) || [];
-      const graded = applyMarks(gradeDecisions(decisions.decisions, quotes, asOfDay), priorAgLog, asOfDay);
+      const graded = applyMarks(gradeDecisions(decisions.decisions, quotes, asOfDay), priorAgLog, asOfDay, { histDay: hist.day });
       data.agentic.decisions = graded;
       warnIfLogShrank('agentic', priorAgLog.length, graded.decisions.length);
       logMarks('agentic', graded);
@@ -599,7 +599,7 @@ const data = {
       else console.warn('self-directed decisions: no main-orders.json and nothing carried — the Rebalance Log will render empty (PRODUCER.md step 2).');
     }
     if (ledger.length) {
-      const graded = applyMarks(gradeDecisions(ledger, quotes, asOfDay), priorLog, asOfDay);
+      const graded = applyMarks(gradeDecisions(ledger, quotes, asOfDay), priorLog, asOfDay, { histDay: hist.day });
       data.main.decisions = graded;
       warnIfLogShrank('self-directed', priorLog.length, graded.decisions.length);
       logMarks('self-directed', graded);
