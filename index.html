@@ -733,7 +733,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v127'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v128'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2527,7 +2527,7 @@ let _agenticInit=false, _agPerfMode='ret', _agChart=null;
    The account switcher is sticky, so it's reachable mid-scroll — but a switch that dumps you back
    at the top makes comparing the two books a scrolling chore. Both sides carry matching `data-sec`
    keys (the aligned card spine), so we note which section the reader is on, swap, and land on the
-   same one. A section with no counterpart (self-directed 🧹 smalls, agentic 🧾 Rebalance Log) falls
+   same one. A section with no counterpart (self-directed 🧹 smalls) falls
    back to the nearest section ABOVE it that both sides have. */
 const SEC_ORDER=['snapshot','holdings','performance','heatmap','risk','allocation','income','technicals','fundamentals','smalls','flow','rebalance-log'];
 // Every programmatic scroll has to clear the tab bar AND (on this tab) the sticky switcher, or the
@@ -3512,7 +3512,14 @@ window.renderAgenticLog=renderAgenticLog;
 
    Deliberately NOT carried over from the agentic card: the research-sleeve attribution strip. There are
    no sleeves on this side — it is a discretionary book — and a strip that reported them would be the
-   one mandate's rulebook leaking into the other's surface. ═══ */
+   one mandate's rulebook leaking into the other's surface.
+
+   Mounted on the ACCOUNTS tab's self-directed side, directly after Flow, which is exactly where the
+   agentic log sits on its side. That is the point: `rebalance-log` is now a PAIRED `data-sec`, so
+   flipping the account switcher while reading one book's log lands you on the other's instead of
+   falling back to a neighbouring section. It briefly lived on the Plan tab, which read well next to
+   Track Record (that grades the screen; this grades what was actually done) but split the same card
+   across two tabs depending on which account you were looking at. The Plan page keeps a pointer. ═══ */
 const SD_LOG_ROWS=12;  // most recent shown; the rest sit behind the expander so the card can't grow forever
 const SD_LOG_LEGS=8;   // legs shown per day, biggest-dollar first (this book has real 60-leg days)
 function renderSdLog(){
@@ -3898,6 +3905,7 @@ async function load(){
       <div class="card" data-sec="fundamentals"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
       ${smalls.length>0?`<div class="card" data-sec="smalls"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
       <div class="card" data-sec="flow"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••0741's names)</span></span><span class="chevron">▼</span></div><div id="b-flow"><div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div></div></div>
+      <div class="card" data-sec="rebalance-log"><div class="card-title collapsible" data-help="sd rebalance log" data-toggle="b-sd-log" onclick="toggleSection('b-sd-log')"><span>🧾 Rebalance Log <span class="card-hint">(your trades, graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-sd-log"><div id="sd-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div></div></div>
       <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks + ⚡ Action Center (raise cash · redeploy plan) →</span></div>
       <div class="disclaimer">Live from Robinhood + Alpha Vantage. Research only — not financial advice.</div>`;
 
@@ -4331,7 +4339,7 @@ window.switchTab=switchTab;
     </ul>
     <p>The point is falsifiability — a strategy that logs its decisions can be shown to be working or not, instead of just staying busy.</p>
     <p class="hnote">Research and education only.</p>` },
-  'sd rebalance log': { tag:'Plan · Self-directed', t:'Rebalance Log', h:`
+  'sd rebalance log': { tag:'Accounts', t:'Rebalance Log', h:`
     <p>This account's own track record: <b>every day you bought or sold in ••••0741</b>, graded against what happened next — the same grading the agentic book gets for its rebalances, so the two accounts can be judged on the same terms.</p>
     <ul>
       <li><span class="hk">Contribution</span> — the dollar-weighted price move since the fill. A <b>sell</b> of a name that then fell counts <b>positive</b>: getting out was the right call.</li>
@@ -6146,9 +6154,7 @@ function renderPicksStatic(){
       <div id="body-picktable"><div id="picks-filters"></div><div id="picks-table"></div></div>
     </div>
     <div class="card" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
-    <div class="card"><div class="card-title collapsible" data-help="sd rebalance log" data-toggle="b-sd-log" onclick="toggleSection('b-sd-log')"><span>🧾 Rebalance Log <span class="card-hint">(your trades, graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-sd-log">
-      <div id="sd-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
-    </div></div>
+    <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('main')">🧾 Rebalance Log — your trades, graded vs SPY →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Track Record grades the <i>screen</i>; the Rebalance Log grades <i>what you actually did</i>. It lives on the Accounts tab, beside the agentic account's, so the two books read the same way.</div></div>
     ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
     ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
     <div class="card" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
