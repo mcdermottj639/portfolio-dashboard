@@ -43,9 +43,17 @@ export const MECHANICAL_AGENTS = new Set(['recurring', 'drip']);
 // what it RETURNS are different things, and the sweep must key off the latter — see deriveLog().
 export const FETCH_DAYS = 120;
 
-// How many decision records the snapshot keeps. The fetch window only ever covers the recent past,
-// so anything older survives purely by carry-forward — this is what bounds that growth.
-export const DECISION_CAP = 160;
+// How long the snapshot keeps a decision. The fetch window only ever covers the recent past, so
+// anything older survives purely by carry-forward, and this is what bounds that growth.
+//
+// RETENTION IS TIME-BASED, NOT A COUNT. A flat cap of 160 records looked generous and was not: this
+// account filled orders on 22 of 78 calendar days, i.e. ~103 records a year, so the cap would have
+// begun silently discarding the OLDEST history after ~1.6 years — exactly the history worth having,
+// and exactly the kind of silent truncation the repo's own rule says to log rather than hide. Years
+// are the honest unit for "keep the record so the model can be judged over time"; the count cap
+// stays only as a runaway backstop, set far above any realistic rate.
+export const DECISION_RETAIN_YEARS = 8;
+export const DECISION_CAP = 2000;
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const up = (s) => String(s || '').toUpperCase();
@@ -161,7 +169,7 @@ export function decisionsFromOrders(raw, { spyCloses = {}, sinceDay = null } = {
 // carry forward untouched. An optional owner-committed producer/main-decisions.json overlays last
 // and wins on annotation — that is the manual half of "same process", letting a rebalance carry a
 // real rationale — but it never invents legs for a day the broker has no orders for.
-export function mergeDecisions(derived = [], prior = [], { windowFrom = null, committed = [], cap = DECISION_CAP } = {}) {
+export function mergeDecisions(derived = [], prior = [], { windowFrom = null, committed = [], cap = DECISION_CAP, asOf = null, retainYears = DECISION_RETAIN_YEARS } = {}) {
   const byId = new Map();
   for (const d of prior) if (d && d.id) byId.set(d.id, d);
   // Drop stale prior records inside the window: a day the broker no longer reports orders for did
@@ -173,7 +181,9 @@ export function mergeDecisions(derived = [], prior = [], { windowFrom = null, co
     const base = byId.get(c.id);
     byId.set(c.id, base ? { ...base, ...c, trades: (c.trades && c.trades.length) ? c.trades : base.trades, source: 'owner' } : { ...c, source: 'owner' });
   }
+  const floor = asOf && retainYears ? shiftDay(asOf, -Math.round(retainYears * 365.25)) : null;
   return [...byId.values()]
+    .filter((d) => !floor || !d.date || d.date >= floor)
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     .slice(0, cap);
 }

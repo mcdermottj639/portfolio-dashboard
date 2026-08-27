@@ -21,7 +21,7 @@ import { avKey, specForId } from './av.mjs';
 import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
-import { gradeDecisions } from './agentic-ledger.mjs';
+import { gradeDecisions, applyMarks } from './agentic-ledger.mjs';
 import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint } from './equityseries.mjs';
@@ -46,6 +46,28 @@ function unwrap(r) {
   }
   return r;
 }
+// Frozen-horizon roll-up, in the run log. A mark is stamped once and never recomputed, so this is
+// also the only place a stamping bug would be visible — a horizon that never accrues, or one whose
+// `missed` count keeps climbing, means the record is not being measured when it should be.
+function logMarks(label, graded) {
+  const ms = graded.markStats || {};
+  const parts = Object.entries(ms)
+    .filter(([, v]) => v.n || v.missed)
+    .map(([h, v]) => `${h}d n=${v.n}${v.avgAlpha != null ? ` ${v.avgAlpha > 0 ? '+' : ''}${v.avgAlpha}pp α` : ''}${v.missed ? ` (${v.missed} first seen too late to measure)` : ''}`);
+  if (parts.length) console.log(`${label} frozen marks: ${parts.join(' · ')}`);
+}
+
+// A decision log that got SHORTER is the one way this history is actually lost, and it is silent by
+// construction — the short log simply becomes the new baseline on the next run. It can only happen
+// if the prior snapshot could not be read (decrypt failure / missing passphrase), since the merge
+// itself never drops an out-of-window record. Every prior data.json is in git, so nothing is
+// unrecoverable; this makes the loss VISIBLE instead of leaving it to be noticed months later.
+function warnIfLogShrank(label, priorLen, freshLen) {
+  if (priorLen > freshLen) {
+    console.warn(`⚠️  ${label} decision log SHRANK ${priorLen} → ${freshLen}. History is only kept in the snapshot, so this is a real loss. Recover it from git: check out the last good commit's data.json, decrypt it, and read .${label === 'agentic' ? 'agentic' : 'main'}.decisions.decisions.`);
+  }
+}
+
 function filesMatching(re) {
   if (!existsSync(RAWDIR)) return [];
   return readdirSync(RAWDIR).filter((f) => re.test(f)).map((f) => join(RAWDIR, f));
@@ -530,8 +552,11 @@ const data = {
     try { const df = join(__dirname, 'agentic-decisions.json'); if (existsSync(df)) decisions = readJSON(df); } catch { decisions = null; }
     const asOfDay = new Date(data.generatedAt).toISOString().slice(0, 10);
     if (decisions && Array.isArray(decisions.decisions) && decisions.decisions.length) {
-      const graded = gradeDecisions(decisions.decisions, quotes, asOfDay);
+      const priorAgLog = (prior && prior.agentic && prior.agentic.decisions && prior.agentic.decisions.decisions) || [];
+      const graded = applyMarks(gradeDecisions(decisions.decisions, quotes, asOfDay), priorAgLog, asOfDay);
       data.agentic.decisions = graded;
+      warnIfLogShrank('agentic', priorAgLog.length, graded.decisions.length);
+      logMarks('agentic', graded);
       console.log(`agentic decisions: ${graded.stats.total} logged · ${graded.stats.resolved} resolved (${graded.stats.ahead} ahead)${graded.stats.avgAlpha != null ? ` · avg alpha ${graded.stats.avgAlpha}%` : ''}`);
       // Sleeve attribution (v121) — which research sleeve is actually earning its keep. Thin sleeves are
       // labelled rather than hidden, so a small-n figure is never mistaken for a finding.
@@ -564,18 +589,20 @@ const data = {
       // taken from what the payload actually covers — a fixed one would delete real history whenever
       // the fetch came back short. See maindecisions.mjs.
       const r = deriveLog(readJSON(ordersFile), { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS) });
-      ledger = mergeDecisions(r.decisions, priorLog, { windowFrom: r.windowFrom, committed: owned });
+      ledger = mergeDecisions(r.decisions, priorLog, { windowFrom: r.windowFrom, committed: owned, asOf: asOfDay });
       const noSpy = ledger.filter((d) => d.spyAt == null).length;
       console.log(`self-directed decisions: ${r.decisions.length} trading day(s) derived from ${r.orders} filled order(s)${r.truncated ? ` · page truncated, sweeping only from ${r.windowFrom}` : ''} · ${ledger.length} in the log${noSpy ? ` · ${noSpy} without a SPY close (graded on absolute return)` : ''}`);
     } else {
       // No fetch this run ⇒ derive NOTHING and sweep nothing, or a missing file would erase the log.
-      ledger = mergeDecisions([], priorLog, { committed: owned });
+      ledger = mergeDecisions([], priorLog, { committed: owned, asOf: asOfDay });
       if (priorLog.length) console.log(`self-directed decisions: no main-orders.json this run — carrying ${ledger.length} record(s) forward`);
       else console.warn('self-directed decisions: no main-orders.json and nothing carried — the Rebalance Log will render empty (PRODUCER.md step 2).');
     }
     if (ledger.length) {
-      const graded = gradeDecisions(ledger, quotes, asOfDay);
+      const graded = applyMarks(gradeDecisions(ledger, quotes, asOfDay), priorLog, asOfDay);
       data.main.decisions = graded;
+      warnIfLogShrank('self-directed', priorLog.length, graded.decisions.length);
+      logMarks('self-directed', graded);
       console.log(`self-directed log: ${graded.stats.total} logged · ${graded.stats.resolved} resolved (${graded.stats.ahead} ahead)${graded.stats.avgAlpha != null ? ` · avg alpha ${graded.stats.avgAlpha}pp vs SPY` : ''}`);
     }
   }

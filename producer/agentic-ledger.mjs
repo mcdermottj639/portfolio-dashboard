@@ -103,6 +103,69 @@ export function sleeveStats(gradedDecisions = []) {
   return out;
 }
 
+// ── FROZEN OUTCOME MARKS ───────────────────────────────────────────────────────────────────────
+// gradeDecision marks every decision to TODAY's price. That is right for "how am I doing" and
+// useless for learning: a June call's contribution and verdict keep moving for as long as the
+// position exists, so the log can never answer "what is our 30-day hit rate?" — the number it would
+// answer with changes every hour. Accumulating more history does not compound into anything while
+// every row is still being re-graded against a moving target.
+//
+// A mark freezes the outcome at a fixed horizon. It is stamped ONCE, on the first run at or past
+// that horizon, and NEVER recomputed — the same rule that makes `drivers` a decision-time stamp
+// rather than something reconstructed later from whatever target happens to be current.
+export const MARK_HORIZONS = [5, 30, 90];
+// How late a run may stamp a horizon and still call it that horizon. Covers weekends, holidays and
+// a producer outage; beyond it the measurement is simply not the one we claim to be taking.
+export const MARK_GRACE_DAYS = 5;
+
+// Carry prior marks forward and stamp any horizon newly reached. `priorDecisions` is the previous
+// snapshot's graded list (marks live in the snapshot, so they survive without a second store).
+//
+// A decision FIRST SEEN past a horizon records that horizon as `missed`, never as a value. This
+// matters for a backfilled log: the 21 days derived from ••••0741's existing order history are all
+// already older than 90 days, and stamping them at first sight would file a 78-day-old outcome as
+// a "5-day" result and quietly poison the very statistics this exists to produce. They are honestly
+// recorded as unmeasurable, and the forward record starts clean. (Recomputing them from `data.hist`
+// daily bars is possible and is the natural follow-up; it is NOT the same thing as guessing.)
+export function applyMarks(graded, priorDecisions = [], asOf) {
+  const priorById = new Map();
+  for (const d of priorDecisions || []) if (d && d.id && d.marks) priorById.set(d.id, d.marks);
+  const decisions = (graded.decisions || []).map((d) => {
+    const marks = { ...(priorById.get(d.id) || {}) };
+    const g = d.grade || {};
+    for (const h of MARK_HORIZONS) {
+      if (marks[h]) continue;                              // stamped once — never restamped
+      if (g.daysSince == null || g.daysSince < h) continue; // not yet due
+      if (g.daysSince > h + MARK_GRACE_DAYS) { marks[h] = { missed: true, firstSeenDays: g.daysSince }; continue; }
+      if (g.avgContrib == null) continue;                  // unpriced: wait, don't record a false miss
+      marks[h] = { at: asOf, days: g.daysSince, contribPct: g.avgContrib,
+        ...(g.spyRet != null ? { spyRet: g.spyRet } : {}), ...(g.alpha != null ? { alphaPct: g.alpha } : {}) };
+    }
+    return Object.keys(marks).length ? { ...d, marks } : d;
+  });
+  return { ...graded, decisions, markStats: markStats(decisions) };
+}
+
+// The roll-up that makes the marks worth keeping: per horizon, how many decisions have a REAL
+// frozen outcome, how often it beat SPY, and the average alpha. `missed` marks are counted
+// separately and never folded into the result — a backfilled row is not evidence.
+export function markStats(decisions = []) {
+  const out = {};
+  for (const h of MARK_HORIZONS) {
+    const all = decisions.map((d) => d.marks && d.marks[h]).filter(Boolean);
+    const real = all.filter((m) => !m.missed);
+    const withAlpha = real.filter((m) => m.alphaPct != null);
+    out[h] = {
+      n: real.length,
+      missed: all.length - real.length,
+      ahead: withAlpha.filter((m) => m.alphaPct >= 0).length,
+      avgAlpha: withAlpha.length ? +(withAlpha.reduce((s, m) => s + m.alphaPct, 0) / withAlpha.length).toFixed(2) : null,
+      avgContrib: real.length ? +(real.reduce((s, m) => s + m.contribPct, 0) / real.length).toFixed(2) : null,
+    };
+  }
+  return out;
+}
+
 export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const graded = decisions.map((d) => gradeDecision(d, quotesNow, asOf))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first

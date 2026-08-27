@@ -733,7 +733,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v128'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v129'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3455,6 +3455,31 @@ function renderAgenticPlan(){
 }
 window.renderAgenticPlan=renderAgenticPlan;
 
+/* The frozen-outcome strip. The table above marks every decision to TODAY, which is what you want
+   when asking "how am I doing" and is useless for asking "is this working": a June call's number
+   keeps moving, so the log could never answer "what is our 30-day hit rate?". A mark is stamped once
+   at its horizon and never recomputed, so THIS is the part that compounds as history accrues.
+   Decisions first seen past a horizon (the backfilled ones) are counted as unmeasurable and never
+   folded in — a row we started tracking late is not evidence. */
+function decMarkStrip(D,label){
+  const M=D&&D.markStats; if(!M)return '';
+  const ent=Object.entries(M).filter(([,v])=>v.n||v.missed);
+  if(!ent.length) return '';
+  const any=ent.some(([,v])=>v.n>0);
+  const one=([h,v])=>{
+    if(!v.n) return `<span style="display:inline-block;margin:0 12px 4px 0;color:#9ca3af"><b>${h}d</b> —</span>`;
+    const a=v.avgAlpha;
+    return `<span style="display:inline-block;margin:0 12px 4px 0"><b>${h}d</b> ${a==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${a>=0?'#065f46':'#991b1b'};font-weight:600">${a>=0?'+':''}${fmt(a,1)}pp</span>`} <span style="color:#9ca3af;font-size:10.5px">(${v.ahead}/${v.n} beat SPY)</span></span>`;
+  };
+  const missed=ent.reduce((s,[,v])=>Math.max(s,v.missed||0),0);
+  return `<div class="fund-note" style="margin:0 0 8px">
+    <b>⏱️ Frozen outcomes</b> <span style="color:#9ca3af;font-size:10.5px">— each decision's alpha vs SPY measured AT the horizon and never re-marked</span><br>
+    ${ent.map(one).join('')}
+    ${!any?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Nothing measurable yet — this starts accruing from the first ${label} decision recorded live and builds from there.</div>`:''}
+    ${missed?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">${missed} earlier decision${missed===1?'':'s'} ${missed===1?'was':'were'} already past these horizons when tracking began, so ${missed===1?'it is':'they are'} counted as unmeasurable rather than scored on a window we never actually watched.</div>`:''}
+  </div>`;
+}
+
 /* ═══ Rebalance Log (v93) — the agentic account's OWN track record. Reads data.agentic.decisions (the
    graded ledger build-data maintains from producer/agentic-decisions.json): every owner-confirmed
    deploy/rebalance, graded vs what happened next + vs SPY. Mirror of the picks Track Record, for the
@@ -3481,7 +3506,7 @@ function renderAgenticLog(){
   const s=D.stats||{};
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Contribution</b> = dollar-weighted price move since the decision (a trim that then fell counts positive); <b>vs SPY</b> = the same window's alpha. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
     <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
-  el.innerHTML=hdr+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  el.innerHTML=hdr+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* Sleeve attribution (v121) — which research sleeve is actually earning its keep. Every target name
    carries `drivers` (the sleeves that scored ≥7) and the ledger stamps them onto each BUY leg AT
@@ -3560,7 +3585,7 @@ function renderSdLog(){
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every day you traded <b>••••0741</b>, graded against what happened next — this account's own track record, the same way the agentic book grades its rebalances. <b>Contribution</b> = dollar-weighted price move since the fill (a sell of a name that then <i>fell</i> counts positive); <b>vs SPY</b> = the same window's alpha. A day less than 5d old is still <b>open</b>. Monitor/education only.</div>
     <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
   const foot=`<div class="fund-note" style="margin-top:8px">Built from this account's <b>filled orders</b>, not from a position diff — a fill is a fact with a price and a timestamp. Same-day fills of the same name are one leg, share-weighted; DRIP and recurring-buy fills are excluded (a standing instruction firing isn't an allocation call).${noSpy?` ${noSpy} day${noSpy===1?'':'s'} had no SPY close on record and ${noSpy===1?'is':'are'} graded on absolute return only.`:''}</div>`;
-  el.innerHTML=hdr+tbl(head)+(rest.length?`<details class="trk-detail"><summary>View ${rest.length} older trading day${rest.length===1?'':'s'}</summary>${tbl(rest)}</details>`:'')+foot;
+  el.innerHTML=hdr+decMarkStrip(D,'self-directed')+tbl(head)+(rest.length?`<details class="trk-detail"><summary>View ${rest.length} older trading day${rest.length===1?'':'s'}</summary>${tbl(rest)}</details>`:'')+foot;
 }
 window.renderSdLog=renderSdLog;
 

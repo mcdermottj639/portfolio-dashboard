@@ -1,5 +1,5 @@
 // Offline unit checks for maindecisions.mjs — no network, no I/O. Run: node producer/maindecisions.test.mjs
-import { decisionsFromOrders, mergeDecisions, spyClosesFrom, deriveLog, closeOnOrBefore, DECISION_CAP } from './maindecisions.mjs';
+import { shiftDay, decisionsFromOrders, mergeDecisions, spyClosesFrom, deriveLog, closeOnOrBefore, DECISION_CAP, DECISION_RETAIN_YEARS } from './maindecisions.mjs';
 import { gradeDecisions } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
@@ -145,8 +145,20 @@ ok('the sweep spares an owner-annotated record',
   mergeDecisions([], [{ id: '2026-08-25-sd', date: '2026-08-25', source: 'owner', rationale: 'kept', trades: [] }], { windowFrom: '2026-08-01' })
     .some((d) => d.rationale === 'kept'));
 
+// RETENTION IS TIME-BASED. A flat count cap looked generous and was not: this account filled orders
+// on 22 of 78 calendar days (~103 records/yr), so the old 160 cap would have begun discarding the
+// OLDEST history — the part worth keeping — after ~1.6 years, silently.
+const yearly = (n) => Array.from({ length: n }, (_, i) => ({ id: `y${i}`, date: shiftDay('2026-08-27', -i * 3), trades: [] }));
+const fourYears = mergeDecisions([], yearly(500), { asOf: '2026-08-27' });   // 500 × 3d ≈ 4.1 years
+eq('four years of records at this account\'s real rate are ALL kept', fourYears.length, 500);
+ok(`retention is ${DECISION_RETAIN_YEARS} years, not the old ~1.6`, DECISION_RETAIN_YEARS >= 5);
+const ancient = mergeDecisions([], [{ id: 'old', date: '2010-01-04', trades: [] }, ...yearly(3)], { asOf: '2026-08-27' });
+ok('a record past the retention horizon is dropped', !ancient.some((d) => d.id === 'old'));
+ok('…and everything inside it survives', ancient.length === 3);
+eq('with no asOf the time filter is inert (never drops on a caller that omits it)',
+  mergeDecisions([], [{ id: 'old', date: '2010-01-04', trades: [] }], {}).length, 1);
 const many = Array.from({ length: DECISION_CAP + 25 }, (_, i) => ({ id: `x${i}`, date: `2020-01-${String((i % 28) + 1).padStart(2, '0')}`, trades: [] }));
-ok('the log is capped so carry-forward cannot grow forever', mergeDecisions([], many, {}).length === DECISION_CAP);
+ok('a hard cap still backstops a runaway', mergeDecisions([], many, {}).length === DECISION_CAP);
 
 // Missing/garbage input never throws — the card degrades to "nothing logged yet".
 eq('an absent orders file derives nothing', decisionsFromOrders(null, {}), []);

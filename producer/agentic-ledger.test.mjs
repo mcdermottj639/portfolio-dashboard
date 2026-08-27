@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -110,6 +110,46 @@ ok('empty ledger → empty map', Object.keys(activityFromDecisions([], { asOf: '
   near('single-driver legs keep their whole dollars', gm.sleeves.momentum.dollars, 1600, 0.01);
   near('and the alpha is the price move when SPY was flat', gm.sleeves.momentum.alphaPct, 10, 0.01);
 }
+
+// ── FROZEN OUTCOME MARKS ───────────────────────────────────────────────────────────────────────
+// The whole point: gradeDecision re-marks to TODAY every run, so without these a log can never
+// answer "what is our 30-day hit rate?". A mark is stamped once, at the horizon, and never moves.
+const mkDec = (date, priceAt, spyAt) => ({ id: 'm-' + date, date, kind: 'deploy', spyAt,
+  trades: [{ sym: 'NVDA', side: 'BUY', dollars: 1000, priceAt }] });
+// Day 31 of a decision made at NVDA 200 / SPY 700; now NVDA 220 (+10%), SPY 735 (+5%) ⇒ alpha +5pp.
+const at31 = applyMarks(gradeDecisions([mkDec('2026-07-01', 200, 700)], { NVDA: 220, SPY: 735 }, '2026-08-01'), [], '2026-08-01');
+const m31 = at31.decisions[0].marks;
+ok('the 5d and 30d horizons stamp once reached', !!m31[5] && !!m31[30]);
+ok('a horizon not yet reached is not stamped', !m31[90]);
+near('the 30d mark freezes that window\'s alpha', m31[30].alphaPct, 5);
+eq('…and records the day it was actually taken', m31[30].days, 31);
+// Same decision seen again much later at a very different price: the stamped mark must NOT move.
+const at120 = applyMarks(gradeDecisions([mkDec('2026-07-01', 200, 700)], { NVDA: 400, SPY: 700 }, '2026-10-29'), at31.decisions, '2026-10-29');
+const m120 = at120.decisions[0].marks;
+near('a stamped mark is FROZEN — a later run cannot move it', m120[30].alphaPct, 5);
+eq('…nor restamp the day it was taken', m120[30].days, 31);
+ok('the live grade still tracks today, as the card needs', at120.decisions[0].grade.avgContrib > 50);
+ok('a horizon reached in the meantime does stamp', !!m120[90]);
+// A BACKFILLED record — first seen already older than every horizon — must never fake an outcome.
+// This is the live case: all 21 days derived from ••••0741's existing order history are >90d old.
+const back = applyMarks(gradeDecisions([mkDec('2026-05-01', 200, 700)], { NVDA: 220, SPY: 735 }, '2026-08-01'), [], '2026-08-01');
+const mb = back.decisions[0].marks;
+eq('a record first seen past the horizon records a MISS, never a value', [mb[5].missed, mb[30].missed], [true, true]);
+ok('…and says how late it was first seen', mb[5].firstSeenDays === 92);
+ok('a missed mark carries no contribution to be mistaken for a result', mb[30].contribPct === undefined);
+eq('markStats counts real marks and misses separately', [markStats(back.decisions)[30].n, markStats(back.decisions)[30].missed], [0, 1]);
+eq('…so a backfilled log yields NO statistics rather than false ones', markStats(back.decisions)[30].avgAlpha, null);
+// The grace window: a run that lands a few days late still measures the horizon it claims.
+const late = applyMarks(gradeDecisions([mkDec('2026-07-01', 200, 700)], { NVDA: 220, SPY: 735 }, '2026-08-04'), [], '2026-08-04');
+ok(`a stamp inside the ${MARK_GRACE_DAYS}d grace window is real, not missed`, late.decisions[0].marks[30].missed !== true);
+const tooLate = applyMarks(gradeDecisions([mkDec('2026-07-01', 200, 700)], { NVDA: 220, SPY: 735 }, '2026-08-10'), [], '2026-08-10');
+eq('…and one past it is honestly a miss', tooLate.decisions[0].marks[30].missed, true);
+// An unpriced decision waits for a price rather than recording a false miss.
+const unpriced = applyMarks(gradeDecisions([mkDec('2026-07-01', 200, 700)], { SPY: 735 }, '2026-08-01'), [], '2026-08-01');
+ok('an unpriced decision records nothing at all at its horizon', !(unpriced.decisions[0].marks || {})[30]);
+eq('markStats reports every horizon', Object.keys(markStats(at31.decisions)).map(Number), MARK_HORIZONS);
+eq('applyMarks leaves `grade` and `sleeves` untouched (purely additive)',
+  [at31.stats.total, typeof at31.sleeves], [1, 'object']);
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
