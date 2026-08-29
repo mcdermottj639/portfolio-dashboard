@@ -326,6 +326,49 @@ const locked = planDeployment({ ...relArgs, positions: [{ symbol: 'VTI', qty: 5,
 ok('PDT-locked pool: buys never exceed real cash', locked.spent <= 100 + locked.proceeds + 1e-6);
 ok('PDT-locked pool: no phantom release', locked.parking.released === null && locked.parking.after === locked.parking.before);
 
+// (g3) SUB-FLOOR SHORTFALL (2026-08-28) — the pool counts the waiting ground, but a shortfall under
+//      PARK_MIN correctly fires no release, so those dollars are never actually freed. The buy must be
+//      re-sized to what cash can really pay for, NOT shipped as an unpayable ticket. This is the live
+//      2026-08-28 case: $485.99 parked, $0.90 cash, a $26.94 JNJ top-up needing $26.04 of release.
+const subFloorArgs = {
+  target: { asOf: '2026-08-27', driftTriggerPp: 5, names: [
+    { ticker: 'JNJ', weightPct: 66, entry: '256-277', stop: 246 },
+    { ticker: 'MA', weightPct: 34, entry: '400-420', stop: 380 }] },
+  positions: [{ symbol: 'JNJ', qty: 3, avgCost: 260 }, { symbol: 'VTI', qty: 1.62, avgCost: 300 }],
+  cash: 0.9, quotes: { JNJ: 265, MA: 520, VTI: 300 },
+  parked: { vehicle: 'VTI', dollars: 485.99, forNames: ['MA'] }, opts: { asOf: '2026-08-27' },
+};
+const subFloor = planDeployment(subFloorArgs);
+ok('sub-floor shortfall: no release fires', subFloor.parking.released === null);
+ok('sub-floor shortfall: the waiting ground is untouched', subFloor.parking.after === subFloor.parking.before);
+ok('sub-floor shortfall: buys never exceed cash + proceeds',
+  subFloor.spent <= +(0.9 + subFloor.proceeds).toFixed(2) + 1e-6);
+ok('sub-floor shortfall: the dust-sized leg waits rather than forcing a release', !find(subFloor.buys, 'JNJ'));
+ok('sub-floor shortfall: the re-size is explained', subFloor.warnings.some((w) => /re-sized/.test(w)));
+ok('sub-floor shortfall: the funding invariant is NOT breached',
+  !subFloor.warnings.some((w) => /PLANNER BUG/.test(w)));
+
+// (g4) …and the mirror: a shortfall AT or above the floor still releases exactly as it did before, so
+//      the fix narrows nothing. Same book, a bigger gap.
+const overFloor = planDeployment({ ...subFloorArgs,
+  target: { ...subFloorArgs.target, names: [
+    { ticker: 'JNJ', weightPct: 85, entry: '256-277', stop: 246 },
+    { ticker: 'MA', weightPct: 15, entry: '400-420', stop: 380 }] } });
+ok('at-floor shortfall: the release still fires', overFloor.parking.released !== null);
+ok('at-floor shortfall: JNJ is funded', !!find(overFloor.buys, 'JNJ'));
+ok('at-floor shortfall: spend is covered by cash + proceeds + release',
+  overFloor.spent <= +(0.9 + overFloor.proceeds + overFloor.parking.released.dollars).toFixed(2) + 1e-6);
+ok('at-floor shortfall: no re-size was needed', !overFloor.warnings.some((w) => /re-sized/.test(w)));
+
+// (g5) the OTHER way the pool can lie: the parked block itself is under PARK_MIN, so the release branch
+//      never even opens — yet those dollars were still counted as deployable.
+const tinyPark = planDeployment({ ...subFloorArgs,
+  parked: { vehicle: 'VTI', dollars: 50, forNames: ['MA'] } });
+ok('sub-floor PARKED BLOCK: no release', tinyPark.parking.released === null);
+ok('sub-floor PARKED BLOCK: buys still never exceed cash + proceeds',
+  tinyPark.spent <= +(0.9 + tinyPark.proceeds).toFixed(2) + 1e-6);
+ok('sub-floor PARKED BLOCK: invariant holds', !tinyPark.warnings.some((w) => /PLANNER BUG/.test(w)));
+
 // (h) entry zones with commas + trailing prose must parse (the live research writes them this way).
 const prose = planDeployment({
   target: { asOf: '2026-08-11', names: [{ ticker: 'LLY', weightPct: 100, entry: '$1,130-$1,180 (into the $1,160 50-DMA)', stop: 1075 }] },

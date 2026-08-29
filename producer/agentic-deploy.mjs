@@ -547,19 +547,29 @@ export function planDeployment(input = {}) {
   const deployable = +(cashThisPass + proceeds + parkPool).toFixed(2);
   const buysT1 = [];
   const totalGap = candidates.reduce((s, c) => s + c.gap, 0);
-  let spent = 0;
-  if (candidates.length && deployable > 0 && totalGap > 0) {
-    const scale = Math.min(1, deployable / totalGap); // pro-rate if the pool < total need
-    for (const c of candidates) {
-      const dollars = +(Math.min(c.gap, c.gap * scale)).toFixed(2);
-      if (dollars < minBuy) continue; // dust floor (churn governor) — a sub-$25 gap waits for the next pass
-      const shares = c.px > 0 ? +(dollars / c.px).toFixed(4) : null;
-      spent += dollars;
-      buys.push({ sym: c.sym, dollars, shares, price: c.px, weightNow: c.cw, weightTarget: c.tw, sector: c.sector,
-        entry: c.entry, stop: c.stop, target: c.tgt,
-        note: `${c.cw.toFixed(1)}% → ${c.tw}% target` });
+  //    Sizing is a FUNCTION of the pool, because it may have to run twice: the pool above optimistically
+  //    counts the waiting ground, but the release that would actually free those dollars can decline to
+  //    fire (see 2c). When it does, the buys must be re-sized against cash+proceeds alone rather than
+  //    shipped as a ticket nobody can pay for.
+  const allocate = (pool) => {
+    const legs = [];
+    let total = 0;
+    if (candidates.length && pool > 0 && totalGap > 0) {
+      const scale = Math.min(1, pool / totalGap); // pro-rate if the pool < total need
+      for (const c of candidates) {
+        const dollars = +(Math.min(c.gap, c.gap * scale)).toFixed(2);
+        if (dollars < minBuy) continue; // dust floor (churn governor) — a sub-$25 gap waits for the next pass
+        const shares = c.px > 0 ? +(dollars / c.px).toFixed(4) : null;
+        total += dollars;
+        legs.push({ sym: c.sym, dollars, shares, price: c.px, weightNow: c.cw, weightTarget: c.tw, sector: c.sector,
+          entry: c.entry, stop: c.stop, target: c.tgt,
+          note: `${c.cw.toFixed(1)}% → ${c.tw}% target` });
+      }
     }
-  }
+    return { legs, total: +total.toFixed(2) };
+  };
+  let alloc = allocate(deployable);
+  let spent = alloc.total;
   // 2b. INDEX PARKING — the waiting ground.
   //     RELEASE first: a name that just cleared its guard needs funding, and its money is sitting in the
   //     vehicle. Release only the shortfall (cash couldn't cover), never the whole parked block, so a
@@ -579,10 +589,34 @@ export function planDeployment(input = {}) {
       const pl = (h && h.avgCost != null && px != null && shares != null) ? +((px - h.avgCost) * shares).toFixed(2) : null;
       const leg = { sym: parkVehicle, kind: 'park-release', dollars: +release.toFixed(2), shares, price: px, pl,
         plPct: (h && h.avgCost > 0 && px != null) ? +((px / h.avgCost - 1) * 100).toFixed(2) : null, term: 'short',
-        note: `release parked placeholder — funds ${buys.map((b) => b.sym).join('/') || 'the cleared name(s)'}` };
+        note: `release parked placeholder — funds ${alloc.legs.map((b) => b.sym).join('/') || 'the cleared name(s)'}` };
       if (!dayTradeBlock(leg)) { parkLegs.release = leg; parkedAfter = +(parkedNow - release).toFixed(2); }
     }
   }
+  // 2c. FUNDING RECONCILIATION (2026-08-28) — a plan must never spend money it cannot actually get at.
+  //     `deployable` above optimistically counts the whole waiting ground, but the release that would
+  //     free it can legitimately decline to fire: the shortfall may sit under `parkMin`, or the parked
+  //     block itself may be under it, or the day-trade guard may bounce the leg. When that happens the
+  //     dollars were counted as funding and never freed, and the ticket goes out unpayable.
+  //     Live on 2026-08-28: $485.99 was parked in VTI against $0.90 of cash, a $26.94 JNJ top-up needed
+  //     $26.04 of release, the $100 `parkMin` correctly suppressed the dust sale — and the buy shipped
+  //     anyway, with `buysNeedProceeds:false` and a "fully funded to target" warning both asserting it
+  //     was covered. The executor's live buying-power check caught it, but three separate signals in the
+  //     plan had already said it was fine, which is the part that made it dangerous.
+  //     The floor is inherited, NOT worked around: `parkMin` exists because the tax and spread on a dust
+  //     sale aren't worth it, and that judgement applies with equal force to the BUY that would trigger
+  //     one — closing 0.23pp of drift is not worth a taxable ST sale of the placeholder. So the buys are
+  //     re-sized against cash+proceeds alone and a leg that falls under `minBuy` simply waits, which is
+  //     what the dust floor would have said had it known the buy needed a liquidation to fund it.
+  const releaseNow = parkLegs.release ? parkLegs.release.dollars : 0;
+  const funded = +(cashThisPass + proceeds + releaseNow).toFixed(2);
+  if (spent > funded + 0.01) {
+    const wanted = spent;
+    alloc = allocate(+(cashThisPass + proceeds).toFixed(2));
+    spent = alloc.total;
+    warnings.push(`buys re-sized ${money(wanted)} → ${money(spent)}: the ${money(wanted - funded)} shortfall was under the ${money(parkMin)} parking floor, so no release fired and those dollars are still in ${parkVehicle} — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground`);
+  }
+  buys.push(...alloc.legs);
   //     Only CASH can be parked — never the already-parked remainder (re-parking is a no-op round trip)
   //     and never the pool itself, so this is what's left of cash+proceeds after the buys drew on them.
   //     (Park only fires when there was no release, so spent here is cash-funded by construction.)
@@ -608,6 +642,17 @@ export function planDeployment(input = {}) {
   // buys lean on proceeds, the executor must confirm the sell fills before placing them.
   const releaseD = parkLegs.release ? parkLegs.release.dollars : 0;
   const buysNeedProceeds = (proceeds + releaseD) > 0 && spent > cashThisPass + 1;
+  // THE INVARIANT, stated once and checked: every dollar the plan spends must be a dollar the ticket can
+  // actually produce — settled cash, this ticket's own sale proceeds, or a release leg that is really in
+  // the sell list. It is asserted rather than assumed because the funding pool has been widened twice
+  // (proceeds in v98, the waiting ground in v102) and each widening is a chance to count money that never
+  // gets freed; the 2026-08-28 bug was exactly that, and NOTHING downstream noticed. A breach is a
+  // planner defect, not a market condition, so it is surfaced loudly instead of shipped quietly.
+  if (spent > +(cashThisPass + proceeds + releaseD).toFixed(2) + 0.01) {
+    const gapD = +(spent - cashThisPass - proceeds - releaseD).toFixed(2);
+    warnings.push(`PLANNER BUG: buys total ${money(spent)} but only ${money(cashThisPass + proceeds + releaseD)} is fundable (cash + proceeds + release) — ${money(gapD)} short; do NOT place this ticket, the broker will reject it`);
+    console.warn(`[agentic-deploy] funding invariant breached: spent ${spent} > fundable ${(cashThisPass + proceeds + releaseD).toFixed(2)} (short ${gapD})`);
+  }
 
   // 3. tax-aware combined sell order (losses first — harvest what we're selling anyway — then smallest
   //    gain first) + the ticket's ST tax picture and the executor's autonomy tier.
@@ -632,7 +677,10 @@ export function planDeployment(input = {}) {
   const holdBlocked = blockedSells.filter((b) => b.blocked === 'min-hold');
   if (pdtBlocked.length) warnings.push(`${pdtBlocked.length} sell(s) held to the next session (${pdtBlocked.map((b) => b.sym).join(', ')}) — bought today, selling now would be a day trade (PDT guard)`);
   if (holdBlocked.length) warnings.push(`${holdBlocked.length} sell(s) held by the ${minHoldDays}d min-hold (${holdBlocked.map((b) => b.sym).join(', ')}) — churn guard: positions opened within the window aren't flipped by the next research refresh`);
-  if (candidates.length && deployable > 0 && spent < deployable - 1) warnings.push(`${money(cashLeft)} left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)`);
+  // Judge "fully funded" against what was actually FUNDABLE, not against a pool that counted a release
+  // which never fired — otherwise a plan that just held a buy back reports itself as fully deployed.
+  const fundablePool = +(cashThisPass + proceeds + releaseD).toFixed(2);
+  if (candidates.length && fundablePool > 0 && spent < fundablePool - 1) warnings.push(`${money(cashLeft)} left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)`);
   if (zonesStale) warnings.push(`entry zones are ${zoneAgeDays}d old (target asOf ${target.asOf || '?'}) — treated as ADVISORY, band checks skipped; a stale zone drifts out of range on its own`);
   if (idleOverdue) warnings.push(`cash idle ${idleDays}d (≥${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d deadline) — entry bands waived and ${tranching ? `a ${tranchePct}% tranche (${money(cashThisPass)}) deployed this pass` : `the ${money(settledNow)} remainder swept in`}; waiting indefinitely is a decision too`);
 

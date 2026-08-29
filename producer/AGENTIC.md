@@ -407,7 +407,12 @@ Cheap by construction: every run starts with the deterministic gate and exits im
    > exact shape that looks broken.
 3. **`EXEC_AUTO` / `EXEC_TRADE`** — live pre-checks, then place:
    a. Re-fetch the account (`get_portfolio`/`get_equity_positions`) + fresh quotes; abort if the book moved
-      > 5% from the plan's basis (re-plan next pass).
+      > 5% from the plan's basis (re-plan next pass). **Also check the buys against live `buying_power`,
+      and STOP if a `PLANNER BUG` warning is on the plan** — the 5% test compares BOOK value, which barely
+      moves when cash converts to equity, so it cannot see a funding gap (2026-08-26 near-miss: a −0.07%
+      book move alongside a stale $1,380 plan against $23.75 of real cash). Buying power is the check that
+      actually catches it, and on 2026-08-28 it did: a $26.94 buy against $0.90. Placing anyway just earns
+      a broker rejection; report the gap instead and leave the ticket alone.
    b. `get_earnings_calendar` for the buy names — drop any reporting ≤ 7d (the gate's plan has no earnings
       map; this is where the blackout is enforced).
    c. `get_equity_orders` on **••••3900** for today (**PDT guard, v98**) and on the **margin** account
@@ -520,6 +525,17 @@ Three linked rules the planner enforces, all added 2026-08-11 after a live re-ve
   vehicle is **exempt from off-target exits** — it is absent from the target by design, and without the
   exemption the orphan rule would sell it every pass while parking rebuilt it. Releases are taxable ST
   sales: floored at `PARK_MIN` ($100), sized to the actual shortfall, PDT-guarded, losses-first ordered.
+  **And the floor is INHERITED BY THE BUY (2026-08-28).** The funding pool counts the waiting ground, but
+  a release can legitimately decline to fire — shortfall under `PARK_MIN`, the parked block itself under
+  it, or the day-trade guard bouncing the leg — and the buys were still sized as though those dollars had
+  been freed. Live that day: $485.99 parked against $0.90 of cash, a $26.94 JNJ top-up needing $26.04 of
+  release, the floor correctly suppressing the dust sale, and the buy shipping anyway with
+  `buysNeedProceeds:false` and a "fully funded to target" warning both swearing it was covered. The
+  planner now re-sizes the buys against cash + proceeds alone, so a sub-floor top-up simply waits; a
+  0.23pp drift correction is not worth a taxable ST sale of the placeholder, which is the same judgement
+  `PARK_MIN` already makes about the sale itself. A hard invariant backs it — **spend must never exceed
+  cash + proceeds + an actual release leg** — and a breach pushes a `PLANNER BUG` warning rather than
+  shipping quietly.
 - **Idle-cash deadline (backstop).** If cash still sits past `CASH_IDLE_DEPLOY_DAYS` (10, tracked by
   `data.agentic.cashIdleSince`), the bands are waived and the balance deploys in ~thirds
   (`CASH_IDLE_TRANCHE_PCT`), sweeping whole under `CASH_IDLE_SWEEP_FLOOR`. Waiting indefinitely is a
