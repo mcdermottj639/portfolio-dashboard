@@ -24,7 +24,7 @@ import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions, applyMarks } from './agentic-ledger.mjs';
 import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
-import { appendEquityPoint } from './equityseries.mjs';
+import { appendEquityPoint, derivativesRealized } from './equityseries.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
@@ -66,6 +66,15 @@ function warnIfLogShrank(label, priorLen, freshLen) {
   if (priorLen > freshLen) {
     console.warn(`⚠️  ${label} decision log SHRANK ${priorLen} → ${freshLen}. History is only kept in the snapshot, so this is a real loss. Recover it from git: check out the last good commit's data.json, decrypt it, and read .${label === 'agentic' ? 'agentic' : 'main'}.decisions.decisions.`);
   }
+}
+
+// The account's own realized-trade feed, read tolerantly (absent/corrupt ⇒ null ⇒ the derivatives
+// term is simply 0, i.e. exactly the pre-fix behaviour). Both equity blocks below use it to strip
+// prediction-market / futures settlements out of the deposit inference — see derivativesRealized().
+function tradesSidecar(re) {
+  const f = filesMatching(re)[0];
+  if (!f) return null;
+  try { return readJSON(f); } catch { return null; }
 }
 
 function filesMatching(re) {
@@ -325,12 +334,21 @@ const data = {
   // equityseries.mjs so this account and the self-directed one below record IDENTICALLY — the two
   // YTD figures the consumer shows can then differ only in their inputs, never in their math.
   if (data.agentic && data.agentic.equity > 0) {
+    // Prediction-market / futures settlements pay into cash with no position to explain them, so
+    // they read as deposits. Subtract the realized P&L for THIS step only. ••••3900 doesn't trade
+    // them today, but the term is 0 when there are none and the two accounts must record through
+    // identical math — differing only in their inputs.
+    const agDeriv = derivativesRealized(tradesSidecar(/^agentic-trades\.json$/), {
+      since: prior && prior.agentic ? prior.agentic.asOf : null, until: data.generatedAt,
+    });
+    if (agDeriv) console.log(`agentic: ${fmtMoney(agDeriv)} of derivatives (prediction-market/futures) P&L this step — counted as return, not a transfer`);
     const r = appendEquityPoint({
       prev: (prior && prior.agentic && prior.agentic.equityHistory) || [],
       day: new Date(data.generatedAt).toISOString().slice(0, 10),
       equity: data.agentic.equity, positions: data.agentic.positions,
       priorEquity: prior && prior.agentic ? prior.agentic.equity : null,
       priorPositions: prior && prior.agentic ? prior.agentic.positions : null,
+      extraPnl: agDeriv,
     });
     data.agentic.equityHistory = r.history;
     if (r.flow) console.log(`agentic: inferred net external cash flow ${fmtMoney(r.flow)} (cumFlow ${fmtMoney(r.cumFlow)}) — excluded from performance`);
@@ -376,6 +394,26 @@ const data = {
     }).filter((p) => p.symbol && p.qty > 0);
     if (Number.isFinite(eqTotal) && eqTotal > 0) {
       const priorMain = (prior && prior.main) || null;
+      // Prediction-market (event-contract) and futures settlements land in `cash` from OUTSIDE the
+      // brokerage buckets, so the inference reads a winning bet as a deposit and neutralizes real
+      // profit out of the return. Subtract this step's realized derivatives P&L. See
+      // derivativesRealized() for why a blank symbol is the discriminator.
+      const mainDeriv = derivativesRealized(tradesSidecar(/^main-trades\.json$/), {
+        since: priorMain ? priorMain.asOf : null, until: data.generatedAt,
+      });
+      if (mainDeriv) console.log(`main: ${fmtMoney(mainDeriv)} of derivatives (prediction-market/futures) P&L this step — counted as return, not a transfer`);
+      // The whole correction rests on total_value being the BROKERAGE account only. Robinhood
+      // reports it as equity_value + options_value + cash, with event/futures/crypto as separate
+      // top-level buckets. If that identity ever breaks while one of those buckets is non-zero,
+      // the sleeve has been folded INTO total_value and this term would double-count — say so
+      // loudly rather than drifting silently.
+      const sleeves = ['event_contracts_value', 'futures_value', 'crypto_value']
+        .reduce((a, k) => a + (parseFloat(portfolio[k] ?? '') || 0), 0);
+      const identity = eqTotal - ((parseFloat(portfolio.equity_value ?? '') || 0)
+        + (Number.isFinite(optVal) ? optVal : 0) + cashVal);
+      if (Math.abs(sleeves) > 1 && Math.abs(identity) > 1) {
+        console.warn(`⚠️  main: total_value no longer reconciles as equity+options+cash (off by ${fmtMoney(identity)}) while ${fmtMoney(sleeves)} sits in event/futures/crypto buckets — the derivatives sleeve may now be INSIDE total_value, which would double-count derivativesRealized(). Re-check equityseries.mjs before trusting cumFlow.`);
+      }
       const r = appendEquityPoint({
         prev: (priorMain && priorMain.equityHistory) || [],
         day: new Date(data.generatedAt).toISOString().slice(0, 10),
@@ -384,6 +422,7 @@ const data = {
         priorPositions: priorMain ? priorMain.positions : null,
         optionsValue: Number.isFinite(optVal) ? optVal : undefined,
         priorOptionsValue: priorMain && typeof priorMain.optionsValue === 'number' ? priorMain.optionsValue : undefined,
+        extraPnl: mainDeriv,
       });
       data.main = {
         asOf: data.generatedAt, equity: +eqTotal.toFixed(2), cash: +cashVal.toFixed(2),

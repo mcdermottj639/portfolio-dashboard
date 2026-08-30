@@ -85,6 +85,14 @@ const FIXTURES = {
   'main-trades.json': { data: { trades: [
     { timestamp: new Date(Date.now() - 4 * 24 * 3600e3).toISOString(), symbol: 'MMM', side: 'sell', quantity: '35', price: '195.53', realized_gain: '-431.76' },
     { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'DDD', side: 'sell', quantity: '5', price: '210.00', realized_gain: '250.00' },
+    // A PREDICTION-MARKET settlement: blank symbol, blank side (the real Robinhood shape). It pays
+    // into cash with no position to explain it, so the deposit inference would book it as funding
+    // and the consumer's time-weighted return would drop the profit. Inside this step's window.
+    { timestamp: new Date(Date.now() - 3 * 3600e3).toISOString(), symbol: '', side: '', quantity: '1245', price: '1', realized_gain: '15.00' },
+    // A LOSING one, dated before the prior snapshot: outside the flow step (so it must not shrink
+    // this run's inferred deposit) but inside the 31-day wash window — and a bet is not a security,
+    // so it must never reach the wash-sale ledger either.
+    { timestamp: new Date(Date.now() - 5 * 24 * 3600e3).toISOString(), symbol: '', side: '', quantity: '500', price: '0', realized_gain: '-500.00' },
   ] } },
 };
 
@@ -220,7 +228,13 @@ try {
   const mnEH = out.main.equityHistory;
   const mnPt = mnEH[mnEH.length - 1];
   eq('main equity recorded from total_value, not equity_value', mnPt.equity, 1000);
-  eq('main deposit inferred into cumFlow', Math.abs(mnPt.cumFlow - 92) < 1, true);
+  // ΔEquity 100, of which +8 is the AAA price move and +15 a prediction-market settlement — so the
+  // real external deposit is 77. Before the derivatives term the settlement was indistinguishable
+  // from funding and inflated this to 92 (the 2026-08-30 Scottie bug, at fixture scale).
+  eq('main deposit inferred into cumFlow, net of the settlement', Math.abs(mnPt.cumFlow - 77) < 1, true);
+  eq('a prediction-market win is return, not a contribution', mnPt.cumFlow < 92, true);
+  eq('a blank-symbol settlement never reaches the wash-sale ledger',
+    out.agentic.recentLosses.some((l) => !l.sym || l.sym === ''), false);
   eq('main options value recorded for the next run to difference', mnPt.optionsValue, -597);
   eq('main positions kept for the next flow inference', out.main.positions[0].symbol, 'AAA');
   eq('main history appended, not replaced', mnEH.length, 2);

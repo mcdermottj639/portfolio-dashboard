@@ -1,7 +1,7 @@
 // Unit tests for the recorded account-equity series — the shared basis of BOTH accounts' real YTD.
 //   node producer/equityseries.test.mjs
 import assert from 'node:assert/strict';
-import { appendEquityPoint, inferFlow, flowThreshold, HISTORY_CAP } from './equityseries.mjs';
+import { appendEquityPoint, inferFlow, flowThreshold, HISTORY_CAP, derivativesRealized } from './equityseries.mjs';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log(`  ✓ ${name}`); };
 const pos = (o) => Object.entries(o).map(([symbol, [qty, px]]) => ({ symbol, qty, px }));
@@ -117,6 +117,86 @@ t('optionsValue is recorded so the next run can difference it', () => {
 t('an account with no options book records no optionsValue key', () => {
   const r = appendEquityPoint({ prev: [], day: '2026-08-20', equity: 5000, positions: [] });
   assert.ok(!('optionsValue' in r.history[0]));
+});
+
+
+/* ── Derivatives sleeve: a prediction-market settlement is RETURN, not a deposit ───────────────────
+   Regression for 2026-08-30. A 1,245-contract event position bought for $236.55 settled at $1.00,
+   paying $1,245 into a book with $17,469.76 of equity. The payout arrives in cash with no equity
+   position to explain it, which is precisely the shape the deposit inference keys on — so without the
+   derivatives term ~$995 of REAL profit gets booked as a contribution and the consumer's
+   time-weighted return silently drops it (~5.7pp on this book). */
+console.log('derivativesRealized — the real Robinhood settlement payload');
+// The live row, verbatim: prediction-market settlements carry an EMPTY symbol and side.
+const SETTLED = { data: { account_number: '525340741', span: 'month', trades: [
+  { timestamp: '2026-08-30T22:31:15Z', symbol: '', side: '', quantity: '1245', price: '1', realized_gain: '1008.45' },
+  { timestamp: '2026-08-25T12:50:52Z', symbol: 'CIFR', side: 'sell', quantity: '153', price: '15.56', realized_gain: '-503.38' },
+  { timestamp: '2026-08-25T12:50:11Z', symbol: 'TSM', side: 'sell', quantity: '30', price: '416.47', realized_gain: '-829.03' },
+] } };
+const STEP = { since: '2026-08-28T20:41:45.981Z', until: '2026-08-31T13:35:00.000Z' };
+
+t('only the blank-symbol row counts — equity sells are already modelled by priceMove', () => {
+  assert.equal(derivativesRealized(SETTLED, STEP), 1008.45);
+});
+t("the next run of the same day doesn't subtract the settlement twice", () => {
+  assert.equal(derivativesRealized(SETTLED, { since: '2026-08-31T13:35:00.000Z', until: '2026-08-31T14:35:00.000Z' }), 0);
+});
+t('a settlement past `until` belongs to the NEXT step, not this one', () => {
+  assert.equal(derivativesRealized(SETTLED, { since: '2026-08-28T20:41:45.981Z', until: '2026-08-29T00:00:00.000Z' }), 0);
+});
+t('no `since` ⇒ abstain (never subtract an unbounded 3-month span in one step)', () => {
+  assert.equal(derivativesRealized(SETTLED, {}), 0);
+  assert.equal(derivativesRealized(SETTLED), 0);
+});
+t('junk in ⇒ 0, never NaN (a NaN would poison cumFlow for the life of the series)', () => {
+  assert.equal(derivativesRealized(null, STEP), 0);
+  assert.equal(derivativesRealized({ data: { trades: 'nope' } }, STEP), 0);
+  assert.equal(derivativesRealized({ data: { trades: [null,
+    { symbol: '', timestamp: 'garbage', realized_gain: '5' },
+    { symbol: '', timestamp: '2026-08-30T22:31:15Z', realized_gain: 'n/a' }] } }, STEP), 0);
+});
+t('a LOSING bet is the same bug sign-flipped — it would read as a withdrawal and flatter the return', () => {
+  const lost = { data: { trades: [{ timestamp: '2026-08-30T22:31:15Z', symbol: '', side: '', quantity: '900', price: '0', realized_gain: '-900' }] } };
+  assert.equal(derivativesRealized(lost, STEP), -900);
+});
+
+console.log('inferFlow — a settled prediction market is profit, not a contribution');
+// The real book: positions unchanged and unmoved (markets shut all weekend), the whole $1,008.45
+// arriving as cash. Prior equity 17,469.76 ⇒ the noise floor is the $750 cap, so it clears it.
+const BOOK = [{ symbol: 'IREN', qty: 350, px: 60 }, { symbol: 'PLTR', qty: 40, px: 180 }];
+
+t('the payout clears the noise floor, so it cannot be ignored into silence', () => {
+  assert.equal(flowThreshold(17469.76), 750);
+});
+t('WITHOUT the term it books a phantom $1,008 deposit (the 2026-08-30 bug, pinned)', () => {
+  assert.equal(inferFlow(17469.76, BOOK, 18478.21, BOOK, -27, -27), 1008.45);
+});
+t('WITH it, no transfer is inferred and the win stays in the return', () => {
+  assert.equal(inferFlow(17469.76, BOOK, 18478.21, BOOK, -27, -27, 1008.45), 0);
+});
+t('a REAL deposit in the same step is still caught, net of the settlement', () => {
+  assert.equal(inferFlow(17469.76, BOOK, 20478.21, BOOK, -27, -27, 1008.45), 2000);
+});
+t('a losing bet would read as a withdrawal and flatter the return; the term cancels it', () => {
+  assert.equal(inferFlow(17469.76, BOOK, 16569.76, BOOK, -27, -27), -900);
+  assert.equal(inferFlow(17469.76, BOOK, 16569.76, BOOK, -27, -27, -900), 0);
+});
+t('a non-numeric / absent extraPnl is inert, never NaN-poisoning the series', () => {
+  for (const bad of [undefined, NaN, null, 'x']) {
+    assert.equal(inferFlow(17469.76, BOOK, 18478.21, BOOK, -27, -27, bad), 1008.45);
+  }
+});
+
+console.log('appendEquityPoint — the settlement does not move cumFlow');
+t('the win raises recorded equity but leaves cumFlow alone (return, not funding)', () => {
+  const p = [{ symbol: 'IREN', qty: 350, px: 60 }];
+  const prev = [{ t: '2026-08-28', equity: 17469.76, cumFlow: 799.55, optionsValue: -27 }];
+  const r = appendEquityPoint({ prev, day: '2026-08-31', equity: 18478.21, positions: p,
+    priorEquity: 17469.76, priorPositions: p, optionsValue: -27, priorOptionsValue: -27,
+    extraPnl: 1008.45 });
+  assert.equal(r.flow, 0);
+  assert.equal(r.cumFlow, 799.55);
+  assert.equal(r.history[r.history.length - 1].equity, 18478.21);
 });
 
 console.log(`\n✅ equityseries: ${n} assertions passed`);
