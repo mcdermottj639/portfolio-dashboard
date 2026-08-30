@@ -221,7 +221,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v130** (`pf-v130`) — v127 added the self-directed Rebalance Log, v128 moved it to the Accounts tab beside the agentic one, v129 made both logs **accumulate a usable record** (frozen outcome marks + time-based retention), v130 **backfilled those marks from recorded daily closes** so the record starts full instead of empty (all below).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v131** (`pf-v131`) — v127 added the self-directed Rebalance Log, v128 moved it to the Accounts tab beside the agentic one, v129 made both logs **accumulate a usable record** (frozen outcome marks + time-based retention), v130 **backfilled those marks from recorded daily closes** so the record starts full instead of empty, and v131 is the **navigation & accessibility pass** — bottom tab bar, section rail, Find, My view, ▲/▼ glyphs (all below).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -728,18 +728,71 @@ Three hazards this table exists to prevent:
   jump-nav** skips cards hidden by the inactive side (`hiddenWithin`) and rebuilds on toggle
   (`window.__navRebuild`), so chips always match what's on screen. Privacy masking already scoped to
   `#page-portfolio`, so it covers the agentic side for free.
-- **The card jump-nav is a COLLAPSIBLE disclosure, collapsed by default (v112).** Expanded, the chip row
-  wrapped to five lines on a phone (~158px) and pushed each page's first real card below the fold — on
-  the Accounts tab it buried the account switcher, the margin banner and the hero. `build()` now emits a
-  `.card-nav-toggle` header (`🧭 Jump to section` · card count · chevron) over a `.card-nav-chips` div
-  that CSS hides unless the nav carries `data-open="1"`; collapsed it is one ~40px row. Three deliberate
-  choices: **open/closed is ONE preference across all five pages**, persisted as `pf_nav_open`
-  (`setNavOpen` walks every page's nav) — a per-page state reads as a bug when the next tab comes back
-  expanded; **tapping a chip does NOT close the panel**, so it behaves like an ordinary disclosure and
-  stays put if you like it open; and `build()` calls `applyOpen(nav, navOpen())` after every
-  `innerHTML` write, since a rebuild replaces the markup and would otherwise silently reset the state.
-  Colours come from `--surface-2`/`--text`, so the gold theme needs no override. Analyze still shows no
-  nav until a ticker is analyzed (the pre-existing `cards.length<2` rule).
+- **Navigation & accessibility pass (v131) — the app got a bottom tab bar, a section rail, Find and
+  My view.** Integrated from a Claude Design study (`Portfolio_App_Redesign.dc.html`), **taking its
+  structure and rejecting its palette wholesale** — the study proposed a warm "Clay" ground with a
+  `#c94b39` accent, and the owner's instruction was to keep Light ⇄ Gold exactly as they are. Nothing
+  was removed: every card, chart, table and both account books are untouched, and the study's redrawn
+  card bodies (pill/bar/meter/tile approximations of our real tables and Chart.js canvases) were
+  deliberately NOT taken — they are a mock's stand-in for content we already render properly.
+  - **The tab bar is FIXED TO THE BOTTOM**, one row, icon over label, 56px targets. It used to be a
+    sticky TOP bar that **wrapped to two rows on a phone** (Analyze alone on row 2), costing ~150px
+    above the fold before a single figure appeared — measured on the live app, the portfolio value
+    began at y≈780 of a 900px screen. The active state is a top accent stripe, not the old dark
+    "wealth" gradient pill: on a bottom bar a filled block reads as a floating button on the device
+    chrome, and it also rendered dark-on-dark and unreadable in the light theme. **Two consequences
+    are load-bearing.** (a) `body` carries `padding-bottom: safe-area + 74px`, or the last card hides
+    behind the bar. (b) **The tab bar contributes NOTHING to `__pfTopOffset()` any more** — it
+    obscures the page's bottom, not its top, so counting it there would push every jump ~62px past
+    its target. See the sticky-geometry gotcha below, which this change rewrote.
+  - **The section rail replaced the collapsible jump-nav.** v112 had made it a disclosure collapsed by
+    default (`pf_nav_open`, `.card-nav-toggle`, `setNavOpen`) because expanded it wrapped to five
+    lines and buried each page's first card — a real problem, but hiding the nav treated the symptom.
+    One **non-wrapping row that scrolls sideways** costs the same ~40px the collapsed toggle did and
+    is always usable, so the toggle, the preference key and `setNavOpen` are **gone** (nothing else
+    read that key). An **Expand all / Collapse all** button leads the rail.
+  - **`__navAll` must drive BOTH collapse mechanisms.** The app has two, and a control that knows only
+    one silently acts on a fraction of the page: the generic enhancer wraps a card's content in a
+    `.card-body` child, but **every card whose header already carried `.collapsible` owns its own
+    toggle** — `data-toggle="<bodyId>"` on the title plus `toggleSection()`. Measured live on the
+    Accounts tab: **10 collapsible cards, 1 of mechanism (1) and 9 of mechanism (2).** `bodyOf()`
+    resolves either; the rail's label is computed from live state (`anyOpen`) rather than a stored
+    flag, because individual toggles change the answer, so `toggleSection` also calls `__navSyncAll`.
+  - **Find (🔍 in the freshness strip) searches every card on every tab** — title matches ranked ahead
+    of body-text matches, Enter opens the first hit, and a result switches tab, expands the card and
+    scrolls to it. **The hard part is that Markets, Options and Analyze render LAZILY**, so a search
+    run before you have ever opened Markets cannot see one Markets card in the DOM. Two fixes were
+    rejected: a hardcoded title registry drifts silently the moment a card is renamed, and eagerly
+    initialising the hidden tabs would build **Chart.js canvases inside `display:none` containers,
+    which size to ZERO** — the documented hazard behind the Plan tab's lazy render. So Find
+    **remembers**: titles seen on a rendered page are cached per tab (`pf_card_titles`), and an
+    unrendered tab contributes its remembered titles, labelled "not loaded yet". Self-healing, and
+    the cross-tab jump **waits for the real render** (polling to a ~3s ceiling) before scrolling —
+    scrolling early lands at the top of a page that then grows underneath you.
+  - **My view** (`pf_pins`) pins any card from any tab via a ☆ in its header, and renders as **ONE row
+    of chips, empty by default** — it appears on every page, so a taller block would tax every tab's
+    fold to show something the reader never asked for. Pins are keyed by **card TITLE, not element
+    id**: the rail regenerates ids (`navc-1`, `navc-2` …) on every rebuild, so an id-keyed pin would
+    break on the next re-render. A pin whose card can't be resolved (renamed, or a tab never visited
+    on this device) is **skipped, not deleted** — the preference is still valid, we just can't
+    resolve it yet, and dropping it would lose the pin on one bad boot.
+  - **▲/▼ on every percentage that renders through `fmtP()`** — the shared formatter behind the
+    position tables, snapshot tiles, P&L columns and the account cards (29 call sites) — so colour is
+    no longer the only carrier of direction there. **It is not literally every percentage in the app:**
+    a few surfaces format their own (the Markets index/sector tiles print "+0.30% day" directly), and
+    those were left alone because their own labels already carry the direction in words. Two rules it obeys:
+    a value that ROUNDS to zero stays neutral and glyph-less (matching `sc()`'s `neu`; a "▲ 0.00%"
+    would assert a direction the data doesn't have), and the **sign is kept alongside the glyph**
+    rather than replaced by it. Verified safe: all 29 call sites render the string directly, all
+    table sorting runs over data objects rather than cell text, and nothing parses `textContent`.
+  - **ARIA:** `aria-expanded` on every collapsible card header (stamped once in the enhancer — the one
+    place every card passes through — then maintained by both toggle paths), `aria-current="page"` on
+    the active tab (the accent stripe is now the sole visual cue), `role="tablist"` on the tab bar, a
+    labelled Find dialog, 44px+ targets, and `prefers-reduced-motion` honoured.
+  - The freshness strip is now **sticky** (`position:sticky` in its inline `cssText`), so snapshot age,
+    Find and ↻ stay reachable in a long page. `paintBar()` already set an opaque background on every
+    repaint, which is what makes that safe. Analyze still shows no rail until a ticker is analyzed
+    (the pre-existing `cards.length<2` rule).
 - **Card parity across the two account sides (v101):** the agentic side now carries the SAME analytics
   cards as the self-directed side — snapshot tiles, 🗺️ Holdings Heatmap, 🛡️ Risk & Diversification,
   🗂 Allocation, 💵 Income & Tax, 📡 Technical Signals, 📋 Fundamentals — plus its own 📈 Account
@@ -777,24 +830,38 @@ Three hazards this table exists to prevent:
   Positions** (the Agentic Portfolio tracker is the same table plus target/drift/trade) and
   **Performance vs Benchmark** (Account Performance is the real, deposit-adjusted return).
   **The switcher is STICKY and lands you on the SAME section (v107).** `.acct-seg-wrap` pins the
-  segmented control below the tab bar (`top: env(safe-area-inset-top) + var(--tabbar-h)`; the height is
-  measured live by `_syncTabbarH` because the tab row wraps to two lines on a phone), so accounts can be
-  swapped from anywhere in the page. Swapping then **preserves the reader's section**: every paired card
+  segmented control below whatever else is pinned at the top (`top: env(safe-area-inset-top) +
+  var(--stickytop-h)`; measured live by `_syncStickyTop`), so accounts can be swapped from anywhere in the
+  page. **That variable was `--tabbar-h` until v131** — the tab row wrapped to two lines on a phone, so a
+  hardcoded offset would overlap or gap; the tab bar is now bottom-fixed and the **freshness strip** is
+  what sits above the switcher. Still measured live for the same class of reason: the strip's text wraps
+  to two lines whenever a staleness or update nudge is showing. `_syncStickyTop` re-measures on resize,
+  on orientation change, and through a `ResizeObserver` on the strip (with timed retries as the fallback,
+  since `boot()` may create the strip before or after that code runs). Swapping then **preserves the reader's section**: every paired card
   on both sides carries a `data-sec` key (`snapshot·holdings·performance·heatmap·risk·allocation·income·
   technicals·fundamentals·flow·rebalance-log`, plus the unpaired `smalls`), `_currentSec()` notes which
   one is on screen before the swap and `_landOnSec()` scrolls to its counterpart after — so comparing the
   two books' Risk or Income cards is one tap, not a scroll back to the top and down again. An unpaired
   section falls back to the nearest common one **above** it in `SEC_ORDER` (self-directed `smalls` →
   `fundamentals`). Three things here are load-bearing and were each a real bug in development:
-  **(a) `__pfTopOffset()` must be built from HEIGHTS + the tab bar's resolved sticky `top`, never from
-  live `getBoundingClientRect().bottom`** — a rect-based offset reads ~50px larger while the page sits at
-  scroll 0 (nothing is stuck yet), so a scroll computed before sticking and judged after it disagreed with
-  itself and landed every jump a section early; **(b) `_currentSec` picks the FIRST section whose bottom
+  **(a) `__pfTopOffset()` must be built from HEIGHTS + the pinned element's resolved sticky `top`, never
+  from live `getBoundingClientRect().bottom`** — a rect-based offset reads ~50px larger while the page sits
+  at scroll 0 (nothing is stuck yet), so a scroll computed before sticking and judged after it disagreed
+  with itself and landed every jump a section early. **v131 changed WHAT it measures, not how:** the tab
+  bar moved to a bottom-fixed bar, so it obscures the page's BOTTOM and is no longer summed here (counting
+  it would push every jump ~62px too far down); what remains pinned above the content is the **freshness
+  strip** (sticky since v131) plus, on Accounts/Plan, the account switcher. Both can be absent — a
+  decrypt-failure boot has no strip, and the switcher measures 0 on pages that don't show it — and both
+  cases degrade to a smaller offset, which lands a jump slightly HIGH rather than hiding the card under a
+  header. Verified live at 123px = strip + switcher + 8, landing a rail jump at exactly y=123;
+  **(b) `_currentSec` picks the FIRST section whose bottom
   clears the header by `SEC_EDGE` (40px)** — "last card whose top is above the line" flips to the previous
   section exactly when the next card starts filling the screen, and "whichever card covers the most pixels"
   tips to the *next* section whenever the current one is short (a compact Allocation card handed you off to
   Income); **(c) the nav-chip `topOffset()` delegates to `__pfTopOffset`** — once the switcher became
-  sticky, any jump computed off the tab bar alone parks the target card underneath it; **(d) the region
+  sticky, any jump computed off the top bar alone parks the target card underneath it — and since v131 a
+  jump computed off the *tab* bar is wrong in the other direction, because that bar is at the bottom now
+  (hence the rail's small fallback offset rather than a tab-bar measurement); **(d) the region
   ABOVE the first `data-sec` card is its own section, `SEC_TOP` (`'__top'`), which lands at scroll 0
   (v120)** — neither hero (nor the self-directed margin banner) carries a `data-sec`, so `_currentSec`
   used to answer `snapshot` for the whole top of the page, and switching accounts while sitting at the
@@ -1173,9 +1240,10 @@ Three hazards this table exists to prevent:
   `finalize-target.mjs` tags each target name with `drivers:[]` (the sleeves scoring ≥7, derived
   deterministically from sleeve scores rather than trusted from the model) so the Rebalance Log can
   eventually answer whether the sleeve earned its keep — which is what makes it removable.
-- **Table readability (v97):** the three wide scrollers (All Positions `#pos-table`, Picks `#picks-table`, the Agentic holdings table `.sticky-first`) pin their **first (ticker) column sticky** while the rest scrolls sideways — opaque per-theme background (`--sticky-bg`, gold override) + a soft edge shadow, so rows stay identifiable mid-scroll. The Picks table is **ticker-first** (was Score·#·Ticker) and the Agentic table's **Target/Drift sits next to Position** (allocation read side-by-side, perf after). `fmtP`/`sc`/the agentic `pctCell` are **display-zero aware**: a value that rounds to 0.0% renders neutral gray, never a red "-0.0%" (the weekend quirk). `thead th` contrast bumped (#9ca3af→#6b7280, light theme).
-- **Freshness bar:** shows the snapshot label/age and **tints amber with a "↻ to refresh" nudge when the
-  snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts the build version,
+- **Table readability (v97):** the three wide scrollers (All Positions `#pos-table`, Picks `#picks-table`, the Agentic holdings table `.sticky-first`) pin their **first (ticker) column sticky** while the rest scrolls sideways — opaque per-theme background (`--sticky-bg`, gold override) + a soft edge shadow, so rows stay identifiable mid-scroll. The Picks table is **ticker-first** (was Score·#·Ticker) and the Agentic table's **Target/Drift sits next to Position** (allocation read side-by-side, perf after). `fmtP`/`sc`/the agentic `pctCell` are **display-zero aware**: a value that rounds to 0.0% renders neutral gray, never a red "-0.0%" (the weekend quirk) — and v131's ▲/▼ glyph obeys the same rule, so a display-zero stays glyph-less rather than asserting a direction the data doesn't have. `thead th` contrast bumped (#9ca3af→#6b7280, light theme).
+- **Freshness bar (STICKY since v131):** shows the snapshot label/age and **tints amber with a "↻ to
+  refresh" nudge when the snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts
+  the **🔍 Find** button (v131), the build version,
   privacy, theme, and refresh controls. **v88 made it live**: the tint/label repaint every 5 min and on
   every foregrounding (no more fresh-looking hours-old bar in a resident PWA); on resume after ≥5 min
   away it peeks at `data.json` (fingerprint = `ct` prefix, stashed as `window.__PF_SNAP_FP`) and

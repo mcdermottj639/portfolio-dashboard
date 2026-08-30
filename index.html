@@ -206,8 +206,16 @@ html { overflow-x: clip; }
 .perf-metric .pm-v { font-size:22px; font-weight:800; margin-top:2px; }
 .legend-row { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:11px; color:#6b7280; }
 
-/* ─── Tab Bar ─── */
-.tabbar { position: sticky; top: env(safe-area-inset-top); z-index: 100; display: flex; flex-wrap: wrap; gap: 8px; background: #f0f2f5; padding: 4px 0 12px; margin-bottom: 4px; }
+/* ─── Tab Bar — FIXED TO THE BOTTOM (v131) ───
+   Was a sticky top bar that wrapped to two rows on a phone (Analyze alone on row 2), burning ~150px
+   above the fold before a single figure appeared. Bottom-fixed it is one row, in thumb reach, and
+   the whole top of the page belongs to data again. Two things follow from the move and are relied
+   on elsewhere: the bar contributes NOTHING to __pfTopOffset(), and it overlays the page bottom, so
+   `body` carries matching bottom padding or the last card hides behind it. */
+.tabbar { position: fixed; top: auto; bottom: 0; left: 0; right: 0; z-index: 200; display: flex;
+  flex-wrap: nowrap; gap: 0; background: #f0f2f5; padding: 0 0 env(safe-area-inset-bottom);
+  margin: 0; border-top: 1px solid rgba(0,0,0,0.10); box-shadow: 0 -2px 12px rgba(0,0,0,0.06); }
+body { padding-bottom: calc(env(safe-area-inset-bottom) + 74px) !important; }
 /* Analyze page */
 .az-link { cursor: pointer; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
 .az-search { display: flex; gap: 8px; }
@@ -263,19 +271,73 @@ html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
 /* "Build & place this trade with Claude" — opens a Claude chat with the trade pre-built */
 .chat-btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 11px; margin-top: 10px; border-radius: 12px; background: #da7756; color: #fff; font-weight: 800; font-size: 13px; border: none; cursor: pointer; text-decoration: none; }
 .chat-btn:active { opacity: 0.85; }
-/* Per-page quick-nav: chip row that jumps to each card in the section */
-/* Quick-nav: a disclosure, collapsed by default. Open, the chip row wrapped to 5 lines on a phone
-   and pushed the actual page content below the fold on every tab. Colours come from the shared
-   surface/text vars so the gold theme needs no override. */
-.card-nav { padding: 2px 0 10px; margin-bottom: 2px; }
-.card-nav-toggle { display: flex; align-items: center; gap: 7px; width: 100%; font-size: 12px; font-weight: 700; padding: 7px 11px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; text-align: left; font-family: inherit; }
-.card-nav-toggle .cn-count { margin-left: auto; font-size: 11px; font-weight: 600; opacity: 0.55; }
-.card-nav-toggle .cn-chev { font-size: 9px; opacity: 0.6; transition: transform 0.18s; }
-.card-nav[data-open="1"] .card-nav-toggle .cn-chev { transform: rotate(180deg); }
-.card-nav-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
-.card-nav:not([data-open="1"]) .card-nav-chips { display: none; }
-.card-nav-chip { flex: 0 1 auto; font-size: 11px; font-weight: 600; padding: 5px 9px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+/* ─── Section rail: one horizontally-scrolling row of chips, one per card on this page ───
+   v112 made this a DISCLOSURE, collapsed by default, for a good reason: expanded, the chips wrapped
+   to five lines on a phone and pushed every page's first real card below the fold. v131 fixes the
+   cause instead of hiding the symptom — a single non-wrapping row that scrolls sideways is the same
+   height as the old collapsed toggle (~40px) AND always usable, so the disclosure (and its
+   pf_nav_open preference) is gone. Colours come from the shared surface/text vars, so gold needs no
+   override. Scrollbar is hidden on every engine: this is a touch-swipe surface, not a desktop list. */
+.card-nav { padding: 2px 0 8px; margin-bottom: 2px; }
+.card-nav-chips { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; padding: 2px 0 4px;
+  scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+.card-nav-chips::-webkit-scrollbar { display: none; }
+.card-nav-chip { flex: 0 0 auto; font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 14px; background: var(--surface-2); color: var(--text); border: none; cursor: pointer; white-space: nowrap; max-width: 190px; overflow: hidden; text-overflow: ellipsis; font-family: inherit; }
 .card-nav-chip:active { background: #6366f1; color: #fff; }
+/* Expand/collapse-all rides at the head of the rail — outlined, so it reads as a control rather
+   than as one more destination chip. */
+.cn-all { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 14px;
+  background: transparent; color: var(--text); border: 1px solid rgba(0,0,0,0.16); cursor: pointer;
+  white-space: nowrap; font-family: inherit; }
+html[data-theme="gold"] .cn-all { border-color: var(--nx-bd); }
+
+/* ─── My view: cards starred from any tab, as a single row of jump chips ───
+   Deliberately ONE row and empty by default — it appears on every page, so a two-column tile block
+   would cost ~230px of every tab's fold to show something the reader may never have asked for.
+   No pins ⇒ the strip does not render at all. */
+.myview { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 0 0 8px;
+  scrollbar-width: none; -ms-overflow-style: none; }
+.myview::-webkit-scrollbar { display: none; }
+.myview-lbl { flex: 0 0 auto; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #8b8b90; }
+.myview-chip { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 14px;
+  background: transparent; color: var(--text); border: 1px solid var(--accent); cursor: pointer;
+  white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-family: inherit; }
+.myview-chip .mv-tab { font-weight: 600; opacity: .6; }
+/* The star that pins a card, in its header beside the ? and the chevron. */
+.pin-btn { flex: 0 0 auto; background: none; border: none; cursor: pointer; font-size: 14px;
+  line-height: 1; padding: 0 1px; color: var(--accent); font-family: inherit; opacity: .75; }
+.pin-btn:hover { opacity: 1; }
+.pin-btn[aria-pressed="true"] { opacity: 1; }
+
+/* ─── Find: one search across every card on every tab ───
+   Shares the help-modal's visual language on purpose — same overlay, same box — so the app has one
+   kind of sheet, not two. */
+.find-modal { position: fixed; inset: 0; z-index: 400; background: rgba(15,18,22,.46);
+  display: none; align-items: flex-start; justify-content: center; padding: 54px 14px 14px; }
+.find-modal.open { display: flex; }
+.find-box { width: 100%; max-width: 520px; max-height: 100%; display: flex; flex-direction: column;
+  background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
+html[data-theme="gold"] .find-box { background: #0b0b0c; border: 1px solid var(--nx-bd); }
+.find-head { display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid rgba(0,0,0,.08); }
+/* 16px keeps iOS from zooming the viewport on focus. */
+.find-head input { flex: 1; min-width: 0; font-size: 16px; padding: 11px 12px; border-radius: 10px;
+  border: 1px solid #d1d5db; background: var(--surface-2); color: var(--text); font-family: inherit; }
+.find-x { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid rgba(0,0,0,.14);
+  background: transparent; color: var(--text); font-size: 16px; cursor: pointer; font-family: inherit; }
+html[data-theme="gold"] .find-x { border-color: var(--nx-bd); }
+.find-list { overflow-y: auto; padding: 6px 0; }
+.find-r { display: flex; gap: 11px; align-items: center; width: 100%; min-height: 48px; text-align: left;
+  background: none; border: 0; padding: 9px 14px; cursor: pointer; color: var(--text); font-family: inherit; }
+.find-r:hover { background: var(--surface-2); }
+.find-r .fr-tab { flex: 0 0 68px; font-size: 9.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--accent); }
+.find-r .fr-t { display: block; font-size: 13px; font-weight: 700; }
+.find-r .fr-h { display: block; font-size: 10.5px; color: #8b8b90; }
+.find-empty { padding: 20px 16px; font-size: 12.5px; color: #8b8b90; }
+/* The Find button lives in the freshness strip, beside the version/privacy/theme controls. */
+.pf-find { display: flex; align-items: center; gap: 5px; font: 700 11.5px inherit; font-family: inherit;
+  padding: 5px 10px; border-radius: 9px; border: 1px solid rgba(0,0,0,.14); background: transparent;
+  color: var(--text); cursor: pointer; }
+html[data-theme="gold"] .pf-find { border-color: var(--nx-bd); }
 /* ── Card help popovers: a "?" in each card header opens a teaching modal ── */
 .help-btn { flex: 0 0 auto; margin-left: auto; width: 19px; height: 19px; padding: 0; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: #9ca3af; font-size: 11px; font-weight: 800; line-height: 17px; text-align: center; cursor: pointer; opacity: .65; font-family: inherit; -webkit-appearance: none; }
 .help-btn:hover { opacity: 1; color: var(--accent); }
@@ -304,18 +366,30 @@ html[data-theme="gold"] .help-box { --hb-bg: #0b0b0c; border: 1px solid var(--nx
 /* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
 .money { transition: filter .12s; }
 body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-select: none; }
-.tab { flex: 1 1 auto; min-width: 74px; max-width: 260px; padding: 11px 12px; border-radius: 12px; border: none; background: white; color: #6b7280; font-size: 13.5px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.05); transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; white-space: nowrap; }
+/* Equal-width columns, icon over label, 56px tall — a comfortable touch target that also gives the
+   active tab a wide, obvious hit area. The active state is a top accent bar + full-strength text
+   rather than the old filled pill: a filled pill reads as a floating button, which is wrong for a
+   bar that is now part of the device chrome. */
+.tab { flex: 1 1 0; min-width: 0; max-width: none; padding: 7px 2px; border-radius: 0; border: none;
+  border-top: 3px solid transparent; background: transparent; color: #8b8b90; font-size: 11px;
+  font-weight: 700; cursor: pointer; box-shadow: none; transition: color 0.15s, border-color 0.15s;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 56px; font-family: inherit; white-space: nowrap; }
 .tab:hover { color: #1c1c1e; }
-.tab.active { background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%); color: white; box-shadow: 0 2px 8px rgba(15,52,96,0.3); }
-.tab .tab-sub { font-size: 10px; opacity: 0.7; font-weight: 500; margin-left: 4px; }
-@media (max-width:760px){ .tabbar{ gap:6px; } .tab{ padding:10px 5px; font-size:12px; gap:4px; } .tab .tab-sub{ display:none; } }
+.tab.active { background: transparent; color: #1c1c1e; border-top-color: var(--accent); box-shadow: none; }
+.tab .t-ico { font-size: 17px; line-height: 1; }
+.tab .tab-sub { font-size: 9px; opacity: 0.7; font-weight: 500; }
+@media (max-width:760px){ .tab .tab-sub{ display:none; } }
+@media (prefers-reduced-motion: reduce){ .tab, .chevron, .money { transition: none !important; } }
 
 /* ─── Account segmented control (Accounts tab: self-directed ⇄ agentic) ───
-   The control STICKS below the tab bar (v106) so the reader can swap accounts from wherever they
-   are in the page instead of scrolling back up — paired with setAccount's section matching, which
-   lands them on the same card on the other side. --tabbar-h is measured live (_syncTabbarH): the
-   tab row wraps to two lines on a phone, so a hardcoded offset would overlap or leave a gap. */
-.acct-seg-wrap { position:sticky; top:calc(env(safe-area-inset-top) + var(--tabbar-h,96px)); z-index:90; background:#f0f2f5; padding:2px 0 8px; margin-bottom:4px; }
+   The control STICKS below whatever else is pinned to the top (v106) so the reader can swap accounts
+   from wherever they are in the page instead of scrolling back up — paired with setAccount's section
+   matching, which lands them on the same card on the other side. --stickytop-h is measured live
+   (_syncStickyTop). Until v131 that was the TAB BAR's height (it wrapped to two lines on a phone, so
+   a hardcoded offset would overlap or gap); the tab bar is now bottom-fixed, and the freshness strip
+   is what sits above this — same reason to measure it, since its text wraps when a nudge is showing. */
+.acct-seg-wrap { position:sticky; top:calc(env(safe-area-inset-top) + var(--stickytop-h,40px)); z-index:90; background:#f0f2f5; padding:2px 0 8px; margin-bottom:4px; }
 .acct-seg { display:flex; gap:4px; background:#e5e7eb; padding:4px; border-radius:14px; }
 .acct-tg { flex:1 1 0; padding:9px 10px; border:none; border-radius:11px; background:transparent; color:#6b7280; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.25; transition:all 0.15s; }
 .acct-tg .acct-sub { font-size:9.5px; font-weight:500; opacity:0.72; letter-spacing:0.2px; }
@@ -401,7 +475,12 @@ html[data-theme="dark"]{ color-scheme:dark; --accent:#00d632; --surface-2:#20212
 
 /* Both themes: a bold near-black "wealth" hero + cash-green accents in place of indigo */
 .header,.picks-hero{ background:linear-gradient(140deg,#0c1f17 0%,#06100b 100%); }
-.tab.active{ background:linear-gradient(140deg,#0c1f17 0%,#06100b 100%); box-shadow:0 2px 10px rgba(0,194,68,0.25); }
+/* The active tab's dark "wealth" fill was retired with the top pill bar (v131). On a bottom bar the
+   filled block reads as a floating button sitting on the device chrome, and — since it also inherits
+   the light theme's dark ink — as an unreadable dark-on-dark tile. The green accent stripe carries
+   the state now; see the .tab rules above. This selector is kept, on the accent, so the hero and
+   the bar still share a palette. */
+.tab.active{ background:transparent; box-shadow:none; border-top-color:var(--accent); }
 .h-tag{ background:rgba(0,214,80,0.18); }
 .dp-link,.tv-link{ color:var(--accent); }
 .thesis2 li::before{ color:var(--accent); }
@@ -412,8 +491,11 @@ html[data-theme="dark"]{ color-scheme:dark; --accent:#00d632; --surface-2:#20212
 
 /* ═══ DARK THEME surfaces ═══ */
 html[data-theme="dark"] body{ background:#000; color:var(--text); }
-html[data-theme="dark"] .tabbar{ background:#000; }
-html[data-theme="dark"] .tab{ background:#161616; color:#9a9aa0; box-shadow:none; }
+/* Dark was retired as a selectable option (v69–v70) — these rules are unreachable, but kept in step
+   with the gold bottom bar so a legacy pref that somehow resolves here isn't left with a broken bar. */
+html[data-theme="dark"] .tabbar{ background:#0d0d0d; border-top-color:#242427; box-shadow:none; }
+html[data-theme="dark"] .tab{ background:transparent; color:#9a9aa0; box-shadow:none; border:none; border-top:3px solid transparent; }
+html[data-theme="dark"] .tab.active{ background:transparent; color:#f5f5f7; border-top-color:var(--accent); box-shadow:none; }
 html[data-theme="dark"] .acct-seg{ background:#101010; }
 html[data-theme="dark"] .acct-seg-wrap{ background:#000; }
 html[data-theme="dark"] .acct-tg{ color:#9a9aa0; }
@@ -483,13 +565,16 @@ html[data-theme="gold"]{ color-scheme:dark; --accent:#e3c074; --surface-2:#0e0e0
   /* var names are historical (cyan/mag/pur) — repurposed to the rich-gold palette */
   --nx-cyan:#e3c074; --nx-mag:#c98a3a; --nx-pur:#caa24a; --nx-grn:#3fcf94; --nx-red:#ef8278; --nx-bd:rgba(201,168,100,.18); --nx-muted:#9c917b; }
 html[data-theme="gold"] body{ background:#000; color:var(--text); }
-/* Opaque, not transparent: the tab bar is sticky, so a see-through background lets the page scroll
-   visibly behind the pills. Harmless when nothing else was sticky; obvious once the account switcher
-   sits under it (v106 Accounts, v108 Plan). Gold's body is near-pure black, so #000 is the match. */
-html[data-theme="gold"] .tabbar{ background:#000; }
-html[data-theme="gold"] .tab{ background:#0c0c0d; color:#9c917b; box-shadow:none; border:1px solid var(--nx-bd); }
+/* Opaque, not transparent: the bar is fixed over the page, so a see-through background lets content
+   scroll visibly behind it (the same reason it had to be opaque when it was sticky at the top, above
+   the account switcher — v106 Accounts, v108 Plan). Gold's body is near-pure black; #0b0b0c is the
+   card surface, lifting the bar a hair off the body so the bottom edge of the page is legible. */
+html[data-theme="gold"] .tabbar{ background:#0b0b0c; border-top-color:var(--nx-bd); box-shadow:none; }
+/* Per-tab borders/fills are dropped with the pill: on a bottom bar each tab is a column of one
+   surface, and only the active accent bar distinguishes them. */
+html[data-theme="gold"] .tab{ background:transparent; color:#7d7466; box-shadow:none; border:none; border-top:3px solid transparent; }
 html[data-theme="gold"] .tab:hover{ color:var(--text); }
-html[data-theme="gold"] .tab.active{ background:linear-gradient(140deg,rgba(227,192,116,.16),rgba(201,138,58,.07)); color:#fff5e0; border-color:rgba(227,192,116,.55); box-shadow:none; }
+html[data-theme="gold"] .tab.active{ background:transparent; color:var(--text); border-top-color:var(--accent); box-shadow:none; }
 html[data-theme="gold"] .acct-seg{ background:#0b0b0c; border:1px solid var(--nx-bd); }
 html[data-theme="gold"] .acct-seg-wrap{ background:#000; }
 html[data-theme="gold"] .acct-tg{ color:#9c917b; }
@@ -584,12 +669,17 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </style>
 </head>
 <body>
-<div class="tabbar" id="tabbar">
-  <button class="tab active" id="tab-portfolio" onclick="switchTab('portfolio')">📊 Accounts</button>
-  <button class="tab" id="tab-markets" onclick="switchTab('markets')">🌐 Markets</button>
-  <button class="tab" id="tab-picks" onclick="switchTab('picks')">🎯 Plan<span class="tab-sub" id="tab-picks-date"></span></button>
-  <button class="tab" id="tab-options" onclick="switchTab('options')">💹 Options</button>
-  <button class="tab" id="tab-analyze" onclick="switchTab('analyze')">🔍 Analyze</button>
+<!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
+     top and WRAP to two rows on a phone — Analyze alone on row 2 — which cost ~150px above the fold
+     before any data appeared. Icon and label are separate spans so they can stack; `.tab-sub` (the
+     Plan date) is hidden by CSS at this size and kept for wider screens. Note the consequence for
+     layout maths: the tab bar no longer contributes to __pfTopOffset() — see that function. -->
+<div class="tabbar" id="tabbar" role="tablist" aria-label="Main">
+  <button class="tab active" id="tab-portfolio" role="tab" aria-current="page" onclick="switchTab('portfolio')"><span class="t-ico" aria-hidden="true">📊</span><span class="t-lab">Accounts</span></button>
+  <button class="tab" id="tab-markets" role="tab" aria-current="false" onclick="switchTab('markets')"><span class="t-ico" aria-hidden="true">🌐</span><span class="t-lab">Markets</span></button>
+  <button class="tab" id="tab-picks" role="tab" aria-current="false" onclick="switchTab('picks')"><span class="t-ico" aria-hidden="true">🎯</span><span class="t-lab">Plan</span><span class="tab-sub" id="tab-picks-date"></span></button>
+  <button class="tab" id="tab-options" role="tab" aria-current="false" onclick="switchTab('options')"><span class="t-ico" aria-hidden="true">💹</span><span class="t-lab">Options</span></button>
+  <button class="tab" id="tab-analyze" role="tab" aria-current="false" onclick="switchTab('analyze')"><span class="t-ico" aria-hidden="true">🔍</span><span class="t-lab">Analyze</span></button>
 </div>
 <div id="page-portfolio">
   <div class="acct-seg-wrap" id="acct-seg-wrap">
@@ -733,7 +823,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v130'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v131'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -750,12 +840,17 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
       function snapAge(){ try{ var gen=d&&d.generatedAt?new Date(d.generatedAt):null; if(gen&&!isNaN(gen)) return (Date.now()-gen.getTime())/3600000; }catch(e){} return null; }
       var bar=document.createElement('div');
       bar.id='pf-fresh';
-      bar.style.cssText='font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;border:1px solid;border-radius:10px;padding:7px 12px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px';
+      // Sticky since v131: with the tab bar gone from the top, this strip is what pins there — so the
+      // snapshot age, Find and ↻ stay reachable from anywhere in a long page instead of scrolling
+      // away. paintBar() sets an opaque background on every repaint, which is what makes that safe.
+      // Its measured height feeds --stickytop-h (what the account switcher sticks below) and
+      // __pfTopOffset() (what every programmatic jump clears) — see _syncStickyTop.
+      bar.style.cssText='position:sticky;top:env(safe-area-inset-top);z-index:150;font:600 11.5px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;border:1px solid;border-radius:10px;padding:6px 10px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:8px';
       var _th=document.documentElement.getAttribute('data-theme')||'light';
       if(_th==='dark'||_th==='neon')_th='gold';
       var themeIco=_th==='gold'?'☀️':'✨';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span id="pf-fresh-left"></span><span style="display:flex;gap:14px;align-items:center"><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span id="pf-fresh-left" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></span><span style="display:flex;gap:12px;align-items:center;flex:0 0 auto"><button type="button" class="pf-find" onclick="__pfFind()" aria-label="Find any section"><span aria-hidden="true">🔍</span><span>Find</span></button><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       // Staleness — recomputed on every repaint (not just once at boot) so a snapshot that ages
       // past 3h while the PWA stays resident tints amber instead of silently looking fresh.
@@ -861,7 +956,15 @@ function fmt(n,d=2){ if(n==null||isNaN(n))return'—'; return new Intl.NumberFor
 function fmtD(n){ if(n==null||isNaN(n))return'—'; return(n<0?'-$':'$')+fmt(Math.abs(n)); }
 // Display-zero aware (v96): a value that ROUNDS to 0.0 renders as a neutral "0.0%", never a red
 // "-0.0%" — color must match what the reader sees, not the sign of an invisible fraction.
-function fmtP(n){ if(n==null||isNaN(n))return'—'; const r=+(+n).toFixed(2); if(r===0)return fmt(0)+'%'; return(r>0?'+':'')+fmt(r)+'%'; }
+/* The app's shared percentage formatter — position tables, snapshot tiles, P&L columns, the account
+   cards — which is exactly why the ▲/▼ glyph belongs here (v131): colour alone carried direction on
+   every one of those surfaces at once, so a red/green-blind reader — or anyone
+   on a washed-out screen in sunlight — read "+2.11%" and "−2.11%" as the same shape. One chokepoint,
+   whole app. Two rules the glyph obeys: a value that ROUNDS to zero stays neutral and glyph-less
+   (the weekend quirk `sc()` already treats as `neu` — a "▲ 0.00%" would assert a direction the data
+   doesn't have), and the sign is KEPT alongside the glyph rather than replaced by it, so anything
+   parsing or copying this text still sees a signed number. */
+function fmtP(n){ if(n==null||isNaN(n))return'—'; const r=+(+n).toFixed(2); if(r===0)return fmt(0)+'%'; return(r>0?'▲ +':'▼ ')+fmt(r)+'%'; }
 function sc(n){ const r=n==null||isNaN(n)?0:+(+n).toFixed(2); return r>0?'pos':r<0?'neg':'neu'; }
 /* Theme-aware chart colors (Light + Neon). Charts read these so gridlines/labels stay legible. */
 function _isGold(){ return document.documentElement.getAttribute('data-theme')==='gold'; }
@@ -1276,7 +1379,12 @@ function accountRollup(enriched, ovMap, harvest, mainIncome, scope){
 
 /* ═══ small helpers ═══ */
 function spinEl(id,msg){ const el=document.getElementById(id); if(el)el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span>${msg||'Loading…'}</div>`; }
-function toggleSection(bodyId){ const body=document.getElementById(bodyId); const chev=document.querySelector(`[data-toggle="${bodyId}"] .chevron`); if(!body)return; const hiding=body.style.display!=='none'; body.style.display=hiding?'none':''; if(chev)chev.style.transform=hiding?'rotate(-90deg)':''; }
+function toggleSection(bodyId){ const body=document.getElementById(bodyId); const head=document.querySelector(`[data-toggle="${bodyId}"]`); const chev=head&&head.querySelector('.chevron'); if(!body)return; const hiding=body.style.display!=='none'; body.style.display=hiding?'none':''; if(chev)chev.style.transform=hiding?'rotate(-90deg)':'';
+  // v131: this is the collapse path MOST cards use (the generic .card-body enhancer only catches the
+  // few whose header wasn't already .collapsible), so both the screen-reader state and the section
+  // rail's Expand/Collapse-all label have to be maintained here as well as there.
+  if(head)head.setAttribute('aria-expanded',hiding?'false':'true');
+  try{ const pg=body.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(e){} }
 window.toggleSection=toggleSection;
 function toast(msg){ const t=document.getElementById('toast'); if(!t)return; if(msg)t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2800); }
 function copyPrompt(text){ navigator.clipboard.writeText(text).then(()=>toast('📋 Copied — paste into Claude chat')).catch(()=>window.prompt('Copy:',text)); }
@@ -2530,16 +2638,26 @@ let _agenticInit=false, _agPerfMode='ret', _agChart=null;
    same one. A section with no counterpart (self-directed 🧹 smalls) falls
    back to the nearest section ABOVE it that both sides have. */
 const SEC_ORDER=['snapshot','holdings','performance','heatmap','risk','allocation','income','technicals','fundamentals','smalls','flow','rebalance-log'];
-// Every programmatic scroll has to clear the tab bar AND (on this tab) the sticky switcher, or the
-// target card lands underneath them. Built from HEIGHTS plus the tab bar's resolved sticky `top`,
+// Every programmatic scroll has to clear whatever is pinned to the TOP of the page, or the target
+// card lands underneath it. Built from HEIGHTS plus the pinned element's resolved sticky `top`,
 // never from live rects: a rect-based offset reads ~50px larger while the page sits at scroll 0
 // (nothing is stuck yet), so a scroll computed at the top of the page and judged after it stuck
 // disagreed with itself and landed every jump a section early. Heights are scroll-independent.
-// The tab row wraps to two lines on a phone; the switcher measures 0 on pages that don't show it.
+//
+// v131: THE TAB BAR IS NO LONGER PART OF THIS. It moved to a bottom-fixed bar, so it obscures the
+// page's BOTTOM, not its top — counting it here would have pushed every jump ~62px too far down.
+// What remains pinned above the content is the freshness strip (sticky since v131, so the snapshot
+// age and Find stay reachable) and, on Accounts/Plan, the account switcher. The switcher measures 0
+// on pages that don't show it, and the strip may be absent entirely on a decrypt-failure boot —
+// both cases degrade to a smaller offset, which lands a jump slightly high rather than hiding it.
 function __pfTopOffset(){
-  const tb=document.querySelector('.tabbar'); if(!tb||!tb.offsetHeight)return 96;
-  let safe=0; try{ safe=parseFloat(getComputedStyle(tb).top)||0; }catch(e){}
-  let y=safe+tb.offsetHeight;
+  let y=0;
+  const fb=document.getElementById('pf-fresh');
+  if(fb&&fb.offsetHeight>0){
+    let stuck=false; try{ stuck=getComputedStyle(fb).position==='sticky'; }catch(e){}
+    if(stuck){ let safe=0; try{ safe=parseFloat(getComputedStyle(fb).top)||0; }catch(e){}
+      y+=safe+fb.offsetHeight; }
+  }
   // Two pages carry a sticky switcher (Accounts + Plan) but only one page is visible at a time, so
   // the one with a non-zero height IS the one on screen. Keyed by class, not id, since v108 added
   // the Plan tab's own switcher.
@@ -2548,11 +2666,25 @@ function __pfTopOffset(){
   return y+8;
 }
 window.__pfTopOffset=__pfTopOffset;
-function _syncTabbarH(){ const tb=document.querySelector('.tabbar');
-  if(tb&&tb.offsetHeight>0)document.documentElement.style.setProperty('--tabbar-h',tb.offsetHeight+'px'); }
-window.addEventListener('resize',_syncTabbarH);
-window.addEventListener('orientationchange',()=>setTimeout(_syncTabbarH,150));
-try{ _syncTabbarH(); if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_syncTabbarH); }catch(e){}
+/* --stickytop-h is what `.acct-seg-wrap` sticks BELOW. Until v131 that was the tab bar's height;
+   it is now the freshness strip's, which is just as variable — the strip's text wraps to two lines
+   whenever a staleness or update nudge is showing, and a stale offset would overlap the switcher. */
+function _syncStickyTop(){ const fb=document.getElementById('pf-fresh');
+  const h=(fb&&fb.offsetHeight>0)?fb.offsetHeight:0;
+  document.documentElement.style.setProperty('--stickytop-h',h+'px'); }
+window._syncStickyTop=_syncStickyTop;
+window.addEventListener('resize',_syncStickyTop);
+window.addEventListener('orientationchange',()=>setTimeout(_syncStickyTop,150));
+try{
+  _syncStickyTop();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_syncStickyTop);
+  // The strip is built by boot() — which may land before or after this — and then repaints (age
+  // ticks, nudges) on its own schedule. Observe it if we can; otherwise re-measure a few times.
+  const arm=()=>{ const fb=document.getElementById('pf-fresh'); if(!fb)return false;
+    if(window.ResizeObserver){ try{ new ResizeObserver(_syncStickyTop).observe(fb); }catch(e){} }
+    _syncStickyTop(); return true; };
+  if(!arm()) [120,400,1200,3000].forEach(ms=>setTimeout(arm,ms));
+}catch(e){}
 /* Which section is the reader actually on? The FIRST one still meaningfully on screen — i.e. whose
    bottom clears the sticky header by more than SEC_EDGE. Two heuristics were tried and rejected:
    "last card whose top is above the header" flips to the PREVIOUS section the moment a card starts
@@ -4043,7 +4175,11 @@ let _pickFilter={sector:'all',hideFlagged:false};
 
 function switchTab(tab){
   const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze'};
-  for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none'; const bt=document.getElementById('tab-'+t); if(bt)bt.classList.toggle('active',t===tab); }
+  for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none';
+    const bt=document.getElementById('tab-'+t); if(bt){ bt.classList.toggle('active',t===tab);
+      // aria-current carries the active tab for a screen reader — the `.active` class only carries
+      // it visually, and on a bottom bar the accent stripe is the sole visual cue.
+      bt.setAttribute('aria-current',t===tab?'page':'false'); } }
   try{localStorage.setItem('dash_tab',tab);}catch(e){}
   window.scrollTo(0,0);
   if(tab==='picks'&&!_picksInit){_picksInit=true;initPicks();}
@@ -4066,19 +4202,32 @@ window.switchTab=switchTab;
     var title=card.querySelector(':scope > .card-title');
     if(!title || title.dataset.coll) return;
     title.dataset.coll='1';
-    if(title.classList.contains('collapsible')) return; // already wired (has its own toggleSection)
+    if(title.classList.contains('collapsible')){
+      // Already wired — it owns its own toggleSection body. Still stamp the initial ARIA state
+      // here, since that is the only place every card passes through exactly once; toggleSection
+      // maintains it from then on.
+      if(!title.hasAttribute('aria-expanded')){
+        var ob=title.getAttribute('data-toggle'); var oe=ob?document.getElementById(ob):null;
+        title.setAttribute('aria-expanded',(oe&&oe.style.display==='none')?'false':'true');
+      }
+      return;
+    }
     var body=document.createElement('div'); body.className='card-body';
     var n=title.nextSibling; while(n){ var nx=n.nextSibling; body.appendChild(n); n=nx; }
     card.appendChild(body);
     if(!title.querySelector('.chevron')){ var ch=document.createElement('span'); ch.className='chevron'; ch.textContent='▼'; title.appendChild(ch); }
     title.classList.add('collapsible');
+    title.setAttribute('aria-expanded','true');   // cards render expanded
     title.addEventListener('click',function(e){
       // Only a bare-header tap collapses. Ignore taps on interactive controls that live in the
-      // header (e.g. the heatmap "Day / vs S&P YTD" toggles) — otherwise one tap both flips the
-      // toggle AND collapses the card.
+      // header (e.g. the heatmap "Day / vs S&P YTD" toggles, and v131's pin star) — otherwise one
+      // tap both flips the control AND collapses the card.
       if(e.target.closest('button, a, select, input, label')) return;
       var hide=body.style.display!=='none'; body.style.display=hide?'none':'';
       var c=title.querySelector('.chevron'); if(c)c.style.transform=hide?'rotate(-90deg)':'';
+      title.setAttribute('aria-expanded',hide?'false':'true');
+      // The rail's expand/collapse-all label reflects live state, so an individual toggle moves it.
+      try{ var pg=card.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(err){}
     });
   }
   // Wrap any wide table in a horizontal-scroll container so it never spills the page.
@@ -4105,45 +4254,39 @@ window.switchTab=switchTab;
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
 })();
 
-/* Per-page quick-nav: a collapsible chip list at the top of each page listing every card's title.
-   Tap a chip to (expand if collapsed and) smooth-scroll to that card. Rebuilds itself
-   when a page's cards change (debounced), so dynamic pages like Analyze stay in sync. */
+/* Per-page section rail: one horizontally-scrolling row of chips listing every card on the page,
+   led by an expand/collapse-all control. Tap a chip to (expand if collapsed and) smooth-scroll to
+   that card. Rebuilds itself when a page's cards change (debounced), so dynamic pages like Analyze
+   stay in sync.
+
+   v131 retired the DISCLOSURE this used to be. v112 collapsed it by default because, expanded, the
+   wrapping chips took five rows on a phone and pushed every page's first real card below the fold —
+   a real problem, but hiding the nav was treating the symptom. One non-wrapping row that scrolls
+   sideways costs the same ~40px the collapsed toggle did and is always usable, so the toggle, the
+   `pf_nav_open` preference and setNavOpen are all gone. Nothing else read that key. */
 (function(){
   var PAGES=['page-portfolio','page-markets','page-picks','page-options','page-analyze'];
   var NAVSEQ=0; // globally-unique card ids so re-renders never collide with stale ids
-  /* Open/closed is ONE preference across every page, persisted — a nav that came back expanded on
-     the next tab (or collapsed on the tab you'd just opened it on) reads as a bug, not a per-page
-     setting. Default collapsed: expanded, the chips wrapped to 5 rows on a phone and pushed the
-     page's actual first card below the fold. Tapping a chip deliberately does NOT close the panel,
-     so it behaves like an ordinary disclosure and stays put if you like it open. */
-  var NAV_KEY='pf_nav_open';
-  function navOpen(){ try{ return localStorage.getItem(NAV_KEY)==='1'; }catch(e){ return false; } }
-  function applyOpen(nav,v){
-    nav.setAttribute('data-open',v?'1':'0');
-    var b=nav.querySelector('.card-nav-toggle'); if(b)b.setAttribute('aria-expanded',v?'true':'false');
-  }
-  function setNavOpen(v){
-    try{ localStorage.setItem(NAV_KEY,v?'1':'0'); }catch(e){}
-    PAGES.forEach(function(id){ var el=document.getElementById(id); if(!el)return;
-      var n=el.querySelector(':scope > .card-nav'); if(n)applyOpen(n,v); });
-  }
-  window.__navToggle=function(){ setNavOpen(!navOpen()); };
   function titleOf(card){
     var t=card.querySelector(':scope > .card-title'); if(!t)return null;
     var c=t.cloneNode(true);
-    c.querySelectorAll('.chevron,.card-hint,.help-btn').forEach(function(x){ x.remove(); });
+    // .pin-btn is v131's star. It is a <button>, so it would survive this strip and land its glyph
+    // in the chip label ("Risk & Diversification ☆") — name it explicitly like the ? button.
+    c.querySelectorAll('.chevron,.card-hint,.help-btn,.pin-btn').forEach(function(x){ x.remove(); });
     var s=(c.textContent||'').replace(/\s+/g,' ').trim();
     return s||null;
   }
-  // Top offset to clear the sticky tab bar (which wraps to 2 rows on mobile) AND, on the Accounts
-  // tab, the sticky account switcher — measured live by the shared helper. Delegating matters: once
-  // the switcher became sticky (v106), a chip jump computed off the tab bar alone lands the card
-  // underneath it.
+  window.__navTitleOf=titleOf;   // Find and My view index by the same title, so the three agree
+  // Top offset to clear whatever is pinned at the top — the sticky freshness strip and, on the
+  // Accounts/Plan tabs, the sticky account switcher — measured live by the shared helper.
+  // Delegating matters: once the switcher became sticky (v106), a chip jump computed off the top
+  // bar alone landed the card underneath it. The fallback is deliberately small (v131): the tab bar
+  // is bottom-fixed now, so measuring it here would push every jump ~62px past its target.
   function topOffset(){
     if(window.__pfTopOffset)try{ return window.__pfTopOffset(); }catch(e){}
-    var tb=document.querySelector('.tabbar');
-    if(tb){ var r=tb.getBoundingClientRect(); if(r.height>0)return Math.max(0,r.bottom)+8; }
-    return 96;
+    var fb=document.getElementById('pf-fresh');
+    if(fb&&fb.offsetHeight>0)return fb.offsetHeight+8;
+    return 48;
   }
   function jump(id){
     var card=document.getElementById(id); if(!card)return;
@@ -4176,14 +4319,55 @@ window.switchTab=switchTab;
     var nav=pageEl.querySelector(':scope > .card-nav');
     if(cards.length<2){ if(nav)nav.remove(); return; } // not worth a nav for 0–1 cards
     if(!nav){ nav=document.createElement('div'); nav.className='card-nav'; pageEl.insertBefore(nav,pageEl.firstChild); }
-    var html='';
+    var html='<button class="cn-all" type="button" onclick="__navAll(\''+pageEl.id+'\')">Collapse all</button>';
     for(i=0;i<cards.length;i++){ var c=cards[i]; c.card.id='navc-'+(++NAVSEQ); // fresh unique id every build
-      html+='<button class="card-nav-chip" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
-    nav.innerHTML='<button class="card-nav-toggle" type="button" onclick="__navToggle()">'
-      +'<span>🧭 Jump to section</span><span class="cn-count">'+cards.length+'</span><span class="cn-chev">▼</span></button>'
-      +'<div class="card-nav-chips">'+html+'</div>';
-    applyOpen(nav,navOpen());   // a rebuild replaces the markup — re-assert the saved state
+      html+='<button class="card-nav-chip" type="button" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
+    nav.innerHTML='<div class="card-nav-chips" role="group" aria-label="Jump to a section on this page">'+html+'</div>';
+    syncAllLabel(pageEl);
   }
+  /* Expand/collapse every card on the page.
+     THE APP HAS TWO COLLAPSE MECHANISMS and this has to drive both, or the button silently acts on
+     a fraction of the page and looks broken. (1) Cards the generic enhancer wrapped get a
+     `.card-body` child. (2) Most cards — every one whose title already carried `.collapsible` when
+     the enhancer reached it — own their toggle instead: the title carries `data-toggle="<bodyId>"`
+     and `toggleSection()` flips that element by id. Measured on the live Accounts tab: 12 cards,
+     exactly ONE of them mechanism (1). So bodyOf() resolves either.
+     The label tracks reality rather than a stored flag — the reader can collapse cards individually,
+     so "Collapse all" has to mean "something is still open" at the moment they look at it. Only
+     cards actually on screen count (the Accounts/Plan tabs hide one account's container at a time),
+     or the button would report on cards nobody can see. */
+  function bodyOf(card){
+    var b=card.querySelector(':scope > .card-body'); if(b)return b;
+    var t=card.querySelector(':scope > .card-title');
+    var id=t&&t.getAttribute('data-toggle');
+    return id?document.getElementById(id):null;
+  }
+  function pageCards(pageEl){
+    var out=[]; pageEl.querySelectorAll('.card').forEach(function(c){
+      if(!hiddenWithin(c,pageEl)&&bodyOf(c))out.push(c); });
+    return out;
+  }
+  function anyOpen(pageEl){
+    return pageCards(pageEl).some(function(c){ var b=bodyOf(c); return b&&b.style.display!=='none'; });
+  }
+  function syncAllLabel(pageEl){
+    var b=pageEl.querySelector(':scope > .card-nav .cn-all');
+    if(b)b.textContent=anyOpen(pageEl)?'Collapse all':'Expand all';
+  }
+  window.__navSyncAll=syncAllLabel;   // the per-card collapse toggles keep the label honest
+  window.__navAll=function(pageId){
+    var pageEl=document.getElementById(pageId); if(!pageEl)return;
+    var collapse=anyOpen(pageEl);
+    pageCards(pageEl).forEach(function(c){
+      var body=bodyOf(c); if(!body)return;
+      body.style.display=collapse?'none':'';
+      var ch=c.querySelector(':scope > .card-title .chevron');
+      if(ch)ch.style.transform=collapse?'rotate(-90deg)':'';
+      var t=c.querySelector(':scope > .card-title');
+      if(t)t.setAttribute('aria-expanded',collapse?'false':'true');
+    });
+    syncAllLabel(pageEl);
+  };
   function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); }); }
   /* The observer watches childList only, so a pure visibility flip (the Accounts toggle) has to
      ask for the rebuild itself. */
@@ -4934,6 +5118,234 @@ window.switchTab=switchTab;
     }catch(e){}
   }
   if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
+})();
+
+/* ═══════════════════════════════════════════
+   FIND + MY VIEW  (v131)
+   Two ways to reach one of ~67 cards without remembering which of five tabs it lives on. Pure UI
+   over the DOM the app already renders: reads nothing from data.json, computes no figures, and
+   never blocks a render — a throw in here costs the star and the search box, nothing else.
+
+   The one genuinely hard part is that THREE TABS RENDER LAZILY. Markets, Options and Analyze only
+   build their cards on first visit (switchTab → initMarkets/initOptions/initAnalyze), so a search
+   run before you have ever opened Markets can't see a single Markets card in the DOM. Two fixes
+   were rejected before this one: a hardcoded title registry drifts silently the moment a card is
+   renamed, and eagerly initialising the hidden tabs would build Chart.js canvases inside
+   display:none containers — which size to ZERO, the documented hazard behind the Plan tab's lazy
+   render. So Find REMEMBERS: every title it sees on a rendered page is cached per tab in
+   localStorage, and a tab that isn't currently rendered contributes its remembered titles instead.
+   Self-healing (a renamed card corrects itself the next time you visit that tab) and honest — a
+   remembered hit says "not loaded yet" and jumping to it switches the tab, waits for the real
+   render, then scrolls. The only gap is a brand-new install's never-visited tabs.
+═══════════════════════════════════════════ */
+(function(){
+  var PAGES=[['page-portfolio','portfolio','Accounts'],['page-markets','markets','Markets'],
+             ['page-picks','picks','Plan'],['page-options','options','Options'],
+             ['page-analyze','analyze','Analyze']];
+  var PIN_KEY='pf_pins', SEEN_KEY='pf_card_titles';
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+  function rd(k,f){ try{ var v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?f:v; }catch(e){ return f; } }
+  function wr(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+  /* Title is the identity, not the element id: the section rail regenerates card ids on every
+     rebuild (navc-1, navc-2 …), so a pin keyed to an id would break on the next re-render. */
+  function titleOf(card){
+    if(window.__navTitleOf)try{ return window.__navTitleOf(card); }catch(e){}
+    var t=card.querySelector(':scope > .card-title'); if(!t)return null;
+    var c=t.cloneNode(true);
+    c.querySelectorAll('.chevron,.card-hint,.help-btn,.pin-btn').forEach(function(x){ x.remove(); });
+    return ((c.textContent||'').replace(/\s+/g,' ').trim())||null;
+  }
+  function hiddenWithin(el,root){
+    for(var n=el.parentElement; n&&n!==root; n=n.parentElement){ if(n.style&&n.style.display==='none')return true; }
+    return false;
+  }
+  function rendered(pageEl){ return pageEl.querySelectorAll('.card').length>0; }
+
+  /* Live index of every card currently in the DOM, plus the remembered titles of tabs that haven't
+     rendered yet. `live:false` rows carry no element — jumping to one has to switch tabs first. */
+  function index(){
+    var seen=rd(SEEN_KEY,{}), out=[], dirty=false;
+    PAGES.forEach(function(p){
+      var pageEl=document.getElementById(p[0]); if(!pageEl)return;
+      if(rendered(pageEl)){
+        var titles=[];
+        pageEl.querySelectorAll('.card').forEach(function(card){
+          var t=titleOf(card); if(!t)return;
+          titles.push(t);
+          // A card hidden by a container inside this page (the Accounts/Plan account toggle) is
+          // still a real destination — jumping flips to that account — so it is indexed, flagged.
+          out.push({title:t,tab:p[1],tabLabel:p[2],el:card,live:true,
+                    text:(card.textContent||'').slice(0,900).toLowerCase(),
+                    off:hiddenWithin(card,pageEl)});
+        });
+        if(titles.length && JSON.stringify(seen[p[1]]||[])!==JSON.stringify(titles)){ seen[p[1]]=titles; dirty=true; }
+      } else {
+        (seen[p[1]]||[]).forEach(function(t){
+          out.push({title:t,tab:p[1],tabLabel:p[2],el:null,live:false,text:t.toLowerCase(),off:false});
+        });
+      }
+    });
+    if(dirty)wr(SEEN_KEY,seen);
+    return out;
+  }
+
+  function topOffset(){
+    if(window.__pfTopOffset)try{ return window.__pfTopOffset(); }catch(e){}
+    var fb=document.getElementById('pf-fresh');
+    return (fb&&fb.offsetHeight>0)?fb.offsetHeight+8:48;
+  }
+  function scrollToCard(card){
+    var body=card.querySelector(':scope > .card-body');
+    if(body&&body.style.display==='none'){ body.style.display='';
+      var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform='';
+      var t=card.querySelector(':scope > .card-title'); if(t)t.setAttribute('aria-expanded','true'); }
+    var y=card.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-topOffset();
+    if(y<0)y=0;
+    try{ window.scrollTo({top:y,behavior:'smooth'}); }catch(e){ window.scrollTo(0,y); }
+    var prev=card.style.boxShadow; card.style.transition='box-shadow .3s'; card.style.boxShadow='0 0 0 2px #6366f1';
+    setTimeout(function(){ card.style.boxShadow=prev; },800);
+  }
+  /* Cross-tab jump: switch, then WAIT for that tab to render before scrolling — a lazy tab has no
+     card to aim at for the first few hundred ms, and scrolling early lands at the top of a page
+     that then grows underneath you. Polls to a ~3s ceiling, then gives up silently on the tab. */
+  function go(title,tab){
+    closeFind();
+    if(tab&&window.switchTab)try{ window.switchTab(tab); }catch(e){}
+    var tries=0;
+    (function seek(){
+      var hit=index().find(function(x){ return x.live&&x.title===title&&x.tab===tab; });
+      if(hit&&hit.el){ scrollToCard(hit.el); return; }
+      if(++tries<30)setTimeout(seek,100);
+    })();
+  }
+  window.__pfGoCard=function(t,tab){ go(t,tab); };
+
+  /* ── Pins ── */
+  function pins(){ var a=rd(PIN_KEY,[]); return Array.isArray(a)?a:[]; }
+  function pinned(t){ return pins().indexOf(t)>=0; }
+  function togglePin(t){
+    var a=pins(), i=a.indexOf(t);
+    if(i>=0)a.splice(i,1); else a.push(t);
+    wr(PIN_KEY,a); refreshStars(); paintMyView();
+  }
+  function refreshStars(){
+    document.querySelectorAll('.pin-btn').forEach(function(b){
+      var on=pinned(b.dataset.t||'');
+      b.textContent=on?'★':'☆';
+      b.setAttribute('aria-pressed',on?'true':'false');
+      b.setAttribute('aria-label',(on?'Unpin ':'Pin ')+(b.dataset.t||'')+' from My view');
+    });
+  }
+  /* The star goes BEFORE the chevron and after the ? so the three header controls always sit in the
+     same order; the chevron stays last because it is the one that describes the whole header. */
+  function decorate(card){
+    var title=card.querySelector(':scope > .card-title');
+    if(!title||title.dataset.pinDone)return;
+    var t=titleOf(card); if(!t)return;
+    title.dataset.pinDone='1';
+    var b=document.createElement('button');
+    b.type='button'; b.className='pin-btn'; b.dataset.t=t;
+    var on=pinned(t);
+    b.textContent=on?'★':'☆';
+    b.setAttribute('aria-pressed',on?'true':'false');
+    b.setAttribute('aria-label',(on?'Unpin ':'Pin ')+t+' from My view');
+    b.addEventListener('click',function(e){ e.stopPropagation(); e.preventDefault(); togglePin(t); });
+    var chev=title.querySelector(':scope > .chevron');
+    if(chev)title.insertBefore(b,chev); else title.appendChild(b);
+  }
+
+  /* ── My view: ONE row of chips, and nothing at all until something is pinned ──
+     It renders on every page, so a taller block would tax every tab's fold to show something the
+     reader never asked for. A pin whose card no longer exists anywhere (renamed, or a tab never
+     visited on this device) is skipped rather than removed — the pin is still valid, we just can't
+     resolve it yet, and silently dropping it would lose the preference on one bad boot. */
+  function paintMyView(){
+    var P=pins(), idx=P.length?index():[];
+    PAGES.forEach(function(p){
+      var pageEl=document.getElementById(p[0]); if(!pageEl)return;
+      var mv=pageEl.querySelector(':scope > .myview');
+      var rows=P.map(function(t){ return idx.find(function(x){ return x.title===t; }); }).filter(Boolean);
+      if(!rows.length){ if(mv)mv.remove(); return; }
+      if(!mv){ mv=document.createElement('div'); mv.className='myview';
+        mv.setAttribute('role','group'); mv.setAttribute('aria-label','My view — pinned cards');
+        var nav=pageEl.querySelector(':scope > .card-nav');
+        pageEl.insertBefore(mv,nav?nav.nextSibling:pageEl.firstChild); }
+      var html='<span class="myview-lbl">★ My view</span>';
+      rows.forEach(function(r){
+        html+='<button class="myview-chip" type="button" onclick="__pfGoCard(\''+jsq(r.title)+'\',\''+r.tab+'\')">'
+             +esc(r.title)+' <span class="mv-tab">'+esc(r.tabLabel)+'</span></button>';
+      });
+      if(mv.innerHTML!==html)mv.innerHTML=html;
+    });
+  }
+
+  /* ── Find ── */
+  var modal,inp,list;
+  function buildModal(){
+    modal=document.createElement('div'); modal.className='find-modal';
+    modal.innerHTML='<div class="find-box" role="dialog" aria-modal="true" aria-label="Find a section">'
+      +'<div class="find-head"><input id="pf-find-i" type="search" autocomplete="off" '
+      +'placeholder="Find a card, metric or ticker…" aria-label="Search every card on every tab">'
+      +'<button class="find-x" type="button" aria-label="Close search">✕</button></div>'
+      +'<div class="find-list" id="pf-find-l" role="listbox" aria-label="Search results"></div></div>';
+    document.body.appendChild(modal);
+    inp=modal.querySelector('#pf-find-i'); list=modal.querySelector('#pf-find-l');
+    modal.addEventListener('click',function(e){ if(e.target===modal)closeFind(); });
+    modal.querySelector('.find-x').addEventListener('click',closeFind);
+    inp.addEventListener('input',paint);
+    // Enter opens the first hit — the fastest path when you know what you want.
+    inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ var f=list.querySelector('.find-r'); if(f)f.click(); } });
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&modal.classList.contains('open'))closeFind(); });
+  }
+  function paint(){
+    var q=(inp.value||'').trim().toLowerCase(), idx=index();
+    /* Title matches first, then body-text matches — searching "wash-sale" should reach the card
+       CALLED that before every card that merely mentions it. Body text is only searched on
+       rendered cards; a remembered title has no body to search, and pretending otherwise would
+       rank loaded and unloaded tabs inconsistently. */
+    var hits=q ? idx.filter(function(x){ return x.title.toLowerCase().indexOf(q)>=0; })
+                  .concat(idx.filter(function(x){ return x.title.toLowerCase().indexOf(q)<0 && x.text.indexOf(q)>=0; }))
+               : idx;
+    hits=hits.slice(0,40);
+    if(!hits.length){
+      list.innerHTML='<div class="find-empty">Nothing matches that. Try “risk”, “dividend”, “wash”, “agentic” or a ticker.'
+        +'<br><br>Tabs you haven’t opened yet on this device are only searchable by card name until you visit them once.</div>';
+      return;
+    }
+    list.innerHTML=hits.map(function(x){
+      var sub=!x.live ? 'on '+x.tabLabel+' · not loaded yet'
+            : x.off  ? 'on '+x.tabLabel+' · other account'
+            : 'on '+x.tabLabel;
+      return '<button class="find-r" type="button" role="option" onclick="__pfGoCard(\''+jsq(x.title)+'\',\''+x.tab+'\')">'
+        +'<span class="fr-tab">'+esc(x.tabLabel)+'</span>'
+        +'<span><span class="fr-t">'+esc(x.title)+'</span><span class="fr-h">'+esc(sub)+'</span></span></button>';
+    }).join('');
+  }
+  function openFind(){
+    if(!modal)buildModal();
+    modal.classList.add('open'); inp.value=''; paint();
+    setTimeout(function(){ try{ inp.focus(); }catch(e){} },40);
+  }
+  function closeFind(){ if(modal)modal.classList.remove('open'); }
+  window.__pfFind=openFind;
+
+  function scan(root){ try{ (root||document).querySelectorAll('.card').forEach(decorate); }catch(e){} }
+  function start(){
+    scan(document); paintMyView();
+    try{
+      var t=null, schedule=function(){ clearTimeout(t); t=setTimeout(function(){ scan(document); paintMyView(); },200); };
+      var mo=new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){ var tg=muts[i].target;
+          // Ignore our own writes, or painting My view would retrigger the observer forever.
+          if(tg&&tg.closest&&(tg.closest('.myview')||tg.closest('.card-nav')))continue;
+          schedule(); break; }
+      });
+      PAGES.forEach(function(p){ var el=document.getElementById(p[0]); if(el)mo.observe(el,{childList:true,subtree:true}); });
+    }catch(e){}
+  }
+  if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
 })();
 
 /* ═══════════════════════════════════════════
