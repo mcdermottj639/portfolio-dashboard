@@ -823,7 +823,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v131'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v132'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2026,6 +2026,13 @@ function renderIncomeTax(income, harvest, ovMap, opts){
       <div class="inc-tile harvest-tile"><div class="inc-lbl">Harvestable Losses</div><div class="inc-val">${fmtD(totalHarv)}</div><div class="inc-sub">${harvN} position${harvN===1?'':'s'} in the red${multi?' · all accounts':(agOnly?' ≥ $'+AG_TLH_MIN+' / '+AG_TLH_PCT+'% of cost':' ≥ $'+SMALL_THR)}</div></div>
     </div>
     ${(()=>{ if(agOnly||!R||!R.premiumYTD)return ''; return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">💵 Options premium collected ${R.year||'YTD'}: <b style="color:#10b981">+${fmtD(R.premiumYTD)}</b> <span style="color:#9ca3af">— cash banked from selling calls/puts (e.g. your IREN covered call); counts as realized only once the contract expires or is closed. Options are traded in the margin account only.</span></div>`; })()}
+    ${(()=>{ const pm=R&&R.predictionMarket; if(agOnly||!pm||!pm.count)return '';
+      /* A SEPARATE line item, deliberately not folded into the Realized tile above: get_realized_pnl
+         is per ASSET CLASS (equity/option) and never reports event contracts, so the broker-sourced
+         figure genuinely does not contain these. Adding them to it would desync the By-Account split
+         from its own total. */
+      const c=pm.ytd>=0?'#10b981':'#ef4444';
+      return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">🎯 Prediction markets ${pm.year||'YTD'}: <b style="color:${c}">${sign(pm.ytd)}</b> <span style="color:#9ca3af">— ${pm.count} settled event contract${pm.count===1?'':'s'} in ••••0741. Settled through Robinhood Derivatives, so they sit outside the Realized tile above (which covers stocks and options only) and are counted separately here.</span></div>`; })()}
     ${agOnly?'':`<div class="col-title">🏦 By Account</div>
     <div class="acct-wrap"><table class="acct-tbl">
       <thead><tr><th>Account</th><th>Value</th><th>Unrealized P&amp;L</th><th>Realized ${R&&R.year?R.year.replace(/^\d+ /,''):'YTD'}</th><th>Est. dividends</th><th>Harvestable</th></tr></thead>

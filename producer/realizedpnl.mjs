@@ -139,3 +139,67 @@ function shiftDays(day, delta) {
   d.setUTCDate(d.getUTCDate() + delta);
   return d.toISOString().slice(0, 10);
 }
+
+/* ── Prediction markets (event contracts) ─────────────────────────────────────────────────────────
+   Robinhood settles these through Robinhood Derivatives, LLC, and they are invisible to
+   `get_realized_pnl`, which is per ASSET CLASS (equity/option) — so a winning bet shows up in no
+   realized figure anywhere on the dashboard. `get_pnl_trade_history` DOES report them, mixed in with
+   equity trades and identified only by an EMPTY `symbol` and `side`:
+     {"timestamp":"2026-08-30T22:31:15Z","symbol":"","side":"","quantity":"1245","price":"1",
+      "realized_gain":"1008.45"}
+
+   `isDerivativeTrade` is the ONE definition of that shape. `equityseries.mjs` imports it too, so the
+   flow inference and this ledger can never disagree about what counts as a settlement. */
+export function isDerivativeTrade(t) {
+  return !!t && typeof t === 'object' && !String(t.symbol || '').trim();
+}
+
+export const EVENT_RETAIN_YEARS = 3;
+export const EVENT_CAP = 500;
+
+/* Accumulate the settlement ledger IN THE SNAPSHOT. The producer fetches a rolling 3-month window
+   every run and `raw/` is wiped on every scheduled run, so a YTD figure cannot be read off one
+   payload once the year is older than the window — it has to be accumulated, exactly like
+   `options.ivHistory` and the congressional `polEvents` ledger.
+
+   De-duped on `timestamp|quantity|realized` because the same settlement is re-delivered on every run
+   for three months; counting it once per run would multiply a $1,008 win into five figures by
+   November. Retention is TIME-based (`EVENT_RETAIN_YEARS`), with `EVENT_CAP` only as a runaway
+   backstop — the `maindecisions.mjs` lesson that a flat count silently starts discarding real
+   history the moment the account gets busier than the cap assumed.
+
+   `ytd` sums only the CURRENT calendar year, so it rolls over on Jan 1 while the trade list keeps the
+   prior years for context. A malformed or absent payload contributes nothing and the prior ledger is
+   returned untouched — never rebuilt-from-empty, which would silently zero the year. */
+export function mergeEventTrades(prior, raw, { asOf } = {}) {
+  const stamp = asOf || new Date().toISOString();
+  const year = new Date(stamp).getUTCFullYear();
+  const keep = new Map();
+  const add = (t, qty, realized) => {
+    if (!t || !Number.isFinite(realized)) return;
+    keep.set(`${t}|${qty}|${realized}`, { t, qty, realized: +realized.toFixed(2) });
+  };
+  for (const e of (prior && Array.isArray(prior.trades)) ? prior.trades : []) {
+    if (e) add(String(e.t || ''), num(e.qty) ?? 0, num(e.realized));
+  }
+  const r = unwrapPnl(raw);
+  for (const t of (Array.isArray(r.trades) ? r.trades : [])) {
+    if (!isDerivativeTrade(t)) continue;
+    const ts = String(t.timestamp || '');
+    if (!Date.parse(ts)) continue;
+    add(ts, num(t.quantity) ?? 0, num(t.realized_gain));
+  }
+  const cutoff = year - EVENT_RETAIN_YEARS;
+  const trades = [...keep.values()]
+    .filter((e) => new Date(e.t).getUTCFullYear() > cutoff)
+    .sort((a, b) => (a.t < b.t ? 1 : a.t > b.t ? -1 : 0))
+    .slice(0, EVENT_CAP);
+  const inYear = trades.filter((e) => new Date(e.t).getUTCFullYear() === year);
+  return {
+    asOf: stamp,
+    year: `${year} YTD`,
+    ytd: +inYear.reduce((a, e) => a + e.realized, 0).toFixed(2),
+    count: inYear.length,
+    trades,
+  };
+}

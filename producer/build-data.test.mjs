@@ -228,11 +228,12 @@ try {
   const mnEH = out.main.equityHistory;
   const mnPt = mnEH[mnEH.length - 1];
   eq('main equity recorded from total_value, not equity_value', mnPt.equity, 1000);
-  // ΔEquity 100, of which +8 is the AAA price move and +15 a prediction-market settlement — so the
-  // real external deposit is 77. Before the derivatives term the settlement was indistinguishable
-  // from funding and inflated this to 92 (the 2026-08-30 Scottie bug, at fixture scale).
-  eq('main deposit inferred into cumFlow, net of the settlement', Math.abs(mnPt.cumFlow - 77) < 1, true);
-  eq('a prediction-market win is return, not a contribution', mnPt.cumFlow < 92, true);
+  // Cash-based inference (2026-08-30): Δcash is +97 (300 → 397) with AAA's quantity unchanged, and
+  // $15 of that is the prediction-market settlement — so the real external deposit is $82. Note AAA
+  // also moved 100 → 108 in the same run and contributes NOTHING, which is the stale-quote immunity:
+  // marks never enter the formula, only quantity CHANGES do.
+  eq('main deposit inferred into cumFlow, net of the settlement', Math.abs(mnPt.cumFlow - 82) < 1, true);
+  eq('a prediction-market win is return, not a contribution', mnPt.cumFlow < 97, true);
   eq('a blank-symbol settlement never reaches the wash-sale ledger',
     out.agentic.recentLosses.some((l) => !l.sym || l.sym === ''), false);
   eq('main options value recorded for the next run to difference', mnPt.optionsValue, -597);

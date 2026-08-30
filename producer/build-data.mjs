@@ -26,7 +26,7 @@ import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from '
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint, derivativesRealized } from './equityseries.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
-import { accountRealized, buildRealized, lossesFromTrades } from './realizedpnl.mjs';
+import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -349,6 +349,8 @@ const data = {
       priorEquity: prior && prior.agentic ? prior.agentic.equity : null,
       priorPositions: prior && prior.agentic ? prior.agentic.positions : null,
       extraPnl: agDeriv,
+      cash: data.agentic.cash,
+      priorCash: prior && prior.agentic && typeof prior.agentic.cash === 'number' ? prior.agentic.cash : undefined,
     });
     data.agentic.equityHistory = r.history;
     if (r.flow) console.log(`agentic: inferred net external cash flow ${fmtMoney(r.flow)} (cumFlow ${fmtMoney(r.cumFlow)}) — excluded from performance`);
@@ -423,6 +425,8 @@ const data = {
         optionsValue: Number.isFinite(optVal) ? optVal : undefined,
         priorOptionsValue: priorMain && typeof priorMain.optionsValue === 'number' ? priorMain.optionsValue : undefined,
         extraPnl: mainDeriv,
+        cash: cashVal,
+        priorCash: priorMain && typeof priorMain.cash === 'number' ? priorMain.cash : undefined,
       });
       data.main = {
         asOf: data.generatedAt, equity: +eqTotal.toFixed(2), cash: +cashVal.toFixed(2),
@@ -852,6 +856,30 @@ if (data.options && optionsFile) {
     }
   }
 }
+// Prediction markets (event contracts) — a SEPARATE line item, never folded into `total`.
+//
+// get_realized_pnl is per ASSET CLASS (equity/option) and does not cover them, so a settled bet is
+// absent from every realized figure on the dashboard — the 2026-08-30 Scottie win ($1,008.45) landed
+// nowhere. get_pnl_trade_history does report them, so the ledger is accumulated in the snapshot
+// (mergeEventTrades — raw/ is wiped every run and the fetch is a rolling 3-month window).
+//
+// It stays OUT of `data.realized.total` and out of `accounts` on purpose: those are broker-reported
+// per-account figures, and mixing a snapshot-accumulated ledger into them would desync the split from
+// the totals — the exact failure the options-override guard above exists to prevent. The consumer
+// renders it as its own row.
+{
+  const pm = mergeEventTrades(
+    (prior && prior.realized && prior.realized.predictionMarket) || null,
+    tradesSidecar(/^main-trades\.json$/),
+    { asOf: data.generatedAt },
+  );
+  if (pm && (pm.count || (pm.trades && pm.trades.length))) {
+    data.realized = data.realized || { year: pm.year, asOf: data.generatedAt, approx: true };
+    data.realized.predictionMarket = pm;
+    console.log(`prediction markets: ${fmtMoney(pm.ytd)} realized YTD across ${pm.count} settlement${pm.count === 1 ? '' : 's'} (separate line item — not in realized total)`);
+  }
+}
+
 // Options realized + premium-collected (YTD) come from options.json fresh every run (cheap). The
 // PREMIUM figure is always worth carrying (it's the cash banked selling calls/puts, which the tile
 // shows separately), but the realized OVERRIDE only applies to owner/carry-forward sourced figures —

@@ -1,7 +1,7 @@
 // Unit tests for the recorded account-equity series — the shared basis of BOTH accounts' real YTD.
 //   node producer/equityseries.test.mjs
 import assert from 'node:assert/strict';
-import { appendEquityPoint, inferFlow, flowThreshold, HISTORY_CAP, derivativesRealized } from './equityseries.mjs';
+import { appendEquityPoint, inferFlow, inferCashFlow, flowThreshold, HISTORY_CAP, derivativesRealized } from './equityseries.mjs';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log(`  ✓ ${name}`); };
 const pos = (o) => Object.entries(o).map(([symbol, [qty, px]]) => ({ symbol, qty, px }));
@@ -197,6 +197,91 @@ t('the win raises recorded equity but leaves cumFlow alone (return, not funding)
   assert.equal(r.flow, 0);
   assert.equal(r.cumFlow, 799.55);
   assert.equal(r.history[r.history.length - 1].equity, 18478.21);
+});
+
+/* ── The cash-based primary (2026-08-30) ──────────────────────────────────────────────────────────
+   Regression for the phantom flows traced out of git on the real book: `equity` comes from the
+   broker's total_value but position prices come from data.quotes, and quotes carry forward on
+   pre-market runs — so the two are sampled on different clocks and the gap landed in `flow`.
+   Measured on 2026-08-28: −$1,070.39 at 05:07 (quotes frozen, total_value live), +$920.69 at 14:39
+   (quotes caught up and re-booked a move total_value had already absorbed). Cash never moved. */
+console.log('inferCashFlow — external money must land in cash; trades cancel themselves out');
+const P = (o) => Object.entries(o).map(([symbol, [qty, px]]) => ({ symbol, qty, px }));
+
+t('a pure price move is NOT a flow — even with completely stale quotes (THE bug)', () => {
+  // Identical quote prices on both sides while the account value moved: the exact 05:07 shape.
+  const held = P({ IREN: [350, 40.54], PLTR: [100, 185.9] });
+  assert.equal(inferCashFlow({ priorCash: -13928.24, cash: -13928.24, priorPositions: held, positions: held }), 0);
+});
+t('a deposit that lands in cash IS caught', () => {
+  const held = P({ AAA: [10, 100] });
+  assert.equal(inferCashFlow({ priorCash: 300, cash: 5300, priorPositions: held, positions: held }), 5000);
+});
+t('a deposit DEPLOYED the same run is still caught (it moves qty instead of cash)', () => {
+  assert.equal(inferCashFlow({ priorCash: 300, cash: 300,
+    priorPositions: P({ AAA: [10, 100] }), positions: P({ AAA: [60, 100] }) }), 5000);
+});
+t('a withdrawal is a negative flow', () => {
+  const held = P({ AAA: [10, 100] });
+  assert.equal(inferCashFlow({ priorCash: 5300, cash: 300, priorPositions: held, positions: held }), -5000);
+});
+t('an internal BUY nets to zero (cash out, shares in)', () => {
+  assert.equal(inferCashFlow({ priorCash: 1000, cash: 0,
+    priorPositions: P({ AAA: [0, 100] }), positions: P({ AAA: [10, 100] }) }), 0);
+});
+t('an internal SELL nets to zero — the full-exit case the old formula mispriced', () => {
+  assert.equal(inferCashFlow({ priorCash: 0, cash: 900,
+    priorPositions: P({ AAA: [10, 90] }), positions: [] }), 0);
+});
+t('a prediction-market settlement nets to zero via extraPnl', () => {
+  const held = P({ IREN: [350, 40.54] });
+  assert.equal(inferCashFlow({ priorCash: -13928.24, cash: -12933.21,
+    priorPositions: held, positions: held, extraPnl: 995.03 }), 0);
+});
+t('a real deposit ARRIVING WITH a settlement separates cleanly', () => {
+  const held = P({ IREN: [350, 40.54] });
+  assert.equal(inferCashFlow({ priorCash: 0, cash: 2995.03,
+    priorPositions: held, positions: held, extraPnl: 995.03 }), 2000);
+});
+t('no recorded cash on either side ⇒ null, so the caller uses the legacy fallback', () => {
+  const held = P({ AAA: [10, 100] });
+  assert.equal(inferCashFlow({ cash: 100, priorPositions: held, positions: held }), null);
+  assert.equal(inferCashFlow({ priorCash: 100, priorPositions: held, positions: held }), null);
+  assert.equal(inferCashFlow(), null);
+});
+t('a traded symbol that cannot be priced ⇒ null (abstain, never guess)', () => {
+  assert.equal(inferCashFlow({ priorCash: 0, cash: 900,
+    priorPositions: P({ AAA: [10, 0] }), positions: [] }), null);
+});
+
+console.log('appendEquityPoint — prefers the cash path, falls back when cash is absent');
+t('the stale-quote phantom is gone end-to-end', () => {
+  const held = P({ IREN: [350, 40.54] });
+  const r = appendEquityPoint({ prev: [{ t: '2026-08-27', equity: 18687.37, cumFlow: 0 }],
+    day: '2026-08-28', equity: 17616.98, positions: held,
+    priorEquity: 18687.37, priorPositions: held, cash: -13928.24, priorCash: -13928.24 });
+  assert.equal(r.flow, 0);            // legacy formula produced -1070.39 here
+  assert.equal(r.cumFlow, 0);
+  assert.equal(r.history.at(-1).equity, 17616.98);
+});
+t('a real deposit still reaches cumFlow through the cash path', () => {
+  const held = P({ AAA: [10, 100] });
+  const r = appendEquityPoint({ prev: [{ t: '2026-08-27', equity: 1000, cumFlow: 0 }],
+    day: '2026-08-28', equity: 6000, positions: held,
+    priorEquity: 1000, priorPositions: held, cash: 5000, priorCash: 0 });
+  assert.equal(r.flow, 5000);
+});
+t('no recorded cash ⇒ the legacy quote-priced result, unchanged', () => {
+  const before = P({ AAA: [10, 100] }), after = P({ AAA: [10, 100] });
+  const r = appendEquityPoint({ prev: [{ t: '2026-08-27', equity: 1000, cumFlow: 0 }],
+    day: '2026-08-28', equity: 6000, positions: after, priorEquity: 1000, priorPositions: before });
+  assert.equal(r.flow, 5000);
+});
+t('a first point can never be a transfer, even with cash present', () => {
+  const r = appendEquityPoint({ prev: [], day: '2026-08-28', equity: 6000,
+    positions: [], priorEquity: null, priorPositions: null, cash: 5000, priorCash: 0 });
+  assert.equal(r.flow, 0);
+  assert.equal(r.cumFlow, 0);
 });
 
 console.log(`\n✅ equityseries: ${n} assertions passed`);

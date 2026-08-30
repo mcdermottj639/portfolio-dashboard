@@ -288,6 +288,25 @@ const data = {
   options,
   news,
   leaders: LEADERS,
+  // Broker realized figures + the PREDICTION-MARKET line item (2026-08-30). Event contracts settle
+  // through Robinhood Derivatives and get_realized_pnl never reports them, so the Income & Tax card
+  // shows them as their own strip below the tiles — which is unreachable in preview without a
+  // fixture, exactly like the margin/concentration surfaces before PF_SAMPLE_MARGIN.
+  realized: {
+    year: String(now.getUTCFullYear()) + ' YTD', asOf: now.toISOString(), source: 'robinhood',
+    approx: false, equity: 2410.55, options: 318.4, total: 2728.95, premiumYTD: 612,
+    accounts: {
+      main: { label: 'Individual margin', mask: '••••0741', equity: 2158.3, options: 318.4, total: 2476.7 },
+      agentic: { label: 'Agentic', mask: '••••3900', equity: 252.25, options: null, total: 252.25 },
+    },
+    predictionMarket: {
+      asOf: now.toISOString(), year: String(now.getUTCFullYear()) + ' YTD', ytd: 968.45, count: 2,
+      trades: [
+        { t: new Date(now.getTime() - 1 * 864e5).toISOString(), qty: 1245, realized: 1008.45 },
+        { t: new Date(now.getTime() - 26 * 864e5).toISOString(), qty: 100, realized: -40 },
+      ],
+    },
+  },
   // Sample flow read spanning BOTH books: each account side of the Accounts tab renders its OWN
   // Flow card filtered to its own names, so the fixture needs margin names (NVDA/MSFT/AAPL/GLD)
   // AND agentic ones (SPY/NVDA/V/GOOGL + LLY, a target name not yet opened) to exercise both.

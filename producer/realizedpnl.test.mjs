@@ -1,5 +1,5 @@
 // Offline unit checks for realizedpnl.mjs — no network, no I/O. Run: node producer/realizedpnl.test.mjs
-import { sumRealized, accountRealized, buildRealized, lossesFromTrades, unwrapPnl } from './realizedpnl.mjs';
+import { sumRealized, accountRealized, buildRealized, lossesFromTrades, unwrapPnl, mergeEventTrades, isDerivativeTrade } from './realizedpnl.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -82,6 +82,44 @@ ok('a missing payload degrades to an empty ledger', lossesFromTrades(null, { asO
 const tagged = lossesFromTrades(hist, { asOf: '2026-08-11T12:00:00Z', days: 31, account: 'main' });
 ok('account tag stamped on every entry when requested', tagged.length > 0 && tagged.every((l) => l.account === 'main'));
 ok('no account requested → no account field (v98 shape preserved)', losses.every((l) => !('account' in l)));
+
+// ── Prediction markets (event contracts) ──────────────────────────────────────────────────────────
+// get_realized_pnl is per asset class and never reports these, so a settled bet appears in no
+// realized figure anywhere. get_pnl_trade_history does, identified ONLY by a blank symbol/side.
+const SET = (ts, qty, g) => ({ timestamp: ts, symbol: '', side: '', quantity: String(qty), price: '1', realized_gain: String(g) });
+const evRaw = { data: { trades: [
+  SET('2026-08-30T22:31:15Z', 1245, '1008.45'),
+  { timestamp: '2026-08-25T12:50:52Z', symbol: 'CIFR', side: 'sell', quantity: '153', price: '15.56', realized_gain: '-503.38' },
+] } };
+const ev1 = mergeEventTrades(null, evRaw, { asOf: '2026-08-31T13:00:00Z' });
+ok('a settlement is picked up, equity trades are not', ev1.ytd === 1008.45 && ev1.count === 1 && ev1.trades.length === 1);
+ok('the year label matches the realized tile', ev1.year === '2026 YTD');
+
+// The feed re-delivers the same settlement on every run for three months. Counted once per run it
+// would turn a $1,008 win into five figures by November.
+let ev2 = mergeEventTrades(null, evRaw, { asOf: '2026-08-31T13:00:00Z' });
+for (let i = 0; i < 12; i++) ev2 = mergeEventTrades(ev2, evRaw, { asOf: '2026-08-31T14:00:00Z' });
+ok('re-delivery is de-duped — 13 runs still sum to one settlement', ev2.ytd === 1008.45 && ev2.count === 1);
+
+const ev3 = mergeEventTrades(ev1, { data: { trades: [SET('2026-09-14T20:00:00Z', 100, '-40')] } }, { asOf: '2026-09-14T21:00:00Z' });
+ok('a later settlement accumulates onto the carried ledger', ev3.count === 2);
+ok('a LOSING bet nets the year down rather than vanishing', ev3.ytd === 968.45);
+
+ok('an absent/malformed payload leaves the ledger untouched (never zeroes the year)',
+  [null, {}, { data: { trades: 'nope' } }].every((bad) =>
+    mergeEventTrades(ev1, bad, { asOf: '2026-09-01T13:00:00Z' }).ytd === 1008.45));
+
+const evYr = mergeEventTrades({ trades: [{ t: '2025-11-02T18:00:00Z', qty: 10, realized: 500 }] }, evRaw, { asOf: '2026-08-31T13:00:00Z' });
+ok('ytd counts only this calendar year, prior years kept for context',
+  evYr.ytd === 1008.45 && evYr.count === 1 && evYr.trades.length === 2);
+const evOld = mergeEventTrades({ trades: [{ t: '2019-01-02T18:00:00Z', qty: 10, realized: 500 }] }, evRaw, { asOf: '2026-08-31T13:00:00Z' });
+ok('retention drops trades past the window', evOld.trades.length === 1);
+
+ok('isDerivativeTrade keys on a blank symbol (shared with equityseries)',
+  isDerivativeTrade({ symbol: '', side: '' }) === true
+  && isDerivativeTrade({ symbol: '   ' }) === true
+  && isDerivativeTrade({ symbol: 'NVDA', side: 'sell' }) === false
+  && isDerivativeTrade(null) === false);
 
 console.log(`\nrealizedpnl.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
