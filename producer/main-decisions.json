@@ -1,0 +1,1071 @@
+{
+  "decisions": [
+    {
+      "id": "2026-07-01-sd",
+      "date": "2026-07-01",
+      "kind": "raise",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 745.76,
+      "rationale": "1 filled order · sold $3,000",
+      "trades": [
+        {
+          "sym": "NVDA",
+          "side": "SELL",
+          "dollars": 3000,
+          "shares": 15.115253,
+          "priceAt": 198.475
+        }
+      ]
+    },
+    {
+      "id": "2026-06-29-sd",
+      "date": "2026-06-29",
+      "kind": "deploy",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 741,
+      "rationale": "2 filled orders · bought $180",
+      "trades": [
+        {
+          "sym": "CIFR",
+          "side": "BUY",
+          "dollars": 90,
+          "shares": 3.415702,
+          "priceAt": 26.3489
+        },
+        {
+          "sym": "TSM",
+          "side": "BUY",
+          "dollars": 90,
+          "shares": 0.206053,
+          "priceAt": 436.78
+        }
+      ]
+    },
+    {
+      "id": "2026-06-24-sd",
+      "date": "2026-06-24",
+      "kind": "rebalance",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 733.24,
+      "rationale": "6 filled orders · bought $2,170 · sold $2,508",
+      "trades": [
+        {
+          "sym": "TSM",
+          "side": "BUY",
+          "dollars": 2169.75,
+          "shares": 5,
+          "priceAt": 433.9491
+        },
+        {
+          "sym": "MU",
+          "side": "SELL",
+          "dollars": 2069.8,
+          "shares": 2,
+          "priceAt": 1034.9
+        },
+        {
+          "sym": "QQQ",
+          "side": "SELL",
+          "dollars": 239.37,
+          "shares": 0.334438,
+          "priceAt": 715.735
+        },
+        {
+          "sym": "GOOG",
+          "side": "SELL",
+          "dollars": 197.49,
+          "shares": 0.567198,
+          "priceAt": 348.19
+        },
+        {
+          "sym": "ICOP",
+          "side": "SELL",
+          "dollars": 0.68,
+          "shares": 0.013992,
+          "priceAt": 48.72
+        },
+        {
+          "sym": "NBIS",
+          "side": "SELL",
+          "dollars": 0.34,
+          "shares": 0.001217,
+          "priceAt": 275.35
+        }
+      ]
+    },
+    {
+      "id": "2026-06-23-sd",
+      "date": "2026-06-23",
+      "kind": "rebalance",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 733.58,
+      "rationale": "6 filled orders · bought $8,871 · sold $3,636",
+      "trades": [
+        {
+          "sym": "TSM",
+          "side": "BUY",
+          "dollars": 6689.99,
+          "shares": 15,
+          "priceAt": 445.9993
+        },
+        {
+          "sym": "MU",
+          "side": "BUY",
+          "dollars": 2181,
+          "shares": 2,
+          "priceAt": 1090.5
+        },
+        {
+          "sym": "NBIS",
+          "side": "SELL",
+          "dollars": 1405.9,
+          "shares": 5,
+          "priceAt": 281.18
+        },
+        {
+          "sym": "ADBE",
+          "side": "SELL",
+          "dollars": 1381.8,
+          "shares": 7,
+          "priceAt": 197.4
+        },
+        {
+          "sym": "ICOP",
+          "side": "SELL",
+          "dollars": 500.74,
+          "shares": 10,
+          "priceAt": 50.074
+        },
+        {
+          "sym": "GOOG",
+          "side": "SELL",
+          "dollars": 347.45,
+          "shares": 1,
+          "priceAt": 347.45
+        }
+      ]
+    },
+    {
+      "id": "2026-06-22-sd",
+      "date": "2026-06-22",
+      "kind": "rebalance",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 744.39,
+      "rationale": "94 filled orders · bought $21,036 · sold $15,965",
+      "trades": [
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 7483.18,
+          "shares": 36,
+          "priceAt": 207.8661
+        },
+        {
+          "sym": "CIFR",
+          "side": "BUY",
+          "dollars": 7310,
+          "shares": 250,
+          "priceAt": 29.24
+        },
+        {
+          "sym": "TSM",
+          "side": "BUY",
+          "dollars": 3617.04,
+          "shares": 8,
+          "priceAt": 452.13
+        },
+        {
+          "sym": "IREN",
+          "side": "BUY",
+          "dollars": 2625.29,
+          "shares": 46,
+          "priceAt": 57.0715
+        },
+        {
+          "sym": "IREN",
+          "side": "SELL",
+          "dollars": 1214.43,
+          "shares": 20.099161,
+          "priceAt": 60.4219
+        },
+        {
+          "sym": "CIFR",
+          "side": "SELL",
+          "dollars": 1120.83,
+          "shares": 37.583979,
+          "priceAt": 29.8221
+        },
+        {
+          "sym": "AMZN",
+          "side": "SELL",
+          "dollars": 985.56,
+          "shares": 4.109019,
+          "priceAt": 239.8534
+        },
+        {
+          "sym": "MSFT",
+          "side": "SELL",
+          "dollars": 922.67,
+          "shares": 2.435494,
+          "priceAt": 378.843
+        },
+        {
+          "sym": "META",
+          "side": "SELL",
+          "dollars": 875.21,
+          "shares": 1.522031,
+          "priceAt": 575.0276
+        },
+        {
+          "sym": "BN",
+          "side": "SELL",
+          "dollars": 821.87,
+          "shares": 18.31662,
+          "priceAt": 44.87
+        },
+        {
+          "sym": "NBIS",
+          "side": "SELL",
+          "dollars": 753.01,
+          "shares": 2.566402,
+          "priceAt": 293.4123
+        },
+        {
+          "sym": "WULF",
+          "side": "SELL",
+          "dollars": 752.24,
+          "shares": 25.441034,
+          "priceAt": 29.568
+        },
+        {
+          "sym": "NVDA",
+          "side": "SELL",
+          "dollars": 744.2,
+          "shares": 3.502159,
+          "priceAt": 212.4983
+        },
+        {
+          "sym": "AVGO",
+          "side": "SELL",
+          "dollars": 744.08,
+          "shares": 1.851561,
+          "priceAt": 401.8653
+        },
+        {
+          "sym": "ELV",
+          "side": "SELL",
+          "dollars": 682.16,
+          "shares": 1.741014,
+          "priceAt": 391.815
+        },
+        {
+          "sym": "LLY",
+          "side": "SELL",
+          "dollars": 679.9,
+          "shares": 0.619222,
+          "priceAt": 1097.9912
+        },
+        {
+          "sym": "BRK.B",
+          "side": "SELL",
+          "dollars": 673.94,
+          "shares": 1.372687,
+          "priceAt": 490.965
+        },
+        {
+          "sym": "AMD",
+          "side": "SELL",
+          "dollars": 577.17,
+          "shares": 1.039401,
+          "priceAt": 555.2914
+        },
+        {
+          "sym": "SPGI",
+          "side": "SELL",
+          "dollars": 520.84,
+          "shares": 1.266369,
+          "priceAt": 411.2851
+        },
+        {
+          "sym": "NOW",
+          "side": "SELL",
+          "dollars": 501.19,
+          "shares": 5.244637,
+          "priceAt": 95.5621
+        },
+        {
+          "sym": "PLTR",
+          "side": "SELL",
+          "dollars": 499.54,
+          "shares": 3.917296,
+          "priceAt": 127.5217
+        },
+        {
+          "sym": "GRAB",
+          "side": "SELL",
+          "dollars": 442.59,
+          "shares": 124.520064,
+          "priceAt": 3.5544
+        },
+        {
+          "sym": "MELI",
+          "side": "SELL",
+          "dollars": 437.21,
+          "shares": 0.267812,
+          "priceAt": 1632.5181
+        },
+        {
+          "sym": "MRVL",
+          "side": "SELL",
+          "dollars": 144.71,
+          "shares": 0.476947,
+          "priceAt": 303.41
+        },
+        {
+          "sym": "CRDO",
+          "side": "SELL",
+          "dollars": 113.29,
+          "shares": 0.36842,
+          "priceAt": 307.5
+        },
+        {
+          "sym": "PANW",
+          "side": "SELL",
+          "dollars": 105.57,
+          "shares": 0.35843,
+          "priceAt": 294.54
+        },
+        {
+          "sym": "GOOGL",
+          "side": "SELL",
+          "dollars": 101.26,
+          "shares": 0.285435,
+          "priceAt": 354.7511
+        },
+        {
+          "sym": "ANET",
+          "side": "SELL",
+          "dollars": 84.25,
+          "shares": 0.492628,
+          "priceAt": 171.025
+        },
+        {
+          "sym": "ASML",
+          "side": "SELL",
+          "dollars": 84.01,
+          "shares": 0.043573,
+          "priceAt": 1928.015
+        },
+        {
+          "sym": "HUM",
+          "side": "SELL",
+          "dollars": 78.43,
+          "shares": 0.214305,
+          "priceAt": 365.99
+        },
+        {
+          "sym": "TER",
+          "side": "SELL",
+          "dollars": 77.28,
+          "shares": 0.174038,
+          "priceAt": 444.0678
+        },
+        {
+          "sym": "AMAT",
+          "side": "SELL",
+          "dollars": 75.46,
+          "shares": 0.11997,
+          "priceAt": 628.975
+        },
+        {
+          "sym": "DDOG",
+          "side": "SELL",
+          "dollars": 67.35,
+          "shares": 0.302825,
+          "priceAt": 222.4156
+        },
+        {
+          "sym": "TSM",
+          "side": "SELL",
+          "dollars": 64.53,
+          "shares": 0.13766,
+          "priceAt": 468.7603
+        },
+        {
+          "sym": "CRWD",
+          "side": "SELL",
+          "dollars": 63.81,
+          "shares": 0.091031,
+          "priceAt": 700.9832
+        },
+        {
+          "sym": "VST",
+          "side": "SELL",
+          "dollars": 60.28,
+          "shares": 0.363734,
+          "priceAt": 165.7334
+        },
+        {
+          "sym": "U",
+          "side": "SELL",
+          "dollars": 54.41,
+          "shares": 2.024135,
+          "priceAt": 26.88
+        },
+        {
+          "sym": "KLAR",
+          "side": "SELL",
+          "dollars": 53.06,
+          "shares": 2.843348,
+          "priceAt": 18.66
+        },
+        {
+          "sym": "EQIX",
+          "side": "SELL",
+          "dollars": 49.94,
+          "shares": 0.045474,
+          "priceAt": 1098.16
+        },
+        {
+          "sym": "ORCL",
+          "side": "SELL",
+          "dollars": 46.18,
+          "shares": 0.253418,
+          "priceAt": 182.215
+        },
+        {
+          "sym": "SCHO",
+          "side": "SELL",
+          "dollars": 45.26,
+          "shares": 1.879185,
+          "priceAt": 24.0829
+        },
+        {
+          "sym": "TEM",
+          "side": "SELL",
+          "dollars": 44.79,
+          "shares": 0.894635,
+          "priceAt": 50.0607
+        },
+        {
+          "sym": "SPOT",
+          "side": "SELL",
+          "dollars": 43.18,
+          "shares": 0.093439,
+          "priceAt": 462.1465
+        },
+        {
+          "sym": "SYF",
+          "side": "SELL",
+          "dollars": 41.83,
+          "shares": 0.552474,
+          "priceAt": 75.72
+        },
+        {
+          "sym": "AAPL",
+          "side": "SELL",
+          "dollars": 40.58,
+          "shares": 0.134431,
+          "priceAt": 301.875
+        },
+        {
+          "sym": "CLSK",
+          "side": "SELL",
+          "dollars": 39.03,
+          "shares": 2.139096,
+          "priceAt": 18.245
+        },
+        {
+          "sym": "HD",
+          "side": "SELL",
+          "dollars": 36.32,
+          "shares": 0.11007,
+          "priceAt": 329.985
+        },
+        {
+          "sym": "MU",
+          "side": "SELL",
+          "dollars": 36.15,
+          "shares": 0.030643,
+          "priceAt": 1179.64
+        },
+        {
+          "sym": "DOW",
+          "side": "SELL",
+          "dollars": 35.95,
+          "shares": 1.164944,
+          "priceAt": 30.8604
+        },
+        {
+          "sym": "DDS",
+          "side": "SELL",
+          "dollars": 35.75,
+          "shares": 0.063624,
+          "priceAt": 561.8814
+        },
+        {
+          "sym": "XYZ",
+          "side": "SELL",
+          "dollars": 34.73,
+          "shares": 0.4644,
+          "priceAt": 74.7919
+        },
+        {
+          "sym": "APP",
+          "side": "SELL",
+          "dollars": 34.29,
+          "shares": 0.074612,
+          "priceAt": 459.6
+        },
+        {
+          "sym": "NEM",
+          "side": "SELL",
+          "dollars": 34.08,
+          "shares": 0.336041,
+          "priceAt": 101.41
+        },
+        {
+          "sym": "LHX",
+          "side": "SELL",
+          "dollars": 32.49,
+          "shares": 0.113894,
+          "priceAt": 285.235
+        },
+        {
+          "sym": "TOST",
+          "side": "SELL",
+          "dollars": 29.67,
+          "shares": 1.199502,
+          "priceAt": 24.7317
+        },
+        {
+          "sym": "IBP",
+          "side": "SELL",
+          "dollars": 29.63,
+          "shares": 0.135679,
+          "priceAt": 218.365
+        },
+        {
+          "sym": "CDE",
+          "side": "SELL",
+          "dollars": 26.72,
+          "shares": 1.532609,
+          "priceAt": 17.435
+        },
+        {
+          "sym": "AXON",
+          "side": "SELL",
+          "dollars": 26.32,
+          "shares": 0.06355,
+          "priceAt": 414.115
+        },
+        {
+          "sym": "ISRG",
+          "side": "SELL",
+          "dollars": 23.82,
+          "shares": 0.058834,
+          "priceAt": 404.925
+        },
+        {
+          "sym": "ONDS",
+          "side": "SELL",
+          "dollars": 22.38,
+          "shares": 2.375392,
+          "priceAt": 9.42
+        }
+      ]
+    },
+    {
+      "id": "2026-06-21-sd",
+      "date": "2026-06-21",
+      "kind": "deploy",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 746.74,
+      "rationale": "1 filled order · bought $1,425",
+      "trades": [
+        {
+          "sym": "NBIS",
+          "side": "BUY",
+          "dollars": 1425,
+          "shares": 5,
+          "priceAt": 285
+        }
+      ]
+    },
+    {
+      "id": "2026-06-18-sd",
+      "date": "2026-06-18",
+      "kind": "rebalance",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 746.74,
+      "rationale": "20 filled orders · bought $1,287 · sold $2,247",
+      "trades": [
+        {
+          "sym": "ADBE",
+          "side": "SELL",
+          "dollars": 1536.2,
+          "shares": 8,
+          "priceAt": 192.025
+        },
+        {
+          "sym": "META",
+          "side": "BUY",
+          "dollars": 589.94,
+          "shares": 1.024023,
+          "priceAt": 576.1
+        },
+        {
+          "sym": "CIFR",
+          "side": "SELL",
+          "dollars": 310.82,
+          "shares": 10.47927,
+          "priceAt": 29.66
+        },
+        {
+          "sym": "IREN",
+          "side": "SELL",
+          "dollars": 186.99,
+          "shares": 3.10692,
+          "priceAt": 60.185
+        },
+        {
+          "sym": "BN",
+          "side": "BUY",
+          "dollars": 162.45,
+          "shares": 3.657548,
+          "priceAt": 44.415
+        },
+        {
+          "sym": "NBIS",
+          "side": "SELL",
+          "dollars": 124.17,
+          "shares": 0.43586,
+          "priceAt": 284.88
+        },
+        {
+          "sym": "PLTR",
+          "side": "BUY",
+          "dollars": 113.9,
+          "shares": 0.889774,
+          "priceAt": 128.01
+        },
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 93.32,
+          "shares": 0.085106,
+          "priceAt": 1096.505
+        },
+        {
+          "sym": "WULF",
+          "side": "SELL",
+          "dollars": 88.86,
+          "shares": 3.02553,
+          "priceAt": 29.37
+        },
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 83.16,
+          "shares": 0.219571,
+          "priceAt": 378.7379
+        },
+        {
+          "sym": "ELV",
+          "side": "BUY",
+          "dollars": 70.7,
+          "shares": 0.181864,
+          "priceAt": 388.75
+        },
+        {
+          "sym": "NOW",
+          "side": "BUY",
+          "dollars": 54.28,
+          "shares": 0.572241,
+          "priceAt": 94.855
+        },
+        {
+          "sym": "AMZN",
+          "side": "BUY",
+          "dollars": 45.33,
+          "shares": 0.186343,
+          "priceAt": 243.26
+        },
+        {
+          "sym": "BRK.B",
+          "side": "BUY",
+          "dollars": 17.11,
+          "shares": 0.035084,
+          "priceAt": 487.675
+        },
+        {
+          "sym": "SPGI",
+          "side": "BUY",
+          "dollars": 12.5,
+          "shares": 0.030518,
+          "priceAt": 409.5937
+        },
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 11.27,
+          "shares": 0.053531,
+          "priceAt": 210.53
+        },
+        {
+          "sym": "AVGO",
+          "side": "BUY",
+          "dollars": 10.56,
+          "shares": 0.025882,
+          "priceAt": 408
+        },
+        {
+          "sym": "AMD",
+          "side": "BUY",
+          "dollars": 9.04,
+          "shares": 0.016911,
+          "priceAt": 534.56
+        },
+        {
+          "sym": "MELI",
+          "side": "BUY",
+          "dollars": 8.71,
+          "shares": 0.005315,
+          "priceAt": 1638.465
+        },
+        {
+          "sym": "GRAB",
+          "side": "BUY",
+          "dollars": 4.45,
+          "shares": 1.276315,
+          "priceAt": 3.4866
+        }
+      ]
+    },
+    {
+      "id": "2026-06-16-sd",
+      "date": "2026-06-16",
+      "kind": "deploy",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 750.33,
+      "rationale": "1 filled order · bought $3,097",
+      "trades": [
+        {
+          "sym": "ADBE",
+          "side": "BUY",
+          "dollars": 3097.05,
+          "shares": 15,
+          "priceAt": 206.47
+        }
+      ]
+    },
+    {
+      "id": "2026-06-15-sd",
+      "date": "2026-06-15",
+      "kind": "raise",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 754.83,
+      "rationale": "1 filled order · sold $592",
+      "trades": [
+        {
+          "sym": "META",
+          "side": "SELL",
+          "dollars": 592.04,
+          "shares": 1,
+          "priceAt": 592.04
+        }
+      ]
+    },
+    {
+      "id": "2026-06-14-sd",
+      "date": "2026-06-14",
+      "kind": "raise",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 741.75,
+      "rationale": "1 filled order · sold $3,100",
+      "trades": [
+        {
+          "sym": "IREN",
+          "side": "SELL",
+          "dollars": 3100,
+          "shares": 50,
+          "priceAt": 62
+        }
+      ]
+    },
+    {
+      "id": "2026-06-11-sd",
+      "date": "2026-06-11",
+      "kind": "deploy",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 737.76,
+      "rationale": "4 filled orders · bought $1,089",
+      "trades": [
+        {
+          "sym": "CIFR",
+          "side": "BUY",
+          "dollars": 1037.5,
+          "shares": 50,
+          "priceAt": 20.75
+        },
+        {
+          "sym": "MU",
+          "side": "BUY",
+          "dollars": 27.84,
+          "shares": 0.030643,
+          "priceAt": 908.52
+        },
+        {
+          "sym": "MELI",
+          "side": "BUY",
+          "dollars": 16,
+          "shares": 0.01007,
+          "priceAt": 1588.79
+        },
+        {
+          "sym": "ONDS",
+          "side": "BUY",
+          "dollars": 7.57,
+          "shares": 0.814995,
+          "priceAt": 9.2884
+        }
+      ]
+    },
+    {
+      "id": "2026-06-10-sd",
+      "date": "2026-06-10",
+      "kind": "rebalance",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 725.43,
+      "rationale": "29 filled orders · bought $1,542 · sold $2,158",
+      "trades": [
+        {
+          "sym": "IREN",
+          "side": "BUY",
+          "dollars": 1354,
+          "shares": 25.727481,
+          "priceAt": 52.6285
+        },
+        {
+          "sym": "GLD",
+          "side": "SELL",
+          "dollars": 1121.82,
+          "shares": 2.962323,
+          "priceAt": 378.6949
+        },
+        {
+          "sym": "TSLA",
+          "side": "SELL",
+          "dollars": 347.03,
+          "shares": 0.900545,
+          "priceAt": 385.3562
+        },
+        {
+          "sym": "SPY",
+          "side": "SELL",
+          "dollars": 215.68,
+          "shares": 0.294834,
+          "priceAt": 731.524
+        },
+        {
+          "sym": "DIA",
+          "side": "SELL",
+          "dollars": 183.02,
+          "shares": 0.36312,
+          "priceAt": 504.02
+        },
+        {
+          "sym": "WULF",
+          "side": "BUY",
+          "dollars": 80,
+          "shares": 3.37126,
+          "priceAt": 23.73
+        },
+        {
+          "sym": "CIFR",
+          "side": "BUY",
+          "dollars": 58.5,
+          "shares": 2.73647,
+          "priceAt": 21.3779
+        },
+        {
+          "sym": "AMZN",
+          "side": "BUY",
+          "dollars": 49.6,
+          "shares": 0.207089,
+          "priceAt": 239.51
+        },
+        {
+          "sym": "MU",
+          "side": "SELL",
+          "dollars": 28.1,
+          "shares": 0.030867,
+          "priceAt": 910.34
+        },
+        {
+          "sym": "MSFT",
+          "side": "SELL",
+          "dollars": 22.24,
+          "shares": 0.05534,
+          "priceAt": 401.855
+        },
+        {
+          "sym": "ELV",
+          "side": "SELL",
+          "dollars": 21.79,
+          "shares": 0.053293,
+          "priceAt": 408.865
+        },
+        {
+          "sym": "PENN",
+          "side": "SELL",
+          "dollars": 20.82,
+          "shares": 1,
+          "priceAt": 20.82
+        },
+        {
+          "sym": "META",
+          "side": "SELL",
+          "dollars": 20.58,
+          "shares": 0.03556,
+          "priceAt": 578.74
+        },
+        {
+          "sym": "LLY",
+          "side": "SELL",
+          "dollars": 18.15,
+          "shares": 0.01581,
+          "priceAt": 1147.8527
+        },
+        {
+          "sym": "AVGO",
+          "side": "SELL",
+          "dollars": 17.46,
+          "shares": 0.04656,
+          "priceAt": 375.0929
+        },
+        {
+          "sym": "BRK.B",
+          "side": "SELL",
+          "dollars": 16.52,
+          "shares": 0.03384,
+          "priceAt": 488.32
+        },
+        {
+          "sym": "BN",
+          "side": "SELL",
+          "dollars": 15.11,
+          "shares": 0.33444,
+          "priceAt": 45.18
+        },
+        {
+          "sym": "CRON",
+          "side": "SELL",
+          "dollars": 13.88,
+          "shares": 5,
+          "priceAt": 2.775
+        },
+        {
+          "sym": "NVDA",
+          "side": "SELL",
+          "dollars": 13.84,
+          "shares": 0.0684,
+          "priceAt": 202.27
+        },
+        {
+          "sym": "SPGI",
+          "side": "SELL",
+          "dollars": 13.18,
+          "shares": 0.03079,
+          "priceAt": 427.931
+        },
+        {
+          "sym": "NOW",
+          "side": "SELL",
+          "dollars": 12.9,
+          "shares": 0.11895,
+          "priceAt": 108.435
+        },
+        {
+          "sym": "NBIS",
+          "side": "SELL",
+          "dollars": 12.65,
+          "shares": 0.05847,
+          "priceAt": 216.415
+        },
+        {
+          "sym": "GRAB",
+          "side": "SELL",
+          "dollars": 11.44,
+          "shares": 3.421564,
+          "priceAt": 3.3435
+        },
+        {
+          "sym": "AMD",
+          "side": "SELL",
+          "dollars": 10,
+          "shares": 0.02203,
+          "priceAt": 453.81
+        },
+        {
+          "sym": "PLTR",
+          "side": "SELL",
+          "dollars": 9.71,
+          "shares": 0.073624,
+          "priceAt": 131.885
+        },
+        {
+          "sym": "MELI",
+          "side": "SELL",
+          "dollars": 9.27,
+          "shares": 0.00575,
+          "priceAt": 1612.575
+        },
+        {
+          "sym": "UPS",
+          "side": "SELL",
+          "dollars": 1.95,
+          "shares": 0.018709,
+          "priceAt": 104.38
+        },
+        {
+          "sym": "GLTR",
+          "side": "SELL",
+          "dollars": 1.27,
+          "shares": 0.006657,
+          "priceAt": 190.1295
+        }
+      ]
+    },
+    {
+      "id": "2026-06-09-sd",
+      "date": "2026-06-09",
+      "kind": "deploy",
+      "book": null,
+      "equityAtDecision": null,
+      "spyAt": 737.05,
+      "rationale": "1 filled order · bought $2,738",
+      "trades": [
+        {
+          "sym": "IREN",
+          "side": "BUY",
+          "dollars": 2738.25,
+          "shares": 50,
+          "priceAt": 54.765
+        }
+      ]
+    }
+  ]
+}
