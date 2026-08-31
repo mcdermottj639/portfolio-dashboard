@@ -289,6 +289,45 @@ export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, 
   return { id: `${date}-${kind}`, date, kind, targetAsOf: targetAsOf || null, book: num(book), equityAtDecision: num(equity), spyAt: num(spyAt), rationale: rationale || '', trades };
 }
 
+// SNAPSHOT IDENTITY GUARD (2026-08-31). Does the snapshot's agentic book agree with what THIS system's
+// own committed records say ••••3900 owns? On 2026-08-31 a producer run published the SELF-DIRECTED
+// account's holdings into `data.agentic` — book $31,800 instead of $11,551, positions IREN/PLTR/TSM/CIFR
+// instead of the twelve names actually held — and the deploy planner, doing exactly its job on the data it
+// was handed, produced a $61,962 ticket that would have liquidated the wrong account. 350 of those IREN
+// shares back short calls in the margin book, so a one-tap approval would have written naked calls.
+//
+// The executor's live 5%-book-move abort WOULD have caught it (175% off), but that check runs only in the
+// EXEC_AUTO/EXEC_TRADE placement path — EXEC_PROPOSE writes its ticket and pushes the owner a one-tap
+// BEFORE any live account call. So the check has to happen here, before a mode is ever printed, and it has
+// to be CODE: the executor Routine is bound to a persistent session, so its prompt cannot be edited and
+// prompt wording cannot be load-bearing (CLAUDE.md).
+//
+// Both tests compare the snapshot against files THIS system writes and therefore knows to be true, rather
+// than against a threshold that a real deposit or a real drawdown could trip:
+//   (a) the parking ledger is the sole system of record for the waiting ground — it cannot hold dollars in
+//       a vehicle the book does not contain;
+//   (b) a name bought and not since sold, per our own decisions ledger, must still be there. Requiring
+//       that ZERO of them survive keeps this quiet through ordinary rebalancing (a ticket moves a few
+//       names, never all of them) while a wrong-account payload fails it outright.
+// Returns a reason string (caller idles) or null. Fails OPEN on thin records: a young account with fewer
+// than SANITY_MIN_EXPECTED tracked names is not judged, because there is nothing yet to contradict.
+export const SANITY_MIN_EXPECTED = 3;
+export function snapshotHoldingsSanity({ positions = [], activity = {}, parked = null } = {}) {
+  const syms = new Set((positions || [])
+    .map((p) => String((p && (p.symbol || p.sym)) || '').toUpperCase()).filter(Boolean));
+  if (parked && +parked.dollars > 0 && parked.vehicle) {
+    const v = String(parked.vehicle).toUpperCase();
+    if (!syms.has(v)) return `the parking ledger holds $${(+parked.dollars).toFixed(2)} in ${v}, but the snapshot's agentic book has no ${v} position — the snapshot disagrees with this system's own record of what it owns`;
+  }
+  const expected = Object.keys(activity || {}).filter((sym) => {
+    const a = activity[sym] || {};
+    return a.lastBuyDate && (!a.lastSellDate || a.lastSellDate < a.lastBuyDate);
+  }).sort();
+  if (expected.length >= SANITY_MIN_EXPECTED && !expected.some((sym) => syms.has(sym)))
+    return `none of the ${expected.length} name(s) this account bought and did not sell (${expected.join(', ')}) appear in the snapshot's agentic positions (${[...syms].sort().join(', ') || 'none'}) — this looks like the wrong account's book`;
+  return null;
+}
+
 // Churn-governor input (2026-08-12): fold the committed decisions ledger into the deploy planner's
 // `accountActivity` shape — {SYM:{lastBuyDate,lastSellDate}} over the trailing window. This is what
 // lets the exec gate see "we bought AAPL two days ago / sold MSFT yesterday" BETWEEN producer runs

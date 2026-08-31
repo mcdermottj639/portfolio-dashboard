@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars, snapshotHoldingsSanity, SANITY_MIN_EXPECTED } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -216,6 +216,41 @@ const first = applyMarks(gradeDecisions([oldDec], { NVDA: 230, SPY: 721 }, '2026
 const later = applyMarks(gradeDecisions([oldDec], { NVDA: 999, SPY: 999 }, '2026-08-27'), first.decisions, '2026-08-27', { histDay: HIST });
 eq('a previously stamped mark is not re-derived from bars', later.decisions[0].marks[5].src, first.decisions[0].marks[5].src);
 eq('…and keeps its original value', later.decisions[0].marks[5].contribPct, first.decisions[0].marks[5].contribPct);
+
+// ── SNAPSHOT IDENTITY GUARD (2026-08-31) ────────────────────────────────────────────────────────────
+// The live incident, pinned: a producer run published the SELF-DIRECTED book into data.agentic, and the
+// deploy planner — correct on its inputs — proposed a $61,962 liquidation of an account holding none of
+// those names. EXEC_PROPOSE arms a one-tap without any live account call, so this must catch it offline.
+const WRONG_ACCOUNT = [ // ••••0741's book, verbatim from the 2026-08-31 19:44Z snapshot
+  { symbol: 'NVDA', qty: 0.288502 }, { symbol: 'TSM', qty: 0.56322 }, { symbol: 'CIFR', qty: 0.446733 },
+  { symbol: 'IREN', qty: 350.071851 }, { symbol: 'PLTR', qty: 100.006259 }];
+const REAL_BOOK = ['SPY', 'LLY', 'NVDA', 'GOOGL', 'AMZN', 'MSFT', 'SHEL', 'VTI', 'JNJ', 'KO', 'GLDM', 'BKNG']
+  .map((symbol) => ({ symbol, qty: 1 }));
+const ACT = { VTI: { lastBuyDate: '2026-08-27' }, BKNG: { lastBuyDate: '2026-08-27' },
+  JNJ: { lastBuyDate: '2026-08-26' }, KO: { lastBuyDate: '2026-08-26' }, GLDM: { lastBuyDate: '2026-08-26' },
+  GE: { lastBuyDate: '2026-08-12', lastSellDate: '2026-08-26' } }; // GE exited — must NOT be expected held
+const PARKED = { vehicle: 'VTI', dollars: 485.99, forNames: ['MA', 'V'] };
+
+ok('the wrong account\'s book is REFUSED',
+  !!snapshotHoldingsSanity({ positions: WRONG_ACCOUNT, activity: ACT, parked: PARKED }));
+ok('…and the real book passes',
+  snapshotHoldingsSanity({ positions: REAL_BOOK, activity: ACT, parked: PARKED }) === null);
+ok('the parking ledger arm fires on its own (vehicle held per the ledger, absent from the book)',
+  /parking ledger/.test(snapshotHoldingsSanity({ positions: [{ symbol: 'SPY' }, { symbol: 'JNJ' }], activity: {}, parked: PARKED }) || ''));
+ok('…and is silent when nothing is parked',
+  snapshotHoldingsSanity({ positions: [{ symbol: 'SPY' }], activity: {}, parked: { vehicle: 'VTI', dollars: 0 } }) === null);
+ok('the ledger-overlap arm fires on its own (no parking involved)',
+  /wrong account/.test(snapshotHoldingsSanity({ positions: WRONG_ACCOUNT, activity: ACT, parked: null }) || ''));
+ok('a name bought and later SOLD is not expected to still be held',
+  snapshotHoldingsSanity({ positions: [{ symbol: 'VTI' }], activity: { GE: { lastBuyDate: '2026-08-12', lastSellDate: '2026-08-26' }, VTI: { lastBuyDate: '2026-08-27' } }, parked: null }) === null);
+ok('an ordinary rebalance passes — one surviving name is enough',
+  snapshotHoldingsSanity({ positions: [{ symbol: 'KO' }, { symbol: 'NEWNAME' }], activity: ACT, parked: null }) === null);
+ok(`fails OPEN below SANITY_MIN_EXPECTED (${SANITY_MIN_EXPECTED}) tracked names — a young book is not judged`,
+  snapshotHoldingsSanity({ positions: [{ symbol: 'ZZZZ' }], activity: { AAA: { lastBuyDate: '2026-08-27' }, BBB: { lastBuyDate: '2026-08-27' } }, parked: null }) === null);
+ok('reads the {sym} position shape too, not just {symbol}',
+  snapshotHoldingsSanity({ positions: [{ sym: 'KO' }], activity: ACT, parked: null }) === null);
+ok('an all-cash book still trips the parking contradiction',
+  !!snapshotHoldingsSanity({ positions: [], activity: {}, parked: PARKED }));
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

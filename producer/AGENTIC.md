@@ -63,7 +63,16 @@ The owner signed off on a two-tier policy so the account is **self-sufficient** 
   a large fresh deposit) goes out as a **push + one-tap
   confirm** — the ticket sits in `agentic-pending.json` as `proposed` until the owner confirms (in any
   session: "confirm the pending rebalance") or it goes stale (5 days → re-planned at fresh prices).
-- **Kill switch:** `PF_AGENTIC_AUTO=off` in the executor's environment idles the whole executor.
+- **Kill switch:** `PF_AGENTIC_AUTO=off` in the executor's environment idles the whole executor. The
+  Routine itself can also be paused (`update_trigger enabled:false`) — done 2026-08-31 after the
+  wrong-account snapshot below; **re-enable it once a clean producer run has republished.**
+- **Snapshot identity check (2026-08-31).** Before any mode is printed, the gate runs
+  `snapshotHoldingsSanity` (agentic-ledger.mjs) and idles if the snapshot's agentic book contradicts this
+  system's own committed records — the parking ledger naming a vehicle the book doesn't hold, or none of
+  the names we bought and never sold being present. It exists because a producer run published the
+  SELF-DIRECTED book into `data.agentic` and the planner proposed a $61,962 liquidation of an account
+  holding none of those names; `EXEC_PROPOSE` would have armed it behind a single owner tap without ever
+  calling the broker. Ordinary rebalancing does not trip it (one surviving name is enough).
 The trade-safety classifier still applies — the executor always names exact tickers + dollar amounts
 when placing, and the auto tier never exceeds the cap the owner approved.
 

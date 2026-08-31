@@ -66,7 +66,7 @@ function readTargetFile() {
     return (t && Array.isArray(t.names) && t.names.length) ? t : null;
   } catch { return null; }
 }
-import { activityFromDecisions } from './agentic-ledger.mjs';
+import { activityFromDecisions, snapshotHoldingsSanity } from './agentic-ledger.mjs';
 
 // Churn governor (2026-08-12): the committed decisions ledger tells the planner what this account
 // bought/sold recently, powering the 14d min-hold + re-entry cooldown. Missing/garbage file → {} →
@@ -127,6 +127,17 @@ if (!A || !Array.isArray(A.positions)) idle('no agentic block in the snapshot');
 if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idle('no research target');
 const ageH = data.generatedAt ? (Date.now() - Date.parse(data.generatedAt)) / 3.6e6 : Infinity;
 if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
+
+// ── SNAPSHOT IDENTITY GUARD (2026-08-31) ────────────────────────────────────────────────────────
+// Runs BEFORE any mode is printed, because EXEC_PROPOSE writes a ticket and pushes the owner a one-tap
+// without making a single live account call — so a corrupt snapshot could otherwise arm a trade behind
+// one tap. See snapshotHoldingsSanity() for the incident this exists for: a producer run published the
+// SELF-DIRECTED book into data.agentic and the planner, correct on its inputs, proposed a $61,962
+// liquidation of an account that held none of those names.
+{
+  const bad = snapshotHoldingsSanity({ positions: A.positions, activity: readActivity(today), parked: readParked() || A.parked || null });
+  if (bad) idle(`snapshot fails the agentic identity check — ${bad}; refusing to plan (fix the producer's agentic fetch, then re-run)`);
+}
 
 // ── SNAPSHOT-PREDATES-FILLS GUARD (2026-08-25) ──────────────────────────────────────────────────
 // Caught live: minutes after ticket 2026-08-25-2m67b0 filled ($1,380 of cash → 5 positions), the next
