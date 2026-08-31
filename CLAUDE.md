@@ -744,6 +744,14 @@ Three hazards this table exists to prevent:
   for every future point. **A corrupted running total has to be repaired by hand; plan the fix around
   that, not around the display.** Worse, leaving the swapped positions committed guarantees a SECOND
   phantom flow, because the next run differences against them.
+  **OUTCOME, and the residual left behind.** The 20:42Z run fetched both accounts correctly, and because
+  the positions swapped BACK the inference produced the mirror-image phantom, which very nearly cancelled
+  the first: agentic cumFlow 7,950.75 → 28,218.50 → **7,961.68**, main 0 → −20,247.65 → **+136.70**. What
+  survives is the difference between the two runs' price moves — a phantom deposit of **$10.93** on
+  ••••3900 and **$136.70** on ••••0741. Those are not cosmetic: the consumer's return is deposit-IMMUNE,
+  so a phantom deposit silently DELETES real return (≈0.09pp and ≈0.72pp respectively). They are still
+  uncorrected — repairing them means rewriting two `cumFlow` values inside the encrypted snapshot, which
+  is the producer's file and outside the executor's three-file allowlist.
   **(b) So the guard ABORTS the publish** (`snapshotsanity.mjs` → `accountsLookSwapped`, called from
   `build-data.mjs` before anything is written). Refusing to publish costs one stale hour and trips the
   freshness watchdog; publishing costs the account's whole recorded return history.

@@ -65,7 +65,8 @@ The owner signed off on a two-tier policy so the account is **self-sufficient** 
   session: "confirm the pending rebalance") or it goes stale (5 days → re-planned at fresh prices).
 - **Kill switch:** `PF_AGENTIC_AUTO=off` in the executor's environment idles the whole executor. The
   Routine itself can also be paused (`update_trigger enabled:false`) — done 2026-08-31 after the
-  wrong-account snapshot below; **re-enable it once a clean producer run has republished.**
+  wrong-account snapshot below, and **re-enabled the same day** once the 20:42Z producer run republished
+  both books correctly and the gate passed the identity check.
 - **Snapshot identity check (2026-08-31).** Before any mode is printed, the gate runs
   `snapshotHoldingsSanity` (agentic-ledger.mjs) and idles if the snapshot's agentic book contradicts this
   system's own committed records — the parking ledger naming a vehicle the book doesn't hold, or none of
