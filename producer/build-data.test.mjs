@@ -176,6 +176,18 @@ const TICKET = join(__dirname, 'agentic-pending.json');
 const TBAK = join(RAW, '.agentic-pending.testbak');
 const hadTicket = existsSync(TICKET);
 if (hadTicket) copyFileSync(TICKET, TBAK);
+
+// The COMMITTED self-directed owner overlay (producer/main-decisions.json) is merged into EVERY build
+// unconditionally and is never swept, so whatever it holds lands in data.main.decisions regardless of
+// the orders fixture. Since 2026-08-31 it also carries 13 recovered REAL records (a narrow orders fetch
+// had deleted them from the snapshot), which means it now injects real June/July history into this
+// fixture and made three assertions here fail — the DRIP filter, the ET-day grouping and the ordering
+// all read the overlay's records instead of the synthetic ones. Move it aside so the fixture is
+// hermetic; the overlay's own merge behaviour is covered by maindecisions.test.mjs.
+const OVERLAY = join(__dirname, 'main-decisions.json');
+const OBAK = join(RAW, '.main-decisions.testbak');
+const hadOverlay = existsSync(OVERLAY);
+if (hadOverlay) { copyFileSync(OVERLAY, OBAK); unlinkSync(OVERLAY); }
 const farFuture = '2099-01-01', longPast = '2020-01-01';
 writeFileSync(TICKET, JSON.stringify({
   id: 'TEST-TICKET', created: '2026-07-31', status: 'done', turnover: 100, planHash: 's[]b[]t[]',
@@ -317,6 +329,8 @@ try {
   // Restore the real committed ticket — it is NOT gitignored, so leaving the fixture behind would
   // stage a fake rebalance ticket into the repo.
   if (hadTicket) { copyFileSync(TBAK, TICKET); unlinkSync(TBAK); } else { try { unlinkSync(TICKET); } catch {} }
+  // Same for the owner overlay — it is committed, so losing it would silently drop 13 recovered records.
+  if (hadOverlay) { copyFileSync(OBAK, OVERLAY); unlinkSync(OBAK); }
   for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json'), join(EXTDIR, 'overview-AAA.json')]) { try { unlinkSync(p); } catch {} }
 }
 

@@ -181,6 +181,7 @@ Three hazards this table exists to prevent:
 | `producer/polflow.mjs` | **Congressional disclosure clusters (v95)** — the STOCK Act PTR feed the Trump/congress trackers repackage. Pure + unit-tested: `normalizeDisclosure` (drops bonds/funds/no-symbol rows and directionless "Exchange"), `mergeEvents` (**de-dupes on filer+symbol+side+date** — the tier serves a rolling 25-row window that re-delivers the same trades every poll, and counting them twice would fake activity; 120-day retention), `detectClusters` (**≥3 DISTINCT filers**, same direction, inside a 45-day span — one person filing five times is one opinion; equal-sized opposing clusters cancel), `clusterEvidence`. **`EXCLUDED_CLUSTERS = ['megacap-tech']` is load-bearing**: the most-traded congressional names are exactly the complex `riskweights.mjs` caps at 48%, so a political nudge there would spend risk budget re-buying the concentration that cap exists to contain. **ZERO score weight, permanently** (owner decision) — it enters the research workflow's **adversarial verify prompt only**, explicitly framed as stale weak context, and renders as a labelled context strip on the Plan card. Accumulated into `data.flow.polEvents`/`polClusters` by `build-data.mjs` (raw/ is wiped every run, so the ledger can only live in the snapshot — the `ivHistory` pattern). |
 | `producer/PROPOSAL-hedgefund-gaps.md` | **Build spec (2026-08-24, NOT yet implemented)** for the institutional-gap closures on the agentic account: look-through cluster caps (SPY/VTI composition counted against the 48% megacap-tech cap), a book-level drawdown circuit breaker, regime-aware deployment pacing, sleeve attribution in the Rebalance Log, plus an observe-only decoupling of the flow sleeve. **Both owner gates are DECIDED (2026-08-24): park vehicle stays VTI (SGOV declined), and `FLOW_WEIGHT` HOLDS AT 0** — the burn-in was run against the live snapshot and the signal did not clear (12 of 13 insider scores inside a 0.50-pt band, 14 of 16 revision scores inside ~1.0 pt: 70% of the flow composite's weight carries near-zero ranking information). Build the recording/weighting decoupling instead, so Phase 6 attribution can measure the sleeve before it is paid for. Read the file in full before implementing any phase — it fixes constants, function signatures, test cases and both decisions. |
 | `producer/PROPOSAL-flow-signals.md` | Signed-off design for the flow layer + the **live probe results** for every political/insider/positioning source (what works on our keys, what's tier-restricted, what returns dead data). Read before adding another provider — it records what was already tried and rejected, and why congressional disclosure feeds get **no score weight** (40–116 day lag; the ETF "edge" is a megacap-tech beta tilt; the most-traded names sit inside the 48% cluster cap). |
+| `producer/snapshotsanity.mjs` | **Cross-account integrity guard (2026-08-31, pure + unit-tested).** `accountsLookSwapped({agentic:{fresh,prior}, main:{fresh,prior}})` → a reason string when the two accounts' fresh position arrays look crossed, else null. `build-data.mjs` calls it before writing anything and **THROWS** on a hit, so the run publishes nothing. Compares position IDENTITY against each account's own prior book rather than reconciling dollars (an unquoted position prices at 0 — routine); needs no tolerance, fails OPEN below `SWAP_MIN_NAMES` (3). See the gotcha for why an abort is right: the display self-heals on the next run, `cumFlow` never does. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
 | `.github/workflows/freshness.yml` | Two watchdogs, hourly during market hours. **check**: opens an issue if `data.json`'s *commit* is stale **>90 min while the market is open** (holiday/half-day-aware via `market.mjs`; was 3h, which let real 60–105m scheduler gaps through); auto-closes on recovery. **deploy-health** (v88): catches "committed but never DEPLOYED" — compares the live Pages `data.json` blob vs `HEAD` (15-min grace; the envelope's random salt means bytes always differ mid-deploy) + reads the Pages build status API, **auto-retriggers a Pages build** (`POST /pages/builds`, needs the workflow's `pages: write`) and opens/auto-closes a `pages-watchdog` issue. Added after 2026-07-02, when two consecutive branch Pages deploys hung in `deployment_queued` → timeout while the commit-age check stayed green. |
 | `producer/agentic-target.json` | **Canonical research-driven target** for the agentic account (••••3900): `{asOf,method,book,driftTriggerPp,names[]}`. `build-data.mjs` attaches it as `data.agentic.target`; the Agentic Portfolio card renders drift against it. Refreshed **weekly** by the deep research. |
@@ -728,6 +729,32 @@ Three hazards this table exists to prevent:
   Fixed in v126 (ticket persistence + the "💸 Sells held back" half of the card). The min-hold itself
   was NOT loosened — 13 days is 13 days, and one-day-early exits are the churn this guard exists to
   stop. The exits fired on the 08-26 pass, as designed.
+- **THE TWO ACCOUNTS' POSITION ARRAYS CAME BACK TRANSPOSED — AND ONLY THE RUNNING TOTAL WAS PERMANENT
+  (2026-08-31).** Root cause of the wrong-account incident below: the producer's two
+  `get_equity_positions` calls were made with the account numbers the wrong way round, so
+  `data.agentic.positions` held ••••0741's five names and `data.main.positions` held ••••3900's twelve.
+  **Each account's cash and totals were still correct**, which is why nothing downstream noticed —
+  ••••3900's equity was then re-derived as `cash + Σ(the OTHER book × quotes)` = $31,800 against a real
+  $11,551. **Three lessons.**
+  **(a) Rank the damage by what can't be republished.** The visible harm (a wrong card, a $61,962 ticket)
+  is undone by the next good snapshot. The harm that is NOT is `cumFlow`: the deposit inference saw each
+  book replaced wholesale and booked equal-and-opposite phantom transfers of ±$20k, and
+  `appendEquityPoint` reads `priorCum` from the point it is REPLACING (equityseries.mjs:220) — so a
+  same-day rebuild inherits the bad total instead of recomputing it, and the error becomes the baseline
+  for every future point. **A corrupted running total has to be repaired by hand; plan the fix around
+  that, not around the display.** Worse, leaving the swapped positions committed guarantees a SECOND
+  phantom flow, because the next run differences against them.
+  **(b) So the guard ABORTS the publish** (`snapshotsanity.mjs` → `accountsLookSwapped`, called from
+  `build-data.mjs` before anything is written). Refusing to publish costs one stale hour and trips the
+  freshness watchdog; publishing costs the account's whole recorded return history.
+  **(c) It compares position IDENTITY, not dollars.** Reconciling `cash + Σ(positions × px)` against the
+  account's own `total_value` looks tighter and false-positives constantly — an unquoted position prices
+  at 0, which is routine for a brand-new target name. Comparing each fresh book against its OWN prior
+  book needs no tolerance: books are stable across an hour, and a wholesale replacement of both, each
+  matching the other's prior contents, is not something a market or a rebalance can produce. Fails OPEN
+  below `SWAP_MIN_NAMES` (3). A one-sided wrong-account fetch of the AGENTIC book is fatal too (it is the
+  book that trades); the mirror on the self-directed side is not, since aborting the publish over a
+  display-only error trades a real outage for a cosmetic one.
 - **THE PLANNER IS ONLY EVER AS RIGHT AS THE ACCOUNT IT WAS HANDED (2026-08-31).** A producer run
   published the **self-directed ••••0741 book into `data.agentic`** — equity $31,800 instead of $11,551,
   positions IREN/PLTR/TSM/CIFR instead of the twelve names actually held, and `weightNow: 0` on every

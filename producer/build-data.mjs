@@ -25,6 +25,7 @@ import { gradeDecisions, applyMarks } from './agentic-ledger.mjs';
 import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint, derivativesRealized } from './equityseries.mjs';
+import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
@@ -103,6 +104,10 @@ const pRaw = unwrap(readJSON(filesMatching(/^portfolio\.json$/)[0]));
 const portfolio = pRaw.data ?? pRaw;
 const posRaw = unwrap(readJSON(filesMatching(/^positions\.json$/)[0]));
 const positions = posRaw.data?.positions ?? posRaw.positions ?? posRaw;
+// Stable alias for the SELF-DIRECTED raw positions. The agentic block below declares its own
+// block-scoped `positions`, so referring to the outer one from inside it hits the temporal dead zone
+// (the v121 exec-gate bug, same shape). The cross-account swap guard needs both books, so it reads this.
+const mainPositionsRaw = positions;
 
 // --- quotes (per-symbol, fields preserved verbatim) ---
 const quotes = {};
@@ -290,6 +295,25 @@ const data = {
     const aposFile = filesMatching(/^agentic-positions\.json$/)[0];
     const aposRaw = aposFile ? unwrap(readJSON(aposFile)) : null;
     const aPositions = aposRaw ? (aposRaw.data?.positions ?? aposRaw.positions ?? aposRaw) : [];
+    // ── CROSS-ACCOUNT SWAP GUARD (2026-08-31) ────────────────────────────────────────────────────
+    // ABORT rather than publish: this check exists because a run published the two accounts' position
+    // arrays transposed, and while a wrong snapshot can be republished an hour later, the deposit
+    // inference it feeds writes a cumFlow — a RUNNING TOTAL — so a phantom transfer becomes the
+    // permanent baseline for every future point and has to be repaired by hand. Refusing to publish
+    // costs one stale hour; publishing costs the account's whole recorded return history. See
+    // snapshotsanity.mjs for why this compares position IDENTITY rather than reconciling dollars.
+    {
+      const swapped = accountsLookSwapped({
+        agentic: { fresh: aPositions, prior: prior && prior.agentic ? prior.agentic.positions : null },
+        main: { fresh: mainPositionsRaw, prior: prior && prior.main ? prior.main.positions : null },
+      });
+      if (swapped) {
+        throw new Error(`ACCOUNT MIX-UP — refusing to publish: ${swapped}. `
+          + `Re-fetch get_equity_positions for BOTH accounts with the correct account_number `
+          + `(agentic ••••3900 → raw/agentic-positions.json, self-directed ••••0741 → raw/positions.json) and re-run. `
+          + `Nothing was written; the prior snapshot stands.`);
+      }
+    }
     const pxOf = (sym) => {
       const q = quotes[sym]; if (!q) return 0;
       return parseFloat(q.last_extended_hours_trade_price || q.last_trade_price || q.adjusted_previous_close || q.previous_close || 0) || 0;
