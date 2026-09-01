@@ -26,7 +26,6 @@ import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from '
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint, derivativesRealized } from './equityseries.mjs';
 import { accountsLookSwapped } from './snapshotsanity.mjs';
-import { repairPriorCumFlow } from './cumflow-repair.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
@@ -99,17 +98,6 @@ async function loadPrior() {
   } catch { return null; }
 }
 const prior = await loadPrior();
-
-// ── One-time cumFlow migration (2026-08-31 account swap) ─────────────────────────────────────────
-// Applied to the PRIOR snapshot before anything reads it, so both the appendEquityPoint path and the
-// carry-forward branches see a corrected series. This has to happen here rather than in a hand edit:
-// appendEquityPoint reads `priorCum` from the point it is REPLACING, so a corrupted running total is
-// inherited by every future point and no ordinary run can shed it. Self-disabling — each account's
-// correction fires only while its anchor still holds the exact bad value. See cumflow-repair.mjs;
-// DELETE this block and the module once both accounts have logged `applied`.
-for (const fix of repairPriorCumFlow(prior)) {
-  console.log(`${fix.acct}: cumFlow migration applied — ${fmtMoney(fix.from)} → ${fmtMoney(fix.to)} across ${fix.points} point(s) (phantom transfer from the 2026-08-31 account swap; see cumflow-repair.mjs)`);
-}
 
 // --- portfolio + positions ---
 const pRaw = unwrap(readJSON(filesMatching(/^portfolio\.json$/)[0]));
