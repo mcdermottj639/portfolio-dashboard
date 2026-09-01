@@ -160,6 +160,23 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > `get_accounts` returns **no** `agentic_allowed` account. Also fold that account's holdings into the
    > `get_equity_quotes` symbol list so each gets a live price. (Without this the Agentic Portfolio card
    > shows the target with `$0.00` live holdings — exactly the bug this note prevents.)
+   >
+   > ### ⚠️ DON'T TRANSPOSE THE TWO ACCOUNTS
+   > There are now FOUR account-scoped reads in this step — `positions.json` / `portfolio.json` for the
+   > MAIN account (`PF_ACCOUNT`, ••••0741) and `agentic-positions.json` / `agentic-portfolio.json` for
+   > ••••3900. On 2026-08-31 the two `get_equity_positions` calls were made with the account numbers the
+   > wrong way round, and each account's cash and totals were still correct — so **nothing about the
+   > output looked wrong**. `build-data` then re-derived ••••3900's equity as `cash + Σ(the OTHER book)`
+   > = $31,800 against a real $11,551, the deploy planner produced a **$61,962 ticket** (5× the book) to
+   > liquidate names the account did not hold, and the deposit inference booked ±$20k of phantom
+   > transfers into both accounts' `cumFlow` — the one thing here that is NOT undone by the next good
+   > snapshot, and which needed a producer migration to repair.
+   > **Before writing each file, check the response is the account you asked for**: the ••••3900 book is
+   > ~12 diversified names sized in the hundreds of dollars; ••••0741 is ~5 concentrated high-beta names
+   > and carries a NEGATIVE cash balance (margin loan). If those are the wrong way round, STOP and
+   > re-fetch — do not build. `snapshotsanity.mjs` will abort the publish anyway, but that costs a stale
+   > hour and a watchdog issue; catching it here costs nothing.
+
    > **Also fold in (every run): every ticker in the committed `producer/agentic-target.json` and the
    > parking vehicle `VTI`** (see `PARK_VEHICLE`, agentic-deploy.mjs). A research refresh can introduce a
    > name the account has never held (2026-08-11: SHEL) — with no quote it prices as $0 in the deploy
