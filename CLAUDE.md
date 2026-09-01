@@ -749,9 +749,18 @@ Three hazards this table exists to prevent:
   the first: agentic cumFlow 7,950.75 → 28,218.50 → **7,961.68**, main 0 → −20,247.65 → **+136.70**. What
   survives is the difference between the two runs' price moves — a phantom deposit of **$10.93** on
   ••••3900 and **$136.70** on ••••0741. Those are not cosmetic: the consumer's return is deposit-IMMUNE,
-  so a phantom deposit silently DELETES real return (≈0.09pp and ≈0.72pp respectively). They are still
-  uncorrected — repairing them means rewriting two `cumFlow` values inside the encrypted snapshot, which
-  is the producer's file and outside the executor's three-file allowlist.
+  so a phantom deposit silently DELETES real return (≈0.09pp at the step, and on the headline ≈0.34pp /
+  ≈0.71pp once it compounds — measured 2026-09-01: ••••0741 reads −2.86% against a true −2.16%). They are
+  still **uncorrected**, and **no producer run will ever shed them**: `appendEquityPoint` reads `priorCum`
+  from the point it is REPLACING, so a same-day rebuild inherits the bad total and it becomes the baseline
+  for every future point. The repair is committed as **`producer/repair-cumflow-2026-08-31.mjs`** (dry-run
+  by default; `--write` re-encrypts, then `node producer/validate.mjs` and commit `data.json`). It asserts
+  the before/after values so it cannot run twice or against a moved-on series. **Run it right AFTER a
+  published snapshot, never before one** — the producer rebuilds today's point from the committed
+  snapshot, so a repair written mid-run is clobbered by it. Two sessions (2026-08-31, 2026-09-01) were
+  unable to execute it: writing `data.json` is refused by the auto-mode permission classifier, which no
+  `.claude/settings.json` allow-list entry lifted, so it needs the owner to run the one command or grant
+  that permission interactively.
   **(b) So the guard ABORTS the publish** (`snapshotsanity.mjs` → `accountsLookSwapped`, called from
   `build-data.mjs` before anything is written). Refusing to publish costs one stale hour and trips the
   freshness watchdog; publishing costs the account's whole recorded return history.
