@@ -578,6 +578,56 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "id": "2026-09-02-rebalance",
+      "date": "2026-09-02",
+      "kind": "rebalance",
+      "targetAsOf": "2026-08-25",
+      "book": 11547.88,
+      "equityAtDecision": 11547.88,
+      "spyAt": null,
+      "rationale": "Waiting-ground release funds MA and V, the last two names parked above-entry since 08-26. Released 1.209649 VTI @ 377.035 = $456.05 (-$1.00 ST). CAVEAT: both names gapped up overnight and filled OUTSIDE their entry bands (MA $588.82 vs a $584.33 ceiling+tolerance, V $378.30 vs $372.50) — they cleared only because the target is 9 days stale and the zones went advisory past ENTRY_ZONE_STALE_DAYS. Overshoot ~$2-4 on $455. The weekly research has not refreshed since 08-25; its Routine exits in ~2 minutes without producing a target.",
+      "trades": [
+        {
+          "sym": "MA",
+          "side": "BUY",
+          "dollars": 237.34,
+          "shares": 0.403077,
+          "priceAt": 588.8199,
+          "weightBefore": 0,
+          "weightAfter": 5.7,
+          "drivers": [
+            "quality",
+            "momentum",
+            "catalyst",
+            "growth"
+          ]
+        },
+        {
+          "sym": "V",
+          "side": "BUY",
+          "dollars": 217.36,
+          "shares": 0.57457,
+          "priceAt": 378.2999,
+          "weightBefore": 0,
+          "weightAfter": 5.22,
+          "drivers": [
+            "quality",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "VTI",
+          "side": "TRIM",
+          "dollars": 456.05,
+          "shares": 1.209649,
+          "priceAt": 377.035,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }

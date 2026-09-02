@@ -1,99 +1,90 @@
 {
-  "id": "2026-08-27-x0zdxw",
-  "created": "2026-08-27",
+  "id": "2026-09-02-fey8vp",
+  "created": "2026-09-02",
   "status": "done",
   "autoEligible": true,
-  "turnover": 1091.44,
-  "book": 11553.06,
-  "planHash": "s[VTI:543]b[BKNG:549]t[]",
+  "turnover": 908.5,
+  "book": 11474.22,
+  "planHash": "s[VTI:454]b[MA:237,V:217]t[]",
   "legs": {
     "sells": [
       {
         "sym": "VTI",
         "kind": "park-release",
-        "dollars": 542.67,
-        "shares": 1.431148,
-        "price": 379.185,
-        "pl": 0.85,
-        "note": "release parked placeholder — funds BKNG"
+        "dollars": 453.8,
+        "shares": 1.209649,
+        "price": 375.15,
+        "pl": -3.28,
+        "note": "release parked placeholder — funds MA/V"
       }
     ],
     "buysNow": [
       {
-        "sym": "BKNG",
+        "sym": "MA",
         "kind": "buy",
-        "dollars": 548.77,
-        "shares": 2.6784,
-        "price": 204.89,
+        "dollars": 237.34,
+        "shares": 0.4083,
+        "price": 581.23,
         "pl": null,
-        "note": "0.0% → 4.75% target"
+        "note": "0.0% → 5.7% target"
+      },
+      {
+        "sym": "V",
+        "kind": "buy",
+        "dollars": 217.36,
+        "shares": 0.5831,
+        "price": 372.74,
+        "pl": null,
+        "note": "0.0% → 5.22% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0.85,
-    "realizedLoss": 0,
-    "net": 0.85,
+    "realizedGain": 0,
+    "realizedLoss": -3.28,
+    "net": -3.28,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
-      "sym": "MA",
-      "reason": "above-entry",
-      "until": null
-    },
-    {
-      "sym": "V",
-      "reason": "above-entry",
-      "until": null
-    }
-  ],
-  "blockedSells": [
-    {
       "sym": "VTI",
-      "kind": "trim",
-      "blocked": "min-hold",
-      "dollars": 6.3,
-      "pl": 0.01,
-      "plPct": 0.16,
-      "until": "2026-09-09",
-      "heldDays": 1,
-      "note": "bought 1d ago (min-hold 14d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks 2026-09-09 (a business-broken drop or a ≤-10% loss would override)"
+      "reason": "wash-sale",
+      "until": "2026-09-26"
     }
   ],
+  "blockedSells": [],
   "warnings": [
-    "2 name(s) deferred (MA, V) — ~$1,261.59 of intended weight held pending earnings/re-verify/wash-sale",
-    "1 sell(s) held by the 14d min-hold (VTI) — churn guard: positions opened within the window aren't flipped by the next research refresh",
-    "$0 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "released $542.67 from the VTI waiting ground to fund cleared names — realizes $0.85 ST"
+    "1 name(s) deferred (VTI) — ~$1.04 of intended weight held pending earnings/re-verify/wash-sale",
+    "entry zones are 8d old (target asOf 2026-08-25) — treated as ADVISORY, band checks skipped; a stale zone drifts out of range on its own",
+    "released $453.8 from the VTI waiting ground to fund cleared names — realizes $-3.28 ST"
   ],
   "history": [
     {
-      "at": "2026-08-27",
+      "at": "2026-09-02",
       "to": "proposed"
     },
     {
-      "at": "2026-08-27",
+      "at": "2026-09-02",
       "to": "confirmed"
     },
     {
-      "at": "2026-08-27",
+      "at": "2026-09-02",
       "to": "sells-placed"
     },
     {
-      "at": "2026-08-27",
+      "at": "2026-09-02",
       "to": "buys-placed"
     },
     {
-      "at": "2026-08-27",
+      "at": "2026-09-02",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-08-27",
-  "sells-placedAt": "2026-08-27",
-  "buys-placedAt": "2026-08-27",
-  "doneAt": "2026-08-27",
-  "completedAt": "2026-08-27T14:24:00.000Z"
+  "confirmedAt": "2026-09-02",
+  "sells-placedAt": "2026-09-02",
+  "buys-placedAt": "2026-09-02",
+  "doneAt": "2026-09-02",
+  "completedAt": "2026-09-02T14:25:15.000Z"
 }
