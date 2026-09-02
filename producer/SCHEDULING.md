@@ -115,7 +115,7 @@ be set to; re-check it whenever a Routine misbehaves, because the failure mode i
 | Permission mode | `auto` | `auto` | `auto` |
 | `allowed_tools` | `preset:default` + `PushNotification` + `Skill` | same | same |
 | Push notifications | on | **on** | **on** |
-| Repo source | this repo (session config) | none — the prompt's step 0 clones it | none — the prompt's step 0 clones it |
+| Repo source | this repo (session config) | none needed — the environment already carries the clone; step 0 fast-forwards it (verified by a 2026-09-02 test fire, which also proved the gate and PushNotification work from a Routine session) | same |
 
 **Connectors and `allowed_tools` are set ONLY in the claude.ai Routine UI.** The Routines API in this
 org rejects a `connectors` parameter outright, and `update_trigger` can change the prompt, schedule,
