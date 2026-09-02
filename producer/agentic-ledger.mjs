@@ -282,6 +282,14 @@ export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, 
   if (!target && buys.length) {
     console.warn(`[agentic-ledger] makeDecision(${date}) called WITHOUT \`target\` — ${buys.length} buy leg(s) will carry no drivers and this rebalance is permanently invisible to sleeve attribution. Pass the committed agentic-target.json (the exec gate writes it into raw/agentic-plan.json as \`target\`).`);
   }
+  // Same shape of loss, same volume (2026-09-02). `spyAt` is the SPY close stamped at decision time, and
+  // both downstream measurements gate on it being > 0: gradeDecisions' alpha, and the frozen 5/30/90d
+  // marks. It cannot be backfilled either — the record is dated, and reading "whatever SPY is now" would
+  // benchmark the decision against the wrong day. Today's 2026-09-02 record was appended with
+  // `spyAt: null`, so it is permanently unmeasurable against the benchmark.
+  if (!(+spyAt > 0) && (buys.length || trims.length)) {
+    console.warn(`[agentic-ledger] makeDecision(${date}) called WITHOUT a positive \`spyAt\` — this rebalance can never be graded against SPY (no alpha, no frozen marks) and the omission cannot be backfilled. Stamp the SPY price at decision time (the executor reads it from the live quote before placing).`);
+  }
   const trades = [
     ...buys.map((b) => { const d = driversOf(b.sym); return ({ sym: String(b.sym).toUpperCase(), side: 'BUY', dollars: num(b.dollars), shares: num(b.shares), priceAt: num(b.price ?? b.priceAt), weightBefore: num(b.weightNow), weightAfter: num(b.weightTarget), ...(d ? { drivers: d } : {}) }); }),
     ...trims.map((t) => ({ sym: String(t.sym).toUpperCase(), side: 'TRIM', dollars: num(t.dollars), shares: num(t.shares), priceAt: num(t.price ?? t.priceAt), weightBefore: num(t.weightNow), weightAfter: num(t.weightTarget) })),

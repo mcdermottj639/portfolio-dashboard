@@ -85,7 +85,7 @@ Use exactly this as the scheduled prompt:
 > **weekly agentic-account step** (`PRODUCER.md` step 7): run `node producer/agentic-due.mjs`; if it
 > prints `AGENTIC_DUE`, refresh `producer/agentic-target.json` via the **`agentic-research`** workflow
 > (commit + push it), then compute drift and **`PushNotification` me a rebalance proposal** for the
-> ••••3900 cash account — but **place no orders** (alert & one-tap-confirm). If `AGENTIC_NOT_DUE` or
+> ••••3900 cash account — but **place no orders** (alert, then the owner's confirm). If `AGENTIC_NOT_DUE` or
 > anything fails, just end the session; it never gates the run and retries next week. Also, on EVERY
 > run where `run.mjs` succeeded: read `producer/raw/alerts.json` (written by the build) and, if its
 > `alerts` array is non-empty, **`PushNotification` me one message** with each alert's `msg` on its
@@ -98,6 +98,52 @@ Use exactly this as the scheduled prompt:
 `preflight.mjs` owns the run-mode decision (deterministic, from the committed `data.json`), and
 `run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
 market hours or how much to fetch.
+
+### 5. Routine configuration that lives server-side (not in git)
+**Three Routines drive this repo, and roughly half of what makes each one work is not in this
+repository at all.** A Routine's prompt, its connectors, its `allowed_tools`, its model, whether it
+resumes a session or starts fresh, and whether it can push a notification are all stored server-side.
+Shipping code here does **not** change any of them. This section is the record of what each one should
+be set to; re-check it whenever a Routine misbehaves, because the failure mode is silent.
+
+| | **Portfolio dashboard refresh** | **Agentic weekly research** | **Agentic executor** |
+|---|---|---|---|
+| Cron (UTC) | `35 * * * *` | `12 11 * * 1` | `20 14-20 * * 1-5` |
+| Connectors | Robinhood + Alpha Vantage | Robinhood + Alpha Vantage | Robinhood |
+| Session | fresh per fire (already) | fresh per fire (already; prompt rewritten 2026-09-02) | **fresh per fire** — replacement trigger created 2026-09-02, DISABLED until Robinhood is attached to it in the UI; the persistent one runs until then |
+| Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | `claude-opus-5` | `claude-opus-5` |
+| Permission mode | `auto` | `auto` | `auto` |
+| `allowed_tools` | `preset:default` + `PushNotification` + `Skill` | same | same |
+| Push notifications | on | **on** | **on** |
+| Repo source | this repo (session config) | none — the prompt's step 0 clones it | none — the prompt's step 0 clones it |
+
+**Connectors and `allowed_tools` are set ONLY in the claude.ai Routine UI.** The Routines API in this
+org rejects a `connectors` parameter outright, and `update_trigger` can change the prompt, schedule,
+name, enabled state and model but not the tool surface — so a session can fix a prompt and *cannot*
+fix a missing connector. That distinction cost seven weeks of research: the weekly research
+Routine was created with **no Robinhood or Alpha Vantage connector and no repo source**, so it had
+never once produced a target — every `agentic-target.json` in git came from an interactive session.
+For the producer Routine specifically: its `allowed_tools` can only be edited in that UI, so if it
+starts prompting for permission mid-run, that is where to go.
+
+**Never enumerate MCP tool names in `allowed_tools`.** The full name carries a session-specific server
+id (`mcp__1ad8dd47-…__get_portfolio` today, something else tomorrow), so a pinned list matches nothing
+on the next fire and every broker call becomes a permission prompt. `preset:default` plus the
+connector attachment is the durable form. Same reason `PRODUCER.md` writes tools as `Robinhood ·
+get_portfolio`.
+
+**`SUCCEEDED` proves a Routine RAN, never that it DID anything.** A Routine that exits cleanly on a
+gate reports exactly the same status as one that did the whole job — `agentic-due.mjs` printing
+`AGENTIC_NOT_DUE` is a clean exit, and so is a run that found no connector and gave up. Two checks
+cost nothing and separate them:
+- **Duration.** `finished_at - fired_at`. A 60-name research pipeline cannot run in 109 seconds.
+- **The artifact.** Did the commit the run exists to produce actually land? No commit to
+  `agentic-target.json` on a research day means no research happened, whatever the status says.
+
+**`ALPHAVANTAGE_KEY` unset costs ~19 manual MCP calls per FETCH_ALL.** With the key, the AV fetch is a
+direct HTTP call from `av-fetch.mjs` and the agent does nothing; without it, the agent has to make each
+`TOOL_CALL` by hand through the connector (`PRODUCER.md` step 3), which is slower, burns turns, and is
+the most likely thing to stall an unattended run.
 
 ## Verify it's working
 - **Commits:** `data.json` on `main` should get a new commit **hourly during market hours** (~:35

@@ -54,7 +54,7 @@ function readParked() {
     return { vehicle: p.vehicle || 'VTI', dollars: Math.max(0, +p.dollars), forNames: p.forNames || [], since: p.since || null };
   } catch { return null; }
 }
-import { planHash, nextAction, MIN_TURNOVER, TICKET_STALE_DAYS } from './agentic-pending.mjs';
+import { nextAction, MIN_TURNOVER, TICKET_STALE_DAYS } from './agentic-pending.mjs';
 
 // The canonical committed target (CLAUDE.md) — used by act() for the v121 drivers stamp and by step 2
 // to override the snapshot's cached copy. Missing/unreadable → null.
@@ -98,14 +98,23 @@ const act = (mode, payload) => {
 
 const today = etDate();
 if (String(process.env.PF_AGENTIC_AUTO || '').toLowerCase() === 'off') idle('kill switch: PF_AGENTIC_AUTO=off');
+// MARKET-HOURS GATE, hoisted to the top (2026-09-02). It used to sit inside each acting branch, so a
+// closed-market fire still decrypted the snapshot, read three committed files and ran the whole
+// planner before idling — and, above the auto cap, still wrote a ticket and pushed the owner a
+// confirm for a trade that could not be placed for hours. Nothing this gate can decide changes while
+// the market is shut, so decide it first and spend nothing. (The executor's cron reaches 20:20Z,
+// which is after the close.)
+if (!isMarketOpen()) idle('market closed — nothing is placeable until the next open; the next in-hours pass re-plans from the fresh snapshot');
 
 // ── 1. an in-flight ticket owns the run ─────────────────────────────────────────────────────────────
 let ticket = null;
 try { const f = join(__dirname, 'agentic-pending.json'); if (existsSync(f)) ticket = JSON.parse(readFileSync(f, 'utf8')); } catch { ticket = null; }
 if (ticket && !['done', 'aborted'].includes(ticket.status)) {
   const na = nextAction(ticket, today);
-  if (na.action === 'place-trades') { if (!isMarketOpen()) idle(`ticket ready but market closed — place at the open`); act('EXEC_TRADE', { reason: na.reason, ticket }); }
-  if (na.action === 'place-buys') { if (!isMarketOpen()) idle(`carried buys due but market closed`); act('EXEC_BUYS', { reason: na.reason, ticket }); }
+  // Market hours are already guaranteed by the hoisted gate above, so these branches act directly.
+  if (na.action === 'place-trades') act('EXEC_TRADE', { reason: na.reason, ticket });
+  if (na.action === 'place-buys') act('EXEC_BUYS', { reason: na.reason, ticket });
+  // THIS is the anti-nag guard: an outstanding proposal idles here, so the gate never re-proposes it.
   if (na.action === 'await-confirm') idle(`proposal outstanding (${ticket.id}) — waiting for owner confirm`);
   if (na.action === 'none') idle(na.reason);
   // 'stale' falls through: re-plan below; the agent aborts the stale ticket when it writes the new one.
@@ -187,11 +196,7 @@ const plan = planDeployment({
 });
 
 if (!(plan.turnover >= MIN_TURNOVER)) idle(`plan turnover $${plan.turnover} < $${MIN_TURNOVER} — nothing worth a ticket`);
-if (ticket && ticket.status === 'proposed' && ticket.planHash === planHash(plan) && nextAction(ticket, today).action === 'await-confirm')
-  idle('identical proposal already outstanding — not re-nagging');
-
 if (plan.autoEligible) {
-  if (!isMarketOpen()) idle('auto-tier plan ready but market closed — act at the open');
   act('EXEC_AUTO', { reason: `turnover $${plan.turnover} ≤ auto cap — execute unattended`, plan, staleTicket: ticket && !['done', 'aborted'].includes(ticket.status) ? ticket.id : null });
 }
 act('EXEC_PROPOSE', { reason: `turnover $${plan.turnover} above auto cap — owner one-tap required`, plan, staleTicket: ticket && !['done', 'aborted'].includes(ticket.status) ? ticket.id : null });

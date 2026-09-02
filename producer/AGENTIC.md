@@ -40,7 +40,7 @@ each finalist) → synthesis into a sector-diversified, conviction-weighted, cap
 | Account **values / drift** (card `Now`) | **hourly** (each producer run, market hours — `35 * * * *` UTC) | re-priced every run from that run's quotes — in step with the main account (carry-forward re-pricing in `build-data.mjs`; the 8 holdings are index/leader symbols quoted every run) |
 | Account **holdings** (share counts) | **daily** (full/open run) | re-fetched via `agentic-portfolio.json` / `agentic-positions.json` (resolved through `get_accounts`); they only change on a rebalance, which refreshes them in-session anyway |
 | **Target** (`agentic-target.json`) | **weekly** | the deep research workflow (below) re-runs, and the new target is committed |
-| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $10,000 turnover, push + one-tap confirm above; in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
+| **Rebalance execution (v96)** | hourly gate, market hours | the **executor** (below): auto ≤ $10,000 turnover, push + owner confirm above (`agentic-confirm.mjs`, or any Claude session); in-flight ticket in `agentic-pending.json`. Since **v98** a whole ticket (sells → buys) completes in ONE session — limited margin, instant settlement |
 | **Event triggers (v93)** | every run (deposit / earnings gap) | `agentic-triggers.mjs` (in `build-data.mjs`) → `raw/agentic-triggers.json`: a **`deploy-cash`** push when idle/new cash crosses ~5% of book, and a **`refreshResearch`** flag that runs the research EARLY (before the weekly gate) on a deposit or a ≥6% held-name gap. So the account reacts to deposits + earnings, not just the 7-day clock. |
 
 ## The standing flow (owner-ratified 2026-08-11)
@@ -60,9 +60,11 @@ The owner signed off on a two-tier policy so the account is **self-sufficient** 
   by the executor (below) — placed, logged to the decision ledger, and reported by PushNotification
   *after* the fact. On a ~$10k book that covers full-book rebalances, not just routine upkeep.
 - **Confirm tier:** anything larger (today, only a ticket bigger than the whole book — e.g. deploying
-  a large fresh deposit) goes out as a **push + one-tap
-  confirm** — the ticket sits in `agentic-pending.json` as `proposed` until the owner confirms (in any
-  session: "confirm the pending rebalance") or it goes stale (5 days → re-planned at fresh prices).
+  a large fresh deposit) goes out as a **push + the owner's confirm** — the ticket sits in
+  `agentic-pending.json` as `proposed` until the owner confirms (one command:
+  `node producer/agentic-confirm.mjs <id> --commit`, or in any session: "confirm the pending rebalance")
+  or it goes stale (5 days → re-planned at fresh prices). It was described as a "one tap" from v96 until
+  2026-09-02, when an audit found there had never been a tap — only a chat round trip.
 - **Kill switch:** `PF_AGENTIC_AUTO=off` in the executor's environment idles the whole executor. The
   Routine itself can also be paused (`update_trigger enabled:false`) — done 2026-08-31 after the
   wrong-account snapshot below, and **re-enabled the same day** once the 20:42Z producer run republished
@@ -358,7 +360,7 @@ never disturb the daily `data.json` publish (same isolation as the watchlist syn
    While reviewing catalysts, add any newly-confirmed dated policy event to **`producer/policy.json`**
    (schema + rules in `policy.mjs`; high-impact entries need a source URL) and commit it in the same change.
 3. Compute drift vs the new target, apply the **Tax & regulation rules** above, and **`PushNotification`
-   the owner a rebalance proposal** — placing nothing (alert & one-tap-confirm).
+   the owner a rebalance proposal** — placing nothing (alert, then the owner's confirm).
 
 Because the producer's trigger prompt is "follow `producer/PRODUCER.md` exactly", this needs **no web-UI
 change** — the existing schedule picks it up. (If a live trigger uses an older prompt that doesn't defer to
@@ -390,19 +392,43 @@ on thin data would freeze a new book forever). Tier CHANGES — including recove
 owner by `alerts.mjs` through the normal producer push path, so the executor should not re-push them.
 
 ## The executor — the self-driving loop (v96)
+
+> **PRE-AUTH (none active).** To pre-approve one above-cap ticket without a chat round trip, replace this
+> block with: PRE-AUTH &lt;YYYY-MM-DD&gt; — ticket &lt;id or "next EXEC_PROPOSE"&gt;, max turnover $N, expires
+> &lt;date&gt;, guard: applies only if `agentic-target.json` asOf ≥ &lt;date&gt;. Spent once; the executor deletes
+> it after execution and notes the id.
+
 A **separate scheduled Claude session** (hourly during market hours — cron `20 14-20 * * 1-5` UTC, its own
 trigger, NOT the data producer) that keeps ••••3900 on target without the owner having to notice drift.
 Cheap by construction: every run starts with the deterministic gate and exits immediately when idle.
 
+**Why the executor is a fresh session per fire (2026-09-02).** It is stateless by design — every run does a
+`git checkout -f` from `origin/main`, and all the state it carries lives in the three committed files
+(`agentic-pending.json` / `agentic-decisions.json` / `agentic-parked.json`), so a resumed conversation adds
+nothing but cost. From 08-10 it was bound to ONE persistent session, and that accumulated **128M cached
+tokens / ~$74 over ~115 mostly-idle fires** — the gate prints `EXEC_IDLE` and stops on nearly every pass,
+yet each fire re-loaded the whole conversation. Worse, a persistent session can get *stuck*: this one sat
+blocked in a "needs input" state over a question about a **different** Routine, which is exactly the
+chat back-and-forth the owner was seeing. And a persistent-bound Routine **cannot use completion push notifications**
+(the API rejects them), which is why "say what failed" always turned into a chat message the owner had to
+go and read. Fresh-session-per-fire fixes all three. **Status 2026-09-02:** the replacement trigger exists ("Agentic executor
+(••••3900 rebalancer) — fresh session") but is DISABLED until the owner attaches Robinhood to it in the
+claude.ai Routine UI, enables it, and disables the persistent one — the API cannot attach connectors.
+
 **Runbook (the trigger prompt is: "follow AGENTIC.md §executor exactly"):**
 1. `node producer/agentic-exec-gate.mjs` → mode. **`EXEC_IDLE` (exit 30) → stop, ~zero cost.** Otherwise
    `producer/raw/agentic-plan.json` holds the plan/ticket. The gate handles: kill switch, market hours,
-   stale/missing snapshot (trading **fails safe**), in-flight ticket sequencing, dust plans (< $25),
-   and not re-nagging an identical outstanding proposal.
+   stale/missing snapshot (trading **fails safe**), in-flight ticket sequencing, and dust plans (< $25).
+   **Not re-nagging an outstanding proposal is the in-flight branch's `await-confirm` idle** — a ticket
+   still sitting in `proposed` owns the run and the gate never reaches the planner, so it cannot propose
+   again. (There used to be a second planHash comparison at the bottom for this; it was unreachable and
+   was deleted 2026-09-02.)
 2. **`EXEC_PROPOSE`** — write the ticket (`makeTicket`, status `proposed`) to `producer/agentic-pending.json`,
-   commit + push to `main`, and PushNotification the owner a one-tap summary (sells → buys, turnover, est
-   ST tax net). Place nothing. (An owner later confirming = set status `confirmed`, commit; the next
-   executor pass places it.)
+   commit + push to `main`, and PushNotification the owner a summary (sells → buys, turnover, est
+   ST tax net) **naming both confirm paths**. Place nothing. Confirming is either
+   `node producer/agentic-confirm.mjs <id> --commit` (the one-command path — moves `proposed → confirmed`
+   through `advanceTicket`, writes the file and pushes it) or telling any Claude session
+   "confirm the pending rebalance". Either way the next executor pass places it.
 
    > **ALWAYS build the ticket with `makeTicket` — never hand-write it (v126).** Since v126 the ticket
    > carries `blockedSells` and `warnings` alongside the legs: the sells the planner WANTED to make and
@@ -456,8 +482,14 @@ Cheap by construction: every run starts with the deterministic gate and exits im
       > the stamp is decision-time only and cannot be backfilled, because a leg matched against a later
       > target would be credited to a thesis that did not pick it. Nothing errors when it is missing;
       > `makeDecision` logs a loud warning instead, so check the run output.
-      > (The executor Routine's own prompt predates this and says only "with `spyAt`" — it is bound to a
-      > persistent session and cannot be edited. **This runbook wins**, exactly as that prompt instructs.)
+      > (The executor Routine's own prompt predates this and says only "with `spyAt`". **This runbook
+      > wins**, exactly as that prompt instructs. The old claim here — that the prompt "cannot be edited"
+      > because the Routine was bound to a persistent session — is **wrong as of 2026-09-02**: the trigger
+      > was updated on 08-31, and since 09-02 it is a fresh-session Routine, so `update_trigger` edits its
+      > prompt in place like any other. The code-level guards stay anyway, as belt and braces: the gate
+      > writes `target` into `raw/agentic-plan.json`, and `makeDecision` warns loudly when either `target`
+      > or a positive `spyAt` is missing. Prefer a code guard to prompt wording for anything load-bearing —
+      > prompts are server-side and drift out of sight of this repo.)
 
       **Also stamp `completedAt` (ISO, the last fill's timestamp) on the ticket when you close it.**
       The gate reads it to refuse re-planning against a snapshot that predates those fills. Caught live

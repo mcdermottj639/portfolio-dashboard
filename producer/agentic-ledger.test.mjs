@@ -83,6 +83,22 @@ ok('empty ledger → empty map', Object.keys(activityFromDecisions([], { asOf: '
   const d3 = makeDecision({ date: '2026-07-01', book: 10000, spyAt: 700, buys: [{ sym: 'AAA', dollars: 1000, price: 100 }] });
   ok('no target ⇒ no drivers (never reconstructed later)', d3.trades[0].drivers === undefined);
 
+  // `spyAt` is the other decision-time stamp that cannot be backfilled (2026-09-02): alpha and the
+  // frozen marks both gate on spyAt > 0, so a record appended without it is permanently unmeasurable.
+  // The warning is the only signal — nothing throws, and the ledger looks complete.
+  const capture = (fn) => { const orig = console.warn; const seen = []; console.warn = (...a) => seen.push(a.join(' ')); try { fn(); } finally { console.warn = orig; } return seen.join('\n'); };
+  const warnNoSpy = capture(() => makeDecision({ date: '2026-09-02', book: 10000, spyAt: null, target: T,
+    buys: [{ sym: 'AAA', dollars: 1000, price: 100 }] }));
+  ok('a missing spyAt warns LOUDLY (the loss is invisible and permanent)', /spyAt/.test(warnNoSpy) && /never be graded/.test(warnNoSpy));
+  const warnZeroSpy = capture(() => makeDecision({ date: '2026-09-02', book: 10000, spyAt: 0, target: T,
+    trims: [{ sym: 'AAA', dollars: 500, price: 100 }] }));
+  ok('…including a non-positive spyAt, and on a sell-only ticket too', /spyAt/.test(warnZeroSpy));
+  const warnGoodSpy = capture(() => makeDecision({ date: '2026-09-02', book: 10000, spyAt: 640.12, target: T,
+    buys: [{ sym: 'AAA', dollars: 1000, price: 100 }] }));
+  ok('a positive spyAt does not warn', !/spyAt/.test(warnGoodSpy));
+  const warnNoTrades = capture(() => makeDecision({ date: '2026-09-02', book: 10000, spyAt: null, target: T }));
+  ok('a record with no trades at all is not nagged about a benchmark it cannot use', warnNoTrades === '');
+
   // Roll-up: AAA +20%, CCC -10%, SPY +5% over the window.
   const g = gradeDecisions([d1], { AAA: 120, CCC: 90, SPY: 735 }, '2026-08-01');
   const sl = g.sleeves;

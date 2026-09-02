@@ -89,22 +89,29 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    **Mode** column says when each is fetched (`FETCH_ALL` runs do all of them; `FETCH_LIGHT` runs
    do only the EVERY-RUN rows):
 
+   > **Tools are named `Connector · tool_name` here, deliberately unprefixed.** The full MCP tool name
+   > carries a **session-specific** server id — this doc used to spell it `mcp__claude_ai_Robinhood__…`,
+   > while a session today sees `mcp__1ad8dd47-…__get_portfolio` — so a prefix copied out of a runbook
+   > matches no tool that exists and reads as "the connector is missing". Match on the tool NAME
+   > (`get_portfolio`, `get_equity_positions`, …) against whatever the session actually offers. Same
+   > reason `allowed_tools` on a Routine must never enumerate MCP tool names (see `SCHEDULING.md` §5).
+
    | MCP tool | arguments | save raw output to | Mode |
    |---|---|---|---|
-   | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI] }` | `producer/raw/quotes.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
-   | `mcp__claude_ai_Robinhood__get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
-   | `mcp__claude_ai_Robinhood__get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<120 days ago, YYYY-MM-DD>" }` | `producer/raw/main-orders.json` | EVERY-RUN |
-   | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
-   | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
-   | `mcp__claude_ai_Robinhood__get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
+   | `Robinhood · get_portfolio` | `{ account_number: <account> }` | `producer/raw/portfolio.json` | EVERY-RUN |
+   | `Robinhood · get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
+   | `Robinhood · get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
+   | `Robinhood · get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
+   | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `Robinhood · get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
+   | `Robinhood · get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
+   | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
+   | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
+   | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
+   | `Robinhood · get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<120 days ago, YYYY-MM-DD>" }` | `producer/raw/main-orders.json` | EVERY-RUN |
+   | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
+   | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
+   | `Robinhood · get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
 
    > ### 💵 Realized P&L is BROKER-REPORTED, per account (v98)
    > `asset_classes` is **required** — omitting it errors with `un-specified asset class`. The agentic
@@ -211,7 +218,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 
 2c. **Holdings fundamentals (FETCH_ALL only — skip on `FETCH_LIGHT`, it carries forward)** —
-   `mcp__claude_ai_Robinhood__get_equity_fundamentals`
+   `Robinhood · get_equity_fundamentals`
    for the **top 14 holdings by market value** (the same set AV would cover; batch ≤10/call)
    → `producer/raw/holdings-fund.json`. `build-data.mjs` turns these into sector + dividend
    data (synthesized `COMPANY_OVERVIEW`) so **Allocation-by-Sector and Income/Dividends work
@@ -245,7 +252,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       Treasury for the 2s10s curve, CPI, Fed Funds — + 1 earnings + up to 14 fundamentals) —
       comfortably under 25.
    2. For each printed line, call the Alpha Vantage MCP tool
-      `mcp__claude_ai_AlphaVantage__TOOL_CALL` with `{ tool_name: "<tool>", arguments: "<args JSON>" }`
+      `Alpha Vantage · TOOL_CALL` with `{ tool_name: "<tool>", arguments: "<args JSON>" }`
       and save the **verbatim** result object to the printed path
       `producer/raw/av-src/<id>.json`. **Pace the calls ~1/second** — the free tier throttles
       bursts (a too-fast call comes back with an "Information" rate-limit message instead of data).
@@ -284,12 +291,12 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    (gate on the same `.fetched` date, or a separate `producer/raw/picks-built` marker). Fully
    Robinhood-driven; AV is optional enrichment for the finalists only.
    1. Run the saved scanner and save the result:
-      `mcp__claude_ai_Robinhood__run_scan { scan_id: "17e8f5a7-395f-4f22-bba8-f287d39b6e57" }`
+      `Robinhood · run_scan { scan_id: "17e8f5a7-395f-4f22-bba8-f287d39b6e57" }`
       → `producer/raw/scan.json`. (The scan = RSI(14) < 45 AND market cap > $10B — oversold
       large-caps across all sectors, with RSI already a column. Re-create with `create_scan` if
       the id ever 404s; update `SCAN_ID` in `picks.mjs`.)
    2. `node producer/picks-select.mjs` → prints the ~12 most-oversold finalist tickers.
-   3. `mcp__claude_ai_Robinhood__get_equity_fundamentals { symbols: [those finalists] }`
+   3. `Robinhood · get_equity_fundamentals { symbols: [those finalists] }`
       → `producer/raw/picks-fund.json` (P/E, P/B, sector, 52-wk range, dividend).
    4. *(hybrid, optional)* If AV budget remains, call `COMPANY_OVERVIEW` for each finalist and
       save to `producer/raw/av-src/overview-<SYM>.json` (revenue growth + forward P/E). Skip if
@@ -307,9 +314,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
 3c. **Options page** (the Options tab) — **EVERY-RUN** (cheap; run it on `FETCH_LIGHT` too).
    Fully Robinhood-driven; can run every snapshot
    (cheap) or once/day with picks.
-   1. `mcp__claude_ai_Robinhood__get_option_orders { account_number: <account> }`
+   1. `Robinhood · get_option_orders { account_number: <account> }`
       → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
-   2. `mcp__claude_ai_Robinhood__get_option_positions { account_number: <account>, nonzero: true }`
+   2. `Robinhood · get_option_positions { account_number: <account>, nonzero: true }`
       → `producer/raw/options-positions.json` (open contracts; may be empty).
    2b. **Live quotes for YOUR contracts:** collect the `option_id` of every pending order leg
       (from step 1) and every open position (step 2), then `get_option_quotes { instrument_ids:[…] }`
@@ -460,7 +467,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       so padding the list past what can be scored thins every sleeve's attention for nothing. 60 is what
       today's Alpha Vantage 25/day cap supports; raise it only alongside feeding fundamentals in via
       `args` (see the ceiling note in `research-universe.mjs`).
-   3. Run the **`agentic-research`** workflow (`.claude/workflows/agentic-research.js`) with
+   3. Run the **`agentic-research`** workflow **by name** — it is a repo workflow
+      (`.claude/workflows/agentic-research.js`), and the Routine prompt asking for it explicitly is what
+      authorizes the Workflow tool for that run; the **`agentic-research` Skill** is the equivalent entry
+      point where a session offers that instead. Pass
       `args:{ universe:<that list>, book:<••••3900 equity from agentic-portfolio.json>,
       held:<[{t,w}] from agentic-positions.json — ticker + current % of book>,
       priorTarget:<the committed producer/agentic-target.json> }` — `held`/`priorTarget` power the
@@ -486,7 +496,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       regulation rules** in `AGENTIC.md` as code: earnings-blackout, gap-through-entry re-verify,
       wash-sale, cash-flow-first, sells-before-buys, and the v98 PDT day-trade guard). If `.buys`/`.trims` are non-empty,
       **`PushNotification`** the owner the ticket.
-   6. **Place NOTHING** — execution is alert & one-tap-confirm; the owner confirms in a session. On a
+   6. **Place NOTHING** — execution is alert, then the owner's confirm (`node producer/agentic-confirm.mjs
+      <id> --commit`, or telling any Claude session to confirm the pending rebalance). On a
       confirmed placement, **append the decision** to `producer/agentic-decisions.json` (`makeDecision`,
       with `spyAt` **and `target`**, so each buy leg carries its `drivers` for sleeve attribution) so the
       Rebalance Log grades it.
@@ -519,6 +530,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
   next scheduled run republishes. Improvising here just stalls the unattended run on permission
   prompts — exactly what we avoid.
 - The **freshness watchdog** (`.github/workflows/freshness.yml`) opens a GitHub issue if
-  `data.json` goes >3h without a refresh during market hours, and auto-closes it on recovery — so
-  a stalled run never goes unnoticed.
+  `data.json`'s commit goes **>90 min without a refresh while the market is open** (holiday/half-day
+  aware via `market.mjs`), and auto-closes it on recovery — so a stalled run never goes unnoticed. It
+  was 3h until the threshold was tightened; real 60–105 min scheduler gaps were passing as healthy.
 
