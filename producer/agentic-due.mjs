@@ -12,7 +12,16 @@ import { dirname, join } from 'node:path';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REFRESH_DAYS = 7;
+// 6, not 7, and the one-day slack is load-bearing. The research Routine fires on a WEEKLY cron
+// (`12 11 * * 1`, Mondays) while `asOf` is stamped whenever finalize-target happens to write — and
+// every committed target so far landed on a TUESDAY. Monday minus the previous Tuesday is 6 days, so
+// a `>= 7` gate is never satisfied by the very cron that is supposed to satisfy it: on 2026-08-31 the
+// Routine fired, ran 109 seconds, printed AGENTIC_NOT_DUE and stopped — reporting SUCCEEDED, because
+// stopping cleanly IS success — and the target then aged to 8 days, which pushed MA and V past
+// ENTRY_ZONE_STALE_DAYS so the deploy planner waived their entry bands entirely. A weekly job must not
+// be able to skip a week because its own output landed a day late. This cannot cause over-frequent
+// research: the cron is weekly, so the gate is a backstop against ad-hoc double-runs, not the schedule.
+const REFRESH_DAYS = 6;
 const tf = join(__dirname, 'agentic-target.json');
 
 let due = true, asOf = null, ageDays = null;
