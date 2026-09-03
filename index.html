@@ -823,7 +823,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v133'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v134'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2830,6 +2830,7 @@ const AG_EARN_BLACKOUT_D=7,      // EARNINGS_BLACKOUT_DAYS — no NEW money ≤7
       AG_REENTRY_D=14,           // REENTRY_COOLDOWN_DAYS
       AG_AUTO_CAP=10000,         // AUTO_TURNOVER_CAP — unattended-execution ceiling per ticket (owner raised $1,000 → $10,000, 2026-08-25)
       AG_MIN_BUY=25,             // MIN_BUY — dust floor
+      AG_BUY_GAP_MIN=0.5,        // agentic-deploy.mjs `if (gap > 0.5)` — the buy gate every deferral sits behind
       AG_IDLE_DEPLOY_D=10,       // CASH_IDLE_DEPLOY_DAYS — idle-cash deadline
       AG_IDLE_TRANCHE_PCT=34,    // CASH_IDLE_TRANCHE_PCT
       AG_IDLE_SWEEP_FLOOR=250,   // CASH_IDLE_SWEEP_FLOOR
@@ -2867,14 +2868,36 @@ function agenticEntryBounds(e){
   const lo=parseFloat(m[0]), hi=m.length>1?parseFloat(m[1]):lo;
   return (hi>=lo)?{lo,hi}:{lo,hi:lo};
 }
-/* Execution-discipline deferrals for research-target names. `rows` = [{sym,px,_entry,_stop}].
+/* How many dollars this name is UNDERWEIGHT — i.e. how big a buy the planner would actually place.
+   Mirrors the `gap` in agentic-deploy.mjs step 1 exactly, park allowance included: the parked slice
+   rides inside the vehicle's position but is other names' money waiting, so the vehicle would read
+   overweight and never attract the buy that releases it. >0 = buy pending, <=0 = at/over target.
+   THIS IS THE GATE EVERY DEFERRAL SITS BEHIND (2026-09-03) — see agenticExecMap. */
+function agenticBuyGap(x,book,parkedD){
+  if(!x)return 0;
+  const parkAllowance=(x.sym===AG_PARK_VEHICLE)?Math.max(0,+parkedD||0):0;
+  return +(((Math.max(0,+book||0))*(+x.tgt||0)/100 + parkAllowance) - Math.max(0,+x.curVal||0)).toFixed(2);
+}
+/* Execution-discipline deferrals for research-target names. `rows` = [{sym,px,tgt,curVal,_entry,_stop}].
    Returns {map,zoneAge,stale}. The entry band is SYMMETRIC, TOLERANCED and AGEING (v102): a 0.2%
    miss under the floor must not park a position, a name trading ABOVE its zone is deferred too, and
    zones older than AG_ENTRY_STALE_D go advisory — when a whole target reads out-of-band at once the
    guard is measuring its own staleness, not the companies. `below-stop` stays absolute: that one is
-   the real thesis-broken signal. A wash-blocked name is skipped — that deferral owns the name. */
-function agenticExecMap(rows,targetAsOf,washMap){
+   the real thesis-broken signal. A wash-blocked name is skipped — that deferral owns the name.
+
+   A DEFERRAL IS A STATEMENT ABOUT A BUY, SO THERE MUST BE A BUY (2026-09-03). This used to score
+   every target name on price alone, and so reported "⏳ wait for pullback" for names the account
+   already holds at or above their target weight — where the planner places nothing either way, and
+   the live question is the stop/TP, not the entry. Live on the 09-03 snapshot that was 8 rows on
+   the card against 2 from the planner: MSFT/NVDA/AMZN/GOOGL/SHEL/LLY were all fully weighted, and
+   the phantom "above entry" also OUTRANKED the real drift status in statusOf, hiding it. Both
+   surfaces now gate on the same `gap` the planner gates on, so the card can only ever claim a
+   deferral the executor would actually make. Pass `opts.book` + `opts.parked`; without a book the
+   gate can't be computed and every name is scored (the pre-gate behaviour). */
+function agenticExecMap(rows,targetAsOf,washMap,opts){
   const today=agToday(), P=(v)=>'$'+(+v).toFixed(2), map={};
+  const book=Math.max(0,+((opts&&opts.book)||0));
+  const parkedD=(opts&&opts.parked)?Math.max(0,+opts.parked.dollars||0):0;
   const zoneAge=(()=>{ if(!targetAsOf)return null;
     const a=Date.parse(String(targetAsOf).slice(0,10)+'T00:00:00Z'), b=Date.parse(today+'T00:00:00Z');
     return (isFinite(a)&&isFinite(b))?Math.round((b-a)/86400000):null; })();
@@ -2882,6 +2905,10 @@ function agenticExecMap(rows,targetAsOf,washMap){
   for(const x of (rows||[])){
     if(!x||!x.sym)continue;
     if(washMap&&washMap[x.sym])continue;
+    // A phase-out name is a lame duck: held, but never bought into. The planner `continue`s before
+    // any deferral is pushed, so there is nothing here to defer either.
+    if(x.phaseOut)continue;
+    if(book>0&&!(agenticBuyGap(x,book,parkedD)>AG_BUY_GAP_MIN))continue; // no pending buy ⇒ no deferral
     const er=(typeof azEarn==='function')?azEarn(x.sym):null;
     let dAway=null;
     if(er&&er.date){ const d=Date.parse(String(er.date).slice(0,10)+'T00:00:00Z');
@@ -3144,7 +3171,9 @@ function renderAgenticCard(){
   if(T){
     targetSrc='research';
     chosen=T.map(n=>{ const sym=n.ticker; if(!sym)return null; const cv=heldValOf(sym);
-      return {sym,sector:n.sector||secOf(sym),tgt:+n.weightPct||0,px:pxOf(sym),curVal:cv,held:cv>0,kind:'',_stop:+n.stop||0,_tp:+n.target||0,_entry:n.entry||''}; }).filter(Boolean);
+      // `phaseOut` rides along so the shared deferral gate can skip a lame duck exactly as the
+      // planner does (held, but never bought into — so nothing to defer).
+      return {sym,sector:n.sector||secOf(sym),tgt:+n.weightPct||0,px:pxOf(sym),curVal:cv,held:cv>0,kind:'',phaseOut:!!n.phaseOut,_stop:+n.stop||0,_tp:+n.target||0,_entry:n.entry||''}; }).filter(Boolean);
     const tsum=chosen.reduce((s,x)=>s+x.tgt,0)||1; chosen.forEach(x=>{ x.tgt=x.tgt/tsum*100; });
     chosen.sort((a,b)=>b.tgt-a.tgt);
   } else {
@@ -3202,7 +3231,7 @@ function renderAgenticCard(){
   //    companies. `below-stop` stays absolute — that one is the real thesis-broken signal.
   const EARN_BLACKOUT_D=AG_EARN_BLACKOUT_D, ENTRY_TOL_PCT=AG_ENTRY_TOL_PCT, ENTRY_PREM_PCT=AG_ENTRY_PREM_PCT, ENTRY_STALE_D=AG_ENTRY_STALE_D;
   // Research target only — the heuristic pool carries no entry zones / thesis to re-verify.
-  const _eg=(targetSrc==='research')?agenticExecMap(chosen,targetAsOf,washMap):{map:{},zoneAge:null,stale:false};
+  const _eg=(targetSrc==='research')?agenticExecMap(chosen,targetAsOf,washMap,{book,parked:(A&&A.parked)||null}):{map:{},zoneAge:null,stale:false};
   const execMap=_eg.map, _zoneAge=_eg.zoneAge, _zonesStale=_eg.stale;
   const execBadge=(sym)=>{ const e=execMap[sym]; if(!e)return ''; const tag=e.reason==='earnings'?'wait for print':e.reason==='above-entry'?'too rich':'re-verify';
     return `<span class="badge" style="background:#fef3c7;color:#92400e" title="${e.note}">${e.label}</span> <span style="color:#9ca3af;font-size:10px">${tag}</span>`; };
@@ -3393,7 +3422,11 @@ function renderAgenticPlan(){
     drivers:Array.isArray(n.drivers)?n.drivers:[],
     curVal:(()=>{ const h=heldPos.find(p=>p.symbol===n.ticker); return h?Math.max(0,+h.value||0):0; })()}));
   rows.forEach(x=>{ x.held=x.curVal>0; x.cur=book>0?x.curVal/book*100:0; x.drift=x.cur-x.tgt; });
-  const {map:execMap,zoneAge,stale:zonesStale}=agenticExecMap(rows,T.asOf,washMap);
+  rows.forEach(x=>{ x.buyGap=agenticBuyGap(x,book,(A&&A.parked)?A.parked.dollars:0); });
+  // Is the planner actually trying to BUY this name? Every buy-side badge on this page hangs off
+  // this — a guard on a trade nobody is making is noise, and worse, it outranks the real status.
+  const buyPending=(x)=>!!x&&!x.phaseOut&&(!(book>0)||x.buyGap>AG_BUY_GAP_MIN);
+  const {map:execMap,zoneAge,stale:zonesStale}=agenticExecMap(rows,T.asOf,washMap,{book,parked:(A&&A.parked)||null});
   const tgtAge=daysSince(T.asOf);
   const heldSet=new Set(heldPos.map(p=>p.symbol));
   const targetSet=new Set(rows.map(x=>x.sym));
@@ -3451,7 +3484,7 @@ function renderAgenticPlan(){
 
   // ── 2. the target and why ────────────────────────────────────────────────────────────────────
   const statusOf=(x)=>{
-    if(washMap[x.sym])return {t:'wash-sale hold',c:'#92400e',b:'#fef3c7'};
+    if(washMap[x.sym]&&buyPending(x))return {t:'wash-sale hold',c:'#92400e',b:'#fef3c7'};
     if(execMap[x.sym])return {t:execMap[x.sym].reason==='earnings'?'earnings blackout':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry':'below entry',c:'#92400e',b:'#fef3c7'};
     if(x.phaseOut)return {t:'phasing out',c:'#6b7280',b:'#f3f4f6'};
     if(!x.held)return {t:'to open',c:'#1d4ed8',b:'#dbeafe'};
@@ -3483,7 +3516,10 @@ function renderAgenticPlan(){
     </div></div>`;
 
   // ── 3. what's blocked and why ────────────────────────────────────────────────────────────────
-  const washRows=rows.filter(x=>washMap[x.sym]);
+  // Same buy gate as agenticExecMap: a wash-sale window on a name already at its target weight
+  // blocks a rebuy that isn't being made. `buyGap` carries the planner's park allowance, which is
+  // why the parking vehicle can legitimately appear here on a book that looks fully weighted.
+  const washRows=rows.filter(x=>washMap[x.sym]&&buyPending(x));
   const execRows=rows.filter(x=>execMap[x.sym]);
   const blockList=[
     ...washRows.map(x=>{ const w=washMap[x.sym];
@@ -3526,7 +3562,7 @@ function renderAgenticPlan(){
     : 'nothing deferred';
   const blockedCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blockHint}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do.</div>
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do. Only names it is actually trying to <b>buy</b> can appear: a name already held at its target weight has no buy to defer, so its entry zone is moot and the levels that matter are its <b>stop and take-profit</b> on the target card above.</div>
       ${agDrawdownBanner()}${agRegimeBanner()}
       ${(blockList.length||sellBlockHtml)?'':`<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
       ${blockList.length?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:0 0 6px">🛒 Buys deferred</div>`+blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):''}
@@ -4596,6 +4632,9 @@ window.switchTab=switchTab;
       <li><span class="hk">below stop</span> — trading at or below the target's stop: the setup is broken, not cheap.</li>
       <li><span class="hk">below / above entry</span> — outside the research's entry band. Too cheap means re-verify the thesis; too rich means wait for the pullback the research priced in.</li>
     </ul>
+    <div class="hsub">Why a name you hold usually isn't listed</div>
+    <p>Every reason above is a reason not to <b>buy</b>, so a name only appears while the planner is actually trying to buy it — i.e. while the account is <b>underweight</b> that name. Once a position is filled to its target weight there is no buy to defer, its entry zone stops mattering, and the live levels become its <b>stop</b> and <b>take-profit</b> (both on the target card, and both pushed to your phone when they're crossed).</p>
+    <p>So an entry deferral on a name you already own is not a contradiction: it means the target wants <i>more</i> of it than you hold, and the planner won't top it up at this price. The parking vehicle can appear the same way — dollars waiting inside it are other names' money, so it reads underweight even when the position looks full.</p>
     <div class="hsub">Sells get held back too</div>
     <p>The reasons above are all <b>buy</b>-side. A planned <i>sell</i> — an exit, a trim, a harvest — can be held by two guards of its own, and the "Sells held back" list shows them with the date each clears:</p>
     <ul>

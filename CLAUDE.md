@@ -231,7 +231,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v133** (`pf-v133`) — v133 replaced the **"one-tap confirm" wording** the app had never been able to deliver with the two real confirm paths (`agentic-confirm.mjs`, or a reply in Claude); v132 added the Income & Tax **prediction-market line item**; before that, — v127 added the self-directed Rebalance Log, v128 moved it to the Accounts tab beside the agentic one, v129 made both logs **accumulate a usable record** (frozen outcome marks + time-based retention), v130 **backfilled those marks from recorded daily closes** so the record starts full instead of empty, and v131 was the **navigation & accessibility pass** — bottom tab bar, section rail, Find, My view, ▲/▼ glyphs (all below).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v134** (`pf-v134`) — v134 gated every agentic **buy-side deferral on there actually being a buy** (the phantom "above entry" rows — see the gotcha); v133 replaced the **"one-tap confirm" wording** the app had never been able to deliver with the two real confirm paths (`agentic-confirm.mjs`, or a reply in Claude); v132 added the Income & Tax **prediction-market line item**; before that, — v127 added the self-directed Rebalance Log, v128 moved it to the Accounts tab beside the agentic one, v129 made both logs **accumulate a usable record** (frozen outcome marks + time-based retention), v130 **backfilled those marks from recorded daily closes** so the record starts full instead of empty, and v131 was the **navigation & accessibility pass** — bottom tab bar, section rail, Find, My view, ▲/▼ glyphs (all below).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -899,6 +899,34 @@ Three hazards this table exists to prevent:
   nothing, but the gate re-planned it hourly and never wrote a ticket, so the "identical proposal already
   outstanding" idle guard never engaged — a permanent false EXEC_AUTO that would mask a real one. A
   harmless bug that degrades a signal you rely on is not harmless.
+- **A GUARD RENDERED WITHOUT THE TRADE IT GUARDS IS NOISE — AND IT OUTRANKED THE REAL STATUS (2026-09-03).**
+  The Plan tab's "What's blocked" card listed **8 buys deferred** on a day the planner deferred **2**. Six of
+  them — MSFT, NVDA, AMZN, GOOGL, SHEL, LLY — were names the account already held at or above their target
+  weight, flagged `above entry` purely because spot sat over the research's entry ceiling. The owner read it
+  exactly right: *"it's looking for entry positions for stocks we already have."*
+  **Root cause: the consumer scored every target name on PRICE, the planner scores only names it is BUYING.**
+  Every deferral in `agentic-deploy.mjs` is pushed inside `if (gap > 0.5)` — underweight by more than fifty
+  cents — so a fully-weighted name never reaches a guard at all. `agenticExecMap` in `index.html` had no gap
+  input and looped the whole target. The two had drifted since v104 without either being individually wrong:
+  the band logic was a faithful mirror, it was just being asked about names the planner never asks about.
+  **Three things generalize.**
+  **(a) A guard is a statement about a specific trade, so rendering it needs that trade to exist.** "Is the
+  price outside the band" and "would we defer this buy" are different questions, and only the second is what
+  a card headed *what's blocked* claims to answer. Mirroring a guard's THRESHOLDS is not mirroring the guard
+  — the precondition is half of it. `agenticBuyGap` now computes the planner's `gap` (park allowance and all)
+  in ONE place that both the card and the Plan page call.
+  **(b) The phantom actively HID the truth, which is what makes it worse than clutter.** `statusOf` ranks the
+  deferral badge above the drift badge, so MSFT showed `above entry` instead of `on target` — the card had a
+  correct answer available and printed a wrong one over the top of it. Any priority-ordered status needs its
+  high-priority branches gated at least as tightly as the thing they suppress.
+  **(c) The reader's follow-up question was the right one and the card should answer it in place.** Once a
+  position is at weight the live levels are the **stop and take-profit**, not the entry zone — so the card and
+  its help now say so explicitly, rather than leaving "why is my holding being screened for entry" to be
+  worked out. An entry deferral on a HELD name is still legitimate whenever the target wants *more* than is
+  held (MA, 2.03% against a 5% target, was one of the two real rows), and the parking vehicle appears the same
+  way because parked dollars are other names' money — so the fix is a gap test, never a "skip held names" test.
+  Verified by replaying the fixed consumer functions and the real `planDeployment` over the live 09-03
+  snapshot: 8 rows → 2, exactly matching the planner's `MA:above-entry, VTI:wash-sale`.
 - **A target refresh is not an execution order — the churn governor stands between them (2026-08-12).**
   The weekly research is memoryless and the deploy planner used to execute the full delta immediately, so
   two consecutive targets disagreeing flipped the whole book: 08-10 exited GE/LLY/AMZN/MSFT and bought
@@ -1216,7 +1244,10 @@ Three hazards this table exists to prevent:
   zones have gone advisory — and **💸 Sells held back**, read from `data.agentic.pending.blockedSells`, naming the
   guard, the trade it would have been and the unlock date. The sell half exists because the buy half is computed
   from the TARGET, and an exit sells a name the target no longer contains — so a suppressed exit was structurally
-  unrenderable here, which is how a deposit-funded buys-only ticket came to look like a failure on 2026-08-25),
+  unrenderable here, which is how a deposit-funded buys-only ticket came to look like a failure on 2026-08-25.
+  **v134 gated the buy half on `agenticBuyGap` — a deferral is only shown for a name the planner is actually
+  trying to BUY** (underweight past the planner's own `gap > 0.5`, park allowance included), so a name held at
+  its target weight no longer reports "⏳ wait for pullback" for a top-up nobody is making; see the gotcha),
   **🅿️ The waiting ground**
   (`data.agentic.parked` — the VTI ledger), **📏 Guardrails** (the standing rulebook: cluster/vol caps,
   min-hold, re-entry cooldown, wash window, earnings blackout, entry band, drift trigger, auto tier, PDT,
