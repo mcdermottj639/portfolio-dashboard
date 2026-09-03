@@ -823,7 +823,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v134'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v135'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2831,6 +2831,7 @@ const AG_EARN_BLACKOUT_D=7,      // EARNINGS_BLACKOUT_DAYS — no NEW money ≤7
       AG_AUTO_CAP=10000,         // AUTO_TURNOVER_CAP — unattended-execution ceiling per ticket (owner raised $1,000 → $10,000, 2026-08-25)
       AG_MIN_BUY=25,             // MIN_BUY — dust floor
       AG_BUY_GAP_MIN=0.5,        // agentic-deploy.mjs `if (gap > 0.5)` — the buy gate every deferral sits behind
+      AG_WASH_MIN_LOSS=25,       // realizedpnl.mjs WASH_MIN_LOSS — de-minimis floor; under this a loss never enters the ledger
       AG_IDLE_DEPLOY_D=10,       // CASH_IDLE_DEPLOY_DAYS — idle-cash deadline
       AG_IDLE_TRANCHE_PCT=34,    // CASH_IDLE_TRANCHE_PCT
       AG_IDLE_SWEEP_FLOOR=250,   // CASH_IDLE_SWEEP_FLOOR
@@ -3576,14 +3577,14 @@ function renderAgenticPlan(){
   const parkVal=(()=>{ const h=heldPos.find(p=>p.symbol===AG_PARK_VEHICLE); return h?Math.max(0,+h.value||0):0; })();
   const parkCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-park" onclick="toggleSection('b-agp-park')"><span>🅿️ The waiting ground <span class="card-hint">${parked?fmtD(parked.dollars)+' parked in '+(parked.vehicle||AG_PARK_VEHICLE):'nothing parked'}</span></span><span class="chevron">▼</span></div><div id="b-agp-park">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">When a name is deferred, its dollars don't sit in cash — they wait in <b>${AG_PARK_VEHICLE}</b>, a broad-market placeholder, and are released to fund the name once it clears. <b>${AG_PARK_VEHICLE}, not SPY</b>: SPY is the target's own ballast, so parking there would bury the placeholder inside a real position — and the two track different indexes, so they're never "substantially identical" for wash-sale purposes. Not QQQ either, since half of it is the megacap-tech cluster the ${AG_CLUSTER_CAP}% cap exists to contain.</div>
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Only a <b>wash-sale</b> deferral waits here now (owner decision, 2026-09-03, after switching idle cash to a <b>high-yield sweep</b>): its dollars go into <b>${AG_PARK_VEHICLE}</b>, a broad-market placeholder, and are released to fund the name once the 30-day window clears. Every OTHER deferral — entry band, earnings, policy, re-entry, below-stop, regime, drawdown — now waits in <b>cash</b>. A round trip through the vehicle pays a full spread (~0.21%) to rent a few days of equity beta; measured on this book it earned <b>+$0.78 on ~$1,000 of turnover</b>, less than the spread, while ${AG_PARK_VEHICLE} itself fell 0.22%. A 30-day wash wait is the one case long enough to be worth it. <b>${AG_PARK_VEHICLE}, not SPY</b>: SPY is the target's own ballast, so parking there would bury the placeholder inside a real position — and the two track different indexes, so they're never "substantially identical" for wash-sale purposes. Not QQQ either, since half of it is the megacap-tech cluster the ${AG_CLUSTER_CAP}% cap exists to contain.</div>
       ${parked?`
         <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr)">
           <div class="pk-m"><div class="pk-m-l">Parked (cost)</div><div class="pk-m-v">${fmtD(parked.dollars)}</div></div>
           <div class="pk-m"><div class="pk-m-l">${parked.vehicle||AG_PARK_VEHICLE} held now</div><div class="pk-m-v">${parkVal>0?fmtD(parkVal):'—'}</div></div>
         </div>
         <div class="fund-note" style="margin:10px 0 0">Waiting on behalf of <b>${(parked.forNames||[]).join(', ')||'—'}</b>, parked since <b>${dLbl(parked.since)}</b>. Each release is a real short-term taxable sale, so it's floored at ${fmtD(AG_PARK_MIN)}, sized to the actual shortfall, and runs through the same losses-first ordering and day-trade guard as any other sell.</div>
-        <div class="fund-note" style="margin:8px 0 0">${AG_PARK_VEHICLE} is deliberately <b>exempt from the off-target exit rule</b> — it is absent from the target by design, so treating it as an orphan would liquidate it on every pass while parking rebuilt it, an infinite taxable churn loop.</div>`:
+        <div class="fund-note" style="margin:8px 0 0">${AG_PARK_VEHICLE} is deliberately <b>exempt from the off-target exit rule</b> — treating it as an orphan would liquidate it on every pass while parking rebuilt it, an infinite taxable churn loop.</div>`:
         `<div class="tech-empty">Nothing parked — no target name is currently deferred with money waiting behind it.</div>`}
     </div></div>`;
 
@@ -3596,8 +3597,8 @@ function renderAgenticPlan(){
       ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
       ${rule('🛡️','Defensive floor','≥'+AG_DEFENSIVE_MIN+'% of book'+agDefensiveNote(),'Every other rule on this card is a CEILING — this is the only floor. Nothing previously made the book own a stabilizer, so a target could hold 0% staples, 0% utilities and 0% healthcare forever: the composite weights momentum and growth at 0.44 combined against valuation\'s 0.18, so an expensive fast name always outranks a cheap stable one. Counts staples, utilities, telecom, REITs, managed care and low-vol vehicles — but only if the name actually trades like one (52wk range no wider than a normal large-cap), so a high-multiple healthcare name does not qualify on its GICS label alone. SPY/'+AG_PARK_VEHICLE+' count only through their small defensive sleeves.')}
       ${rule('⏳','Min-hold',AG_MIN_HOLD_D+' days','A name bought inside the window is not exited or trimmed. Overridden only by a business-broken verdict, a loss past −10% (risk control outranks churn control), or a harvest/park release. Added after two consecutive targets flipped the whole book in 48 hours.')}
-      ${rule('🔁','Re-entry cooldown',AG_REENTRY_D+' days','A name this account sold inside the window is not rebought — it covers the gain-sells the 30-day wash ledger cannot see. The weight parks in '+AG_PARK_VEHICLE+' meanwhile.')}
-      ${rule('🧾','Wash-sale window',AG_WASH_WINDOW_D+' days, cross-account','The IRS window is per taxpayer, so the ledger reads BOTH taxable books. A loss booked in ••••0741 blocks a rebuy here — the exact trade that partially disallowed a −$431 NVDA loss once.')}
+      ${rule('🔁','Re-entry cooldown',AG_REENTRY_D+' days','A name this account sold inside the window is not rebought — it covers the gain-sells the 30-day wash ledger cannot see. The weight waits in cash meanwhile (since 2026-09-03 only a wash-sale deferral parks).')}
+      ${rule('🧾','Wash-sale window',AG_WASH_WINDOW_D+' days, cross-account','The IRS window is per taxpayer, so the ledger reads BOTH taxable books. A loss booked in ••••0741 blocks a rebuy here — the exact trade that partially disallowed a −$431 NVDA loss once. Losses under '+fmtD(AG_WASH_MIN_LOSS)+' are ignored: a disallowed loss is not lost, it moves to the new shares\' basis, so pennies should never gate a real allocation (a $1.01 loss was blocking a $29.25 buy for 30 days).')}
       ${rule('📅','Earnings blackout','≤'+AG_EARN_BLACKOUT_D+' days','No NEW money into a name about to report. Wait for the print, then buy with full information.')}
       ${rule('🎯','Entry band','−'+AG_ENTRY_TOL_PCT+'% / +'+AG_ENTRY_PREM_PCT+'%, advisory past '+AG_ENTRY_STALE_D+'d','Symmetric on purpose: too cheap means re-verify the thesis, too rich means wait for the pullback the research priced in.')}
       ${rule('⚖️','Drift trigger',(T.driftTriggerPp||AGENTIC_DRIFT)+'pp','A name is only rebalanced once it drifts this far from target — small gaps are not worth the spread or the tax.')}
@@ -3618,7 +3619,7 @@ function renderAgenticPlan(){
       <div class="act-list">
         ${step('1','Research — weekly, or early','A multi-sleeve deep research run (momentum · quality · growth · catalyst, with an adversarial verify pass) proposes names and weights. It also runs early when a deposit lands or a held name gaps ≥6% — the system reacts to events, not just the calendar.')}
         ${step('2','Finalize — caps re-enforced','<code>finalize-target.mjs</code> re-applies the cluster and vol-scaled caps to whatever the research returned, and a held name the research dropped is retained one cycle as a <b>phase-out</b> (zero trades) unless the verdict was explicitly business-broken. A target refresh expresses intent; it is not an execution order.')}
-        ${step('3','Plan — drift becomes a ticket','The deploy planner compares the target to the real book and writes a ticket: exits first, then harvests, then buys — losses sold first for tax, with every guardrail above applied. Deferred weight parks in '+AG_PARK_VEHICLE+'.')}
+        ${step('3','Plan — drift becomes a ticket','The deploy planner compares the target to the real book and writes a ticket: exits first, then harvests, then buys — losses sold first for tax, with every guardrail above applied. Wash-sale-deferred weight parks in '+AG_PARK_VEHICLE+'; every other deferral waits in cash.')}
         ${step('4','Execute — hourly, within the tier','An hourly executor places tickets at or under the '+fmtD(AG_AUTO_CAP)+' auto tier unattended and pushes anything larger for your confirm — one command, or a reply in Claude. Sells fund the buys in the same session; nothing bought today is sold today.')}
         ${step('5','Grade — the account\'s own record','Every confirmed rebalance is logged and graded against what happened next and against SPY, so the strategy can be judged rather than just repeated.')}
       </div>

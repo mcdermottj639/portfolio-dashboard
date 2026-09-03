@@ -112,11 +112,32 @@ export function buildRealized({ accounts = {}, year, asOf } = {}) {
 // an agentic rebuy just the same. The ledger therefore merges BOTH taxable accounts' losses (the 2026
 // NVDA case: the owner sold 35 NVDA at a −$431.76 loss in ••••0741 on Jul 29 and the agentic executor,
 // whose ledger only read ••••3900's empty trade history, bought NVDA back on Aug 11 inside the window).
-export function lossesFromTrades(raw, { asOf, days = 31, account } = {}) {
+//
+// DE-MINIMIS FLOOR (`WASH_MIN_LOSS`, owner-set $25 on 2026-09-03). A loss under the floor does not
+// enter the ledger, so it blocks nothing. This ledger is a PRE-TRADE AVOIDANCE tool, not a tax
+// record — Robinhood reports within-account wash sales on the 1099-B whatever this file says — and
+// the cost of ignoring a trivial one is a timing difference on pennies, because a disallowed loss is
+// not lost: it is added to the replacement shares' basis. The cost of HONOURING one is a real 30-day
+// block on a real allocation. Live on 2026-09-03 that was a **$1.01** VTI loss deferring a $29.25
+// VTI target buy to Oct 2 — and VTI is the parking vehicle, so its own park/release round trips
+// manufacture exactly these pennies (−$1.01 on 09-02, −$0.24 on 08-27) and would keep the target's
+// own 5% ballast allocation permanently gated.
+//
+// Two things about the floor are load-bearing. (a) It is applied to the symbol's TOTAL loss for the
+// day, not per trade — a day of five −$20 clips is a −$100 loss and must still block, and testing
+// each fill separately would wave it through. The stored `realized` stays the largest SINGLE loss
+// (the v98 shape), so only what is FILTERED changed, not what is reported. (b) It cannot reach the
+// Railway inference fallback, which has no `realized` field at all — an inferred entry has no known
+// size, so it keeps blocking. That is the right way round: unknown magnitude must fail safe.
+export const WASH_MIN_LOSS = 25;
+
+export function lossesFromTrades(raw, { asOf, days = 31, account, minLoss = WASH_MIN_LOSS } = {}) {
   const r = unwrapPnl(raw);
   const trades = Array.isArray(r.trades) ? r.trades : [];
   const cutoff = asOf ? shiftDays(asOf.slice(0, 10), -days) : null;
+  const floor = Math.max(0, num(minLoss) ?? 0);
   const byKey = new Map();
+  const dayTotal = new Map();
   for (const t of trades) {
     const g = num(t && t.realized_gain);
     if (g == null || g >= 0) continue;                       // gains aren't wash-sale relevant
@@ -125,12 +146,16 @@ export function lossesFromTrades(raw, { asOf, days = 31, account } = {}) {
     if (!sym || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     if (cutoff && date < cutoff) continue;
     const key = sym + '|' + date;
+    dayTotal.set(key, (dayTotal.get(key) || 0) + g);
     const entry = { sym, date, realized: +g.toFixed(2), exitPx: num(t.price) != null ? +num(t.price).toFixed(4) : null };
     if (account) entry.account = account;
     const prev = byKey.get(key);
     if (!prev || entry.realized < prev.realized) byKey.set(key, entry);
   }
-  return [...byKey.values()].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return [...byKey.entries()]
+    .filter(([key]) => Math.abs(dayTotal.get(key) || 0) >= floor)
+    .map(([, e]) => e)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 }
 
 function shiftDays(day, delta) {

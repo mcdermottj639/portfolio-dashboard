@@ -59,9 +59,12 @@ const FIXTURES = {
   // Real closing trades for the agentic account — the wash-sale ledger's authoritative source. One
   // loss (CCC), one gain (AAA, must be ignored). The prior snapshot's INFERRED 'ZZZ' entry has no
   // matching trade and must be dropped rather than keep blocking a buy for 30 days.
+  // EEE is a DE-MINIMIS loss (−$1.01, the real 2026-09-02 VTI figure): under WASH_MIN_LOSS, so it must
+  // never reach the ledger and never block a buy. That penny was gating a $29.25 target buy for 30 days.
   'agentic-trades.json': { data: { trades: [
-    { timestamp: new Date(Date.now() - 3 * 24 * 3600e3).toISOString(), symbol: 'CCC', side: 'sell', quantity: '2', price: '41.10', realized_gain: '-18.40' },
+    { timestamp: new Date(Date.now() - 3 * 24 * 3600e3).toISOString(), symbol: 'CCC', side: 'sell', quantity: '2', price: '41.10', realized_gain: '-118.40' },
     { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'AAA', side: 'sell', quantity: '1', price: '108.00', realized_gain: '12.00' },
+    { timestamp: new Date(Date.now() - 2 * 24 * 3600e3).toISOString(), symbol: 'EEE', side: 'sell', quantity: '1', price: '377.04', realized_gain: '-1.01' },
   ] } },
   // The SELF-DIRECTED book's closing trades (v105) — its losses must land in the SAME ledger tagged
   // 'main' (the cross-account wash guard: the real Jul-29 NVDA loss the agentic executor rebought
@@ -285,7 +288,10 @@ try {
   eq('margin-book GAIN ignored', out.agentic.recentLosses.some((l) => l.sym === 'DDD'), false);
   eq('phantom inferred entry dropped', out.agentic.recentLosses.some((l) => l.sym === 'ZZZ'), false);
   eq('dropped phantom is logged', stdout.includes('no matching closing trade'), true);
-  eq('realized loss amounts carried', out.agentic.recentLosses.map((l) => l.realized), [-18.40, -431.76]);
+  eq('realized loss amounts carried', out.agentic.recentLosses.map((l) => l.realized), [-118.40, -431.76]);
+  // The $25 de-minimis floor (owner-set 2026-09-03), end-to-end: a −$1.01 loss must not enter the
+  // ledger at all, so it cannot block a rebuy. Live, a $1.01 VTI loss was deferring a $29.25 buy.
+  eq('de-minimis loss never reaches the ledger', out.agentic.recentLosses.some((l) => l.sym === 'EEE'), false);
   eq('margin-book fetch is logged', stdout.includes('cross-account wash ledger: 1 margin-book realized loss'), true);
 
   // Flow & Positioning: the fresh sidecar lands, the unfetched name carries forward, and asOf advances

@@ -197,7 +197,16 @@ export const PARK_MIN = 100;   // don't park (or release) less than this — the
 //     moves, which historically took 1-6 days, and can clear on the very next pass.
 // Undated deferrals now wait in CASH. Cash is the safe failure mode — it cannot lose to a spread — and
 // the idle-cash deadline still backstops it, so this delays a buy at worst and never vetoes one.
-export const PARK_DATED_REASONS = new Set(['wash-sale', 'reentry', 'earnings', 'policy']);
+//
+// NARROWED AGAIN TO WASH-SALE ONLY (owner decision, 2026-09-03): the owner turned on a HIGH-YIELD
+// SWEEP for idle cash, which removes the last argument for the waiting ground. Parking only ever paid
+// for itself by earning beta that cash could not, and cash now earns a real rate while carrying no
+// spread, no short-term taxable round trip, and no wash-sale exposure of its own. What survives is the
+// single case the measurement above actually supported: the 30-day WASH-SALE wait, which is long
+// enough (16 days on the 08-12 NVDA park) for beta to mean something and is a hard, known date.
+// Earnings and policy blackouts are ~7 days, and a re-entry cooldown clears on a date the account
+// chose — all short enough that the round trip is a coin flip against a now-yielding alternative.
+export const PARK_DATED_REASONS = new Set(['wash-sale']);
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const money = (n) => '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });

@@ -442,8 +442,10 @@ const mhHarvest = planDeployment({
 });
 ok('a TLH harvest is exempt from the min-hold', !!find(mhHarvest.harvests, 'GOOGL'));
 
-// RE-ENTRY COOLDOWN: a name sold 2 days ago is not rebought (the GE-sold-08-10-rebought-08-12 case);
-// its weight parks in the VTI waiting ground instead.
+// RE-ENTRY COOLDOWN: a name sold 2 days ago is not rebought (the GE-sold-08-10-rebought-08-12 case).
+// Its weight waits in CASH since 2026-09-03 — the owner turned on a high-yield sweep, so PARK_DATED_
+// REASONS narrowed to wash-sale alone (a 14-day cooldown is too short for a spread-paying round trip
+// to beat a yielding alternative). Parking is asserted on the wash-sale case below instead.
 const reArgs = {
   target: { asOf: '2026-08-12', driftTriggerPp: 5, names: [
     { ticker: 'AAPL', weightPct: 50, entry: '300-312', stop: 284 }, { ticker: 'SPY', weightPct: 50, entry: '740-760', stop: 690 }] },
@@ -452,7 +454,12 @@ const reArgs = {
 const re = planDeployment({ ...reArgs, accountActivity: { AAPL: { lastSellDate: '2026-08-10' } } });
 ok('a name sold 2d ago is not rebought (re-entry cooldown)', !find(re.buys, 'AAPL') && defReason(re, 'AAPL') === 'reentry');
 ok('…the deferral carries the unlock date', find(re.deferred, 'AAPL').until === '2026-08-24');
-ok('…and the deferred weight parks in VTI', re.parking.parked !== null && re.parking.forNames.includes('AAPL'));
+ok('…and the deferred weight now waits in CASH, not VTI', !re.parking.parked && !(re.parking.forNames || []).includes('AAPL'));
+// The surviving park case: a 30-day wash-sale wait is a hard, known date long enough for the round
+// trip to be worth a spread — the 08-12 NVDA park (blocked to 08-28) is the one that earned its keep.
+const wsPark = planDeployment({ ...reArgs, washMap: { AAPL: { until: '2026-09-11', account: 'agentic' } } });
+ok('a wash-sale deferral still parks in VTI', defReason(wsPark, 'AAPL') === 'wash-sale'
+  && wsPark.parking.parked !== null && wsPark.parking.forNames.includes('AAPL'));
 ok('a sell outside the cooldown does not defer',
   !!find(planDeployment({ ...reArgs, accountActivity: { AAPL: { lastSellDate: '2026-07-01' } } }).buys, 'AAPL'));
 ok('wash-sale still outranks the re-entry reason', defReason(planDeployment({ ...reArgs,
