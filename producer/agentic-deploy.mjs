@@ -184,6 +184,20 @@ export const CASH_IDLE_SWEEP_FLOOR = 250; // …below this, stop tranching and d
 //      released sale flows through the SAME tax-aware ordering and PDT guard as any other sell.
 export const PARK_VEHICLE = 'VTI';
 export const PARK_MIN = 100;   // don't park (or release) less than this — the tax/spread isn't worth it
+// PARK ONLY WHAT HAS A DATED END (2026-09-03). PARK_MIN gates on SIZE, but the cost that actually bites
+// is DURATION: a round trip through the vehicle pays a full spread (VTI quoted 376.69/377.50 on 09-02,
+// 0.21%) to rent a few days of equity beta, which is a coin flip. Measured on the real book: the 08-26
+// park of $1,028.66 was released 08-27 (+$1.78) and 09-02 (−$1.00) — +$0.78 gross across ~$1,000 of
+// turnover, less than the spread it paid, and VTI itself fell 0.22% over that window, so the money would
+// have done better sitting in cash. The one park that DID earn its keep was 08-12: NVDA wash-blocked to
+// 08-28, a known 16-day wait. The discriminator is therefore whether the deferral has a DATE on it:
+//   • dated  — wash-sale / reentry (both carry `until`), earnings and policy (blackouts with a print or
+//     decision date). Multi-day to multi-week by construction, so beta has time to mean something.
+//   • undated — below/above-entry, below-stop, no-quote, regime, drawdown. These clear when the MARKET
+//     moves, which historically took 1-6 days, and can clear on the very next pass.
+// Undated deferrals now wait in CASH. Cash is the safe failure mode — it cannot lose to a spread — and
+// the idle-cash deadline still backstops it, so this delays a buy at worst and never vetoes one.
+export const PARK_DATED_REASONS = new Set(['wash-sale', 'reentry', 'earnings', 'policy']);
 
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const money = (n) => '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -621,15 +635,24 @@ export function planDeployment(input = {}) {
   //     and never the pool itself, so this is what's left of cash+proceeds after the buys drew on them.
   //     (Park only fires when there was no release, so spent here is cash-funded by construction.)
   const parkableCash = +(cashThisPass + proceeds - spent).toFixed(2);
-  const parkableNeed = deferred.filter((d) => d.sym !== parkVehicle).reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
+  //     Only DATED deferrals are parked (see PARK_DATED_REASONS) — an undated one clears when the market
+  //     moves, and renting beta for a day or two costs more in spread than it can expect to earn.
+  const parkable = deferred.filter((d) => d.sym !== parkVehicle && PARK_DATED_REASONS.has(d.reason));
+  const parkWaits = deferred.filter((d) => d.sym !== parkVehicle && !PARK_DATED_REASONS.has(d.reason));
+  const parkableNeed = parkable.reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
+  const waitingInCash = parkWaits.reduce((s, d) => s + Math.max(0, d.dollars || 0), 0);
+  //     Say it on the ticket: money sitting in cash for an unstated reason reads as the planner failing.
+  if (parkNewOn && waitingInCash >= parkMin) {
+    warnings.push(`${money(waitingInCash)} of deferred weight (${parkWaits.map((d) => d.sym).join(', ')}) stays in CASH rather than ${parkVehicle} — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth`);
+  }
   if (parkNewOn && !parkLegs.release && parkableCash >= parkMin && parkableNeed >= parkMin) {
     const dollars = +Math.min(parkableCash, parkableNeed).toFixed(2);
     const px = pxOf(parkVehicle);
     if (!(px > 0)) warnings.push(`index parking unavailable: no live quote for ${parkVehicle} in the snapshot — deferred cash stays in cash this pass (producer must quote the park vehicle every run)`);
     if (px > 0 && dollars >= parkMin) {
       parkLegs.park = { sym: parkVehicle, kind: 'park', dollars, shares: +(dollars / px).toFixed(4), price: px,
-        forNames: deferred.filter((d) => d.sym !== parkVehicle).map((d) => d.sym),
-        note: `waiting ground — holds ${money(dollars)} of deferred weight (${deferred.filter((d) => d.sym !== parkVehicle).map((d) => d.sym).join(', ')}) in ${parkVehicle} instead of cash; released when they clear` };
+        forNames: parkable.map((d) => d.sym),
+        note: `waiting ground — holds ${money(dollars)} of deferred weight (${parkable.map((d) => d.sym).join(', ')}) in ${parkVehicle} instead of cash; released when they clear` };
       buys.push({ ...parkLegs.park, weightNow: currentWeights[parkVehicle] ?? null, weightTarget: targetWeights[parkVehicle] ?? null,
         sector: 'Index / Broad Market', entry: null, stop: null, target: null, parked: true });
       spent += dollars;
@@ -691,7 +714,9 @@ export function planDeployment(input = {}) {
     idleDays: idleDays ?? null, idleOverdue, tranching, tranchePct: tranching ? tranchePct : null, cashThisPass };
   const parking = { vehicle: parkVehicle, enabled: parkingOn, before: +parkedNow.toFixed(2), after: +parkedAfter.toFixed(2),
     parked: parkLegs.park, released: parkLegs.release,
-    forNames: deferred.filter((d) => d.sym !== parkVehicle).map((d) => d.sym) };
+    // Only the DATED names — an undated deferral waits in cash, so naming it here would report the
+    // waiting ground as holding money on behalf of a name it never parked for.
+    forNames: parkable.map((d) => d.sym) };
   const summary = buildSummary({ buys, buysT1, trims, exits, harvests, ddRaises, deferred, spent, cashLeft, book, taxSummary, turnover, buysNeedProceeds, parking, drawdown });
   return { book, cash: +settledNow.toFixed(2), deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, ddRaises, sells,
     proceeds, buysNeedProceeds, blockedSells, taxSummary, turnover, autoCap, autoEligible, entryPolicy, parking,

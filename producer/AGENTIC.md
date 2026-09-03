@@ -49,8 +49,12 @@ excess parks in VTI.** Concretely: the `agentic-research` workflow (split verdic
 inclusion, `entryQuality` sizes) proposes an allocation; `finalize-target.mjs` re-enforces the risk caps
 deterministically and writes the canonical `agentic-target.json`; the executor's planner applies the
 guards (earnings/policy/wash/PDT/entry-band) and places what clears; whatever the guards hold back is
-parked in the VTI waiting ground rather than left in cash, and released to fund each name as it clears.
-Cash never waits idle by design — a deferral changes WHERE the money waits, not whether it works.
+parked in the VTI waiting ground rather than left in cash **when — and only when — the deferral has a
+dated end** (wash-sale, re-entry cooldown, earnings or policy blackout), and released to fund each name
+as it clears. An UNDATED deferral (entry band, below-stop, no-quote, regime, drawdown) waits in CASH:
+those clear on a price move, historically within 1-6 days, and a round trip through the vehicle costs
+more in spread than a few days of beta can expect to earn — measured on this book, the 08-26 park
+returned +$0.78 gross on ~$1,000 of turnover while paying a wider spread than that (2026-09-03).
 
 ## Execution policy — **TIERED AUTO** (owner-approved 2026-08-07; supersedes confirm-everything)
 The owner signed off on a two-tier policy so the account is **self-sufficient** for routine upkeep:

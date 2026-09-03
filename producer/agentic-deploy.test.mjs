@@ -284,12 +284,20 @@ const parkArgs = {
   positions: [], cash: 2000, quotes: { V: 450, SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-11' },
 };
 const parked = planDeployment(parkArgs);
-ok('V defers on premium and its weight parks in VTI', defReason(parked, 'V') === 'above-entry' && parked.parking.parked !== null);
-ok('the vehicle is VTI, not the SPY ballast', parked.parking.vehicle === 'VTI');
-ok('the park leg is a real VTI buy flagged parked', (find(parked.buys, 'VTI') || {}).parked === true);
-ok('parking is reported and named', parked.parking.after > 0 && parked.parking.forNames.includes('V'));
-ok('parking off → the money stays in cash', planDeployment({ ...parkArgs, opts: { ...parkArgs.opts, park: false } }).parking.parked === null);
-ok('the SPY ballast is untouched by parking', !find(parked.buys, 'VTI') || (find(parked.buys, 'SPY') || {}).parked !== true);
+// UNDATED (2026-09-03) — an above-entry deferral clears on a price move with no known date, and the
+// real book showed those clearing in 1-6 days: too short for beta to cover the vehicle's spread.
+ok('an UNDATED deferral (above-entry) does NOT park', defReason(parked, 'V') === 'above-entry' && parked.parking.parked === null);
+ok('…and the ticket says the money is waiting in cash', parked.warnings.some((w) => /stays in CASH/.test(w)));
+// DATED — a wash block is a known multi-week wait, so the waiting ground earns its spread.
+const parkedDated = planDeployment({ ...parkArgs, washMap: { V: { until: '2026-09-10' } } });
+ok('a DATED deferral (wash-sale) parks in VTI', defReason(parkedDated, 'V') === 'wash-sale' && parkedDated.parking.parked !== null);
+ok('the vehicle is VTI, not the SPY ballast', parkedDated.parking.vehicle === 'VTI');
+ok('the park leg is a real VTI buy flagged parked', (find(parkedDated.buys, 'VTI') || {}).parked === true);
+ok('parking is reported and named', parkedDated.parking.after > 0 && parkedDated.parking.forNames.includes('V'));
+ok('…and forNames carries only the dated name, never the undated one',
+  !parkedDated.parking.forNames.includes('SPY'));
+ok('parking off → the money stays in cash', planDeployment({ ...parkArgs, washMap: { V: { until: '2026-09-10' } }, opts: { ...parkArgs.opts, park: false } }).parking.parked === null);
+ok('the SPY ballast is untouched by parking', !find(parkedDated.buys, 'VTI') || (find(parkedDated.buys, 'SPY') || {}).parked !== true);
 
 // (f) INVARIANT 1 — the placeholder is absent from the target, so the off-target EXIT rule would
 //     liquidate it every pass and the parking rule would rebuild it. That loop must not exist.
@@ -383,10 +391,18 @@ const noQuote = planDeployment({
   positions: [], cash: 2000, quotes: { SPY: 750 }, opts: { asOf: '2026-08-11' },   // no SHEL, no VTI quote
 });
 ok('unquoted target name defers as no-quote, not below-stop', defReason(noQuote, 'SHEL') === 'no-quote');
-ok('…and parking-unavailable is a visible warning', noQuote.warnings.some((w) => /parking unavailable/.test(w)));
+ok('an undated no-quote deferral waits in cash, so no vehicle is needed', noQuote.parking.parked === null);
+// The unquoted-vehicle warning is only REACHABLE when something is actually parkable, so it needs a
+// dated deferral (2026-09-03). With nothing to park, an unquoted vehicle is simply irrelevant.
+const shelTarget = { asOf: '2026-08-11', names: [{ ticker: 'SHEL', weightPct: 50, entry: '86-92', stop: 82 }, { ticker: 'SPY', weightPct: 50, entry: '740-780', stop: 690 }] };
+const shelWash = { SHEL: { until: '2026-09-10' } };
+ok('…and parking-unavailable is a visible warning', planDeployment({
+  target: shelTarget, positions: [], cash: 2000, quotes: { SPY: 750, SHEL: 88 },   // no VTI quote
+  washMap: shelWash, opts: { asOf: '2026-08-11' },
+}).warnings.some((w) => /parking unavailable/.test(w)));
 ok('…while a quoted VTI parks the same deferral', planDeployment({
-  target: { asOf: '2026-08-11', names: [{ ticker: 'SHEL', weightPct: 50, entry: '86-92', stop: 82 }, { ticker: 'SPY', weightPct: 50, entry: '740-780', stop: 690 }] },
-  positions: [], cash: 2000, quotes: { SPY: 750, VTI: 300 }, opts: { asOf: '2026-08-11' },
+  target: shelTarget, positions: [], cash: 2000, quotes: { SPY: 750, SHEL: 88, VTI: 300 },
+  washMap: shelWash, opts: { asOf: '2026-08-11' },
 }).parking.parked !== null);
 
 // ═══ Churn governor (2026-08-12) — min-hold, re-entry cooldown, dust floor, phase-out ═══
