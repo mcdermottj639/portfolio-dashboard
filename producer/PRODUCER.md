@@ -156,6 +156,24 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > can fall mid-day, leaving that day's legs incomplete) in favour of what an earlier complete fetch
    > already recorded. Widen `created_at_gte` freely; the code no longer depends on it being exact.
    >
+   > **NEVER NARROW IT, THOUGH — the "if the result is too large, fetch a smaller batch" rule in the
+   > ⚠️ CRITICAL callout below does NOT apply to this row.** The sweep is safe only because a full
+   > 120-day fetch comes back TRUNCATED (200 orders + a `next` cursor), which makes `deriveLog` discard
+   > the oldest day and sweep from the day after it. A *narrower* window returns few enough orders to
+   > fit one page, so it comes back UNTRUNCATED — while `build-data` still passes
+   > `sinceDay = asOf − FETCH_DAYS` (120) — and the sweep then deletes every in-window record the short
+   > payload doesn't report. Live on 2026-09-03: the 120-day fetch exceeded the inline size limit, a
+   > 30-day refetch looked clean and correct, and the build logged
+   > `self-directed decision log SHRANK 36 → 20` — 16 real records gone. It reads as an ordinary
+   > successful run; nothing else in the output moves.
+   >
+   > So when the 120-day result is too large to return inline, do **not** shrink the window. The full
+   > page is already saved to a tool-result file — read THAT and write `{data}` straight to
+   > `producer/raw/main-orders.json` with `node` (literal paths, no shell variables, so no permission
+   > prompt). The `next` cursor MUST survive into the saved file: that flag is what protects the older
+   > history. If it does shrink: `git checkout <last good commit> -- data.json` to restore the merge
+   > base, fix the payload, re-run `run.mjs`. The prior log is recoverable ONLY from git.
+   >
    > A failure on any of these rows is not fatal — build-data falls back to the prior snapshot's figures.
 
    > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)
