@@ -59,10 +59,17 @@ function logMarks(label, graded) {
 }
 
 // A decision log that got SHORTER is the one way this history is actually lost, and it is silent by
-// construction — the short log simply becomes the new baseline on the next run. It can only happen
-// if the prior snapshot could not be read (decrypt failure / missing passphrase), since the merge
-// itself never drops an out-of-window record. Every prior data.json is in git, so nothing is
-// unrecoverable; this makes the loss VISIBLE instead of leaving it to be noticed months later.
+// construction — the short log simply becomes the new baseline on the next run. Every prior data.json
+// is in git, so nothing is unrecoverable; this makes the loss VISIBLE instead of leaving it to be
+// noticed months later.
+//
+// Two causes, not one. The obvious: the prior snapshot could not be read (decrypt failure / missing
+// passphrase). The other was found the hard way on 2026-09-03 — this comment used to claim "the merge
+// itself never drops an out-of-window record", which was true of the merge and false of the WINDOW it
+// is handed: a narrowed main-orders fetch came back untruncated, so the sweep window stayed at
+// asOf−120 while the payload only reached back 30 days, and 16 real days were swept. deriveLog's
+// short-payload guard now catches that case and warns BEFORE deleting, so a shrink reaching this
+// point again should mean the prior snapshot genuinely could not be read.
 function warnIfLogShrank(label, priorLen, freshLen) {
   if (priorLen > freshLen) {
     console.warn(`⚠️  ${label} decision log SHRANK ${priorLen} → ${freshLen}. History is only kept in the snapshot, so this is a real loss. Recover it from git: check out the last good commit's data.json, decrypt it, and read .${label === 'agentic' ? 'agentic' : 'main'}.decisions.decisions.`);
@@ -655,7 +662,11 @@ const data = {
       // deriveLog owns the pagination rule: get_equity_orders caps its page, so the sweep window is
       // taken from what the payload actually covers — a fixed one would delete real history whenever
       // the fetch came back short. See maindecisions.mjs.
-      const r = deriveLog(readJSON(ordersFile), { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS) });
+      // `prior` arms deriveLog's short-payload guard: an untruncated page cannot prove it reached
+      // back to sinceDay, so the prior log is what reveals a narrowed fetch (by the history the
+      // sweep would orphan) before it is deleted rather than after.
+      const r = deriveLog(readJSON(ordersFile), { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS), prior: priorLog });
+      if (r.warning) console.warn(`⚠️  self-directed decisions: ${r.warning}`);
       ledger = mergeDecisions(r.decisions, priorLog, { windowFrom: r.windowFrom, committed: owned, asOf: asOfDay });
       const noSpy = ledger.filter((d) => d.spyAt == null).length;
       console.log(`self-directed decisions: ${r.decisions.length} trading day(s) derived from ${r.orders} filled order(s)${r.truncated ? ` · page truncated, sweeping only from ${r.windowFrom}` : ''} · ${ledger.length} in the log${noSpy ? ` · ${noSpy} without a SPY close (graded on absolute return)` : ''}`);

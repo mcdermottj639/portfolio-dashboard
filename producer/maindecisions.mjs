@@ -55,6 +55,12 @@ export const FETCH_DAYS = 120;
 export const DECISION_RETAIN_YEARS = 8;
 export const DECISION_CAP = 2000;
 
+// How many distinct pre-coverage days the sweep may delete in one run before it is treated as a
+// SHORT PAYLOAD rather than a run of cancelled fills. See the untruncated-payload rule in deriveLog().
+// A genuine correction retires one day, occasionally two; four or more at once has only ever meant
+// the fetch window did not really reach as far back as the sweep assumed.
+export const SWEEP_MAX_DROP = 3;
+
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const up = (s) => String(s || '').toUpperCase();
 
@@ -210,20 +216,54 @@ export function shiftDay(day, delta) {
 //   · truncated (a `next` cursor)  → the oldest day in the payload may be only PARTIALLY reported
 //     (the page boundary can fall mid-day), so that day's derived record is discarded in favour of
 //     whatever a complete earlier fetch already recorded, and sweeping starts the day AFTER it.
-//   · not truncated               → the payload genuinely covers the whole requested window, so a
+//   · not truncated               → the payload *claims* to cover the whole requested window, so a
 //     record inside it that no longer appears really is gone (a cancelled or corrected fill) and
-//     sweeping from `sinceDay` is safe.
-export function deriveLog(raw, { spyCloses = {}, sinceDay = null } = {}) {
+//     sweeping from `sinceDay` is safe — SUBJECT TO the short-payload guard below.
+//
+// THE SHORT-PAYLOAD GUARD (2026-09-03). `truncated === false` was read as proof that the payload
+// covers `sinceDay`, and that inference is only sound if the FETCH actually asked for `sinceDay`.
+// Nothing here can see the request: an untruncated page looks identical whether it came from a
+// 120-day window on a quiet account or a 30-day window on a busy one. So when the runbook's general
+// "if the result is too large, fetch a smaller batch" advice was applied to this row, the narrower
+// fetch returned one complete page, `truncated` was false, `windowFrom` stayed at `asOf − 120`, and
+// the sweep deleted every record between the fetch's real start and 120 days back — 16 real days,
+// logged only as `SHRANK 36 → 20`, with nothing else in the run looking wrong. The log lives ONLY in
+// the snapshot, so that is a permanent loss recoverable just from git.
+//
+// The tell is not the payload — it is the DAMAGE. A cancelled or corrected fill retires one day; a
+// short payload orphans the whole pre-coverage range at once. So the sweep is allowed to delete
+// freely inside the range the payload demonstrably covers (`>= coveredFrom`), and only its reach
+// BEHIND that point is questioned: if that reach would drop more than `SWEEP_MAX_DROP` distinct days
+// the payload is not believed, `windowFrom` is clamped to `coveredFrom`, and a warning is returned
+// for the caller to log. Pass `prior` (the snapshot's existing log) to arm it — omit it and the
+// behaviour is exactly what it was before.
+//
+// The asymmetry is deliberate and matches the rest of this repo: an un-swept stale record is a
+// visible, correctable blemish on a card, while a deleted one is history that no later run can
+// rebuild. When the two cannot be told apart, keep the record.
+export function deriveLog(raw, { spyCloses = {}, sinceDay = null, prior = [] } = {}) {
   const orders = unwrapOrders(raw);
   const truncated = !!((raw && raw.data && raw.data.next) || (raw && raw.next));
   let decisions = decisionsFromOrders(raw, { spyCloses, sinceDay });
   const coveredFrom = decisions.length ? decisions[decisions.length - 1].date : null;
   let windowFrom = sinceDay;
+  let warning = null;
   if (truncated) {
     if (coveredFrom) { decisions = decisions.filter((d) => d.date > coveredFrom); windowFrom = shiftDay(coveredFrom, 1); }
     else windowFrom = null;   // truncated with nothing usable ⇒ sweep nothing at all
+  } else if (coveredFrom && windowFrom && coveredFrom > windowFrom) {
+    // Untruncated, but the payload's oldest day sits INSIDE the sweep window. Either the account
+    // genuinely placed no orders in the earlier part, or the fetch never reached back that far —
+    // only the prior log separates them, and only in the direction that matters.
+    const derivedDays = new Set(decisions.map((d) => d.date));
+    const orphaned = prior.filter((d) => d && d.source === 'orders'
+      && d.date >= windowFrom && d.date < coveredFrom && !derivedDays.has(d.date));
+    if (orphaned.length > SWEEP_MAX_DROP) {
+      warning = `main-orders.json covers only ${coveredFrom}→ but the sweep window starts ${windowFrom}, and sweeping it would delete ${orphaned.length} recorded day(s) (${orphaned.slice(0, 4).map((d) => d.date).join(', ')}${orphaned.length > 4 ? ', …' : ''}). Treating the payload as SHORT and sweeping only from ${coveredFrom} — the log is kept. This is what a narrowed created_at_gte looks like: re-fetch the full ${FETCH_DAYS}-day window (PRODUCER.md step 2).`;
+      windowFrom = coveredFrom;
+    }
   }
-  return { decisions, windowFrom, truncated, coveredFrom, orders: orders.length };
+  return { decisions, windowFrom, truncated, coveredFrom, orders: orders.length, warning };
 }
 
 function money(v) { return '$' + Math.round(v).toLocaleString('en-US'); }

@@ -103,6 +103,44 @@ eq('…and discards that oldest day, which the page boundary may have split', cu
 ok('a truncated payload with nothing usable sweeps NOTHING',
   deriveLog({ data: { orders: [], next: 'x' } }, {}).windowFrom === null);
 
+// ── deriveLog: the SHORT-PAYLOAD guard (2026-09-03) ───────────────────────────────────────────
+// `truncated === false` proves the page wasn't cut; it does NOT prove the fetch reached back to
+// sinceDay. A narrowed created_at_gte returns one complete page, so the sweep ran to asOf−120 over a
+// payload covering 30 days and deleted 16 real recorded days (`SHRANK 36 → 20`). The tell is the
+// damage: a correction retires one day, a short payload orphans the whole pre-coverage range.
+const ORPHANS = [
+  { id: '2026-06-10-sd', date: '2026-06-10', source: 'orders', trades: [{ sym: 'GLD', side: 'SELL', dollars: 1121, priceAt: 378.7 }] },
+  { id: '2026-06-22-sd', date: '2026-06-22', source: 'orders', trades: [{ sym: 'IREN', side: 'SELL', dollars: 1107, priceAt: 60.45 }] },
+  { id: '2026-07-08-sd', date: '2026-07-08', source: 'orders', trades: [{ sym: 'NVDA', side: 'SELL', dollars: 10215, priceAt: 204.31 }] },
+  { id: '2026-07-29-sd', date: '2026-07-29', source: 'orders', trades: [{ sym: 'NVDA', side: 'SELL', dollars: 6843, priceAt: 195.53 }] },
+];
+const short = deriveLog(ORDERS, { spyCloses: spy, sinceDay: '2026-05-01', prior: ORPHANS });
+eq('a short payload is caught and swept only from what it covers', short.windowFrom, '2026-08-09');
+ok('…and says so, naming the re-fetch', /SHORT/.test(short.warning || '') && /120-day/.test(short.warning || ''));
+eq('…so the merge KEEPS every pre-coverage day',
+  mergeDecisions(short.decisions, ORPHANS, { windowFrom: short.windowFrom }).map((d) => d.date),
+  ['2026-08-25', '2026-08-14', '2026-08-09', '2026-07-29', '2026-07-08', '2026-06-22', '2026-06-10']);
+
+// The guard must not become a licence to keep stale records: a run of genuine cancellations at or
+// under the threshold still sweeps exactly as before.
+const fewGone = deriveLog(ORDERS, { spyCloses: spy, sinceDay: '2026-05-01', prior: ORPHANS.slice(0, 3) });
+eq('≤ SWEEP_MAX_DROP orphans read as corrections, not a short payload',
+  [fewGone.windowFrom, fewGone.warning], ['2026-05-01', null]);
+
+// Even when the guard fires it only shortens the sweep's REACH — inside the covered range a phantom
+// the broker no longer reports is still deleted.
+const withPhantom = [...ORPHANS, { id: '2026-08-20-sd', date: '2026-08-20', source: 'orders', trades: [{ sym: 'GONE', side: 'BUY', dollars: 10, priceAt: 1 }] }];
+const g = deriveLog(ORDERS, { spyCloses: spy, sinceDay: '2026-05-01', prior: withPhantom });
+ok('a cancelled day INSIDE the covered range is still swept while the guard holds',
+  !mergeDecisions(g.decisions, withPhantom, { windowFrom: g.windowFrom }).some((d) => d.date === '2026-08-20'));
+
+// An owner-annotated day is not an "orders" record, so it can neither arm the guard nor be swept.
+eq('owner-committed days do not count as orphans',
+  deriveLog(ORDERS, { spyCloses: spy, sinceDay: '2026-05-01', prior: ORPHANS.map((d) => ({ ...d, source: 'owner' })) }).windowFrom, '2026-05-01');
+
+eq('omitting `prior` leaves the pre-guard behaviour exactly as it was',
+  [deriveLog(ORDERS, { spyCloses: spy, sinceDay: '2026-05-01' }).windowFrom, full.windowFrom], ['2026-05-01', '2026-05-01']);
+
 // End-to-end: the truncated case must leave the older snapshot record alone.
 const kept = mergeDecisions(cut.decisions, [
   { id: '2026-08-09-sd', date: '2026-08-09', source: 'orders', trades: [{ sym: 'REAL', side: 'BUY', dollars: 870, priceAt: 17.4 }] },
