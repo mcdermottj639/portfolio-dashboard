@@ -131,11 +131,17 @@ here does NOT update it. This table is the map; re-check it whenever a piece is 
 
 **A Routine's prompt IS editable — use `update_trigger` (claude-code-remote MCP), don't work around it.**
 Prompts live server-side, so shipping code here does not update them; but `list_triggers` + `update_trigger`
-edit them in place, keeping the Routine's id and run history. The one exception is a Routine bound to a
-persistent session (`persistent_session_id` set in `list_triggers`) — the **executor** still is until its fresh-session
-replacement (created 2026-09-02, disabled pending its Robinhood connector) takes over; the other two are not. Check the field before
-concluding you can't edit something. What is NOT editable from a session, for any of them, is the
-**connectors and `allowed_tools`** — Routine-UI only; see `SCHEDULING.md` §5. Getting this wrong is
+edit them in place, keeping the Routine's id and run history — **but only for a Routine an agent CREATED.**
+The gating field is **`created_via`**, not session-binding (corrected 2026-09-04): `meta_mcp` = agent-created =
+editable; **`http_api` = made in the claude.ai Routine UI = `update_trigger` REFUSES it** (*"Agents can only
+update routines they created"*). Seven of the eight Routines on this account are `meta_mcp`; the single
+`http_api` one is **"Portfolio dashboard refresh"** — the hourly producer, i.e. the most important of them —
+so its prompt is the owner's to paste in the UI. This entry previously named persistent-session binding as
+"the one exception", which is wrong in BOTH directions: the session-bound weekly research Routine is
+`meta_mcp` and edits fine, while the un-bound, fresh-per-fire producer Routine cannot be edited at all.
+Check `created_via` before concluding either way. What is NOT editable from a session, for any of them, is the
+**connectors and `allowed_tools`** — Routine-UI only; see `SCHEDULING.md` §5, which also keeps the producer
+Routine's paste-ready prompt under version control since a session can't write it. Getting this wrong is
 expensive in a specific way: on 2026-08-25 the research bench was widened in code while the Routine's step 3
 still said "the mega-cap LEADERS bench from `producer/leaders.mjs`", which would have made the entire change
 inert on the next run. The prompt was updated the same session.

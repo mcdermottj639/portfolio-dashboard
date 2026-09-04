@@ -126,6 +126,36 @@ never once produced a target — every `agentic-target.json` in git came from an
 For the producer Routine specifically: its `allowed_tools` can only be edited in that UI, so if it
 starts prompting for permission mid-run, that is where to go.
 
+**AND its PROMPT is UI-only too — `update_trigger` refuses it (measured 2026-09-04).** The real rule
+is not the one documented until now: **prompt-editability follows WHO CREATED the Routine, not
+whether it is session-bound.** `list_triggers` reports a `created_via` field, and the API answers
+*"this routine was created via `http_api`, not by an agent. Agents can only update routines they
+created (via `create_trigger`)."* Of the eight Routines on this account, seven are `meta_mcp`
+(agent-created → a session can edit their prompts) and exactly one is `http_api` — **"Portfolio
+dashboard refresh"**, created in the claude.ai UI on 2026-06-19, i.e. the single most important one.
+Note this cuts the opposite way from the persistent-session story: the weekly research Routine is
+session-BOUND and still `meta_mcp`, so its prompt edits fine. **Check `created_via` before concluding
+you can or cannot edit a prompt** — and for this Routine, a prompt change is the owner's to paste in
+the Routine UI. The current intended text is kept below so it is version-controlled.
+
+<details><summary><strong>Paste-ready prompt — "Portfolio dashboard refresh" (updated 2026-09-04)</strong></summary>
+
+```text
+Run the portfolio dashboard producer (repo mcdermottj639/portfolio-dashboard) by following producer/PRODUCER.md exactly.
+
+First run `node producer/preflight.mjs` and obey its directive: if it prints SKIP, stop immediately and do nothing; if FETCH_ALL, do the full fetch (steps 1-3c); if FETCH_LIGHT, fetch only the EVERY-RUN items — BOTH accounts' portfolio + positions (the main account AND the ••••3900 agentic cash account, account_number 694553900, resolved via get_accounts → write agentic-portfolio.json and agentic-positions.json), plus quotes, VIX, and options — and skip historicals, fundamentals, the Alpha Vantage refresh, and the picks rebuild.
+
+Write each raw result into producer/raw/ with the Write tool; fetch historicals in batches of 3 symbols or fewer so each result comes back INLINE. Never use cp or mv to place a raw file. The hazard is not shell variables: when a tool result is too large to return inline the harness SPILLS it to a file under /root/.claude/projects/... and hands back only its path, and copying out of that directory is refused by the permission classifier — which on this unattended run means an approval card on the owner's phone and a STALLED run. So if a result arrives as a spilled file path instead of inline data, re-fetch it in a smaller batch; never copy the spill file. If you delegate a fetch to a subagent, that subagent must Write the raw file itself and return only a confirmation — a payload spilled inside a subagent is unreachable from here. IMPORTANT: the ••••3900 agentic fetch runs EVERY time (light AND full) — skipping it freezes the Agentic Portfolio card. If any Robinhood call fails, stop without building.
+
+Then run `node producer/run.mjs "<label>"` (label = current ET time, e.g. "Jul 28 2026, 1:30 PM ET"), which does the build, encryption, validation, and commit + push to main. Do not run those steps by hand. If run.mjs exits non-zero, STOP — do NOT attempt manual git recovery, alternate push, or branch surgery; the next scheduled run republishes. End the session.
+```
+
+Only the third paragraph changed from the version live since 2026-07-28; the other three are
+byte-identical. It replaces the false "never use cp, mv, or **shell variables**" cause with the real
+one (copying out of `/root/.claude/projects/…`), names the spill-to-file mechanism that leads an
+agent there, and adds the subagent rule.
+</details>
+
 **A Routine created from a session INHERITS that session's connectors — this is the workaround for
 the API's refusal.** `create_trigger` cannot attach connectors (the org rejects the parameter) and a
 Routine created with none fires sessions that have no `mcp__*` tools at all, which is exactly why the
