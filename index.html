@@ -363,9 +363,18 @@ html[data-theme="gold"] .wp-btn { background:#141414; border-color:rgba(212,175,
 .help-body .hsub { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #9ca3af; margin: 14px 0 4px; }
 html[data-theme="dark"] .help-box { --hb-bg: #161617; border: 1px solid #2a2a2c; }
 html[data-theme="gold"] .help-box { --hb-bg: #0b0b0c; border: 1px solid var(--nx-bd); box-shadow: 0 20px 60px rgba(0,0,0,.7), 0 0 30px rgba(227,192,116,.08); }
-/* Privacy mode — blur personal $ figures (Portfolio tab) so the app can be shown without revealing balances */
+/* ─── Privacy mode (👁️ / 🙈) ───────────────────────────────────────────────────
+   Hides the account's OWN figures — balances, position values, P&L, share counts,
+   leverage multiples, account last-4 — so the phone can be handed to someone.
+   Market data (prices, strikes, index levels) and every PERCENTAGE stay visible:
+   the point is to show what the app DOES without showing what you're worth.
+   Values are REPLACED with a token, never blurred: a blur keeps the original
+   width, so a 7-figure balance stays visibly wider than a 3-figure one, and the
+   real text is still selectable and readable to a screen reader underneath. */
 .money { transition: filter .12s; }
-body.pf-private .money { filter: blur(7px); -webkit-user-select: none; user-select: none; }
+.priv-m { color: #9ca3af; letter-spacing: 0.5px; font-weight: 600; -webkit-user-select: none; user-select: none; }
+.priv-blur { filter: blur(14px); -webkit-user-select: none; user-select: none; pointer-events: none; }
+body.pf-private #pf-priv { filter: none; }
 /* Equal-width columns, icon over label, 56px tall — a comfortable touch target that also gives the
    active tab a wide, obvious hit area. The active state is a top accent bar + full-strength text
    rather than the old filled pill: a filled pill reads as a floating button, which is wrong for a
@@ -681,7 +690,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   <button class="tab" id="tab-options" role="tab" aria-current="false" onclick="switchTab('options')"><span class="t-ico" aria-hidden="true">💹</span><span class="t-lab">Options</span></button>
   <button class="tab" id="tab-analyze" role="tab" aria-current="false" onclick="switchTab('analyze')"><span class="t-ico" aria-hidden="true">🔍</span><span class="t-lab">Analyze</span></button>
 </div>
-<div id="page-portfolio">
+<div id="page-portfolio" data-priv="on">
   <div class="acct-seg-wrap" id="acct-seg-wrap">
     <div class="acct-seg" id="acct-seg" role="tablist" aria-label="Account">
       <button class="acct-tg active" id="acct-tg-main" role="tab" aria-selected="true" onclick="setAccount('main',{keepSection:true})">📊 Self-directed<span class="acct-sub">••••0741 · margin</span></button>
@@ -691,7 +700,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   <div id="app"><div class="loading-wrap"><div class="spinner"></div>Loading portfolio…</div></div>
   <div id="agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic account…</div></div>
 </div>
-<div id="page-picks" style="display:none">
+<div id="page-picks" style="display:none" data-priv="on">
   <!-- Same account switcher as the Accounts tab, so the app has ONE account context: Accounts = what
        you own, Plan = what happens next, both split the same way. Self-directed side = the daily scan
        + Action Center; agentic side = the ••••3900 strategy (target · deferrals · parking · rules). -->
@@ -704,13 +713,13 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   <div id="picks-app"><div class="loading-wrap"><div class="spinner"></div>Loading daily picks…</div></div>
   <div id="plan-agentic-app" style="display:none"><div class="loading-wrap"><div class="spinner"></div>Loading agentic plan…</div></div>
 </div>
-<div id="page-markets" style="display:none">
+<div id="page-markets" style="display:none" data-priv="off">
   <div id="markets-app"><div class="loading-wrap"><div class="spinner"></div>Loading markets…</div></div>
 </div>
-<div id="page-options" style="display:none">
+<div id="page-options" style="display:none" data-priv="on">
   <div id="options-app"><div class="loading-wrap"><div class="spinner"></div>Loading options…</div></div>
 </div>
-<div id="page-analyze" style="display:none">
+<div id="page-analyze" style="display:none" data-priv="market">
   <div id="analyze-app"><div class="loading-wrap"><div class="spinner"></div>Loading…</div></div>
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
@@ -823,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v135'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v136'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -850,7 +859,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
       if(_th==='dark'||_th==='neon')_th='gold';
       var themeIco=_th==='gold'?'☀️':'✨';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span id="pf-fresh-left" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></span><span style="display:flex;gap:12px;align-items:center;flex:0 0 auto"><button type="button" class="pf-find" onclick="__pfFind()" aria-label="Find any section"><span aria-hidden="true">🔍</span><span>Find</span></button><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" style="cursor:pointer;font-size:15px" title="Hide my $ figures">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span id="pf-fresh-left" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></span><span style="display:flex;gap:12px;align-items:center;flex:0 0 auto"><button type="button" class="pf-find" onclick="__pfFind()" aria-label="Find any section"><span aria-hidden="true">🔍</span><span>Find</span></button><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" role="button" tabindex="0" aria-pressed="'+(privOn?'true':'false')+'" style="cursor:pointer;font-size:15px" title="'+(privOn?'Private mode ON — your balances, share counts and account numbers are hidden. Tap to show them.':'Private mode OFF — tap to hide your balances, share counts and account numbers.')+'" aria-label="'+(privOn?'Private mode on. Show my figures.':'Private mode off. Hide my figures.')+'">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       // Staleness — recomputed on every repaint (not just once at boot) so a snapshot that ages
       // past 3h while the PWA stays resident tints amber instead of silently looking fresh.
@@ -2535,7 +2544,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
     ${exits.length
-      ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</div></td><td class="tr">${fmt(r.sellQty,r.sellQty<1?3:2)}${r.lock?`<div style="color:#9ca3af;font-size:10px">of ${fmt(r.p.qty,2)}</div>`:''}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.sellVal)}</td><td class="tr"><span class="${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
+      ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</div></td><td class="tr"><span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span>${r.lock?`<div style="color:#9ca3af;font-size:10px">of ${fmt(r.p.qty,2)}</div>`:''}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.sellVal)}</td><td class="tr"><span class="${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
       : (lockedExits.length
         /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
            reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
@@ -2543,7 +2552,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
         : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`)}
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Margin posture — bands on your credit line</div>
     ${payRows.length
-      ? `<table><thead><tr><th>Raise cash</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${payRows.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">weakest momentum${t.r.m&&t.r.m.score!=null?` ${fmt(t.r.m.score,1)}/10`:''}</span></td><td class="tr">${t.sh}${t.capped?`<div style="color:#b45309;font-size:10px">capped — collateral</div>`:''}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(payProceeds)}</td><td class="tr ${payPl>=0?'pos':'neg'}">${fmtD(payPl)}</td></tr></tbody></table>
+      ? `<table><thead><tr><th>Raise cash</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${payRows.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">weakest momentum${t.r.m&&t.r.m.score!=null?` ${fmt(t.r.m.score,1)}/10`:''}</span></td><td class="tr"><span data-priv="val">${t.sh}</span>${t.capped?`<div style="color:#b45309;font-size:10px">capped — collateral</div>`:''}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(payProceeds)}</td><td class="tr ${payPl>=0?'pos':'neg'}">${fmtD(payPl)}</td></tr></tbody></table>
         <div class="fund-note">${utilKnown?`Your loan is ${fmtD(M.debt)} — <b>${fmt(utilPct,1)}%</b> of your ${fmtD(M.line)} line, over the ${fmt(SD_UTIL_MAX*100,0)}% ceiling by ≈ <b>${fmtD(payNeed)}</b>.`:`No buying-power figure in this snapshot, so the line can't be derived — this falls back to the ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×), which is a cruder test.`} Sourced from the weakest-momentum names you can actually deliver. <b>Indicative</b>: selling stock also shrinks the collateral behind the line, so the line moves with it.${payShort>0?` ${fmtD(payShort)} of the raise can't be reached from freely sellable shares — see below.`:''}</div>`
       : `<div class="tech-empty">${M.debt>0
           ? (utilKnown
@@ -3378,12 +3387,17 @@ function agDefensiveNote(){
   const short=+d.shortfall>0.5;
   return ' · now '+d.total.toFixed(1)+'%'+(short?' ⚠️ short '+(+d.shortfall).toFixed(1)+'pp':' ✅');
 }
+/* Shared short-date label. Lived as a local const inside renderAgenticPlan while agDrawdownBanner
+   (a sibling top-level function) also called it — a ReferenceError that blanked the ENTIRE agentic
+   Plan tab for exactly the books that needed it most, since the banner only renders in a drawdown. */
+function agDLbl(s){ if(!s)return '—'; const d=new Date(String(s).slice(0,10)+'T00:00:00Z');
+  return isNaN(d)?String(s):d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 function agDrawdownBanner(){
   const d=((window.__DATA||{}).agentic||{}).drawdown; if(!d||!d.level||d.level==='ok')return '';
   const pct=d.dd!=null?(d.dd*100).toFixed(1)+'%':'—';
   const hard=d.level==='hard';
   return `<div class="fund-note" style="margin:0 0 10px;background:${hard?'#fef2f2':'#fffbeb'};border-color:${hard?'#fecaca':'#fde68a'}">
-    <b>${hard?'🛑':'⚠️'} Book drawdown — ${hard?'HARD':'SOFT'} tier:</b> the account is <b>${pct}</b> below its peak${d.peakT?` (${dLbl(d.peakT)})`:''}, past the ${hard?AG_DD_HARD_PCT:AG_DD_SOFT_PCT}% threshold, so <b>every new buy is paused</b> regardless of what any individual name's thesis says${hard?`, and defensive cash is being raised to <b>20% of book</b> (losses first)`:''}. Deferred dollars stay in <b>cash</b>, not the ${AG_PARK_VEHICLE} waiting ground — the placeholder is 100% equity beta, so parking there during a drawdown would be backwards. Deployment resumes once the book recovers above <b>${AG_DD_RESUME_PCT}%</b> (not at ${AG_DD_SOFT_PCT}% — the gap stops it flickering on and off). This is measured <b>deposit-adjusted</b>: a deposit cannot cancel it by pushing raw equity to a new high.</div>`;
+    <b>${hard?'🛑':'⚠️'} Book drawdown — ${hard?'HARD':'SOFT'} tier:</b> the account is <b>${pct}</b> below its peak${d.peakT?` (${agDLbl(d.peakT)})`:''}, past the ${hard?AG_DD_HARD_PCT:AG_DD_SOFT_PCT}% threshold, so <b>every new buy is paused</b> regardless of what any individual name's thesis says${hard?`, and defensive cash is being raised to <b>20% of book</b> (losses first)`:''}. Deferred dollars stay in <b>cash</b>, not the ${AG_PARK_VEHICLE} waiting ground — the placeholder is 100% equity beta, so parking there during a drawdown would be backwards. Deployment resumes once the book recovers above <b>${AG_DD_RESUME_PCT}%</b> (not at ${AG_DD_SOFT_PCT}% — the gap stops it flickering on and off). This is measured <b>deposit-adjusted</b>: a deposit cannot cancel it by pushing raw equity to a new high.</div>`;
 }
 function agRegimeBanner(){
   const r=agRegime(); if(!r||r==='calm')return '';
@@ -3402,8 +3416,7 @@ function renderAgenticPlan(){
   const book=Math.max(0,equity);
   const P=(v)=>'$'+(+v).toFixed(2);
   const today=agToday();
-  const dLbl=(s)=>{ if(!s)return '—'; const d=new Date(String(s).slice(0,10)+'T00:00:00Z');
-    return isNaN(d)?String(s):d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  const dLbl=agDLbl;
   const daysSince=(s)=>{ if(!s)return null; const a=Date.parse(String(s).slice(0,10)+'T00:00:00Z'), b=Date.parse(today+'T00:00:00Z');
     return (isFinite(a)&&isFinite(b))?Math.round((b-a)/86400000):null; };
 
@@ -3591,7 +3604,7 @@ function renderAgenticPlan(){
   // ── 5. the rulebook ──────────────────────────────────────────────────────────────────────────
   const rule=(icon,name,val,why)=>`<div class="harv-line"><span style="flex:1"><b>${icon} ${name}</b> <span style="color:#9ca3af">${val}</span><div style="font-size:11.5px;color:var(--text);opacity:.8;margin-top:2px;line-height:1.45">${why}</div></span></div>`;
   const rulesCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-rules" onclick="toggleSection('b-agp-rules')"><span>📏 Guardrails <span class="card-hint">the standing rules the executor can't cross</span></span><span class="chevron">▼</span></div><div id="b-agp-rules">
+    <div class="card" data-priv="off"><div class="card-title collapsible" data-toggle="b-agp-rules" onclick="toggleSection('b-agp-rules')"><span>📏 Guardrails <span class="card-hint">the standing rules the executor can't cross</span></span><span class="chevron">▼</span></div><div id="b-agp-rules">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div>
       ${rule('🧬','Correlation-cluster cap',AG_CLUSTER_CAP+'% megacap-tech','A "sector-diversified" label hid the fact that NVDA/MSFT/GOOGL/AMZN/META/AAPL all trade as one bet. Payments cap 20%, staples 25%; index is uncapped.')}
       ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
@@ -3615,7 +3628,7 @@ function renderAgenticPlan(){
   // ── 6. how the loop runs ─────────────────────────────────────────────────────────────────────
   const step=(n,title,body)=>`<div class="act-item" style="background:rgba(99,102,241,0.10);border-color:#6366f1"><div class="act-icon">${n}</div><div class="act-body"><div class="act-title" style="color:var(--text)">${title}</div><div class="act-detail" style="color:var(--text);opacity:.82">${body}</div></div></div>`;
   const loopCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
+    <div class="card" data-priv="off"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
       <div class="act-list">
         ${step('1','Research — weekly, or early','A multi-sleeve deep research run (momentum · quality · growth · catalyst, with an adversarial verify pass) proposes names and weights. It also runs early when a deposit lands or a held name gaps ≥6% — the system reacts to events, not just the calendar.')}
         ${step('2','Finalize — caps re-enforced','<code>finalize-target.mjs</code> re-applies the cluster and vol-scaled caps to whatever the research returned, and a held name the research dropped is retained one cycle as a <b>phase-out</b> (zero trades) unless the verdict was explicitly business-broken. A target refresh expresses intent; it is not an execution order.')}
@@ -3861,7 +3874,7 @@ function _renderPos(rows){
     {k:'symbol',lbl:'Symbol',th:'',            fn:r=>`<span class="sym az-link" onclick="azConfirm('${r.symbol}')">${r.symbol}</span>`},
     {k:'pct',   lbl:'% Port',th:'tr sortable', fn:r=>`<span style="font-weight:700;color:${r.r.color}">${fmt(r.pct,1)}%</span>`},
     {k:'pct',   lbl:'Risk',  th:'tc',           fn:r=>`<span class="badge" style="background:${r.r.bg};color:${r.r.fg}">${r.r.level}</span>`},
-    {k:'qty',   lbl:'Shares',th:'tr sortable', fn:r=>fmt(r.qty,r.qty<1?4:2)},
+    {k:'qty',   lbl:'Shares',th:'tr sortable', fn:r=>`<span data-priv="val">${fmt(r.qty,r.qty<1?4:2)}</span>`},
     {k:'avg',   lbl:'Cost',  th:'tr sortable', fn:r=>'$'+fmt(r.avg)},
     {k:'px',    lbl:'Price', th:'tr sortable', fn:r=>r.px?'$'+fmt(r.px):'—'},
     {k:'val',   lbl:'Value', th:'tr sortable', fn:r=>fmtD(r.val)},
@@ -5134,7 +5147,7 @@ window.switchTab=switchTab;
 
   var modal,elTag,elTitle,elBody;
   function buildModal(){
-    modal=document.createElement('div'); modal.className='help-modal'; modal.id='help-modal';
+    modal=document.createElement('div'); modal.className='help-modal'; modal.id='help-modal'; modal.setAttribute('data-priv','off');
     modal.innerHTML='<div class="help-box" role="dialog" aria-modal="true"><div class="help-head"><div style="min-width:0"><div class="help-tag" id="help-tag"></div><div class="help-title" id="help-title"></div></div><button class="help-x" type="button" aria-label="Close">×</button></div><div class="help-body" id="help-body"></div></div>';
     document.body.appendChild(modal);
     elTag=modal.querySelector('#help-tag'); elTitle=modal.querySelector('#help-title'); elBody=modal.querySelector('#help-body');
@@ -5476,7 +5489,7 @@ function ideaCard(i,cid){
       ['Max loss','$'+i.maxLoss],['Max profit','$'+i.maxProfit],['Breakeven','$'+i.breakeven]];
   } else if(i.strategy==='Collar'){
     rows=[['Floor (put)','$'+i.putStrike],['Ceiling (call)','$'+i.callStrike],
-      [i.netCost>=0?'Net cost':'Net credit','$'+Math.abs(i.netCost)],['Shares',i.shares],['Expiry',(i.expiration||'')+' · '+i.dte+'d']];
+      [i.netCost>=0?'Net cost':'Net credit','$'+Math.abs(i.netCost)],['Shares','<span data-priv="val">'+i.shares+'</span>'],['Expiry',(i.expiration||'')+' · '+i.dte+'d']];
   } else {
     rows=[['Strike','$'+i.strike],['Expiry',(i.expiration||'')+' · '+i.dte+'d'],[live?'Premium (mark)':'Est. premium','~$'+(prem!=null?(+prem).toFixed(2):'—')]];
     if(i.breakeven!=null)rows.push(['Breakeven','$'+i.breakeven]);
@@ -5519,9 +5532,10 @@ function optExposureStrip(e){
   if(!e)return '';
   const tiles=[];
   const dC=e.netDelta>0?'#10b981':e.netDelta<0?'#ef4444':'#6b7280';
-  tiles.push(['Net delta','<span style="color:'+dC+'">'+(e.netDelta>0?'+':'')+e.netDelta+'</span>','share-equiv. tilt']);
+  /* Net delta is a share-equivalent exposure, i.e. a position size with the unit filed off. */
+  tiles.push(['Net delta','<span data-priv="val" style="color:'+dC+'">'+(e.netDelta>0?'+':'')+e.netDelta+'</span>','share-equiv. tilt']);
   if(e.cspCash)tiles.push(['Put cash secured',fmtD(e.cspCash),'tied up on short puts']);
-  if(e.sharesCapped)tiles.push(['Shares capped',e.sharesCapped+'','under short calls']);
+  if(e.sharesCapped)tiles.push(['Shares capped','<span data-priv="val">'+e.sharesCapped+'</span>','under short calls']);
   tiles.push(['Open premium',fmtD(e.openPremium),'at risk · '+e.contracts+' contract'+(e.contracts===1?'':'s')]);
   return '<div class="card"><div class="card-title"><span>🧮 Options Exposure <span class="card-hint">'+e.positions+' position'+(e.positions===1?'':'s')+' · open + pending</span></span></div>'+
     '<div class="pk-metrics" style="grid-template-columns:repeat('+Math.min(4,tiles.length)+',1fr)">'+
@@ -5582,16 +5596,16 @@ function renderOptions(app,o){
   // Ideas (filterable + sortable)
   const ideas=(o&&o.ideas&&o.ideas.ideas)||[];
   window._optIdeas=ideas; _optIdeaState={dir:'all',sort:'conf'};
-  h+='<div class="card"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · spreads · collars · est. premiums</span></span></div>';
+  h+='<div class="card" data-priv="market"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · spreads · collars · est. premiums</span></span></div>';
   if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls + a defined-risk debit spread from the oversold scan, covered-call income, cash-secured puts, and a collar on your largest holding).</div>';
   else h+=optIdeaControls(ideas)+'<div id="opt-idea-grid">'+optIdeaGridHtml()+'</div><div class="fund-note">Estimated premiums (spreads/collars are always modeled) — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
   h+='</div>';
   // Covered-call income ranker (your 100+ share holdings, by annualized yield)
   const ccs=ideas.filter(function(i){return i.strategy==='Covered call';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
-  if(ccs.length){ h+='<div class="card"><div class="card-title"><span>💰 Covered-Call Income <span class="card-hint">your 100+ share holdings · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+ccs.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr"><b style="color:#10b981">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ price × (365 ÷ days). Caps upside at the strike; the premium is yours to keep.</div></div>'; }
+  if(ccs.length){ h+='<div class="card" data-priv="market"><div class="card-title"><span>💰 Covered-Call Income <span class="card-hint">your 100+ share holdings · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+ccs.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr"><b style="color:#10b981">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ price × (365 ÷ days). Caps upside at the strike; the premium is yours to keep.</div></div>'; }
   // Cash-secured put income ranker (oversold names, by annualized yield)
   const csps=ideas.filter(function(i){return i.strategy==='Cash-secured put';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
-  if(csps.length){ h+='<div class="card"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
+  if(csps.length){ h+='<div class="card" data-priv="market"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
   // Options P&L (closed trades)
   const hist=(o&&o.history)||[];
   h+='<div class="card"><div class="card-title"><span>📒 Options P&amp;L <span class="card-hint">closed trades</span></span></div>';
@@ -5599,7 +5613,7 @@ function renderOptions(app,o){
   else{ const rz=(o.realized||0); h+='<div style="font-size:13px;margin-bottom:8px">Realized: <b style="color:'+(rz>=0?'#10b981':'#ef4444')+'">'+(rz>=0?'+':'-')+fmtD(Math.abs(rz))+'</b></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Net P&amp;L</th><th class="tr">Trades</th><th class="tr">Closed</th></tr></thead><tbody>'+hist.map(function(x){return '<tr><td class="sym">'+x.symbol+'</td><td class="tr '+(x.net>=0?'pos':'neg')+'">'+(x.net>=0?'+':'-')+fmtD(Math.abs(x.net))+'</td><td class="tr">'+x.trades+'</td><td class="tr" style="color:#9ca3af">'+(x.date||'')+'</td></tr>';}).join('')+'</tbody></table></div>'; }
   h+='</div>';
   // Knowledge
-  h+='<div class="card"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+
+  h+='<div class="card" data-priv="off"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+
      OPT_KNOWLEDGE.map(function(k){return '<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">'+k[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.82;line-height:1.5">'+k[1]+'</div></div>';}).join('')+'</div></div>';
   h+='<div class="disclaimer">Options involve substantial risk and are not suitable for all investors. This page is research/education from your Robinhood data — not financial advice. You trade in the Robinhood app.</div>';
   app.innerHTML=h;
@@ -6455,7 +6469,7 @@ function azRec(a,x){
     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px">'+lv.map(L=>'<div style="background:var(--surface-2);border-radius:9px;padding:8px 10px;border-left:3px solid '+L[2]+'"><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px">'+L[0]+'</div><div style="font-size:14px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+'</div>';
   if(pk&&Array.isArray(pk.thesis)&&pk.thesis.length)h+='<div style="font-size:11px;font-weight:700;color:#9ca3af;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.4px">Why it’s recommended</div><ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:var(--text);opacity:.9">'+pk.thesis.map(t=>'<li style="margin-bottom:4px">'+t+'</li>').join('')+'</ul>';
   // Position sizing (risk to the stop) — folded in from the old standalone card so the whole trade plan lives here.
-  if(x&&x.sizing)h+='<div style="font-size:12px;line-height:1.55;color:var(--text);opacity:.85;margin-top:12px;padding:9px 11px;background:var(--surface-2);border-radius:9px">📐 <b>Size:</b> risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share) → <b>~'+x.sizing.risk1+' sh</b> = 1% of book · <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div>';
+  if(x&&x.sizing)h+='<div data-priv="on" style="font-size:12px;line-height:1.55;color:var(--text);opacity:.85;margin-top:12px;padding:9px 11px;background:var(--surface-2);border-radius:9px">📐 <b>Size:</b> risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share) → <b>~'+x.sizing.risk1+' sh</b> = 1% of book · <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div>';
   // Hand-off + Robinhood deep link (folded in from the old Exact Trade Levels card; uses the canonical computed swing levels).
   h+='<div style="margin-top:11px">'+chatBtn('az-'+a.sym,eqTradePrompt({sym:a.sym,side:(a.tone==='neg'?'(read is cautious — confirm direction before buying)':'Buy / long'),entry:'$'+a.entryLo+'–$'+a.entryHi,limit:a.entryHi,stop:a.stop,tp1:a.tp1,tp2:a.tp2,qty:((x&&x.sizing)?x.sizing.risk1:null)}))+rhBtn(a.sym)+'</div>';
   h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:10px">'+(pk?'From today’s Picks screen — research, not financial advice.':'Algorithmic read — research, not financial advice.')+'</div></div>';
@@ -6521,7 +6535,7 @@ function runAnalysis(sym){
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
         '<div style="text-align:left;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:10px;border-left:3px solid '+tc+'"><div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">💡 Why this signal</div><div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9">'+whyTxt+'</div></div>':'')+'</div>'+
     (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
-    (x.held?'<div class="card" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares',fmt(x.held.qty,x.held.qty<10?2:0)],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
+    (x.held?'<div class="card" data-priv="on" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares','<span data-priv="val">'+fmt(x.held.qty,x.held.qty<10?2:0)+'</span>'],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     (earn?'<div class="card" style="border-left:4px solid '+(earn.days>=0&&earn.days<=10?'#f59e0b':'#6366f1')+'"><div class="card-title"><span>📅 Earnings</span></div><div style="font-size:12.5px;line-height:1.6">'+(earn.days<0?('Last reported '+(-earn.days)+'d ago ('+earn.date+').'):earn.days===0?('Reports <b>today</b> ('+earn.date+')'+(earn.when&&_whenTxt[earn.when]?' '+_whenTxt[earn.when]:'')+'.'):('Next earnings in <b>'+earn.days+' days</b> — '+earn.date+(earn.when&&_whenTxt[earn.when]?', '+_whenTxt[earn.when]:'')+'.'))+(earn.eps!=null?' Est. EPS $'+earn.eps+'.':'')+(earn.days>=0&&earn.days<=10?' <b style="color:#f59e0b">Elevated IV / gap risk into the print — size accordingly.</b>':'')+'</div></div>':'')+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+
       (mtf?'<div style="font-size:11.5px;color:var(--text);opacity:.9;margin-top:11px;line-height:1.6"><b style="color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;font-size:10.5px">🕒 Timeframes</b> &nbsp;'+mtf.rows.map(o=>o.tf+' '+(o.up===true?'<span style="color:#10b981">▲</span>':o.up===false?'<span style="color:#ef4444">▼</span>':'<span style="color:#9ca3af">–</span>')).join(' &nbsp;·&nbsp; ')+' &nbsp;—&nbsp; <span style="color:'+mtf.align.c+';font-weight:700">'+mtf.align.t+'</span></div>':'')+'</div>':'')+
@@ -6531,7 +6545,7 @@ function runAnalysis(sym){
       '<table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div>'+(scen.em?'<div style="font-size:12px;margin-top:7px;padding:8px 10px;background:var(--surface-2);border-radius:8px;line-height:1.5">Implied <b>±1σ</b> move (~'+scen.em.dte+'d): <b>±'+scen.em.pct+'%</b> → <b>$'+scen.em.lo+'</b> – <b>$'+scen.em.hi+'</b> <span style="color:#9ca3af">('+(scen.em.src==='market'?'market-implied · IV '+scen.em.iv+'%':'est. from realized vol · ~'+scen.em.iv+'%')+')</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:4px">Case <b>odds</b> are a heuristic from the setup score, trend &amp; RSI (not market-implied); the <b>±1σ band</b> is '+(scen.em&&scen.em.src==='market'?'from live option IV':'a realized-vol estimate')+'.</div></div>':'')+
     (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
       oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
-      oplay.kind==='covered'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#6366f1">Income — covered call.</b> Against your '+(x.held?fmt(x.held.qty,0)+' sh':'shares')+', sell the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d) for ~<b>$'+oplay.income+'</b> ('+oplay.annYield+'% annualized). Caps upside at +'+oplay.cap+'%. Est. IV ~'+oplay.iv+'%.</div>':
+      oplay.kind==='covered'?'<div data-priv="on" style="font-size:12.5px;line-height:1.6"><b style="color:#6366f1">Income — covered call.</b> Against your '+(x.held?fmt(x.held.qty,0)+' sh':'shares')+', sell the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d) for ~<b>$'+oplay.income+'</b> ('+oplay.annYield+'% annualized). Caps upside at +'+oplay.cap+'%. Est. IV ~'+oplay.iv+'%.</div>':
       '<div style="font-size:12.5px;line-height:1.6"><b style="color:#9ca3af">No clean options play.</b> The read is cautious/down — wait for a base or trend turn rather than buying calls into weakness. Earliest sensible monthly expiry if you do define risk: '+oplay.exp+'.</div>'
     )+(liveOpt?'<div style="margin-top:10px;padding:9px 11px;background:var(--surface-2);border-radius:9px;border-left:3px solid #6366f1;font-size:12px;line-height:1.5">📌 You already hold <b>'+liveOpt.length+'</b> live '+a.sym+' contract'+(liveOpt.length>1?'s':'')+' ('+liveOpt.map(p=>(p.side||'').toUpperCase()+' '+(p.type||'').toUpperCase()+' $'+p.strike).slice(0,3).join(' · ')+') with real greeks &amp; IV — those beat this estimate. <span class="az-link" onclick="switchTab(\'options\')" style="color:#6366f1;font-weight:700">Open Options →</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Estimated premium (no live chain) — confirm the actual bid/ask &amp; OI before trading. Not advice.</div></div>':'')+
     ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv||a.sector)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([a.sector?['Sector',titleCase(a.sector)]:null,x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
@@ -6627,23 +6641,23 @@ function renderPicksStatic(){
       <div class="ac-tier">🧭 The plan <span class="card-hint">(raise · redeploy · guardrails)</span></div>
       <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
     </div></div>
-    <div class="card">
+    <div class="card" data-priv="market">
       <div class="card-title"><span>🎯 Top 3 Picks Today <span class="card-hint">(the ideas the plan's Step 2 redeploys into)</span></span></div>
       <div class="picks-grid2" id="picks-cards"></div>
     </div>
-    <div class="card">
+    <div class="card" data-priv="market">
       <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">tech 33% · fundamentals 28% · R/R 19% · social 20%</span></span></div>
       <div class="chart-wrap" style="height:300px"><canvas id="picks-chart"></canvas></div>
     </div>
-    <div class="card">
+    <div class="card" data-priv="market">
       <div class="card-title collapsible" data-toggle="body-picktable" onclick="toggleSection('body-picktable')"><span>📋 Scoring Breakdown</span><span class="chevron">▼</span></div>
       <div id="body-picktable"><div id="picks-filters"></div><div id="picks-table"></div></div>
     </div>
-    <div class="card" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
+    <div class="card" data-priv="market" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
     <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('main')">🧾 Rebalance Log — your trades, graded vs SPY →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Track Record grades the <i>screen</i>; the Rebalance Log grades <i>what you actually did</i>. It lives on the Accounts tab, beside the agentic account's, so the two books read the same way.</div></div>
-    ${PICK_INCOME.length?`<div class="card"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
-    ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
-    <div class="card" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
+    ${PICK_INCOME.length?`<div class="card" data-priv="market"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
+    ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card" data-priv="off"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
+    <div class="card" data-priv="market" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
     <div class="disclaimer">⚠️ Not financial advice. Scan generated ${ANALYSIS_DATE}; live prices &amp; RSI via Robinhood + Alpha Vantage. Research independently before entering any position.</div>
   `;
   paintActionCenter();   // portfolio-derived; populates now if __SNAP is ready, else when load() lands.
@@ -6824,10 +6838,10 @@ function renderPicksCards(){
     let notes='';
     // #5 — if the Action Plan's redeploy selected this pick, badge it and link back up to the plan.
     const pa=(window.__PLAN_ADDS&&window.__PLAN_ADDS[p.ticker])||null;
-    if(pa){ notes+='<div class="cross-note" style="background:#eef2ff;color:#3730a3">🧭 <b>The plan picked this</b> — Step 2 redeploy sizes <b>~'+pa.shares+' sh</b> (~'+fmtD(pa.dollars)+') into '+p.ticker+' from freed cash. <span class="dp-link" onclick="(document.getElementById(\'plan-content\')||{}).scrollIntoView&&document.getElementById(\'plan-content\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">see the plan ↑</span></div>'; }
+    if(pa){ notes+='<div class="cross-note" data-priv="on" style="background:#eef2ff;color:#3730a3">🧭 <b>The plan picked this</b> — Step 2 redeploy sizes <b>~'+pa.shares+' sh</b> (~'+fmtD(pa.dollars)+') into '+p.ticker+' from freed cash. <span class="dp-link" onclick="(document.getElementById(\'plan-content\')||{}).scrollIntoView&&document.getElementById(\'plan-content\').scrollIntoView({behavior:\'smooth\',block:\'center\'})">see the plan ↑</span></div>'; }
     const h=heldInfo(p.ticker);
     if(h){ notes+='<div class="cross-note" style="background:#ede9fe;color:#5b21b6"><b>You already own this</b> — '+fmt(h.pct,1)+'% of portfolio ('+fmtD(h.val)+'). Adding raises single-name concentration.</div>'; }
-    if(P&&P.bpVal>0){ const sh=Math.floor(P.bpVal/cur); notes+='<div class="cross-note" style="background:#f0f9ff;color:#075985">💵 With '+fmtD(P.bpVal)+' buying power you could buy <b>~'+sh+' share'+(sh===1?'':'s')+'</b> (~'+fmtD(sh*cur)+') at '+fmtD(cur)+'.</div>'; }
+    if(P&&P.bpVal>0){ const sh=Math.floor(P.bpVal/cur); notes+='<div class="cross-note" data-priv="on" style="background:#f0f9ff;color:#075985">💵 With '+fmtD(P.bpVal)+' buying power you could buy <b>~'+sh+' share'+(sh===1?'':'s')+'</b> (~'+fmtD(sh*cur)+') at '+fmtD(cur)+'.</div>'; }
     const cl=clusterFor(p.ticker);
     if(cl&&P&&P.clusters&&P.clusters[cl]){ const cpct=P.clusters[cl].pct; if(cpct>15){ notes+='<div class="cross-note" style="background:#fff7ed;color:#9a3412">⚠️ <b>'+cl+'</b> is already '+fmt(cpct,1)+'% of your portfolio. Buying '+p.ticker+' adds correlated exposure to a cluster that\'s '+(cpct>20?'over':'near')+' your risk threshold.</div>'; } }
     const rng=parseRange(p.entry);
@@ -7181,38 +7195,168 @@ function themeIcon(t){ return t==='gold'?'☀️':'✨'; } /* icon = the theme y
 function themeColor(t){ return t==='gold'?'#000':'#16213e'; }
 function toggleTheme(){ const h=document.documentElement; let cur=h.getAttribute('data-theme')||'light'; if(cur==='dark'||cur==='neon')cur='gold'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof applyChartTheme==='function') applyChartTheme(); }catch(e){} try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
 
-/* Privacy mode: blur your $ figures on the Portfolio tab (other tabs are market data, untouched). */
-let _moneyMo=null,_moneyT=null;
-function _wrapMoney(){
-  const root=document.getElementById('page-portfolio'); if(!root)return;
-  if(_moneyMo)_moneyMo.disconnect();
-  try{
-    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(n){
-      if(!n.nodeValue||n.nodeValue.indexOf('$')<0)return NodeFilter.FILTER_REJECT;
-      const p=n.parentNode; if(!p)return NodeFilter.FILTER_REJECT;
-      if(p.classList&&p.classList.contains('money'))return NodeFilter.FILTER_REJECT;
-      const t=p.nodeName; if(t==='SCRIPT'||t==='STYLE'||t==='CANVAS'||t==='TEXTAREA'||t==='INPUT')return NodeFilter.FILTER_REJECT;
-      return NodeFilter.FILTER_ACCEPT;
-    }});
-    const g=/\$\d[\d,]*(?:\.\d+)?/g; const nodes=[];
-    while(walker.nextNode()){ g.lastIndex=0; if(g.test(walker.currentNode.nodeValue))nodes.push(walker.currentNode); }
-    nodes.forEach(function(n){
-      const txt=n.nodeValue,frag=document.createDocumentFragment(); let last=0,m; g.lastIndex=0;
-      while((m=g.exec(txt))){ if(m.index>last)frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
-        const s=document.createElement('span'); s.className='money'; s.textContent=m[0]; frag.appendChild(s); last=m.index+m[0].length; }
-      if(last<txt.length)frag.appendChild(document.createTextNode(txt.slice(last)));
-      if(n.parentNode)n.parentNode.replaceChild(frag,n);
-    });
-  }catch(e){}
-  if(_moneyMo)_moneyMo.observe(root,{childList:true,subtree:true});
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRIVACY MODE — hide THIS ACCOUNT's figures, app-wide.
+   ───────────────────────────────────────────────────────────────────────────
+   The original only walked #page-portfolio and only matched "$<digit>", so the
+   Plan tab's Action Center (loan, buying power, ticket dollars), the whole
+   agentic plan, the Options tab's own contracts and the Analyze page's "your
+   position" block were all shown in full while the toggle read as ON. Audited
+   against the sample snapshot it leaked 100+ values across four tabs.
+
+   THE MODEL — three region kinds (plus `val`, below), nearest `data-priv` wins:
+     on      mask money + quantities + leverage + account last-4  (your book)
+     market  mask quantities/leverage/last-4 only; $ here is a PRICE, not a
+             balance — strikes, entry/stop levels, market caps stay readable
+     off     mask nothing (Markets tab, the standing rulebook, help text)
+   Page roots seed the default, so a card added later inside Accounts / Plan /
+   Options INHERITS masking and a forgotten attribute over-masks rather than
+   leaking. That asymmetry is the whole design: this is the failure mode the
+   original had, and only an explicit opt-out can reintroduce it.
+
+   PERCENTAGES ARE NEVER MASKED — a return, a weight, a drift is what makes the
+   app worth showing, and none of them reveal what the account is worth. */
+const PRIV_RE=/(-?\$\s?\d[\d,]*(?:\.\d+)?(?:\s?[kKmMbBtT](?![A-Za-z]))?)|(\d[\d,]*(?:\.\d+)?\s?(?:shares|share|sh|contracts|contract)\b)|(\b\d+(?:\.\d+)?×|×\d+(?:\.\d+)?\b)|(••••\d{4})/g;
+const PRIV_SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,SELECT:1,OPTION:1,CANVAS:1};
+const PRIV_ATTRS=['title','aria-label'];
+let _privMo=null;
+
+function privKind(m1,m2,m3){ return m1?'money':m2?'qty':m3?'mult':'acct'; }
+function privMask(kind,raw){
+  if(kind==='money')  return '$•••';
+  /* Both orders occur: "1.66×" is the leverage multiple, "×2" the contract count on an
+     option card — and two contracts against a visible strike is $10k of notional. */
+  if(kind==='mult')   return raw[0]==='×'?'×•':'•×';
+  /* Four bullets, not eight: the app already prints Robinhood's own "••••0741" style, so a
+     short token drops into prose ("the margin •••• book") without reflowing the line. */
+  if(kind==='acct')   return '••••';
+  const u=/shares?$/.test(raw)?(/ share$/.test(raw)?' share':' shares'):(/contracts?$/.test(raw)?(/ contract$/.test(raw)?' contract':' contracts'):' sh');
+  return '•••'+u;
 }
-function startMoney(){ const root=document.getElementById('page-portfolio'); if(!root)return;
-  if(!_moneyMo)_moneyMo=new MutationObserver(function(){ clearTimeout(_moneyT); _moneyT=setTimeout(_wrapMoney,150); });
-  _wrapMoney(); }
-function stopMoney(){ if(_moneyMo){ _moneyMo.disconnect(); _moneyMo=null; } }
-function togglePrivacy(){ const on=!document.body.classList.contains('pf-private'); document.body.classList.toggle('pf-private',on); try{localStorage.setItem('pf_private',on?'1':'0');}catch(e){} const b=document.getElementById('pf-priv'); if(b)b.textContent=on?'🙈':'👁️'; if(on)startMoney(); else stopMoney(); }
-window.togglePrivacy=togglePrivacy;
-(function(){ try{ if(localStorage.getItem('pf_private')==='1'){ if(document.body)document.body.classList.add('pf-private'); startMoney(); } }catch(e){} })();
+/* Nearest declared region wins; anything outside a declared region (the freshness
+   strip, toasts) is chrome and carries no figures, so it defaults to off.
+   `val` is the fourth kind and marks ONE element whose whole text is a bare figure —
+   a Shares cell reads "350.00" with no $ and no unit, so no pattern can recognise it,
+   and 350 shares against a visible price is the position value in one multiplication.
+   It still defers to an enclosing `off`, so documentation never masks. */
+function privMode(el){
+  let bare=false;
+  for(let n=el;n;n=n.parentElement){
+    const v=n.getAttribute&&n.getAttribute('data-priv');
+    if(v==='val'){ bare=true; continue; }
+    if(v==='on'||v==='market'||v==='off')return v==='off'?'off':(bare?'val':v);
+  }
+  return 'off';
+}
+function privSkip(kind,mode){ return mode==='off'||(mode==='market'&&kind==='money'); }
+
+function privText(node){
+  const p=node.parentElement; if(!p||PRIV_SKIP[p.nodeName])return;
+  if(p.classList&&p.classList.contains('priv-m'))return;
+  const txt=node.nodeValue; if(!txt||txt.length>4000)return;
+  const mode=privMode(p); if(mode==='off')return;
+  if(mode==='val'){
+    if(!/\d/.test(txt))return;
+    const core=txt.trim(); if(!core)return;
+    const lead=txt.slice(0,txt.indexOf(core)), tail=txt.slice(txt.indexOf(core)+core.length);
+    const f=document.createDocumentFragment();
+    if(lead)f.appendChild(document.createTextNode(lead));
+    const b=document.createElement('span'); b.className='priv-m'; b.setAttribute('data-v',core); b.textContent='•••';
+    f.appendChild(b);
+    if(tail)f.appendChild(document.createTextNode(tail));
+    p.replaceChild(f,node); return;
+  }
+  PRIV_RE.lastIndex=0; if(!PRIV_RE.test(txt))return;
+  let frag=null,last=0,m; PRIV_RE.lastIndex=0;
+  while((m=PRIV_RE.exec(txt))){
+    const kind=privKind(m[1],m[2],m[3]);
+    if(privSkip(kind,mode))continue;
+    if(!frag)frag=document.createDocumentFragment();
+    if(m.index>last)frag.appendChild(document.createTextNode(txt.slice(last,m.index)));
+    const sp=document.createElement('span');
+    sp.className='priv-m'; sp.setAttribute('data-v',m[0]); sp.textContent=privMask(kind,m[0]);
+    frag.appendChild(sp); last=m.index+m[0].length;
+  }
+  if(!frag)return;
+  if(last<txt.length)frag.appendChild(document.createTextNode(txt.slice(last)));
+  p.replaceChild(frag,node);
+}
+/* title/aria-label carry the same figures on tiles and buttons — a long-press or a
+   screen reader would read out what the screen is hiding. */
+function privAttrEl(el){
+  const mode=privMode(el); if(mode==='off')return;
+  for(const a of PRIV_ATTRS){
+    if(el.hasAttribute('data-pv-'+a))continue;
+    const v=el.getAttribute(a); if(!v)continue;
+    PRIV_RE.lastIndex=0; if(!PRIV_RE.test(v))continue;
+    PRIV_RE.lastIndex=0;
+    const out=v.replace(PRIV_RE,function(raw,m1,m2,m3){ const k=privKind(m1,m2,m3);
+      return privSkip(k,mode)?raw:privMask(k,raw); });
+    if(out!==v){ el.setAttribute('data-pv-'+a,v); el.setAttribute(a,out); }
+  }
+}
+/* A canvas can't be walked, and the account-performance chart plots equity in
+   dollars — so charts inside an `on` region are blurred whole. `market` charts
+   (the picks composite, the price chart) are untouched. */
+function privCanvasEl(el){
+  const w=(el.closest&&el.closest('.chart-wrap'))||el;
+  if(privMode(el)==='on')w.classList.add('priv-blur'); else w.classList.remove('priv-blur');
+}
+function privScan(root){
+  if(!root)return;
+  if(root.nodeType===3){ privText(root); return; }
+  if(root.nodeType!==1)return;
+  if(root.nodeName==='CANVAS')privCanvasEl(root);
+  privAttrEl(root);
+  const els=root.querySelectorAll('*'); for(const e of els){ if(e.nodeName==='CANVAS')privCanvasEl(e); privAttrEl(e); }
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);
+  const t=[]; let n; while((n=w.nextNode()))t.push(n);
+  for(const x of t)privText(x);
+}
+function privRestore(){
+  const b=document.body; if(!b)return;
+  b.querySelectorAll('span.priv-m').forEach(function(sp){
+    const t=document.createTextNode(sp.getAttribute('data-v')||sp.textContent||'');
+    if(sp.parentNode)sp.parentNode.replaceChild(t,sp);
+  });
+  b.querySelectorAll('.priv-blur').forEach(function(e){ e.classList.remove('priv-blur'); });
+  PRIV_ATTRS.forEach(function(a){ b.querySelectorAll('[data-pv-'+a+']').forEach(function(e){
+    e.setAttribute(a,e.getAttribute('data-pv-'+a)); e.removeAttribute('data-pv-'+a); }); });
+  try{ b.normalize(); }catch(e){}
+}
+/* Masking runs SYNCHRONOUSLY inside the observer callback (the old one debounced
+   150ms, so every freshly-rendered card flashed its real numbers first). Our own
+   replacements re-enter once and then converge: a split text node keeps no match,
+   and a .priv-m span is skipped by parent class. */
+function privStart(){
+  if(_privMo)return;
+  _privMo=new MutationObserver(function(recs){
+    for(const r of recs){
+      try{
+        if(r.type==='characterData'){ privText(r.target); }
+        else if(r.type==='attributes'){ if(r.target.nodeName==='CANVAS')privCanvasEl(r.target); privAttrEl(r.target); }
+        else { r.addedNodes.forEach(privScan); }
+      }catch(e){}
+    }
+  });
+  try{ privScan(document.body); }catch(e){}
+  _privMo.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:PRIV_ATTRS});
+}
+function privStop(){ if(_privMo){ _privMo.disconnect(); _privMo=null; } privRestore(); }
+function setPrivacy(on){
+  if(document.body)document.body.classList.toggle('pf-private',on);
+  document.documentElement.classList.toggle('pf-private',on);
+  try{localStorage.setItem('pf_private',on?'1':'0');}catch(e){}
+  const b=document.getElementById('pf-priv');
+  if(b){ b.textContent=on?'🙈':'👁️';
+    const t=on?'Private mode ON — your balances, share counts and account numbers are hidden. Tap to show them.':'Private mode OFF — tap to hide your balances, share counts and account numbers.';
+    b.setAttribute('title',t); b.setAttribute('aria-label',t); b.setAttribute('role','button'); b.setAttribute('tabindex','0'); b.setAttribute('aria-pressed',on?'true':'false'); }
+  if(on)privStart(); else privStop();
+}
+function togglePrivacy(){ setPrivacy(!document.body.classList.contains('pf-private')); }
+window.togglePrivacy=togglePrivacy; window.setPrivacy=setPrivacy;
+window.__privScan=function(){ if(_privMo)privScan(document.body); };
+(function(){ try{ if(localStorage.getItem('pf_private')==='1')setPrivacy(true); }catch(e){} })();
 window.toggleTheme=toggleTheme;
 (function(){ const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(document.documentElement.getAttribute('data-theme')||'light'); })();
 applyChartTheme();

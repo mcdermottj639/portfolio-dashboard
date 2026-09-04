@@ -197,6 +197,7 @@ Three hazards this table exists to prevent:
 | `producer/PROPOSAL-flow-signals.md` | Signed-off design for the flow layer + the **live probe results** for every political/insider/positioning source (what works on our keys, what's tier-restricted, what returns dead data). Read before adding another provider — it records what was already tried and rejected, and why congressional disclosure feeds get **no score weight** (40–116 day lag; the ETF "edge" is a megacap-tech beta tilt; the most-traded names sit inside the 48% cluster cap). |
 | `producer/snapshotsanity.mjs` | **Cross-account integrity guard (2026-08-31, pure + unit-tested).** `accountsLookSwapped({agentic:{fresh,prior}, main:{fresh,prior}})` → a reason string when the two accounts' fresh position arrays look crossed, else null. `build-data.mjs` calls it before writing anything and **THROWS** on a hit, so the run publishes nothing. Compares position IDENTITY against each account's own prior book rather than reconciling dollars (an unquoted position prices at 0 — routine); needs no tolerance, fails OPEN below `SWAP_MIN_NAMES` (3). See the gotcha for why an abort is right: the display self-heals on the next run, `cumFlow` never does. |
 | `producer/validate.mjs` | Replay-contract sanity check. |
+| `producer/privacy-audit.mjs` | **Does 🙈 private mode actually hide the account? (v136)** A headless Playwright pass over every surface with privacy ON — both sides of the two account-split tabs, Options, Analyze, Markets — asserting the `data-priv` contract `index.html` implements: nothing money/quantity/leverage/last-4 readable in an `on` region, nothing quantity/leverage/last-4 readable in a `market` region, `off` unchecked. **Deliberately NOT part of the offline `producer/*.test.mjs` suite** (it needs a browser), and playwright is deliberately NOT a repo dependency — point `PF_PLAYWRIGHT` at an install and `PF_CHROME` at a binary. Three checks earn their place beyond the obvious one: it flags a **bare** figure (a Shares cell reads `350.00` — no `$`, no unit, so no pattern can find it) by reading the column header and by auditing every `data-priv="val"` element; it **fails on a page error and on a suspiciously empty view**, because a view that threw rendered nothing and nothing is trivially leak-free (this is how the `dLbl` crash surfaced); and it **round-trips the toggle**, since the mask REPLACES text and a broken restore would strand the app in bullets. Needs a plaintext sample snapshot — `env -u PF_PASSPHRASE PF_SAMPLE_MARGIN=1 PF_SAMPLE_DRAWDOWN=soft node producer/make-sample-data.mjs`, then `git checkout origin/main -- data.json` after. |
 | `.github/workflows/freshness.yml` | Two watchdogs, hourly during market hours. **check**: opens an issue if `data.json`'s *commit* is stale **>90 min while the market is open** (holiday/half-day-aware via `market.mjs`; was 3h, which let real 60–105m scheduler gaps through); auto-closes on recovery. **deploy-health** (v88): catches "committed but never DEPLOYED" — compares the live Pages `data.json` blob vs `HEAD` (15-min grace; the envelope's random salt means bytes always differ mid-deploy) + reads the Pages build status API, **auto-retriggers a Pages build** (`POST /pages/builds`, needs the workflow's `pages: write`) and opens/auto-closes a `pages-watchdog` issue. Added after 2026-07-02, when two consecutive branch Pages deploys hung in `deployment_queued` → timeout while the commit-age check stayed green. |
 | `producer/agentic-target.json` | **Canonical research-driven target** for the agentic account (••••3900): `{asOf,method,book,driftTriggerPp,names[]}`. `build-data.mjs` attaches it as `data.agentic.target`; the Agentic Portfolio card renders drift against it. Refreshed **weekly** by the deep research. |
 | `.claude/workflows/agentic-research.js` | Reusable **named workflow** — the deep multi-factor research (momentum/quality/growth/catalyst sleeves + valuation → adversarial verify → synthesis). **v102 — SPLIT VERDICT.** `supports` used to collapse two independent judgements into one boolean, and it failed live on 2026-08-11: 5 of 6 finalists came back unsupported and *every* rejection said "the business is sound, the price is wrong" — so a great company 2% above its ideal entry was discarded exactly like a broken one and the allocation went defensive across the board. The verdict now carries **`businessOk`** (worth owning at SOME price → decides INCLUSION) and **`entryQuality` 0-10** (how good TODAY's price is → decides SIZE, via a precomputed `entryHaircut` multiplier the synthesis prompt applies), with `entryRisk` kept apart from `biggestRisk`. A weak entry now **shrinks** a position instead of vetoing it, so an extended market yields a smaller defensive book rather than an empty one. The synthesis prompt also demands **reachable entry zones** — a zone far below spot reads as "never buy" to the executor and strands the cash; conviction is expressed by cutting WEIGHT, not by setting an unreachable price. Universe guidance widened (mid-cap / out-of-favour / international), since a screen can only buy what it is shown and a megacap-only universe in an extended tape can only ever answer "wait". Pass a fresh `args.universe`; output drives `agentic-target.json` (via `finalize-target.mjs`). **v93:** the synthesis prompt now asks for **correlation-cluster** (megacap-tech ≤48%) + **vol-scaled** weighting; `finalize-target.mjs` re-enforces those caps deterministically so they hold regardless of the model output. **Incumbency (2026-08-12 churn governor):** pass **`args.held`** (••••3900's current holdings, `[{t,w}]` or tickers) + **`args.priorTarget`** (the committed target) — the verify prompt tells the skeptic a held name's exit is a real taxable event ("broken thesis" ≠ "less attractive"; only the former is `businessOk:false`), and the synthesis prompt makes the current book the **null hypothesis** (displace an incumbent only for a materially stronger name; prefer weight changes to name swaps; a drop-and-re-add produces pure cost because the deterministic governor retains/blocks it anyway). |
@@ -237,7 +238,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v135** (`pf-v135`) — v135 carried the two owner decisions of 2026-09-03 onto the phone (**parking narrowed to wash-sale only** after idle cash moved to a high-yield sweep, and the **$25 de-minimis wash floor**); v134 gated every agentic **buy-side deferral on there actually being a buy** (the phantom "above entry" rows — see the gotcha); v133 replaced the **"one-tap confirm" wording** the app had never been able to deliver with the two real confirm paths (`agentic-confirm.mjs`, or a reply in Claude); v132 added the Income & Tax **prediction-market line item**; before that, — v127 added the self-directed Rebalance Log, v128 moved it to the Accounts tab beside the agentic one, v129 made both logs **accumulate a usable record** (frozen outcome marks + time-based retention), v130 **backfilled those marks from recorded daily closes** so the record starts full instead of empty, and v131 was the **navigation & accessibility pass** — bottom tab bar, section rail, Find, My view, ▲/▼ glyphs (all below).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v136** (`pf-v136`) — v136 **reworked privacy mode** (👁️/🙈) from a one-page dollar blur into an app-wide, region-based redaction, and fixed a `dLbl` ReferenceError that blanked the entire agentic Plan tab whenever the drawdown banner rendered (both below); v135 carried the two owner decisions of 2026-09-03 onto the phone (**parking narrowed to wash-sale only** after idle cash moved to a high-yield sweep, and the **$25 de-minimis wash floor**); v134 gated every agentic **buy-side deferral on there actually being a buy** (the phantom "above entry" rows — see the gotcha); v133 replaced the **"one-tap confirm" wording** the app had never been able to deliver with the two real confirm paths (`agentic-confirm.mjs`, or a reply in Claude); v132 added the Income & Tax **prediction-market line item**; before that, — v127 added the self-directed Rebalance Log, v128 moved it to the Accounts tab beside the agentic one, v129 made both logs **accumulate a usable record** (frozen outcome marks + time-based retention), v130 **backfilled those marks from recorded daily closes** so the record starts full instead of empty, and v131 was the **navigation & accessibility pass** — bottom tab bar, section rail, Find, My view, ▲/▼ glyphs (all below).
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
   its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
@@ -328,6 +329,9 @@ Three hazards this table exists to prevent:
   PR touching `producer/**` (`.github/workflows/tests.yml`). The build-data test temporarily writes
   a plaintext `data.json` and restores it — don't commit mid-test.
 - Inline JS parse: extract `<script>` blocks and `new Function(src)` each (skip block #1 = JSON-LD).
+- **Privacy mode:** any change that adds a card rendering account figures must re-run
+  `node producer/privacy-audit.mjs` (see the key-files row for the env it needs). A leak here is
+  invisible to the owner — the numbers look normal, only the audience sees more than intended.
 - Producer dry run: `PF_PASSPHRASE=… node producer/run.mjs --no-push "test"` → expect "replay
   contract is valid ✅"; then `git checkout origin/main -- data.json` to discard the dry-run build.
 - Intraday carry-forward test: move `producer/raw/hist-*.json` aside, build, confirm `data.hist`
@@ -985,6 +989,46 @@ Three hazards this table exists to prevent:
   worth a spread. **A capability's justification can expire because something OUTSIDE the code changed**;
   re-check the premise, not just the implementation. One trap if parking is ever switched off entirely:
   releases are gated on `parkingOn`, so flipping it strands whatever is already parked — drain first.
+- **A PRIVACY TOGGLE IS ONLY AS WIDE AS THE PAGE IT WAS WRITTEN ON (2026-09-04).** The 👁️ control
+  shipped when the app was essentially one page, as a text walk over `#page-portfolio` matching
+  `$<digit>`. The app then grew four more tabs that render account figures — the Plan tab's Action
+  Center, the entire agentic plan, the Options tab's own contracts, Analyze's 📦 Your Position — and
+  the toggle never grew with them. Measured on the sample snapshot it read as ON while leaking
+  **100+ values across four tabs**. Reworked in v136 (see the feature entry). **Five things
+  generalize.**
+  **(a) A leak here is invisible to the person who owns it.** Every other bug in this repo announces
+  itself to the owner — a wrong number, an empty card, a red CI run. This one shows the owner exactly
+  what they expect and shows the *audience* more than intended, so it can only be caught by a machine
+  looking on purpose. That is why `producer/privacy-audit.mjs` exists and why it is worth a browser
+  dependency the rest of the suite refuses.
+  **(b) Default-mask with explicit opt-outs, never opt-in.** A pattern-matcher that must be TOLD
+  about each new surface fails silently the first time someone adds a card — which is precisely what
+  happened over five tabs. Page roots now seed `data-priv`, so new cards inherit masking and a
+  forgotten attribute over-masks. Over-masking a strike price is cosmetic; leaking a balance is the
+  whole failure.
+  **(c) The values that hide best are the ones with no punctuation.** Every pattern here keys on `$`
+  or a unit, so a **bare** figure is invisible to all of them — the Shares column renders `350.00`,
+  and 350 shares next to a visible price IS the position value. Hence `data-priv="val"`, and hence
+  the audit reading table *headers* rather than only cell text. When adding a masking rule, ask what
+  the value looks like with its symbol stripped off.
+  **(d) Blur is not redaction.** A blurred `$1,234,567.89` keeps its width, so the magnitude survives
+  the blur, and the real text stays selectable and readable to a screen reader underneath. Replacing
+  the text (original parked in `data-v`, restored on toggle-off) fixes all three at once — but then
+  the RESTORE path becomes load-bearing, since a broken one strands the app in bullets with no way
+  back. The audit round-trips the toggle for that reason.
+  **(e) Percentages are the demo.** Masking them too would have been the "safe" call and would have
+  left an app with nothing to show. Returns, weights and drift reveal no balance; they are exactly
+  what the owner wants a guest to see.
+- **A HELPER SHARED BY TWO TOP-LEVEL FUNCTIONS CANNOT BE A LOCAL CONST — AND THE CRASH ONLY FIRED IN
+  A DRAWDOWN (2026-09-04).** `agDrawdownBanner()` called `dLbl()`, which was declared as a `const`
+  inside its sibling `renderAgenticPlan()`. The resulting ReferenceError blanked the **entire agentic
+  Plan tab** — target, deferrals, parking, guardrails, all of it — leaving only "Loading agentic
+  plan…". It was invisible because the banner only renders when `data.agentic.drawdown.level` is
+  `soft`/`hard`, i.e. **the page failed exactly when the book was down and the reader most needed
+  it**. Fixed by hoisting `agDLbl` to module scope. Two things generalize: a guard's own presentation
+  code needs the same "does this run on the unhappy path" test as the guard, and a **local preview
+  flag is what catches it** — `PF_SAMPLE_DRAWDOWN=soft` reproduces it in one command, which is the
+  argument for keeping those flags exercised rather than letting them rot.
 - **A target refresh is not an execution order — the churn governor stands between them (2026-08-12).**
   The weekly research is memoryless and the deploy planner used to execute the full delta immediately, so
   two consecutive targets disagreeing flipped the whole book: 08-10 exited GE/LLY/AMZN/MSFT and bought
@@ -1035,8 +1079,8 @@ Three hazards this table exists to prevent:
   there links back), then a pointer to the Plan tab. Each card renders behind its own `guard()` so a single
   throw (a bad series, a Chart.js hiccup) can't leave the cards below stuck on their spinners. The **card
   jump-nav** skips cards hidden by the inactive side (`hiddenWithin`) and rebuilds on toggle
-  (`window.__navRebuild`), so chips always match what's on screen. Privacy masking already scoped to
-  `#page-portfolio`, so it covers the agentic side for free.
+  (`window.__navRebuild`), so chips always match what's on screen. Privacy masking is no longer scoped to
+  `#page-portfolio` at all (v136) — it is region-based and app-wide; see the Privacy mode entry below.
 - **Navigation & accessibility pass (v131) — the app got a bottom tab bar, a section rail, Find and
   My view.** Integrated from a Claude Design study (`Portfolio_App_Redesign.dc.html`), **taking its
   structure and rejecting its palette wholesale** — the study proposed a warm "Clay" ground with a
@@ -1557,6 +1601,40 @@ Three hazards this table exists to prevent:
   deterministically from sleeve scores rather than trusted from the model) so the Rebalance Log can
   eventually answer whether the sleeve earned its keep — which is what makes it removable.
 - **Table readability (v97):** the three wide scrollers (All Positions `#pos-table`, Picks `#picks-table`, the Agentic holdings table `.sticky-first`) pin their **first (ticker) column sticky** while the rest scrolls sideways — opaque per-theme background (`--sticky-bg`, gold override) + a soft edge shadow, so rows stay identifiable mid-scroll. The Picks table is **ticker-first** (was Score·#·Ticker) and the Agentic table's **Target/Drift sits next to Position** (allocation read side-by-side, perf after). `fmtP`/`sc`/the agentic `pctCell` are **display-zero aware**: a value that rounds to 0.0% renders neutral gray, never a red "-0.0%" (the weekend quirk) — and v131's ▲/▼ glyph obeys the same rule, so a display-zero stays glyph-less rather than asserting a direction the data doesn't have. `thead th` contrast bumped (#9ca3af→#6b7280, light theme).
+- **Privacy mode (👁️ / 🙈) — REWORKED APP-WIDE IN v136.** Hands the phone to someone without
+  handing them the balances. It was a text walk over `#page-portfolio` alone that matched `$<digit>`
+  and blurred it, and every other tab renders account figures too — audited against the sample
+  snapshot the toggle read as ON while leaking **100+ values across four tabs**: the Plan tab's Action
+  Center (loan, buying power, ticket dollars), the whole agentic plan (book, idle cash, parked
+  dollars, turnover), the Options tab's own contracts (credit, P&L, cash secured), and the Analyze
+  page's 📦 Your Position card.
+  - **Three region kinds, nearest `data-priv` ancestor wins.** `on` = mask money + quantities +
+    leverage multiples + account last-4 (your book). `market` = `$` here is a PRICE, not a balance —
+    strikes, entry/stop levels, market caps stay readable, quantities/multiples/last-4 do not.
+    `off` = mask nothing (Markets tab, the standing rulebook, help text). Page roots seed the
+    default — Accounts/Plan/Options `on`, Analyze `market`, Markets `off` — so a card added later
+    **inherits masking**, and a forgotten attribute over-masks rather than leaks. That asymmetry is
+    the design: the original's failure mode was silent under-masking, and only an explicit opt-out
+    can bring it back.
+  - **A fourth kind, `data-priv="val"`, marks ONE element whose whole text is a BARE figure.** A
+    Shares cell reads `350.00` — no `$`, no unit — so no pattern can recognise it, and 350 shares
+    against a visible price is the position value in one multiplication. Used on every share/contract
+    count and on Net delta (a share-equivalent exposure with the unit filed off). It still defers to
+    an enclosing `off`.
+  - **Values are REPLACED (`$•••`, `••• sh`, `•×`, `••••`), never blurred.** A blur keeps the original
+    width, so a seven-figure balance stays visibly wider than a three-figure one; the real text also
+    stays selectable and readable to a screen reader underneath. The original is parked in `data-v`
+    and restored on toggle-off, so nothing re-renders. `title`/`aria-label` are masked the same way —
+    a long-press or a screen reader would otherwise read out what the screen is hiding.
+  - **Charts in an `on` region are blurred whole** (`.priv-blur` on the `.chart-wrap`) — a canvas
+    can't be walked and the Account Performance chart plots equity in dollars. `market` charts (the
+    picks composite, the Analyze price chart) are untouched.
+  - **PERCENTAGES ARE NEVER MASKED.** A return, a weight, a drift is what makes the app worth showing
+    and none of them reveal what the account is worth. Masking them would leave nothing to demo.
+  - Masking runs **synchronously inside the MutationObserver callback** — the old one debounced 150ms,
+    so every freshly-rendered card flashed its real numbers first. With privacy OFF no observer runs
+    at all, so the layer costs nothing in the normal case. `producer/privacy-audit.mjs` is the
+    regression net; run it for any change that adds a card carrying account figures.
 - **Freshness bar (STICKY since v131):** shows the snapshot label/age and **tints amber with a "↻ to
   refresh" nudge when the snapshot is ≥3h old** (computed from `data.generatedAt` in `boot()`); also hosts
   the **🔍 Find** button (v131), the build version,
