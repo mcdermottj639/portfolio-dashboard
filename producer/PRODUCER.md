@@ -210,10 +210,27 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
 
    > ### ⚠️ CRITICAL — how to save raw files (or the scheduled run hangs)
    > A scheduled run is unattended: **any command that triggers a permission prompt stalls the
-   > whole run forever.** The one thing that prompts is **`cp` with shell variables** (e.g.
-   > `BASE=…; cp "$BASE/x" "$RAW/y"`) — shell-variable expansion is flagged unsafe and asks for
-   > approval. So:
-   > - **Never use `cp`, `mv`, or shell variables** (`$BASE`, `$RAW`, `TDIR=…`) to place raw files.
+   > whole run forever.**
+   >
+   > **What actually prompts is copying OUT of Claude's own state directory
+   > (`/root/.claude/projects/…`), not shell variables** — measured 2026-09-04, and the earlier
+   > claim here that "shell-variable expansion is flagged unsafe" was **wrong**. Verified in a live
+   > session: `cp` inside the workspace *with* `$VARS` is allowed, while
+   > `cp /root/.claude/projects/<project>/<session>/tool-results/<f> …` is refused by the auto-mode
+   > classifier — which surfaces on the owner's phone as a `Bash wants to run: cp …` approval card.
+   > Getting the cause wrong matters: a session that believes the hazard is `$VARS` will happily
+   > write a literal-path `cp` and stall the run anyway. That is what happened on 2026-09-04.
+   >
+   > **How you get there:** an MCP result too large to return inline is **spilled by the harness to a
+   > file** under `/root/.claude/projects/<project>/<session>/tool-results/` and only its path comes
+   > back. The payload was never in context, so `Write` has nothing to write — and `cp` looks like
+   > the only way to land it in `producer/raw/`. It is not; it is the trap. **Re-fetch smaller so the
+   > result comes back inline.** (Same if a *subagent* made the call: the spill lands in the
+   > subagent's session dir and the parent never sees the payload — so have the subagent `Write` the
+   > raw file itself, and return only a confirmation.)
+   > - **Never use `cp` or `mv` to place raw files** — above all never out of
+   >   `/root/.claude/…`. (Shell variables are not the hazard, but there is no reason to reach for
+   >   either here.)
    > - **Save every result with the `Write` tool**, writing the JSON straight to its path (e.g.
    >   `Write → producer/raw/quotes.json`). Inline-returned results save this way with no prompt.
    > - **Fetch historicals in ≤3-symbol batches** so each result comes back **inline** (small

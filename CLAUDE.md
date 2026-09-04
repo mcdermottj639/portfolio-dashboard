@@ -571,9 +571,19 @@ Three hazards this table exists to prevent:
   provider didn't fetch (otherwise skipping would clear the stamp and re-trigger the fetch next run).
   Fails OPEN — no snapshot / no passphrase / decrypt failure all fetch, since one extra fetch is far
   cheaper than a starved snapshot.
-- **No `cp`/`mv`/shell-variables in the agent's fetch step** — shell-var expansion triggers a
-  permission prompt that stalls unattended runs. Save raw files with the `Write` tool; fetch
-  historicals in ≤3-symbol batches so results return inline.
+- **Never `cp` a result into `producer/raw/` — and the reason is NOT shell variables (corrected
+  2026-09-04).** This entry used to blame `$VAR` expansion. Measured in a live session: `cp` inside
+  the workspace *with* shell variables is allowed, while a `cp` whose SOURCE is
+  `/root/.claude/projects/<project>/<session>/tool-results/…` is refused by the auto-mode classifier
+  — which on an unattended run surfaces as a `Bash wants to run: cp …` card on the owner's phone and
+  stalls that run. **How the agent gets there:** an MCP result too large to return inline is spilled
+  by the harness to a file under that directory and only its PATH comes back, so the payload was
+  never in context, `Write` has nothing to write, and `cp` looks like the only way to land it. It is
+  the trap, not the fix — **re-fetch in a smaller batch so the result returns inline**, then `Write`
+  it (historicals ≤3 symbols/call). If a **subagent** made the call the spill lands in the
+  subagent's own session dir and the parent never sees the payload either — so have the subagent
+  `Write` the raw file itself and return only a confirmation. Getting the CAUSE right is the point:
+  a session that thinks the hazard is `$VARS` writes a literal-path `cp` and stalls anyway.
 - **On `run.mjs` push failure (e.g. a 403 proxy/egress blip): STOP.** Do not improvise manual git
   recovery / alternate push / file searches — that stalls on permission prompts. The build is fine;
   the next run republishes. (Enforced in run.mjs output + the runbook.)
