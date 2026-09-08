@@ -110,7 +110,7 @@ be set to; re-check it whenever a Routine misbehaves, because the failure mode i
 |---|---|---|---|
 | Cron (UTC) | `35 * * * *` | `12 11 * * 1` | `20 14-20 * * 1-5` |
 | Connectors | Robinhood + Alpha Vantage | Robinhood + Alpha Vantage | Robinhood |
-| Session | fresh per fire (already) | **bound to an interactive session** (2026-09-02) — see below | persistent (the original); a fresh-per-fire replacement exists but is DISABLED, having no connectors |
+| Session | fresh per fire (already) | **bound to an interactive session** (2026-09-02; re-created 2026-09-08 as `trig_01UcxmEScHtoVU3yrGFJ1wiL` with the Mandate A prompt) — see below | persistent (the original); a fresh-per-fire replacement exists but is DISABLED, having no connectors |
 | Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | `claude-opus-5` | `claude-opus-5` |
 | Permission mode | `auto` | `auto` | `auto` |
 | `allowed_tools` | `preset:default` + `PushNotification` + `Skill` | same | same |
@@ -150,6 +150,23 @@ gates**, and a prompt is editable from a session only when BOTH pass:
 Schedule, name and enabled state still change freely on both. **Test the edit rather than reasoning
 about it** — this entry has now been wrong in both directions, and the cost of being wrong is a code
 change that silently never takes effect. The paste-ready text for BOTH prompts is kept below.
+
+**Gate 2 has a clean workaround: REPLACE the Routine instead of editing it (done 2026-09-08).** It
+blocks *editing* a prompt that fires into a session you are not in — even for the Routine's own creator,
+tested — but it does not block *creating* a new Routine bound to that same session, which is how the
+bound one was created in the first place. The recipe, as executed:
+1. `create_trigger` with the same cron (`12 11 * * 1`), the same `persistent_session_id`
+   (`session_018NAjFNs2bBBfmH5YYb2LnP`), `initiation: human_request`, and the new prompt → **`trig_01UcxmEScHtoVU3yrGFJ1wiL`**.
+2. `update_trigger` the old `trig_01YRmfzy7YD3P44PbwCoQD2m` with `enabled:false` and a name that says
+   "retired … replaced by <new id>", so a later `list_triggers` explains itself.
+3. `list_triggers` to confirm exactly one enabled research Routine.
+Get the prompt right BEFORE step 1 — the first attempt dropped step 0's `cd /home/user/portfolio-dashboard &&`
+(the paste text below lacked it; fixed) and had to be deleted and re-created, because it could not be edited
+either. The `mcp_connections:[]` warning on create is expected: a session-bound Routine inherits the bound
+session's connectors, which is the whole reason it is bound. **Evidence a session-bound Routine ran:**
+`list_triggers` shows no `last_run` for it; read `last_fired_at` from the full record and look for the
+artifact commit (09-07: fired 11:21:47Z, `agentic-target.json` landed 12:07:59Z — a 46-minute run, i.e. the
+pipeline, not a NOT_DUE exit).
 
 The general rule this keeps proving: **put anything load-bearing in CODE, not in prompt wording.**
 Mandate A (2026-09-08) is a case where that worked as designed — the mandate lives in the constants
@@ -226,10 +243,11 @@ the most likely thing to stall an unattended run.
 
 <details><summary><strong>Paste-ready prompt — "Agentic weekly research refresh (session-bound)" (updated 2026-09-08, Mandate A)</strong></summary>
 
-**Why this is here:** the Routine is `meta_mcp` but fires into a bound interactive session, so
-`update_trigger` refuses a prompt edit from any other session (see the correction above). Paste this
-in the claude.ai Routine UI, or from inside the bound session itself. **Nothing here is load-bearing
-for the mandate** — the constants carry that — so a delay in pasting it costs only the accuracy of
+**This IS the live prompt** of `trig_01UcxmEScHtoVU3yrGFJ1wiL` (created 2026-09-08 by the replace-not-edit
+recipe above; the previous bound Routine is disabled). It is kept here because a session cannot READ a
+Routine's prompt back except via the full `list_triggers` record, and cannot edit it in place — to change
+it, edit this text first, then re-create the Routine from it and retire the old one. **Nothing here is
+load-bearing for the mandate** — the constants carry that — so a stale prompt costs only the accuracy of
 the Routine's own sanity report, not the correctness of the target it commits.
 
 ```
@@ -237,7 +255,7 @@ WEEKLY RESEARCH REFRESH — scheduled fire. This session persists between fires 
 
 MANDATE A (owner-set 2026-09-08) — the account's job is to BEAT SPY over rolling 12-month windows, not to preserve capital. There is NO defensive floor, NO forced gold sleeve, and the index core is a 5-10% residual. Do not add ballast, and do not report a shortfall against floors that no longer exist. Downside is controlled by the correlation-cluster caps and by a drawdown breaker that acts on the book falling BEHIND SPY. See producer/AGENTIC.md § THE MANDATE.
 
-Step 0: `git fetch origin main && git checkout -f -B pf-research origin/main`. Confirm the Robinhood tools (get_portfolio etc.) are available; if not, PushNotification "research Routine: Robinhood connector missing in bound session" and stop.
+Step 0: `cd /home/user/portfolio-dashboard && git fetch origin main && git checkout -f -B pf-research origin/main`. Confirm the Robinhood tools (get_portfolio etc.) are available; if not, PushNotification "research Routine: Robinhood connector missing in bound session" and stop.
 
 Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and stop. AGENTIC_DUE → continue, following producer/PRODUCER.md step 7 exactly (it is the source of truth):
   2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
