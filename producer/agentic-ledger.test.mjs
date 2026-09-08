@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars, snapshotHoldingsSanity, SANITY_MIN_EXPECTED } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, buyStats, BUY_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars, snapshotHoldingsSanity, SANITY_MIN_EXPECTED } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -267,6 +267,63 @@ ok('reads the {sym} position shape too, not just {symbol}',
   snapshotHoldingsSanity({ positions: [{ sym: 'KO' }], activity: ACT, parked: null }) === null);
 ok('an all-cash book still trips the parking contradiction',
   !!snapshotHoldingsSanity({ positions: [], activity: {}, parked: PARKED }));
+
+// ── BUY-SIDE ALPHA (2026-09-08) ────────────────────────────────────────────────────────────────
+// The record-level stat blends buys and trims, and a trim of a name that kept falling scores as a WIN —
+// risk control working, read by the card as the screen picking well. On the live ledger record-level
+// showed 5 ahead / 5 behind at −0.30% while the buy legs alone were −1.7% dollar-weighted over 53 legs.
+{
+  // One decision: a big BUY that lagged SPY, and a TRIM of a name that then fell (a good exit).
+  const graded = [{
+    date: '2026-08-01', kind: 'rebalance', spyAt: 100,
+    grade: { spyRet: 5, avgContrib: 2, alpha: -3, verdict: 'behind', daysSince: 30, byTrade: [
+      { sym: 'AAA', side: 'BUY',  dollars: 1000, retPct: 1 },    // +1 vs SPY +5 ⇒ −4 alpha
+      { sym: 'BBB', side: 'SELL', dollars: 1000, retPct: 12 },   // a well-timed exit — must NOT count
+    ] },
+  }];
+  const b = buyStats(graded);
+  eq('buy stats count only BUY legs', b.n, 1);
+  eq('…and the well-timed trim is excluded from the buy read', b.dollars, 1000);
+  eq('…alpha is measured against the decision\'s own SPY window', b.avgAlphaPct, -4);
+  ok('…so the buy read is worse than the blended one, which is the whole point', b.avgAlphaPct < graded[0].grade.alpha);
+}
+{
+  // DOLLAR-weighted, not one-vote-per-leg: a $25 winner cannot cancel a $1,000 loser.
+  const graded = [{ date: '2026-08-01', spyAt: 100, grade: { spyRet: 0, daysSince: 30, byTrade: [
+    { sym: 'BIG', side: 'BUY', dollars: 1000, retPct: -5 },
+    { sym: 'DUST', side: 'BUY', dollars: 25, retPct: +50 },
+  ] } }];
+  const b = buyStats(graded);
+  ok('a dust winner cannot outvote a large loser', b.avgAlphaPct < 0);
+  near('…the weighting is by dollars', b.avgAlphaPct, (1000 * -5 + 25 * 50) / 1025, 0.01);
+  eq('…and both legs are counted', b.n, 2);
+  eq('…with the ahead/behind split kept per leg', b.ahead, 1);
+}
+{
+  // Missing data abstains rather than distorting: no spyRet ⇒ no alpha, but the return still counts.
+  const noSpy = buyStats([{ date: '2026-08-01', grade: { daysSince: 30, byTrade: [
+    { sym: 'AAA', side: 'BUY', dollars: 500, retPct: 3 },
+  ] } }]);
+  eq('a decision with no SPY anchor contributes no alpha', noSpy.avgAlphaPct, null);
+  eq('…but its return is still measured', noSpy.avgRetPct, 3);
+  const unpriced = buyStats([{ date: '2026-08-01', grade: { spyRet: 1, daysSince: 30, byTrade: [
+    { sym: 'AAA', side: 'BUY', dollars: 500, retPct: null },
+  ] } }]);
+  eq('an unpriced leg is skipped entirely, never counted as zero', unpriced.n, 0);
+  const empty = buyStats([]);
+  eq('an empty ledger yields no buy stats rather than throwing', empty.n, 0);
+  eq('…and no invented averages', empty.avgAlphaPct, null);
+  ok('…and is flagged thin', empty.thin === true && BUY_MIN_N >= 4);
+}
+{
+  // gradeDecisions must EMIT it, and must not disturb what was already there.
+  const recs = [{ date: '2026-07-01', kind: 'deploy', spyAt: 500,
+    trades: [{ sym: 'AAA', side: 'BUY', dollars: 1000, priceAt: 100 }] }];
+  const g = gradeDecisions(recs, { AAA: 110, SPY: 520 }, '2026-08-15');
+  ok('gradeDecisions emits a buys block', !!g.buys && g.buys.n === 1);
+  ok('…while stats and sleeves are untouched (purely additive)',
+    g.stats && g.stats.total === 1 && g.sleeves !== undefined);
+}
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -477,9 +477,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       (sector-balanced across all 20 sectors; `--max all` for the full 137, `--stats` to see the split).
       Union that with the current ••••3900 holdings (`agentic-positions.json`) — **and nothing else** —
       then fetch live quotes/fundamentals for sector/PE/52wk → `[{t,sec,px,pe,hi,lo}]`.
-      (`--symbols` appends **GLDM** after the slice — keep its row in the universe you pass: it cannot
-      reach the finalist cut, but `finalize-target.mjs` prices the injected gold sleeve's entry/stop from
-      that row, and without it the sleeve is written unpriced.)
+      (`--symbols` appends **GLDM** after the slice — keep its row in the universe you pass. Under
+      **Mandate A** (2026-09-08) `AG_DIVERSIFIER_MIN` is **0**, so no gold sleeve is injected by default
+      and the row is normally inert; it stays because the injection code is unchanged and gated on that
+      constant, so the day the sleeve is restored the row must already be there or it lands unpriced.)
       **NO SOCIAL, and that means the Daily Picks too (owner decision, 2026-08-25).** The picks composite
       is **20% social** (retail buzz via ApeWisdom — `picks.mjs`, `tech .33 + fund .28 + rr .19 + social .20`)
       and it serves the SELF-DIRECTED swing book, where retail attention is a legitimate 4-8 week signal.

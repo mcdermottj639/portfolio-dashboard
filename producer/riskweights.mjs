@@ -157,7 +157,15 @@ const MIN_VOL_SCALE = 0.55;          // never dock a single-name cap below 55% o
 // and it carries equity beta the diversifier exists to avoid. Silver (SLV) is far too volatile
 // (range/price ~1.2) to function as ballast.
 export const DIVERSIFIER_SYMS = ['GLDM', 'GLD', 'IAU', 'SGOL'];
-export const AG_DIVERSIFIER_MIN = 5;   // % of book — owner-set mandate dial (••••3900 only); 0 disables
+// MANDATE A (owner-set 2026-09-08): the gold FLOOR is 0 — the sleeve is no longer forced.
+// The objective is to beat SPY over rolling 12-month windows. Bullion has no cash flow and no expected
+// equity alpha, so a mandated 5% sleeve is a permanent ~5% allocation to something that cannot
+// contribute to the objective; measured live it was −5.0% over the two weeks to 2026-09-08, roughly
+// half of the ballast drag. Everything that MEASURES the sleeve is retained (isDiversifier /
+// diversifierExposure / the MAX ceiling), and the injection in finalize-target.mjs is unchanged — it is
+// gated on this floor, so restoring the sleeve is a one-constant change back to 5. What is gone is the
+// obligation to hold it. Gold can still be held if the research picks it on merit.
+export const AG_DIVERSIFIER_MIN = 0;   // % of book — owner-set mandate dial (••••3900 only); 0 disables
 // An explicit CEILING as well as a floor. Without it gold becomes the overflow sink: it is exempt from
 // the vol-scaled single-name cap, so every pp freed by a cluster trim lands here and a 5% mandate sleeve
 // quietly becomes 8-15%. A hedge should be sized by mandate, not by whatever spills out of the equity
@@ -179,7 +187,23 @@ export function diversifierExposure(names) {
 }
 
 export const DEFENSIVE_CLUSTERS = ['staples', 'utilities', 'telecom', 'reits', 'health-svc', 'pharma', 'low-vol'];
-export const AG_DEFENSIVE_MIN = 15;   // % of book — owner-set mandate dial (••••3900 only)
+// MANDATE A (owner-set 2026-09-08): the defensive FLOOR is 0 — ballast is no longer forced.
+// v124 added this floor because every other control here was a ceiling and nothing made the book own a
+// stabilizer. That reasoning was sound for a capital-preservation mandate; it is the wrong trade for a
+// beat-SPY one. SPY itself carries ~9% defensive weight, so a book that must hold 15% is structurally
+// SHORT the benchmark's growth names by 6pp before it picks a single stock — and measured on the live
+// book (JNJ 8% + KO 7%) the floor cost −0.54pp over two weeks with no protective benefit, against a
+// breaker that has never fired (deepest drawdown ever: −3.47%).
+//
+// THE MEASUREMENT IS RETAINED, ONLY THE OBLIGATION IS GONE — the same posture as LOOKTHROUGH_ENFORCE.
+// isDefensive / defensiveExposure still compute and finalize-target still emits target.defensive, so the
+// book's defensive weight stays visible and the floor is a one-constant restore. Defensive names remain
+// fully eligible: they now have to earn their slot on the composite like anything else.
+//
+// What replaces it as downside control is the RELATIVE drawdown breaker (drawdown.mjs) — which acts on
+// the book falling behind SPY rather than on it falling with SPY — plus the correlation-cluster caps
+// below, which are the real protection against a single-bet blowup and are UNCHANGED.
+export const AG_DEFENSIVE_MIN = 0;    // % of book — owner-set mandate dial (••••3900 only)
 export const DEFENSIVE_MAX_VOL = REF_RANGE;  // a defensive name may not be wilder than a normal large-cap
 
 // `name` may be a bare ticker or a full item. With no price data volProxy returns REF_RANGE, which PASSES

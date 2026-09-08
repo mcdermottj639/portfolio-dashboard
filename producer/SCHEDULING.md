@@ -133,10 +133,30 @@ whether it is session-bound.** `list_triggers` reports a `created_via` field, an
 created (via `create_trigger`)."* Of the eight Routines on this account, seven are `meta_mcp`
 (agent-created → a session can edit their prompts) and exactly one is `http_api` — **"Portfolio
 dashboard refresh"**, created in the claude.ai UI on 2026-06-19, i.e. the single most important one.
-Note this cuts the opposite way from the persistent-session story: the weekly research Routine is
-session-BOUND and still `meta_mcp`, so its prompt edits fine. **Check `created_via` before concluding
-you can or cannot edit a prompt** — and for this Routine, a prompt change is the owner's to paste in
-the Routine UI. The current intended text is kept below so it is version-controlled.
+**CORRECTION (2026-09-08): `created_via` is NECESSARY BUT NOT SUFFICIENT — session-binding blocks a
+prompt edit too, just with a different error.** The claim immediately above ("the weekly research
+Routine is session-BOUND and still `meta_mcp`, so its prompt edits fine") was asserted without being
+tested and is **false**. Attempting it returns *"editing the prompt of a routine whose fires deliver
+into a session that is not your own is not available via this tool."* So there are **two independent
+gates**, and a prompt is editable from a session only when BOTH pass:
+1. **`created_via` must be `meta_mcp`** (agent-created). `http_api` — made in the Routine UI — is
+   refused with *"Agents can only update routines they created"*. This is what blocks "Portfolio
+   dashboard refresh".
+2. **The Routine must not fire into a DIFFERENT session than the one editing it.** A Routine bound to
+   an interactive session can only have its prompt edited from inside that session. This is what
+   blocks "Agentic weekly research refresh" (`persistent_session_id: session_018NAjFNs2bB…`), even
+   though it is `meta_mcp`.
+
+Schedule, name and enabled state still change freely on both. **Test the edit rather than reasoning
+about it** — this entry has now been wrong in both directions, and the cost of being wrong is a code
+change that silently never takes effect. The paste-ready text for BOTH prompts is kept below.
+
+The general rule this keeps proving: **put anything load-bearing in CODE, not in prompt wording.**
+Mandate A (2026-09-08) is a case where that worked as designed — the mandate lives in the constants
+(`AG_DEFENSIVE_MIN`, `AG_DIVERSIFIER_MIN`, the relative breaker, `finalize-target.mjs`), so the
+weekly Routine produces a Mandate-A target on its next fire whether or not its prompt was ever
+updated. What goes stale in the un-editable prompt is only its step-7 *reporting* wording (it still
+asks for "defensive total vs 15% floor" and "GLDM ≈5%"), which will now simply report zeroes.
 
 <details><summary><strong>Paste-ready prompt — "Portfolio dashboard refresh" (updated 2026-09-04)</strong></summary>
 
@@ -203,3 +223,30 @@ the most likely thing to stall an unattended run.
   wide window is fine.
 - **Stale is safe:** if a run fails it pushes nothing and the phone keeps the last good snapshot;
   the freshness bar will simply show it's old.
+
+<details><summary><strong>Paste-ready prompt — "Agentic weekly research refresh (session-bound)" (updated 2026-09-08, Mandate A)</strong></summary>
+
+**Why this is here:** the Routine is `meta_mcp` but fires into a bound interactive session, so
+`update_trigger` refuses a prompt edit from any other session (see the correction above). Paste this
+in the claude.ai Routine UI, or from inside the bound session itself. **Nothing here is load-bearing
+for the mandate** — the constants carry that — so a delay in pasting it costs only the accuracy of
+the Routine's own sanity report, not the correctness of the target it commits.
+
+```
+WEEKLY RESEARCH REFRESH — scheduled fire. This session persists between fires and already holds the Robinhood + Alpha Vantage connectors (that is why it is bound here: Routine-created sessions get no connectors in this org). Do not converse; do the job and reply in a few lines.
+
+MANDATE A (owner-set 2026-09-08) — the account's job is to BEAT SPY over rolling 12-month windows, not to preserve capital. There is NO defensive floor, NO forced gold sleeve, and the index core is a 5-10% residual. Do not add ballast, and do not report a shortfall against floors that no longer exist. Downside is controlled by the correlation-cluster caps and by a drawdown breaker that acts on the book falling BEHIND SPY. See producer/AGENTIC.md § THE MANDATE.
+
+Step 0: `git fetch origin main && git checkout -f -B pf-research origin/main`. Confirm the Robinhood tools (get_portfolio etc.) are available; if not, PushNotification "research Routine: Robinhood connector missing in bound session" and stop.
+
+Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and stop. AGENTIC_DUE → continue, following producer/PRODUCER.md step 7 exactly (it is the source of truth):
+  2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
+  3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo}, with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
+  4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
+  5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main` (retry with backoff on a transient proxy failure). If finalize runs a second time, re-check target.dropped.
+  6. PushNotification a concise rebalance proposal (drift vs actual holdings, adds/trims ± dollars, anything over the 5pp trigger; if a HELD name is dropped, say the exit may be held by the 14d min-hold/PDT guard and give the unlock date). PLACE NO ORDERS.
+  7. Sanity lines: 10-12 names; megacap-tech direct vs the 48% cap; SPY+VTI index core within the 5-10% residual band (flag it if the synthesis went higher — that is weight which can only MATCH the benchmark this account exists to beat); defensive total REPORTED as a measurement only, with no floor to miss; entry bands — note the cohort MEDIAN entryQuality that finalize used and which names were tightened relative to it (a batch where nearly every verdict is a 3 should tighten NOBODY: that is the tape, not a ranking); target.dropped with reasons; challengers reaching verify; any RESIDUAL note.
+
+FAILURE RULE: if you stop before committing a target for any reason other than NOT_DUE, PushNotification one line naming the failed step. Never run producer/run.mjs or preflight here.
+```
+</details>

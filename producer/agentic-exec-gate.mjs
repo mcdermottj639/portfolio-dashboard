@@ -176,11 +176,17 @@ for (const e of A.recentLosses || []) {
   const until = new Date(Date.parse(e.date + 'T00:00:00Z') + 30 * 86400000).toISOString().slice(0, 10);
   if (until > today && (!washMap[e.sym] || until > washMap[e.sym].until)) washMap[e.sym] = { until, date: e.date, account: e.account || 'agentic' };
 }
-// BOOK-LEVEL DRAWDOWN BREAKER (v121). Computed here, from the committed snapshot's recorded equity
-// series, and handed to the planner. Deposit-adjusted and memoryless by construction (drawdown.mjs), so
-// the gate needs no state of its own — which matters because the executor may only ever commit
-// agentic-pending / agentic-decisions / agentic-parked. Fails OPEN on a thin series.
-const drawdown = bookDrawdown(A.equityHistory || []);
+// BOOK-LEVEL DRAWDOWN BREAKER (v121; RELATIVE TO SPY since Mandate A, 2026-09-08). Computed here, from
+// the committed snapshot's recorded equity series, and handed to the planner. Deposit-adjusted and
+// memoryless by construction (drawdown.mjs), so the gate needs no state of its own — which matters
+// because the executor may only ever commit agentic-pending / agentic-decisions / agentic-parked.
+// Fails OPEN on a thin series.
+//
+// `bench` is SPY's recorded daily closes. Under Mandate A the tiers act on the book's drawdown MINUS
+// the benchmark's over the identical window, so a market-wide fall (beta, which a beat-SPY book is
+// supposed to absorb) no longer pauses deployment while an idiosyncratic one still does. drawdown.mjs
+// REFUSES a stale bench and falls back to the absolute −20% backstop — see invariant 3 there.
+const drawdown = bookDrawdown(A.equityHistory || [], { bench: (data.hist && data.hist.day && data.hist.day.SPY) || [] });
 if (drawdown.level !== 'ok') console.error(`[exec-gate] drawdown ${drawdown.level.toUpperCase()}: ${drawdown.note}`);
 
 const plan = planDeployment({

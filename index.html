@@ -832,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v136'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v137'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1309,7 +1309,7 @@ function harvestCandidates(enriched){
    The agentic account is a small fractional-share book, so it gets the PLANNER's harvest
    thresholds (max($75, 5% of cost) — producer/agentic-deploy.mjs TLH_MIN_LOSS/_PCT) rather than the
    margin book's flat $250-position floor, keeping the card and the rebalance ticket in agreement. */
-const AG_TLH_MIN=75, AG_TLH_PCT=5;
+const AG_TLH_MIN=200, AG_TLH_PCT=10;  /* agentic-deploy.mjs TLH_MIN_LOSS / TLH_MIN_LOSS_PCT — raised from 75/5 on 2026-09-08 (Mandate A): a harvest sells the WHOLE position and wash-blocks the rebuy 30d, so the old floor was a de-facto −5% stop with a forced month out. Keep in step with the producer. */
 /* The agentic book shaped exactly like the margin `enriched` array, so every analytics renderer
    (risk, allocation, technicals, fundamentals, income) works on either account unchanged.
    `pct` is weight of the account's own BOOK (positions + cash), matching how enrich() defines it
@@ -2841,13 +2841,24 @@ const AG_EARN_BLACKOUT_D=7,      // EARNINGS_BLACKOUT_DAYS — no NEW money ≤7
       AG_MIN_BUY=25,             // MIN_BUY — dust floor
       AG_BUY_GAP_MIN=0.5,        // agentic-deploy.mjs `if (gap > 0.5)` — the buy gate every deferral sits behind
       AG_WASH_MIN_LOSS=25,       // realizedpnl.mjs WASH_MIN_LOSS — de-minimis floor; under this a loss never enters the ledger
-      AG_IDLE_DEPLOY_D=10,       // CASH_IDLE_DEPLOY_DAYS — idle-cash deadline
+      AG_IDLE_DEPLOY_D=5,        // CASH_IDLE_DEPLOY_DAYS — idle-cash deadline (10 → 5, Mandate A)
       AG_IDLE_TRANCHE_PCT=34,    // CASH_IDLE_TRANCHE_PCT
       AG_IDLE_SWEEP_FLOOR=250,   // CASH_IDLE_SWEEP_FLOOR
+      AG_DEP_TRANCHE_D=3,        // DEPOSIT_TRANCHE_DAYS — fresh cash averages in over this many days
+      AG_DEP_TRANCHE_PCT=50,     // DEPOSIT_TRANCHE_PCT
       AG_PARK_VEHICLE='VTI',     // PARK_VEHICLE — the waiting ground
       AG_PARK_MIN=100,           // PARK_MIN
       AG_CLUSTER_CAP=48,         // riskweights.mjs CLUSTER_CAPS['megacap-tech']
-      AG_DEFENSIVE_MIN=15;       // riskweights.mjs AG_DEFENSIVE_MIN — the book's only FLOOR (v124)
+      /* MANDATE A (owner-set 2026-09-08): beat SPY over rolling 12-month windows. The defensive floor
+         and the gold sleeve are 0 — no structural ballast — and the drawdown breaker acts on the book
+         falling BEHIND SPY rather than on it falling WITH SPY. Keep these in step with riskweights.mjs
+         and drawdown.mjs; a card that still promises a floor the planner no longer enforces is the
+         "code change a surface still contradicts" failure this repo has shipped before. */
+      AG_DEFENSIVE_MIN=0,        // riskweights.mjs AG_DEFENSIVE_MIN — 0 under Mandate A (was 15, v124)
+      AG_DIVERSIFIER_MIN=0,      // riskweights.mjs AG_DIVERSIFIER_MIN — 0 under Mandate A (was 5)
+      AG_DD_REL_SOFT=-5,         // drawdown.mjs AG_DD_REL_SOFT, in pp BEHIND the benchmark
+      AG_DD_REL_HARD=-8,         // drawdown.mjs AG_DD_REL_HARD
+      AG_DD_ABS_BACKSTOP=-20;    // drawdown.mjs AG_DD_ABS_BACKSTOP — catastrophic absolute floor
 const agToday=()=>new Date().toISOString().slice(0,10);
 /* Best live price for a name in the agentic book: the held position's mark → today's pick scan →
    the recorded quote. Shared so the card and the Plan page price the same guards identically. */
@@ -3372,7 +3383,14 @@ window.renderAgenticCard=renderAgenticCard;
    list rather than as rows in it — a book-wide halt shown as 9 identical rows reads as 9 problems.
    The drawdown figure is computed ONCE in the producer (build-data → data.agentic.drawdown, from
    drawdown.mjs) and only displayed here, so this card and the executor can never disagree about it. */
-const AG_DD_SOFT_PCT=-8, AG_DD_HARD_PCT=-12, AG_DD_RESUME_PCT=-6;
+/* MANDATE A (2026-09-08): the breaker acts on RELATIVE drawdown — the book's fall MINUS the
+   benchmark's over the same window. A market-wide fall is beta a beat-SPY book is paid to carry;
+   only an idiosyncratic one means the model is failing. Mirrors drawdown.mjs; keep in step. */
+const AG_DD_SOFT_PCT=AG_DD_REL_SOFT, AG_DD_HARD_PCT=AG_DD_REL_HARD, AG_DD_RESUME_PCT=-3;
+/* The figure the tiers act on: relative when a fresh benchmark was available, else the absolute
+   drawdown (drawdown.mjs falls back to the −20% backstop alone and says so via `basis`). */
+const agDdFig=(d)=>(d&&d.basis==='relative'&&d.relDd!=null)?d.relDd:(d&&d.dd);
+const agDdUnit=(d)=>(d&&d.basis==='relative')?'pp behind the benchmark':'% below its peak';
 const AG_SLEEVE_MIN_N=4;   // mirrors SLEEVE_MIN_N in producer/agentic-ledger.mjs — keep the two in step
 const AG_VIX_ELEVATED=22, AG_VIX_STRESSED=30;
 function agRegime(){ const v=+(((window.__DATA||{}).vix||{}).v); if(!isFinite(v)||v<=0)return null;
@@ -3394,10 +3412,11 @@ function agDLbl(s){ if(!s)return '—'; const d=new Date(String(s).slice(0,10)+'
   return isNaN(d)?String(s):d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 function agDrawdownBanner(){
   const d=((window.__DATA||{}).agentic||{}).drawdown; if(!d||!d.level||d.level==='ok')return '';
-  const pct=d.dd!=null?(d.dd*100).toFixed(1)+'%':'—';
+  const rel=d.basis==='relative', fig=agDdFig(d);
+  const pct=fig!=null?(fig*100).toFixed(1)+(rel?'pp':'%'):'—';
   const hard=d.level==='hard';
   return `<div class="fund-note" style="margin:0 0 10px;background:${hard?'#fef2f2':'#fffbeb'};border-color:${hard?'#fecaca':'#fde68a'}">
-    <b>${hard?'🛑':'⚠️'} Book drawdown — ${hard?'HARD':'SOFT'} tier:</b> the account is <b>${pct}</b> below its peak${d.peakT?` (${agDLbl(d.peakT)})`:''}, past the ${hard?AG_DD_HARD_PCT:AG_DD_SOFT_PCT}% threshold, so <b>every new buy is paused</b> regardless of what any individual name's thesis says${hard?`, and defensive cash is being raised to <b>20% of book</b> (losses first)`:''}. Deferred dollars stay in <b>cash</b>, not the ${AG_PARK_VEHICLE} waiting ground — the placeholder is 100% equity beta, so parking there during a drawdown would be backwards. Deployment resumes once the book recovers above <b>${AG_DD_RESUME_PCT}%</b> (not at ${AG_DD_SOFT_PCT}% — the gap stops it flickering on and off). This is measured <b>deposit-adjusted</b>: a deposit cannot cancel it by pushing raw equity to a new high.</div>`;
+    <b>${hard?'🛑':'⚠️'} Book drawdown — ${hard?'HARD':'SOFT'} tier:</b> the account is <b>${pct}</b> ${rel?'behind the benchmark':'below its peak'} since its peak${d.peakT?` (${agDLbl(d.peakT)})`:''}${rel&&d.dd!=null&&d.ddBench!=null?` — the book is ${(d.dd*100).toFixed(1)}% while the market is ${(d.ddBench*100).toFixed(1)}%`:''}, past the ${hard?AG_DD_HARD_PCT:AG_DD_SOFT_PCT}${rel?'pp':'%'} threshold, so <b>every new buy is paused</b> regardless of what any individual name's thesis says${hard?`, and defensive cash is being raised to <b>20% of book</b> (losses first)`:''}. ${rel?`This measures the book against <b>SPY over the same window</b>: a fall the whole market shared is beta this account is paid to carry, so only a decline the market did <i>not</i> share trips it.`:`No fresh benchmark series was available, so only the <b>${AG_DD_ABS_BACKSTOP}%</b> absolute backstop is binding here.`} Deferred dollars stay in <b>cash</b>, not the ${AG_PARK_VEHICLE} waiting ground — the placeholder is 100% equity beta, so parking there during a drawdown would be backwards. Deployment resumes once it recovers above <b>${AG_DD_RESUME_PCT}${rel?'pp':'%'}</b> (not at ${AG_DD_SOFT_PCT}${rel?'pp':'%'} — the gap stops it flickering on and off). Measured <b>deposit-adjusted</b>: a deposit cannot cancel it by pushing raw equity to a new high.</div>`;
 }
 function agRegimeBanner(){
   const r=agRegime(); if(!r||r==='calm')return '';
@@ -3608,7 +3627,8 @@ function renderAgenticPlan(){
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div>
       ${rule('🧬','Correlation-cluster cap',AG_CLUSTER_CAP+'% megacap-tech','A "sector-diversified" label hid the fact that NVDA/MSFT/GOOGL/AMZN/META/AAPL all trade as one bet. Payments cap 20%, staples 25%; index is uncapped.')}
       ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
-      ${rule('🛡️','Defensive floor','≥'+AG_DEFENSIVE_MIN+'% of book'+agDefensiveNote(),'Every other rule on this card is a CEILING — this is the only floor. Nothing previously made the book own a stabilizer, so a target could hold 0% staples, 0% utilities and 0% healthcare forever: the composite weights momentum and growth at 0.44 combined against valuation\'s 0.18, so an expensive fast name always outranks a cheap stable one. Counts staples, utilities, telecom, REITs, managed care and low-vol vehicles — but only if the name actually trades like one (52wk range no wider than a normal large-cap), so a high-multiple healthcare name does not qualify on its GICS label alone. SPY/'+AG_PARK_VEHICLE+' count only through their small defensive sleeves.')}
+      ${rule('🎯','Mandate','Beat SPY (rolling 12mo)','Owner-set 2026-09-08. This account exists to OUTPERFORM the S&P 500 over rolling twelve-month windows — not to preserve capital. It accepts tracking error and drawdowns as deep as, or deeper than, SPY\'s. That is why there is no defensive floor, no forced gold sleeve and only a small residual index position: anything held purely to track the benchmark is weight that cannot beat it. Downside is controlled by the correlation caps below and by a breaker that measures the book against SPY rather than against its own peak. The other account (••••0741, self-directed) runs the opposite rulebook — concentrated and levered — and neither should ever be made to look like the other.')}
+      ${rule('🛡️','Defensive ballast','Not forced — measured only'+agDefensiveNote(),'Until 2026-09-08 the book carried a mandatory ≥15% in staples/utilities/telecom/REITs/low-vol names. Under the beat-SPY mandate that floor is 0. The reasoning: SPY itself is already ~9% defensive, so a book forced to 15% was structurally SHORT the benchmark\'s growth names by ~6pp before it picked a single stock — and measured on the live book (JNJ 8% + KO 7%) the floor cost 0.54pp in two weeks with no protective benefit, against a breaker that had never fired. Defensive names are still fully eligible and still measured; they simply have to WIN their slot on the research now rather than being placed by mandate. Restoring the floor is a one-constant change.')}
       ${rule('⏳','Min-hold',AG_MIN_HOLD_D+' days','A name bought inside the window is not exited or trimmed. Overridden only by a business-broken verdict, a loss past −10% (risk control outranks churn control), or a harvest/park release. Added after two consecutive targets flipped the whole book in 48 hours.')}
       ${rule('🔁','Re-entry cooldown',AG_REENTRY_D+' days','A name this account sold inside the window is not rebought — it covers the gain-sells the 30-day wash ledger cannot see. The weight waits in cash meanwhile (since 2026-09-03 only a wash-sale deferral parks).')}
       ${rule('🧾','Wash-sale window',AG_WASH_WINDOW_D+' days, cross-account','The IRS window is per taxpayer, so the ledger reads BOTH taxable books. A loss booked in ••••0741 blocks a rebuy here — the exact trade that partially disallowed a −$431 NVDA loss once. Losses under '+fmtD(AG_WASH_MIN_LOSS)+' are ignored: a disallowed loss is not lost, it moves to the new shares\' basis, so pennies should never gate a real allocation (a $1.01 loss was blocking a $29.25 buy for 30 days).')}
@@ -3619,7 +3639,8 @@ function renderAgenticPlan(){
       ${rule('🚫','PDT guard','nothing bought today is sold today','Limited margin makes this a margin account for FINRA, and the book is under $25k with an hourly executor — so zero round trips, categorically, rather than counting day trades.')}
       ${rule('🪙','Dust floor',fmtD(AG_MIN_BUY)+' minimum buy','A ticket once placed a $1.80 order. Below this the spread and the bookkeeping cost more than the position is worth.')}
       ${rule('⏱','Idle-cash deadline',AG_IDLE_DEPLOY_D+' days','Nothing ever forced cash IN, so "wait for a pullback" had no expiry and a rising market could strand a deposit indefinitely. Past the deadline the bands are waived and cash deploys in '+AG_IDLE_TRANCHE_PCT+'% tranches.')}
-      ${rule('🛑','Book drawdown breaker',AG_DD_SOFT_PCT+'% pause / '+AG_DD_HARD_PCT+'% raise cash','Every other rule here is per-NAME; this is the only one that looks at the whole book. Past '+AG_DD_SOFT_PCT+'% below its peak no new money goes in at all, and deferred dollars stay in cash rather than the waiting ground. Past '+AG_DD_HARD_PCT+'% it also raises cash to 20% of book, losses first. Measured deposit-adjusted, so funding the account cannot cancel it, and it resumes only above '+AG_DD_RESUME_PCT+'%.')}
+      ${rule('🛑','Book drawdown breaker',AG_DD_SOFT_PCT+'pp pause / '+AG_DD_HARD_PCT+'pp raise cash — vs SPY','Every other rule here is per-NAME; this is the only one that looks at the whole book — and since 2026-09-08 it measures the book RELATIVE TO SPY, not against its own peak. The distinction is the whole point: a fall the market shared is beta, and a book whose job is to beat SPY has to hold through it — de-risking there locks in the loss and forfeits the recovery. A fall the market did NOT share is the model failing, and that is the only case this acts on. Past '+AG_DD_SOFT_PCT+'pp behind the benchmark no new money goes in, and deferred dollars stay in cash rather than the waiting ground. Past '+AG_DD_HARD_PCT+'pp it also raises cash to 20% of book, losses first. It resumes only above '+AG_DD_RESUME_PCT+'pp, so it cannot flicker. One absolute floor survives regardless: a '+AG_DD_ABS_BACKSTOP+'% book drawdown trips it whatever the market did, and a stale or missing SPY series falls back to that backstop alone rather than guessing. Measured deposit-adjusted, so funding the account cannot cancel it.')}
+      ${rule('💵','Deposit tranching','~'+AG_DEP_TRANCHE_PCT+'% per pass over '+AG_DEP_TRANCHE_D+'d','Fresh cash used to be deployed in full, at market, the day it landed — into names the model already wanted more of, which is the maximum-variance way to add money and is exactly what made every deposit feel like it went straight into the red. A deposit now averages in over a few days. It is a VARIANCE reduction, not a return improvement: the cost is a day or two of drift, the benefit is not putting the whole lump on one arbitrary day\'s prices. Sale proceeds are not held back (a rebalance is already in motion), a small balance deploys whole rather than manufacturing dust orders, and the '+AG_IDLE_DEPLOY_D+'-day idle-cash deadline still forces the remainder in — so this can delay a buy and can never veto one.')}
       ${rule('🌡️','Regime pacing','VIX '+AG_VIX_ELEVATED+' / '+AG_VIX_STRESSED,'The idle-cash deadline used to fire identically at VIX 12 and VIX 35. Elevated stretches it ×1.5, stressed ×2 and halves the tranche. It paces deployment only — it never picks names, sizes positions, or blocks a sell.')}
       ${rule('🧮','Cluster caps see through the index','SPY/'+AG_PARK_VEHICLE+'/QQQ composition counts','A book could hold 44.8% megacap-tech directly, add 20% SPY on top, and still report itself inside the '+AG_CLUSTER_CAP+'% cap while really carrying ~54%. Caps now count what is inside the index sleeves — and a breach trims the DIRECT names, never the index ballast, since that is the diversifier.')}
       ${rule('🔓','No leverage','unlevered 1×','Limited margin grants instant settlement only. The account cannot borrow, so the book is its own equity.')}
@@ -3650,6 +3671,22 @@ window.renderAgenticPlan=renderAgenticPlan;
    at its horizon and never recomputed, so THIS is the part that compounds as history accrues.
    Decisions first seen past a horizon (the backfilled ones) are counted as unmeasurable and never
    folded in — a row we started tracking late is not evidence. */
+/* BUY-SIDE ALPHA (2026-09-08). The headline above blends BUY legs with SELL legs, and those answer two
+   different questions: a trim scores well when the name it sold kept falling, which is the churn
+   governor working — not the screen picking a winner. On the live ledger the record-level read was
+   5 ahead / 5 behind at −0.3pp while the BUY legs alone were −1.7pp dollar-weighted across 53 legs, so
+   the honest number was being hidden by the well-timed exits sitting beside it. Dollar-weighted, because
+   a $25 leg and a $500 leg are not one vote each. Reads data.agentic.decisions.buys (agentic-ledger). */
+function decBuyStrip(D){
+  const b=D&&D.buys; if(!b||!b.n)return '';
+  const a=b.avgAlphaPct;
+  const col=a==null?'#9ca3af':(a>=0?'#065f46':'#991b1b');
+  return `<div class="fund-note" style="margin:0 0 8px" data-priv="on">
+    <b>🛒 Buys only</b> — ${b.n} buy leg${b.n===1?'':'s'}, <span data-priv="val">${fmtD(b.dollars)}</span> deployed ·
+    alpha vs SPY <b style="color:${col}">${a==null?'—':`${a>=0?'+':''}${fmt(a,1)}pp`}</b>
+    <span style="color:#9ca3af">(${b.ahead}/${b.n} beat SPY)</span>${b.thin?' <span class="badge" style="background:#f3f4f6;color:#6b7280">thin — not yet measurable</span>':''}
+    <div style="font-size:10.5px;color:#9ca3af;margin-top:3px">The row above blends buys with trims, and a trim of a name that then fell counts as a win — that is risk control working, not the research picking well. This line is the research alone.</div></div>`;
+}
 function decMarkStrip(D,label){
   const M=D&&D.markStats; if(!M)return '';
   const ent=Object.entries(M).filter(([,v])=>v.n||v.missed);
@@ -3697,7 +3734,7 @@ function renderAgenticLog(){
   const s=D.stats||{};
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Contribution</b> = dollar-weighted price move since the decision (a trim that then fell counts positive); <b>vs SPY</b> = the same window's alpha. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
     <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
-  el.innerHTML=hdr+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  el.innerHTML=hdr+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* Sleeve attribution (v121) — which research sleeve is actually earning its keep. Every target name
    carries `drivers` (the sleeves that scored ≥7) and the ledger stamps them onto each BUY leg AT
@@ -4668,13 +4705,14 @@ window.switchTab=switchTab;
     <div class="hsub">Cost</div>
     <p>Releasing is a real short-term taxable sale, so releases are floored, sized to the actual shortfall, and run through the same losses-first ordering and day-trade guard as any other sell.</p>`},
   'agentic-whole-plan': { tag:'Plan · Agentic', t:'The whole plan — how ••••3900 runs itself', h:`
-    <p><b>A second, separate brokerage account that invests itself.</b> Research picks the names, code decides when the trades actually happen, and a robot places them on a schedule. It is deliberately the <i>cautious</i> book: no borrowing, no options, diversified, and slow to change its mind. (The other account, ••••0741, runs the opposite mandate on purpose — concentrated and aggressive. A change that makes one look like the other is a bug.)</p>
+    <p><b>A second, separate brokerage account that invests itself.</b> Research picks the names, code decides when the trades actually happen, and a robot places them on a schedule.</p>
+    <p><b>Its job is to beat the S&amp;P 500</b> over rolling twelve-month windows (set 2026-09-08). That is worth being blunt about, because it decides everything below: the account accepts real tracking error and drawdowns as deep as — or deeper than — the index's. It holds no ballast for comfort. There is no minimum in defensive stocks, no forced gold position, and only a small leftover index holding, because anything held simply to <i>track</i> the benchmark is money that cannot <i>beat</i> it. It is still unlevered, still options-free, still diversified across names that don't move together, and still slow to change its mind — the discipline is in <i>what it owns and when it trades</i>, not in holding something safe. Expect more red days than a cautious book would have; the question this account answers is where it ends up over a year, not how it felt on a Tuesday. (The other account, ••••0741, runs a different mandate on purpose — concentrated and levered. A change that makes one look like the other is a bug.)</p>
 
     <div class="hsub">The loop, once around</div>
     <ul>
       <li><span class="hk">1 · Research (weekly, Mondays)</span> — Several independent analyses run in parallel over a fresh universe: <b>momentum</b>, <b>quality</b>, <b>growth</b>, <b>catalyst</b>, and <b>valuation</b>. Each scores every candidate 0-10. A sixth, <b>flow</b> (who is actually buying/selling — analyst revisions, insider filings, earnings surprises), is measured but currently carries <b>zero weight</b> until it proves itself.</li>
-      <li><span class="hk">2 · Adversarial check</span> — Every finalist is handed to a separate skeptic whose job is to <i>refute</i> it, not confirm it. It answers two things separately: is this a business worth owning at <i>some</i> price, and is <i>today's</i> price any good. That split matters — "great company, wrong price" shrinks the position instead of vetoing it, so an expensive market yields a smaller book rather than an empty one.</li>
-      <li><span class="hk">3 · Sizing, with hard caps</span> — Conviction proposes weights; deterministic code disposes. Names that move together are capped as one bet (the big AI/tech complex ≤48% combined), wilder names get smaller slots than steady ones for the same conviction, and the caps count what is <i>inside</i> index funds too — 20% SPY quietly carries a lot of the same megacap tech.</li>
+      <li><span class="hk">2 · Adversarial check</span> — Every finalist is handed to a separate skeptic whose job is to <i>refute</i> it, not confirm it. It answers two things separately: is this a business worth owning at <i>some</i> price, and is <i>today's</i> price any good. That split matters — "great company, wrong price" shrinks the position instead of vetoing it. The price score is judged <b>against the other candidates in the same batch</b>, not against a fixed idea of a good entry: in a strong market almost everything looks expensive, and marking the whole book down for that is a bet on the market rather than a judgement about a stock. A name is trimmed for being a worse entry <i>than its peers</i>.</li>
+      <li><span class="hk">3 · Sizing, with hard caps</span> — Conviction proposes weights; deterministic code disposes. Names that move together are capped as one bet (the big AI/tech complex ≤48% combined) and wilder names get smaller slots than steady ones for the same conviction. This is where the real downside protection lives now that there's no ballast requirement: the account can be wrong about a stock without being wrong about the whole book.</li>
       <li><span class="hk">4 · Execution (hourly, weekdays)</span> — A robot compares the target to what the account actually holds and writes a ticket: sells first, then buys. Small routine tickets it places unattended; anything larger is pushed to the phone and waits for your confirm — one command (<span class="hk">agentic-confirm.mjs</span>) or telling any Claude session to confirm the pending rebalance. It places nothing outside that.</li>
       <li><span class="hk">5 · Grading</span> — Every rebalance is logged and scored against what happened next <i>and</i> against the S&P 500, so the strategy can be judged rather than just repeated.</li>
     </ul>
@@ -4691,8 +4729,10 @@ window.switchTab=switchTab;
     </ul>
 
     <div class="hsub">The circuit breaker</div>
-    <p>Every rule above is about <i>one name</i>. One rule is about the <b>entire account</b>: if the book falls <b>8%</b> below its high, all new buying stops — no matter how good any individual idea looks. At <b>12%</b> it also raises cash to 20% of the book, selling losers first. Buying only resumes above <b>−6%</b>, not at −8%, so it can't flicker on and off around the line.</p>
-    <p>Two details that took real care: the drop is measured <b>after removing deposits</b>, so adding money can never mask a decline (a deposit would otherwise push the balance to a "new high" at the worst possible moment); and while it's tripped, money waits in <b>cash</b> rather than the usual placeholder fund, since that placeholder is itself 100% stock market.</p>
+    <p>Every rule above is about <i>one name</i>. One rule is about the <b>entire account</b> — and since the beat-SPY mandate it asks a sharper question than "is the book down?". It asks <b>"is the book down more than the market?"</b></p>
+    <p>That distinction is the whole design. A fall the <i>whole market</i> shares is just market risk, and a book whose job is to beat the index has to sit through it — selling there locks in the loss and gives up the recovery. A fall the market did <i>not</i> share is the strategy failing, and that is the only thing worth acting on. So: once the account is <b>5 percentage points behind</b> the S&amp;P since its own high, all new buying stops. At <b>8 points behind</b> it also raises cash to 20% of the book, selling losers first. It resumes only once back within <b>3 points</b>, so it can't flicker on and off.</p>
+    <p>Three details that took real care: one absolute floor survives regardless — a <b>20%</b> fall trips it whatever the market did, so a bad comparison can never leave the account unprotected; if the market data is missing or stale it falls back to that floor alone rather than guessing (a stale benchmark looks like a market that didn't move, which would wrongly blame the book for a market-wide drop); and the whole thing is measured <b>after removing deposits</b>, so adding money can never mask a decline.</p>
+    <p>While it's tripped, money waits in <b>cash</b> rather than the usual placeholder fund, since that placeholder is itself 100% stock market.</p>
 
     <div class="hsub">The waiting ground</div>
     <p>When a name is blocked, its dollars don't sit idle — they wait in a broad-market fund (VTI) and are released to buy the real name once it clears. VTI specifically, not SPY: SPY is already part of the target, so parking there would hide the placeholder inside a real position.</p>

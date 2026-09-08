@@ -1,5 +1,5 @@
 // Offline unit checks for finalize-target.mjs — no network. Run: node producer/finalize-target.test.mjs
-import { finalizeTarget, DRIVER_THRESHOLD, entryDiscountFor, tightenEntryByQuality, AG_ENTRY_Q_OK, AG_ENTRY_Q_MAX } from './finalize-target.mjs';
+import { finalizeTarget, DRIVER_THRESHOLD, entryDiscountFor, cohortEntryBar, tightenEntryByQuality, AG_ENTRY_Q_OK, AG_ENTRY_Q_MAX } from './finalize-target.mjs';
 
 let pass = 0, fail = 0;
 const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -144,16 +144,36 @@ ok('without a prior target the shape is unchanged (no dropped key)',
     { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 25, entryZone: '208-216', stop: 190, target: 258, thesis: 'ai' },
     { ticker: 'MSFT', sector: 'Technology Services', weightPct: 25, entryZone: '450-465', stop: 410, target: 560, thesis: 'azure' },
     { ticker: 'JPM', sector: 'Finance', weightPct: 30, entryZone: '350-366', stop: 331, target: 400, thesis: 'bank' },
-  ] }, { book: 10000, universe: [
+  ] }, { book: 10000, defensiveMin: 15, universe: [
     { t: 'SPY', px: 747, hi: 760, lo: 600 }, { t: 'NVDA', px: 209, hi: 236, lo: 164 },
     { t: 'MSFT', px: 388, hi: 555, lo: 349 }, { t: 'JPM', px: 348, hi: 351, lo: 279 },
   ] });
+  // MANDATE A (2026-09-08): the floor is no longer the default, so this asks for it explicitly. The
+  // mechanism must keep working — restoring the floor is a one-constant change and this proves it would.
   ok('the committed target carries a defensive block', noDef.target.defensive
     && typeof noDef.target.defensive.total === 'number' && noDef.target.defensive.floor === 15);
   ok('a megacap-only book is reported SHORT of the floor, not quietly passed',
     noDef.target.defensive.shortfall > 5);
   ok('…and the shortfall reaches the method line the runbook prints',
     /DEFENSIVE SHORTFALL/.test(noDef.target.method));
+
+  // …and under the Mandate A DEFAULT the same allocation passes through untouched.
+  const mandateA = finalizeTarget({ picks: [
+    { ticker: 'SPY', sector: 'Miscellaneous', weightPct: 20, entryZone: '740-760', stop: 690, target: 830, thesis: 'ballast' },
+    { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 25, entryZone: '208-216', stop: 190, target: 258, thesis: 'ai' },
+    { ticker: 'MSFT', sector: 'Technology Services', weightPct: 25, entryZone: '450-465', stop: 410, target: 560, thesis: 'azure' },
+    { ticker: 'JPM', sector: 'Finance', weightPct: 30, entryZone: '350-366', stop: 331, target: 400, thesis: 'bank' },
+  ] }, { book: 10000, universe: [
+    { t: 'SPY', px: 747, hi: 760, lo: 600 }, { t: 'NVDA', px: 209, hi: 236, lo: 164 },
+    { t: 'MSFT', px: 388, hi: 555, lo: 349 }, { t: 'JPM', px: 348, hi: 351, lo: 279 },
+  ] });
+  ok('under Mandate A the default floor is 0 — no shortfall on a megacap-only book',
+    mandateA.target.defensive.floor === 0 && mandateA.target.defensive.shortfall === 0);
+  ok('…and no DEFENSIVE SHORTFALL reaches the method line',
+    !/DEFENSIVE SHORTFALL/.test(mandateA.target.method));
+  ok('…while defensive exposure is still MEASURED and emitted (only the obligation went away)',
+    typeof mandateA.target.defensive.direct === 'number' && typeof mandateA.target.defensive.total === 'number');
+  ok('…and no gold sleeve is injected either', !mandateA.target.names.some((n) => n.ticker === 'GLDM'));
 }
 {
   // Same book, but the research actually included ballast — the floor is satisfied and says nothing.
@@ -202,14 +222,14 @@ ok('without a prior target the shape is unchanged (no dropped key)',
     { t: 'LLY', px: 1246.93, hi: 1292.65, lo: 694.23 },
     { t: 'MSFT', px: 487.31, hi: 553.72, lo: 349.20 },
   ];
-  const withVol = finalizeTarget({ picks }, { universe, book: 10000 });
+  const withVol = finalizeTarget({ picks }, { universe, book: 10000, defensiveMin: 15 });
   ok('a wide-range pharma name does NOT count as defensive when px/hi/lo are supplied',
     withVol.defensive.direct < 1);
   ok('…so the floor reports a real shortfall rather than a satisfied one',
     withVol.defensive.shortfall > 5);
 
   // The bug: same allocation, no universe ⇒ neutral vol fallback ⇒ LLY sails through the gate.
-  const noVol = finalizeTarget({ picks }, { book: 10000 });
+  const noVol = finalizeTarget({ picks }, { book: 10000, defensiveMin: 15 });
   ok('…and without px/hi/lo the gate cannot bind (documents the failure mode)',
     noVol.defensive.direct > withVol.defensive.direct);
 }
@@ -218,6 +238,40 @@ ok('without a prior target the shape is unchanged (no dropped key)',
 // entryQuality shrank the WEIGHT but never moved the entry ZONE, and the v102 prompt tells the model to
 // set reachable zones — so it brackets spot and a 3/10 entry executed at market exactly like a 9/10 one.
 {
+  // --- RELATIVE SCALE (Mandate A, 2026-09-08) ---------------------------------------------------
+  // The absolute bar made a uniformly-extended cohort haircut EVERY name, and since weights normalize
+  // to ~100% that freed weight could only go to the index core and the ballast — a market-timing call
+  // made by a scorer only ever asked to rank entries. The bar is now the cohort median.
+  {
+    // The live 2026-08-25 distribution: sixteen verdicts, ten of them exactly 3.
+    const cohort = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 4, 5, 5, 4, 2];
+    const bar = cohortEntryBar(cohort);
+    ok('the cohort bar is the median, not a fixed 6', bar === 3);
+    ok('a uniformly extended cohort haircuts NOBODY — "all sixteen are a 3" says nothing about which to buy',
+      entryDiscountFor(3, bar) === 0 && entryDiscountFor(4, bar) === 0 && entryDiscountFor(5, bar) === 0);
+    ok('…and the old absolute bar WOULD have haircut every one of them (the bug this fixes)',
+      entryDiscountFor(3) > 0 && entryDiscountFor(4) > 0 && entryDiscountFor(5) > 0);
+    ok('a name genuinely worse than its peers is still tightened',
+      entryDiscountFor(1, bar) > 0 && entryDiscountFor(1, bar) > entryDiscountFor(2, bar));
+    ok('the ABSOLUTE backstop still binds on a badly-chased entry even when its peers are equally bad',
+      entryDiscountFor(0, 0) > 0);
+    ok('…and an absent cohort falls back to the legacy absolute bar, never to zero (absent ≠ zero)',
+      entryDiscountFor(3, null) === entryDiscountFor(3) && entryDiscountFor(3, null) > 0.04);
+    ok('an empty or unscored cohort yields no bar', cohortEntryBar([]) === null && cohortEntryBar([null, '']) === null);
+    ok('cohortEntryBar reads verdict objects as well as bare numbers',
+      cohortEntryBar([{ entryQuality: 2 }, { entryQuality: 4 }]) === 3);
+    // End-to-end: a whole finalize run over a uniform cohort must leave every zone alone.
+    const uni = [{ t: 'NVDA', px: 209, hi: 236, lo: 164 }, { t: 'MSFT', px: 388, hi: 555, lo: 349 }, { t: 'JPM', px: 348, hi: 351, lo: 279 }];
+    const r = finalizeTarget({ picks: [
+      { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 40, entryZone: '200-215', stop: 190, target: 258, thesis: 'ai' },
+      { ticker: 'MSFT', sector: 'Technology Services', weightPct: 35, entryZone: '370-395', stop: 340, target: 460, thesis: 'azure' },
+      { ticker: 'JPM', sector: 'Finance', weightPct: 25, entryZone: '335-355', stop: 320, target: 400, thesis: 'bank' },
+    ] }, { book: 10000, universe: uni,
+      verdicts: [{ ticker: 'NVDA', entryQuality: 3 }, { ticker: 'MSFT', entryQuality: 3 }, { ticker: 'JPM', entryQuality: 3 }] });
+    ok('end-to-end: a uniform-3 cohort rewrites no entry zone at all',
+      !r.target.names.some((n) => n.entryTightened));
+  }
+
   ok('a fair-or-better entry demands no discount', entryDiscountFor(6) === 0 && entryDiscountFor(9) === 0);
   ok('a poor entry demands a real one', entryDiscountFor(3) > 0.04 && entryDiscountFor(3) < 0.05);
   ok('the demand is CAPPED so the zone stays reachable (v102: a deep zone reads as never-buy)',
@@ -248,17 +302,28 @@ ok('without a prior target the shape is unchanged (no dropped key)',
     { ticker: 'KO', sector: 'Consumer Non-Durables', weightPct: 50, thesis: 'x', entryZone: '$85-$93', stop: 1, target: 2 },
   ];
   const universe = [{ t: 'MA', px: 600, hi: 601, lo: 464 }, { t: 'KO', px: 92, hi: 92.5, lo: 65 }];
+  // MA is a genuinely WORSE entry than its cohort (2 vs KO's 5, median 3.5) — under the relative scale
+  // that spread is what earns a haircut, where the old absolute bar would have tightened both.
   const verdicts = [
-    { t: 'MA', businessOk: true, entryQuality: 3, rec: 'hold' },
-    { t: 'KO', businessOk: true, entryQuality: 2, rec: 'hold' },
+    { t: 'MA', businessOk: true, entryQuality: 2, rec: 'hold' },
+    { t: 'KO', businessOk: true, entryQuality: 5, rec: 'hold' },
   ];
-  const r = finalizeTarget({ picks }, { universe, verdicts, book: 10000 });
+  const r = finalizeTarget({ picks }, { universe, verdicts, book: 10000, defensiveMin: 15 });
   const ma = r.target.names.find((n) => n.ticker === 'MA');
   const ko = r.target.names.find((n) => n.ticker === 'KO');
-  ok('the non-defensive poor entry is tightened end-to-end', /entry-quality 3\/10/.test(ma.entry));
+  ok('the non-defensive poor entry is tightened end-to-end', /entry-quality 2\/10/.test(ma.entry));
   ok('…and the defensive one carrying the floor is NOT', !/entry-quality/.test(ko.entry));
   ok('…with the tightening reported, not silent', r.entryBands.some((x) => x.startsWith('MA ')));
   ok('…and never reported for the exempt name', !r.entryBands.some((x) => x.startsWith('KO ')));
+
+  // MANDATE A: with the floor at 0 there is no mandated ballast to protect, so a defensive name is a
+  // pick like any other and faces the same entry discipline. The exemption returns with the floor.
+  const noFloor = finalizeTarget({ picks }, { universe,
+    verdicts: [{ t: 'MA', businessOk: true, entryQuality: 5, rec: 'hold' }, { t: 'KO', businessOk: true, entryQuality: 2, rec: 'hold' }],
+    book: 10000 });
+  const ko2 = noFloor.target.names.find((n) => n.ticker === 'KO');
+  ok('with no floor active, a defensive name is no longer exempt from entry tightening',
+    /entry-quality 2\/10/.test(ko2.entry));
 }
 
 // --- GOLD SLEEVE INJECTED STRUCTURALLY (2026-08-25) --------------------------------------------------
@@ -266,7 +331,9 @@ ok('without a prior target the shape is unchanged (no dropped key)',
 // takes the "no data" 5.0 on three of five sleeves and tops out at a 5.72 composite against a ~6.8
 // marginal finalist. A mandate dial places it, exactly as SPY is handed to the synthesis as ballast.
 {
-  const withGold = finalizeTarget(ALLOC, { ...base });
+  // MANDATE A (2026-09-08): the sleeve is no longer mandated, so the injection is asserted with an
+  // explicit diversifierMin. The mechanism is unchanged and restoring the sleeve is one constant.
+  const withGold = finalizeTarget(ALLOC, { ...base, diversifierMin: 5 });
   const g = withGold.target.names.find((n) => n.ticker === 'GLDM');
   ok('a gold sleeve is injected when the allocation contains none', !!g);
   ok('…at a real weight, inside the mandate band', g.weightPct >= 4 && g.weightPct <= 10.5);
@@ -278,10 +345,13 @@ ok('without a prior target the shape is unchanged (no dropped key)',
   const off = finalizeTarget(ALLOC, { ...base, diversifierMin: 0 });
   ok('diversifierMin:0 disables the injection entirely',
     !off.target.names.some((n) => n.ticker === 'GLDM'));
+  const dflt = finalizeTarget(ALLOC, { ...base });
+  ok('…and that is the Mandate A DEFAULT — no gold is injected unless asked for',
+    !dflt.target.names.some((n) => n.ticker === 'GLDM'));
 
   // Never overrides a gold vehicle the allocation already carries (a different one, or a chosen weight).
   const own = finalizeTarget({ picks: [...ALLOC.picks, { ticker: 'IAU', sector: 'Diversifier', weightPct: 8,
-    thesis: 'owner-chosen', entryZone: '$80-$90', stop: 70, target: 110 }] }, { ...base });
+    thesis: 'owner-chosen', entryZone: '$80-$90', stop: 70, target: 110 }] }, { ...base, diversifierMin: 5 });
   ok('an allocation that already holds gold is not given a second vehicle',
     !own.target.names.some((n) => n.ticker === 'GLDM'));
   ok('…and the one it chose survives', own.target.names.some((n) => n.ticker === 'IAU'));

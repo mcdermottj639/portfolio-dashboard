@@ -3,6 +3,45 @@
 How the **agentic account** is researched, targeted, monitored, and rebalanced. Read with
 `CLAUDE.md` (architecture) and `SCHEDULING.md` (how the producer is scheduled — same web-trigger model).
 
+## THE MANDATE (owner-set 2026-09-08) — read this before changing any dial
+> **••••3900 — Agentic (Mandate A).** Objective: **beat SPY over rolling 12-month windows.** Unlevered,
+> 10–12 names, research-driven, churn-governed. **Accepts tracking error and drawdowns as deep as or
+> deeper than SPY's.** **No structural ballast:** index core ≤10% (SPY as residual diversifier only), no
+> defensive floor, no forced gold sleeve. Risk controls are **relative** (idiosyncratic drawdown vs SPY)
+> and **correlation-based** (cluster caps) — **never market-timing**. Distinct from ••••0741, which stays
+> concentrated/levered/discretionary.
+
+**What that decided, and why.** The account was reviewed on 2026-09-08 after the owner reported it
+"losing almost every day". The measurements: since inception it was **+4.40% vs SPY +3.94%**, but over
+the preceding two weeks **−0.98% against SPY +0.56%**. A bottom-up attribution (reconciling to within
+0.18pp of the real equity curve) put the gap almost entirely in three names plus **structural ballast**:
+LLY −0.64pp, the defensive floor + gold sleeve −0.54pp, BKNG −0.43pp, against NVDA +0.40 and SHEL +0.23.
+Execution cost ~**zero** — every deposit was deployed same-day, and the VTI parking actually *saved* ~$25.
+A point-in-time counterfactual (each live target held statically until superseded, no look-ahead) put net
+execution drag at **+0.25pp** on n=7 periods, i.e. noise.
+
+So the problem was never the machinery. It was that **42.5% of the book had zero or negative expected
+alpha in a rising tape** — 22.5% index core plus a 15% defensive floor plus a 5% gold sleeve — while the
+remaining 57.5% overlapped ~39% with SPY's own top names. The owner chose objective (a): beat SPY, and
+accept the drawdowns that come with it. Every constant below follows from that choice.
+
+**What changed:** `AG_DEFENSIVE_MIN` 15→**0** · `AG_DIVERSIFIER_MIN` 5→**0** · index core 15-20%→**5-10%
+residual** · 12-15 names→**10-12** · drawdown breaker **absolute −8/−12% → relative −5/−8pp vs SPY** (with
+a −20% absolute backstop) · `TLH_MIN_LOSS` 75→**200** and `TLH_MIN_LOSS_PCT` 5→**10** ·
+`CASH_IDLE_DEPLOY_DAYS` 10→**5** · **deposit tranching** (~50% per pass over 3 days) · the `entryQuality`
+haircut made **relative to the cohort median** · the stale-zone waiver made **asymmetric**.
+
+**Unchanged and load-bearing:** the correlation-cluster caps (megacap-tech ≤48%, payments ≤20% …) are now
+the *primary* downside control and were not loosened; the vol-scaled single-name caps; the churn governor
+(14d min-hold, 14d re-entry cooldown, two-strike phase-out); the cross-account wash-sale ledger; the PDT
+day-trade guard; no leverage; no options. **Defensive exposure and gold exposure are still MEASURED and
+reported** — only the obligation to hold them went away, and restoring either is a one-constant change.
+
+**What this will feel like.** Beta goes from ~0.65-0.70 to ~1.0-1.1. Drawdowns will match or exceed SPY's.
+There will be **more red days, not fewer** — beating SPY means more green than SPY over a year, and ten
+weeks of a ~$13k book cannot distinguish skill from noise. Judge it on the **buys-only alpha** and the
+**beta-adjusted** line, not the headline, and re-audit at 6-8 weeks.
+
 ## What this account is
 - **••••3900 "Agentic"** — an **individual LIMITED MARGIN account**, the only one with
   `agentic_allowed: true` (the agent can place orders here; the other three accounts can't). Confirm
@@ -108,7 +147,7 @@ sitting in names the research had dropped, with no ticket):
 - **Tax-aware ordering + estimates:** every sell (exit/trim/harvest) carries an est. realized ST P&L; the
   combined `sells` list is **losses-first**, and `taxSummary` nets the ticket's gains against its losses.
 - **Tax-loss harvesting (owner-approved):** *harvest-on-sells always* (loss lots go first whenever we're
-  selling anyway) **plus opportunistic**: a held target name underwater ≥ **max($75, 5% of cost)** is
+  selling anyway) **plus opportunistic**: a held target name underwater ≥ **max($200, 10% of cost)** is
   harvested whole (position-level — the MCP can't select lots), wash-blocked from the buy legs, and its
   target weight sits underweight until the 30-day window clears.
 - **Cross-account wash guard — BOTH directions (v105):** the IRS window spans accounts and the **margin
@@ -178,6 +217,14 @@ a cap, so err toward inclusion. Defensive clusters (`utilities`, `reits`, `telec
 the same time; every one of those names used to be an uncapped singleton too — the mirror image of the hole.
 
 ## Gold diversifier + index look-through (2026-08-25, two owner decisions)
+> **RETIRED AS A MANDATE (Mandate A, 2026-09-08): `AG_DIVERSIFIER_MIN` is now 0.** Bullion has no cash
+> flow and no expected equity alpha, so a forced 5% sleeve is 5% that cannot contribute to beating SPY;
+> measured live it was −5.0% over the two weeks to 2026-09-08, about half the total ballast drag. The
+> CEILING (`AG_DIVERSIFIER_MAX` 10%) and every measurement helper are UNCHANGED, the injection code in
+> `finalize-target.mjs` is unchanged and still gated on the floor, and gold remains fully holdable if the
+> research picks it on merit. Restoring the sleeve is a one-constant change. The rationale below is kept
+> because it is the argument you would need to re-read before doing that.
+
 **Gold sleeve — `AG_DIVERSIFIER_MIN` 5% / `AG_DIVERSIFIER_MAX` 10%, vehicle GLDM.** The book's first
 non-equity holding. Every other downside control here is either equity ballast or reactive: the defensive
 floor buys staples and pharma, which still fall in a drawdown (~0.5-0.7 correlation to SPY), and the
@@ -256,8 +303,9 @@ to protect it. So:
   non-incumbents qualify, the slots **backfill on merit** rather than shrinking the cut, and the shortfall
   is reported. On the live ranking this took fresh names reaching adversarial verify from **1/10 to 7/16**
   and sector coverage from 7 to 11 — **with every previous finalist still in the set**.
-- **Allocation widens to 12-15 names** (was 7-9): the defensive floor needs room, and a 16-name cut now
-  supplies enough verified survivors. On a ~$10k book 13 names is ~$780 each, far above the 3.5% sliver floor.
+- **Allocation is 10-12 names** (7-9 before v124, then 12-15 to make room for the defensive floor, now
+  **10-12 under Mandate A** — the floor is gone and conviction has to be expressible: 14 names at ~7%
+  each is a closet index, and this account is paid to differ from the benchmark. Floor weight ~6%.
 
 Nothing here buys or sells anything. The adversarial verify, the incumbency framing ("displace an incumbent
 only when MATERIALLY stronger"), the 14-day min-hold and the re-entry cooldown all still decide what trades.
@@ -282,6 +330,18 @@ The only downturn responses that existed were reactive and cash-based — the dr
 Neither rotates. So a target could legitimately hold 0% staples, 0% utilities and 0% healthcare in perpetuity
 and the composite would never object: momentum + growth carry **0.44** of the weight against valuation's
 **0.18**, so an expensive fast name structurally outranks a cheap stable one.
+
+> **RETIRED AS A MANDATE (Mandate A, 2026-09-08): `AG_DEFENSIVE_MIN` is now 0.** The reasoning that
+> built this floor was sound for a capital-preservation book and is the wrong trade for a beat-SPY one:
+> SPY itself carries ~9% defensive weight, so a book forced to 15% is structurally SHORT the benchmark's
+> growth names by ~6pp before it picks a single stock. Measured on the live book (JNJ 8% + KO 7%) it cost
+> **−0.54pp in two weeks with zero realized protective benefit**, against a breaker that has never fired
+> (deepest drawdown ever recorded: −3.47%). **The measurement survives** — `isDefensive`,
+> `defensiveExposure` and `target.defensive` all still compute, exactly as `LOOKTHROUGH_ENFORCE=false`
+> kept look-through measured after it stopped binding. Defensive names remain fully eligible on merit.
+> What replaces it as downside control: the **relative** drawdown breaker (below) and the **correlation
+> cluster caps**, which were NOT loosened. Restoring the floor is one constant. The vol-gate rationale
+> below still governs what would COUNT if it were restored, and is kept for that reason.
 
 **`AG_DEFENSIVE_MIN` = 15% of book** (owner-set mandate dial, ••••3900 only), enforced in
 `riskweights.mjs` and applied by `finalize-target.mjs` — the same "workflow proposes, this disposes" contract
@@ -340,7 +400,10 @@ append the record** (record `spyAt` = SPY's price at decision time so alpha can 
 4. **Drift band, not daily churn.** Only rebalance a name when |drift| ≥ `driftTriggerPp` (5pp) or a
    stop/target/earnings level triggers — turnover is tax drag.
 5. **Prefer long-term lots** for any necessary trim once lots age past 1 year. **TLH is formalized (v96):**
-   losses sell first on every ticket, and standalone harvests fire at ≥ max($75, 5% of cost) — see the
+   losses sell first on every ticket, and standalone harvests fire at ≥ max($200, 10% of cost) — raised from
+   $75/5% on 2026-09-08 because a harvest sells the WHOLE position and the wash guard then blocks the rebuy
+   for 30 days, which at the old floor was a de-facto −5% hard stop with a forced month out of a name the
+   research still wanted; the ~$19 of tax saved on a $75 loss does not pay for that. See the
    planner's TLH + cross-account wash rules above.
 
 ## Weekly job — wired into the existing producer (no separate trigger)
@@ -382,11 +445,28 @@ The only guard here that looks at the WHOLE book — everything else (stops, ent
 name-scoped. `drawdown.mjs` reads the recorded, **deposit-adjusted** equity series; `build-data.mjs`
 publishes it as `data.agentic.drawdown` and `agentic-exec-gate.mjs` feeds it to the planner.
 
+**RELATIVE TO SPY since Mandate A (2026-09-08).** v121 measured the book against its own peak. That was a
+tail guard on a ~0.65-beta book and never fired. Mandate A takes beta to ~1.0-1.1, where an absolute −8%
+fires in an ordinary correction and the −12% tier would **raise 20% cash into the hole** — selling the
+bottom of a routine pullback and sitting out the rebound. That is market timing wearing a risk-control
+costume, and the mandate forbids it. The question is not "is the book down?" but **"is the book down more
+than the market?"** A market-wide fall is beta a beat-SPY book is paid to carry; a fall the market did not
+share is the model failing, and only that is acted on.
+
 | tier | trips at | what changes |
 |---|---|---|
-| `soft` | ≤ −8% from the deposit-adjusted peak | Every new buy defers with reason `drawdown`. Deferred dollars stay in **cash — not parked in VTI** (the placeholder is 100% equity beta, so parking "the market is falling" money there is backwards). The idle-cash deadline is paused; its clock keeps running. |
-| `hard` | ≤ −12% | Soft, plus `drawdown-raise` sells lifting cash to **20% of book, losses first**. |
-| clear | back **above −6%** | Not at −8%: the gap is hysteresis, or the breaker chatters and redeploys into what it just refused. |
+| `soft` | ≤ **−5pp** behind the benchmark since the book's own peak | Every new buy defers with reason `drawdown`. Deferred dollars stay in **cash — not parked in VTI** (the placeholder is 100% equity beta, so parking "the market is falling" money there is backwards). The idle-cash deadline is paused; its clock keeps running. |
+| `hard` | ≤ **−8pp** relative | Soft, plus `drawdown-raise` sells lifting cash to **20% of book, losses first**. |
+| backstop | ≤ **−20% absolute**, whatever the market did | `hard`. A purely relative breaker would let the book fall indefinitely so long as SPY fell with it; this is deep enough that no ordinary correction reaches it, so it cannot smuggle the old behaviour back in. |
+| clear | back **above −3pp** | Not at −5pp: the gap is hysteresis, or the breaker chatters and redeploys into what it just refused. |
+
+**The benchmark must be FRESH or it is not used.** `data.hist.day` goes stale PER SYMBOL, and a stale SPY
+series reads as "the market did not move" — which turns every market-wide fall into an apparent
+idiosyncratic one and trips the breaker on exactly the case it exists to ignore. A bench more than
+`DD_BENCH_STALE_DAYS` (5) behind the book's last recorded point is **refused**, and the module falls back
+to the absolute backstop alone (`basis: 'absolute-only'`). `agentic-exec-gate.mjs` passes
+`data.hist.day.SPY`; the result carries `dd`, `ddBench`, `relDd` and `basis` so the card can show the
+comparison rather than a bare number.
 
 Load-bearing details: **sells, exits and TLH are never blocked** — de-risking must always be possible.
 The breaker does **not** override the PDT day-trade guard or the 14-day min-hold; it warns when the cash
@@ -582,7 +662,18 @@ Three linked rules the planner enforces, all added 2026-08-11 after a live re-ve
   `PARK_MIN` already makes about the sale itself. A hard invariant backs it — **spend must never exceed
   cash + proceeds + an actual release leg** — and a breach pushes a `PLANNER BUG` warning rather than
   shipping quietly.
-- **Idle-cash deadline (backstop).** If cash still sits past `CASH_IDLE_DEPLOY_DAYS` (10, tracked by
+- **Deposit tranching (Mandate A, 2026-09-08).** Fresh cash is rationed for `DEPOSIT_TRANCHE_DAYS` (3)
+  at `DEPOSIT_TRANCHE_PCT` (50%) per pass, above `DEPOSIT_TRANCHE_MIN` ($500). Every deposit to date was
+  deployed IN FULL at market the day it landed — 8/11 $5,000, 8/25 $1,400, 9/8 $1,815 — into names the
+  model already wanted more of, and the model's buys land at ~the 85th percentile of their observed
+  range. That is the maximum-variance way to add money and is exactly what made every deposit feel like
+  it went straight into the red (post-8/25 buys marked −2.27% on average vs pre-8/25's +0.19%; n=5 events,
+  so this is a variance argument, not a signal one). It reuses `cashIdleDays`, so it needs no new fetch,
+  no new committed state and no Routine prompt change. Sale proceeds are NOT rationed (a rebalance is
+  already in motion), and the idle-cash deadline still forces the remainder in — **this can delay a buy
+  and can never veto one.**
+- **Idle-cash deadline (backstop).** If cash still sits past `CASH_IDLE_DEPLOY_DAYS` (**5** since Mandate
+  A — cash is drag on a book whose job is to beat a fully-invested benchmark; was 10, tracked by
   `data.agentic.cashIdleSince`), the bands are waived and the balance deploys in ~thirds
   (`CASH_IDLE_TRANCHE_PCT`), sweeping whole under `CASH_IDLE_SWEEP_FLOOR`. Waiting indefinitely is a
   decision too, and cash drag is a loss that never shows up as one.

@@ -74,13 +74,20 @@
 // review_equity_order → confirm → place (auto ≤ cap, owner-confirmed above; see AGENTIC.md).
 
 import { policyBlackout, POLICY_BLACKOUT_DAYS } from './policy.mjs';
-import { AG_DD_CASH_FLOOR, AG_DRAWDOWN_RESUME } from './drawdown.mjs';
+import { AG_DD_CASH_FLOOR, AG_DD_REL_RESUME } from './drawdown.mjs';
 
 export const EARNINGS_BLACKOUT_DAYS = 7;
 export { POLICY_BLACKOUT_DAYS };
 export const AUTO_TURNOVER_CAP = 10000; // $/ticket the executor may place unattended (owner-approved tier, 2026-08-25)
-export const TLH_MIN_LOSS = 75;       // opportunistic harvest floor, dollars…
-export const TLH_MIN_LOSS_PCT = 5;    // …and as % of cost basis — must clear max() of both
+// OPPORTUNISTIC-TLH FLOOR — raised 75/5% → 200/10% under Mandate A (2026-09-08). The rule harvests a
+// target name underwater past the floor WHOLE, and the wash guard then blocks the rebuy for 30 days. At
+// the old floor that was a de-facto −5% hard stop with a forced month out, on a concentrated ~1.0-beta
+// book whose names routinely swing ±5% in a fortnight — and a harvest is exempt from min-hold, so
+// nothing else slowed it. It had never fired (0 harvests across 11 confirmed decisions) but BKNG sat
+// ~$60 of loss short of tripping it on 2026-09-08. The tax saved is not worth the absence: a $75
+// harvest is ~$19 at a 25% marginal rate, against 30 days out of a name the research still wants.
+export const TLH_MIN_LOSS = 200;      // opportunistic harvest floor, dollars…
+export const TLH_MIN_LOSS_PCT = 10;   // …and as % of cost basis — must clear max() of both
 export const MIN_EXIT = 5;            // ignore off-target dust below this value
 export const WASH_WINDOW_DAYS = 30;   // IRS wash-sale window (either side of a loss sale)
 
@@ -152,9 +159,32 @@ export function marketRegime(vix) {
   return 'calm';
 }
 
-export const CASH_IDLE_DEPLOY_DAYS = 10;  // calendar-tracked idle days before deployment is forced
+export const CASH_IDLE_DEPLOY_DAYS = 5;   // idle days before deployment is forced (10 → 5, Mandate A: cash is drag)
 export const CASH_IDLE_TRANCHE_PCT = 34;  // % of idle cash per forced pass (~thirds)
 export const CASH_IDLE_SWEEP_FLOOR = 250; // …below this, stop tranching and deploy the remainder
+
+// ── Deposit tranching (Mandate A, 2026-09-08) ───────────────────────────────────────────────────
+// Every deposit to date was deployed IN FULL, at market, the day it landed — 8/11 $5,000, 8/25 $1,400,
+// 9/8 $1,815 — into names the model already wanted more of, and the model's buys land at the ~85th
+// percentile of their observed range. That is the maximum-variance way to add money, and it is exactly
+// what produces "every time I add cash it's immediately red": post-8/25 buys marked −2.27% on average
+// against pre-8/25's +0.19%. At n=5 events that is not evidence of a systematic defect — it is a reason
+// not to concentrate the entry on one arbitrary day.
+//
+// So a FRESH deposit deploys over DEPOSIT_TRANCHE_DAYS instead of all at once. This is a VARIANCE
+// reduction, not a return improvement: the expected cost is a day or two of drift, which is trivial,
+// and the expected benefit is not buying a one-day spike with the whole lump.
+//
+// It reuses `cashIdleDays` (build-data's data.agentic.cashIdleSince — the first date deployable cash
+// crossed the floor and stayed there), so it needs NO new fetch, NO new committed state and NO Routine
+// prompt change: cash that arrived today reads idleDays 0. Two guards keep it from doing harm:
+//   • Below DEPOSIT_TRANCHE_MIN the whole balance deploys at once — splitting a small deposit just
+//     manufactures orders under MIN_BUY and the variance it would save is immaterial.
+//   • The idle-cash deadline still backstops it, so this can DELAY a buy by a few days and can never
+//     veto one. Past CASH_IDLE_DEPLOY_DAYS the tranche cap is irrelevant — the deadline forces the rest.
+export const DEPOSIT_TRANCHE_DAYS = 3;    // fresh cash is rationed for this many days after it lands
+export const DEPOSIT_TRANCHE_PCT = 50;    // …at most this % of it per pass (≈2 tranches)
+export const DEPOSIT_TRANCHE_MIN = 500;   // …and only when the balance is at least this big
 
 // ── Index parking — the "waiting ground" (v102, owner's design) ─────────────────────────────────
 // Better answer to cash drag than the deadline above: instead of a deferred name's dollars sitting in
@@ -269,7 +299,24 @@ export function planDeployment(input = {}) {
   const idleDeadline = +(((opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS) * regimeStretch).toFixed(2));
   const idleOverdue = idleDays != null && idleDays >= idleDeadline && !ddSoft;
   // Past the deadline the BANDS are waived — but never the hard guards (stop/earnings/wash/policy).
-  const bandsActive = gapReverify && !zonesStale && !idleOverdue;
+  //
+  // STALENESS IS ASYMMETRIC (2026-09-08). v102 made a stale target waive BOTH sides of the band, for a
+  // real reason: on 2026-08-11 three of seven names read "below entry" at once purely because the zones
+  // were six days old, and deferring the whole book on the guard's own staleness is the failure that
+  // rule exists to prevent. But waiving BOTH sides also switched off the "too expensive" check, and on
+  // 2026-09-02 that let MA fill at $588.82 against its own $584.33 tolerance ceiling and V at $378.30
+  // against $372.50 — on a 9-day-stale target, with V one trading day from clearing its band cleanly
+  // ($372.67 close on 09-01). Both traded lower a week later.
+  //
+  // The two directions are not symmetric, because a stale zone tells you which way price MOVED:
+  //   • zone now ABOVE spot ⇒ price FELL. Buying a pullback on an ageing thesis is a fair risk, and
+  //     deferring it is the v102 whole-book-stall bug. So `below-entry` is still waived when stale.
+  //   • zone now BELOW spot ⇒ price RAN. Paying up on an ageing thesis is the 09-02 case, and there is
+  //     no deadline pressure to justify it — the idle-cash clock, not the band, is what stops us
+  //     waiting forever. So `above-entry` SURVIVES staleness.
+  // The idle-cash deadline still waives both, so this can delay a buy and can never veto one.
+  const belowBandActive = gapReverify && !zonesStale && !idleOverdue;
+  const aboveBandActive = gapReverify && !idleOverdue;
   const names = (target.names || []).filter((n) => n && n.ticker).map((n) => ({ ...n, ticker: String(n.ticker).toUpperCase() }));
   const driftPp = num(target.driftTriggerPp) ?? 5;
 
@@ -369,7 +416,9 @@ export function planDeployment(input = {}) {
       // no per-name verdict can argue past it. Deferred dollars stay in CASH (see parkNewOn above).
       if (ddSoft) {
         deferred.push({ sym, reason: 'drawdown', dollars: gap,
-          detail: `book is ${ddPct} from its peak (${drawdown && drawdown.peakT || 'n/a'}) — new deployment paused until it recovers above ${(AG_DRAWDOWN_RESUME * 100).toFixed(0)}%; deferred cash is NOT parked (the placeholder is equity beta)` });
+          detail: `${drawdown && drawdown.basis === 'relative'
+            ? `book is ${((drawdown.relDd || 0) * 100).toFixed(1)}pp BEHIND the benchmark since its peak (${drawdown.peakT || 'n/a'}) — an idiosyncratic decline, not a market-wide one`
+            : `book is ${ddPct} from its peak (${drawdown && drawdown.peakT || 'n/a'}), breaching the absolute backstop`} — new deployment paused until it recovers above ${(AG_DD_REL_RESUME * 100).toFixed(0)}pp relative; deferred cash is NOT parked (the placeholder is equity beta)` });
         continue;
       }
       // STRESSED TAPE + ADVISORY BANDS. Zones go advisory once the target is stale (>7d), which means
@@ -418,16 +467,16 @@ export function planDeployment(input = {}) {
         deferred.push({ sym, reason: 'below-stop', detail: `${money(px)} is at/below target stop ${money(stop)} — setup broken, re-verify before buying`, dollars: gap });
         continue;
       }
-      // Symmetric entry band. Both sides carry a tolerance so noise doesn't park a position, and both
-      // are skipped when the zones are stale or the idle-cash deadline has passed (see `bandsActive`).
-      if (bandsActive && px != null && eLow != null && px < eLow * (1 - tolPct / 100)) {
+      // Entry band. Both sides carry a tolerance so noise doesn't park a position. The idle-cash
+      // deadline waives both; STALENESS waives only the below side (see `belowBandActive` above).
+      if (belowBandActive && px != null && eLow != null && px < eLow * (1 - tolPct / 100)) {
         deferred.push({ sym, reason: 'below-entry', dollars: gap,
           detail: `${money(px)} is ${((1 - px / eLow) * 100).toFixed(1)}% below planned entry ${n.entry} (tolerance ${tolPct}%) — re-verify the thesis (esp. post-earnings) before deploying` });
         continue;
       }
-      if (bandsActive && px != null && eHigh != null && px > eHigh * (1 + premPct / 100)) {
+      if (aboveBandActive && px != null && eHigh != null && px > eHigh * (1 + premPct / 100)) {
         deferred.push({ sym, reason: 'above-entry', dollars: gap,
-          detail: `${money(px)} is ${((px / eHigh - 1) * 100).toFixed(1)}% above planned entry ${n.entry} (tolerance ${premPct}%) — the research priced this entry deliberately; wait for the pullback rather than chase` });
+          detail: `${money(px)} is ${((px / eHigh - 1) * 100).toFixed(1)}% above planned entry ${n.entry} (tolerance ${premPct}%) — the research priced this entry deliberately; wait for the pullback rather than chase${zonesStale ? ` (zones are ${zoneAgeDays}d old and advisory for the BELOW side, but paying up on an ageing thesis still waits — the idle-cash deadline is what stops us waiting forever)` : ''}` });
         continue;
       }
       candidates.push({ sym, gap, px, cw, tw, sector: n.sector, entry: n.entry, stop, tgt: num(n.target) });
@@ -501,7 +550,8 @@ export function planDeployment(input = {}) {
     }
   }
 
-  // 1d. HARD-TIER DEFENSIVE CASH (v121). Below AG_DRAWDOWN_HARD the breaker stops being passive: it
+  // 1d. HARD-TIER DEFENSIVE CASH (v121). At the hard tier (AG_DD_REL_HARD — the book 8pp BEHIND the
+  // benchmark since its peak — or the AG_DD_ABS_BACKSTOP absolute floor) the breaker stops being passive: it
   //     raises cash to a floor. Ordering is LOSSES FIRST, exactly like every other sell path here — the
   //     tax benefit is real and it is also the least-conviction end of the book. Everything routes
   //     through sellBlocked(), so the PDT day-trade guard and the 14d min-hold still bind; min-hold's
@@ -557,7 +607,19 @@ export function planDeployment(input = {}) {
   const tranchePct = +(((opts.cashIdleTranchePct ?? CASH_IDLE_TRANCHE_PCT) * (REGIME_TRANCHE_SCALE[regime] ?? 1)).toFixed(2));
   const sweepFloor = opts.cashIdleSweepFloor ?? CASH_IDLE_SWEEP_FLOOR;
   const tranching = idleOverdue && settledNow > sweepFloor;
-  const cashThisPass = tranching ? +(settledNow * tranchePct / 100).toFixed(2) : settledNow;
+  //    DEPOSIT TRANCHE (Mandate A): the mirror of the forced tranche above, at the OTHER end of the
+  //    clock. That one rations a backlog that has waited too long; this one rations cash that has only
+  //    just arrived, so a lump deposit averages in over a few days instead of buying one arbitrary
+  //    day's prices. Only one of the two can be active — `idleOverdue` and "fresh" are opposite ends of
+  //    the same idleDays counter — and the deadline always wins, so this can never block deployment.
+  //    Sale proceeds are excluded for the same reason as above: a rebalance is already in motion.
+  const depTrancheDays = opts.depositTrancheDays ?? DEPOSIT_TRANCHE_DAYS;
+  const depTranchePct = opts.depositTranchePct ?? DEPOSIT_TRANCHE_PCT;
+  const depTrancheMin = opts.depositTrancheMin ?? DEPOSIT_TRANCHE_MIN;
+  const depositFresh = !idleOverdue && idleDays != null && idleDays < depTrancheDays && settledNow >= depTrancheMin;
+  const cashThisPass = tranching
+    ? +(settledNow * tranchePct / 100).toFixed(2)
+    : depositFresh ? +(settledNow * depTranchePct / 100).toFixed(2) : settledNow;
   //    Parked dollars are a funding source too — that is the whole point of the waiting ground. They go
   //    into the pool here so a cleared name can actually draw on them; how much was drawn (and therefore
   //    must be SOLD out of the vehicle) falls out of `spent` below as the release leg.
@@ -722,14 +784,19 @@ export function planDeployment(input = {}) {
   // which never fired — otherwise a plan that just held a buy back reports itself as fully deployed.
   const fundablePool = +(cashThisPass + proceeds + releaseD).toFixed(2);
   if (candidates.length && fundablePool > 0 && spent < fundablePool - 1) warnings.push(`${money(cashLeft)} left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)`);
-  if (zonesStale) warnings.push(`entry zones are ${zoneAgeDays}d old (target asOf ${target.asOf || '?'}) — treated as ADVISORY, band checks skipped; a stale zone drifts out of range on its own`);
+  if (zonesStale) warnings.push(`entry zones are ${zoneAgeDays}d old (target asOf ${target.asOf || '?'}) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up`);
   if (idleOverdue) warnings.push(`cash idle ${idleDays}d (≥${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d deadline) — entry bands waived and ${tranching ? `a ${tranchePct}% tranche (${money(cashThisPass)}) deployed this pass` : `the ${money(settledNow)} remainder swept in`}; waiting indefinitely is a decision too`);
+  if (depositFresh) warnings.push(`fresh cash ${money(settledNow)} arrived ${idleDays}d ago — deploying a ${depTranchePct}% tranche (${money(cashThisPass)}) this pass and the rest over the next ${Math.max(0, depTrancheDays - (idleDays || 0))}d, so a lump doesn't buy one arbitrary day's prices; the ${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d idle deadline still forces the remainder in`);
 
   if (parkLegs.park) warnings.push(`${money(parkLegs.park.dollars)} of deferred weight parked in ${parkVehicle} rather than left in cash (${parkLegs.park.forNames.join(', ')}) — released when those names clear; unparking is a taxable ST sale`);
   if (parkLegs.release) warnings.push(`released ${money(parkLegs.release.dollars)} from the ${parkVehicle} waiting ground to fund cleared names — realizes ${parkLegs.release.pl == null ? 'an ST gain/loss' : money(parkLegs.release.pl)} ST`);
 
-  const entryPolicy = { tolerancePct: tolPct, premiumPct: premPct, zoneAgeDays, zonesStale, bandsActive,
-    idleDays: idleDays ?? null, idleOverdue, tranching, tranchePct: tranching ? tranchePct : null, cashThisPass };
+  // `bandsActive` is kept as the BELOW-side flag for back-compat (the consumer's older mirrors read it);
+  // belowBandActive/aboveBandActive are the authoritative pair since the 2026-09-08 asymmetry.
+  const entryPolicy = { tolerancePct: tolPct, premiumPct: premPct, zoneAgeDays, zonesStale,
+    bandsActive: belowBandActive, belowBandActive, aboveBandActive,
+    idleDays: idleDays ?? null, idleOverdue, tranching, tranchePct: tranching ? tranchePct : null, cashThisPass,
+    depositFresh, depositTranchePct: depositFresh ? depTranchePct : null };
   const parking = { vehicle: parkVehicle, enabled: parkingOn, before: +parkedNow.toFixed(2), after: +parkedAfter.toFixed(2),
     parked: parkLegs.park, released: parkLegs.release,
     // Only the DATED names — an undated deferral waits in cash, so naming it here would report the

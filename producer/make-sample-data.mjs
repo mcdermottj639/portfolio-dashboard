@@ -407,9 +407,14 @@ const data = {
       // this fixture holds no qualifying defensive name (LLY's range disqualifies it, exactly as in the
       // live book), so the Plan tab's Guardrails row renders its ⚠️ shortfall state in preview rather
       // than the silent satisfied one. Set PF_SAMPLE_DEFENSIVE=1 for a book that clears the floor.
-      defensive: process.env.PF_SAMPLE_DEFENSIVE
-        ? { direct: 16.4, lookThrough: 3.1, total: 19.5, floor: 15, shortfall: 0 }
-        : { direct: 0, lookThrough: 3.1, total: 3.1, floor: 15, shortfall: 11.9 } },
+      // MANDATE A (2026-09-08): the floor is 0, so the default fixture reports NO shortfall — a preview
+      // that still showed "⚠️ short 11.9pp" would contradict the shipped planner. PF_SAMPLE_DEFENSIVE=floor
+      // restores a 15% floor so the shortfall/satisfied states stay previewable for the day it comes back.
+      defensive: process.env.PF_SAMPLE_DEFENSIVE === 'floor'
+        ? { direct: 0, lookThrough: 3.1, total: 3.1, floor: 15, shortfall: 11.9 }
+        : process.env.PF_SAMPLE_DEFENSIVE
+          ? { direct: 16.4, lookThrough: 3.1, total: 19.5, floor: 0, shortfall: 0 }
+          : { direct: 0, lookThrough: 3.1, total: 3.1, floor: 0, shortfall: 0 } },
     // ── Plan-tab (v108) fixtures: the executor/planner state the agentic PLAN page reads. Without
     //    these, local preview shows every card in its empty state and the deferral/parking/ticket
     //    paths go unexercised. Mirrors the shapes build-data.mjs emits from the committed
@@ -445,12 +450,27 @@ const data = {
     //    attribution. A surface that can't be previewed rots (the v116 lesson), so each of these
     //    exists purely so the local preview exercises the new card states.
     //    PF_SAMPLE_DRAWDOWN=soft|hard trips the book-level breaker banner + its guardrail row.
+    //    MANDATE A (2026-09-08): the breaker is RELATIVE to SPY, so the fixture must carry the shape the
+    //    real module now emits — dd + ddBench + relDd + basis. The soft/hard levels are deliberately a
+    //    book that fell only MODERATELY against a market that barely moved: that is the case the relative
+    //    breaker exists to catch, and it is the one an absolute breaker would have missed. Getting this
+    //    fixture wrong is how a surface rots unnoticed — `make-sample-data.mjs` being internally
+    //    inconsistent with the real payload is exactly what hid the v116 margin bug from local preview.
+    //    PF_SAMPLE_DRAWDOWN=soft|hard trips the book-level breaker banner + its guardrail row.
+    //    PF_SAMPLE_DRAWDOWN=abs exercises the absolute-only fallback (a stale/missing SPY series).
     drawdown: (() => {
       const lvl = String(process.env.PF_SAMPLE_DRAWDOWN || '').toLowerCase();
-      if (lvl !== 'soft' && lvl !== 'hard') return { dd: -0.016, level: 'ok', peakT: now.toISOString().slice(0, 10), points: 39, insufficient: false, note: 'book -1.6% from its peak — deployment normal' };
-      const dd = lvl === 'hard' ? -0.141 : -0.093;
-      return { dd, level: lvl, peakT: (() => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 21); return d.toISOString().slice(0, 10); })(),
-        points: 39, insufficient: false, note: `book ${(dd * 100).toFixed(1)}% from its peak — new deployment paused` };
+      const peak = () => { const d = new Date(now); d.setUTCDate(d.getUTCDate() - 21); return d.toISOString().slice(0, 10); };
+      if (lvl === 'abs') return { dd: -0.212, ddBench: null, relDd: null, level: 'hard', basis: 'absolute-only',
+        peakT: peak(), minRelSincePeak: null, minDdSincePeak: -0.212, points: 39, insufficient: false, benchStale: true,
+        note: 'book -21.2% from its peak has breached the -20.0% absolute backstop — new deployment paused and defensive cash raised to 20% of book' };
+      if (lvl !== 'soft' && lvl !== 'hard') return { dd: -0.016, ddBench: -0.011, relDd: -0.005, level: 'ok', basis: 'relative',
+        peakT: now.toISOString().slice(0, 10), minRelSincePeak: -0.005, minDdSincePeak: -0.016, points: 39, insufficient: false, benchStale: false,
+        note: 'book -1.6% from its peak vs benchmark -1.1% over the same window — -0.5pp relative; deployment normal' };
+      const dd = lvl === 'hard' ? -0.101 : -0.073, ddBench = -0.012, relDd = +(dd - ddBench).toFixed(4);
+      return { dd, ddBench, relDd, level: lvl, basis: 'relative', peakT: peak(),
+        minRelSincePeak: relDd, minDdSincePeak: dd, points: 39, insufficient: false, benchStale: false,
+        note: `book is ${(relDd * 100).toFixed(1)}pp BEHIND the benchmark since its peak (book ${(dd * 100).toFixed(1)}% vs market ${(ddBench * 100).toFixed(1)}%) — new deployment paused${lvl === 'hard' ? ' and defensive cash raised to 20% of book' : ''}` };
     })(),
     pending: { id: now.toISOString().slice(0, 10) + '-sample', created: now.toISOString().slice(0, 10), status: 'proposed',
       autoEligible: false, turnover: 1420.5, book: equity, taxSummary: { gains: 61.4, losses: -22.8, net: 38.6 },

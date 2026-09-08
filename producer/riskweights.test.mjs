@@ -181,7 +181,7 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
 }
 {
   // THE LIVE 2026-08-18 TARGET SHAPE. Nine names, zero qualifying defensives — the gap this floor closes.
-  const r = riskAdjustWeights([
+  const megacapOnly = [
     { ticker: 'SPY', weightPct: 20, px: 747, hi: 760, lo: 600 },
     { ticker: 'AMZN', weightPct: 14, px: 238, hi: 278, lo: 196 },
     { ticker: 'MSFT', weightPct: 13, px: 388, hi: 555, lo: 349 },
@@ -190,10 +190,25 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
     { ticker: 'LLY', weightPct: 11, px: 1152, hi: 1249, lo: 624 },
     { ticker: 'V', weightPct: 11, px: 352, hi: 365, lo: 293 },
     { ticker: 'JPM', weightPct: 10, px: 348, hi: 351, lo: 279 },
-  ]);
+  ];
+  // MANDATE A (2026-09-08): the floor is no longer the DEFAULT, so the floor behaviour is now asserted
+  // with an explicit defensiveMin. The mechanism is unchanged and must keep working — restoring the
+  // floor is a one-constant change, and these cases are what prove it still would.
+  const r = riskAdjustWeights(megacapOnly, { defensiveMin: 15 });
   ok('a book with no qualifying defensive name is flagged, never faked',
     r.defensive.shortfall > 5 && r.notes.some((n) => /NO qualifying defensive name/.test(n)));
   ok('…and no weight is fabricated to hide it', Math.abs(r.names.reduce((a, n) => a + n.weightPct, 0) - 100) < 0.6);
+
+  // …and the Mandate A default: the same book passes untouched, with the exposure still MEASURED.
+  const d = riskAdjustWeights(megacapOnly);
+  ok('AG_DEFENSIVE_MIN is 0 under Mandate A — ballast is no longer forced', AG_DEFENSIVE_MIN === 0);
+  ok('…so a megacap-only book is not topped up and reports no shortfall',
+    d.defensive.shortfall === 0 && !d.notes.some((n) => /defensive floor: moved|NO qualifying defensive/.test(n)));
+  ok('…but the defensive exposure is still computed and disclosed (measurement survives the mandate)',
+    d.defensive && typeof d.defensive.direct === 'number' && typeof d.defensive.total === 'number');
+  ok('…and the weights are left exactly as proposed',
+    d.names.find((n) => n.ticker === 'SPY').weightPct === r.names.find((n) => n.ticker === 'SPY').weightPct ? true
+      : Math.abs(d.names.reduce((a, n) => a + n.weightPct, 0) - 100) < 0.6);
 }
 {
   // Top-up path: a real but undersized defensive sleeve is raised toward the floor, funded by the
@@ -205,10 +220,10 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
     { ticker: 'JPM', weightPct: 20, px: 348, hi: 351, lo: 279 },
     { ticker: 'V', weightPct: 20, px: 352, hi: 365, lo: 293 },
     { ticker: 'KO', weightPct: 5, px: 70, hi: 74, lo: 60 },
-  ]);
+  ], { defensiveMin: 15 });
   ok('the defensive sleeve is topped up toward the floor',
     (r.names.find((n) => n.ticker === 'KO') || {}).weightPct > 5);
-  ok('…to at least the floor', r.defensive.total >= AG_DEFENSIVE_MIN - 0.6);
+  ok('…to at least the floor', r.defensive.total >= 15 - 0.6);
   ok('…and a note records the move', r.notes.some((n) => /defensive floor: moved/.test(n)));
   near('…with the book still at 100%', r.names.reduce((a, n) => a + n.weightPct, 0), 100, 0.6);
   ok('…and no cluster pushed over its cap by the top-up',
@@ -250,15 +265,27 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
     !isDiversifier('NVDA') && !isDiversifier('GDX'));
   ok('gold carries no sector/cluster exposure at all', clusterOf('GLDM').startsWith('single:'));
 
-  // NEVER FABRICATES — the same hard rule as the defensive floor.
-  const noGold = riskAdjustWeights([
+  // NEVER FABRICATES — the same hard rule as the defensive floor. Asserted with an explicit
+  // diversifierMin since Mandate A (2026-09-08) set the default floor to 0; the mechanism is unchanged.
+  const goldless = [
     { ticker: 'NVDA', weightPct: 50, px: 209, hi: 236, lo: 164 },
     { ticker: 'JNJ', weightPct: 30, px: 273, hi: 276, lo: 173 },
     { ticker: 'SPY', weightPct: 20, px: 747, hi: 760, lo: 600 },
-  ]);
+  ];
+  const noGold = riskAdjustWeights(goldless, { diversifierMin: 5 });
   ok('a book with no gold vehicle reports the shortfall instead of inventing a position',
-    noGold.diversifier.direct === 0 && noGold.diversifier.shortfall === AG_DIVERSIFIER_MIN);
+    noGold.diversifier.direct === 0 && noGold.diversifier.shortfall === 5);
   ok('…and says so in the notes', noGold.notes.some((n) => /no gold vehicle/.test(n)));
+
+  // …and the Mandate A default: no gold sleeve is demanded at all, but the exposure is still measured.
+  const dflt = riskAdjustWeights(goldless);
+  ok('AG_DIVERSIFIER_MIN is 0 under Mandate A — the gold sleeve is no longer forced', AG_DIVERSIFIER_MIN === 0);
+  ok('…so a goldless book reports no shortfall and no note',
+    dflt.diversifier.shortfall === 0 && !dflt.notes.some((n) => /no gold vehicle/.test(n)));
+  ok('…while diversifier exposure is still computed (measurement survives the mandate)',
+    dflt.diversifier && typeof dflt.diversifier.direct === 'number');
+  ok('…and the CEILING still binds, so gold can never become the overflow sink',
+    AG_DIVERSIFIER_MAX === 10);
 
   const thin = riskAdjustWeights([
     { ticker: 'NVDA', weightPct: 60, px: 209, hi: 236, lo: 164 },

@@ -82,26 +82,85 @@ const daysBetween = (a, b) => Math.round((Date.parse(String(b).slice(0, 10)) - D
 //      them. Ballast is bought for drawdown reduction, not for entry timing.
 //  (d) NEVER LOOSENS. If the model already set a ceiling below the computed one, its (tighter) zone
 //      stands. This can only ever make an entry stricter.
-export const AG_ENTRY_Q_OK = 6;        // at/above this the model's zone stands unchanged
-export const AG_ENTRY_Q_STEP = 0.015;  // demand 1.5% more discount per point below OK
+// ── THE SCALE IS RELATIVE, NOT ABSOLUTE (Mandate A, 2026-09-08) ─────────────────────────────────
+// The absolute version measured every name against a fixed AG_ENTRY_Q_OK (6). That turned out to be a
+// backdoor MARKET-TIMING lever, which is the one thing this account's mandate says it does not pull.
+//
+// The mechanism: entryQuality verdicts cluster hard. On 2026-08-25 all sixteen came back 2-5, TEN of
+// them on exactly 3; on 2026-09-07, nine of fifteen were ≤4. Against a fixed bar of 6 that means
+// *almost every name* is haircut at once — and because the synthesis normalizes weights to ~100%, a
+// haircut applied to everything cannot change the relative ordering. The freed weight has nowhere to go
+// but the index core and the ballast. The 2026-09-07 target says so in its own summary: "Risk posture is
+// defensive-tilted for a book where nine of fifteen verdicts scored entryQuality ≤4."
+//
+// That is the model concluding "everything is expensive, hold more ballast" — a market call, made by a
+// scorer that was only ever asked to rank entries. And in most bull tapes *everything is* somewhat
+// extended, so the absolute bar makes the account chronically under-invested in exactly the regime a
+// beat-SPY mandate must participate in.
+//
+// So the bar is now the COHORT MEDIAN. A name is haircut for being a worse entry THAN ITS PEERS, never
+// for the tape as a whole being rich. A uniformly extended cohort produces a uniform zero haircut and
+// therefore the same book at the same weights — which is the correct answer, because "all sixteen are a
+// 3" carries information about the market and none whatsoever about which of the sixteen to buy first.
+//
+// ONE ABSOLUTE COMPONENT SURVIVES, deliberately. A cohort where every entry is genuinely terrible would
+// otherwise haircut nothing at all. AG_ENTRY_Q_FLOOR (2) is a "badly chased on any basis" line that
+// binds regardless of the median, so a 0-2 entry is still tightened even if all its peers are as bad.
+//
+// The four original guards are UNCHANGED and still load-bearing:
+//  (a) BOUNDED. The demanded discount caps at AG_ENTRY_Q_MAX (8%). The v102 lesson is that a zone far
+//      below spot reads as "never buy" and strands the money; a shallow, reachable haircut defers,
+//      a deep one abstains forever.
+//  (b) The IDLE-CASH DEADLINE still backstops it. Past CASH_IDLE_DEPLOY_DAYS the planner waives bands
+//      entirely, so this can delay a buy but can never veto one — "wait for a pullback" keeps an expiry.
+//  (c) EXEMPT NAMES stay exempt (see the caller). Under Mandate A the defensive floor is 0, so this
+//      exemption is normally inert — it remains correct for the day the floor is restored.
+//  (d) NEVER LOOSENS. If the model already set a ceiling below the computed one, its (tighter) zone
+//      stands. This can only ever make an entry stricter.
+export const AG_ENTRY_Q_OK = 6;        // legacy absolute bar — retained for callers that pass no cohort
+export const AG_ENTRY_Q_STEP = 0.015;  // demand 1.5% more discount per point below the bar
 export const AG_ENTRY_Q_MAX = 0.08;    // …but never more than 8% under spot (guard (a))
+export const AG_ENTRY_Q_FLOOR = 2;     // at/below this the entry is badly chased on ANY basis
+
+// Median entryQuality across the scored cohort → the bar each name is measured against. Names with no
+// score are excluded (absent is not zero — see entryDiscountFor). Returns null when nothing is scored,
+// which makes entryDiscountFor fall back to the legacy absolute bar.
+export function cohortEntryBar(verdicts) {
+  const qs = (verdicts || [])
+    .map((v) => (v == null || v === '' ? null : +(v && typeof v === 'object' ? v.entryQuality : v)))
+    .filter((q) => Number.isFinite(q))
+    .sort((a, b) => a - b);
+  if (!qs.length) return null;
+  const mid = Math.floor(qs.length / 2);
+  return qs.length % 2 ? qs[mid] : (qs[mid - 1] + qs[mid]) / 2;
+}
 
 // entryQuality (0-10) → the discount below spot the entry ceiling must sit at. 0 = leave the zone alone.
-export function entryDiscountFor(entryQuality) {
+// `bar` is the cohort median (cohortEntryBar); omitted ⇒ the legacy absolute AG_ENTRY_Q_OK.
+export function entryDiscountFor(entryQuality, bar = null) {
   // ABSENT is not ZERO. `+null` and `+''` both coerce to 0, which would read as "the worst possible
   // entry" and silently demand the maximum 8% haircut on any name the verifier never scored — the
   // opposite of failing safe. A missing verdict must leave the model's zone exactly as it was.
   if (entryQuality == null || entryQuality === '') return 0;
   const q = +entryQuality;
-  if (!Number.isFinite(q) || q >= AG_ENTRY_Q_OK) return 0;
-  return Math.min(AG_ENTRY_Q_MAX, (AG_ENTRY_Q_OK - Math.max(0, q)) * AG_ENTRY_Q_STEP);
+  if (!Number.isFinite(q)) return 0;
+  // ABSENT IS NOT ZERO, again — the same trap as the entryQuality guard above, and it bites harder here.
+  // `+null` and `+''` both coerce to 0 and Number.isFinite(0) is TRUE, so a naive finite-check would set
+  // the cohort bar to 0 whenever none was supplied: every name would then read as "better than the
+  // cohort" and NO zone would ever be tightened — the guard silently disabled rather than falling back.
+  const ref = (bar == null || bar === '' || !Number.isFinite(+bar)) ? AG_ENTRY_Q_OK : +bar;
+  // relative: how much worse than the cohort is this entry?
+  const rel = Math.max(0, ref - q) * AG_ENTRY_Q_STEP;
+  // absolute backstop: a genuinely chased entry is tightened even if all its peers are equally chased
+  const abs = q <= AG_ENTRY_Q_FLOOR ? (AG_ENTRY_Q_FLOOR - Math.max(0, q) + 1) * AG_ENTRY_Q_STEP : 0;
+  return Math.min(AG_ENTRY_Q_MAX, Math.max(rel, abs));
 }
 
 // Same first-two-numbers convention agentic-deploy's entryBounds() parses, so one rewrite reaches the
 // planner, the Plan tab and the Agentic card alike. Returns the name unchanged when nothing applies.
 export function tightenEntryByQuality(name, entryQuality, opts = {}) {
   const px = +(name && name.px);
-  const disc = entryDiscountFor(entryQuality);
+  const disc = entryDiscountFor(entryQuality, opts.bar);
   if (!(px > 0) || !disc) return name;
   if (opts.exempt) return name;                                   // guard (c)
   const m = String(name.entry || '').replace(/,/g, '').match(/\d+(\.\d+)?/g);
@@ -115,8 +174,8 @@ export function tightenEntryByQuality(name, entryQuality, opts = {}) {
   const lo = +Math.max(0.01, cap - width).toFixed(2);
   return {
     ...name,
-    entry: `$${lo}-$${cap} (entry-quality ${entryQuality}/10 → ceiling held ${(disc * 100).toFixed(1)}% under the $${px.toFixed(2)} spot; was ${name.entry || 'unset'})`,
-    entryTightened: { from: modelHi, to: cap, discountPct: +(disc * 100).toFixed(1), entryQuality: +entryQuality },
+    entry: `$${lo}-$${cap} (entry-quality ${entryQuality}/10 vs cohort ${opts.bar ?? AG_ENTRY_Q_OK} → ceiling held ${(disc * 100).toFixed(1)}% under the $${px.toFixed(2)} spot; was ${name.entry || 'unset'})`,
+    entryTightened: { from: modelHi, to: cap, discountPct: +(disc * 100).toFixed(1), entryQuality: +entryQuality, bar: opts.bar ?? null },
   };
 }
 
@@ -247,12 +306,21 @@ export function finalizeTarget(allocation, meta = {}) {
   // Entry bands, derived from the adversarial verdict (see the block above). Applied AFTER
   // riskAdjustWeights so `isDefensive` reflects the final, capped book — the exemption has to know
   // which names actually carry the floor, not which ones were proposed to.
+  // The bar is the COHORT MEDIAN over the verdicts that actually scored an entry (Mandate A) — so a name
+  // is tightened for being a worse entry than its peers, never for the whole tape being rich. Computed
+  // over ALL verdicts rather than just the surviving names: the cohort is what the verifier saw.
+  const entryBar = cohortEntryBar(Object.values(verdictMap || {}));
   const tightened = [];
   const withBands = adj.names.map((n) => {
     const v = verdictMap[n.ticker];
     if (!v) return n;
-    const out = tightenEntryByQuality(n, v.entryQuality, { exempt: isDefensive(n) });
-    if (out.entryTightened) tightened.push(`${n.ticker} entry ceiling ${out.entryTightened.from ?? '—'} → ${out.entryTightened.to} (entryQuality ${out.entryTightened.entryQuality}/10, ${out.entryTightened.discountPct}% under spot)`);
+    // The exemption is conditional on the floor being ACTIVE. It exists because deferred weight parks in
+    // VTI (100% equity beta), so deferring the book's mandated ballast would swap stabilizers for beta at
+    // the worst moment. Under Mandate A the floor is 0 — a defensive name in the target is there on
+    // MERIT, not as mandated ballast, so there is no stabilizer to protect and it should face the same
+    // entry discipline as any other pick. Restoring the floor restores the exemption automatically.
+    const out = tightenEntryByQuality(n, v.entryQuality, { exempt: defensiveMin > 0 && isDefensive(n), bar: entryBar });
+    if (out.entryTightened) tightened.push(`${n.ticker} entry ceiling ${out.entryTightened.from ?? '—'} → ${out.entryTightened.to} (entryQuality ${out.entryTightened.entryQuality}/10 vs cohort median ${entryBar ?? AG_ENTRY_Q_OK}, ${out.entryTightened.discountPct}% under spot)`);
     return out;
   });
   const names = withBands.map(({ px, hi, lo, ...rest }) => {
@@ -270,7 +338,8 @@ export function finalizeTarget(allocation, meta = {}) {
       // `diversifier` and cluster blocks below are the authoritative numbers.
       + (adj.diversifier && adj.diversifier.direct > 0
         ? ` | ${adj.diversifier.direct.toFixed(1)}% gold diversifier added structurally AFTER synthesis (mandate sleeve — the sleeves cannot score bullion), so percentages quoted in the summary above predate it; the defensive/diversifier/cluster fields are authoritative`
-        : ''),
+        : '')
+      + (entryBar != null ? ` | entry bands measured against the COHORT MEDIAN entryQuality ${entryBar} (Mandate A: a name is tightened for being a worse entry than its peers, never for the tape as a whole being rich)` : ''),
     account: meta.account || 'AGENTIC',
     book: meta.book != null ? Math.round(meta.book) : null,
     driftTriggerPp: meta.driftTriggerPp != null ? meta.driftTriggerPp : 5,

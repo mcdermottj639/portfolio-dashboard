@@ -1,5 +1,6 @@
 // Offline unit checks for agentic-deploy.mjs — no network, no I/O. Run: node producer/agentic-deploy.test.mjs
-import { planDeployment, marketRegime, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY } from './agentic-deploy.mjs';
+import { planDeployment, marketRegime, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY,
+  TLH_MIN_LOSS, TLH_MIN_LOSS_PCT, DEPOSIT_TRANCHE_DAYS, DEPOSIT_TRANCHE_PCT, DEPOSIT_TRANCHE_MIN } from './agentic-deploy.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -165,11 +166,11 @@ const tlhTarget = { driftTriggerPp: 5, names: [
 ]};
 const tlh = planDeployment({
   target: tlhTarget,
-  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], // px 340 → −$120 loss (>max($75,5% of $800))
-  cash: 1000, quotes: { GOOGL: 340, SPY: 750 }, opts: { asOf: '2026-08-07' },
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], // px 250 → −$300 loss (>max($200,10% of $800))
+  cash: 1000, quotes: { GOOGL: 250, SPY: 750 }, opts: { asOf: '2026-08-07' },
 });
 ok('deep-loss target name is harvested', find(tlh.harvests, 'GOOGL') && find(tlh.harvests, 'GOOGL').kind === 'harvest');
-near('harvest realizes the ST loss', find(tlh.harvests, 'GOOGL').pl, -120, 1);
+near('harvest realizes the ST loss', find(tlh.harvests, 'GOOGL').pl, -300, 1);
 ok('harvested name is NOT bought back this ticket', !find(tlh.buys, 'GOOGL') && !find(tlh.buysT1, 'GOOGL'));
 ok('harvest adds a wash-sale deferral for the rebuy', find(tlh.deferred, 'GOOGL') && find(tlh.deferred, 'GOOGL').reason === 'wash-sale');
 ok('SPY still gets bought', !!find(tlh.buys, 'SPY'));
@@ -179,11 +180,34 @@ const smallLoss = planDeployment({ target: tlhTarget,
   positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 350 }], cash: 100, quotes: { GOOGL: 340, SPY: 750 }, opts: { asOf: '2026-08-07' } });
 ok('a −$20 loss is below the harvest floor', !find(smallLoss.harvests || [], 'GOOGL'));
 
+// MANDATE A (2026-09-08): the floor moved 75/5% → 200/10%. A harvest sells the WHOLE position and the
+// wash guard then blocks the rebuy for 30 days, so at the old floor this was a de-facto −5% hard stop
+// with a forced month out — on a book whose names routinely swing ±5% in a fortnight. The tax saved
+// (~$19 on a $75 loss at a 25% marginal rate) does not pay for 30 days out of a name the research still
+// wants. This regression pins the SIZE of loss that no longer triggers it.
+{
+  const oldFloorOnly = planDeployment({ target: tlhTarget,
+    // −$120 on $800 cost: clears max($75, 5%) comfortably, misses max($200, 10%).
+    positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }],
+    cash: 1000, quotes: { GOOGL: 340, SPY: 750 }, opts: { asOf: '2026-08-07' } });
+  ok('a loss that cleared the OLD floor is no longer harvested', !find(oldFloorOnly.harvests || [], 'GOOGL'));
+  ok('…so no wash-sale block is manufactured against a name the target still wants',
+    (find(oldFloorOnly.deferred, 'GOOGL') || {}).reason !== 'wash-sale');
+  ok('…and the position is simply held', TLH_MIN_LOSS === 200 && TLH_MIN_LOSS_PCT === 10);
+  // The PERCENT arm must bind independently: a big position with a shallow % loss stays untouched.
+  const shallowPct = planDeployment({ target: tlhTarget,
+    // −$250 on $10,000 cost = 2.5%: clears the $200 arm, misses the 10% arm ⇒ max() keeps it held.
+    positions: [{ symbol: 'GOOGL', qty: 25, avgCost: 400 }],
+    cash: 100, quotes: { GOOGL: 390, SPY: 750 }, opts: { asOf: '2026-08-07' } });
+  ok('the percent arm binds too — a shallow % loss on a large position is not harvested',
+    !find(shallowPct.harvests || [], 'GOOGL'));
+}
+
 // Cross-account wash guard: the margin book bought the name within 30d → no harvest (loss disallowed),
 // and a loss-EXIT is flagged washRisk but still exits (allocation dominates; only the tax benefit dies).
 const cross = planDeployment({
   target: tlhTarget,
-  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }, { symbol: 'INTC', qty: 10, avgCost: 40 }],
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 600 }, { symbol: 'INTC', qty: 10, avgCost: 40 }],
   cash: 0, quotes: { GOOGL: 340, SPY: 750, INTC: 30 },
   crossActivity: { GOOGL: { lastBuyDate: '2026-07-20' }, INTC: { lastBuyDate: '2026-07-25' } },
   opts: { asOf: '2026-08-07' },
@@ -191,7 +215,7 @@ const cross = planDeployment({
 ok('cross-account recent buy blocks the harvest', !find(cross.harvests, 'GOOGL'));
 ok('…with a warning naming the reason', cross.warnings.some((w) => /TLH skipped on GOOGL/.test(w)));
 ok('off-target loss-exit still exits but is flagged washRisk', find(cross.exits, 'INTC') && find(cross.exits, 'INTC').washRisk === true);
-const crossOld = planDeployment({ ...{ target: tlhTarget, positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], cash: 0, quotes: { GOOGL: 340, SPY: 750 } },
+const crossOld = planDeployment({ ...{ target: tlhTarget, positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 600 }], cash: 0, quotes: { GOOGL: 340, SPY: 750 } },
   crossActivity: { GOOGL: { lastBuyDate: '2026-06-01' } }, opts: { asOf: '2026-08-07' } });
 ok('a cross-account buy OUTSIDE 30d does not block the harvest', !!find(crossOld.harvests, 'GOOGL'));
 
@@ -236,7 +260,7 @@ ok('no accountActivity → no blocking (nothing to key off)', !!find(planDeploym
 // The guard covers every sell kind, not just exits.
 const pdtHarvest = planDeployment({
   target: { driftTriggerPp: 5, names: [{ ticker: 'GOOGL', weightPct: 50, entry: '370-382', stop: 332 }, { ticker: 'SPY', weightPct: 50, entry: '740-750', stop: 690 }] },
-  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 400 }], cash: 1000, quotes: { GOOGL: 340, SPY: 750 },
+  positions: [{ symbol: 'GOOGL', qty: 2, avgCost: 600 }], cash: 1000, quotes: { GOOGL: 340, SPY: 750 },
   accountActivity: { GOOGL: { lastBuyDate: '2026-08-11' } }, opts: { asOf: '2026-08-11' },
 });
 ok('a harvest of a name bought today is blocked too', !find(pdtHarvest.harvests, 'GOOGL') && !!find(pdtHarvest.blockedSells, 'GOOGL'));
@@ -264,10 +288,36 @@ ok('below-stop stays absolute — no tolerance band', defReason(band(320), 'V') 
 ok('a small premium over the entry ceiling is tolerated', !!find(band(375).buys, 'V'));
 ok('a real premium over the ceiling defers (above-entry)', defReason(band(400), 'V') === 'above-entry');
 
-// (c) AGEING — same out-of-band price, but the zone is 30 days old → advisory, so it buys.
-const stale = band(400, {}, { asOf: '2026-07-12' });
-ok('a stale entry zone goes advisory (no band deferral)', !!find(stale.buys, 'V') && stale.entryPolicy.zonesStale === true);
-ok('…and says so in the warnings', stale.warnings.some((w) => /advisory/i.test(w)));
+// (c) AGEING — ASYMMETRIC since 2026-09-08. v102 made a stale target waive BOTH sides, because three of
+// seven names read "below entry" at once purely from six-day-old zones and deferring the whole book on
+// the guard's own staleness is the bug that rule exists to prevent. But waiving both also switched off
+// the "too expensive" check, and on 2026-09-02 that let MA fill at $588.82 against its own $584.33
+// ceiling and V at $378.30 against $372.50 — on a 9-day-stale target, with V one trading day from
+// clearing cleanly. A stale zone tells you which way price MOVED, and the two directions differ:
+//   • zone now ABOVE spot ⇒ price FELL ⇒ buying the pullback is fair, and deferring is the v102 bug.
+//   • zone now BELOW spot ⇒ price RAN  ⇒ paying up on an ageing thesis has nothing to recommend it.
+const staleBelow = band(340, {}, { asOf: '2026-07-12' });
+ok('a stale zone still waives the BELOW-entry check (the v102 whole-book-stall lesson survives)',
+  !!find(staleBelow.buys, 'V') && staleBelow.entryPolicy.zonesStale === true);
+ok('…and says so in the warnings', staleBelow.warnings.some((w) => /advisory/i.test(w)));
+const staleAbove = band(400, {}, { asOf: '2026-07-12' });
+ok('…but the ABOVE-entry check SURVIVES staleness — an ageing thesis is not a reason to pay up',
+  defReason(staleAbove, 'V') === 'above-entry');
+ok('…and the deferral explains why it still binds while the other side is advisory',
+  /ageing thesis/.test(find(staleAbove.deferred, 'V').detail));
+ok('…with both flags exposed for the consumer to mirror',
+  staleAbove.entryPolicy.belowBandActive === false && staleAbove.entryPolicy.aboveBandActive === true);
+ok('…and bandsActive keeps its old below-side meaning for back-compat',
+  staleAbove.entryPolicy.bandsActive === staleAbove.entryPolicy.belowBandActive);
+// REGRESSION: the 2026-09-02 fill. V at $378.30 against a $372.50 tolerance ceiling on a stale target.
+{
+  const sep2 = planDeployment({
+    target: { asOf: '2026-08-25', driftTriggerPp: 5, names: [{ ticker: 'V', weightPct: 100, entry: '$362-365.20', stop: 336 }] },
+    positions: [], cash: 1000, quotes: { V: 378.30, SPY: 750 }, opts: { asOf: '2026-09-02' },
+  });
+  ok('the live 2026-09-02 V fill would now be deferred, not filled above its own ceiling',
+    (sep2.deferred.find((d) => d.sym === 'V') || {}).reason === 'above-entry');
+}
 
 // (d) IDLE DEADLINE — cash sitting past the deadline waives the bands and tranches in.
 const idle = band(400, { opts: { asOf: '2026-08-11', cashIdleDays: 12 } });
@@ -467,7 +517,7 @@ ok('a business-broken drop overrides the min-hold', !!find(mhBroken.exits, 'MSFT
 // GOOGL here is −8.6% — NOT deep enough for the loss override, so only the kind-exemption passes it.
 const mhHarvest = planDeployment({
   target: { driftTriggerPp: 5, names: [{ ticker: 'GOOGL', weightPct: 50, entry: '370-382', stop: 332 }, { ticker: 'SPY', weightPct: 50, entry: '740-750', stop: 690 }] },
-  positions: [{ symbol: 'GOOGL', qty: 10, avgCost: 372 }], cash: 0, quotes: { GOOGL: 340, SPY: 750 },
+  positions: [{ symbol: 'GOOGL', qty: 10, avgCost: 420 }], cash: 0, quotes: { GOOGL: 340, SPY: 750 },
   accountActivity: { GOOGL: { lastBuyDate: '2026-08-06' } }, opts: { asOf: '2026-08-11' },
 });
 ok('a TLH harvest is exempt from the min-hold', !!find(mhHarvest.harvests, 'GOOGL'));
@@ -649,17 +699,17 @@ ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 
   eqr('a bare number works too', marketRegime(33), 'stressed');
 
   // The deadline stretches; the tranche shrinks only when stressed.
-  near('calm keeps the 10d deadline', mk({ v: 14 }).regime.idleDeadlineDays, 10, 0.01);
-  near('elevated stretches it to 15d', mk({ v: 25 }).regime.idleDeadlineDays, 15, 0.01);
-  near('stressed stretches it to 20d', mk({ v: 33 }).regime.idleDeadlineDays, 20, 0.01);
+  near('calm keeps the 5d deadline', mk({ v: 14 }).regime.idleDeadlineDays, 5, 0.01);
+  near('elevated stretches it to 7.5d', mk({ v: 25 }).regime.idleDeadlineDays, 7.5, 0.01);
+  near('stressed stretches it to 10d', mk({ v: 33 }).regime.idleDeadlineDays, 10, 0.01);
   near('calm keeps the full tranche', mk({ v: 14 }).regime.tranchePct, 34, 0.01);
   near('stressed halves the tranche', mk({ v: 33 }).regime.tranchePct, 17, 0.01);
 
-  // 12 idle days: past the calm deadline, inside the stressed one.
-  const calmForced = mk({ v: 14 }, { opts: { cashIdleDays: 12 } });
-  const stressForced = mk({ v: 33 }, { opts: { cashIdleDays: 12 } });
-  ok('calm: 12 idle days forces the backlog in', calmForced.buys.length > 0);
-  ok('stressed: the same 12 days does NOT yet force it', stressForced.regime.idleDeadlineDays > 12);
+  // 8 idle days: past the calm deadline (5d), inside the stressed one (10d).
+  const calmForced = mk({ v: 14 }, { opts: { cashIdleDays: 8 } });
+  const stressForced = mk({ v: 33 }, { opts: { cashIdleDays: 8 } });
+  ok('calm: 8 idle days forces the backlog in', calmForced.buys.length > 0);
+  ok('stressed: the same 8 days does NOT yet force it', stressForced.regime.idleDeadlineDays > 8);
   // …but a long enough wait still deploys — pacing stretches the deadline, it never removes it.
   const stressEventually = mk({ v: 33 }, { opts: { cashIdleDays: 25 } });
   ok('stressed still deploys once its stretched deadline passes', stressEventually.buys.length > 0);
@@ -687,6 +737,51 @@ ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 
     opts: { asOf: '2026-07-23' },
   });
   ok('a stressed tape never blocks an off-target exit', !!find(sellStress.exits, 'ORCL'));
+}
+
+// ── DEPOSIT TRANCHING (Mandate A, 2026-09-08) ──────────────────────────────────────────────────
+// Every deposit to date was deployed in full, at market, the day it landed, into names the model
+// already wanted more of — the maximum-variance way to add money. Fresh cash now averages in over a
+// few days. It is a VARIANCE reduction, not a return improvement, and it must never be able to veto.
+{
+  const tgt = { asOf: '2026-09-08', driftTriggerPp: 5, names: [
+    { ticker: 'SPY', weightPct: 50, entry: '740-760', stop: 690 },
+    { ticker: 'V', weightPct: 50, entry: '360-380', stop: 336 },
+  ]};
+  const dep = (idleDays, cash = 2000) => planDeployment({ target: tgt, positions: [], cash,
+    quotes: { SPY: 750, V: 370 }, opts: { asOf: '2026-09-08', cashIdleDays: idleDays } });
+
+  const day0 = dep(0);
+  ok('cash that landed today deploys a tranche, not the lump', day0.entryPolicy.depositFresh === true);
+  near('…sized at DEPOSIT_TRANCHE_PCT of the balance', day0.entryPolicy.cashThisPass, 1000, 1);
+  ok('…and the ticket says so rather than leaving the reader to infer it',
+    day0.warnings.some((w) => /fresh cash/i.test(w)));
+  ok('…while still actually buying (a delay, never a veto)', day0.buys.length > 0);
+  near('…and spends no more than the tranche', day0.spent, 1000, 1);
+
+  ok('day 1 is still rationed', dep(1).entryPolicy.depositFresh === true);
+  const day3 = dep(3);
+  ok('past DEPOSIT_TRANCHE_DAYS the whole balance is deployable', day3.entryPolicy.depositFresh === false);
+  near('…and the rest goes in', day3.entryPolicy.cashThisPass, 2000, 1);
+
+  // A small deposit is NOT split — thirds of a small balance just manufacture sub-MIN_BUY dust.
+  const small = dep(0, 400);
+  ok('a balance under DEPOSIT_TRANCHE_MIN deploys whole', small.entryPolicy.depositFresh === false);
+  near('…at its full size', small.entryPolicy.cashThisPass, 400, 1);
+
+  // The idle-cash deadline still wins: this can delay a buy, never block one indefinitely.
+  const overdue = planDeployment({ target: tgt, positions: [], cash: 2000, quotes: { SPY: 750, V: 370 },
+    opts: { asOf: '2026-09-08', cashIdleDays: 12 } });
+  ok('past the idle deadline the deposit tranche is irrelevant — the deadline forces the rest in',
+    overdue.entryPolicy.depositFresh === false && overdue.entryPolicy.idleOverdue === true);
+
+  // Sale proceeds are a rebalance already in motion and are NOT rationed.
+  const withProceeds = planDeployment({
+    target: { asOf: '2026-09-08', driftTriggerPp: 5, names: [{ ticker: 'SPY', weightPct: 100, entry: '740-760', stop: 690 }] },
+    positions: [{ symbol: 'ORCL', qty: 10, avgCost: 100 }], cash: 2000,
+    quotes: { SPY: 750, ORCL: 120 }, opts: { asOf: '2026-09-08', cashIdleDays: 0 } });
+  ok('proceeds from the sells are not held back by the deposit tranche',
+    withProceeds.deployable > withProceeds.entryPolicy.cashThisPass);
 }
 
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);

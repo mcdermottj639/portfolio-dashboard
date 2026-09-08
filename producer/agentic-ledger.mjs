@@ -253,6 +253,42 @@ export function markStats(decisions = []) {
   return out;
 }
 
+// BUY-SIDE ALPHA — the honest read on whether the RESEARCH is working (2026-09-08).
+//
+// The record-level stat above blends BUY legs and SELL legs into one average, and those answer two
+// different questions. A trim scores well when the name it sold kept falling — which is the churn
+// governor and the risk caps doing their job, not the screen picking a winner. Measured on the live
+// ledger the difference was not cosmetic: record-level read 5 ahead / 5 behind at −0.30% average alpha,
+// while the same ledger's BUY legs alone were −1.89% dollar-weighted across 33 legs. The headline was
+// being read as "the picks are working" when what it partly showed was "the exits were well timed".
+//
+// So: buys only, DOLLAR-weighted (a $500 leg and a $25 leg are not one vote each), alpha vs SPY over
+// each leg's own window. Purely additive — `stats` and `sleeves` are untouched, so the flow burn-in
+// Routine and every existing consumer read exactly what they read before.
+export function buyStats(graded = []) {
+  let dollars = 0, wContrib = 0, wAlpha = 0, alphaDollars = 0, n = 0, ahead = 0;
+  for (const d of graded) {
+    for (const t of ((d.grade && d.grade.byTrade) || [])) {
+      if (String(t.side || '').toUpperCase() !== 'BUY') continue;
+      const $ = Math.abs(+t.dollars || 0);
+      if (!($ > 0) || t.retPct == null) continue;
+      n++; dollars += $; wContrib += $ * t.retPct;
+      // The leg's alpha is its return less SPY's over the SAME window — the decision's own spyRet.
+      const spy = d.grade && d.grade.spyRet;
+      if (spy != null) { const a = t.retPct - spy; wAlpha += $ * a; alphaDollars += $; if (a >= 0) ahead++; }
+    }
+  }
+  return {
+    n, dollars: +dollars.toFixed(2),
+    avgRetPct: dollars > 0 ? +(wContrib / dollars).toFixed(2) : null,
+    avgAlphaPct: alphaDollars > 0 ? +(wAlpha / alphaDollars).toFixed(2) : null,
+    ahead, behind: n - ahead,
+    // Below this the number is a curiosity, not a finding — same posture as the sleeve `thin` flag.
+    thin: n < BUY_MIN_N,
+  };
+}
+export const BUY_MIN_N = 8;
+
 export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const graded = decisions.map((d) => gradeDecision(d, quotesNow, asOf))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
@@ -261,7 +297,7 @@ export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const withAlpha = resolved.filter((d) => d.grade.alpha != null);
   const avgAlpha = withAlpha.length ? +(withAlpha.reduce((s, d) => s + d.grade.alpha, 0) / withAlpha.length).toFixed(2) : null;
   const sleeves = sleeveStats(graded);
-  return { decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves };
+  return { decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves, buys: buyStats(graded) };
 }
 
 // Build a new decision record from a deployment/rebalance plan (agent calls this on confirm, then appends).
