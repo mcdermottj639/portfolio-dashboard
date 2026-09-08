@@ -393,10 +393,20 @@ const data = {
   // it to decide. Computing it in the producer (rather than re-deriving it in index.html) means the card
   // and the planner can never disagree about what the drawdown IS — the same reasoning behind
   // acctPerfStats being shared. Deposit-adjusted and memoryless; see drawdown.mjs.
+  // MANDATE A (2026-09-08): the breaker is RELATIVE TO SPY, so the bench MUST be passed here exactly as
+  // the exec gate passes it — otherwise this block computes an absolute-only read (trips at −20%) while
+  // the gate computes a relative one (trips at −5pp), and the card, the hand-off and alerts.mjs's push
+  // all read THIS one: the executor would stop buying with nothing on the phone saying so. That is the
+  // "guard that fires silently" failure this repo has already shipped once, reached by the exact route
+  // the comment above promises cannot happen. Caught in verify, 2026-09-08 — the first build passed
+  // only the gate the bench.
   if (data.agentic && Array.isArray(data.agentic.equityHistory)) {
-    const dd = bookDrawdown(data.agentic.equityHistory);
-    data.agentic.drawdown = { dd: dd.dd, level: dd.level, peakT: dd.peakT, points: dd.points, insufficient: dd.insufficient, note: dd.note };
+    const dd = bookDrawdown(data.agentic.equityHistory, { bench: (hist.day && hist.day.SPY) || [] });
+    data.agentic.drawdown = { dd: dd.dd, ddBench: dd.ddBench, relDd: dd.relDd, level: dd.level, basis: dd.basis,
+      peakT: dd.peakT, minRelSincePeak: dd.minRelSincePeak, points: dd.points, insufficient: dd.insufficient,
+      benchStale: dd.benchStale, note: dd.note };
     if (dd.level !== 'ok') console.warn(`agentic DRAWDOWN ${dd.level.toUpperCase()}: ${dd.note}`);
+    if (dd.basis !== 'relative' && !dd.insufficient) console.warn(`agentic drawdown is ABSOLUTE-ONLY (${dd.benchStale ? 'SPY bars stale' : 'no SPY bars'}) — only the −20% backstop binds this run`);
   }
   // ── Self-directed account (••••0741) real equity history = data.main ──────────────────────────
   // The Accounts tab's YTD tile used to show two DIFFERENT kinds of number on the two sides: the

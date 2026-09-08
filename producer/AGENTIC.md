@@ -28,7 +28,7 @@ accept the drawdowns that come with it. Every constant below follows from that c
 **What changed:** `AG_DEFENSIVE_MIN` 15→**0** · `AG_DIVERSIFIER_MIN` 5→**0** · index core 15-20%→**5-10%
 residual** · 12-15 names→**10-12** · drawdown breaker **absolute −8/−12% → relative −5/−8pp vs SPY** (with
 a −20% absolute backstop) · `TLH_MIN_LOSS` 75→**200** and `TLH_MIN_LOSS_PCT` 5→**10** ·
-`CASH_IDLE_DEPLOY_DAYS` 10→**5** · **deposit tranching** (~50% per pass over 3 days) · the `entryQuality`
+`CASH_IDLE_DEPLOY_DAYS` 10→**5** · **deposit tranching** (~50% on day 0, one tranche per trading day thereafter, the rest by day 3) · the `entryQuality`
 haircut made **relative to the cohort median** · the stale-zone waiver made **asymmetric**.
 
 **Unchanged and load-bearing:** the correlation-cluster caps (megacap-tech ≤48%, payments ≤20% …) are now
@@ -669,9 +669,13 @@ Three linked rules the planner enforces, all added 2026-08-11 after a live re-ve
   range. That is the maximum-variance way to add money and is exactly what made every deposit feel like
   it went straight into the red (post-8/25 buys marked −2.27% on average vs pre-8/25's +0.19%; n=5 events,
   so this is a variance argument, not a signal one). It reuses `cashIdleDays`, so it needs no new fetch,
-  no new committed state and no Routine prompt change. Sale proceeds are NOT rationed (a rebalance is
-  already in motion), and the idle-cash deadline still forces the remainder in — **this can delay a buy
-  and can never veto one.**
+  no new committed state and no Routine prompt change. **One tranche per day** — the executor runs hourly
+  and `idleDays` only advances at midnight, so without that gate the remainder was re-rationed every hour
+  and a $2,000 deposit was fully deployed in ~3 hours (caught in verify). Once any buy has been placed
+  today, fresh cash waits for the next trading day; the split floor decides whether to split, never
+  whether to wait. Schedule on a lump: ~50% day 0, ~25% day 1, ~12.5% day 2, the rest by day 3. Sale
+  proceeds are NOT rationed (a rebalance is already in motion), and the idle-cash deadline still forces
+  the remainder in — **this can delay a buy and can never veto one.**
 - **Idle-cash deadline (backstop).** If cash still sits past `CASH_IDLE_DEPLOY_DAYS` (**5** since Mandate
   A — cash is drag on a book whose job is to beat a fully-invested benchmark; was 10, tracked by
   `data.agentic.cashIdleSince`), the bands are waived and the balance deploys in ~thirds

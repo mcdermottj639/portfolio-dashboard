@@ -775,6 +775,52 @@ ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 
   ok('past the idle deadline the deposit tranche is irrelevant — the deadline forces the rest in',
     overdue.entryPolicy.depositFresh === false && overdue.entryPolicy.idleOverdue === true);
 
+  // ONE TRANCHE PER DAY (verify, 2026-09-08). The executor runs HOURLY and idleDays only advances at
+  // midnight, so the first build rationed the REMAINDER by 50% again on every pass of deposit day —
+  // $2,000 went in as $1,000/$500/$250/$250 across four consecutive hours, fully deployed in ~3 hours.
+  // Simulate the hourly loop: each pass sees the cash the prior pass left and the buys it placed.
+  {
+    let cash = 2000, acts = {}, spentToday = 0, passes = 0;
+    for (let i = 0; i < 4; i++) {
+      const p = planDeployment({ target: tgt, positions: [], cash, quotes: { SPY: 750, V: 370 },
+        accountActivity: acts, opts: { asOf: '2026-09-08', cashIdleDays: 0 } });
+      passes++; spentToday += p.spent; cash = +(cash - p.spent).toFixed(2);
+      for (const b of p.buys) acts[b.sym] = { lastBuyDate: '2026-09-08' };
+      if (i === 1) {
+        ok('the SECOND pass of deposit day places nothing more (one tranche per day)', p.spent === 0 && p.entryPolicy.depositWait === true);
+        ok('…and the ticket says why', p.warnings.some((w) => /today's tranche has already been placed/.test(w)));
+      }
+    }
+    near('deposit day deploys the first tranche and only the first tranche', spentToday, 1000, 1);
+    // Next trading day: the day-0 buys are yesterday's, so the second tranche goes.
+    const day1 = planDeployment({ target: tgt, positions: [], cash, quotes: { SPY: 750, V: 370 },
+      accountActivity: acts, opts: { asOf: '2026-09-09', cashIdleDays: 1 } });
+    ok('the next trading day deploys the next tranche', day1.spent > 0 && day1.entryPolicy.depositWait === false);
+    near('…at half of what remains', day1.spent, 500, 1);
+    // A deposit BETWEEN the split floor and twice it: the second half is under the floor, but it still
+    // waits for tomorrow — the floor decides whether to split, never whether to wait.
+    {
+      const p1 = planDeployment({ target: tgt, positions: [], cash: 600, quotes: { SPY: 750, V: 370 },
+        accountActivity: {}, opts: { asOf: '2026-09-08', cashIdleDays: 0 } });
+      near('a $600 deposit deploys $300 on its first pass', p1.spent, 300, 1);
+      const p2 = planDeployment({ target: tgt, positions: [], cash: 300, quotes: { SPY: 750, V: 370 },
+        accountActivity: { SPY: { lastBuyDate: '2026-09-08' }, V: { lastBuyDate: '2026-09-08' } }, opts: { asOf: '2026-09-08', cashIdleDays: 0 } });
+      ok('…and the sub-floor remainder WAITS for tomorrow rather than going in the next hour', p2.spent === 0 && p2.entryPolicy.depositWait === true);
+      const p3 = planDeployment({ target: tgt, positions: [], cash: 300, quotes: { SPY: 750, V: 370 },
+        accountActivity: { SPY: { lastBuyDate: '2026-09-08' }, V: { lastBuyDate: '2026-09-08' } }, opts: { asOf: '2026-09-09', cashIdleDays: 1 } });
+      near('…then deploys whole the next day (under the split floor)', p3.spent, 300, 1);
+    }
+    // A buy today that was NOT a deposit tranche (an ordinary rebalance leg) still counts — the point is
+    // one entry per day on fresh cash, whatever placed the earlier order.
+    const afterRebal = planDeployment({ target: tgt, positions: [], cash: 2000, quotes: { SPY: 750, V: 370 },
+      accountActivity: { V: { lastBuyDate: '2026-09-08' } }, opts: { asOf: '2026-09-08', cashIdleDays: 0 } });
+    ok('any buy placed today defers the tranche to tomorrow', afterRebal.entryPolicy.depositWait === true && afterRebal.spent === 0);
+    // …but a buy on a PRIOR day does not.
+    const oldBuy = planDeployment({ target: tgt, positions: [], cash: 2000, quotes: { SPY: 750, V: 370 },
+      accountActivity: { V: { lastBuyDate: '2026-09-05' } }, opts: { asOf: '2026-09-08', cashIdleDays: 0 } });
+    ok('a buy on an earlier day does not block the current day tranche', oldBuy.entryPolicy.depositWait === false && oldBuy.spent > 0);
+  }
+
   // Sale proceeds are a rebalance already in motion and are NOT rationed.
   const withProceeds = planDeployment({
     target: { asOf: '2026-09-08', driftTriggerPp: 5, names: [{ ticker: 'SPY', weightPct: 100, entry: '740-760', stop: 690 }] },

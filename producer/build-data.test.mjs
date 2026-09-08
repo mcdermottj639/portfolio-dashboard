@@ -109,7 +109,13 @@ const prior = {
   agentic: {
     asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), cash: 50, buyingPower: 50, equity: 1050,
     positions: [{ symbol: 'AAA', qty: 10, avgCost: 95, px: 100, value: 1000 }],
-    equityHistory: [{ t: '2026-07-01', equity: 1050, cumFlow: 0 }],
+    // Five points so the drawdown breaker has enough to establish a peak (DD_MIN_POINTS) — the LAST
+    // point is the one the deposit inference below differences against, so it is unchanged.
+    equityHistory: [
+      { t: '2026-06-24', equity: 1040, cumFlow: 0 }, { t: '2026-06-25', equity: 1044, cumFlow: 0 },
+      { t: '2026-06-26', equity: 1046, cumFlow: 0 }, { t: '2026-06-27', equity: 1048, cumFlow: 0 },
+      { t: '2026-07-01', equity: 1050, cumFlow: 0 },
+    ],
     // A phantom entry from the old position-diff inference (a wrong-account fetch booked it).
     recentLosses: [{ sym: 'ZZZ', date: new Date(Date.now() - 5 * 24 * 3600e3).toISOString().slice(0, 10), avgCost: 50, exitPx: 44 }],
   },
@@ -237,6 +243,19 @@ try {
   const newPt = agEH[agEH.length - 1];
   eq('agentic equity point recorded', newPt.equity, 3080);
   eq('deposit inferred into cumFlow (not counted as return)', Math.abs(newPt.cumFlow - 1950) < 1, true);
+
+  // MANDATE A drawdown (verify, 2026-09-08). The first build passed SPY's bars to the exec gate's
+  // bookDrawdown but NOT to this one, so the snapshot carried an absolute-only read (trips at −20%)
+  // while the executor computed a relative one (trips at −5pp) — and the card, the hand-off and
+  // alerts.mjs all read the snapshot. Two things pin it: the FULL shape must reach the snapshot, and
+  // `benchStale` must be TRUE here — the fixture's SPY bars end 2026-06-14 against a point dated
+  // today, so a bench that actually reached bookDrawdown is refused as stale, whereas a call that
+  // never passed one reports benchStale:false. That flag can only be true if the bench was passed.
+  const dd = out.agentic.drawdown;
+  eq('drawdown block carries the relative-breaker shape', ['ddBench', 'relDd', 'basis', 'benchStale', 'minRelSincePeak'].every((k) => k in dd), true);
+  eq('build-data passes SPY bars to the breaker (a stale bench is detected, which needs a bench)', dd.benchStale, true);
+  eq('…and a stale bench falls back to the absolute basis rather than blaming the book', dd.basis, 'absolute-only');
+  eq('…with the level still computed (fails open, not closed)', dd.level, 'ok');
 
   // Self-directed account equity recorded forward, through the SAME module as the agentic one — this
   // is what makes the Accounts tab's two YTD tiles the same kind of number (v119).

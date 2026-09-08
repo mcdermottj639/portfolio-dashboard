@@ -43,20 +43,29 @@ export function computeAlerts(prior, fresh, heldSyms = []) {
     const rank = { ok: 0, soft: 1, hard: 2 };
     const pl = ((prior.agentic || {}).drawdown || {}).level;
     const fl = ((fresh.agentic || {}).drawdown || {}).level;
-    const fd = ((fresh.agentic || {}).drawdown || {}).dd;
+    const fdd = (fresh.agentic || {}).drawdown || {};
+    const fd = fdd.dd;
     if (pl && fl && pl !== fl && rank[fl] != null && rank[pl] != null) {
-      const pct = fd != null ? `${(fd * 100).toFixed(1)}%` : '—';
+      // MANDATE A (2026-09-08): the tiers act on the RELATIVE drawdown (book minus SPY since the peak),
+      // so the push must quote THAT number — a "−3.2% below its peak" push for a breaker that tripped
+      // on −5pp relative reads as the breaker being broken. Absolute wording survives only for the
+      // absolute-only fallback (no/stale bench), where the −20% backstop is the rule that fired.
+      const rel = fdd.basis === 'relative' && fdd.relDd != null;
+      const pct = rel ? `${(fdd.relDd * 100).toFixed(1)}pp` : (fd != null ? `${(fd * 100).toFixed(1)}%` : '—');
+      const where = rel
+        ? `BEHIND the market since its peak${fd != null && fdd.ddBench != null ? ` (book ${(fd * 100).toFixed(1)}% vs SPY ${(fdd.ddBench * 100).toFixed(1)}%)` : ''}`
+        : 'below its peak';
       const worse = rank[fl] > rank[pl];
       alerts.push({
         kind: worse ? 'agentic-drawdown' : 'agentic-drawdown-recover',
-        symbol: null, level: fl, from: pl, dd: fd,
+        symbol: null, level: fl, from: pl, dd: fd, relDd: fdd.relDd ?? null, basis: fdd.basis || 'absolute-only',
         msg: worse
           ? (fl === 'hard'
-            ? `🛑 Agentic book ${pct} below its peak — HARD drawdown tier: new buys paused and defensive cash being raised to 20% of book (losses first).`
-            : `⚠️ Agentic book ${pct} below its peak — drawdown breaker tripped: new deployment paused, deferred cash stays in cash (not parked).`)
+            ? `🛑 Agentic book ${pct} ${where} — HARD drawdown tier: new buys paused and defensive cash being raised to 20% of book (losses first).`
+            : `⚠️ Agentic book ${pct} ${where} — drawdown breaker tripped: new deployment paused, deferred cash stays in cash (not parked).${rel ? ' This is the model lagging the market, not the market falling.' : ''}`)
           : (fl === 'ok'
-            ? `✅ Agentic book recovered to ${pct} from peak — drawdown breaker cleared, normal deployment resumes.`
-            : `↗️ Agentic drawdown eased to ${pct} (hard → soft) — defensive selling stops; new buys still paused.`),
+            ? `✅ Agentic book recovered to ${pct} ${rel ? 'vs the market' : 'from peak'} — drawdown breaker cleared, normal deployment resumes.`
+            : `↗️ Agentic drawdown eased to ${pct} ${rel ? 'vs the market' : ''} (hard → soft) — defensive selling stops; new buys still paused.`),
       });
     }
   }

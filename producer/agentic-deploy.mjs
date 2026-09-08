@@ -616,10 +616,29 @@ export function planDeployment(input = {}) {
   const depTrancheDays = opts.depositTrancheDays ?? DEPOSIT_TRANCHE_DAYS;
   const depTranchePct = opts.depositTranchePct ?? DEPOSIT_TRANCHE_PCT;
   const depTrancheMin = opts.depositTrancheMin ?? DEPOSIT_TRANCHE_MIN;
-  const depositFresh = !idleOverdue && idleDays != null && idleDays < depTrancheDays && settledNow >= depTrancheMin;
+  //    ONE TRANCHE PER DAY — this condition is what makes it a tranche at all. The executor runs HOURLY,
+  //    and `idleDays` only advances at midnight, so without it the second pass of the same day saw the
+  //    remaining cash at idleDays 0 and rationed THAT by 50% too: a $2,000 deposit went in as
+  //    $1,000 → $500 → $250 → $250 across four consecutive hours on deposit day, i.e. fully deployed
+  //    in ~3 hours with the variance reduction it was built for never happening. (Caught in verify,
+  //    2026-09-08 — the first build's test ran a single pass.) A buy already placed TODAY, read from
+  //    the same `accountActivity` the churn governor uses, means this day's tranche has gone; the rest
+  //    waits for tomorrow. Resulting schedule on a lump: ~50% day 0, ~25% day 1, ~12.5% day 2, the
+  //    remainder on day 3 — a real average-in, and the idle deadline still backstops the tail.
+  //    Reuses the PDT guard's own `boughtToday(sym)` predicate so "today" can never mean two things.
+  const anyBuyToday = Object.keys(accountActivity || {}).some(boughtToday);
+  //    Two separate questions. `freshByDate` decides whether fresh cash WAITS for tomorrow once today's
+  //    tranche has gone; `depositFresh` decides whether a balance is big enough to SPLIT at all. They
+  //    were briefly one flag, which let a $600 deposit go $300 + $300 in consecutive hours: the second
+  //    pass saw $300, fell under the split floor, and deployed it whole — the floor's "don't manufacture
+  //    dust" judgement was being read as "don't wait". A sub-floor remainder still waits for tomorrow.
+  const freshByDate = !idleOverdue && idleDays != null && idleDays < depTrancheDays;
+  const depositFresh = freshByDate && settledNow >= depTrancheMin;
+  const depositWait = freshByDate && anyBuyToday && settledNow >= (opts.minBuy ?? MIN_BUY);   // today's tranche went — wait
   const cashThisPass = tranching
     ? +(settledNow * tranchePct / 100).toFixed(2)
-    : depositFresh ? +(settledNow * depTranchePct / 100).toFixed(2) : settledNow;
+    : depositWait ? 0
+      : depositFresh ? +(settledNow * depTranchePct / 100).toFixed(2) : settledNow;
   //    Parked dollars are a funding source too — that is the whole point of the waiting ground. They go
   //    into the pool here so a cleared name can actually draw on them; how much was drawn (and therefore
   //    must be SOLD out of the vehicle) falls out of `spent` below as the release leg.
@@ -786,7 +805,8 @@ export function planDeployment(input = {}) {
   if (candidates.length && fundablePool > 0 && spent < fundablePool - 1) warnings.push(`${money(cashLeft)} left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)`);
   if (zonesStale) warnings.push(`entry zones are ${zoneAgeDays}d old (target asOf ${target.asOf || '?'}) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up`);
   if (idleOverdue) warnings.push(`cash idle ${idleDays}d (≥${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d deadline) — entry bands waived and ${tranching ? `a ${tranchePct}% tranche (${money(cashThisPass)}) deployed this pass` : `the ${money(settledNow)} remainder swept in`}; waiting indefinitely is a decision too`);
-  if (depositFresh) warnings.push(`fresh cash ${money(settledNow)} arrived ${idleDays}d ago — deploying a ${depTranchePct}% tranche (${money(cashThisPass)}) this pass and the rest over the next ${Math.max(0, depTrancheDays - (idleDays || 0))}d, so a lump doesn't buy one arbitrary day's prices; the ${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d idle deadline still forces the remainder in`);
+  if (depositWait) warnings.push(`fresh cash ${money(settledNow)} (arrived ${idleDays}d ago) — today's tranche has already been placed, so the rest waits for the next trading day (one tranche per day; the ${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d idle deadline still forces the remainder in)`);
+  else if (depositFresh) warnings.push(`fresh cash ${money(settledNow)} arrived ${idleDays}d ago — deploying a ${depTranchePct}% tranche (${money(cashThisPass)}) today and the rest one tranche per day over the next ${Math.max(0, depTrancheDays - (idleDays || 0))}d, so a lump doesn't buy one arbitrary day's prices; the ${opts.cashIdleDeployDays ?? CASH_IDLE_DEPLOY_DAYS}d idle deadline still forces the remainder in`);
 
   if (parkLegs.park) warnings.push(`${money(parkLegs.park.dollars)} of deferred weight parked in ${parkVehicle} rather than left in cash (${parkLegs.park.forNames.join(', ')}) — released when those names clear; unparking is a taxable ST sale`);
   if (parkLegs.release) warnings.push(`released ${money(parkLegs.release.dollars)} from the ${parkVehicle} waiting ground to fund cleared names — realizes ${parkLegs.release.pl == null ? 'an ST gain/loss' : money(parkLegs.release.pl)} ST`);
@@ -796,7 +816,7 @@ export function planDeployment(input = {}) {
   const entryPolicy = { tolerancePct: tolPct, premiumPct: premPct, zoneAgeDays, zonesStale,
     bandsActive: belowBandActive, belowBandActive, aboveBandActive,
     idleDays: idleDays ?? null, idleOverdue, tranching, tranchePct: tranching ? tranchePct : null, cashThisPass,
-    depositFresh, depositTranchePct: depositFresh ? depTranchePct : null };
+    depositFresh, depositWait, depositTranchePct: depositFresh && !depositWait ? depTranchePct : null };
   const parking = { vehicle: parkVehicle, enabled: parkingOn, before: +parkedNow.toFixed(2), after: +parkedAfter.toFixed(2),
     parked: parkLegs.park, released: parkLegs.release,
     // Only the DATED names — an undated deferral waits in cash, so naming it here would report the

@@ -88,6 +88,15 @@ eq('messages are human-readable strings',
   ok('…and says deployment resumes', /resumes/.test(recover[0].msg));
   ok('hard → soft is reported as an easing, not a clear',
     /hard → soft/.test(computeAlerts(dsnap('hard', -0.13), dsnap('soft', -0.09))[0].msg));
+  // MANDATE A (2026-09-08): a RELATIVE trip quotes the relative figure, or the owner reads "−3.2%
+  // below its peak" against a −5pp threshold and concludes the breaker is broken.
+  const rsnap = (level, dd, relDd, ddBench) => ({ quotes: {}, agentic: { positions: [], drawdown: { level, dd, relDd, ddBench, basis: 'relative' } } });
+  const relTrip = computeAlerts(rsnap('ok', -0.01, -0.004, -0.006), rsnap('soft', -0.032, -0.055, 0.023));
+  ok('a relative trip quotes the RELATIVE figure in pp', /-5\.5pp/.test(relTrip[0].msg));
+  ok('…and says it is the model lagging, not the market falling', /BEHIND the market/.test(relTrip[0].msg) && /model lagging/.test(relTrip[0].msg));
+  ok('…showing both legs of the comparison', /book -3\.2% vs SPY \+?2\.3%/.test(relTrip[0].msg));
+  ok('…and carries relDd + basis on the alert object', relTrip[0].relDd === -0.055 && relTrip[0].basis === 'relative');
+  ok('an absolute-only trip keeps the absolute wording', /below its peak/.test(computeAlerts(dsnap('ok', -0.1), dsnap('hard', -0.21))[0].msg));
   // Missing drawdown block on either side ⇒ silent (fails open, like the breaker itself).
   ok('a snapshot without a drawdown block is silent',
     computeAlerts({ quotes: {}, agentic: { positions: [] } }, dsnap('soft', -0.09)).length === 0);
