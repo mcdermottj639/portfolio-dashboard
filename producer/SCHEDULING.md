@@ -99,6 +99,31 @@ Use exactly this as the scheduled prompt:
 `run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
 market hours or how much to fetch.
 
+### 4b. The repo's git history is 1.7GB — every agent must fetch SHALLOW (2026-09-08)
+`data.json` is ~7MB, encrypted (so it neither deltas nor compresses), and committed ~13x a day.
+History therefore grows by a full fresh copy every run and had reached **1.7GB**, growing ~2.7GB/month
+before the v139 bar compaction halved the payload.
+
+**This is not cosmetic.** The agentic executor's first real test fire on 2026-09-08 spent **over ten
+minutes inside `git fetch`** and never reached the gate before the market closed. Any Routine that
+clones or fetches this repo must therefore do it shallow:
+
+```
+git fetch --depth 1 origin main && git checkout -f -B <branch> FETCH_HEAD
+# or, with no local copy:
+git clone --depth 1 https://github.com/mcdermottj639/portfolio-dashboard
+```
+
+Never `git pull`, never an unbounded `git fetch`, never `--unshallow`. Nothing any Routine does reads
+history — they all want only the tip. Pushing FROM a shallow clone is safe and routine (it is what
+`actions/checkout` does by default), but **do not rebase or merge in a shallow checkout** — there is no
+merge base. On a rejected push, re-do the shallow fetch and re-apply the files.
+
+Applied to the **executor** prompt on 2026-09-08. **Deliberately NOT applied to `producer/run.mjs`**,
+whose `git fetch origin main` is still unbounded: adding `--depth 1` there converts the producer's own
+repo to shallow, and the producer is the one pipeline whose failure takes the whole dashboard down.
+The compaction halved its bytes anyway. If revisited, test the shallow **push** path in isolation first.
+
 ### 5. Routine configuration that lives server-side (not in git)
 **Three Routines drive this repo, and roughly half of what makes each one work is not in this
 repository at all.** A Routine's prompt, its connectors, its `allowed_tools`, its model, whether it

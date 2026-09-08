@@ -225,7 +225,17 @@ try {
 
   const out = JSON.parse(readFileSync(DATA, 'utf8'));
   eq('empty fresh bars do NOT wipe carried hist', out.hist.day.AAA.length, 5);
-  eq('carried hist content intact', out.hist.day.AAA[0].close_price, '95');
+  // Bars are compacted at build time (histbars.mjs) — hist was 91% of the snapshot and the
+  // snapshot is an encrypted blob committed ~13x/day to a public repo. This assertion keeps
+  // its original intent (the carried-forward series still holds the right close) but reads it
+  // through the SAME coalescing every real consumer uses, so it holds under either shape.
+  const bar0 = out.hist.day.AAA[0];
+  eq('carried hist content intact', Number(bar0.close_price ?? bar0.c), 95);
+  eq('carried hist bars are compacted', bar0.t, '2026-06-10T13:30:00Z');
+  eq('provably-unread bar fields are not written',
+    JSON.stringify([bar0.open_price, bar0.session]), '[null,null]');
+  // interpolated:false carried ~22 bytes on 88.7% of bars to say nothing; absent is equally falsy.
+  eq('interpolated:false is not written', bar0.interpolated, undefined);
   eq('unfetched symbol hist carries forward', out.hist.day.BBB.length, 5);
   eq('month hist carries forward', out.hist.month.AAA.length, 3);
   eq('fresh quote wins', out.quotes.AAA.last_trade_price, '108');

@@ -29,6 +29,7 @@ import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
+import { compactHist, histBytes } from './histbars.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -148,6 +149,24 @@ for (const f of filesMatching(/^hist-(day|week|month).*\.json$/)) {
 // intraday run (no hist-*.json) still ships the full YTD/5Y series. Freshly-fetched bars win.
 if (prior && prior.hist) {
   for (const iv of Object.keys(prior.hist)) hist[iv] = { ...prior.hist[iv], ...(hist[iv] || {}) };
+}
+// Compact the bars to the shape every reader already coalesces to (histbars.mjs explains
+// which fields are dropped and why each is provably unread). This is ONE call site on
+// purpose — it sits AFTER the carry-forward merge so it covers freshly-fetched and
+// carried-forward series alike, and it is idempotent, so re-running it over its own prior
+// output every hour is a no-op rather than churn. hist is ~91% of the snapshot, and the
+// snapshot is an encrypted blob committed ~13x/day to a public repo, so this is the
+// difference between ~3GB and ~1.2GB of new git history per month.
+{
+  const before = histBytes(hist);
+  const compacted = compactHist(hist);
+  for (const iv of Object.keys(hist)) delete hist[iv];
+  Object.assign(hist, compacted);
+  const after = histBytes(hist);
+  if (before > 0) {
+    console.log(`hist compacted: ${(before / 1048576).toFixed(2)}MB → ${(after / 1048576).toFixed(2)}MB` +
+      ` (${(100 - (100 * after) / before).toFixed(0)}% smaller)`);
+  }
 }
 
 // --- recorded: stable-key calls ---
