@@ -580,7 +580,16 @@ export function planDeployment(input = {}) {
     if (candidates.length && pool > 0 && totalGap > 0) {
       const scale = Math.min(1, pool / totalGap); // pro-rate if the pool < total need
       for (const c of candidates) {
-        const dollars = +(Math.min(c.gap, c.gap * scale)).toFixed(2);
+        // Each leg is rounded to cents INDEPENDENTLY, so a pro-rated pass can sum to MORE than the pool
+        // it was sized against — 10 legs each rounding up half a cent is $0.02 over, which is exactly
+        // what tripped the funding invariant live on 2026-09-08 ($1,817.31 spent against $1,817.29 of
+        // cash). Sizing against a pool is a promise not to exceed it, so the promise is enforced here
+        // rather than left to the rounding to honour: each leg is capped at what is actually LEFT.
+        // Rounding DOWN is deliberate — the residue is a cent or two of undeployed cash, which the next
+        // pass picks up, whereas rounding up is an order the broker rejects.
+        const room = +(pool - total).toFixed(2);
+        if (room < minBuy) break; // nothing fundable left; remaining gaps wait for the next pass
+        const dollars = Math.min(+(Math.min(c.gap, c.gap * scale)).toFixed(2), room);
         if (dollars < minBuy) continue; // dust floor (churn governor) — a sub-$25 gap waits for the next pass
         const shares = c.px > 0 ? +(dollars / c.px).toFixed(4) : null;
         total += dollars;

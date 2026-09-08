@@ -377,6 +377,36 @@ ok('sub-floor PARKED BLOCK: buys still never exceed cash + proceeds',
   tinyPark.spent <= +(0.9 + tinyPark.proceeds).toFixed(2) + 1e-6);
 ok('sub-floor PARKED BLOCK: invariant holds', !tinyPark.warnings.some((w) => /PLANNER BUG/.test(w)));
 
+// (g6) PER-LEG ROUNDING MUST NOT OUTSPEND THE POOL (2026-09-08, caught live).
+//      Each leg is rounded to cents on its own, so a pro-rated pass across many names can sum to MORE
+//      than the pool it was sized against. Live: ten legs against $1,817.29 of cash summed to
+//      $1,817.31 — two cents over — and tripped the funding invariant, which correctly refused to place
+//      a ticket the broker would have rejected on its last leg. Sizing against a pool is a promise not
+//      to exceed it; this pins that promise for the shape that broke it (many legs, pool < total gap).
+const manyNames = ['SPY', 'JNJ', 'NVDA', 'GOOGL', 'KO', 'VTI', 'GLDM', 'MA', 'V', 'BKNG'];
+const oddCash = 1817.29; // the exact live figure — awkward cents are the whole point
+const roundArgs = {
+  target: { asOf: '2026-09-08', driftTriggerPp: 5,
+    names: manyNames.map((t) => ({ ticker: t, weightPct: 10, entry: '1-9999', stop: 1 })) },
+  positions: [], cash: oddCash,
+  quotes: Object.fromEntries(manyNames.map((t, i) => [t, 100 + i * 37.5])), // deliberately un-round prices
+  opts: { asOf: '2026-09-08' },
+};
+const rounded = planDeployment(roundArgs);
+const legSum = +(rounded.buys || []).reduce((a, b) => a + b.dollars, 0).toFixed(2);
+ok('many-leg pro-rate: the legs never sum above the funding pool', legSum <= oddCash + 1e-9);
+ok('…and `spent` agrees with the legs', Math.abs(rounded.spent - legSum) < 1e-9);
+ok('…so the funding invariant does NOT trip', !rounded.warnings.some((w) => /PLANNER BUG/.test(w)));
+ok('…and it still deploys essentially the whole pool', legSum > oddCash - 25);
+// The same must hold when the pool is proceeds-funded rather than cash, since that path re-sizes too.
+const roundedSell = planDeployment({ ...roundArgs, cash: 0.37,
+  positions: [{ symbol: 'ZZZZ', qty: 10, avgCost: 100 }], quotes: { ...roundArgs.quotes, ZZZZ: 181.7 } });
+const sellSum = +(roundedSell.buys || []).reduce((a, b) => a + b.dollars, 0).toFixed(2);
+ok('proceeds-funded pro-rate: legs never exceed cash + proceeds',
+  sellSum <= +(0.37 + roundedSell.proceeds).toFixed(2) + 1e-9);
+ok('…and that plan carries no PLANNER BUG either',
+  !roundedSell.warnings.some((w) => /PLANNER BUG/.test(w)));
+
 // (h) entry zones with commas + trailing prose must parse (the live research writes them this way).
 const prose = planDeployment({
   target: { asOf: '2026-08-11', names: [{ ticker: 'LLY', weightPct: 100, entry: '$1,130-$1,180 (into the $1,160 50-DMA)', stop: 1075 }] },
