@@ -12,6 +12,12 @@
 //     EXEC_AUTO    — fresh plan within the auto tier (turnover ≤ AUTO_TURNOVER_CAP) — create ticket + execute now
 //     EXEC_PROPOSE — fresh plan above the auto tier — write ticket (proposed) + push for one-tap confirm
 //   exit 30 → EXEC_IDLE (nothing actionable / market closed / kill switch / stale or missing snapshot)
+//              An idle that means the LOOP IS BROKEN rather than merely quiet prints an
+//              `EXEC_IDLE [DEGRADED] (...)` marker instead — no passphrase, unreadable or
+//              account-swapped snapshot, no research target, producer stopped publishing. The
+//              executor Routine turns that marker into a PushNotification; a plain EXEC_IDLE stays
+//              silent. Without the split, an executor that can never trade again is indistinguishable
+//              from one correctly doing nothing, on every fire, forever.
 //
 // Trading fails SAFE (the opposite of fetchgate's fail-open): no snapshot, no passphrase, decrypt
 // failure, stale snapshot → IDLE. One skipped fetch is cheaper than a starved snapshot; one skipped
@@ -81,7 +87,27 @@ function readActivity(asOf) {
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// EXEC_IDLE is BY FAR the most common outcome, and until 2026-09-08 every reason printed the
+// same way — so "the market is shut" and "I cannot read the snapshot, therefore this account can
+// never trade again" were indistinguishable one-liners in a session nobody reads. That is the
+// repo's own documented failure mode (see CLAUDE.md: A GUARD THAT FIRES SILENTLY IS
+// INDISTINGUISHABLE FROM A BROKEN SYSTEM) pointed at the executor itself: a broken executor and a
+// correctly-quiet one produce identical output, forever, with no artifact to miss either.
+//
+// So idles are now CLASSIFIED. `idle()` is the normal kind — the system worked and there was
+// nothing to do. `idleDegraded()` marks the kind that means the loop is BROKEN and no amount of
+// waiting fixes it; it prints a `[DEGRADED]` marker the Routine prompt is told to turn into a
+// PushNotification. The distinction lives HERE, in code, and not in prompt wording, for the reason
+// this file already documents about `target`: a prompt is server-side and drifts out of sight of
+// this repo, and a fresh-session Routine's prompt is one UI edit away from losing any rule at all.
+//
+// The split is "can this clear itself?" — market closed, an outstanding proposal, a dust plan and
+// a snapshot that merely predates a ticket's fills all resolve on their own within hours. A missing
+// passphrase, an unreadable or account-swapped snapshot, an absent research target, or a producer
+// that stopped publishing do not: every one of them will still be true on the next fire, and on
+// every fire after that, while the account silently stops trading.
 const idle = (why) => { console.log(`EXEC_IDLE (${why})`); process.exit(30); };
+const idleDegraded = (why) => { console.log(`EXEC_IDLE [DEGRADED] (${why})`); process.exit(30); };
 const act = (mode, payload) => {
   mkdirSync(join(__dirname, 'raw'), { recursive: true });
   // `target` is written into the plan ON PURPOSE (v121): makeDecision needs it to stamp each BUY leg's
@@ -122,20 +148,20 @@ if (ticket && !['done', 'aborted'].includes(ticket.status)) {
 
 // ── 2. no active ticket — plan fresh from the committed snapshot ────────────────────────────────────
 const pass = process.env.PF_PASSPHRASE;
-if (!pass) idle('no PF_PASSPHRASE — cannot read the snapshot (trading fails safe)');
+if (!pass) idleDegraded('no PF_PASSPHRASE — cannot read the snapshot (trading fails safe)');
 let data;
 try { data = await decryptEnvelope(JSON.parse(readFileSync(join(__dirname, '..', 'data.json'), 'utf8')), pass); }
-catch { idle('snapshot unreadable — fail safe'); }
+catch { idleDegraded('snapshot unreadable — fail safe'); }
 const A = data && data.agentic;
-if (!A || !Array.isArray(A.positions)) idle('no agentic block in the snapshot');
+if (!A || !Array.isArray(A.positions)) idleDegraded('no agentic block in the snapshot');
 // The COMMITTED producer/agentic-target.json is the canonical target (CLAUDE.md); the snapshot's copy
 // is a cache stamped in by the last producer run. Prefer the file so a target promoted between producer
 // runs (e.g. an evening research refresh) reaches the very next executor pass instead of trading a
 // stale cache — and so a failed producer run can't leave the executor deploying against last week's book.
 { const t = readTargetFile(); if (t) A.target = t; }
-if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idle('no research target');
+if (!A.target || !Array.isArray(A.target.names) || !A.target.names.length) idleDegraded('no research target');
 const ageH = data.generatedAt ? (Date.now() - Date.parse(data.generatedAt)) / 3.6e6 : Infinity;
-if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
+if (ageH > 24) idleDegraded(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`);
 
 // ── SNAPSHOT IDENTITY GUARD (2026-08-31) ────────────────────────────────────────────────────────
 // Runs BEFORE any mode is printed, because EXEC_PROPOSE writes a ticket and pushes the owner a one-tap
@@ -145,7 +171,7 @@ if (ageH > 24) idle(`snapshot ${ageH.toFixed(0)}h old — too stale to trade on`
 // liquidation of an account that held none of those names.
 {
   const bad = snapshotHoldingsSanity({ positions: A.positions, activity: readActivity(today), parked: readParked() || A.parked || null });
-  if (bad) idle(`snapshot fails the agentic identity check — ${bad}; refusing to plan (fix the producer's agentic fetch, then re-run)`);
+  if (bad) idleDegraded(`snapshot fails the agentic identity check — ${bad}; refusing to plan (fix the producer's agentic fetch, then re-run)`);
 }
 
 // ── SNAPSHOT-PREDATES-FILLS GUARD (2026-08-25) ──────────────────────────────────────────────────
