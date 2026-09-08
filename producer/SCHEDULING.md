@@ -111,7 +111,7 @@ be set to; re-check it whenever a Routine misbehaves, because the failure mode i
 | Cron (UTC) | `35 * * * *` | `12 11 * * 1` | `20 14-20 * * 1-5` |
 | Connectors | Robinhood + Alpha Vantage | Robinhood + Alpha Vantage | Robinhood |
 | Session | fresh per fire (already) | **bound to an interactive session** (2026-09-02; re-created 2026-09-08 as `trig_01UcxmEScHtoVU3yrGFJ1wiL` with the Mandate A prompt) — see below | persistent (the original); a fresh-per-fire replacement exists but is DISABLED, having no connectors |
-| Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | `claude-opus-5` | `claude-opus-5` |
+| Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | *unset* on the live `trig_01Ucxm…` record (`model:""`) — a session-bound Routine runs on the bound session's model, so pin it there, not here | `claude-opus-5` |
 | Permission mode | `auto` | `auto` | `auto` |
 | `allowed_tools` | `preset:default` + `PushNotification` + `Skill` | same | same |
 | Push notifications | on | **on** | **on** |
