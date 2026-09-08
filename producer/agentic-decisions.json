@@ -628,6 +628,139 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "id": "2026-09-08-deploy",
+      "date": "2026-09-08",
+      "kind": "deploy",
+      "targetAsOf": "2026-09-07",
+      "book": 13312.49,
+      "equityAtDecision": 13312.49,
+      "spyAt": 767.13,
+      "rationale": "Deployed the account’s full $1,817.29 idle cash across ten underweight target names, largest gap first. No sells: nothing was off-target, over weight, or harvestable, so turnover is entirely new money. MA and V were the two largest gaps (1.7%/1.6% against 5% targets) after the 09-02 partial funding; SPY, JNJ, KO, VTI and GLDM top up the ballast/defensive/gold sleeves. Gate printed EXEC_AUTO at $1,817.29 turnover, well inside the $10,000 auto tier. Pre-checks clean: book $13,290.31 vs $13,312.49 plan basis (-0.17%), buying power exactly $1,817.29, every name’s next earnings >7d out, no cross-account wash exposure (the margin book’s last 30 days is PLTR/CIFR/TSM only), no intraday buys so PDT is untouched. The plan’s single warning is expected and correct: the buys were re-sized $1,849.47 → $1,817.29 because the $32.18 shortfall was under the $100 parking floor, so the waiting ground was left alone rather than forced into a dust sale.",
+      "trades": [
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 200.73,
+          "shares": 0.261663,
+          "priceAt": 767.13,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "JNJ",
+          "side": "BUY",
+          "dollars": 201.81,
+          "shares": 0.747804,
+          "priceAt": 269.8699,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 124.11,
+          "shares": 0.544345,
+          "priceAt": 227.9984,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "growth",
+            "quality",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "GOOGL",
+          "side": "BUY",
+          "dollars": 99.24,
+          "shares": 0.296415,
+          "priceAt": 334.7999,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "KO",
+          "side": "BUY",
+          "dollars": 150.58,
+          "shares": 1.710215,
+          "priceAt": 88.0474,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "VTI",
+          "side": "BUY",
+          "dollars": 94.23,
+          "shares": 0.249298,
+          "priceAt": 377.9799,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "GLDM",
+          "side": "BUY",
+          "dollars": 92.43,
+          "shares": 1.061195,
+          "priceAt": 87.0999,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "MA",
+          "side": "BUY",
+          "dollars": 351.56,
+          "shares": 0.614615,
+          "priceAt": 571.9999,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "V",
+          "side": "BUY",
+          "dollars": 365.72,
+          "shares": 0.985403,
+          "priceAt": 371.1374,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "BKNG",
+          "side": "BUY",
+          "dollars": 136.88,
+          "shares": 0.74152,
+          "priceAt": 184.5938,
+          "weightBefore": null,
+          "weightAfter": null,
+          "drivers": [
+            "quality"
+          ]
+        }
+      ]
     }
   ]
 }

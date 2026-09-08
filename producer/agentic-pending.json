@@ -1,90 +1,145 @@
 {
-  "id": "2026-09-02-fey8vp",
-  "created": "2026-09-02",
+  "id": "2026-09-08-s6yone",
+  "created": "2026-09-08",
   "status": "done",
   "autoEligible": true,
-  "turnover": 908.5,
-  "book": 11474.22,
-  "planHash": "s[VTI:454]b[MA:237,V:217]t[]",
+  "turnover": 1817.29,
+  "book": 13312.49,
+  "planHash": "s[]b[BKNG:137,GLDM:92,GOOGL:99,JNJ:202,KO:151,MA:352,NVDA:124,SPY:201,V:366,VTI:94]t[]",
   "legs": {
-    "sells": [
+    "sells": [],
+    "buysNow": [
+      {
+        "sym": "SPY",
+        "kind": "buy",
+        "dollars": 200.73,
+        "shares": 0.261663,
+        "price": 767.13,
+        "pl": null,
+        "note": "15.6% → 17.5% target"
+      },
+      {
+        "sym": "JNJ",
+        "kind": "buy",
+        "dollars": 201.81,
+        "shares": 0.747804,
+        "price": 269.8699,
+        "pl": null,
+        "note": "6.1% → 8% target"
+      },
+      {
+        "sym": "NVDA",
+        "kind": "buy",
+        "dollars": 124.11,
+        "shares": 0.544345,
+        "price": 227.9984,
+        "pl": null,
+        "note": "6.3% → 7.5% target"
+      },
+      {
+        "sym": "GOOGL",
+        "kind": "buy",
+        "dollars": 99.24,
+        "shares": 0.296415,
+        "price": 334.7999,
+        "pl": null,
+        "note": "6.1% → 7% target"
+      },
+      {
+        "sym": "KO",
+        "kind": "buy",
+        "dollars": 150.58,
+        "shares": 1.710215,
+        "price": 88.0474,
+        "pl": null,
+        "note": "5.6% → 7% target"
+      },
       {
         "sym": "VTI",
-        "kind": "park-release",
-        "dollars": 453.8,
-        "shares": 1.209649,
-        "price": 375.15,
-        "pl": -3.28,
-        "note": "release parked placeholder — funds MA/V"
-      }
-    ],
-    "buysNow": [
+        "kind": "buy",
+        "dollars": 94.23,
+        "shares": 0.249298,
+        "price": 377.9799,
+        "pl": null,
+        "note": "4.4% → 5% target"
+      },
+      {
+        "sym": "GLDM",
+        "kind": "buy",
+        "dollars": 92.43,
+        "shares": 1.061195,
+        "price": 87.0999,
+        "pl": null,
+        "note": "4.1% → 5% target"
+      },
       {
         "sym": "MA",
         "kind": "buy",
-        "dollars": 237.34,
-        "shares": 0.4083,
-        "price": 581.23,
+        "dollars": 351.56,
+        "shares": 0.614615,
+        "price": 571.9999,
         "pl": null,
-        "note": "0.0% → 5.7% target"
+        "note": "1.7% → 5% target"
       },
       {
         "sym": "V",
         "kind": "buy",
-        "dollars": 217.36,
-        "shares": 0.5831,
-        "price": 372.74,
+        "dollars": 365.72,
+        "shares": 0.985403,
+        "price": 371.1374,
         "pl": null,
-        "note": "0.0% → 5.22% target"
+        "note": "1.6% → 5% target"
+      },
+      {
+        "sym": "BKNG",
+        "kind": "buy",
+        "dollars": 136.88,
+        "shares": 0.74152,
+        "price": 184.5938,
+        "pl": null,
+        "note": "3.7% → 5% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": -3.28,
-    "net": -3.28,
+    "realizedLoss": 0,
+    "net": 0,
     "term": "short",
     "note": null
   },
-  "deferred": [
-    {
-      "sym": "VTI",
-      "reason": "wash-sale",
-      "until": "2026-09-26"
-    }
-  ],
+  "deferred": [],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (VTI) — ~$1.04 of intended weight held pending earnings/re-verify/wash-sale",
-    "entry zones are 8d old (target asOf 2026-08-25) — treated as ADVISORY, band checks skipped; a stale zone drifts out of range on its own",
-    "released $453.8 from the VTI waiting ground to fund cleared names — realizes $-3.28 ST"
+    "buys re-sized $1,849.47 → $1,817.29: the $32.18 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground"
   ],
   "history": [
     {
-      "at": "2026-09-02",
+      "at": "2026-09-08",
       "to": "proposed"
     },
     {
-      "at": "2026-09-02",
+      "at": "2026-09-08",
       "to": "confirmed"
     },
     {
-      "at": "2026-09-02",
+      "at": "2026-09-08",
       "to": "sells-placed"
     },
     {
-      "at": "2026-09-02",
+      "at": "2026-09-08",
       "to": "buys-placed"
     },
     {
-      "at": "2026-09-02",
+      "at": "2026-09-08",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-09-02",
-  "sells-placedAt": "2026-09-02",
-  "buys-placedAt": "2026-09-02",
-  "doneAt": "2026-09-02",
-  "completedAt": "2026-09-02T14:25:15.000Z"
+  "confirmedAt": "2026-09-08",
+  "sells-placedAt": "2026-09-08",
+  "buys-placedAt": "2026-09-08",
+  "doneAt": "2026-09-08",
+  "completedAt": "2026-09-08T14:29:10.904Z",
+  "note": "EXEC_AUTO — 10 buy legs, no sells. All ten filled at market in regular hours; ticket legs carry ACTUAL fill prices/shares. Waiting ground untouched (before === after === $32.19): the $32.18 shortfall sat under the $100 PARK_MIN floor, so no release fired and the buys were re-sized to cash alone."
 }
