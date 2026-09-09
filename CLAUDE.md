@@ -134,8 +134,10 @@ here does NOT update it. This table is the map; re-check it whenever a piece is 
 > one that must change with it — it feeds the pipeline the universe and the args, and its synthesis step
 > is where "12-15 names / SPY 15-20% ballast / a 15% defensive floor" lived. It is `meta_mcp` but
 > SESSION-BOUND, so `update_trigger` refused the edit (gate 2, below) — it was **REPLACED the same day**:
-> the live Routine is now `trig_01UcxmEScHtoVU3yrGFJ1wiL`, created from this repo's paste-ready text with
-> the Mandate A prompt, and the old `trig_01YRmfzy…` is disabled. Do the prompt change in the same change
+> the live Routine became `trig_01UcxmEScHtoVU3yrGFJ1wiL`, created from this repo's paste-ready text with
+> the Mandate A prompt, and the old `trig_01YRmfzy…` was disabled. **That one lasted ONE fire** — its bound
+> session died and it was replaced AGAIN on 2026-09-09 by the fresh-session `trig_0114s3r8yBA7rQXLsBY7MG1y`
+> (see the 2026-09-09 gotcha); the prompt text is unchanged apart from step 0. Do the prompt change in the same change
 > as any code edit here, by replacing when editing is refused, or the change is inert on the next run —
 > the 2026-08-25 leaders-bench lesson. The **executor** picks up the relative
 > breaker and the deposit tranche automatically (both are code-side, in the gate and the planner). The
@@ -145,7 +147,7 @@ here does NOT update it. This table is the map; re-check it whenever a piece is 
 | Routine (cron, UTC) | What it runs | v121 pieces it carries |
 |---|---|---|
 | **Portfolio dashboard refresh** (`35 * * * *`) | `preflight` → fetch → `run.mjs` | fetches **VIX every run** (light + full) → `data.vix` (regime); `build-data` emits **`data.agentic.drawdown`**; `alerts.mjs` pushes the **drawdown tier change** through the existing post-publish push. **v127** added one EVERY-RUN fetch row to its prompt — `get_equity_orders` on ••••0741 (`state:"filled"`, 120d) → `raw/main-orders.json` — which is the ONLY source of the self-directed Rebalance Log. Drop that row and the card renders empty with no error anywhere: build-data logs a warning and carries forward, exactly as designed. |
-| **Agentic weekly research** (`12 11 * * 1`; live Routine **`trig_01UcxmEScHtoVU3yrGFJ1wiL`** since 2026-09-08, Mandate A prompt — the paste-ready copy in `SCHEDULING.md` §5 IS its text) | `agentic-due` → `agentic-research` workflow → **`finalize-target.mjs`** | **Fixed 2026-09-02 by BINDING the Routine to a session that already holds Robinhood + Alpha Vantage** (`create_trigger` cannot attach connectors, but a session-bound trigger inherits them) — before that it had NEVER RUN THE PIPELINE**, and the first target it actually produced is the 2026-09-02 one**, because it was created with no Robinhood/Alpha Vantage connector and no repo source, so every `agentic-target.json` in git came from an interactive session while the Routine logged SUCCEEDED weekly. It carries the **look-through cluster caps**, the two-strike phase-out, the **`drivers[]`** tags every downstream attribution depends on, the (v124) **defensive floor** (a measurement only since Mandate A set `AG_DEFENSIVE_MIN` to 0), the (2026-08-25) **challenger quota**, and the (2026-08-25) **verdict-derived entry bands** (relative to the cohort median since Mandate A). The last three depend on what this Routine FEEDS the pipeline, so its prompt carries four specific instructions: build the universe from **`node producer/research-universe.mjs --symbols`** (NOT `leaders.mjs`); **never seed it from the Daily Picks** (that composite is 20% social — self-directed only); use **`research-universe.mjs`'s sector labels, not Robinhood's** (RH files REITs under "Finance" and GE under "Electronic Technology", which breaks the max-2-per-sector budget); pipe the **WHOLE workflow return** through `finalize-target.mjs`, since its `ranking` array carries the px/hi/lo both the vol gate and the entry bands need; and since the (2026-08-25) **gold sleeve**, `--symbols` appends **GLDM** so the batch fetch prices the injected diversifier row — drop it and the sleeve lands with no entry/stop. **v126** added two more to the prompt: re-check `target.dropped` after any SECOND finalize run in a session (the erase-on-re-run bug), and report a name absent from both `names[]` and `dropped[]` as a BUG; plus, when the target drops a HELD name, say in the push that the exit may be held by min-hold/PDT and give the unlock date. See PRODUCER.md step 7.2. |
+| **Agentic weekly research** (`12 11 * * 1`; live Routine **`trig_0114s3r8yBA7rQXLsBY7MG1y`** since 2026-09-09 — **fresh session per fire, `claude-opus-5`, push on, step 0 shallow-clones like the executor; Robinhood + Alpha Vantage must be attached to it in the Routine UI** — Mandate A prompt, the paste-ready copy in `SCHEDULING.md` §5 IS its text) | `agentic-due` → `agentic-research` workflow → **`finalize-target.mjs`** | **Its history is three config failures, not one.** Created 2026-09-02 with no connectors and no repo source, so it had NEVER RUN THE PIPELINE — every `agentic-target.json` in git came from an interactive session while the Routine logged SUCCEEDED weekly. "Fixed" the same day by **BINDING it to an interactive session that held the connectors** (inheriting them, since `create_trigger` rejects a `connectors` parameter in this org); that produced exactly two targets (09-02, 09-07) and then the bound session went idle-blocked on a question, its container was reclaimed, and the 09-09 fire fell through to a **connector-less, repo-less Sonnet fallback run** that stopped at step 0 (see the 2026-09-09 gotcha). Now the executor's shape, which has been working since 09-08. It carries the **look-through cluster caps**, the two-strike phase-out, the **`drivers[]`** tags every downstream attribution depends on, the (v124) **defensive floor** (a measurement only since Mandate A set `AG_DEFENSIVE_MIN` to 0), the (2026-08-25) **challenger quota**, and the (2026-08-25) **verdict-derived entry bands** (relative to the cohort median since Mandate A). The last three depend on what this Routine FEEDS the pipeline, so its prompt carries four specific instructions: build the universe from **`node producer/research-universe.mjs --symbols`** (NOT `leaders.mjs`); **never seed it from the Daily Picks** (that composite is 20% social — self-directed only); use **`research-universe.mjs`'s sector labels, not Robinhood's** (RH files REITs under "Finance" and GE under "Electronic Technology", which breaks the max-2-per-sector budget); pipe the **WHOLE workflow return** through `finalize-target.mjs`, since its `ranking` array carries the px/hi/lo both the vol gate and the entry bands need; and since the (2026-08-25) **gold sleeve**, `--symbols` appends **GLDM** so the batch fetch prices the injected diversifier row — drop it and the sleeve lands with no entry/stop. **v126** added two more to the prompt: re-check `target.dropped` after any SECOND finalize run in a session (the erase-on-re-run bug), and report a name absent from both `names[]` and `dropped[]` as a BUG; plus, when the target drops a HELD name, say in the push that the exit may be held by min-hold/PDT and give the unlock date. See PRODUCER.md step 7.2. |
 | **Agentic executor** (`20 14-20 * * 1-5`; the fresh-session `trig_01Cy4shsbcDMX2HKvCLXrJos` went LIVE 2026-09-08 once the owner attached Robinhood in the UI, and the persistent one was disabled the same day — its step 0 fetches **`--depth 1`**, which is load-bearing, see the git-history gotcha) | `agentic-exec-gate` → ticket state machine | consumes the **drawdown** + **regime** reads; `makeDecision` stamps **sleeve drivers**; the v126 **`blockedSells`/`warnings`** ride onto the ticket. **A fresh-session-per-fire replacement was created 2026-09-02 (DISABLED until the owner attaches Robinhood to it in the Routine UI, then enables it and disables the persistent one)** with push notifications on — it had been bound to ONE persistent session since 08-10 (128M cached tokens / ~$74 over ~115 mostly-idle fires, and eventually stuck blocked on a question about a *different* Routine), which also meant it could not push, so "say what failed" always became a chat message. **Its prompt IS editable now** (see below); the code-level guards stay as belt and braces — `blockedSells` comes free from `makeTicket`, and `makeDecision` warns on a missing `target` or `spyAt`. |
 | **Flow burn-in decision** (one-shot 2026-09-02) | evaluates whether `FLOW_WEIGHT` earns 0.10 | reads the **sleeve attribution** roll-up; knows the 2026-08-24 insider fix **reset the burn-in clock** |
 
@@ -174,6 +176,13 @@ this entry has now been wrong in both directions, so TEST the edit rather than r
    re-created, since it could not be edited either), and a session-bound Routine reports NO `last_run` in
    `list_triggers` — its `last_fired_at` (in the full trigger record) plus the artifact commit are the
    evidence it ran (09-07: fired 11:21Z, `agentic-target.json` committed 12:07Z).
+   **The same replace recipe was used a second time on 2026-09-09 — but the replacement is NOT bound to a
+   session any more.** Binding was the connector workaround, and it is what failed (gotcha below): the new
+   `trig_0114s3r8yBA7rQXLsBY7MG1y` is `create_new_session_on_fire`, model pinned via `update_trigger`, push
+   on, and — because the API still rejects `connectors` (re-tested that day) — the owner attaches Robinhood +
+   Alpha Vantage to the Routine in the claude.ai UI, exactly as for the executor. A fresh-session Routine's
+   prompt IS editable from any session (gate 2 no longer applies), so the next prompt change is an
+   `update_trigger`, not another replacement.
 
 The 2026-09-04 revision of this entry asserted that `created_via` was the whole story and that the
 session-bound research Routine "edits fine" — that was never tested, and it is false; the attempt was
@@ -968,6 +977,36 @@ Three hazards this table exists to prevent:
   in the push text and in the runbook on 2026-09-02, with no tap anywhere. Either build the thing or say
   what actually happens — the owner had been doing the round trip for weeks believing it was the
   intended design.
+- **A ROUTINE BOUND TO A PERSISTENT SESSION IS ONLY AS ALIVE AS THAT SESSION — AND WHEN THE SESSION DIES
+  THE ROUTINE DOESN'T FAIL, IT RUNS SOMEWHERE ELSE WITH NOTHING (2026-09-09).** The weekly research
+  Routine had been bound to an interactive session since 09-02 so it could inherit that session's
+  Robinhood + Alpha Vantage connectors (the org rejects `connectors` on `create_trigger`; re-tested
+  2026-09-09, still rejected). It produced two targets that way. Then the bound session finished its
+  09-07 run by *asking a question* ("confirm push to main"), sat idle-BLOCKED on it for two days, and
+  its container was reclaimed. The 09-09 fire could not land in it — the session's `updated_at` never
+  moved — so the platform spawned a **fallback run built from the Routine RECORD**, which carries
+  `mcp_connections: []`, `sources: []` and no model: a Sonnet 5 session with no repo on disk and no
+  broker tools, which correctly stopped at step 0 and pushed "connector missing". The owner then
+  toggled Robinhood ON in that run's connector picker and it changed nothing, because a chat-level
+  toggle sets a preference for future sessions and does not hot-attach an MCP server into an agent
+  process that is already running. **Four things generalize.** (a) **A session-bound Routine has two
+  ways to die and only one of them is visible.** The obvious one is the session being archived. The
+  quiet one is the session ending a turn on a question — a bound session that needs input is a Routine
+  that will never run again, and nothing reports that; the executor died the same way on 08-31. The
+  prompt now says *never ask a question here, push instead*, which is the code-side guard for a
+  prompt-side hazard. (b) **A fallback run reads the Routine record, so the record has to be complete
+  on its own.** Everything the binding was supplying (connectors, repo, model) was absent from the
+  record, so the fallback had none of it. The executor's record — `mcp_connections:[Robinhood]`,
+  `model: claude-opus-5`, a step-0 shallow clone — is complete, and it is the shape the research
+  Routine now has. (c) **Where a connector is attached is the whole question.** On the ROUTINE (UI,
+  "Manage connectors") survives every fire; in a bound session survives until that session dies; in a
+  run's chat picker survives nothing. Compare `mcp_connections` in `list_triggers` between a working
+  Routine and a failing one before touching anything else. (d) **Don't bind. Ever.** The 09-02 note
+  said "bind only jobs that run WEEKLY" as if cadence were the risk; it isn't — the risk is that the
+  binding's whole justification lives outside the Routine and expires silently. Fresh-per-fire plus
+  UI-attached connectors is the only shape that has kept working here. The `Sonnet 5` in the fallback
+  run is the same lesson from another angle: a fresh-session Routine with `model: ""` runs on whatever
+  the platform defaults to, so pin it with `update_trigger` at creation.
 - **THE TWO ACCOUNTS' POSITION ARRAYS CAME BACK TRANSPOSED — AND ONLY THE RUNNING TOTAL WAS PERMANENT
   (2026-08-31).** Root cause of the wrong-account incident below: the producer's two
   `get_equity_positions` calls were made with the account numbers the wrong way round, so

@@ -135,15 +135,16 @@ be set to; re-check it whenever a Routine misbehaves, because the failure mode i
 |---|---|---|---|
 | Cron (UTC) | `35 * * * *` | `12 11 * * 1` | `20 14-20 * * 1-5` |
 | Connectors | Robinhood + Alpha Vantage | Robinhood + Alpha Vantage | Robinhood |
-| Session | fresh per fire (already) | **bound to an interactive session** (2026-09-02; re-created 2026-09-08 as `trig_01UcxmEScHtoVU3yrGFJ1wiL` with the Mandate A prompt) — see below | persistent (the original); a fresh-per-fire replacement exists but is DISABLED, having no connectors |
-| Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | *unset* on the live `trig_01Ucxm…` record (`model:""`) — a session-bound Routine runs on the bound session's model, so pin it there, not here | `claude-opus-5` |
+| Session | fresh per fire (already) | **fresh per fire** — `trig_0114s3r8yBA7rQXLsBY7MG1y` since 2026-09-09. It was **bound to an interactive session** 2026-09-02 → 09-09 (`trig_01YRmfzy…`, then `trig_01Ucxm…`); that session died and the binding took the Routine with it — see below | fresh per fire — `trig_01Cy4shsbcDMX2HKvCLXrJos`, live since 2026-09-08 |
+| Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | `claude-opus-5` (pinned via `update_trigger` at creation — the 09-09 fallback run with `model:""` came up on Sonnet 5) | `claude-opus-5` |
 | Permission mode | `auto` | `auto` | `auto` |
 | `allowed_tools` | `preset:default` + `PushNotification` + `Skill` | same | same |
 | Push notifications | on | **on** | **on** |
-| Repo source | this repo (session config) | none needed — the environment already carries the clone; step 0 fast-forwards it (verified by a 2026-09-02 test fire, which also proved the gate and PushNotification work from a Routine session) | same |
+| Repo source | this repo (session config) | none on the record — **step 0 shallow-clones** (`--depth 1`) exactly like the executor; a fresh session does NOT carry the clone (the 09-09 fallback run had no repo on disk) | same |
 
 **Connectors and `allowed_tools` are set ONLY in the claude.ai Routine UI.** The Routines API in this
-org rejects a `connectors` parameter outright, and `update_trigger` can change the prompt, schedule,
+org rejects a `connectors` parameter outright (re-tested 2026-09-09 — *"the connectors parameter is not
+available for this organization"* — even though the tool's own description advertises it), and `update_trigger` can change the prompt, schedule,
 name, enabled state and model but not the tool surface — so a session can fix a prompt and *cannot*
 fix a missing connector. That distinction cost seven weeks of research: the weekly research
 Routine was created with **no Robinhood or Alpha Vantage connector and no repo source**, so it had
@@ -227,17 +228,21 @@ agent that honours the stricter ≤3 simply splits each tail into three calls an
 same symbols. Fold the wording in whenever this prompt is next re-pasted for another reason.
 </details>
 
-**A Routine created from a session INHERITS that session's connectors — this is the workaround for
-the API's refusal.** `create_trigger` cannot attach connectors (the org rejects the parameter) and a
-Routine created with none fires sessions that have no `mcp__*` tools at all, which is exactly why the
-weekly research never ran. But a trigger bound to an existing session (`persistent_session_id`) runs
-IN that session, so it inherits whatever connectors it holds. The weekly research Routine is now bound
-this way to a session carrying Robinhood + Alpha Vantage, and produced the 2026-09-02 target end to
-end. **The tradeoff is the one the executor already demonstrated:** a persistent session accumulates
-context and cost, and can get stuck in a "needs input" state. So bind only jobs that run WEEKLY, never
-hourly, and re-check the binding if the session is ever archived — `list_triggers` shows
-`persistent_session_id`. A fresh-per-fire Routine with connectors attached in the claude.ai UI is
-still the better shape when someone is there to attach them.
+**Binding a Routine to a session to INHERIT its connectors is RETIRED (2026-09-09) — it worked for one
+week and then failed in the way this paragraph used to warn about.** The idea: `create_trigger` cannot
+attach connectors, but a trigger bound to an existing session (`persistent_session_id`) runs IN that
+session and inherits whatever it holds. The weekly research was bound that way on 09-02 and produced the
+09-02 and 09-07 targets. Then the bound session ended its 09-07 turn on a question ("confirm push to
+main"), sat idle-BLOCKED, and its container was reclaimed; the 09-09 fire could not land in it, so the
+platform spawned a fallback run from the Routine RECORD — `mcp_connections:[]`, `sources:[]`,
+`model:""` — i.e. Sonnet 5, no repo, no broker tools, stopped at step 0. Toggling the connector in that
+run's chat did nothing (a chat toggle is not an attachment to a running agent process). **The old
+"bind only weekly jobs" caveat missed the point: the binding's justification lives outside the Routine
+and expires silently.** The shape that works, for BOTH agentic Routines now, is: fresh session per fire,
+model pinned, push on, a step-0 shallow clone in the prompt, and the connectors attached to the Routine
+in the claude.ai UI ("Manage connectors" on the Routine — not in any chat). A fresh-session Routine's
+prompt is also editable from any session with `update_trigger`, so the replace-not-edit dance above is
+no longer needed for it.
 
 **Never enumerate MCP tool names in `allowed_tools`.** The full name carries a session-specific server
 id (`mcp__1ad8dd47-…__get_portfolio` today, something else tomorrow), so a pinned list matches nothing
@@ -275,27 +280,32 @@ the most likely thing to stall an unattended run.
 - **Stale is safe:** if a run fails it pushes nothing and the phone keeps the last good snapshot;
   the freshness bar will simply show it's old.
 
-<details><summary><strong>Paste-ready prompt — "Agentic weekly research refresh (session-bound)" (updated 2026-09-08, Mandate A)</strong></summary>
+<details><summary><strong>Paste-ready prompt — "Agentic weekly research refresh — fresh session" (updated 2026-09-09)</strong></summary>
 
-**This IS the live prompt** of `trig_01UcxmEScHtoVU3yrGFJ1wiL` (created 2026-09-08 by the replace-not-edit
-recipe above; the previous bound Routine is disabled). It is kept here because a session cannot READ a
-Routine's prompt back except via the full `list_triggers` record, and cannot edit it in place — to change
-it, edit this text first, then re-create the Routine from it and retire the old one. **Nothing here is
-load-bearing for the mandate** — the constants carry that — so a stale prompt costs only the accuracy of
-the Routine's own sanity report, not the correctness of the target it commits.
+**This IS the live prompt** of `trig_0114s3r8yBA7rQXLsBY7MG1y` (created 2026-09-09, fresh session per fire,
+`claude-opus-5`, push notifications on; connectors attached in the Routine UI). It is kept here because a
+session cannot READ a Routine's prompt back except via the full `list_triggers` record. Since this Routine is
+not session-bound, its prompt CAN be edited in place with `update_trigger` — edit this text first, then apply
+it, so the two never drift. Only step 0 differs from the 2026-09-08 (session-bound) text: it shallow-clones the
+repo the way the executor does and checks BOTH connectors. **Nothing here is load-bearing for the mandate** —
+the constants carry that — so a stale prompt costs only the accuracy of the Routine's own sanity report.
 
 ```
-WEEKLY RESEARCH REFRESH — scheduled fire. This session persists between fires and already holds the Robinhood + Alpha Vantage connectors (that is why it is bound here: Routine-created sessions get no connectors in this org). Do not converse; do the job and reply in a few lines.
+WEEKLY RESEARCH REFRESH for the ••••3900 account (repo mcdermottj639/portfolio-dashboard). You start in a FRESH session every fire — nothing persists, and nobody reads this chat. Do not converse and never ask a question here: anything the owner must know goes out as a PushNotification. Keep your reply to a few lines.
 
 MANDATE A (owner-set 2026-09-08) — the account's job is to BEAT SPY over rolling 12-month windows, not to preserve capital. There is NO defensive floor, NO forced gold sleeve, and the index core is a 5-10% residual. Do not add ballast, and do not report a shortfall against floors that no longer exist. Downside is controlled by the correlation-cluster caps and by a drawdown breaker that acts on the book falling BEHIND SPY. See producer/AGENTIC.md § THE MANDATE.
 
-Step 0: `cd /home/user/portfolio-dashboard && git fetch origin main && git checkout -f -B pf-research origin/main`. Confirm the Robinhood tools (get_portfolio etc.) are available; if not, PushNotification "research Routine: Robinhood connector missing in bound session" and stop.
+Step 0 — get the repo CHEAPLY, and never any other way. The history is >1.7GB (a ~7MB encrypted data.json committed ~13x/day), so a full clone or an unbounded `git fetch` takes 10+ minutes and burns the run. ALWAYS shallow:
+  if /home/user/portfolio-dashboard exists: `cd /home/user/portfolio-dashboard && git fetch --depth 1 origin main && git checkout -f -B pf-research FETCH_HEAD`
+  otherwise: `git clone --depth 1 https://github.com/mcdermottj639/portfolio-dashboard /home/user/portfolio-dashboard && cd /home/user/portfolio-dashboard`
+  NEVER run `git fetch` or `git pull` without `--depth 1`, never `--unshallow`, never rebase (a shallow clone has no merge base). You only ever need the tip commit.
+  Then confirm the Robinhood tools (get_portfolio etc.) and the Alpha Vantage tools are loaded in this session. If either is missing, PushNotification "research Routine: <Robinhood|Alpha Vantage> connector missing — attach it to the Routine in the claude.ai Routine UI" and stop.
 
 Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and stop. AGENTIC_DUE → continue, following producer/PRODUCER.md step 7 exactly (it is the source of truth):
   2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
   3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo}, with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
   4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
-  5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main` (retry with backoff on a transient proxy failure). If finalize runs a second time, re-check target.dropped.
+  5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main`. If the push is REJECTED because main moved (the producer commits hourly at ~:41), do NOT rebase or merge: `git fetch --depth 1 origin main && git reset --soft FETCH_HEAD`, commit the target again, push again (up to 3 tries). If finalize runs a second time, re-check target.dropped.
   6. PushNotification a concise rebalance proposal (drift vs actual holdings, adds/trims ± dollars, anything over the 5pp trigger; if a HELD name is dropped, say the exit may be held by the 14d min-hold/PDT guard and give the unlock date). PLACE NO ORDERS.
   7. Sanity lines: 10-12 names; megacap-tech direct vs the 48% cap; SPY+VTI index core within the 5-10% residual band (flag it if the synthesis went higher — that is weight which can only MATCH the benchmark this account exists to beat); defensive total REPORTED as a measurement only, with no floor to miss; entry bands — note the cohort MEDIAN entryQuality that finalize used and which names were tightened relative to it (a batch where nearly every verdict is a 3 should tighten NOBODY: that is the tape, not a ranking); target.dropped with reasons; challengers reaching verify; any RESIDUAL note.
 
