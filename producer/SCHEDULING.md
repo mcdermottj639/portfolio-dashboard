@@ -217,7 +217,7 @@ byte-identical. It replaces the false "never use cp, mv, or **shell variables**"
 one (copying out of `/root/.claude/projects/…`), names the spill-to-file mechanism that leads an
 agent there, and adds the subagent rule.
 
-**KNOWN DIVERGENCE, harmless, left in place deliberately (v140).** The third paragraph says "fetch
+**KNOWN DIVERGENCE, harmless, left in place deliberately (v141).** The third paragraph says "fetch
 historicals in batches of 3 symbols or fewer", while `PRODUCER.md` now says to run
 `node producer/hist-plan.mjs` and use the batches it prints — where a **tail** batch carries 8 symbols
 (a 7-bar tail is ~1/20th of a YTD series, so the payload is smaller than one 3-symbol YTD call). This

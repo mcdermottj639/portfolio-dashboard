@@ -832,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v140'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v141'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -4267,6 +4267,7 @@ let PICK_PICKS=[
 
 let _picksInit=false,_picksLive={},_picksRSI={},_picksChart=null,_picksHistBars={};
 let PICK_TRIM=[],PICK_ADD=[],PICK_INCOME=[],PICK_HISTORY=[],MKTX=null;
+let PICK_GRADES=null;               // data.picks.grades — the producer's graded + FROZEN pick ledger (see producer/pickgrade.mjs)
 let _pickSort={key:'rank',dir:1};           // table sort (rank asc = the composite ranking)
 let _pickFilter={sector:'all',hideFlagged:false};
 
@@ -6959,6 +6960,7 @@ async function loadPicksData(){
       if(Array.isArray(d.add))PICK_ADD=d.add;
       if(Array.isArray(d.income))PICK_INCOME=d.income;
       if(Array.isArray(d.history))PICK_HISTORY=d.history;
+      if(d.grades&&Array.isArray(d.grades.episodes))PICK_GRADES=d.grades;
       if(d.markets)MKTX=d.markets;
       const el=document.getElementById('tab-picks-date'); if(el)el.textContent='\u00b7 '+ANALYSIS_DATE.replace(', 2026','');
     }
@@ -7231,32 +7233,67 @@ function renderPicksCards(){
   }).join('');
 }
 
-/* Grade one archived pick on a CLOSING basis since its scan date: walk daily closes in order — a
-   close at/above a target counts as a hit (TP2 wins outright; TP1 banks then keeps watching), a
-   close at/below the stop is a stop-out. Current return is planned entry → latest price. */
-function gradePick(pk,bars,live,ts){
-  const entry=pk.entryRef||pk.basePrice, tp1=pk.tp1, tp2=pk.tp2, sl=pk.sl;
-  // CLOSING basis: drop the spliced live bar (see spliceLiveBars) — `live` is already this
-  // function's own argument, and an intraday print must not trip a stop nothing closed through.
-  const series=(bars||[]).filter(b=>!b.live).filter(b=>!ts||b.t>=ts).map(b=>b.c).filter(c=>c>0);
-  let status='OPEN',hitT1=false;
-  for(const c of series){
-    if(sl!=null&&c<=sl){ status=hitT1?'TP1':'STOPPED'; break; }
-    if(tp2!=null&&c>=tp2){ status='TP2'; break; }
-    if(tp1!=null&&c>=tp1){ hitT1=true; status='TP1'; }
+/* Grade one archived pick on a CLOSING basis since its scan date — the CLIENT MIRROR of
+   producer/pickgrade.mjs. The producer's graded ledger (data.picks.grades) is authoritative when
+   present; this runs for older snapshots that predate it, and the two MUST stay in step.
+
+   THE RULE THAT WAS MISSING (2026-09-09): `data.hist.day` goes STALE PER SYMBOL, so a pick's series
+   freezes within days of the scan that named it — and this function used to read a series that
+   merely STOPPED as "still open". On the live 2026-09-08 snapshot that made 12 of 44 episodes
+   graded over ZERO bars, and the card reported 0% hit rate off it. A series that does not reach the
+   measurement date is now UNMEASURED, never OPEN, and carries NO return — the same abstention
+   agentic-ledger's markFromBars makes, for the same reason. A resolved episode also returns at its
+   EXIT rather than marked to today (ORCL rendered "⛔ STOPPED · +18.3%" — stopped out, then rallied
+   without us; averaging that in measures a position nobody held). */
+const PICK_GRADE_HORIZON_DAYS=60;  // mirrors pickgrade.mjs GRADE_HORIZON_DAYS — keep the two in step
+const PICK_BAR_REACH_DAYS=5;       // mirrors pickgrade.mjs BAR_REACH_DAYS
+function _pkDayNum(iso){ const t=Date.parse(String(iso).slice(0,10)+'T00:00:00Z'); return isFinite(t)?t/864e5:null; }
+function _pkCloses(bars){
+  const by=new Map();
+  for(const b of (bars||[])){
+    if(!b||b.interpolated||b.live)continue;                       // gap-fill / spliced intraday print
+    const t=String(b.begins_at||b.t||'').slice(0,10), c=+(b.close_price??b.c);
+    if(t&&isFinite(c)&&c>0)by.set(t,c);
   }
-  const cur=live||(series.length?series[series.length-1]:null)||pk.basePrice;
-  const ret=entry?((cur-entry)/entry*100):null;
-  return {status,ret,cur,entry};
+  return [...by.entries()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0).map(e=>({t:e[0],c:e[1]}));
+}
+function gradePick(pk,bars,live,ts){
+  const entry=+(pk.entryRef??pk.basePrice)||null, tp1=+pk.tp1||null, tp2=+pk.tp2||null, sl=+pk.sl||null;
+  const all=_pkCloses(bars), lastBar=all.length?all[all.length-1].t:null;
+  const f=_pkDayNum(ts), a=_pkDayNum(_snapETDate());
+  const throughN=(f!=null&&a!=null)?Math.min(a,f+PICK_GRADE_HORIZON_DAYS):a;
+  const through=throughN!=null?new Date(throughN*864e5).toISOString().slice(0,10):null;
+  const expired=(f!=null&&a!=null)&&a>f+PICK_GRADE_HORIZON_DAYS;
+  const win=all.filter(b=>(f==null||_pkDayNum(b.t)>=f)&&(through==null||b.t<=through));
+  let status=null,statusDate=null,exitPx=null,banked=false;
+  for(const b of win){
+    if(sl!=null&&b.c<=sl){ status=banked?'TP1':'STOPPED'; statusDate=b.t; exitPx=banked?tp1:sl; break; }
+    if(tp2!=null&&b.c>=tp2){ status='TP2'; statusDate=b.t; exitPx=tp2; break; }
+    if(tp1!=null&&b.c>=tp1&&!banked){ banked=true; status='TP1'; statusDate=b.t; exitPx=tp1; }
+  }
+  if(status)return {status,ret:entry&&exitPx?(exitPx-entry)/entry*100:null,cur:exitPx,entry,retAsOf:statusDate,retBasis:'exit'};
+  const reached=lastBar!=null&&throughN!=null&&_pkDayNum(lastBar)>=throughN-PICK_BAR_REACH_DAYS;
+  if(!win.length||!reached)return {status:'UNMEASURED',ret:null,cur:null,entry,retAsOf:null,retBasis:null};
+  const last=win[win.length-1];
+  return {status:expired?'EXPIRED':'OPEN',ret:entry?(last.c-entry)/entry*100:null,cur:last.c,entry,retAsOf:last.t,retBasis:'mark'};
 }
 /* Collapse the archived picks into EPISODES so one broken thesis re-picked day after day counts ONCE, not
    N times. Without this, ORCL — re-surfaced ~10 sessions running before it got trend-gated — booked 10
    separate "losses" and sank the record to 0W·10L off a single bad call. Group each ticker's archived
    picks chronologically and start a new episode only when there's a gap > EPISODE_GAP_DAYS (the cooldown
    window) between consecutive re-picks; grade each episode from its EARLIEST entry (the outcome of that
-   continuous position). Returns [{sym,firstTs,lastTs,firstDate,count,pk,g}] most-recent-first. */
+   continuous position). Returns [{sym,firstTs,lastTs,firstDate,count,pk,g}] most-recent-first.
+   PREFERS the producer's frozen ledger (data.picks.grades) — a resolved outcome stamped there survives
+   its own bars going stale, which is the whole point of grading upstream. */
 const EPISODE_GAP_DAYS=14;   // re-picks of a name within ~2 weeks = one continuous thesis (matches the cooldown)
 function picksEpisodes(){
+  if(PICK_GRADES&&Array.isArray(PICK_GRADES.episodes)&&PICK_GRADES.episodes.length){
+    return PICK_GRADES.episodes.map(e=>({
+      sym:e.sym, firstTs:e.firstTs, lastTs:e.lastTs, firstDate:e.firstTs, count:e.count||1,
+      pk:{ticker:e.sym,signal:e.signal,tp1:e.tp1,tp2:e.tp2,sl:e.sl,entryRef:e.entry},
+      g:{status:e.status,ret:e.ret,cur:e.exitPx,entry:e.entry,retAsOf:e.retAsOf,retBasis:e.retBasis},
+    }));
+  }
   const hist=Array.isArray(PICK_HISTORY)?PICK_HISTORY.filter(h=>h&&Array.isArray(h.picks)&&h.picks.length):[];
   const dayNum=iso=>{ const d=new Date(String(iso)+'T00:00:00Z'); const n=d.getTime(); return isFinite(n)?n/864e5:0; };
   const bySym={};
@@ -7276,15 +7313,33 @@ function picksEpisodes(){
     ep.count=ep.picks.length; ep.pk=first; }
   return eps.sort((a,b)=>a.lastTs<b.lastTs?1:a.lastTs>b.lastTs?-1:0);
 }
+/* The producer's RESOLVED episode covering one archived scan row, if any.
+   Needed because freezing an outcome and refreshing its prices are deliberately opposite: the moment
+   an episode resolves it leaves the grading universe and its bars are allowed to go stale — so the
+   per-scan detail rows below, which grade from the bars, would start reporting "not graded" for the
+   very episodes the tiles above report as wins. Two views of one card must never disagree; the
+   episode is the unit of truth, and a row inside it is measured to the SAME exit, from its own entry. */
+function _pkResolvedEpisode(sym,ts){
+  if(!PICK_GRADES||!Array.isArray(PICK_GRADES.episodes))return null;
+  const d=_pkDayNum(ts);
+  return PICK_GRADES.episodes.find(e=>e&&e.sym===sym&&e.resolved&&e.exitPx!=null
+    &&_pkDayNum(e.firstTs)<=d&&d<=_pkDayNum(e.lastTs||e.firstTs)+EPISODE_GAP_DAYS)||null;
+}
 /* Aggregate grade stats over EPISODES (Track Record tiles + the Action Plan conviction line read this, so
-   the two surfaces can't diverge). Episode-based so a name re-picked daily isn't counted many times. */
+   the two surfaces can't diverge). Episode-based so a name re-picked daily isn't counted many times.
+   Prefers the producer's roll-up. UNMEASURED episodes are counted apart and enter NEITHER the hit rate
+   NOR the average — the card must never average a number it has just said it cannot compute. */
 function picksTrackStats(){
+  if(PICK_GRADES&&PICK_GRADES.stats)return Object.assign({episodes:(PICK_GRADES.episodes||[]).length},PICK_GRADES.stats);
   const eps=picksEpisodes();
-  let wins=0,losses=0,open=0,retSum=0,retN=0;
+  let wins=0,losses=0,open=0,expired=0,unmeasured=0,retSum=0,retN=0;
   for(const ep of eps){ const s=ep.g.status;
-    if(s==='TP1'||s==='TP2')wins++; else if(s==='STOPPED')losses++; else open++;
-    if(ep.g.ret!=null){retSum+=ep.g.ret;retN++;} }
-  return {wins,losses,open,hitRate:(wins+losses)>0?Math.round(wins/(wins+losses)*100):null,avgRet:retN?retSum/retN:null,episodes:eps.length};
+    if(s==='TP1'||s==='TP2')wins++; else if(s==='STOPPED')losses++;
+    else if(s==='EXPIRED')expired++; else if(s==='UNMEASURED')unmeasured++; else open++;
+    if(isFinite(ep.g.ret)&&ep.g.ret!=null){retSum+=ep.g.ret;retN++;} }
+  const resolved=wins+losses;
+  return {wins,losses,open,expired,unmeasured,resolved,n:eps.length,episodes:eps.length,
+    hitRate:resolved>0?Math.round(wins/resolved*100):null,avgRet:retN?retSum/retN:null,avgRetN:retN};
 }
 function renderPicksTrack(){
   const el=document.getElementById('picks-track'); if(!el)return;
@@ -7296,42 +7351,55 @@ function renderPicksTrack(){
   // Headline stats over the FULL archived history — reuse picksTrackStats() so this card and the
   // Action Plan's conviction line can never diverge (was: recomputed here over only the shown 8).
   const st=(typeof picksTrackStats==='function')?picksTrackStats():{wins:0,losses:0,open:0,hitRate:null,avgRet:null};
-  const wins=st.wins,losses=st.losses,open=st.open,hitRate=st.hitRate,avgRet=st.avgRet,resolved=wins+losses;
+  const wins=st.wins,losses=st.losses,open=st.open||0,expired=st.expired||0,unmeas=st.unmeasured||0;
+  const hitRate=st.hitRate,avgRet=st.avgRet,resolved=wins+losses;
   const stat=(l,v,c)=>'<div class="pk-m"><div class="pk-m-l">'+l+'</div><div class="pk-m-v" style="color:'+(c||'var(--text)')+'">'+v+'</div></div>';
   const metrics='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin:2px 0 8px">'
       +stat('Hit rate',hitRate==null?'—':hitRate+'%',hitRate!=null&&hitRate>=50?'#065f46':'#92400e')
       +stat('Avg return',avgRet==null?'—':(avgRet>=0?'+':'')+fmt(avgRet,1)+'%',avgRet!=null&&avgRet>=0?'#065f46':'#991b1b')
       +stat('Record',resolved?wins+'W · '+losses+'L':'—',resolved?(wins>=losses?'#065f46':'#991b1b'):'var(--text)')
     +'</div>';
-  // One-line clarifier so "resolved vs open" is never ambiguous.
+  // Clarifier. UNMEASURED is called out in its OWN sentence, because burying it would repeat exactly the
+  // bug this card had: an episode whose price history stopped was being counted as "still open", which
+  // made a hit rate out of names nobody ever graded.
   const sub='<div style="font-size:11px;color:#9ca3af;margin:-4px 0 9px;line-height:1.45"><b>'+resolved+'</b> resolved '
       +'<span style="opacity:.8">(hit a target = win, or a stop = loss)</span> · <b>'+open+'</b> still open '
-      +'<span style="opacity:.8">(running — not yet at a target or stop, so not in the hit-rate)</span>. '
+      +'<span style="opacity:.8">(running — not yet at a target or stop, so not in the hit-rate)</span>'
+      +(expired?' · <b>'+expired+'</b> expired <span style="opacity:.8">(ran '+PICK_GRADE_HORIZON_DAYS+' days without touching either level)</span>':'')+'. '
+      +(unmeas?'<span style="color:#92400e"><b>'+unmeas+'</b> can’t be graded</span> <span style="opacity:.8">— the recorded price history for those names stops shortly after the scan, so neither a target nor a stop can be confirmed. They are left out of the hit rate and the average rather than counted as “open”; a refreshed snapshot fills them in.</span> ':'')
       +'<span style="opacity:.8">Re-picks of the same name within ~2 weeks count once (one thesis); ·N on a chip shows how many times it was re-listed.</span></div>';
   // Compact recent-outcomes strip — one chip per EPISODE (deduped), most-recent first; ·N shows how many
   // times that name was re-listed inside one continuous thesis, so a repeated loser reads as a single outcome.
   const eps=picksEpisodes();
-  const CHIP={TP2:['#065f46','#d1fae5','✅'],TP1:['#065f46','#d1fae5','✅'],STOPPED:['#991b1b','#fee2e2','⛔'],OPEN:['#475569','#e2e8f0','•']};
-  const N=12; const strip='<div class="trk-strip">'+eps.slice(0,N).map(ep=>{ const m=CHIP[ep.g.status]||CHIP.OPEN; return '<span class="trk-chip" style="background:'+m[1]+';color:'+m[0]+'">'+m[2]+' '+ep.sym+(ep.count>1?' <span style="opacity:.65">·'+ep.count+'</span>':'')+'</span>'; }).join('')
+  const CHIP={TP2:['#065f46','#d1fae5','✅'],TP1:['#065f46','#d1fae5','✅'],STOPPED:['#991b1b','#fee2e2','⛔'],OPEN:['#475569','#e2e8f0','•'],EXPIRED:['#475569','#e2e8f0','⌛'],UNMEASURED:['#92400e','#fef3c7','?']};
+  const N=12; const strip='<div class="trk-strip">'+eps.slice(0,N).map(ep=>{ const m=CHIP[ep.g.status]||CHIP.OPEN; return '<span class="trk-chip" style="background:'+m[1]+';color:'+m[0]+'" title="'+(ep.g.status==='UNMEASURED'?'No recorded price history after the scan — not graded':ep.g.status)+'">'+m[2]+' '+ep.sym+(ep.count>1?' <span style="opacity:.65">·'+ep.count+'</span>':'')+'</span>'; }).join('')
       +(eps.length>N?'<span class="trk-chip trk-more">+'+(eps.length-N)+' more</span>':'')+'</div>';
-  // Full per-scan breakdown — collapsed by default (tap to expand), recent 8 scans, unchanged detail.
+  // Full per-scan breakdown — collapsed by default (tap to expand), recent 8 scans.
   const groups=hist.slice(0,8).map(h=>{
     const rows=h.picks.map(pk=>{
-      const g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts);
-      const badge={TP2:['#065f46','#d1fae5','✅ TP2'],TP1:['#065f46','#d1fae5','✅ TP1'],STOPPED:['#991b1b','#fee2e2','⛔ Stopped'],OPEN:['#475569','#e2e8f0','• Open']}[g.status];
+      let g=gradePick(pk,_picksHistBars[pk.ticker]||[],(_picksLive[pk.ticker]&&_picksLive[pk.ticker].price)||null,h.ts);
+      const ep=_pkResolvedEpisode(pk.ticker,h.ts);
+      if(ep){ const en=+(pk.entryRef??pk.basePrice)||null;   // this scan's own entry, the episode's exit
+        g={status:ep.status,ret:en?(ep.exitPx-en)/en*100:null,cur:ep.exitPx,entry:en,retAsOf:ep.retAsOf||ep.statusDate,retBasis:'exit'}; }
+      const badge={TP2:['#065f46','#d1fae5','✅ TP2'],TP1:['#065f46','#d1fae5','✅ TP1'],STOPPED:['#991b1b','#fee2e2','⛔ Stopped'],OPEN:['#475569','#e2e8f0','• Open'],EXPIRED:['#475569','#e2e8f0','⌛ Expired'],UNMEASURED:['#92400e','#fef3c7','? Not graded']}[g.status]||['#475569','#e2e8f0','• Open'];
       const rc=g.ret==null?'#6b7280':g.ret>=0?'#10b981':'#ef4444';
+      // The price line must say WHICH price and AS OF WHEN. It used to print the latest quote with no
+      // date — and that quote carries forward per-symbol, so a two-month-old price read as today's.
+      const px=g.status==='UNMEASURED'
+        ? '<span style="color:#92400e">no recorded prices after the scan</span>'
+        : (g.retBasis==='exit'?'exited $':'last close $')+fmt(g.cur)+(g.retAsOf?' <span style="opacity:.75">('+g.retAsOf.slice(5)+')</span>':'');
       return '<div class="harv-line"><span style="white-space:nowrap"><b>'+pk.ticker+'</b> <span style="font-size:10px;color:#9ca3af">'+(pk.signal||'')+'</span></span>'
         +'<span style="flex:1;text-align:right;margin-left:8px;font-size:11.5px">'
           +'<span class="drift-flag" style="background:'+badge[1]+';color:'+badge[0]+'">'+badge[2]+'</span> '
           +'<b style="color:'+rc+'">'+(g.ret==null?'—':(g.ret>=0?'+':'')+fmt(g.ret,1)+'%')+'</b>'
-          +'<div style="font-size:10px;color:#9ca3af">entry ~$'+fmt(g.entry)+' → $'+fmt(g.cur)+' · TP1 $'+(pk.tp1!=null?pk.tp1:'—')+' · stop $'+(pk.sl!=null?pk.sl:'—')+'</div>'
+          +'<div style="font-size:10px;color:#9ca3af">entry ~$'+fmt(g.entry)+' → '+px+' · TP1 $'+(pk.tp1!=null?pk.tp1:'—')+' · stop $'+(pk.sl!=null?pk.sl:'—')+'</div>'
         +'</span></div>';
     }).join('');
     return '<div style="margin-bottom:10px"><div style="font-size:11px;color:#9ca3af;font-weight:600;margin-bottom:3px">'+(h.date||h.ts)+'</div>'+rows+'</div>';
   }).join('');
   const detail='<details class="trk-detail"><summary>View graded detail'+(hist.length>8?' · recent 8 of '+hist.length+' scans':'')+'</summary>'
       +'<div style="margin-top:10px">'+groups
-      +'<div class="fund-note">Graded on a <b>closing basis</b> since each scan date — a target counts if a daily close reached it; stopped if a close hit the stop. Assumes entry at the planned level; current return is entry → latest. Past results don’t guarantee anything.</div></div></details>';
+      +'<div class="fund-note">Graded on a <b>closing basis</b> since each scan date — a target counts if a daily close reached it, stopped if a close hit the stop, and the window closes after '+PICK_GRADE_HORIZON_DAYS+' days. A resolved pick is measured to <b>where it exited</b>, not to today’s price. Assumes entry at the planned level. Past results don’t guarantee anything.</div></div></details>';
   el.innerHTML=metrics+sub+strip+detail;
 }
 

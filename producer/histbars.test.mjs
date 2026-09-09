@@ -135,7 +135,7 @@ console.log(`  ..  ${before} → ${after} bytes (${(100 - (100 * after) / before
 ok('saves at least 45% on the real bar shape', after < before * 0.55);
 
 
-// --- TAIL MERGE (v140) -------------------------------------------------------------------------
+// --- TAIL MERGE (v141) -------------------------------------------------------------------------
 // The whole point of the wide bench: a 7-bar tail must glue onto a series we already hold, without
 // losing anything, without duplicating a date, and without churning the snapshot on a re-run.
 console.log('histbars — mergeBars');

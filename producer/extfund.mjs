@@ -131,7 +131,7 @@ export function mergeOverviews(...sources) {
 // guard) when it carries at least one forward/growth/EPS field — same test build-data.mjs uses.
 export const isRich = (o) => !!(o && ('ForwardPE' in o || 'EPS' in o || 'QuarterlyRevenueGrowthYOY' in o));
 
-// --- FMP ROTATION (v140) -------------------------------------------------------------------------
+// --- FMP ROTATION (v141) -------------------------------------------------------------------------
 // Finnhub can cover the whole Analyze bench every day (2 calls/symbol at 60/min). FMP cannot: it is
 // 5 calls/symbol against a ~250/day free cap, i.e. ~50 symbols. So FMP ROTATES, and the rotation has
 // to be least-recently-refreshed-first or the same head of the list is refreshed forever while the

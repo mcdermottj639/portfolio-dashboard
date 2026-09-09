@@ -219,7 +219,10 @@ const runCore = (c, opts) => { const { h, l } = ohlc(c); return azCore(c, h, l, 
   ok('the live quote is spliced only onto a series fresh enough to carry it', /age<=AZ_SPLICE_MAX_DAYS/.test(splice));
   ok('…and the spliced bar is tagged live:true so closing-basis readers drop it',
     /\{c:price,h:price,l:price,v:0,t:asOf,live:true\}/.test(SRC));
-  ok('gradePick still excludes the spliced bar', /const series=\(bars\|\|\[\]\)\.filter\(b=>!b\.live\)/.test(SRC));
+  // v140 moved the Track Record's close walk into `_pkCloses` (gradePick reads through it); the
+  // invariant is the same — the spliced intraday print must never grade a pick.
+  ok('the Track Record grader still excludes the spliced bar',
+    /function _pkCloses\(bars\)\{[\s\S]{0,200}if\(!b\|\|b\.interpolated\|\|b\.live\)continue;/.test(SRC));
   ok('the measured-edge walk-forward excludes it too', /azHist\(sym\)\.bars\.filter\(b=>!b\.live\)/.test(SRC));
 
   ok('analyzeStock withholds technicals on a stale series',

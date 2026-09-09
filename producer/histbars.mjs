@@ -121,7 +121,7 @@ export function histBytes(hist) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// TAIL MERGE (v140). Separate concern from compaction, same module because both own the bar shape.
+// TAIL MERGE (v141). Separate concern from compaction, same module because both own the bar shape.
 //
 // WHY. `data.hist.day` only advanced for symbols in the day's fetch rotation, because build-data
 // merged historicals as a per-symbol WHOLE-ARRAY replace: a symbol was either re-fetched in full

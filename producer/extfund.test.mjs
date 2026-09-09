@@ -66,7 +66,7 @@ eq('merge: FMP PERatio wins (first arg)', merged.PERatio, '55.0000');
 eq('merge: fills from finnhub when FMP missing', mergeOverviews({ Symbol: 'X' }, fh).QuarterlyRevenueGrowthYOY, '1.2240');
 eq('merge: skips None', mergeOverviews({ PERatio: 'None' }, { PERatio: '12' }).PERatio, '12');
 
-// --- FMP ROTATION (v140) ------------------------------------------------------------------------
+// --- FMP ROTATION (v141) ------------------------------------------------------------------------
 // FMP is 5 calls/symbol against ~250/day, so it covers ~45 of ~180 bench names per day. The rotation
 // has to be least-recently-refreshed-FIRST; anything else re-covers the head of the list forever and
 // the tail is never covered at all — the same staleness failure as the historicals, one layer up.

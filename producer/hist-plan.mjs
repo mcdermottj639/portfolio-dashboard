@@ -43,6 +43,7 @@
 
 import { readSnapshot } from './fetchgate.mjs';
 import { analyzeUniverse, heldFromRaw, targetSymbols, tierOf } from './analyze-universe.mjs';
+import { gradingUniverse } from './pickgrade.mjs';
 
 // --- dials -------------------------------------------------------------------------------------
 export const HIST_TAIL_DAYS = 10;      // last bar this recent (cal days) ⇒ a tail fetch suffices
@@ -138,7 +139,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const snap = await readSnapshot();          // best-effort; null ⇒ everything is FULL
   const positions = heldFromRaw();
   const target = targetSymbols();
-  const universe = analyzeUniverse({ positions, target });
+  // The picks GRADING universe (pickgrade.mjs — archived Daily Picks whose outcome is still being
+  // measured) rides in right behind holdings + target: the Track Record can only grade a name whose
+  // closes kept arriving, and this is the fetch that keeps them arriving. Read from the same snapshot,
+  // so it costs no extra decrypt; a missing/ungradeable snapshot yields an empty list, never a throw.
+  let grading = [];
+  try { const pk = snap && snap.picks; grading = gradingUniverse((pk && pk.history) || [], { asOf: today, grades: pk && pk.grades }); } catch { grading = []; }
+  const base = analyzeUniverse({ positions, target });
+  const pri = new Set([...positions, ...target].map((x) => String(x || '').toUpperCase()));
+  const universe = [...new Set([...base.filter((x) => pri.has(x)), ...grading.map((x) => String(x).toUpperCase()), ...base.filter((x) => !pri.has(x))])];
   const plan = planHistoricals(universe, (snap && snap.hist) || {}, today);
 
   const tailStart = isoAgo(HIST_TAIL_LOOKBACK, today);

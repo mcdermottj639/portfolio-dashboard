@@ -30,7 +30,7 @@ const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.strin
 const q = (last, prev) => ({ last_trade_price: String(last), adjusted_previous_close: String(prev), previous_close: String(prev) });
 const bars = (n, base) => Array.from({ length: n }, (_, i) => ({ begins_at: `2026-06-${10 + i}T13:30:00Z`, close_price: String(base + i), interpolated: false }));
 // A dated run of daily bars starting `from` (YYYY-MM-DD), one calendar day apart — needed for the
-// v140 tail-merge fixture, where the series is long enough to cross a month boundary.
+// v141 tail-merge fixture, where the series is long enough to cross a month boundary.
 const dayBars = (n, from, base) => Array.from({ length: n }, (_, i) => {
   const d = new Date(`${from}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + i);
   return { begins_at: `${d.toISOString().slice(0, 10)}T13:30:00Z`, close_price: String(base + i), interpolated: false };
@@ -47,7 +47,7 @@ const FIXTURES = {
   'quotes-1.json': { data: { results: [{ symbol: 'AAA', ...q(108, 99) }] } },
   // Fresh day-hist returns AAA with EMPTY bars — must not clobber the carried series.
   'hist-day-1.json': { data: { results: [{ symbol: 'AAA', bars: [] }] } },
-  // v140 TAIL MERGE. TTT carries a 150-bar series forward from the prior snapshot; this run fetches
+  // v141 TAIL MERGE. TTT carries a 150-bar series forward from the prior snapshot; this run fetches
   // only a 7-bar TAIL (3 dates it already holds + 4 genuinely new). The old whole-array spread would
   // have replaced 150 bars with 7 — the wide bench is only affordable because this no longer happens.
   'hist-day-2.json': { data: { results: [{ symbol: 'TTT', bars: dayBars(7, '2026-05-29', 2147) }] } },
@@ -110,14 +110,43 @@ const FIXTURES = {
   ] } },
 };
 
+/* ── Daily-Picks track record (2026-09-09) ────────────────────────────────────────────────────────
+   The card graded archived picks on the phone by walking data.hist.day, and that series goes STALE
+   PER SYMBOL — so an episode whose prices simply stopped was rendered "still open", and the live
+   snapshot reported a 0% hit rate built out of names nobody had graded. Grading moved into the
+   producer so a resolved outcome can be FROZEN into the snapshot. Three things are pinned below,
+   and each is reachable ONLY if the wiring is real: a resolved episode, an UNMEASURED one (the
+   abstention — it cannot be produced by a symbol whose bars reach), and a frozen prior outcome
+   surviving with no bars at all. */
+const dayISO = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+const pkBars = (fromDaysAgo, closes) => closes.map((c, i) => ({ begins_at: dayISO(fromDaysAgo - i) + 'T13:30:00Z', close_price: String(c) }));
+const PK_HISTORY = [
+  // GRD: bars run right up to the present and cross TP1 → resolves on merit.
+  { ts: dayISO(20), date: dayISO(20), picks: [{ ticker: 'GRD', basePrice: 100, entry: '$100', entryRef: 100, tp1: 110, tp2: 200, sl: 80, signal: 'BUY' }] },
+  // STL: bars stop three days after the scan → UNMEASURED, and inside the horizon, so the producer
+  // must ALSO list it in grades.universe as a symbol whose prices need refreshing.
+  { ts: dayISO(20), date: dayISO(20), picks: [{ ticker: 'STL', basePrice: 50, entry: '$50', entryRef: 50, tp1: 60, tp2: 70, sl: 40, signal: 'BUY' }] },
+  // FRZ: no bars at all any more. Its outcome was stamped on an earlier run and must survive.
+  { ts: dayISO(30), date: dayISO(30), picks: [{ ticker: 'FRZ', basePrice: 10, entry: '$10', entryRef: 10, tp1: 12, tp2: 14, sl: 8, signal: 'BUY' }] },
+];
+const PK_GRADES_PRIOR = { asOf: dayISO(1), horizonDays: 60, episodes: [
+  { key: 'FRZ|' + dayISO(30), sym: 'FRZ', firstTs: dayISO(30), lastTs: dayISO(30), count: 1,
+    status: 'TP2', resolved: true, entry: 10, exitPx: 14, ret: 40, retAsOf: dayISO(25), retBasis: 'exit' },
+], stats: {} };
+
 const prior = {
   schemaVersion: 1,
   generatedAt: new Date(Date.now() - 24 * 3600e3).toISOString(),
   generatedAtLabel: 'test prior',
   quotes: { AAA: q(100, 99), BBB: q(55, 54), SPY: q(660, 655) },
-  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: bars(5, 600), TTT: dayBars(150, '2026-01-02', 1000) }, month: { AAA: bars(3, 80) } },
+  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: bars(5, 600), TTT: dayBars(150, '2026-01-02', 1000),
+    GRD: pkBars(20, [100, 103, 106, 109, 112, 115, 118]), STL: pkBars(20, [50, 50.5, 51, 51.5]) },
+    month: { AAA: bars(3, 80) } },
+  // No `candidates` on purpose — the no-picks log guard above must still hold while the track
+  // record (which lives on `history`) is graded.
+  picks: { ts: '2026-07-01', date: 'July 1, 2026', history: PK_HISTORY, grades: PK_GRADES_PRIOR },
   recorded: {
-    // v140 FMP rotation clock: BBB was refreshed by the ext providers on a previous day. This run's
+    // v141 FMP rotation clock: BBB was refreshed by the ext providers on a previous day. This run's
     // ext sidecars cover AAA only, and the Robinhood synth rebuilds BBB's overview — the stamp must
     // SURVIVE that, or BBB reads as never-refreshed and jumps the rotation queue ahead of names that
     // genuinely have never been covered.
@@ -162,7 +191,7 @@ const prior = {
   // av last landed data on an earlier day and does NOT run this run — its stamp must survive, or the
   // once/day gate would clear itself and re-fetch on the very next run.
   fetchDays: { av: '2026-07-30' },
-  // v140 FMP rotation clock: BBB was refreshed by the ext providers on a previous day. This run's
+  // v141 FMP rotation clock: BBB was refreshed by the ext providers on a previous day. This run's
   // ext sidecars cover AAA only, and the RH-synth path rebuilds BBB's overview — the stamp must
   // SURVIVE that, or BBB reads as never-refreshed and jumps the rotation queue ahead of names that
   // genuinely have never been covered.
@@ -268,7 +297,7 @@ try {
   eq('interpolated:false is not written', bar0.interpolated, undefined);
   eq('unfetched symbol hist carries forward', out.hist.day.BBB.length, 5);
   eq('month hist carries forward', out.hist.month.AAA.length, 3);
-  // v140: the 7-bar tail glues onto the 150-bar carried series (3 dates overlap, 4 are new).
+  // v141: the 7-bar tail glues onto the 150-bar carried series (3 dates overlap, 4 are new).
   {
     const tt = out.hist.day.TTT;
     eq('a 7-bar tail merges onto the carried series instead of replacing it', tt.length, 154);
@@ -282,6 +311,25 @@ try {
   eq('no-picks run still publishes (log guard)', stdout.includes('no picks'), true);
   eq('social sidecar reused (no live fetch)', stdout.includes('reused picks-build fetch'), true);
   eq('social shaped from sidecar', out.social.tickers.AAA.tracked, true);
+
+  // ── Track record: graded + frozen in the producer (2026-09-09) ──────────────────────────────
+  const G = out.picks.grades, byS = Object.fromEntries((G.episodes || []).map((e) => [e.sym, e]));
+  eq('picks graded into the snapshot', (G.episodes || []).length, 3);
+  eq('an episode whose bars reach resolves on merit', byS.GRD && byS.GRD.status, 'TP1');
+  eq('a resolved episode returns at its EXIT, not marked to today', byS.GRD && byS.GRD.ret, 10);
+  // THE assertion this file exists for: "unmeasured" cannot be faked by a symbol with fresh bars.
+  eq('a stale series is UNMEASURED, never open', byS.STL && byS.STL.status, 'UNMEASURED');
+  eq('an unmeasured episode carries NO return', byS.STL && byS.STL.ret, null);
+  eq('the unmeasured name is listed for refetch', (G.universe || []).includes('STL'), true);
+  eq('a resolved name is NOT refetched (the list drains)', (G.universe || []).includes('GRD'), false);
+  eq('a frozen outcome survives with no bars at all', byS.FRZ && byS.FRZ.status, 'TP2');
+  eq('frozen outcomes are flagged as carried', byS.FRZ && byS.FRZ.frozen, true);
+  eq('hit rate counts resolved only', G.stats.hitRate, 100);
+  eq('unmeasured is counted apart from open', [G.stats.unmeasured, G.stats.open], [1, 0]);
+  // The run log must SAY the record is incomplete — an ungraded episode is a fetch problem upstream,
+  // and this line is the only place it surfaces on a scheduled run. (The louder console.warn naming
+  // the symbols goes to stderr; this asserts the stdout summary the run log keeps.)
+  eq('the run log states what it could not grade', /picks track record:.*1 unmeasured/.test(stdout), true);
 
   const alerts = JSON.parse(readFileSync(join(RAW, 'alerts.json'), 'utf8')).alerts;
   eq('day-move crossing alert fired for held name', alerts.map((a) => a.kind + ':' + a.symbol), ['day-move:AAA']);
@@ -380,7 +428,7 @@ try {
   // cleared the stamp the next run would re-fetch and the gate would never hold.
   const today = new Date(out.generatedAt).toISOString().slice(0, 10);
   eq('extfund stamp set when fresh sidecars landed', out.fetchDays.extfund, today);
-  // v140: the ext providers' per-symbol refresh clock (drives the FMP rotation).
+  // v141: the ext providers' per-symbol refresh clock (drives the FMP rotation).
   {
     const ovOf = (sym) => {
       const e = Object.values(out.recorded).find((v) => {

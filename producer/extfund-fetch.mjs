@@ -42,7 +42,7 @@ if (await alreadyFetchedToday('extfund', todayET, fetchedFile)) {
   process.exit(0);
 }
 
-// --- pacing (v140) -------------------------------------------------------------------------------
+// --- pacing (v141) -------------------------------------------------------------------------------
 // Finnhub is 60 calls/minute and now covers the WHOLE Analyze bench (2 calls/symbol, ~180 names), so
 // the old fire-and-hope loop would trip the limit within seconds. This is a sliding-window limiter,
 // not a fixed sleep: it only waits when the last minute is actually full, so a slow provider costs
@@ -121,7 +121,7 @@ function nearestEstimate(rows) {
 
 const writeJSON = (f, o) => writeFileSync(f, JSON.stringify(o));
 
-// --- who gets covered today (v140) ---------------------------------------------------------------
+// --- who gets covered today (v141) ---------------------------------------------------------------
 // Cover was `coverFromRaw` — the top ~14 holdings by value, i.e. the ALPHA VANTAGE cover, borrowed
 // because these providers were bolted on beside AV. But they are not on AV's 25/day budget, and the
 // consequence of the narrow list was that every bench name the Analyze tab can be asked about had

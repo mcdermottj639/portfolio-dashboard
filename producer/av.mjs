@@ -97,7 +97,7 @@ export function coverFromRaw(rawDir) {
   return valued.slice(0, OVERVIEW_COVER).map((p) => p.symbol);
 }
 
-// --- the WIDE cover (v140) ---------------------------------------------------------------------
+// --- the WIDE cover (v141) ---------------------------------------------------------------------
 // `coverFromRaw` above is the ALPHA VANTAGE cover and stays exactly as it was: AV's free tier is
 // 25 calls/day, so its cover has to be the top handful of holdings and nothing more.
 //

@@ -58,7 +58,7 @@ XOM                         (Energy)
 ```
 (`producer/leaders.mjs` `LEADER_SYMBOLS` is the source of truth. No historicals needed — quotes only.)
 
-**Historicals symbols are NOT hand-computed any more (v140).** Run `node producer/hist-plan.mjs` and
+**Historicals symbols are NOT hand-computed any more (v141).** Run `node producer/hist-plan.mjs` and
 fetch exactly the batches it prints. **Run it AFTER the positions rows have been written** — it reads
 `raw/positions.json` + `raw/agentic-positions.json` for the live half of the bench (a missing file only
 shrinks the list, never breaks it). It unions holdings (both accounts) → the agentic target →
@@ -119,9 +119,24 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `Robinhood · get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
    | `Robinhood · get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
    | `Robinhood · get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
-   | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI **+ the picks grading universe**] }` | `producer/raw/quotes.json` | EVERY-RUN |
    | `Robinhood · get_equity_quotes` | `{ symbols: [each QUOTES batch `hist-plan.mjs` prints] }` | `producer/raw/quotes-bench-<n>.json` | **FETCH_ALL only** |
    | `Robinhood · get_equity_historicals` | `{ symbols: […], interval, start_time }` — **exactly the batches `node producer/hist-plan.mjs` prints** | `producer/raw/hist-day-tail-<n>.json`, `hist-day-full-<n>.json`, `hist-month-<n>.json` | **FETCH_ALL only** |
+
+   > **The picks grading universe** = `node producer/pickgrade.mjs --symbols` (a comma list, possibly
+   > EMPTY — then add nothing). These are the archived Daily Picks whose outcome is **still being
+   > graded**: the Track Record card can only say "hit its target" or "stopped out" for a name whose
+   > daily closes we actually kept receiving, and `data.hist.day` goes **stale per symbol** — the
+   > rotation only bar-fetches today's holdings/markets/candidates, so a pick's series used to freeze
+   > within days of the scan that named it. On 2026-09-08 that left **12 of 44 episodes graded over
+   > ZERO bars** and the card reporting a **0% hit rate** it had no evidence for. The list is small and
+   > **SELF-DRAINING** — a resolved outcome is frozen into the snapshot and never asks for a price
+   > again, and an episode past its 60-day horizon drops out — so it does not grow without bound
+   > (capped at 30 either way). **`hist-plan.mjs` folds this list into the historicals batches it
+   > prints** (it reads the same committed snapshot, and the list sits right after holdings + target in
+   > its priority order), so you never add it to a historicals call by hand — only the EVERY-RUN quotes
+   > row above still takes it explicitly. If it is ever skipped nothing breaks: those episodes simply
+   > report "can't be graded" instead of a made-up outcome, and the build log says which names it wanted.
    | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
@@ -266,7 +281,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    - "all market symbols" = the `MARKET_SYMBOLS` list above (indexes + risk gauges + sectors).
    - Historicals symbols and batch sizes come from `node producer/hist-plan.mjs` — do not
      hand-compute a "top 15 holdings" list any more. `build-data.mjs` merges all `hist-day*.json` /
-     `hist-month*.json` by symbol, and since v140 it merges at the BAR level (`histbars.mergeBars`),
+     `hist-month*.json` by symbol, and since v141 it merges at the BAR level (`histbars.mergeBars`),
      so a tail batch is glued onto the series already held rather than replacing it.
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
