@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, copyFileSync, existsSync, unlinkSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { avKey } from './av.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -28,6 +29,12 @@ const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.strin
 
 const q = (last, prev) => ({ last_trade_price: String(last), adjusted_previous_close: String(prev), previous_close: String(prev) });
 const bars = (n, base) => Array.from({ length: n }, (_, i) => ({ begins_at: `2026-06-${10 + i}T13:30:00Z`, close_price: String(base + i), interpolated: false }));
+// A dated run of daily bars starting `from` (YYYY-MM-DD), one calendar day apart — needed for the
+// v140 tail-merge fixture, where the series is long enough to cross a month boundary.
+const dayBars = (n, from, base) => Array.from({ length: n }, (_, i) => {
+  const d = new Date(`${from}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + i);
+  return { begins_at: `${d.toISOString().slice(0, 10)}T13:30:00Z`, close_price: String(base + i), interpolated: false };
+});
 
 const FIXTURES = {
   // The self-directed account. `total_value` is the account's EQUITY (v116) — equity_value is gross
@@ -40,6 +47,10 @@ const FIXTURES = {
   'quotes-1.json': { data: { results: [{ symbol: 'AAA', ...q(108, 99) }] } },
   // Fresh day-hist returns AAA with EMPTY bars — must not clobber the carried series.
   'hist-day-1.json': { data: { results: [{ symbol: 'AAA', bars: [] }] } },
+  // v140 TAIL MERGE. TTT carries a 150-bar series forward from the prior snapshot; this run fetches
+  // only a 7-bar TAIL (3 dates it already holds + 4 genuinely new). The old whole-array spread would
+  // have replaced 150 bars with 7 — the wide bench is only affordable because this no longer happens.
+  'hist-day-2.json': { data: { results: [{ symbol: 'TTT', bars: dayBars(7, '2026-05-29', 2147) }] } },
   // Sidecar as picks-build would leave it — build-data must reuse it (no live ApeWisdom fetch).
   'social-pages.json': { asOf: '2026-07-02T14:00:00.000Z', source: 'apewisdom', rows: [
     { ticker: 'AAA', name: 'Aaa Inc', rank: '12', mentions: '50', mentions_24h_ago: '40' },
@@ -104,8 +115,17 @@ const prior = {
   generatedAt: new Date(Date.now() - 24 * 3600e3).toISOString(),
   generatedAtLabel: 'test prior',
   quotes: { AAA: q(100, 99), BBB: q(55, 54), SPY: q(660, 655) },
-  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: bars(5, 600) }, month: { AAA: bars(3, 80) } },
-  recorded: {},
+  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: bars(5, 600), TTT: dayBars(150, '2026-01-02', 1000) }, month: { AAA: bars(3, 80) } },
+  recorded: {
+    // v140 FMP rotation clock: BBB was refreshed by the ext providers on a previous day. This run's
+    // ext sidecars cover AAA only, and the Robinhood synth rebuilds BBB's overview — the stamp must
+    // SURVIVE that, or BBB reads as never-refreshed and jumps the rotation queue ahead of names that
+    // genuinely have never been covered.
+    [avKey('COMPANY_OVERVIEW', { symbol: 'BBB' })]: { structuredContent: {
+      // Deliberately NOT AV-rich (no ForwardPE/EPS/RevGrowth), so the existing accumulation guard
+      // does NOT fire and the carry-forward of the stamp itself is what is being exercised.
+      Symbol: 'BBB', Sector: 'Technology', PERatio: '19', _extAsOf: '2026-08-01' } },
+  },
   agentic: {
     asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), cash: 50, buyingPower: 50, equity: 1050,
     positions: [{ symbol: 'AAA', qty: 10, avgCost: 95, px: 100, value: 1000 }],
@@ -142,6 +162,11 @@ const prior = {
   // av last landed data on an earlier day and does NOT run this run — its stamp must survive, or the
   // once/day gate would clear itself and re-fetch on the very next run.
   fetchDays: { av: '2026-07-30' },
+  // v140 FMP rotation clock: BBB was refreshed by the ext providers on a previous day. This run's
+  // ext sidecars cover AAA only, and the RH-synth path rebuilds BBB's overview — the stamp must
+  // SURVIVE that, or BBB reads as never-refreshed and jumps the rotation queue ahead of names that
+  // genuinely have never been covered.
+
   // BBB was scored on an earlier run and is NOT re-fetched this run — it must carry forward.
   flow: { asOf: '2026-07-01', symbols: {
     BBB: { sym: 'BBB', asOf: '2026-07-01', flow: { score: 6.1, coverage: ['revision', 'insider'], components: { revision: 7, insider: 4.8 } } },
@@ -217,6 +242,11 @@ try {
   // A fresh ext-fund sidecar this run → the extfund fetch-day stamp must be set to today.
   mkdirSync(EXTDIR, { recursive: true });
   writeFileSync(join(EXTDIR, 'overview-AAA.json'), JSON.stringify({ structuredContent: { Symbol: 'AAA', EPS: '4.20', ForwardPE: '18.5' } }));
+  // BBB gets NO ext sidecar this run but IS rebuilt by the Robinhood synth below, so its carried
+  // `_extAsOf` is the thing under test.
+  writeFileSync(join(RAW, 'holdings-fund.json'), JSON.stringify({ data: { results: [
+    { symbol: 'BBB', sector: 'Technology', pe_ratio: '20', market_cap: '1000000' },
+  ] } }));
 
   // PF_PASSPHRASE stripped → plaintext in, plaintext out (dev mode). Throws on non-zero exit —
   // which is itself the regression test for the old unguarded data.picks.candidates.length crash.
@@ -238,6 +268,15 @@ try {
   eq('interpolated:false is not written', bar0.interpolated, undefined);
   eq('unfetched symbol hist carries forward', out.hist.day.BBB.length, 5);
   eq('month hist carries forward', out.hist.month.AAA.length, 3);
+  // v140: the 7-bar tail glues onto the 150-bar carried series (3 dates overlap, 4 are new).
+  {
+    const tt = out.hist.day.TTT;
+    eq('a 7-bar tail merges onto the carried series instead of replacing it', tt.length, 154);
+    eq('…with no duplicated dates', tt.length, new Set(tt.map((b) => String(b.t ?? b.begins_at).slice(0, 10))).size);
+    eq('…sorted ascending', tt.map((b) => String(b.t).slice(0, 10)).join() === [...tt.map((b) => String(b.t).slice(0, 10))].sort().join(), true);
+    eq('…the fresh bar wins its shared date', Number(tt[147].c ?? tt[147].close_price), 2147);
+    eq('…and the head of the carried series is untouched', Number(tt[0].c ?? tt[0].close_price), 1000);
+  }
   eq('fresh quote wins', out.quotes.AAA.last_trade_price, '108');
   eq('missing quote carries forward (no $0)', out.quotes.BBB.last_trade_price, '55');
   eq('no-picks run still publishes (log guard)', stdout.includes('no picks'), true);
@@ -341,6 +380,20 @@ try {
   // cleared the stamp the next run would re-fetch and the gate would never hold.
   const today = new Date(out.generatedAt).toISOString().slice(0, 10);
   eq('extfund stamp set when fresh sidecars landed', out.fetchDays.extfund, today);
+  // v140: the ext providers' per-symbol refresh clock (drives the FMP rotation).
+  {
+    const ovOf = (sym) => {
+      const e = Object.values(out.recorded).find((v) => {
+        const o = v && (v.structuredContent && typeof v.structuredContent === 'object' ? v.structuredContent : (v.Symbol ? v : null));
+        return o && o.Symbol === sym;
+      });
+      return e && (e.structuredContent || e);
+    };
+    eq('an ext-refreshed overview is stamped with today', ovOf('AAA')._extAsOf, today);
+    eq('…and the stamp does not disturb the fields the consumer reads', ovOf('AAA').ForwardPE, '18.5');
+    eq('a prior stamp survives a run that rebuilt the overview without ext coverage',
+      ovOf('BBB')._extAsOf, '2026-08-01');
+  }
   eq('av stamp carried forward when av did not run', out.fetchDays.av, '2026-07-30');
 
   // Blocked sells (v126) — the reason a planned exit did NOT happen has to survive to the consumer.
@@ -366,7 +419,7 @@ try {
   if (hadTicket) { copyFileSync(TBAK, TICKET); unlinkSync(TBAK); } else { try { unlinkSync(TICKET); } catch {} }
   // Same for the owner overlay — it is committed, so losing it would silently drop 13 recovered records.
   if (hadOverlay) { copyFileSync(OBAK, OVERLAY); unlinkSync(OBAK); }
-  for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json'), join(EXTDIR, 'overview-AAA.json')]) { try { unlinkSync(p); } catch {} }
+  for (const p of [...fixturePaths, join(RAW, 'alerts.json'), join(FLOWDIR, 'AAA.json'), join(FLOWDIR, '_polflow.json'), join(EXTDIR, 'overview-AAA.json'), join(RAW, 'holdings-fund.json')]) { try { unlinkSync(p); } catch {} }
 }
 
 console.log(fail ? `\n${fail} FAILED (${pass} passed)` : `all ${pass} checks passed ✅`);

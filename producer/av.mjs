@@ -96,3 +96,26 @@ export function coverFromRaw(rawDir) {
   valued.sort((a, b) => b.val - a.val);
   return valued.slice(0, OVERVIEW_COVER).map((p) => p.symbol);
 }
+
+// --- the WIDE cover (v140) ---------------------------------------------------------------------
+// `coverFromRaw` above is the ALPHA VANTAGE cover and stays exactly as it was: AV's free tier is
+// 25 calls/day, so its cover has to be the top handful of holdings and nothing more.
+//
+// The supplementary providers are not on that budget. Finnhub is 2 calls/symbol at 60/min with no
+// daily cap we've hit, and FMP is ~250/day, so between them the whole Analyze bench is affordable —
+// Finnhub every day, FMP on a rotation. That matters because the Analyze tab's fundamentals
+// sub-score (`_fundScore`) abstains below two inputs, so a bench name with no overview at all gets
+// a technicals-only read while a covered one gets the full picture. Widening this list is the
+// cheapest half of "analyze more names, more accurately": it is CODE-ONLY — `run.mjs` calls
+// `extfund-fetch.mjs` with no arguments and nothing in PRODUCER.md or any Routine prompt names
+// these symbols.
+//
+// Order matters, because FMP can only afford part of it: value-ranked holdings first (the AV cover),
+// then everything else held, then the target, then the static bench.
+export function wideCover(rawDir, bench) {
+  const seen = new Set(), out = [];
+  const push = (list) => { for (const s of list || []) { const t = String(s || '').trim().toUpperCase(); if (t && !seen.has(t)) { seen.add(t); out.push(t); } } };
+  try { push(coverFromRaw(rawDir)); } catch { /* no raw positions yet — the bench still stands */ }
+  push(bench);
+  return out;
+}

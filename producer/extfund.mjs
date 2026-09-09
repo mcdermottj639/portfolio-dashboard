@@ -130,3 +130,58 @@ export function mergeOverviews(...sources) {
 // A normalized overview is "rich" (worth winning over the thin Robinhood synth + the accumulation
 // guard) when it carries at least one forward/growth/EPS field — same test build-data.mjs uses.
 export const isRich = (o) => !!(o && ('ForwardPE' in o || 'EPS' in o || 'QuarterlyRevenueGrowthYOY' in o));
+
+// --- FMP ROTATION (v140) -------------------------------------------------------------------------
+// Finnhub can cover the whole Analyze bench every day (2 calls/symbol at 60/min). FMP cannot: it is
+// 5 calls/symbol against a ~250/day free cap, i.e. ~50 symbols. So FMP ROTATES, and the rotation has
+// to be least-recently-refreshed-first or the same head of the list is refreshed forever while the
+// tail is never covered at all — the exact shape of the staleness bug this release exists to fix,
+// one layer up.
+//
+// The clock is `_extAsOf`, a YYYY-MM-DD stamp `build-data.mjs` writes onto every overview the
+// ext-fund path refreshed, and carries forward on runs where it didn't. It has to live IN the
+// snapshot rather than in a raw/ marker for the documented reason: `producer/raw/` is gitignored and
+// EMPTY on every scheduled run, so a marker-based rotation would reset to "nothing was ever
+// fetched" each day and re-cover the same first 45 names for the rest of the repo's life.
+//
+// A name with NO stamp sorts first: never-covered beats stale-covered, because it is the one whose
+// Analyze card is currently abstaining for want of two inputs.
+
+export const FMP_DAILY_SYMS = 45;      // 5 calls/symbol against a ~250/day free cap, with headroom
+
+/** Read each symbol's last ext-fund refresh date out of a decrypted snapshot's `recorded` block. */
+export function extAsOfMap(snapshot, symbols) {
+  const out = {};
+  const rec = (snapshot && snapshot.recorded) || null;
+  if (!rec) return out;
+  // The replay key is opaque here (av.mjs owns it), so scan the recorded values for overview objects
+  // and key by their own Symbol — which is exactly what makes this robust to a key-format change.
+  for (const v of Object.values(rec)) {
+    const o = v && typeof v === 'object'
+      ? (v.structuredContent && typeof v.structuredContent === 'object' ? v.structuredContent : (v.Symbol ? v : null))
+      : null;
+    if (!o || !o.Symbol || !o._extAsOf) continue;
+    out[String(o.Symbol).toUpperCase().replace(/-/g, '.')] = String(o._extAsOf);
+    out[String(o.Symbol).toUpperCase()] = String(o._extAsOf);
+  }
+  if (!Array.isArray(symbols)) return out;
+  const wanted = {};
+  for (const s of symbols) { const k = String(s).toUpperCase(); if (out[k]) wanted[k] = out[k]; }
+  return wanted;
+}
+
+/**
+ * The next `limit` symbols FMP should cover: never-refreshed first, then oldest stamp first, with
+ * the caller's own order (holdings → target → bench) as the tie-break so a fresh day still starts
+ * with the account's own money.
+ */
+export function fmpRotation(symbols, asOfMap = {}, limit = FMP_DAILY_SYMS) {
+  const rows = (symbols || []).map((s, i) => ({ sym: String(s).toUpperCase(), i, asOf: asOfMap[String(s).toUpperCase()] || null }));
+  rows.sort((a, b) => {
+    if (!a.asOf && b.asOf) return -1;
+    if (a.asOf && !b.asOf) return 1;
+    if (a.asOf && b.asOf && a.asOf !== b.asOf) return a.asOf < b.asOf ? -1 : 1;
+    return a.i - b.i;
+  });
+  return rows.slice(0, Math.max(0, limit)).map((r) => r.sym);
+}

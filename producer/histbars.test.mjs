@@ -1,5 +1,5 @@
 // producer/histbars.test.mjs — bar compaction (see histbars.mjs for why it exists).
-import { compactBar, compactSeries, compactHist } from './histbars.mjs';
+import { compactBar, compactSeries, compactHist, mergeBars, mergeHist } from './histbars.mjs';
 import { twrSeries, benchSeries } from './drawdown.mjs';
 import { spyClosesFrom } from './maindecisions.mjs';
 
@@ -134,5 +134,61 @@ const after = JSON.stringify(cmpSeries).length;
 console.log(`  ..  ${before} → ${after} bytes (${(100 - (100 * after) / before).toFixed(0)}% smaller)`);
 ok('saves at least 45% on the real bar shape', after < before * 0.55);
 
+
+// --- TAIL MERGE (v140) -------------------------------------------------------------------------
+// The whole point of the wide bench: a 7-bar tail must glue onto a series we already hold, without
+// losing anything, without duplicating a date, and without churning the snapshot on a re-run.
+console.log('histbars — mergeBars');
+{
+  const day = (d, c, extra) => ({ t: `2026-0${d.slice(0,1)}-${d.slice(1)}T00:00:00Z`, c, ...(extra || {}) });
+  const prior = [day('601', 10), day('602', 11), day('603', 12)];
+
+  // 1. A tail that overlaps by one bar: the series grows by exactly the NEW dates.
+  const fresh = [day('603', 12.5), day('604', 13), day('605', 14)];
+  const m = mergeBars(prior, fresh);
+  eq('tail merge keeps prior head and appends the new dates', m.map((b) => b.t.slice(0, 10)),
+    ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05']);
+  eq('fresh wins the shared date', m[2].c, 12.5);
+  eq('no duplicate dates', m.length, new Set(m.map((b) => b.t.slice(0, 10))).size);
+
+  // 2. IDEMPOTENT — build-data re-runs this over its own output every hour.
+  eq('merge(merge(x)) === merge(x)', mergeBars(m, fresh), m);
+  eq('merging a series with itself is a no-op', mergeBars(m, m), m);
+  eq('an empty fresh fetch leaves the series alone', mergeBars(prior, []), prior);
+  eq('no prior at all yields the fresh tail', mergeBars(undefined, fresh), fresh);
+
+  // 3. A SHORT/whole-range fetch must never truncate. This is the case the old whole-array spread
+  //    got wrong: a fetch that came back short replaced the series and the history was gone.
+  const short = [day('604', 13), day('605', 14)];
+  eq('a fetch shorter than the series we hold cannot shorten it', mergeBars(prior, short).length, 5);
+  const full = [day('601', 9), day('602', 9.5), day('604', 13)];
+  const fm = mergeBars(prior, full);
+  eq('a full refetch wins every date it reports', [fm[0].c, fm[1].c], [9, 9.5]);
+  eq('…and a date only PRIOR holds survives (a gap is data we own, not data to discard)',
+    fm.map((b) => b.t.slice(0, 10)), ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04']);
+
+  // 4. Sorting + the placeholder/live rules.
+  eq('output is sorted ascending regardless of input order',
+    mergeBars([day('605', 14), day('601', 10)], [day('603', 12)]).map((b) => b.c), [10, 12, 14]);
+  const withInterp = mergeBars([day('601', 10), day('602', 11, { interpolated: true })], [day('603', 12)]);
+  eq('interpolated placeholders are kept exactly as today (readers filter them, not us)',
+    withInterp[1].interpolated, true);
+  eq('a live:true bar is dropped defensively — an intraday print is not a close',
+    mergeBars([day('601', 10), day('602', 99, { live: true })], [day('603', 12)]).map((b) => b.c), [10, 12]);
+
+  // 5. Compaction still sees every bar exactly once, and its invariants are untouched.
+  eq('merge then compact preserves the merged length', compactSeries(m).length, m.length);
+  eq('compacting a merged series is idempotent', compactSeries(compactSeries(m)), compactSeries(m));
+
+  // 6. mergeHist: per interval, per symbol, with one-sided intervals passing through.
+  const h = mergeHist(
+    { day: { AAA: prior, BBB: prior }, month: { AAA: prior } },
+    { day: { AAA: fresh, CCC: fresh } });
+  eq('a freshly-fetched symbol merges', h.day.AAA.length, 5);
+  eq('an unfetched symbol carries forward untouched', h.day.BBB.length, 3);
+  eq('a brand-new symbol is added', h.day.CCC.length, 3);
+  eq('an interval with no fresh fetch at all carries forward', h.month.AAA.length, 3);
+  eq('mergeHist is idempotent', mergeHist(h, {}), h);
+}
 console.log(`\nhistbars: ${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -216,6 +216,15 @@ Only the third paragraph changed from the version live since 2026-07-28; the oth
 byte-identical. It replaces the false "never use cp, mv, or **shell variables**" cause with the real
 one (copying out of `/root/.claude/projects/…`), names the spill-to-file mechanism that leads an
 agent there, and adds the subagent rule.
+
+**KNOWN DIVERGENCE, harmless, left in place deliberately (v140).** The third paragraph says "fetch
+historicals in batches of 3 symbols or fewer", while `PRODUCER.md` now says to run
+`node producer/hist-plan.mjs` and use the batches it prints — where a **tail** batch carries 8 symbols
+(a 7-bar tail is ~1/20th of a YTD series, so the payload is smaller than one 3-symbol YTD call). This
+prompt is `created_via: http_api`, so a session **cannot** edit it; only the owner can, in the
+claude.ai Routine UI. It is not worth a re-paste: the conflict degrades in the SAFE direction — an
+agent that honours the stricter ≤3 simply splits each tail into three calls and fetches exactly the
+same symbols. Fold the wording in whenever this prompt is next re-pasted for another reason.
 </details>
 
 **A Routine created from a session INHERITS that session's connectors — this is the workaround for

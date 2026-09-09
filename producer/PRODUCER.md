@@ -58,10 +58,27 @@ XOM                         (Energy)
 ```
 (`producer/leaders.mjs` `LEADER_SYMBOLS` is the source of truth. No historicals needed — quotes only.)
 
-Symbols for **day** history (YTD): top 15 holdings by value + every market symbol above.
-Symbols for **month** history (5Y stats): every market symbol above **+ your top 15 holdings**
-(the Analyze tab's Multi-Timeframe card uses monthly bars for the holding's monthly trend row;
-without them it falls back to the 200-day daily average).
+**Historicals symbols are NOT hand-computed any more (v140).** Run `node producer/hist-plan.mjs` and
+fetch exactly the batches it prints. **Run it AFTER the positions rows have been written** — it reads
+`raw/positions.json` + `raw/agentic-positions.json` for the live half of the bench (a missing file only
+shrinks the list, never breaks it). It unions holdings (both accounts) → the agentic target →
+`MARKET_SYMBOLS` → `LEADER_SYMBOLS` → the self-directed bench → the research bench → VTI/GLDM
+(`producer/analyze-universe.mjs`, ~181 static names), reads the committed snapshot to see how far
+each symbol's series already reaches, and splits the work three ways:
+
+- **tail** — a series only a few days behind: ~7 bars, **8 symbols/call**, glued onto what we already
+  hold by `histbars.mergeBars`. This is what keeps the whole bench fresh cheaply.
+- **full** — a series we don't hold, or one too stale for a tail to bridge without leaving a gap:
+  YTD, **≤3 symbols/call**, capped at 30 symbols per run in priority order (the bench seeds over
+  several FETCH_ALL days; the plan prints how many remain).
+- **month** — 5Y monthly, **≤3 symbols/call**, capped at 15 per run. The Analyze tab's
+  Multi-Timeframe card uses monthly bars for the holding's monthly trend row; without them it falls
+  back to the 200-day daily average.
+
+It also prints the **quotes bench** batches, so every name the Analyze tab can be asked about carries
+a live price. Do not substitute your own symbol list — the old "top 15 holdings by value" rotation is
+exactly why 142 of 191 daily series were stale on 2026-09-08, and a stale series does not lag, it
+stops (usually at a high) and flips the direction of an Analyze call ~8% of the time at 10 stale bars.
 
 ## Steps
 
@@ -103,8 +120,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `Robinhood · get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
    | `Robinhood · get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
    | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI] }` | `producer/raw/quotes.json` | EVERY-RUN |
-   | `Robinhood · get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
-   | `Robinhood · get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
+   | `Robinhood · get_equity_quotes` | `{ symbols: [each QUOTES batch `hist-plan.mjs` prints] }` | `producer/raw/quotes-bench-<n>.json` | **FETCH_ALL only** |
+   | `Robinhood · get_equity_historicals` | `{ symbols: […], interval, start_time }` — **exactly the batches `node producer/hist-plan.mjs` prints** | `producer/raw/hist-day-tail-<n>.json`, `hist-day-full-<n>.json`, `hist-month-<n>.json` | **FETCH_ALL only** |
    | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
@@ -233,9 +250,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    >   either here.)
    > - **Save every result with the `Write` tool**, writing the JSON straight to its path (e.g.
    >   `Write → producer/raw/quotes.json`). Inline-returned results save this way with no prompt.
-   > - **Fetch historicals in ≤3-symbol batches** so each result comes back **inline** (small
-   >   enough to read) instead of being auto-saved to a temp file you'd have to copy. Then `Write`
-   >   each batch to `hist-day-1.json`, `hist-day-2.json`, … / `hist-month-1.json`, …
+   > - **Fetch historicals in the batches `node producer/hist-plan.mjs` prints**, and `Write` each
+   >   result to the exact filename on its line. The planner already applies the size rule: **full
+   >   YTD and monthly batches are ≤3 symbols**, while a **tail batch carries 8** — the constraint is
+   >   PAYLOAD SIZE, not symbol count, and a 7-bar tail is ~1/20th of a YTD series, so eight symbols
+   >   of tail is smaller than one three-symbol YTD call.
    > - If a result is *still* too large to read inline, fetch a smaller batch — do **not** copy a
    >   temp file. Following this, a scheduled run completes with zero approval prompts.
 
@@ -245,10 +264,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      `get_indexes { symbols: "VIX" }` (or `search` asset_type `market_index`). `build-data.mjs`
      turns this quote into the macro card's VIX value — free, every run (AV's VIX is premium).
    - "all market symbols" = the `MARKET_SYMBOLS` list above (indexes + risk gauges + sectors).
-   - "top 15" = the 15 positions with the largest market value. Batch historicals **≤3 symbols
-     per call** (small → inline → Write, no temp-file copy), saving each as `hist-day-1.json`,
-     `hist-day-2.json`, … (and `hist-month-1.json`, … for the monthly series). `build-data.mjs`
-     merges all `hist-day*.json` / `hist-month*.json` by symbol.
+   - Historicals symbols and batch sizes come from `node producer/hist-plan.mjs` — do not
+     hand-compute a "top 15 holdings" list any more. `build-data.mjs` merges all `hist-day*.json` /
+     `hist-month*.json` by symbol, and since v140 it merges at the BAR level (`histbars.mergeBars`),
+     so a tail batch is glued onto the series already held rather than replacing it.
    - Save the **entire** tool result object as returned (the assembler unwraps
      `structuredContent` / `content[].text` automatically — do not hand-edit it).
 

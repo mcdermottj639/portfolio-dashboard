@@ -119,3 +119,87 @@ export function compactHist(hist) {
 export function histBytes(hist) {
   try { return JSON.stringify(hist || {}).length; } catch { return 0; }
 }
+
+// ---------------------------------------------------------------------------------------------
+// TAIL MERGE (v140). Separate concern from compaction, same module because both own the bar shape.
+//
+// WHY. `data.hist.day` only advanced for symbols in the day's fetch rotation, because build-data
+// merged historicals as a per-symbol WHOLE-ARRAY replace: a symbol was either re-fetched in full
+// (fresh array wins outright) or untouched (stale array carried forward verbatim). There was no
+// third option, so keeping ~230 bench names fresh meant re-fetching ~153 YTD bars for each of them
+// EVERY day — ~2.4MB added to an encrypted blob that is committed ~13x/day to a public repo and
+// cannot be delta-compressed. This function is the third option: fetch a 7-bar TAIL (~0.5KB/symbol)
+// and glue it onto the series we already hold, so a wide bench stays current for ~1/20th the bytes.
+//
+// THE RULE IS A UNION, AND IT IS DELIBERATELY STRICTER THAN THE BEHAVIOUR IT REPLACES.
+// Bars are keyed by their DATE (first 10 chars of `t`/`begins_at`), fresh wins on a collision, and
+// a bar that exists ONLY in prior is always kept. That last clause is the whole safety argument: a
+// whole-array replace silently TRUNCATES the series whenever a fetch comes back short (a bad
+// start_time, a broker hiccup, a partial page), and a truncated series is indistinguishable
+// downstream from a name that simply has less history. A union cannot lose data we already hold;
+// the worst it can do is keep a superseded placeholder in a gap, which every reader already skips
+// (`interpolated`) and which costs ~30 bytes.
+//
+// Interpolated bars are kept EXACTLY as today — the readers filter them, and dropping them here
+// would change what `hist` contains for reasons that have nothing to do with merging.
+//
+// `live:true` is dropped defensively. The consumer splices a live bar client-side (v111) and it is
+// never supposed to reach a snapshot; if one ever did, it would be an intraday print masquerading
+// as a close, and `gradePick`'s whole reason for filtering it is that a close is what grades a pick.
+//
+// IDEMPOTENT: mergeBars(x, x) === mergeBars(x, []) === normalize(x), so re-running it over its own
+// output every hour is a no-op — the same property compaction needs, for the same reason.
+//
+// It runs BEFORE compactHist in build-data, so compaction still sees every bar exactly once and its
+// four invariants are untouched.
+
+const barKey = (b) => {
+  const t = b && (b.t ?? b.begins_at);
+  return typeof t === 'string' && t.length >= 10 ? t.slice(0, 10) : null;
+};
+
+/** Drop the defensive cases, dedupe by date (last wins), sort ascending. Undated bars are kept, in
+ *  order, at the end — they cannot be placed on a timeline, and dropping them would be data loss. */
+function normalizeBars(bars) {
+  if (!Array.isArray(bars)) return bars;
+  const dated = new Map(); const undated = [];
+  for (const b of bars) {
+    if (b && b.live) continue;
+    const k = barKey(b);
+    if (k == null) { undated.push(b); continue; }
+    dated.set(k, b);
+  }
+  const keys = [...dated.keys()].sort();
+  return [...keys.map((k) => dated.get(k)), ...undated];
+}
+
+/**
+ * One symbol's series: prior ∪ fresh, fresh winning any shared date.
+ * Either side may be absent/non-array — the other is returned normalized.
+ */
+export function mergeBars(prior, fresh) {
+  const hasPrior = Array.isArray(prior) && prior.length;
+  const hasFresh = Array.isArray(fresh) && fresh.length;
+  if (!hasFresh) return hasPrior ? normalizeBars(prior) : (Array.isArray(fresh) ? normalizeBars(fresh) : normalizeBars(prior));
+  if (!hasPrior) return normalizeBars(fresh);
+  return normalizeBars([...prior, ...fresh]);   // fresh is second, so it wins every shared date
+}
+
+/**
+ * A whole `hist` block against the prior snapshot's, per interval and per symbol.
+ * Intervals present on only one side pass through. This REPLACES the old
+ * `{...prior.hist[iv], ...hist[iv]}` spread, which could only replace or carry forward whole series.
+ */
+export function mergeHist(priorHist, freshHist) {
+  const out = {};
+  const ivs = new Set([...Object.keys(priorHist || {}), ...Object.keys(freshHist || {})]);
+  for (const iv of ivs) {
+    const p = (priorHist && priorHist[iv]) || {};
+    const f = (freshHist && freshHist[iv]) || {};
+    if (typeof p !== 'object' || typeof f !== 'object') { out[iv] = f && Object.keys(f).length ? f : p; continue; }
+    const o = {};
+    for (const sym of new Set([...Object.keys(p), ...Object.keys(f)])) o[sym] = mergeBars(p[sym], f[sym]);
+    out[iv] = o;
+  }
+  return out;
+}

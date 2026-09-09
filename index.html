@@ -832,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v138'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v140'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5012,6 +5012,11 @@ window.switchTab=switchTab;
   'limited snapshot data': { tag:'Analyze', t:'Limited Snapshot Data', h:`
     <p>This name doesn't have enough captured history yet for the full analysis, so some cards are locked.</p>
     <p>The producer fetches heavy historical data once per day. A ticker outside your holdings/picks may only get partial coverage until the <b>next full run</b> records its daily bars. Nothing is broken — check back after the next morning scan.</p>` },
+  'stale history': { tag:'Analyze', t:'Stale History', h:`
+    <p>The price at the top of the page is <b>live</b>. The daily bars underneath it are not — the producer refreshes historicals once a day and only for the symbols in that day's rotation, so a name that rotated out keeps whatever series it had when it left.</p>
+    <p>That combination is worse than it sounds. Every moving average, momentum reading, support/resistance level and chart pattern would be measured from a series that <i>stopped moving</i> — and a series that stops tends to stop at its own high, which reads as a flawless setup. Walked forward over this snapshot's own history, a read on bars ~20 sessions stale points the <b>wrong way</b> 11% of the time, and at ~40 sessions 15%.</p>
+    <p>So the technical call is <b>withheld</b> rather than shaded. Price, fundamentals, your position and any Picks call still show. The next full producer run picks the name back up on its own — there is nothing to fix.</p>
+    <p>Bars 4–10 days old are the middle case: they are still scored, but confidence is marked down and the ticker carries an amber <b>⏳ bars N days old</b> badge.</p>` },
   'your position': { tag:'Analyze', t:'Your Position', h:`
     <p>If you already hold this ticker, this card grounds the analysis in <i>your</i> actual position — shares, average cost, current value, and unrealized P&amp;L.</p>
     <p>It changes the question from "is this a good stock?" to "what should <b>I</b> do with what I hold?" — add, trim, hold, or exit — and makes the levels below personally relevant.</p>` },
@@ -5687,7 +5692,50 @@ function renderAzShell(){
 }
 function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(s)runAnalysis(s); }
 window.azGo=azGo;
-function azBars(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}; const b=h[sym]||[]; return b.map(x=>parseFloat(x.close_price!=null?x.close_price:x.c)).filter(c=>c>0); }
+/* ─── Analyze-page history reader — the ONE gate between `data.hist.day` and every az* consumer ───
+   The Portfolio page has spliced the live quote onto its daily bars since v111, and the Plan page has
+   gated on bar AGE since v113. The Analyze page did neither: it read `hist.day` raw while taking
+   `price` from the live quote, so every level, moving average and momentum anchor could come from bars
+   that stopped moving weeks earlier. Backtested over this snapshot's own history (13,613 walk-forward
+   reads) that is not a lagging read, it is a WRONG one — a series stale by 20 bars flips the DIRECTION
+   of the call 11.2% of the time, by 40 bars 14.9%. So every reader goes through here:
+     • age ≤ AZ_SPLICE_MAX_DAYS ⇒ append the live quote as a final `{t,c,live:true}` bar (mirrors
+       spliceLiveBars; `gradePick` and the edge measurement both DROP `live` bars — they grade closes);
+     • age ≤ AZ_FRESH_DAYS ⇒ 'fresh' — read normally;
+     • age ≤ AZ_AGING_DAYS ⇒ 'aging' — still scored, but confidence is haircut and every card says so;
+     • staler ⇒ 'stale' — technicals are WITHHELD (hasTA false), the sdMomentum abstain, because a
+       stale series stops at its own high and therefore reads as a flawless setup (MU/WULF/NBIS, v113).
+   Unlike `spliceLiveBars` this is PER SYMBOL rather than atomic: nothing on this page aligns two series
+   by tail index (beta/correlation take their own `Math.min` overlap and both endpoints here are live
+   prices), and a per-symbol gate is what lets ONE stale name abstain instead of blinding the page. */
+const AZ_SPLICE_MAX_DAYS=5, AZ_FRESH_DAYS=3, AZ_AGING_DAYS=10;
+function _azDayAge(fromISO,toISO){ if(!fromISO||!toISO)return null;
+  const a=new Date(String(fromISO).slice(0,10)+'T00:00:00Z'), b=new Date(String(toISO).slice(0,10)+'T00:00:00Z');
+  if(isNaN(a)||isNaN(b))return null; return Math.round((b-a)/864e5); }
+function azHist(sym){
+  _azMemoCheck(); if(_azMemo.hist[sym])return _azMemo.hist[sym];
+  const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}, raw=h[sym]||[];
+  const bars=[];
+  for(const x of raw){
+    if(x&&x.interpolated)continue;                        // placeholder bars carry no information
+    const c=parseFloat(x&&x.close_price!=null?x.close_price:(x&&x.c));
+    if(!(c>0))continue;
+    bars.push({c, h:parseFloat(x.high_price!=null?x.high_price:(x.h!=null?x.h:c))||c,
+                  l:parseFloat(x.low_price!=null?x.low_price:(x.l!=null?x.l:c))||c,
+                  v:parseFloat(x.volume!=null?x.volume:(x.v!=null?x.v:0))||0,
+                  t:String(x.begins_at||x.t||'').slice(0,10)});
+  }
+  const asOf=_snapETDate(), lastT=bars.length?bars[bars.length-1].t:null, age=_azDayAge(lastT,asOf);
+  const q=azQuote(sym), price=q?parseFloat(q.last_trade_price||q.last_extended_hours_trade_price||q.adjusted_previous_close||0):0;
+  let spliced=false;
+  if(bars.length&&asOf&&age!=null&&age>0&&age<=AZ_SPLICE_MAX_DAYS&&price>0){ bars.push({c:price,h:price,l:price,v:0,t:asOf,live:true}); spliced=true; }
+  const quality=!bars.length?'none':age==null?'stale':age<=AZ_FRESH_DAYS?'fresh':age<=AZ_AGING_DAYS?'aging':'stale';
+  const gen=(window.__DATA&&window.__DATA.generatedAt)||null;
+  let quoteAge=null; try{ if(gen){ const t=new Date(gen).getTime(); if(isFinite(t))quoteAge=Math.max(0,(Date.now()-t)/36e5); } }catch(e){}
+  const out={bars,age,lastT,asOf,quality,spliced,fresh:quality==='fresh',quoteAge,price:price>0?price:null};
+  _azMemo.hist[sym]=out; return out;
+}
+function azBars(sym){ return azHist(sym).bars.map(b=>b.c); }
 function azQuote(sym){ const q=(window.__DATA&&window.__DATA.quotes)||{}; return q[sym]||null; }
 /* Pull an app recommendation for a symbol from today's Picks (so picks are analyzable even
    before the producer fetches their raw quote/history, and so the Analyze page can show the
@@ -5775,8 +5823,8 @@ function azUniverse(){
   return [...set.entries()].map(([sym,label])=>({sym,label})).sort((a,b)=>a.sym<b.sym?-1:1);
 }
 // Snapshot-scoped memo (beta/correlation loops are the expensive part) — keyed to data.generatedAt.
-let _azMemo={gen:'__init__',extra:{},corr:{},bookCorr:{}};
-function _azMemoCheck(){ let g=''; try{ g=(window.__DATA&&window.__DATA.generatedAt)||''; }catch(e){} if(_azMemo.gen!==g)_azMemo={gen:g,extra:{},corr:{},bookCorr:{}}; }
+let _azMemo={gen:'__init__',extra:{},corr:{},bookCorr:{},hist:{},edge:undefined};
+function _azMemoCheck(){ let g=''; try{ g=(window.__DATA&&window.__DATA.generatedAt)||''; }catch(e){} if(_azMemo.gen!==g)_azMemo={gen:g,extra:{},corr:{},bookCorr:{},hist:{},edge:undefined}; }
 // Implied vol for a symbol: prefer the live options book's IV, else an ATR-based realized-vol proxy.
 function azIV(a,x){
   let iv=null,src=null;
@@ -5790,62 +5838,267 @@ function azIV(a,x){
 }
 // Your live option contracts on this underlying (so the Options Play card can defer to real greeks).
 function azLiveOptions(sym){ try{ const o=(window.__DATA&&window.__DATA.options)||null; if(!o)return null; const mine=(o.positions||[]).filter(p=>p.underlying===sym); return mine.length?mine:null; }catch(e){ return null; } }
+/* ── The Analyze read, as PURE functions (A3/A4/A5, 2026-09-09) ───────────────────────────────────
+   Everything that decides the CALL lives below and touches no DOM, no window and no __DATA, so
+   `producer/analyze-core.test.mjs` can extract it verbatim and run it in node. `analyzeStock` is the
+   thin wrapper that gathers inputs (bars, quote, overview, pick) and calls it. */
+
+// Picks-engine fields are DISPLAY STRINGS ("+16.2%", "18.2 (ttm)", and the em-dash "—" when unscored),
+// so a truthy check is not a value check: `parseFloat('—')` is NaN, `NaN != null` is TRUE, and the
+// Valuation card printed a literal "Rev growth: NaN%". Numbers are parsed through here or not at all.
+function _azNum(v){ if(v==null)return null; if(typeof v==='number')return isFinite(v)?v:null;
+  const s=String(v).trim(); if(!s||s==='—'||s==='-'||s==='–'||s==='None'||s==='N/A')return null;
+  const m=s.match(/-?\d+(?:\.\d+)?/); if(!m)return null; const n=parseFloat(m[0]); return isFinite(n)?n:null; }
+
+/* The label state machine, as ONE pure function of the technical inputs — shared by `azCore` (the live
+   read) and `_azScanLabels` (the walk-forward measurement), so the "📏 Measured in this snapshot"
+   figures can never describe a different rule than the badge printed above them.
+   Re-gated 2026-09-09 after the backtest found the old five-way ladder was effectively BINARY:
+   `trendUp = price>sma20 && sma20>=sma50` called every routine short-MA pullback a downtrend (66% of
+   13,613 reads were "Caution — Downtrend"), "Oversold Bounce" fired 0 times in the whole sample
+   because `sma50` was never null so `trendUp` was never null, and "Hold / Watch" was unreachable.
+   Trend is now THREE-WAY against the 50-day with a buffer, "extended" is its own state rather than an
+   RSI>78 afterthought, and the oversold check runs FIRST so it can actually be reached. */
+function _azStateScore(st){
+  const rsi=st.rsi, sma20=st.sma20, sma50=st.sma50, mom20=st.mom20, price=st.price,
+        recHi=st.recHi, vol=st.vol, dayChg=st.dayChg, slope20=st.slope20;
+  let trend,trendBasis;
+  if(sma50!=null&&sma20!=null){ trendBasis='the 50-day average';
+    if(price>sma50&&sma20>=sma50*0.99)trend='up';
+    else if(price<sma50*0.97&&sma20<sma50)trend='down';
+    else trend='neutral'; }
+  else if(sma20!=null&&slope20!=null){ trendBasis='the 20-day slope (under 50 bars of history)';
+    trend=slope20>1?'up':slope20<-1?'down':'neutral'; }
+  else { trendBasis='too little history to call a trend'; trend='neutral'; }
+  const fromRecHi=(recHi>0&&price>0)?(price/recHi-1)*100:null;
+  const extended=(rsi!=null&&rsi>=70)||(sma20!=null&&price>=sma20*1.08)||(fromRecHi!=null&&fromRecHi>=-1&&mom20!=null&&mom20>=15);
+  const up=trend==='up', dn=trend==='down';
+  const pattern=_cl(50+(up?22:dn?-18:0)+((sma50!=null&&sma20!=null&&sma20>sma50)?8:-6)+(mom20!=null?_cl(mom20,-15,15):0),5,98);
+  const rsiGood=rsi==null?0:(rsi>=40&&rsi<=68?18:rsi<30?10:rsi>75?-15:0);
+  const signal=_cl(50+(up?16:dn?-14:0)+rsiGood+(dayChg!=null?_cl(dayChg*2,-10,10):0),5,98);
+  // riskT deliberately excludes beta: the measurement scan has no benchmark window per bar, and a
+  // label that cannot be reproduced offline cannot be measured. Beta still shapes the DISPLAYED risk.
+  const riskT=_cl(70-_cl((vol||0)*400,0,40)+((fromRecHi!=null&&fromRecHi<-10)?8:0)-((rsi!=null&&rsi>78)?15:0),5,95);
+  const setupTech=Math.round(pattern*0.4+signal*0.35+riskT*0.25);
+  let label,tone,conf;
+  if(rsi!=null&&rsi<30&&trend!=='down'){ label='Oversold Bounce'; tone='pos'; conf=_cl(setupTech,45,70); }
+  else if(up&&extended){ label='Extended — Wait for Pullback'; tone='neu'; conf=_cl(setupTech-8,35,70); }
+  else if(up&&setupTech>=55){ label='Buy Opportunity'; tone='pos'; conf=_cl(setupTech,55,88); }
+  else if(up){ label='Accumulate / Hold'; tone='pos'; conf=_cl(setupTech,45,75); }
+  else if(dn){ label='Caution — Downtrend'; tone='neg'; conf=_cl(100-setupTech,40,75); }
+  else { label='Hold / Watch'; tone='neu'; conf=_cl(setupTech,40,70); }
+  return {trend,trendBasis,extended,fromRecHi,pattern,signal,riskT,setupTech,label,tone,conf};
+}
+
+/* The whole technical read for one name. `opts` carries only what the caller already knows and this
+   function cannot derive: {dayChg, fund (0-100 or null), hi52}. Returns the state, the scores AND the
+   trade levels, so card and test see one object. */
+function azCore(closes,highs,lows,price,spyCloses,opts){
+  opts=opts||{};
+  const n=Array.isArray(closes)?closes.length:0;
+  const out={hasTA:false,rsi:null,sma20:null,sma50:null,mom20:null,recHi:null,recLo:null,vol:null,
+    atr:null,atrPct:null,beta:null,trend:null,trendBasis:null,trendUp:null,extended:false,fromRecHi:null,
+    pattern:45,signal:45,risk:50,setupTech:42,setup:42,label:'Limited Data',tone:'neu',conf:40,drivers:[],
+    price:null,entryLo:null,entryHi:null,stop:null,tp1:null,tp2:null,rr:null,rrOk:null,invalid:null};
+  if(!(price>0))return out;
+  let rsi=null,sma20=null,sma50=null,mom20=null,recHi=null,recLo=null,vol=null,atr=null,beta=null,st=null;
+  if(n>=20){
+    out.hasTA=true;
+    const H=(Array.isArray(highs)&&highs.length===n)?highs:closes, L=(Array.isArray(lows)&&lows.length===n)?lows:closes;
+    rsi=calcRSI(closes); sma20=_smaN(closes,20); sma50=n>=50?_smaN(closes,50):null;
+    mom20=n>21?(price/closes[n-21]-1)*100:null;
+    const rec=closes.slice(-Math.min(30,n)); recHi=Math.max.apply(null,rec); recLo=Math.min.apply(null,rec);
+    const rets=[]; for(let i=Math.max(1,n-20);i<n;i++)rets.push(closes[i]/closes[i-1]-1);
+    vol=_stdevN(rets);
+    let slope20=null; if(sma50==null&&n>=25){ const p=_smaN(closes.slice(0,n-5),20); if(p>0)slope20=(sma20/p-1)*100; }
+    let tr=0,cnt=0; for(let i=Math.max(1,n-14);i<n;i++){ const t=Math.max(H[i]-L[i],Math.abs(H[i]-closes[i-1]),Math.abs(L[i]-closes[i-1])); if(t>0){tr+=t;cnt++;} }
+    atr=cnt?tr/cnt:null;
+    beta=_betaSeries(closes,spyCloses,60);
+    st=_azStateScore({rsi,sma20,sma50,mom20,price,recHi,recLo,vol,dayChg:opts.dayChg!=null?opts.dayChg:null,slope20});
+    const risk=_cl(st.riskT-(beta!=null?_cl((beta-1)*12,-6,16):0),5,95);
+    const f=(opts.fund!=null&&isFinite(opts.fund))?opts.fund:null;
+    Object.assign(out,{rsi,sma20,sma50,mom20,recHi,recLo,vol,atr,beta,
+      atrPct:atr!=null?atr/price*100:null,
+      trend:st.trend,trendBasis:st.trendBasis,trendUp:st.trend==='up'?true:st.trend==='down'?false:null,
+      extended:st.extended,fromRecHi:st.fromRecHi,pattern:st.pattern,signal:st.signal,risk,
+      setupTech:st.setupTech,label:st.label,tone:st.tone,conf:st.conf,
+      setup:Math.round(f!=null?(st.pattern*0.34+st.signal*0.30+risk*0.21+f*0.15):(st.pattern*0.4+st.signal*0.35+risk*0.25))});
+    const dr=[];
+    dr.push(st.trend==='up'?'price is above '+st.trendBasis:st.trend==='down'?'price is below '+st.trendBasis:'price is sitting on '+st.trendBasis);
+    if(rsi!=null)dr.push('RSI '+Math.round(rsi)+(rsi<30?' — washed out':rsi>=70?' — stretched':rsi>=40&&rsi<=68?' — mid-range':' — warm'));
+    if(st.extended)dr.push('it is extended above its 20-day / recent high');
+    if(mom20!=null)dr.push('20-session momentum '+(mom20>=0?'+':'')+mom20.toFixed(1)+'%');
+    out.drivers=dr;
+  }
+  /* ── Levels (2026-09-09). Stop = the WIDER of 2×ATR and the recent swing low, then clamped to
+     [3%,10%] below price — the old `k=max(5%, vol×2.2)` put the MEDIAN stop 12.3% below entry and
+     52% of them past 12%, because it scaled up on exactly the volatile names the signal favours.
+     Targets come from STRUCTURE and are DECOUPLED from the stop: when tp1 is `price + k×(price−stop)`
+     a looser stop mechanically inflates the target, which is how tp1 hits paid a measured +0.23R
+     against a nominal 1.6–1.8R and the whole thing netted ≈0R on a 58.5% win rate. */
+  // Every level is derived from the DISPLAYED (2dp) price, so the clamp the card promises — a stop
+  // 3-10% below price — holds against the number actually on screen rather than an unrounded one.
+  const px=+price.toFixed(2), _atr=(atr!=null&&atr>0)?atr:px*0.02;
+  let stop=px-2.0*_atr;
+  if(recLo!=null&&recLo<px)stop=Math.max(stop,recLo*0.99);
+  stop=Math.round(_cl(stop,px*0.90,px*0.97)*100)/100;
+  if(stop<px*0.90)stop=Math.ceil(px*0.90*100)/100; if(stop>px*0.97)stop=Math.floor(px*0.97*100)/100;
+  const piv=[];
+  if(n>=10){ const seg=closes.slice(-Math.min(40,n));
+    for(let i=2;i<seg.length-2;i++) if(seg[i]>seg[i-1]&&seg[i]>seg[i-2]&&seg[i]>=seg[i+1]&&seg[i]>=seg[i+2])piv.push(seg[i]); }
+  const hi52=(opts.hi52!=null&&isFinite(opts.hi52)&&opts.hi52>0)?opts.hi52:null;
+  const above=piv.concat(recHi!=null?[recHi]:[],hi52!=null?[hi52]:[])
+    .filter(v=>isFinite(v)&&v>=px*1.03).sort((a,b)=>a-b);
+  const tp1=+(above.length?above[0]:px*1.06).toFixed(2);
+  const tp2=+Math.max(px+2*(tp1-px),(hi52!=null&&hi52>tp1)?hi52:0).toFixed(2);
+  const rr=(px-stop)>0?(tp1-px)/(px-stop):null;
+  Object.assign(out,{price:px,entryLo:+(px*0.985).toFixed(2),entryHi:px,stop,tp1,tp2,
+    rr:rr!=null?+rr.toFixed(2):null, rrOk:rr!=null?rr>=1.5:null, invalid:+(stop*0.997).toFixed(2)});
+  return out;
+}
+
+/* Walk-forward label scan over one close series with INCREMENTAL indicators — O(n) per symbol. The
+   live read recomputes every indicator from scratch, which is right for one name and impossible for
+   ~250 names × ~250 bars, so the state is carried forward: Wilder RSI as running averages, SMA20/50 as
+   rolling sums, the 30-bar high/low through monotonic deques, the 20-return variance as rolling Σr/Σr².
+   It must produce IDENTICAL labels to `azCore` — `analyze-core.test.mjs` asserts exactly that at random
+   indices, because a measurement of a different rule than the one on screen is worse than no
+   measurement at all. Returns the per-bar state objects (null where a bar can't be read). */
+function _azScanLabels(closes){
+  const n=Array.isArray(closes)?closes.length:0, out=new Array(n).fill(null);
+  if(n<21)return out;
+  const P=14; let ag=0,al=0;
+  for(let i=1;i<=P;i++){ const d=closes[i]-closes[i-1]; if(d>0)ag+=d; else al-=d; }
+  ag/=P; al/=P;
+  let s20=0,s50=0,rs=0,rss=0; const hiQ=[],loQ=[],sHist=[];
+  for(let i=0;i<n;i++){
+    if(i>P){ const d=closes[i]-closes[i-1]; ag=(ag*(P-1)+(d>0?d:0))/P; al=(al*(P-1)+(d<0?-d:0))/P; }
+    const rsi=i>=P+1?(al===0?100:100-100/(1+ag/al)):null;
+    s20+=closes[i]; if(i>=20)s20-=closes[i-20];
+    s50+=closes[i]; if(i>=50)s50-=closes[i-50];
+    const sma20=i>=19?s20/20:null, sma50=i>=49?s50/50:null;
+    if(i>=1){ const r=closes[i]/closes[i-1]-1; rs+=r; rss+=r*r;
+      if(i>=21){ const o=closes[i-20]/closes[i-21]-1; rs-=o; rss-=o*o; } }
+    while(hiQ.length&&closes[hiQ[hiQ.length-1]]<=closes[i])hiQ.pop(); hiQ.push(i); if(hiQ[0]<=i-30)hiQ.shift();
+    while(loQ.length&&closes[loQ[loQ.length-1]]>=closes[i])loQ.pop(); loQ.push(i); if(loQ[0]<=i-30)loQ.shift();
+    sHist.push(sma20); if(sHist.length>7)sHist.shift();
+    if(i<19)continue;
+    const cnt=Math.min(i,20), mean=rs/cnt, vr=rss/cnt-mean*mean, vol=Math.sqrt(vr>0?vr:0);
+    let slope20=null;
+    if(sma50==null&&sma20!=null&&i>=24){ const p=sHist[sHist.length-6]; if(p>0)slope20=(sma20/p-1)*100; }
+    out[i]=_azStateScore({rsi,sma20,sma50,mom20:i>=21?(closes[i]/closes[i-20]-1)*100:null,
+      price:closes[i],recHi:closes[hiQ[0]],recLo:closes[loQ[0]],vol,
+      dayChg:(closes[i]/closes[i-1]-1)*100,slope20});
+  }
+  return out;
+}
+
+/* ── 📏 Measured edge — does this call mean anything? (2026-09-09) ────────────────────────────────
+   Every label this page can print is walked forward over EVERY symbol's own recorded closes in this
+   snapshot and scored against what actually happened next (10 and 20 sessions), with alpha measured
+   against date-matched SPY. It exists because the first time the question was asked the answer was
+   uncomfortable: the old "Buy Opportunity" averaged −0.06% over the next 20 sessions against a +0.93%
+   baseline (−2.24pp vs SPY, across 169 distinct names) while "Caution — Downtrend" averaged +1.39%.
+   A score nobody has ever scored is a guess with a gauge around it.
+   Three things are load-bearing. (a) The reads OVERLAP — a 20-session window from consecutive days is
+   the same window shifted by one — so `n` is signal-DAYS, not independent trials, and the card says so
+   in those words; this is a description of the snapshot, never a p-value. (b) It measures CLOSES: the
+   spliced `live:true` bar is dropped, exactly as `gradePick` drops it, or an intraday print would
+   grade itself. (c) Below AZ_EDGE_MIN_N reads it reports "too few reads to measure" and adjusts
+   NOTHING — an unmeasured state must not be silently punished. */
+const AZ_EDGE_MIN_N=30, AZ_EDGE_H1=10, AZ_EDGE_H2=20;
+function azEdgeStats(){
+  _azMemoCheck(); if(_azMemo.edge!==undefined)return _azMemo.edge;
+  let res=null;
+  try{
+    const _now=()=>((typeof performance!=='undefined'&&performance.now)?performance.now():Date.now());
+    const t0=_now();
+    const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{};
+    const spy=azHist('SPY').bars.filter(b=>!b.live), spyC=spy.map(b=>b.c), spyIdx={};
+    for(let i=0;i<spy.length;i++)spyIdx[spy[i].t]=i;
+    const by={}; let reads=0, scanned=0;
+    for(const sym of Object.keys(h)){
+      const bars=azHist(sym).bars.filter(b=>!b.live);
+      if(bars.length<40+AZ_EDGE_H2)continue;
+      const c=bars.map(b=>b.c), lab=_azScanLabels(c), n=c.length; scanned++;
+      for(let i=20;i<n-AZ_EDGE_H2;i++){
+        const st=lab[i]; if(!st)continue;
+        const f10=c[i+AZ_EDGE_H1]/c[i]-1, f20=c[i+AZ_EDGE_H2]/c[i]-1;
+        if(!isFinite(f10)||!isFinite(f20))continue;
+        const e=by[st.label]||(by[st.label]={n:0,syms:{},f10:0,f20:0,hit:0,alpha:0,alphaN:0});
+        e.n++; e.syms[sym]=1; e.f10+=f10; e.f20+=f20; if(f20>0)e.hit++;
+        const si=spyIdx[bars[i].t];
+        if(si!=null&&si+AZ_EDGE_H2<spyC.length){ e.alpha+=f20-(spyC[si+AZ_EDGE_H2]/spyC[si]-1); e.alphaN++; }
+        reads++;
+      }
+    }
+    const byLabel={};
+    for(const k of Object.keys(by)){ const e=by[k];
+      byLabel[k]={label:k,n:e.n,syms:Object.keys(e.syms).length,
+        fwd10:+(e.f10/e.n*100).toFixed(2), fwd20:+(e.f20/e.n*100).toFixed(2),
+        hit20:Math.round(e.hit/e.n*100),
+        alpha20:e.alphaN>=Math.max(10,e.n*0.3)?+(e.alpha/e.alphaN*100).toFixed(2):null,
+        thin:e.n<AZ_EDGE_MIN_N}; }
+    const ms=Math.round(_now()-t0);
+    res={byLabel,reads,symbols:scanned,h1:AZ_EDGE_H1,h2:AZ_EDGE_H2,ms};
+    try{ console.debug('[azEdgeStats] '+reads+' reads / '+scanned+' symbols in '+ms+'ms'); }catch(e){}
+  }catch(e){ res=null; }
+  _azMemo.edge=res; return res;
+}
+// Confidence multiplier for an 'aging' series (4–10 days). Mirrors sdMomentum's SD_AGING_CONF idea:
+// still scored, never as loudly as a fresh read, and the badge says which it is.
+const AZ_AGING_CONF=0.8;
 function analyzeStock(sym){
-  const closes=azBars(sym), q=azQuote(sym), ov=azOverview(sym)||{}, pk=azPick(sym);
+  const HS=azHist(sym), ser=HS.bars, closes=ser.map(b=>b.c), q=azQuote(sym), ov=azOverview(sym)||{}, pk=azPick(sym);
   let price=q?parseFloat(q.last_trade_price||q.adjusted_previous_close||0):0;
   if(!price&&closes.length)price=closes[closes.length-1];
   if(!price&&pk&&pk.price)price=pk.price;   // pick price keeps recommendations analyzable w/o raw bars
   if(!price) return null;
   const prev=q?parseFloat(q.adjusted_previous_close||q.previous_close||0):0;
   const dayChg=prev>0?(price-prev)/prev*100:null;
-  const hasTA=closes.length>=20;
-  let rsi=null,sma20=null,sma50=null,mom20=null,recHi=null,recLo=null,vol=null,ytd=null,trendUp=null;
-  if(hasTA){
-    rsi=calcRSI(closes); sma20=_smaN(closes,20); sma50=_smaN(closes,Math.min(50,closes.length));
-    mom20=closes.length>21?(price/closes[closes.length-21]-1)*100:null;
-    const rec=closes.slice(-Math.min(30,closes.length)); recHi=Math.max(...rec); recLo=Math.min(...rec);
-    const rets=[]; for(let i=Math.max(1,closes.length-20);i<closes.length;i++)rets.push(closes[i]/closes[i-1]-1);
-    vol=_stdevN(rets); ytd=closes[0]>0?(price/closes[0]-1)*100:null;
-    trendUp=(sma20&&sma50)?(price>sma20&&sma20>=sma50):(sma20?price>sma20:null);
-  }
-  const hi52=parseFloat(ov['52WeekHigh'])||recHi||null, lo52=parseFloat(ov['52WeekLow'])||recLo||null;
+  /* THE GATE (see azHist): a series older than AZ_AGING_DAYS is WITHHELD, not shaded. `price` is live
+     and every level/MA/momentum anchor is not, so a stale read is not a lagging call — measured over
+     this snapshot's own history it is the flatly WRONG direction 11–15% of the time. */
+  const quality=HS.quality, dataAge=HS.age, stale=(quality==='stale'||quality==='none');
+  const hasTA=closes.length>=20&&!stale;
+  const hi52=parseFloat(ov['52WeekHigh'])||null, lo52=parseFloat(ov['52WeekLow'])||null;
   const pctFromHigh=hi52?(price/hi52-1)*100:null;
-  // Fundamentals/quality read from whatever the snapshot carries (AV overview ∪ Pick fields).
+  // Fundamentals — every pick-sourced field parsed through _azNum (display strings, see above).
   const _tgt=parseFloat(ov.AnalystTargetPrice)||null;
-  const fund=_fundScore({
-    revGrowth: ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:(pk&&pk.revGrowth!=null?parseFloat(pk.revGrowth):null),
-    fwdPE: (ov.ForwardPE&&ov.ForwardPE!=='None')?parseFloat(ov.ForwardPE):(pk&&pk.fwdPE?parseFloat(pk.fwdPE):null),
-    peg: parseFloat(ov.PEGRatio)||null,
-    margin: ov.ProfitMargin!=null?parseFloat(ov.ProfitMargin)*100:null,
-    upside: (_tgt&&price>0)?(_tgt/price-1)*100:null });
-  // Beta (systematic risk) from the same 60-day window the Indicators card uses — folded into the risk
-  // score so a high-beta name reads as riskier than its idiosyncratic vol alone implies.
-  const beta=hasTA?_betaSeries(closes,azBars('SPY'),60):null;
-  let pattern=45,signal=45,risk=50;
-  if(hasTA){
-    pattern=_cl(50+(trendUp?22:-18)+(sma50&&sma20>sma50?8:-6)+(mom20!=null?_cl(mom20,-15,15):0),5,98);
-    const rsiGood=rsi==null?0:(rsi>=40&&rsi<=68?18:rsi<30?10:rsi>75?-15:0);
-    signal=_cl(50+(trendUp?16:-14)+rsiGood+(dayChg!=null?_cl(dayChg*2,-10,10):0),5,98);
-    risk=_cl(70-_cl((vol||0)*400,0,40)+(pctFromHigh!=null&&pctFromHigh<-10?8:0)-(rsi!=null&&rsi>78?15:0)-(beta!=null?_cl((beta-1)*12,-6,16):0),5,95);
-  }
-  // Blend the fundamentals sub-score into the setup when both it and the technicals exist; otherwise
-  // fall back to the technical-only weights so sparse-AV names behave exactly as before.
-  const setup=Math.round(hasTA?(fund?(pattern*0.34+signal*0.30+risk*0.21+fund.score*0.15):(pattern*0.4+signal*0.35+risk*0.25)):42);
-  let label,tone,conf;
-  if(!hasTA){ label='Limited Data'; tone='neu'; conf=40; }
-  else if(rsi<30&&trendUp!==false){ label='Oversold Bounce'; tone='pos'; conf=_cl(setup,45,80); }
-  else if(rsi>78){ label='Overbought — Caution'; tone='neg'; conf=_cl(setup-10,30,70); }
-  else if(trendUp&&setup>=62){ label='Buy Opportunity'; tone='pos'; conf=_cl(setup,55,90); }
-  else if(trendUp){ label='Accumulate / Hold'; tone='pos'; conf=_cl(setup,45,75); }
-  else if(trendUp===false){ label='Caution — Downtrend'; tone='neg'; conf=_cl(100-setup,40,75); }
-  else { label='Hold / Watch'; tone='neu'; conf=_cl(setup,40,70); }
+  const _ovFwd=(ov.ForwardPE&&ov.ForwardPE!=='None')?_azNum(ov.ForwardPE):null;
+  const _pkFwd=_azNum(pk&&pk.fwdPE);
+  const fwdPE=_ovFwd!=null?_ovFwd:_pkFwd;
+  // The picks engine falls back to TRAILING P/E formatted "18.2 (ttm)" when ForwardPE is unavailable —
+  // carry the basis through so the tile can't label a trailing multiple "Fwd P/E".
+  const fwdPEBasis=fwdPE==null?null:(_ovFwd!=null?'fwd':(/ttm/i.test(String(pk&&pk.fwdPE))?'ttm':'fwd'));
+  const _ovRev=ov.QuarterlyRevenueGrowthYOY!=null?_azNum(ov.QuarterlyRevenueGrowthYOY):null;
+  const revGrowth=_ovRev!=null?_ovRev*100:_azNum(pk&&pk.revGrowth);
+  const fund=_fundScore({ revGrowth, fwdPE, peg:parseFloat(ov.PEGRatio)||null,
+    margin:ov.ProfitMargin!=null?parseFloat(ov.ProfitMargin)*100:null,
+    upside:(_tgt&&price>0)?(_tgt/price-1)*100:null });
+  // The whole technical read + the trade levels, from the pure core.
+  const core=azCore(hasTA?closes:[], hasTA?ser.map(b=>b.h):null, hasTA?ser.map(b=>b.l):null, price,
+    hasTA?azHist('SPY').bars.map(b=>b.c):null,
+    {dayChg, fund:fund?fund.score:null, hi52});
+  let {label,tone,conf}=core;
+  const ytd=(hasTA&&closes.length&&closes[0]>0)?(price/closes[0]-1)*100:null;
+  if(!hasTA){ label=stale&&closes.length?'Stale History':'Limited Data'; tone='neu'; conf=40; }
   // It's one of today's app picks — surface that as the headline even without full price history.
-  let recRsi=rsi!=null?Math.round(rsi):null, recSetup=setup;
+  let recRsi=core.rsi!=null?Math.round(core.rsi):null, recSetup=core.setup;
   if(pk){
     if(recRsi==null&&pk.rsi!=null)recRsi=Math.round(pk.rsi);
     if(!hasTA){ tone='pos'; label=pk.signal?pk.signal.replace(/\b\w/g,m=>m.toUpperCase()):'Recommended Buy'; conf=pk.confidence||conf;
       if(pk.composite!=null)recSetup=_cl(Math.round(pk.composite*9),35,92); }
   }
+  // An AGING series still scores, but never as loudly as a fresh one.
+  if(hasTA&&quality==='aging')conf=_cl(conf*AZ_AGING_CONF,20,92);
+  /* 📏 Fold the MEASURED result for this state into confidence. A state that has not been paying in
+     this snapshot loses 10 points and says so; one that has gains 5. Below AZ_EDGE_MIN_N reads it
+     adjusts nothing — "unmeasured" must never read as "punished". */
+  let edge=null;
+  if(hasTA){ try{ const ES=azEdgeStats(); const e=ES&&ES.byLabel&&ES.byLabel[label];
+    if(e){ edge=Object.assign({},e,{h1:ES.h1,h2:ES.h2,reads:ES.reads,symbols:ES.symbols});
+      if(!e.thin&&e.alpha20!=null){ if(e.alpha20<=-1)conf=_cl(conf-10,20,92); else if(e.alpha20>=1)conf=_cl(conf+5,20,92); } } }catch(err){} }
   // Conviction dampeners from data we already collect — these haircut CONFIDENCE only, never the setup
   // score: an imminent earnings print (IV-crush / gap risk) and a high-volatility VIX regime on a
   // bullish call. Both are surfaced in the recommendation so the haircut is transparent.
@@ -5855,27 +6108,26 @@ function analyzeStock(sym){
   if(_vix!=null&&_vix>=22&&tone==='pos'){ regime={vix:+_vix.toFixed(1),level:_vix>=30?'high':'elevated'}; conf=_cl(conf-(_vix>=30?12:6),20,92); }
   // Correlation drag: adding a name that's tightly correlated with a meaningful book position doubles
   // down on the same risk — haircut conviction on a constructive call (no drag when we're not adding).
-  let corrDrag=null; const _bc=_bookCorrAll(sym);
+  let corrDrag=null; const _bc=hasTA?_bookCorrAll(sym):null;
   if(_bc&&_bc[0]&&_bc[0].r>=0.7&&_bc[0].pct>=3&&tone!=='neg'){ corrDrag={sym:_bc[0].sym,r:_bc[0].r,pct:_bc[0].pct}; conf=_cl(conf-7,20,92); }
-  const k=vol?Math.max(0.05,vol*2.2):0.08;
-  const entryLo=+(price*0.985).toFixed(2), entryHi=+price.toFixed(2);
-  const stop=+Math.min(recLo&&recLo<price?recLo*0.99:price*(1-k), price*(1-k)).toFixed(2);
-  const r=Math.max(price-stop,price*0.02);
-  const tp1=+(recHi&&recHi>price?Math.min(recHi,price+r*1.8):price+r*1.6).toFixed(2);
-  const tp2=+Math.max(price+r*2.6, hi52&&hi52>price?Math.min(hi52,price+r*3):price+r*2.6).toFixed(2);
   return { sym, price:+price.toFixed(2), dayChg, label, tone, conf:Math.round(conf), setup:recSetup,
-    pattern:Math.round(pattern), signal:Math.round(signal), risk:Math.round(risk),
-    rsi:recRsi, mom20, ytd, hi52, lo52, pctFromHigh, vol, trendUp, hasTA, sma20,
+    pattern:Math.round(core.pattern), signal:Math.round(core.signal), risk:Math.round(core.risk),
+    setupTech:core.setupTech, rsi:recRsi, mom20:core.mom20, ytd, hi52, lo52, pctFromHigh,
+    vol:core.vol, atrPct:core.atrPct, trendUp:core.trendUp, trend:core.trend, trendBasis:core.trendBasis,
+    extended:core.extended, drivers:core.drivers, hasTA, sma20:core.sma20, sma50:core.sma50,
+    dataAge, quality, lastBar:HS.lastT, spliced:HS.spliced, quoteAge:HS.quoteAge, stale,
+    horizon:(pk&&pk.timeframe)||'2–6 weeks (swing)',
     sector:ov.Sector||(pk&&pk.sector)||null, pe:(ov.PERatio&&ov.PERatio!=='None')?ov.PERatio:(ov.TrailingPE||null),
-    fwdPE:(ov.ForwardPE&&ov.ForwardPE!=='None')?ov.ForwardPE:(pk&&pk.fwdPE?parseFloat(pk.fwdPE):null),
-    revGrowth:ov.QuarterlyRevenueGrowthYOY!=null?parseFloat(ov.QuarterlyRevenueGrowthYOY)*100:(pk&&pk.revGrowth?parseFloat(pk.revGrowth):null),
+    fwdPE, fwdPEBasis, revGrowth,
     divYield:ov.DividendYield!=null?parseFloat(ov.DividendYield)*100:null,
-    fund, earnRisk, regime, beta:beta!=null?+beta.toFixed(2):null, corrDrag,
-    entryLo, entryHi, stop, tp1, tp2, invalid:+(stop*0.997).toFixed(2), pick:pk };
+    fund, edge, earnRisk, regime, beta:core.beta!=null?+core.beta.toFixed(2):null, corrDrag,
+    entryLo:core.entryLo, entryHi:core.entryHi, stop:core.stop, tp1:core.tp1, tp2:core.tp2,
+    rr:core.rr, rrOk:core.rrOk, invalid:core.invalid, pick:pk };
 }
 function azScoreColor(v){ return v>=66?'#10b981':v>=45?'#f59e0b':'#ef4444'; }
 function azBar(lbl,v,desc){ const c=azScoreColor(v); return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600"><span>'+lbl+'</span><span style="color:'+c+'">'+v+'</span></div><div class="az-track"><div class="az-fill" style="width:'+v+'%;background:'+c+'"></div></div><div style="font-size:10.5px;color:#9ca3af;margin-top:2px">'+desc+'</div></div>'; }
-function azSeries(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}; const b=h[sym]||[]; const out=[]; for(const x of b){ const c=parseFloat(x.close_price!=null?x.close_price:x.c); if(!(c>0))continue; out.push({c,h:parseFloat(x.high_price||x.h||c),l:parseFloat(x.low_price||x.l||c),v:parseFloat(x.volume||x.v||0),t:x.begins_at||x.t}); } return out; }
+// OHLC daily series — one shared, staleness-gated, live-spliced reader (see azHist).
+function azSeries(sym){ return azHist(sym).bars; }
 function _smaArr(c,n){ if(c.length<n)return null; const out=new Array(c.length).fill(null); let s=0; for(let i=0;i<c.length;i++){ s+=c[i]; if(i>=n)s-=c[i-n]; if(i>=n-1)out[i]=+(s/n).toFixed(2); } return out; }
 function azExtra(a){ _azMemoCheck(); if(a&&a.sym&&_azMemo.extra[a.sym])return _azMemo.extra[a.sym]; const r=_azExtraRaw(a); if(a&&a.sym)_azMemo.extra[a.sym]=r; return r; }
 function _azExtraRaw(a){
@@ -5891,7 +6143,12 @@ function _azExtraRaw(a){
     const vols=ser.map(s=>s.v).filter(v=>v>0); if(vols.length>=20){ const avg=vols.slice(-20).reduce((s,v)=>s+v,0)/20; x.volRatio=avg>0?vols[vols.length-1]/avg:null; }
     const spy=azSeries('SPY').map(s=>s.c);
     if(spy.length>=20){ const b=_betaSeries(closes,spy,60); x.beta=b!=null?+b.toFixed(2):null;
-      const spyYtd=spy[0]>0?(spy[spy.length-1]/spy[0]-1)*100:null; x.relStr=(a.ytd!=null&&spyYtd!=null)?a.ytd-spyYtd:null; }
+      // Both endpoints must sit on the SAME clock: `a.ytd` divides the LIVE price by the Jan-1 bar,
+      // so SPY's numerator is its live quote too (falling back to its last bar). A spliced series
+      // already ends there; a series too stale to splice would otherwise be compared to last month's SPY.
+      const _sh=azHist('SPY'), spyLast=(_sh.price!=null?_sh.price:spy[spy.length-1]);
+      const spyYtd=spy[0]>0?(spyLast/spy[0]-1)*100:null; x.relStr=(a.ytd!=null&&spyYtd!=null)?a.ytd-spyYtd:null;
+      x.relStrStale=(_sh.quality==='stale'); }
     const w=Math.min(40,closes.length),seg=closes.slice(-w),sup=[],res=[];
     for(let i=2;i<seg.length-2;i++){ if(seg[i]<seg[i-1]&&seg[i]<seg[i-2]&&seg[i]<=seg[i+1]&&seg[i]<=seg[i+2])sup.push(seg[i]); if(seg[i]>seg[i-1]&&seg[i]>seg[i-2]&&seg[i]>=seg[i+1]&&seg[i]>=seg[i+2])res.push(seg[i]); }
     x.support=[...new Set(sup.map(v=>+v.toFixed(2)))].filter(v=>v<a.price).sort((p,q)=>q-p).slice(0,2);
@@ -5917,7 +6174,7 @@ function azDateLbl(s,withYear){ if(s==null)return ''; const d=new Date(s); if(is
    guarantees, and detection is heuristic (it can miss or over-fit). ═══ */
 var _azCM={sym:null,tf:'YTD',pattern:'none',ctype:'line'}, _azCMObj=null, _azCMRsiObj=null;
 // Monthly OHLC bars (5Y series) — same coalescing as azSeries (Claude-agent vs Railway bar shapes).
-function azSeriesMonthly(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.month)||{}; const b=h[sym]||[]; const out=[]; for(const x of b){ const c=parseFloat(x.close_price!=null?x.close_price:x.c); if(!(c>0))continue; out.push({c,h:parseFloat(x.high_price||x.h||c),l:parseFloat(x.low_price||x.l||c),v:parseFloat(x.volume||x.v||0),t:x.begins_at||x.t}); } return out; }
+function azSeriesMonthly(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.month)||{}; const b=h[sym]||[]; const out=[]; for(const x of b){ if(x&&x.interpolated)continue; const c=parseFloat(x.close_price!=null?x.close_price:x.c); if(!(c>0))continue; out.push({c,h:parseFloat(x.high_price!=null?x.high_price:(x.h!=null?x.h:c))||c,l:parseFloat(x.low_price!=null?x.low_price:(x.l!=null?x.l:c))||c,v:parseFloat(x.volume!=null?x.volume:(x.v!=null?x.v:0))||0,t:String(x.begins_at||x.t||'').slice(0,10)}); } return out; }
 // Bars for a timeframe: 1M/3M/6M/YTD slice the YTD daily series; 1Y/5Y use the monthly series.
 // Full-resolution series behind a timeframe (daily for ≤YTD, monthly for 1Y/5Y).
 function azCMFull(sym,tf){ if(tf==='1Y'||tf==='5Y'){ const m=azSeriesMonthly(sym); if(m.length>2)return m; } return azSeries(sym); }
@@ -6368,7 +6625,8 @@ function _rsiSeries(c,n){ n=n||14; if(c.length<=n)return null; const out=new Arr
   for(let i=n+1;i<c.length;i++){ const d=c[i]-c[i-1],up=d>0?d:0,dn=d<0?-d:0; g=(g*(n-1)+up)/n; l=(l*(n-1)+dn)/n; out[i]=l===0?100:100-100/(1+g/l); }
   return out; }
 // Edge stat from the ticker's OWN history: forward H-session returns after days with a similar RSI to today.
-function azHistEdge(a){ if(a.rsi==null)return null; const c=azSeries(a.sym).map(s=>s.c); if(c.length<60)return null;
+// Closing basis, like gradePick: the spliced live bar is dropped (an intraday print must not grade itself).
+function azHistEdge(a){ if(a.rsi==null)return null; const c=azSeries(a.sym).filter(b=>!b.live).map(s=>s.c); if(c.length<60)return null;
   const rsi=_rsiSeries(c,14); if(!rsi)return null; const H=10;
   // Adaptive RSI tolerance: start tight (±8) and widen until the sample is statistically usable.
   let band=8, samp=[];
@@ -6378,7 +6636,7 @@ function azHistEdge(a){ if(a.rsi==null)return null; const c=azSeries(a.sym).map(
   if(samp.length<5)return null; const n=samp.length, wins=samp.filter(r=>r>0).length, avg=samp.reduce((s,r)=>s+r,0)/n;
   return { n, band, horizon:H, winRate:Math.round(wins/n*100), avg:+avg.toFixed(1), best:+Math.max(...samp).toFixed(1), worst:+Math.min(...samp).toFixed(1) }; }
 // Probability-weighted bull/base/bear table (model estimate from setup score, trend, RSI).
-function azScenarios(a,ivInfo){ const s=(a.setup-50)/100;
+function azScenarios(a,ivInfo,dteIn){ const s=(a.setup-50)/100;
   let pBull=_cl(0.33+s*0.5+(a.trendUp?0.06:a.trendUp===false?-0.08:0),0.12,0.62);
   let pBear=_cl(0.33-s*0.5+(a.trendUp===false?0.08:a.trendUp?-0.05:0)+(a.rsi!=null&&a.rsi>78?0.06:0),0.12,0.6);
   let pBase=1-pBull-pBear; if(pBase<0.1){ const k=0.1-pBase, tot=pBull+pBear; pBull-=k*pBull/tot; pBear-=k*pBear/tot; pBase=0.1; }
@@ -6386,7 +6644,7 @@ function azScenarios(a,ivInfo){ const s=(a.setup-50)/100;
   const ev=rows.reduce((t,r)=>t+r.p*(r.px/a.price-1)*100,0);
   const out={ rows:rows.map(r=>({k:r.k,px:r.px,c:r.c,move:+((r.px/a.price-1)*100).toFixed(1),p:Math.round(r.p*100)})), ev:+ev.toFixed(1) };
   // 1σ expected move from implied (or realized-proxy) vol — anchors the "how far could it travel" question.
-  if(ivInfo&&ivInfo.iv){ const dte=30, em=a.price*ivInfo.iv*Math.sqrt(dte/365);
+  if(ivInfo&&ivInfo.iv){ const dte=(dteIn&&dteIn>0)?dteIn:30, em=a.price*ivInfo.iv*Math.sqrt(dte/365);
     out.em={ dte, src:ivInfo.src, pct:+(em/a.price*100).toFixed(1), lo:+(a.price-em).toFixed(2), hi:+(a.price+em).toFixed(2), iv:Math.round(ivInfo.iv*100) }; }
   return out; }
 function _estPrem(px,strike,dte,cp,iv){ const t=Math.sqrt(Math.max(dte,1)/365), atm=px*iv*t*0.4, otm=cp==='call'?strike-px:px-strike, adj=Math.exp(-Math.max(0,otm)/(px*iv*t+1e-6)); return Math.max(0.05,+(atm*_cl(adj,0.12,1.4)).toFixed(2)); }
@@ -6416,7 +6674,7 @@ window.azCompare=azCompare;
 function azCmpGo(){ const i=document.getElementById('az-cmp-input'); if(i)azCompare(i.value); }
 window.azCmpGo=azCmpGo;
 /* ── Batch C: multi-timeframe, earnings, book-overlap, news ── */
-function azMonthly(sym){ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.month)||{}; return (h[sym]||[]).map(x=>parseFloat(x.close_price!=null?x.close_price:x.c)).filter(c=>c>0); }
+function azMonthly(sym){ return azSeriesMonthly(sym).map(b=>b.c); }
 function azMTF(a,x){ const out=[];
   out.push({tf:'Daily', up:a.trendUp, basis:a.sma20?('vs 20-day $'+a.sma20.toFixed(2)):'short-term'});
   if(x.sma50!=null)out.push({tf:'Weekly', up:a.price>x.sma50, basis:'vs 50-day $'+x.sma50.toFixed(2)});
@@ -6480,39 +6738,84 @@ function azSocialRead(a, soc){
   return { level, color, sent, rhR, aw, lines };
 }
 const _whenTxt={bmo:'before open', amc:'after close', pre:'before open', post:'after close'};
-/* The headline call. Prefers the app's own Pick recommendation (with thesis + levels);
-   otherwise derives a clear verdict from the technical read. */
+/* The headline call. Prefers the app's own Pick recommendation (with thesis + levels); otherwise
+   derives a clear verdict from the technical read. Every call — pick or algorithmic — now carries the
+   same six things, because the old card gave an algorithmic reader four dollar levels and no way to
+   judge them: an ACTION verb, the two inputs that drove it, a HORIZON, the reward:risk those exact
+   levels imply, what would FLIP the call in either direction, and how good the data underneath is. */
 function azRec(a,x){
-  const pk=a.pick; let action, color, note;
+  const pk=a.pick;
+  const pkRR=_azNum(pk&&pk.rr), rrEff=pkRR!=null?pkRR:a.rr;
+  const thin=(rrEff!=null&&rrEff<1.5);          // targets don't pay for the risk at this price
+  let action, color, note;
   if(pk){
     const s=(pk.signal||'BUY').toUpperCase();
     action = s.indexOf('SELL')>=0?'SELL' : s.indexOf('CAUTIOUS')>=0?'BUY · CAUTIOUS' : s.indexOf('HOLD')>=0?'HOLD' : 'BUY';
-    color = action.indexOf('SELL')>=0?'#ef4444':action.indexOf('HOLD')>=0?'#9ca3af':'#10b981';
+    if(action==='BUY'&&thin)action='ACCUMULATE';
+    color = action.indexOf('SELL')>=0?'#ef4444':(action.indexOf('HOLD')>=0?'#9ca3af':'#10b981');
     note = (pk.rank?'⭐ Ranked #'+pk.rank+' in today’s screen':'⭐ On today’s screen')+(pk.composite!=null?' · score '+(+pk.composite).toFixed(1)+'/10':'');
-  } else if(!a.hasTA){ action='DATA-LIMITED'; color='#9ca3af'; note='Not enough price history for a full call yet — shows on the next producer run.'; }
-  else if(a.tone==='pos'&&a.setup>=62){ action='BUY'; color='#10b981'; note='Trend + momentum align; '+a.setup+'/100 setup.'; }
-  else if(a.tone==='pos'){ action='ACCUMULATE'; color='#10b981'; note='Constructive — favor pullbacks toward the entry zone.'; }
-  else if(a.label&&a.label.indexOf('Overbought')>=0){ action='TRIM / WAIT'; color='#f59e0b'; note='Stretched here — wait for a cooldown before adding.'; }
+  }
+  else if(a.stale){ action='STALE DATA'; color='#9ca3af';
+    note='This name’s daily bars end '+(a.dataAge!=null?a.dataAge+' days ago':'well before this snapshot')+' — no technical call is offered.'; }
+  else if(!a.hasTA){ action='DATA-LIMITED'; color='#9ca3af'; note='Not enough price history for a full call yet — shows on the next producer run.'; }
+  else if(a.label==='Oversold Bounce'){ action=thin?'WATCH FOR A BOUNCE':'BUY · BOUNCE'; color='#10b981'; note='Washed out but not in a downtrend — a mean-reversion setup, not a trend entry.'; }
+  else if(a.label==='Extended — Wait for Pullback'){ action='WAIT FOR PULLBACK'; color='#f59e0b'; note='Trend is intact but the price is stretched — the entry, not the company, is the problem.'; }
+  else if(a.label==='Buy Opportunity'){ action=thin?'ACCUMULATE':'BUY'; color='#10b981'; note='Uptrend with room left to the first resistance.'; }
+  else if(a.label==='Accumulate / Hold'){ action='ACCUMULATE'; color='#10b981'; note='Constructive — favour pullbacks toward the entry zone.'; }
   else if(a.tone==='neg'){ action='AVOID / REDUCE'; color='#ef4444'; note='Downtrend — stand aside or keep size small until it turns.'; }
   else { action='HOLD / WATCH'; color='#9ca3af'; note='No edge either way — wait for a clearer setup.'; }
   const lv=[]; // recommended levels (pick levels if present, else the computed ones)
   if(pk&&pk.entry)lv.push(['Entry',pk.entry,'#6366f1']); else lv.push(['Entry','$'+a.entryLo+'–$'+a.entryHi,'#6366f1']);
-  if(pk&&pk.sl)lv.push(['Stop','$'+pk.sl.price+(pk.sl.pct?' ('+pk.sl.pct+')':''),'#ef4444']); else lv.push(['Stop','$'+a.stop,'#ef4444']);
+  if(pk&&pk.sl)lv.push(['Stop','$'+pk.sl.price+(pk.sl.pct?' ('+pk.sl.pct+')':''),'#ef4444']); else lv.push(['Stop','$'+a.stop+' ('+((a.stop/a.price-1)*100).toFixed(1)+'%)','#ef4444']);
   if(pk&&pk.tp1)lv.push(['Target 1','$'+pk.tp1.price+(pk.tp1.pct?' ('+pk.tp1.pct+')':''),'#10b981']); else lv.push(['Target 1','$'+a.tp1+' ('+(a.tp1>=a.price?'+':'')+((a.tp1/a.price-1)*100).toFixed(1)+'%)','#10b981']);
   if(pk&&pk.tp2)lv.push(['Target 2','$'+pk.tp2.price+(pk.tp2.pct?' ('+pk.tp2.pct+')':''),'#10b981']); else lv.push(['Target 2','$'+a.tp2+' ('+(a.tp2>=a.price?'+':'')+((a.tp2/a.price-1)*100).toFixed(1)+'%)','#10b981']);
   const meta=[]; const conf=(pk&&pk.confidence!=null)?pk.confidence:a.conf; if(conf!=null)meta.push(conf+'% confidence');
-  if(pk&&pk.rr)meta.push('R/R '+pk.rr); if(pk&&pk.timeframe)meta.push(pk.timeframe);
+  if(rrEff!=null)meta.push('R/R '+(+rrEff).toFixed(2)+':1');
+  meta.push('horizon '+((pk&&pk.timeframe)||a.horizon||'2–6 weeks'));
   if(a.fund)meta.push('fundamentals '+a.fund.score+'/100');
+  if(a.quality==='aging')meta.push('⏳ bars '+a.dataAge+'d old');
   if(a.earnRisk)meta.push('⚠️ earnings in '+a.earnRisk.days+'d');
   if(a.regime)meta.push('🌪 VIX '+a.regime.vix);
   if(a.corrDrag)meta.push('🔗 correlated w/ '+a.corrDrag.sym);
+  // WHY — the two inputs that actually moved the call, in plain English.
+  const why=(a.hasTA&&a.drivers&&a.drivers.length)?a.drivers.slice(0,2).join(', and '):null;
   let h='<div class="card" style="border-left:5px solid '+color+'"><div class="card-title"><span>✅ Recommendation</span></div>'+
     '<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-size:24px;font-weight:900;color:'+color+'">'+action+'</div><div style="font-size:12px;color:#9ca3af">'+note+'</div></div>'+
     (meta.length?'<div style="font-size:12px;color:var(--text);opacity:.8;margin-top:4px">'+meta.join(' · ')+'</div>':'')+
+    (why?'<div style="font-size:12.5px;line-height:1.55;color:var(--text);opacity:.9;margin-top:8px"><b>Why:</b> '+why+'.</div>':'')+
+    (thin&&a.hasTA?'<div style="font-size:12px;line-height:1.5;margin-top:8px;padding:8px 10px;background:var(--surface-2);border-radius:9px;border-left:3px solid #f59e0b">⚖️ <b>The targets don’t pay for the risk here</b> — the first target is only '+(+rrEff).toFixed(2)+'× the distance to the stop. Wait for a better entry (or a target that clears it) rather than sizing up.</div>':'')+
     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:12px">'+lv.map(L=>'<div style="background:var(--surface-2);border-radius:9px;padding:8px 10px;border-left:3px solid '+L[2]+'"><div style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px">'+L[0]+'</div><div style="font-size:14px;font-weight:800;color:'+L[2]+'">'+L[1]+'</div></div>').join('')+'</div>';
   if(pk&&Array.isArray(pk.thesis)&&pk.thesis.length)h+='<div style="font-size:11px;font-weight:700;color:#9ca3af;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.4px">Why it’s recommended</div><ul style="margin:0;padding-left:18px;font-size:12px;line-height:1.55;color:var(--text);opacity:.9">'+pk.thesis.map(t=>'<li style="margin-bottom:4px">'+t+'</li>').join('')+'</ul>';
+  // 📏 What this state has actually been worth in this snapshot (see azEdgeStats for the caveats).
+  if(a.edge){ const e=a.edge;
+    h+='<div style="font-size:12px;line-height:1.55;color:var(--text);opacity:.9;margin-top:12px;padding:9px 11px;background:var(--surface-2);border-radius:9px;border-left:3px solid #6366f1">📏 <b>Measured in this snapshot:</b> '+
+      (e.thin?'only <b>'+e.n+'</b> read'+(e.n===1?'':'s')+' land in the “'+e.label+'” state here — <b>too few to measure</b>, so nothing was added to or taken off the confidence above.'
+        :'across <b>'+fmt(e.n,0)+'</b> reads on <b>'+e.syms+'</b> names in the “'+e.label+'” state, the next <b>'+e.h2+' sessions</b> averaged <b style="color:'+(e.fwd20>=0?'#10b981':'#ef4444')+'">'+(e.fwd20>=0?'+':'')+e.fwd20+'%</b> (positive '+e.hit20+'% of the time)'+
+          (e.alpha20!=null?', <b style="color:'+(e.alpha20>=0?'#10b981':'#ef4444')+'">'+(e.alpha20>=0?'+':'')+e.alpha20+' pp vs SPY</b>'+(e.alpha20<=-1?' — this state <b>has not been paying lately</b>, so confidence is marked down 10.':(e.alpha20>=1?' — confidence is marked up 5.':'')):'')+'.')+
+      '<div style="font-size:10.5px;color:#9ca3af;margin-top:5px">Walk-forward over every symbol’s own recorded closes in this one snapshot. The windows OVERLAP, so that count is signal-days, not independent trials — a description of this history, not a forecast.</div></div>'; }
+  // What flips the call — one line each way, at a price, so the reader knows what to watch for.
+  if(a.hasTA){ const flips=[];
+    const up50=(a.sma50!=null&&a.sma50>a.price)?a.sma50:null;
+    if(a.tone==='neg'){
+      flips.push(['↑ Upgrades','a daily close back above <b>$'+(up50!=null?up50.toFixed(2):a.tp1)+'</b> ('+(up50!=null?'the 50-day average':'first resistance')+') turns this constructive.']);
+      flips.push(['↓ Confirms','a close under <b>$'+a.stop+'</b> — the downtrend is intact and there is nothing to buy here.']);
+    } else {
+      flips.push(['↓ Invalidates','a daily close under <b>$'+a.stop+'</b> flips this to Caution — that is the level the size below is risked to.']);
+      flips.push(['↑ Upgrades',a.label==='Extended — Wait for Pullback'
+        ?'a pullback into <b>$'+a.entryLo+'–$'+a.entryHi+'</b> with RSI back under 65 makes this a buy rather than a wait.'
+        :'a daily close above <b>$'+a.tp1+'</b> (first resistance) opens the <b>$'+a.tp2+'</b> target.']);
+    }
+    h+='<div style="font-size:11px;font-weight:700;color:#9ca3af;margin:12px 0 5px;text-transform:uppercase;letter-spacing:.4px">What flips this call</div>'+
+      flips.map(f=>'<div style="font-size:12px;line-height:1.55;color:var(--text);opacity:.9;margin-bottom:4px"><b>'+f[0]+':</b> '+f[1]+'</div>').join('');
+  }
   // Position sizing (risk to the stop) — folded in from the old standalone card so the whole trade plan lives here.
   if(x&&x.sizing)h+='<div data-priv="on" style="font-size:12px;line-height:1.55;color:var(--text);opacity:.85;margin-top:12px;padding:9px 11px;background:var(--surface-2);border-radius:9px">📐 <b>Size:</b> risking to the <b>$'+a.stop+'</b> stop (≈$'+x.sizing.perSh+'/share) → <b>~'+x.sizing.risk1+' sh</b> = 1% of book · <b>~'+x.sizing.risk2+' sh</b> = 2%.'+(x.held?' You already hold '+fmt(x.held.qty,0)+'.':'')+'</div>';
+  // Data quality — what the call is standing on, in one line, so a stale/thin read is never silent.
+  const dq=[];
+  dq.push('bars '+(a.lastBar||'—')+(a.dataAge!=null?' ('+(a.dataAge<=0?'today':a.dataAge+'d old')+')':'')+(a.spliced?', live quote spliced on':''));
+  dq.push('quote '+(a.quoteAge==null?'from this snapshot':a.quoteAge<1?'under an hour old':Math.round(a.quoteAge)+'h old'));
+  dq.push('fundamentals '+(a.fund?a.fund.n:0)+' of 5 inputs'+(a.fwdPEBasis==='ttm'?' (P/E is trailing, not forward)':''));
+  h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:10px;line-height:1.5">🔎 <b>Data quality:</b> '+dq.join(' · ')+'.</div>';
   // Hand-off + Robinhood deep link (folded in from the old Exact Trade Levels card; uses the canonical computed swing levels).
   h+='<div style="margin-top:11px">'+chatBtn('az-'+a.sym,eqTradePrompt({sym:a.sym,side:(a.tone==='neg'?'(read is cautious — confirm direction before buying)':'Buy / long'),entry:'$'+a.entryLo+'–$'+a.entryHi,limit:a.entryHi,stop:a.stop,tp1:a.tp1,tp2:a.tp2,qty:((x&&x.sizing)?x.sizing.risk1:null)}))+rhBtn(a.sym)+'</div>';
   h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:10px">'+(pk?'From today’s Picks screen — research, not financial advice.':'Algorithmic read — research, not financial advice.')+'</div></div>';
@@ -6540,16 +6843,20 @@ function runAnalysis(sym){
   // "Why this signal" — the plain-English read of the call + dampeners; rendered under the Setup gauge
   // (v86: the standalone "Understanding This Analysis" card was retired — its Trend/Momentum/RSI rows just
   // re-stated the Indicators grid + gauge bars; this one teaching blurb is what carried weight).
-  const whyTxt=a.hasTA?(a.label+' — '+(a.trendUp?'trend and ':'')+'the indicators'+(a.fund?' (plus a '+a.fund.score+'/100 fundamentals read)':'')+' net to a '+a.setup+'/100 setup, ~'+a.conf+'% confidence'+((a.earnRisk||a.regime||a.corrDrag)?' (trimmed for '+[a.earnRisk?'earnings in '+a.earnRisk.days+'d — IV-crush/gap risk':null,a.regime?'a '+a.regime.level+'-vol regime (VIX '+a.regime.vix+')':null,a.corrDrag?'tight correlation (+'+a.corrDrag.r.toFixed(2)+') with '+a.corrDrag.sym+' already in your book':null].filter(Boolean).join('; ')+')':'')+'. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':'Favor pullbacks toward the entry zone.')):'';
+  const whyTxt=a.hasTA?(a.label+' — '+((a.drivers&&a.drivers.length)?a.drivers.slice(0,2).join(', and ')+', ':'')+'net'+(a.fund?' (with a '+a.fund.score+'/100 fundamentals read)':'')+' to a '+a.setup+'/100 setup at ~'+a.conf+'% confidence'+((a.earnRisk||a.regime||a.corrDrag||a.quality==='aging')?' (trimmed for '+[a.quality==='aging'?'bars '+a.dataAge+' days old':null,a.earnRisk?'earnings in '+a.earnRisk.days+'d — IV-crush/gap risk':null,a.regime?'a '+a.regime.level+'-vol regime (VIX '+a.regime.vix+')':null,a.corrDrag?'tight correlation (+'+a.corrDrag.r.toFixed(2)+') with '+a.corrDrag.sym+' already in your book':null].filter(Boolean).join('; ')+')':'')+'. '+(a.tone==='neg'?'Wait for confirmation or keep size small.':a.label==='Extended — Wait for Pullback'?'The trend is fine; the price is not — wait for the pullback.':'Favour pullbacks toward the entry zone.')):'';
+  // ⏳ amber age badge beside the ticker — every card below reads the same bars, so the disclosure belongs at the top.
+  const ageBadge=(a.quality==='aging')?' <span style="font-size:11px;font-weight:700;color:#b45309;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.45);border-radius:999px;padding:2px 7px;vertical-align:middle" title="Daily bars end '+a.lastBar+'; the price is live">⏳ bars '+a.dataAge+'d old</span>'
+    :(a.stale&&a.dataAge!=null)?' <span style="font-size:11px;font-weight:700;color:#b91c1c;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.4);border-radius:999px;padding:2px 7px;vertical-align:middle" title="Daily bars end '+(a.lastBar||'—')+'">⏳ bars '+a.dataAge+'d old — technicals withheld</span>':'';
   const x=azExtra(a);
   const ivInfo=azIV(a,x), liveOpt=azLiveOptions(sym);
-  const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a,ivInfo):null, oplay=a.hasTA?azOptionPlay(a,x,ivInfo):null;
+  const oplay=a.hasTA?azOptionPlay(a,x,ivInfo):null;   // first: the scenarios' ±1σ band quotes ITS dte
+  const edge=a.hasTA?azHistEdge(a):null, scen=a.hasTA?azScenarios(a,ivInfo,oplay?oplay.dte:null):null;
   const mtf=a.hasTA?azMTF(a,x):null, earn=azEarn(sym), corr=azCorr(a), news=azNews(sym);
   const soc=azSocial(sym), socRead=azSocialRead(a,soc);
   const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   const tg=a.tone==='pos'?'▲':a.tone==='neg'?'▼':'■'; // glyph so the call reads without relying on colour
   el.innerHTML=
-    '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
+    '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+ageBadge+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
     // 🔭 Chart read — small, subtle verdict pill above the Recommendation (v87). Full detail + the interactive
     // chart live in the analyzer modal (tap 📊 Chart). Keeps the "chart pattern verdict" help popup via data-help.
     (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
@@ -6577,7 +6884,7 @@ function runAnalysis(sym){
     '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
         '<div style="text-align:left;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:10px;border-left:3px solid '+tc+'"><div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">💡 Why this signal</div><div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9">'+whyTxt+'</div></div>':'')+'</div>'+
-    (!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
+    (a.stale&&a.hasTA===false&&a.dataAge!=null?'<div class="card" style="border-left:4px solid #f59e0b"><div class="card-title"><span>⏳ Stale History</span></div><div style="font-size:12.5px;line-height:1.6">The daily bars this snapshot holds for <b>'+a.sym+'</b> end on <b>'+(a.lastBar||'an unknown date')+'</b> — <b>'+a.dataAge+' days</b> before the snapshot itself. The price above is live; the bars are not, so every moving average, momentum reading, level and pattern would be measured from a series that stopped moving. Measured over this snapshot’s own history a read that stale points the WRONG WAY 11–15% of the time, so the technical call is <b>withheld rather than shaded</b>. The producer refreshes daily bars on its next full run and this name comes back on its own — nothing is broken and nothing needs doing. Price, '+(a.pick?'today’s Picks call, ':'')+'fundamentals and your position are shown below.</div></div>':!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
     (x.held?'<div class="card" data-priv="on" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares','<span data-priv="val">'+fmt(x.held.qty,x.held.qty<10?2:0)+'</span>'],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     (earn?'<div class="card" style="border-left:4px solid '+(earn.days>=0&&earn.days<=10?'#f59e0b':'#6366f1')+'"><div class="card-title"><span>📅 Earnings</span></div><div style="font-size:12.5px;line-height:1.6">'+(earn.days<0?('Last reported '+(-earn.days)+'d ago ('+earn.date+').'):earn.days===0?('Reports <b>today</b> ('+earn.date+')'+(earn.when&&_whenTxt[earn.when]?' '+_whenTxt[earn.when]:'')+'.'):('Next earnings in <b>'+earn.days+' days</b> — '+earn.date+(earn.when&&_whenTxt[earn.when]?', '+_whenTxt[earn.when]:'')+'.'))+(earn.eps!=null?' Est. EPS $'+earn.eps+'.':'')+(earn.days>=0&&earn.days<=10?' <b style="color:#f59e0b">Elevated IV / gap risk into the print — size accordingly.</b>':'')+'</div></div>':'')+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+
@@ -6591,7 +6898,7 @@ function runAnalysis(sym){
       oplay.kind==='covered'?'<div data-priv="on" style="font-size:12.5px;line-height:1.6"><b style="color:#6366f1">Income — covered call.</b> Against your '+(x.held?fmt(x.held.qty,0)+' sh':'shares')+', sell the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d) for ~<b>$'+oplay.income+'</b> ('+oplay.annYield+'% annualized). Caps upside at +'+oplay.cap+'%. Est. IV ~'+oplay.iv+'%.</div>':
       '<div style="font-size:12.5px;line-height:1.6"><b style="color:#9ca3af">No clean options play.</b> The read is cautious/down — wait for a base or trend turn rather than buying calls into weakness. Earliest sensible monthly expiry if you do define risk: '+oplay.exp+'.</div>'
     )+(liveOpt?'<div style="margin-top:10px;padding:9px 11px;background:var(--surface-2);border-radius:9px;border-left:3px solid #6366f1;font-size:12px;line-height:1.5">📌 You already hold <b>'+liveOpt.length+'</b> live '+a.sym+' contract'+(liveOpt.length>1?'s':'')+' ('+liveOpt.map(p=>(p.side||'').toUpperCase()+' '+(p.type||'').toUpperCase()+' $'+p.strike).slice(0,3).join(' · ')+') with real greeks &amp; IV — those beat this estimate. <span class="az-link" onclick="switchTab(\'options\')" style="color:#6366f1;font-weight:700">Open Options →</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:6px">Estimated premium (no live chain) — confirm the actual bid/ask &amp; OI before trading. Not advice.</div></div>':'')+
-    ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv||a.sector)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([a.sector?['Sector',titleCase(a.sector)]:null,x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?['Fwd P/E',(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
+    ((x.targetUpside!=null||a.pe||a.revGrowth!=null||x.exDiv||a.sector)?'<div class="card"><div class="card-title"><span>🏛️ Valuation &amp; Catalysts</span></div>'+mGrid([a.sector?['Sector',titleCase(a.sector)]:null,x.targetUpside!=null?['Analyst target','$'+x.targetPrice.toFixed(0)+' ('+(x.targetUpside>=0?'+':'')+x.targetUpside.toFixed(0)+'%)']:null,a.pe?['P/E',(+a.pe).toFixed(1)]:null,a.fwdPE?[(a.fwdPEBasis==='ttm'?'P/E (ttm)':'Fwd P/E'),(+a.fwdPE).toFixed(1)]:null,x.peg?['PEG',x.peg.toFixed(2)]:null,a.revGrowth!=null?['Rev growth',(a.revGrowth>=0?'+':'')+a.revGrowth.toFixed(1)+'%']:null,x.margin!=null?['Margin',x.margin.toFixed(0)+'%']:null,a.divYield?['Div yield',a.divYield.toFixed(2)+'%']:null,x.exDiv?['Ex-div',x.exDiv]:null])+'</div>':'')+
     (function(){  // 🗣️ Sentiment & Buzz — news headlines + retail buzz merged into one card (v85; was two stacked cards)
       const hasN=news&&news.label, hasS=socRead&&(socRead.aw||socRead.rhR!=null);
       if(!hasN&&!hasS)return '';

@@ -29,7 +29,7 @@ import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
-import { compactHist, histBytes } from './histbars.mjs';
+import { compactHist, histBytes, mergeHist } from './histbars.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -146,9 +146,18 @@ for (const f of filesMatching(/^hist-(day|week|month).*\.json$/)) {
   for (const res of results) if (res.symbol && Array.isArray(res.bars) && res.bars.length) hist[interval][res.symbol] = res.bars;
 }
 // Carry forward prior bars for any interval/symbol not freshly fetched this run, so a light
-// intraday run (no hist-*.json) still ships the full YTD/5Y series. Freshly-fetched bars win.
+// intraday run (no hist-*.json) still ships the full YTD/5Y series — and, since v140, MERGE at the
+// BAR level rather than replacing whole arrays. The old spread had only two outcomes per symbol:
+// re-fetched in full (fresh array wins outright) or untouched (stale array carried forward), which
+// is why keeping a wide bench current would have meant re-fetching ~153 YTD bars per name every
+// day. `mergeHist` lets `hist-plan.mjs` send a 7-bar TAIL (~0.5KB/symbol) that glues onto the
+// series we already hold — and, being a union, it also stops a short fetch from silently
+// truncating a series, which the spread could do. Fresh still wins every shared date.
+// It runs BEFORE compaction, so compactHist still sees every bar exactly once.
 if (prior && prior.hist) {
-  for (const iv of Object.keys(prior.hist)) hist[iv] = { ...prior.hist[iv], ...(hist[iv] || {}) };
+  const merged = mergeHist(prior.hist, hist);
+  for (const iv of Object.keys(hist)) delete hist[iv];
+  Object.assign(hist, merged);
 }
 // Compact the bars to the shape every reader already coalesces to (histbars.mjs explains
 // which fields are dropped and why each is provably unread). This is ONE call site on
@@ -197,25 +206,38 @@ if (existsSync(avSrcDir)) for (const f of readdirSync(avSrcDir).filter((x) => x.
 // and ext fills Rev growth / EPS / PEG / margin for names AV's daily cap skipped). When AV didn't
 // cover the name at all, the ext overview stands in (and, being rich, beats the Robinhood synth below).
 const extDir = join(RAWDIR, 'ext-fund');
-let extCount = 0, extFilled = 0;
+// `_extAsOf` (v140) — the ET day this symbol was last refreshed by the ext providers. It exists for
+// ONE reason: FMP is ~5 calls/symbol against a ~250/day cap, so it can only cover ~45 of the ~180
+// bench names per day and has to ROTATE least-recently-refreshed-first. That clock cannot live in
+// producer/raw/ (gitignored, empty on every scheduled run — the rotation would reset daily and
+// re-cover the same head of the list forever), so it rides in the snapshot on the overview itself
+// and is carried forward below. It is an extra key on an object every consumer reads BY NAME
+// (`ov.ForwardPE`, `ov.Sector`, …) and that `parseAV` returns verbatim, so nothing renders it.
+const extDayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+let extCount = 0, extFilled = 0, extSeen = 0;
 if (existsSync(extDir)) for (const f of readdirSync(extDir).filter((x) => x.endsWith('.json'))) {
   const sym = f.replace(/^overview-/, '').replace(/\.json$/, '');
   if (!sym) continue;
   const key = avKey('COMPANY_OVERVIEW', { symbol: sym.replace(/\./g, '-') });
   const extOv = (readJSON(join(extDir, f)) || {}).structuredContent;
   if (!extOv || typeof extOv !== 'object') continue;
+  extSeen++;
   const cur = recorded[key];
-  if (!cur) { recorded[key] = { structuredContent: extOv }; extCount++; continue; }
+  if (!cur) { recorded[key] = { structuredContent: { ...extOv, _extAsOf: extDayET } }; extCount++; continue; }
   const o = cur.structuredContent && typeof cur.structuredContent === 'object' ? cur.structuredContent : (cur.Symbol ? cur : null);
   if (!o) continue;
   let filled = 0;
   for (const [k, v] of Object.entries(extOv)) {
-    if (v == null || v === '' || v === 'None') continue;
+    if (k === '_extAsOf' || v == null || v === '' || v === 'None') continue;
     if (o[k] == null || o[k] === '' || o[k] === 'None') { o[k] = v; filled++; }
   }
+  // Stamped whether or not anything was FILLED: the rotation asks "when did we last spend calls on
+  // this name", not "when did we last learn something new". A name that filled nothing is exactly a
+  // name the rotation should not revisit tomorrow ahead of one it has never touched.
+  o._extAsOf = extDayET;
   if (filled) extFilled++;
 }
-if (extCount || extFilled) console.log(`fundamentals: ext providers added ${extCount} overview${extCount === 1 ? '' : 's'} + filled gaps on ${extFilled} AV-covered name${extFilled === 1 ? '' : 's'}`);
+if (extCount || extFilled) console.log(`fundamentals: ext providers added ${extCount} overview${extCount === 1 ? '' : 's'} + filled gaps on ${extFilled} AV-covered name${extFilled === 1 ? '' : 's'} (${extSeen} refreshed)`);
 
 // Sector + dividends from Robinhood fundamentals (free, every run) → synthesize the AV
 // COMPANY_OVERVIEW the dashboard reads for sector allocation + dividend income, but ONLY
@@ -281,11 +303,18 @@ if (prior && prior.recorded) {
     ? (e.structuredContent && typeof e.structuredContent === 'object' ? e.structuredContent : (e.Symbol ? e : null))
     : null;
   const ovRich = (e) => { const o = ovObj(e); return !!(o && ('ForwardPE' in o || 'EPS' in o || 'QuarterlyRevenueGrowthYOY' in o)); };
-  let keptOv = 0;
+  let keptOv = 0, keptStamp = 0;
   for (const k of Object.keys(recorded)) {
     const cur = recorded[k], pri = prior.recorded[k];
-    if (ovObj(cur) && ovObj(pri) && !ovRich(cur) && ovRich(pri)) { recordedOut[k] = pri; keptOv++; }
+    if (ovObj(cur) && ovObj(pri) && !ovRich(cur) && ovRich(pri)) { recordedOut[k] = pri; keptOv++; continue; }
+    // Carry `_extAsOf` across a fresh overview that has none. A FETCH_ALL run where AV (or the RH
+    // synth) rebuilds an overview but the ext providers did not cover that name this run would
+    // otherwise ERASE the stamp — which reads as "never refreshed", sorts the name to the FRONT of
+    // the FMP rotation, and starves the names that genuinely have never been covered.
+    const c = ovObj(cur), p = ovObj(pri);
+    if (c && p && !c._extAsOf && p._extAsOf) { c._extAsOf = p._extAsOf; keptStamp++; }
   }
+  if (keptStamp) console.log(`fundamentals: carried ${keptStamp} ext-provider refresh stamp${keptStamp === 1 ? '' : 's'} forward`);
   if (keptOv) console.log(`fundamentals: preserved ${keptOv} carried-forward AV overview${keptOv === 1 ? '' : 's'} over this run's Robinhood synth (free-tier accumulation)`);
 }
 
@@ -734,7 +763,7 @@ const data = {
     const priorDays = (prior && prior.fetchDays) || {};
     const fetchDays = { ...priorDays };
     if (avCount > 0) fetchDays.av = day;
-    if (extCount > 0) fetchDays.extfund = day;
+    if (extSeen > 0) fetchDays.extfund = day;   // ext RAN today, even if every name it covered already had an overview
     if (Object.keys(fetchDays).length) data.fetchDays = fetchDays;
   }
 

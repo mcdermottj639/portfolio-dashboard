@@ -1,5 +1,5 @@
 // Offline unit checks for extfund.mjs normalizers — no network. Run: node producer/extfund.test.mjs
-import { finnhubToOverview, fmpToOverview, mergeOverviews, isRich } from './extfund.mjs';
+import { extAsOfMap, fmpRotation, FMP_DAILY_SYMS, finnhubToOverview, fmpToOverview, mergeOverviews, isRich } from './extfund.mjs';
 
 let pass = 0, fail = 0;
 const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -65,6 +65,36 @@ eq('merge: FMP target wins (FMP-only)', merged.AnalystTargetPrice, '190.00');
 eq('merge: FMP PERatio wins (first arg)', merged.PERatio, '55.0000');
 eq('merge: fills from finnhub when FMP missing', mergeOverviews({ Symbol: 'X' }, fh).QuarterlyRevenueGrowthYOY, '1.2240');
 eq('merge: skips None', mergeOverviews({ PERatio: 'None' }, { PERatio: '12' }).PERatio, '12');
+
+// --- FMP ROTATION (v140) ------------------------------------------------------------------------
+// FMP is 5 calls/symbol against ~250/day, so it covers ~45 of ~180 bench names per day. The rotation
+// has to be least-recently-refreshed-FIRST; anything else re-covers the head of the list forever and
+// the tail is never covered at all — the same staleness failure as the historicals, one layer up.
+{
+  const snap = { recorded: {
+    k1: { structuredContent: { Symbol: 'AAA', _extAsOf: '2026-09-01' } },
+    k2: { structuredContent: { Symbol: 'BBB', _extAsOf: '2026-08-20' } },
+    k3: { structuredContent: { Symbol: 'CCC' } },                       // covered, never by ext
+    k4: { Symbol: 'DDD', _extAsOf: '2026-09-05' },                      // the bare-object shape
+    k5: { structuredContent: { data: 'not an overview' } },
+  } };
+  const m = extAsOfMap(snap, ['AAA', 'BBB', 'CCC', 'DDD', 'EEE']);
+  eq('stamps are read off the overview objects', [m.AAA, m.BBB, m.DDD], ['2026-09-01', '2026-08-20', '2026-09-05']);
+  eq('an unstamped overview reports nothing (not a date)', 'CCC' in m, false);
+  eq('a symbol with no overview at all reports nothing', 'EEE' in m, false);
+  eq('no snapshot yields no stamps rather than throwing', extAsOfMap(null, ['AAA']), {});
+
+  const order = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE'];
+  eq('never-refreshed names go first, in the caller\'s priority order',
+    fmpRotation(order, m, 5), ['CCC', 'EEE', 'BBB', 'AAA', 'DDD']);
+  eq('…then oldest stamp first', fmpRotation(['AAA', 'BBB', 'DDD'], m, 3), ['BBB', 'AAA', 'DDD']);
+  eq('the daily cap binds', fmpRotation(order, m, 2), ['CCC', 'EEE']);
+  eq('an equal stamp falls back to the caller\'s order (holdings first)',
+    fmpRotation(['X', 'Y'], { X: '2026-09-01', Y: '2026-09-01' }, 2), ['X', 'Y']);
+  eq('no stamps at all preserves the priority order exactly', fmpRotation(order, {}, 5), order);
+  eq('a zero cap fetches nothing', fmpRotation(order, m, 0), []);
+  eq('the cap is the documented one', FMP_DAILY_SYMS, 45);
+}
 
 console.log(`\nextfund.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
