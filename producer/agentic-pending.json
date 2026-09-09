@@ -1,145 +1,118 @@
 {
-  "id": "2026-09-08-s6yone",
-  "created": "2026-09-08",
+  "id": "2026-09-09-h931nr",
+  "created": "2026-09-09",
   "status": "done",
   "autoEligible": true,
-  "turnover": 1817.29,
-  "book": 13312.49,
-  "planHash": "s[]b[BKNG:137,GLDM:92,GOOGL:99,JNJ:202,KO:151,MA:352,NVDA:124,SPY:201,V:366,VTI:94]t[]",
+  "turnover": 3338.04,
+  "book": 13160.28,
+  "planHash": "s[SPY:1675]b[AAPL:323,JPM:546,NVDA:154,UNP:347,V:292]t[]",
   "legs": {
-    "sells": [],
-    "buysNow": [
+    "sells": [
       {
         "sym": "SPY",
-        "kind": "buy",
-        "dollars": 200.73,
-        "shares": 0.261663,
-        "price": 767.13,
-        "pl": null,
-        "note": "15.6% → 17.5% target"
-      },
-      {
-        "sym": "JNJ",
-        "kind": "buy",
-        "dollars": 201.81,
-        "shares": 0.747804,
-        "price": 269.8699,
-        "pl": null,
-        "note": "6.1% → 8% target"
-      },
+        "kind": "trim",
+        "dollars": 1675.27,
+        "shares": 2.19523,
+        "price": 763.1087,
+        "pl": 0.51,
+        "note": "over target by 12.7pp — taxable trim, sequenced before the buys it funds"
+      }
+    ],
+    "buysNow": [
       {
         "sym": "NVDA",
         "kind": "buy",
-        "dollars": 124.11,
-        "shares": 0.544345,
-        "price": 227.9984,
+        "dollars": 154.49,
+        "shares": 0.688703,
+        "price": 224.32,
         "pl": null,
-        "note": "6.3% → 7.5% target"
-      },
-      {
-        "sym": "GOOGL",
-        "kind": "buy",
-        "dollars": 99.24,
-        "shares": 0.296415,
-        "price": 334.7999,
-        "pl": null,
-        "note": "6.1% → 7% target"
-      },
-      {
-        "sym": "KO",
-        "kind": "buy",
-        "dollars": 150.58,
-        "shares": 1.710215,
-        "price": 88.0474,
-        "pl": null,
-        "note": "5.6% → 7% target"
-      },
-      {
-        "sym": "VTI",
-        "kind": "buy",
-        "dollars": 94.23,
-        "shares": 0.249298,
-        "price": 377.9799,
-        "pl": null,
-        "note": "4.4% → 5% target"
-      },
-      {
-        "sym": "GLDM",
-        "kind": "buy",
-        "dollars": 92.43,
-        "shares": 1.061195,
-        "price": 87.0999,
-        "pl": null,
-        "note": "4.1% → 5% target"
-      },
-      {
-        "sym": "MA",
-        "kind": "buy",
-        "dollars": 351.56,
-        "shares": 0.614615,
-        "price": 571.9999,
-        "pl": null,
-        "note": "1.7% → 5% target"
+        "note": "7.2% → 9.41% target"
       },
       {
         "sym": "V",
         "kind": "buy",
-        "dollars": 365.72,
-        "shares": 0.985403,
-        "price": 371.1374,
+        "dollars": 292.19,
+        "shares": 0.791221,
+        "price": 369.2899,
         "pl": null,
-        "note": "1.6% → 5% target"
+        "note": "4.4% → 8.62% target"
       },
       {
-        "sym": "BKNG",
+        "sym": "JPM",
         "kind": "buy",
-        "dollars": 136.88,
-        "shares": 0.74152,
-        "price": 184.5938,
+        "dollars": 546.28,
+        "shares": 1.536955,
+        "price": 355.4299,
         "pl": null,
-        "note": "3.7% → 5% target"
+        "note": "0.0% → 7.96% target"
+      },
+      {
+        "sym": "AAPL",
+        "kind": "buy",
+        "dollars": 322.55,
+        "shares": 1.032705,
+        "price": 312.335,
+        "pl": null,
+        "note": "0.0% → 4.7% target"
+      },
+      {
+        "sym": "UNP",
+        "kind": "buy",
+        "dollars": 347.26,
+        "shares": 1.213305,
+        "price": 286.2099,
+        "pl": null,
+        "note": "0.0% → 5.06% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0,
+    "realizedGain": 0.51,
     "realizedLoss": 0,
-    "net": 0,
+    "net": 0.51,
     "term": "short",
     "note": null
   },
-  "deferred": [],
+  "deferred": [
+    {
+      "sym": "META",
+      "reason": "above-entry",
+      "until": null
+    }
+  ],
   "blockedSells": [],
   "warnings": [
-    "buys re-sized $1,849.47 → $1,817.29: the $32.18 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground"
+    "buys re-sized $1,694.72 → $1,662.77: the $19.45 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
+    "$618.53 of deferred weight (META) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "1 name(s) deferred (META) — ~$618.53 of intended weight held pending earnings/re-verify/wash-sale",
+    "$12.5 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
   ],
   "history": [
     {
-      "at": "2026-09-08",
+      "at": "2026-09-09",
       "to": "proposed"
     },
     {
-      "at": "2026-09-08",
+      "at": "2026-09-09",
       "to": "confirmed"
     },
     {
-      "at": "2026-09-08",
+      "at": "2026-09-09",
       "to": "sells-placed"
     },
     {
-      "at": "2026-09-08",
+      "at": "2026-09-09",
       "to": "buys-placed"
     },
     {
-      "at": "2026-09-08",
+      "at": "2026-09-09",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-09-08",
-  "sells-placedAt": "2026-09-08",
-  "buys-placedAt": "2026-09-08",
-  "doneAt": "2026-09-08",
-  "completedAt": "2026-09-08T14:29:10.904Z",
-  "note": "EXEC_AUTO — 10 buy legs, no sells. All ten filled at market in regular hours; ticket legs carry ACTUAL fill prices/shares. Waiting ground untouched (before === after === $32.19): the $32.18 shortfall sat under the $100 PARK_MIN floor, so no release fired and the buys were re-sized to cash alone."
+  "confirmedAt": "2026-09-09",
+  "sells-placedAt": "2026-09-09",
+  "buys-placedAt": "2026-09-09",
+  "doneAt": "2026-09-09",
+  "completedAt": "2026-09-09T17:24:42.696Z"
 }

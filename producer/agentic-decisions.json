@@ -761,6 +761,95 @@
           ]
         }
       ]
+    },
+    {
+      "id": "2026-09-09-rebalance",
+      "date": "2026-09-09",
+      "kind": "rebalance",
+      "targetAsOf": "2026-09-09",
+      "book": 13186.8,
+      "equityAtDecision": 13186.8,
+      "spyAt": 763.03,
+      "rationale": "First MANDATE A rebalance (target asOf 2026-09-09, 18 names). Funded entirely by trimming SPY from 17.2% to its 4.5% residual weight — the mandate retires structural index ballast, so $1,675.27 of the core was rotated into single names the research picked. Buys: JPM $546.28 (new, 0 → 7.96%), UNP $347.26 (new, 0 → 5.06%), AAPL $322.55 (new, 0 → 4.70%), V $292.19 (4.4% → 8.62%), NVDA $154.49 (7.2% → 9.41%). Turnover $3,338.04, inside the $10,000 auto tier; est. short-term tax net +$0.51 on the SPY trim (essentially flat — the lot was days old). Pre-checks clean: live book $13,186.80 vs $13,160.28 plan basis (+0.20%), buying power $1,675.16 after the sell filled versus $1,662.77 of buys, no buy name reporting earnings within 7 days, no ••••3900 orders earlier today so PDT is untouched, and the margin book's last 30 days of realized losses are CIFR/TSM only — no cross-account wash exposure on any buy name. META ($618.53 of intended weight) was deferred above-entry: $651.70 is 3.3% over the $600-$630 research zone, so the dollars wait in CASH rather than the VTI waiting ground (an undated deferral clears on a price move, and a short round trip costs more in spread than a few days of beta). Buys were re-sized $1,694.72 → $1,662.77 because the $19.45 shortfall sat under the $100 parking floor, so the waiting ground was left alone rather than forced into a dust sale; $12.50 left uninvested. Book drawdown -3.6% from its 08-10 peak against SPY -0.4%, i.e. -3.2pp relative — inside the -5pp soft tier, deployment normal.",
+      "trades": [
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 154.49,
+          "shares": 0.688703,
+          "priceAt": 224.32,
+          "weightBefore": 7.16,
+          "weightAfter": 9.41,
+          "drivers": [
+            "growth",
+            "quality",
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "V",
+          "side": "BUY",
+          "dollars": 292.19,
+          "shares": 0.791221,
+          "priceAt": 369.2899,
+          "weightBefore": 4.36,
+          "weightAfter": 8.62,
+          "drivers": [
+            "quality",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "JPM",
+          "side": "BUY",
+          "dollars": 546.28,
+          "shares": 1.536955,
+          "priceAt": 355.4299,
+          "weightBefore": 0,
+          "weightAfter": 7.96,
+          "drivers": [
+            "momentum",
+            "quality",
+            "growth",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 322.55,
+          "shares": 1.032705,
+          "priceAt": 312.335,
+          "weightBefore": 0,
+          "weightAfter": 4.7,
+          "drivers": [
+            "quality",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "UNP",
+          "side": "BUY",
+          "dollars": 347.26,
+          "shares": 1.213305,
+          "priceAt": 286.2099,
+          "weightBefore": 0,
+          "weightAfter": 5.06,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "TRIM",
+          "dollars": 1675.27,
+          "shares": 2.19523,
+          "priceAt": 763.1087,
+          "weightBefore": 17.21,
+          "weightAfter": 4.48
+        }
+      ]
     }
   ]
 }
