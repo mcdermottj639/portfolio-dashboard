@@ -205,7 +205,13 @@ export function finalizeTarget(allocation, meta = {}) {
   // sound the idea — so a mandate dial places it and `riskAdjustWeights` sizes it into the 5-10% band.
   // Never overrides a gold vehicle the allocation already contains; `meta.diversifierMin: 0` disables.
   const divMin = meta.diversifierMin != null ? +meta.diversifierMin : AG_DIVERSIFIER_MIN;
+  // Set ONLY when this block actually appends a vehicle. The `method` note below keys on this flag, not on
+  // gold merely being PRESENT — with the floor at 0 (Mandate A) a GLDM row can still reach the target as a
+  // phase-out retention, and the first Mandate A target (2026-09-09) falsely claimed a sleeve had been
+  // "added structurally" for exactly that reason.
+  let injectedGold = false;
   if (divMin > 0 && !named.some((n) => isDiversifier(n.ticker))) {
+    injectedGold = true;
     const sym = meta.diversifierSym || DIVERSIFIER_SYMS[0];   // GLDM — same spot gold as GLD, ~1/4 the fee
     const gpx = +((uni[sym] || {}).px) || 0;
     // Inject the weight that survives normalization, not the floor itself. The allocation already sums to
@@ -336,7 +342,7 @@ export function finalizeTarget(allocation, meta = {}) {
       // The synthesis wrote its summary before the gold sleeve existed, so any percentages quoted in that
       // prose predate it. Say so rather than let stale figures read as current — the `defensive`,
       // `diversifier` and cluster blocks below are the authoritative numbers.
-      + (adj.diversifier && adj.diversifier.direct > 0
+      + (injectedGold && adj.diversifier && adj.diversifier.direct > 0
         ? ` | ${adj.diversifier.direct.toFixed(1)}% gold diversifier added structurally AFTER synthesis (mandate sleeve — the sleeves cannot score bullion), so percentages quoted in the summary above predate it; the defensive/diversifier/cluster fields are authoritative`
         : '')
       + (entryBar != null ? ` | entry bands measured against the COHORT MEDIAN entryQuality ${entryBar} (Mandate A: a name is tightened for being a worse entry than its peers, never for the tape as a whole being rich)` : ''),

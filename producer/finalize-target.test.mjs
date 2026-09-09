@@ -357,5 +357,27 @@ ok('without a prior target the shape is unchanged (no dropped key)',
   ok('…and the one it chose survives', own.target.names.some((n) => n.ticker === 'IAU'));
 }
 
+// --- THE "ADDED STRUCTURALLY" NOTE KEYS ON AN INJECTION, NOT ON GOLD BEING PRESENT (2026-09-09) ------
+// Caught on the first Mandate A target: the floor is 0 so nothing was injected, but GLDM reached the file
+// anyway as a phase-out retention (held, dropped by one refresh), and the `method` prose claimed a gold
+// sleeve had been "added structurally AFTER synthesis". Numbers were right; the sentence was false.
+{
+  const goldPrior = { asOf: '2026-08-04', names: [
+    ...ALLOC.picks.map((p) => ({ ...p })),
+    { ticker: 'GLDM', sector: 'Diversifier', weightPct: 5, entry: '$80-$90', stop: 75, target: 100, thesis: 'mandate sleeve (retired)' },
+  ] };
+  const heldWithGold = [...ALLOC.picks.map((p) => p.ticker), 'GLDM'];
+  const retained = finalizeTarget(ALLOC, { ...base, diversifierMin: 0, prior: goldPrior, held: heldWithGold });
+  const g = nameOf(retained, 'GLDM');
+  ok('a held gold row dropped by the research is retained as a phase-out (floor 0, nothing injected)',
+    !!g && g.phaseOut === true);
+  ok('…and the method prose does NOT claim a sleeve was added structurally',
+    !/added structurally/.test(retained.target.method));
+  ok('…while the diversifier read still reports what is actually held',
+    retained.target.diversifier && retained.target.diversifier.direct > 0 && retained.target.diversifier.floor === 0);
+  const injected = finalizeTarget(ALLOC, { ...base, diversifierMin: 5 });
+  ok('a genuine injection still writes the note', /added structurally/.test(injected.target.method));
+}
+
 console.log(`\nfinalize-target.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
