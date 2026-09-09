@@ -140,9 +140,11 @@ be set to; re-check it whenever a Routine misbehaves, because the failure mode i
 | Permission mode | `auto` | `auto` | `auto` |
 | `allowed_tools` | `preset:default` + `PushNotification` + `Skill` | same | same |
 | Push notifications | on | **on** | **on** |
-| Repo source | this repo (session config) | none on the record — **step 0 shallow-clones** (`--depth 1`) exactly like the executor; a fresh session does NOT carry the clone (the 09-09 fallback run had no repo on disk) | same |
+| Repo source | this repo (session config — this is WHY its pushes work) | **REQUIRED, set in the Routine UI ("Select a repository") — and it is about PUSH CREDENTIALS, not the clone.** The git proxy injects a push credential only for repos in the session's `sources`; `create_trigger` cannot set them, so an agent-made Routine has `sources: []`. Proved 2026-09-09: the override run completed the research, `finalize-target` wrote the file, and `git push` was refused **403 "not in this session's authorized repository set"**. A public repo CLONES fine without a source, which is what hid the gap. Step 0 still shallow-fetches. | **same hole, unexposed** — it has `sources: []` and every fire since going live has idled, so its first real ticket would hit the same 403. Select the repo on it too. |
 
-**Connectors and `allowed_tools` are set ONLY in the claude.ai Routine UI.** The Routines API in this
+**Connectors, `allowed_tools` AND the repo SOURCE are set ONLY in the claude.ai Routine UI.** `create_trigger`
+has no `sources` parameter, so a Routine made from a session cannot push to this repo until someone
+selects it there ("Select a repository", above the connectors). The Routines API in this
 org rejects a `connectors` parameter outright (re-tested 2026-09-09 — *"the connectors parameter is not
 available for this organization"* — even though the tool's own description advertises it), and `update_trigger` can change the prompt, schedule,
 name, enabled state and model but not the tool surface — so a session can fix a prompt and *cannot*
@@ -286,8 +288,11 @@ the most likely thing to stall an unattended run.
 `claude-opus-5`, push notifications on; connectors attached in the Routine UI). It is kept here because a
 session cannot READ a Routine's prompt back except via the full `list_triggers` record. Since this Routine is
 not session-bound, its prompt CAN be edited in place with `update_trigger` — edit this text first, then apply
-it, so the two never drift. Only step 0 differs from the 2026-09-08 (session-bound) text: it shallow-clones the
-repo the way the executor does and checks BOTH connectors. **Nothing here is load-bearing for the mandate** —
+it, so the two never drift. Only step 0 and the push clause of step 5 differ from the 2026-09-08 (session-bound) text: step 0
+shallow-clones the repo the way the executor does and checks BOTH connectors; step 5 retries a 403 push
+through `add_repo(access:"push")` and, failing that, pushes the proposal and attaches the target file so a
+missing repo source (the 2026-09-09 failure) cannot lose a research run. **This prompt WAS edited in place
+with `update_trigger` on 2026-09-09** — a fresh-session Routine has no gate 2. **Nothing here is load-bearing for the mandate** —
 the constants carry that — so a stale prompt costs only the accuracy of the Routine's own sanity report.
 
 ```
@@ -305,7 +310,7 @@ Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and 
   2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
   3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo}, with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
   4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
-  5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main`. If the push is REJECTED because main moved (the producer commits hourly at ~:41), do NOT rebase or merge: `git fetch --depth 1 origin main && git reset --soft FETCH_HEAD`, commit the target again, push again (up to 3 tries). If finalize runs a second time, re-check target.dropped.
+  5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main`. If the push is REJECTED because main moved (the producer commits hourly at ~:41), do NOT rebase or merge: `git fetch --depth 1 origin main && git reset --soft FETCH_HEAD`, commit the target again, push again (up to 3 tries). If the push is refused 403 "not in this session's authorized repository set", this Routine has no repo SOURCE: call add_repo(owner:"mcdermottj639", repo:"portfolio-dashboard", access:"push") ONCE and retry the push; if it is still refused, PushNotification "research Routine: push denied — select portfolio-dashboard as this Routine's repository in the claude.ai Routine UI" together with the full proposal, and attach producer/agentic-target.json with SendUserFile so the target is not lost. If finalize runs a second time, re-check target.dropped.
   6. PushNotification a concise rebalance proposal (drift vs actual holdings, adds/trims ± dollars, anything over the 5pp trigger; if a HELD name is dropped, say the exit may be held by the 14d min-hold/PDT guard and give the unlock date). PLACE NO ORDERS.
   7. Sanity lines: 10-12 names; megacap-tech direct vs the 48% cap; SPY+VTI index core within the 5-10% residual band (flag it if the synthesis went higher — that is weight which can only MATCH the benchmark this account exists to beat); defensive total REPORTED as a measurement only, with no floor to miss; entry bands — note the cohort MEDIAN entryQuality that finalize used and which names were tightened relative to it (a batch where nearly every verdict is a 3 should tighten NOBODY: that is the tape, not a ranking); target.dropped with reasons; challengers reaching verify; any RESIDUAL note.
 
