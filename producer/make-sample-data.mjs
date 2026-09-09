@@ -12,6 +12,7 @@ import { MARKET_SYMBOLS } from './markets.mjs';
 import { LEADERS } from './leaders.mjs';
 import { avKey } from './av.mjs';
 import { buildPicks } from './picks.mjs';
+import { gradeAll, gradingUniverse } from './pickgrade.mjs';
 import { analyzeLeg, buildIdeas } from './options.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -203,6 +204,53 @@ const pickOv = { // hybrid: AV growth on a couple of finalists; others fall back
   PEP:  { Symbol: 'PEP',  Sector: 'Consumer Defensive', ForwardPE: '16.5', QuarterlyRevenueGrowthYOY: '0.085' },
 };
 const picks = buildPicks(pickFinalists, pickFund, pickOv);
+/* ── Track Record fixture (2026-09-09) ────────────────────────────────────────────────────────────
+   Without this the card sat in its empty state in preview, which is exactly how the grading bug
+   survived: the one surface that would have shown "42 open, 0% hit rate" was never rendered locally.
+   The archived scans + their bars are dated relative to TODAY (the rest of the fixture's bars are a
+   fixed Jan–May stub, and a track record must reach the present or every episode is unmeasurable by
+   construction), and the grades are produced by running the REAL gradeAll — so the fixture cannot
+   drift from the shipped shape. It deliberately covers all five outcomes, including the UNMEASURED
+   one, since that state is the whole point of the fix. */
+{
+  const dISO = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  // A deterministic close path from `entry` to `end` over `n` days back from today.
+  const trackBars = (entry, end, n, stopAt) => Array.from({ length: n + 1 }, (_, i) => {
+    const t = i / n;
+    let c = entry + (end - entry) * t;
+    if (stopAt != null && i === Math.floor(n * 0.35)) c = stopAt;   // one dip that trips the stop
+    return { begins_at: dISO(n - i) + 'T13:30:00Z', close_price: c.toFixed(2), interpolated: false };
+  });
+  const trk = (ticker, entryRef, signal) => ({
+    ticker, basePrice: entryRef, entry: '$' + (entryRef * 0.98).toFixed(2) + ' – $' + entryRef.toFixed(2),
+    entryRef, tp1: +(entryRef * 1.134).toFixed(2), tp2: +(entryRef * 1.237).toFixed(2),
+    sl: +(entryRef * 0.938).toFixed(2), composite: 6.9, signal,
+  });
+  // WINNER runs to TP2 · BANKER touches TP1 · BROKEN dips through its stop · RUNNER is still going ·
+  // GHOST's prices stop three days after the scan, so it CANNOT be graded (the bug's signature).
+  hist.day.WINNER = trackBars(100, 130, 30);
+  hist.day.BANKER = trackBars(50, 58, 25);
+  hist.day.BROKEN = trackBars(80, 84, 28, 74);
+  hist.day.RUNNER = trackBars(200, 206, 12);
+  hist.day.GHOST  = trackBars(40, 41, 3).map((b, i) => ({ ...b, begins_at: dISO(20 - i) + 'T13:30:00Z' }));
+  for (const s of ['WINNER', 'BANKER', 'BROKEN', 'RUNNER', 'GHOST']) {
+    const bs = hist.day[s]; quotes[s] = { last_trade_price: bs[bs.length - 1].close_price,
+      adjusted_previous_close: bs[Math.max(0, bs.length - 2)].close_price };
+  }
+  const scan = (n, ...pk) => ({ ts: dISO(n), date: dISO(n), picks: pk });
+  picks.history = [
+    scan(12, trk('RUNNER', 200, 'BUY')),
+    // GHOST re-listed twice inside the cooldown → ONE episode (the ORCL 0W·10L dedupe).
+    scan(19, trk('GHOST', 40, 'CAUTIOUS BUY')),
+    scan(20, trk('GHOST', 40, 'CAUTIOUS BUY'), trk('BANKER', 50, 'BUY')),
+    scan(28, trk('BROKEN', 80, 'CAUTIOUS BUY')),
+    scan(30, trk('WINNER', 100, 'BUY')),
+  ];
+  picks.grades = gradeAll(picks.history, hist.day, { asOf: new Date().toISOString().slice(0, 10) });
+  picks.grades.universe = gradingUniverse(picks.history, {
+    asOf: new Date().toISOString().slice(0, 10), grades: picks.grades });
+}
+
 // sample breadth (VIX + your-book movers) for the Markets "Breadth" card
 picks.markets = {
   vix: { level: '16.40', chg: '' },

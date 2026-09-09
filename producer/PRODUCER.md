@@ -102,9 +102,22 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `Robinhood · get_equity_positions` | `{ account_number: <account> }` | `producer/raw/positions.json` | EVERY-RUN |
    | `Robinhood · get_portfolio` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-portfolio.json` | EVERY-RUN |
    | `Robinhood · get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
-   | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI] }` | `producer/raw/quotes.json` | EVERY-RUN |
-   | `Robinhood · get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
+   | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI **+ the picks grading universe**] }` | `producer/raw/quotes.json` | EVERY-RUN |
+   | `Robinhood · get_equity_historicals` | `{ symbols: [ALL position symbols + all market symbols **+ the picks grading universe**], interval: "day", start_time: "<Jan 1 this year, ISO>" }` | `producer/raw/hist-day.json` | **FETCH_ALL only** |
    | `Robinhood · get_equity_historicals` | `{ symbols: [all market symbols + top 15 holdings], interval: "month", start_time: "<5 years ago, ISO>" }` | `producer/raw/hist-month.json` | **FETCH_ALL only** |
+
+   > **The picks grading universe** = `node producer/pickgrade.mjs --symbols` (a comma list, possibly
+   > EMPTY — then add nothing). These are the archived Daily Picks whose outcome is **still being
+   > graded**: the Track Record card can only say "hit its target" or "stopped out" for a name whose
+   > daily closes we actually kept receiving, and `data.hist.day` goes **stale per symbol** — the
+   > rotation only bar-fetches today's holdings/markets/candidates, so a pick's series used to freeze
+   > within days of the scan that named it. On 2026-09-08 that left **12 of 44 episodes graded over
+   > ZERO bars** and the card reporting a **0% hit rate** it had no evidence for. The list is small and
+   > **SELF-DRAINING** — a resolved outcome is frozen into the snapshot and never asks for a price
+   > again, and an episode past its 60-day horizon drops out — so it does not grow without bound
+   > (capped at 30 either way). Batch it into the same `get_equity_historicals` calls, still **≤3
+   > symbols per call**. If it is ever skipped nothing breaks: those episodes simply report
+   > "can't be graded" instead of a made-up outcome, and the build log says which names it wanted.
    | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |

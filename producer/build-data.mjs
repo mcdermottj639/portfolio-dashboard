@@ -30,6 +30,7 @@ import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
 import { compactHist, histBytes } from './histbars.mjs';
+import { gradeAll, gradingUniverse } from './pickgrade.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -838,6 +839,37 @@ if (data.picks) {
     history = history.slice(0, 40);
   }
   data.picks.history = history;
+
+  // ── Track record: GRADE the archived picks here, and FREEZE each outcome (pickgrade.mjs) ──────
+  // This used to be done entirely on the phone, walking data.hist.day live on every load. That
+  // series goes STALE PER SYMBOL — the producer only bar-fetches its current rotation, so a pick's
+  // series freezes within days of the scan that named it — and the client-side grader read a series
+  // that merely stopped as "still open". Live on 2026-09-08: 12 of 44 episodes were graded over ZERO
+  // bars and the card reported 0% hit rate · 0W·2L · 42 open, which was a statement about the price
+  // history and not about the picks. Grading here lets a resolved outcome be STAMPED ONCE into the
+  // snapshot (the v129 frozen-marks rule), so the record no longer depends on the bars staying fresh
+  // — and `universe` is then the small, SELF-DRAINING set of symbols still needing prices, which is
+  // what PRODUCER.md step 2 feeds back into the fetch.
+  try {
+    const asOfET = etDate(new Date(data.generatedAt || Date.now()));
+    const priorGrades = prior && prior.picks && prior.picks.grades;
+    const graded = gradeAll(history, hist.day || {}, { asOf: asOfET, prior: priorGrades });
+    graded.universe = gradingUniverse(history, { asOf: asOfET, grades: graded });
+    data.picks.grades = graded;
+    const st = graded.stats;
+    console.log(`picks track record: ${st.n} episode(s) — ${st.wins}W ${st.losses}L · ${st.open} open · ` +
+      `${st.expired} expired · ${st.unmeasured} unmeasured` +
+      (st.hitRate == null ? ' · hit rate n/a' : ` · hit rate ${st.hitRate}%`));
+    if (st.unmeasured) {
+      // Loud on purpose: an unmeasured episode is one whose prices we stopped receiving, and the
+      // ONLY fix is upstream — the fetch step must quote/bar these names (PRODUCER.md step 2).
+      console.warn(`⚠️  picks: ${st.unmeasured} episode(s) cannot be graded — price history does not reach. ` +
+        `Refresh needed for: ${graded.universe.join(',') || '(none in window)'}`);
+    }
+  } catch (e) {
+    console.warn('⚠️  picks: track-record grading failed — carrying the prior grades forward:', e.message);
+    if (prior && prior.picks && prior.picks.grades) data.picks.grades = prior.picks.grades;
+  }
 }
 // Options page (your positions/pending + directional ideas). Embedded as data.options.
 const optionsFile = filesMatching(/^options\.json$/)[0];
