@@ -60,6 +60,27 @@ ok('a BUY stamps lastBuyDate', act.GE.lastBuyDate === '2026-08-12' && act.AAPL.l
 ok('decisions outside the window are ignored', !act.OLD);
 ok('empty ledger → empty map', Object.keys(activityFromDecisions([], { asOf: '2026-08-12' })).length === 0);
 
+// PER-LOT DETAIL (2026-09-09). `lastBuyDate` can only say "something was bought recently", which made
+// the deploy planner's min-hold a per-NAME lock — a $200 SPY top-up froze a $2,265 position. `buys`
+// carries each BUY leg's size so the planner can lock the recent SHARES and trade the older ones.
+const lots = activityFromDecisions([
+  { date: '2026-09-08', trades: [
+    { sym: 'SPY', side: 'BUY', dollars: 200.73, priceAt: 767.13 },
+    { sym: 'MA',  side: 'BUY', dollars: 300 },                       // no priceAt → size unknown
+    { sym: 'GE',  side: 'TRIM', dollars: 400, priceAt: 100 },        // a sell never enters `buys`
+  ]},
+  { date: '2026-09-02', trades: [{ sym: 'SPY', side: 'BUY', dollars: 500, priceAt: 750 }] },
+  { date: '2026-06-01', trades: [{ sym: 'SPY', side: 'BUY', dollars: 900, priceAt: 600 }] }, // out of window
+], { asOf: '2026-09-09', sinceDays: 30 });
+near('a BUY leg records its share count (dollars ÷ priceAt)', lots.SPY.buys[1].shares, 200.73 / 767.13, 1e-6);
+eq('…and the lots are sorted oldest-first', lots.SPY.buys.map((b) => b.date), ['2026-09-02', '2026-09-08']);
+ok('…carrying the leg dollars too', lots.SPY.buys[0].dollars === 500 && lots.SPY.buys[1].dollars === 200.73);
+ok('a leg with no usable price yields shares:null (size unknown, never zero)', lots.MA.buys.length === 1 && lots.MA.buys[0].shares === null);
+ok('SELL/TRIM/EXIT legs never enter buys', !lots.GE.buys && lots.GE.lastSellDate === '2026-09-08');
+ok('lots outside the window are excluded', lots.SPY.buys.length === 2);
+ok('…while the legacy keys are unchanged', lots.SPY.lastBuyDate === '2026-09-08' && !lots.SPY.lastSellDate
+  && act.GE.lastBuyDate === '2026-08-12' && act.GE.lastSellDate === '2026-08-10');
+
 // ---- SLEEVE ATTRIBUTION (v121) ----------------------------------------------
 // The question that makes a sleeve REMOVABLE: did the names it backed actually outperform?
 {

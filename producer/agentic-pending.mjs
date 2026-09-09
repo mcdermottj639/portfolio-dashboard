@@ -70,8 +70,12 @@ const slim = (x) => ({ sym: x.sym, kind: x.kind || 'buy', dollars: round2(x.doll
 // `kind` = what the sell WOULD have been (exit/trim/harvest/drawdown-raise); `blocked` = which guard
 // stopped it; `until` = the date it clears. Keeping all three is what lets the card say "the JPM exit
 // is held by the min-hold until 08-26" instead of just "nothing was sold".
+// `shares`/`partial` came with the per-lot min-hold (2026-09-09): a block can now be the REMAINDER of a
+// sell that partly went through, and how many shares are held is the reader's first question — a field,
+// never something the consumer re-parses out of the note.
 const slimBlock = (x) => ({ sym: x.sym, kind: x.kind || 'sell', blocked: x.blocked || null,
-  dollars: round2(x.dollars), pl: x.pl ?? null, plPct: x.plPct ?? null,
+  dollars: round2(x.dollars), shares: x.shares ?? null, partial: x.partial === true,
+  pl: x.pl ?? null, plPct: x.plPct ?? null,
   until: x.until || null, heldDays: x.heldDays ?? null, note: x.note || null });
 function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; } return h; }
 

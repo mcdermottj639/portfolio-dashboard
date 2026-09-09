@@ -832,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v141'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v142'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3514,7 +3514,7 @@ function renderAgenticPlan(){
         <div class="pk-m"><div class="pk-m-l">Last rebalance</div><div class="pk-m-v">${lastDec?dLbl(lastDec.date):'—'}</div></div>
       </div>
       ${idleDays!=null?`<div class="fund-note" style="margin:10px 0 0;${idleDays>=AG_IDLE_DEPLOY_D?'background:#fffbeb;border-color:#fde68a':''}"><b>⏱ Idle-cash clock:</b> cash has been sitting since <b>${dLbl(A.cashIdleSince)}</b> (${idleDays}d of ${AG_IDLE_DEPLOY_D}). ${idleDays>=AG_IDLE_DEPLOY_D?`The deadline has passed — entry bands are <b>waived</b> and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches (swept whole below ${fmtD(AG_IDLE_SWEEP_FLOOR)}).`:`At ${AG_IDLE_DEPLOY_D}d the entry bands are waived and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches — "wait for a pullback" is not allowed to run forever.`}</div>`:''}
-      ${orphans.length?`<div class="fund-note" style="margin:10px 0 0"><b>Off-target holdings:</b> ${orphans.map(p=>`<b>${p.symbol}</b> (${fmtD(p.value)})`).join(' · ')} — held but not in the current target. The planner exits ${orphans.length>1?'these':'this'} to fund the underweight names, subject to the ${AG_MIN_HOLD_D}-day min-hold below.</div>`:''}
+      ${orphans.length?`<div class="fund-note" style="margin:10px 0 0"><b>Off-target holdings:</b> ${orphans.map(p=>`<b>${p.symbol}</b> (${fmtD(p.value)})`).join(' · ')} — held but not in the current target. The planner exits ${orphans.length>1?'these':'this'} to fund the underweight names, subject to the ${AG_MIN_HOLD_D}-day min-hold below (per lot — only shares bought inside the window wait).</div>`:''}
       <div style="text-align:center;margin-top:12px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 See the actual book — holdings · drift · performance · rebalance log →</span></div>
     </div></div>`;
 
@@ -3573,7 +3573,8 @@ function renderAgenticPlan(){
   // five buys, and the JPM + GE exits silently held at day 13 of the 14-day min-hold. The planner
   // computed those blocks all along; the ticket now carries them, and since raw/ is wiped on every run
   // the ticket is the only place they can survive to reach the phone. The consumer CANNOT recompute this
-  // itself — the min-hold needs per-name lastBuyDate, which the snapshot doesn't carry.
+  // itself — the min-hold needs the account's per-LOT buy history (dates AND sizes, since 2026-09-09),
+  // which the snapshot doesn't carry.
   // Read `data.agentic.blockedSells` FIRST, not `pending.blockedSells`: build-data omits a done/aborted
   // ticket from `pending` entirely, and a FINISHED ticket is exactly the case that needs explaining (the
   // 08-25 ticket reached `done` the moment its buys filled, while both exits were still held). The
@@ -3584,8 +3585,15 @@ function renderAgenticPlan(){
   const SB_KIND={exit:'exit',trim:'trim',harvest:'tax harvest','drawdown-raise':'defensive raise','park-release':'park release'};
   const sellBlockHtml=sellBlocks.map(b=>{
     const amt=fmtD(Math.abs(+b.dollars||0)), what=SB_KIND[b.kind]||b.kind||'sell';
+    // PER-LOT since 2026-09-09: this row can be the locked REMAINDER of a sell that partly went
+    // through, so it says how many shares are held rather than implying the whole position froze.
+    // `shares` rides on the ticket as a field — never re-parsed out of the note.
+    const lockSh=(+b.shares>0)?`<b>${(+b.shares).toFixed(4).replace(/\.?0+$/,'')} share${+b.shares===1?'':'s'}</b>`:'';
+    const ago=b.heldDays!=null?` — bought <b>${b.heldDays} day${b.heldDays===1?'':'s'} ago</b>`:'';
     const why=b.blocked==='min-hold'
-      ? `Its <b>${what}</b> (${amt}) is held by the <b>${AG_MIN_HOLD_D}-day min-hold</b>${b.heldDays!=null?` — this position was opened <b>${b.heldDays} day${b.heldDays===1?'':'s'} ago</b>`:''}. A just-opened position isn't flipped by the next research refresh; only a business-broken verdict or a loss past −10% overrides it.`
+      ? (b.partial
+        ? `${lockSh||'Part of it'} ${lockSh?'are':'is'} held by the <b>${AG_MIN_HOLD_D}-day min-hold</b>${ago}, so only that slice of the <b>${what}</b> (${amt}) waits — the shares from older lots already ${b.kind==='exit'?'exited':'sold'} on this ticket.`
+        : `Its <b>${what}</b> (${amt}) is held by the <b>${AG_MIN_HOLD_D}-day min-hold</b>${ago}${lockSh?` (${lockSh})`:''}. The lock is <b>per lot</b> — only shares bought inside the window wait — and here that covers the whole position. A just-opened position isn't flipped by the next research refresh; only a business-broken verdict or a loss past −10% overrides it.`)
       : b.blocked==='day-trade'
       ? `Its <b>${what}</b> (${amt}) was bought earlier the same session. Selling it now would book a day trade, and this account sits under the $25k PDT threshold — so it waits for the next session.`
       : `Its <b>${what}</b> (${amt}) was held back: ${b.note||'blocked by an execution guard'}.`;
@@ -3603,7 +3611,7 @@ function renderAgenticPlan(){
       ${(blockList.length||sellBlockHtml)?'':`<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
       ${blockList.length?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:0 0 6px">🛒 Buys deferred</div>`+blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):''}
       ${sellBlockHtml?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:${blockList.length?'12px':'0'} 0 6px">💸 Sells held back <span style="color:#9ca3af;font-weight:400">· from the ${blkSrc&&blkSrc.created?dLbl(blkSrc.created):'latest'} ticket${blkSrc&&(blkSrc.status==='done'||blkSrc.status==='aborted')?' ('+blkSrc.status+')':''}</span></div>`+sellBlockHtml
-        +`<div class="fund-note" style="margin:8px 0 0">These are sells the planner <b>wanted</b> to make and a guard stopped — not failures. The weight is unchanged; the trade re-plans on the first pass after the date above. De-risking is never blocked this way: a business-broken verdict or a loss past −10% overrides the min-hold, and the drawdown breaker never blocks a sell at all.</div>`:''}
+        +`<div class="fund-note" style="margin:8px 0 0">These are sells the planner <b>wanted</b> to make and a guard stopped — not failures. The weight is unchanged; the trade re-plans on the first pass after the date above. The min-hold is <b>per lot</b>: only the shares bought inside the window wait, so a recent top-up no longer freezes a position you have held for months. De-risking is never blocked this way either: a business-broken verdict or a loss past −10% overrides the min-hold, and the drawdown breaker never blocks a sell at all.</div>`:''}
       ${zonesStale?`<div class="fund-note" style="margin:10px 0 0;background:#fffbeb;border-color:#fde68a"><b>⚠️ Entry zones are advisory:</b> this target is <b>${zoneAge}d</b> old (over the ${AG_ENTRY_STALE_D}-day limit), so the entry-band checks are <b>off</b>. When a whole target reads out-of-band at once, the guard is measuring its own staleness rather than the companies. <b>Below-stop</b> still binds — that one is the real thesis-broken signal.</div>`:
         `<div class="fund-note" style="margin:10px 0 0">Entry checks are <b>live</b> (target is ${zoneAge==null?'—':zoneAge+'d'} old, limit ${AG_ENTRY_STALE_D}d): a name more than <b>${AG_ENTRY_TOL_PCT}%</b> below its entry floor defers for a re-verify, more than <b>${AG_ENTRY_PREM_PCT}%</b> above its ceiling waits for a pullback. Small misses are tolerated on purpose — a 0.2% miss parking a position is how cash gets stranded.</div>`}
     </div></div>`;
@@ -3632,7 +3640,7 @@ function renderAgenticPlan(){
       ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
       ${rule('🎯','Mandate','Beat SPY (rolling 12mo)','Owner-set 2026-09-08. This account exists to OUTPERFORM the S&P 500 over rolling twelve-month windows — not to preserve capital. It accepts tracking error and drawdowns as deep as, or deeper than, SPY\'s. That is why there is no defensive floor, no forced gold sleeve and only a small residual index position: anything held purely to track the benchmark is weight that cannot beat it. Downside is controlled by the correlation caps below and by a breaker that measures the book against SPY rather than against its own peak. The other account (••••0741, self-directed) runs the opposite rulebook — concentrated and levered — and neither should ever be made to look like the other.')}
       ${rule('🛡️','Defensive ballast','Not forced — measured only'+agDefensiveNote(),'Until 2026-09-08 the book carried a mandatory ≥15% in staples/utilities/telecom/REITs/low-vol names. Under the beat-SPY mandate that floor is 0. The reasoning: SPY itself is already ~9% defensive, so a book forced to 15% was structurally SHORT the benchmark\'s growth names by ~6pp before it picked a single stock — and measured on the live book (JNJ 8% + KO 7%) the floor cost 0.54pp in two weeks with no protective benefit, against a breaker that had never fired. Defensive names are still fully eligible and still measured; they simply have to WIN their slot on the research now rather than being placed by mandate. Restoring the floor is a one-constant change.')}
-      ${rule('⏳','Min-hold',AG_MIN_HOLD_D+' days','A name bought inside the window is not exited or trimmed. Overridden only by a business-broken verdict, a loss past −10% (risk control outranks churn control), or a harvest/park release. Added after two consecutive targets flipped the whole book in 48 hours.')}
+      ${rule('⏳','Min-hold',AG_MIN_HOLD_D+' days, per lot','Only the SHARES bought inside the window are held — older lots still trim or exit, and an oversized sell is resized to them rather than blocked outright. It was per NAME until 2026-09-09, when a $200 SPY top-up froze a $2,265 position for two weeks and left a whole rebalance with nothing to sell. Overridden only by a business-broken verdict, a loss past −10% (risk control outranks churn control), or a harvest/park release. Added after two consecutive targets flipped the whole book in 48 hours.')}
       ${rule('🔁','Re-entry cooldown',AG_REENTRY_D+' days','A name this account sold inside the window is not rebought — it covers the gain-sells the 30-day wash ledger cannot see. The weight waits in cash meanwhile (since 2026-09-03 only a wash-sale deferral parks).')}
       ${rule('🧾','Wash-sale window',AG_WASH_WINDOW_D+' days, cross-account','The IRS window is per taxpayer, so the ledger reads BOTH taxable books. A loss booked in ••••0741 blocks a rebuy here — the exact trade that partially disallowed a −$431 NVDA loss once. Losses under '+fmtD(AG_WASH_MIN_LOSS)+' are ignored: a disallowed loss is not lost, it moves to the new shares\' basis, so pennies should never gate a real allocation (a $1.01 loss was blocking a $29.25 buy for 30 days).')}
       ${rule('📅','Earnings blackout','≤'+AG_EARN_BLACKOUT_D+' days','No NEW money into a name about to report. Wait for the print, then buy with full information.')}
@@ -4693,7 +4701,7 @@ window.switchTab=switchTab;
     <div class="hsub">Sells get held back too</div>
     <p>The reasons above are all <b>buy</b>-side. A planned <i>sell</i> — an exit, a trim, a harvest — can be held by two guards of its own, and the "Sells held back" list shows them with the date each clears:</p>
     <ul>
-      <li><span class="hk">min-hold</span> — the position was opened within the last 14 days. A name bought this week isn't flipped by next week's research refresh; only a business-broken verdict or a loss past −10% overrides it.</li>
+      <li><span class="hk">min-hold</span> — some of these shares were bought within the last 14 days. It is a <b>per-lot</b> lock: only the shares bought inside the window are held, and the older lots still trim or exit, so a recent top-up can't freeze a long-held position. What a name bought this week can't do is get flipped by next week's research refresh; only a business-broken verdict or a loss past −10% overrides it.</li>
       <li><span class="hk">PDT guard</span> — it was bought earlier the same session, so selling now would book a day trade. The account is under $25k, so the rule is categorical: zero round trips.</li>
     </ul>
     <p>This matters because it explains a ticket that is <b>all buys and no sells</b>. If new cash arrives while every planned sell sits inside its window, the buys fund themselves from that cash and the sells simply re-plan on the first pass after their unlock date. Nothing failed.</p>

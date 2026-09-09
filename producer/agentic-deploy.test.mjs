@@ -522,6 +522,111 @@ const mhHarvest = planDeployment({
 });
 ok('a TLH harvest is exempt from the min-hold', !!find(mhHarvest.harvests, 'GOOGL'));
 
+// ── MIN-HOLD IS PER-LOT (2026-09-09) ────────────────────────────────────────────────────────────
+// The guard used to lock the whole POSITION because part of it was bought recently: a $200.73 SPY
+// top-up on 09-08 froze ~$2,265 of SPY until 09-22, and that trim was the only funding for the new
+// target's four buys. Now the in-window LOTS lock and the older shares trade.
+// (`mh` above passes {lastBuyDate} with no `buys` — the executor's live overlay and every older caller
+//  are shaped that way, so the whole-position block must survive unchanged.)
+ok('activity without lot detail keeps the per-name block (absent detail is not evidence)',
+  !find(mh.exits, 'MSFT') && find(mh.blockedSells, 'MSFT').blocked === 'min-hold'
+  && find(mh.blockedSells, 'MSFT').dollars === 900 && !find(mh.blockedSells, 'MSFT').partial);
+
+// 10 sh held, 1 sh bought yesterday. A 3-sh trim fits inside the 9 free shares → untouched.
+const lotPlan = (weightPct, buys, positions) => planDeployment({
+  target: { asOf: '2026-09-09', driftTriggerPp: 5, names: [
+    { ticker: 'SPY', weightPct, entry: '740-780', stop: 690 },
+    { ticker: 'NVDA', weightPct: 100 - weightPct, entry: '200-215', stop: 190 }] },
+  positions: positions || [{ symbol: 'SPY', qty: 10, avgCost: 700 }],
+  cash: 0, quotes: { SPY: 750, NVDA: 209 },
+  accountActivity: { SPY: { lastBuyDate: '2026-09-08', buys } }, opts: { asOf: '2026-09-09' },
+});
+const lot1 = lotPlan(70, [{ date: '2026-09-08', dollars: 750, shares: 1 }]);
+ok('a trim that fits inside the free lots is not blocked at all',
+  !!find(lot1.trims, 'SPY') && lot1.blockedSells.length === 0);
+near('…and is placed in full', find(lot1.trims, 'SPY').shares, 3, 1e-6);
+
+// A 9.5-sh trim against 1 locked share: 9 sh trim now, 0.5 sh held to the lot's own unlock date.
+const lot2 = lotPlan(5, [{ date: '2026-09-08', dollars: 750, shares: 1 }]);
+const lot2Trim = find(lot2.trims, 'SPY'), lot2Blk = find(lot2.blockedSells, 'SPY');
+ok('an oversized trim is RESIZED to the free shares rather than blocked', !!lot2Trim && lot2Trim.partial === true);
+near('…resized to the free share count', lot2Trim.shares, 9, 1e-6);
+near('…with dollars recomputed off the same price', lot2Trim.dollars, 9 * 750, 0.01);
+near('…and its estimated P&L scaled with it', lot2Trim.pl, 9 * (750 - 700), 0.01);
+eqr('…while plPct is a per-share figure and is unchanged', lot2Trim.plPct, 7.14);
+ok('…the locked remainder is reported as a min-hold block', !!lot2Blk && lot2Blk.blocked === 'min-hold' && lot2Blk.partial === true);
+near('…for exactly the locked shares', lot2Blk.shares, 0.5, 1e-6);
+near('…and their dollars', lot2Blk.dollars, 0.5 * 750, 0.01);
+eqr('…unlocking at the LOT date + 14d, not the position age', lot2Blk.until, '2026-09-22');
+eqr('…dated from that lot', lot2Blk.heldDays, 1);
+ok('…the note names both halves', /0\.5 sh bought 2026-09-08/.test(lot2Blk.note) && /9 sh from older lots/.test(lot2Blk.note));
+near('…and the freed proceeds fund the buys', lot2.proceeds, 6750, 0.01);
+
+// An off-target EXIT splits the same way and stays an exit.
+const exArgs = {
+  target: { asOf: '2026-09-09', driftTriggerPp: 5, names: [{ ticker: 'AAPL', weightPct: 100, entry: '304-312', stop: 284 }] },
+  cash: 0, quotes: { AAPL: 309, MSFT: 450 }, opts: { asOf: '2026-09-09' },
+};
+const lot3 = planDeployment({ ...exArgs, positions: [{ symbol: 'MSFT', qty: 2, avgCost: 400 }],
+  accountActivity: { MSFT: { lastBuyDate: '2026-09-06', buys: [{ date: '2026-09-06', dollars: 225, shares: 0.5 }] } } });
+const lot3Exit = find(lot3.exits, 'MSFT');
+ok('a partial exit still exits (kind unchanged) and is flagged partial',
+  !!lot3Exit && lot3Exit.kind === 'exit' && lot3Exit.partial === true);
+near('…selling only the free shares', lot3Exit.shares, 1.5, 1e-6);
+near('…for their dollars', lot3Exit.dollars, 675, 0.01);
+near('…with the locked remainder held', find(lot3.blockedSells, 'MSFT').shares, 0.5, 1e-6);
+eqr('…to that lot’s unlock date', find(lot3.blockedSells, 'MSFT').until, '2026-09-20');
+
+// DUST: a free slice under MIN_BUY is not worth its own taxable round trip → the whole sell waits.
+const lot4 = planDeployment({ ...exArgs, positions: [{ symbol: 'MSFT', qty: 1.02, avgCost: 400 }],
+  accountActivity: { MSFT: { lastBuyDate: '2026-09-06', buys: [{ date: '2026-09-06', dollars: 450, shares: 1 }] } } });
+ok('a free slice under the $25 order floor is fully blocked, not shipped as dust',
+  !lot4.exits.length && find(lot4.blockedSells, 'MSFT').blocked === 'min-hold'
+  && /order floor/.test(find(lot4.blockedSells, 'MSFT').note));
+
+// FAIL SAFE: an in-window lot of UNKNOWN size locks the whole position — an unknown lot must never be
+// read as a zero-share one, or the guard unlocks exactly the case it cannot measure.
+const lot5 = planDeployment({ ...exArgs, positions: [{ symbol: 'MSFT', qty: 2, avgCost: 400 }],
+  accountActivity: { MSFT: { lastBuyDate: '2026-09-06', buys: [{ date: '2026-09-06', dollars: 225, shares: null }] } } });
+ok('an in-window lot with no share count locks the whole position',
+  !lot5.exits.length && /size.* is unknown/i.test(find(lot5.blockedSells, 'MSFT').note));
+
+// PDT is per SECURITY (FINRA), so lot detail changes nothing about a name bought TODAY.
+const lot6 = planDeployment({ ...exArgs, positions: [{ symbol: 'MSFT', qty: 2, avgCost: 400 }],
+  accountActivity: { MSFT: { lastBuyDate: '2026-09-09', buys: [{ date: '2026-09-09', dollars: 225, shares: 0.5 }] } } });
+ok('a name bought TODAY is still fully blocked (PDT is per security, not per lot)',
+  !lot6.exits.length && find(lot6.blockedSells, 'MSFT').blocked === 'day-trade');
+
+// REGRESSION — the live 2026-09-09 book, the case that motivated the change. SPY 2.97 sh @ $762.17 is
+// 17.2% of a ~$13.2k book against a 4.48% target; one $200.73 lot landed the day before. The trim
+// (~2.2 sh) is the only funding the four new buys have.
+const liveArgs = {
+  target: { asOf: '2026-09-09', driftTriggerPp: 5, names: [
+    { ticker: 'SPY',   weightPct: 4.48, entry: '700-790', stop: 640 },
+    { ticker: 'NVDA',  weightPct: 31,   entry: '190-220', stop: 175 },
+    { ticker: 'GOOGL', weightPct: 27,   entry: '225-250', stop: 205 },
+    { ticker: 'JPM',   weightPct: 23,   entry: '330-360', stop: 305 },
+    { ticker: 'MA',    weightPct: 8,    entry: '540-580', stop: 500 },
+    { ticker: 'ABBV',  weightPct: 6.52, entry: '200-225', stop: 185 }] },
+  positions: [
+    { symbol: 'SPY', qty: 2.97, avgCost: 700 }, { symbol: 'NVDA', qty: 20, avgCost: 180 },
+    { symbol: 'GOOGL', qty: 15, avgCost: 210 }, { symbol: 'JPM', qty: 9, avgCost: 300 }],
+  cash: 0, quotes: { SPY: 762.17, NVDA: 209, GOOGL: 240, JPM: 348.8, MA: 560, ABBV: 210 },
+  opts: { asOf: '2026-09-09' },
+};
+const liveLot = { date: '2026-09-08', dollars: 200.73, shares: +(200.73 / 767.13).toFixed(6) };
+const live = planDeployment({ ...liveArgs, accountActivity: { SPY: { lastBuyDate: '2026-09-08', buys: [liveLot] } } });
+near('live 09-09: the SPY trim is placed, not blocked', find(live.trims, 'SPY').shares, 2.196, 0.02);
+ok('…with nothing held back (the 0.26 sh lot is well inside the free 2.71 sh)', live.blockedSells.length === 0);
+ok('…the buys are funded by those proceeds', live.buysNeedProceeds === true && live.buys.length > 0);
+near('…and turnover is a real ticket, not $0', live.turnover, 1673 + live.spent, 5);
+// The same book under the old per-NAME rule (no lot detail): the whole position freezes and the
+// rebalance is a no-op for two weeks. This is the contrast the change exists to remove.
+const livePerName = planDeployment({ ...liveArgs, accountActivity: { SPY: { lastBuyDate: '2026-09-08' } } });
+ok('…whereas the per-name fallback would freeze the whole position and fund nothing',
+  !livePerName.trims.length && find(livePerName.blockedSells, 'SPY').blocked === 'min-hold'
+  && livePerName.proceeds === 0 && livePerName.spent === 0);
+
 // RE-ENTRY COOLDOWN: a name sold 2 days ago is not rebought (the GE-sold-08-10-rebought-08-12 case).
 // Its weight waits in CASH since 2026-09-03 — the owner turned on a high-yield sweep, so PARK_DATED_
 // REASONS narrowed to wash-sale alone (a 14-day cooldown is too short for a spread-paying round trip

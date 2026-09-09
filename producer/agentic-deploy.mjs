@@ -100,18 +100,23 @@ export const WASH_WINDOW_DAYS = 30;   // IRS wash-sale window (either side of a 
 // three rules make conviction changes pay a toll before they become trades. They pair with the
 // target-level guard in finalize-target.mjs (a dropped-but-held name is RETAINED one cycle unless
 // the research says the business is broken — see `target.dropped` below).
-//   • MIN-HOLD: a name this account bought within MIN_HOLD_DAYS is not exited/trimmed, UNLESS the
-//     research explicitly marked it business-broken (`target.dropped` reason), the position is down
-//     ≤ MIN_HOLD_EXEMPT_LOSS_PCT (risk control outranks churn control), or it's a TLH harvest /
-//     park-release (each has its own floor and purpose). Day 0 stays the harder PDT 'day-trade' block.
+//   • MIN-HOLD: the SHARES this account bought within MIN_HOLD_DAYS are not exited/trimmed — PER LOT
+//     since 2026-09-09, so an oversized sell is resized to the free (older) shares and only the
+//     remainder is held; see minHoldBlock for why the per-NAME version was the wrong unit. UNLESS the
+//     research explicitly marked the name business-broken (`target.dropped` reason), the position is
+//     down ≤ MIN_HOLD_EXEMPT_LOSS_PCT (risk control outranks churn control), or it's a TLH harvest /
+//     park-release (each has its own floor and purpose). Day 0 stays the harder PDT 'day-trade' block,
+//     which is per NAME because FINRA counts a day trade per security.
 //   • RE-ENTRY COOLDOWN: a name this account sold within REENTRY_COOLDOWN_DAYS is not rebought —
 //     the deferred weight parks in the VTI waiting ground like any other deferral. (The wash-sale
 //     ledger already blocks loss-sale rebuys for 30d; this covers GAIN-sells, which is exactly what
 //     the 08-10 exits were.) The park vehicle itself is exempt or park/release would jam.
 //   • MIN_BUY: no dust orders (the 08-05 ticket placed a $1.80 UNH buy) — below this the gap just
 //     waits for the next pass.
-// `accountActivity` carries {SYM:{lastBuyDate,lastSellDate}} — the gate derives it from the committed
-// agentic-decisions.json (activityFromDecisions) and the executor overlays today's live fills.
+// `accountActivity` carries {SYM:{lastBuyDate,lastSellDate,buys:[{date,dollars,shares}]}} — the gate
+// derives it from the committed agentic-decisions.json (activityFromDecisions) and the executor
+// overlays today's live fills. `buys` is the per-lot detail the min-hold splits on; an entry without
+// it (the executor's overlay, older callers) falls back to the per-name block.
 export const MIN_HOLD_DAYS = 14;
 export const REENTRY_COOLDOWN_DAYS = 14;
 export const MIN_HOLD_EXEMPT_LOSS_PCT = -10; // a position down this much may exit regardless (risk first)
@@ -366,17 +371,81 @@ export function planDeployment(input = {}) {
     const a = accountActivity && accountActivity[sym];
     return (a && a[key]) ? daysSince(String(a[key]).slice(0, 10), opts.asOf) : null;
   };
+  // MIN-HOLD IS PER-LOT (2026-09-09), not per-name — the guard used to lock a whole POSITION because
+  // some of it was bought recently. That is the wrong unit. Live: SPY took a $200.73 top-up on 09-08
+  // (one leg of a deposit tranche), which froze the entire ~$2,265 SPY position until 09-22 — and since
+  // the new target's SPY trim (17% → 4.5%, ~$1,675) was the only funding for its four new buys, the
+  // executor idled for a fortnight over a $200 lot. The churn this guard exists to stop is flipping a
+  // JUST-OPENED position, not trading shares held for months that happen to share a ticker with a recent
+  // top-up. So the in-window LOTS are locked, everything older trades, and an oversized sell is RESIZED
+  // to the free shares with the locked remainder reported in blockedSells under its own unlock date.
+  // Four things are load-bearing:
+  //   • NO LOT DETAIL ⇒ the pre-2026-09-09 per-NAME block, unchanged. The executor's live overlay
+  //     writes only {lastBuyDate} for today's fills, and older callers pass only that; absent detail is
+  //     not evidence that the position is free.
+  //   • AN IN-WINDOW LOT OF UNKNOWN SIZE ⇒ the whole position locks. An unknown lot must never be read
+  //     as a zero-share one — that would unlock exactly the case we cannot measure.
+  //   • THE FREE SLICE INHERITS THE DUST FLOOR (`minBuy`): a sale too small to be worth placing is not
+  //     worth its taxable ST round trip either, the same judgement MIN_BUY and PARK_MIN already make.
+  //   • PDT STAYS PER NAME. `dayTradeBlock` runs first (see sellBlocked) and is untouched: FINRA counts
+  //     a day trade per SECURITY, so lots are irrelevant to it and a name bought TODAY is fully blocked.
+  //     Day 0 is therefore its business and is excluded from the lock computed here.
+  const LOT_EPS = 1e-6;
+  const shTxt = (n) => String(+(+n).toFixed(4));
   const minHoldBlock = (row) => {
     if (!(minHoldDays > 0) || row.kind === 'harvest' || row.kind === 'park-release') return false;
     if (brokenDrops.has(row.sym)) return false;                       // research says the thesis broke
     const exemptLoss = opts.minHoldExemptLossPct ?? MIN_HOLD_EXEMPT_LOSS_PCT;
     if (row.plPct != null && row.plPct <= exemptLoss) return false;   // deep loss: risk control wins
+    const act = (accountActivity && accountActivity[row.sym]) || null;
     const d = daysSinceActivity(row.sym, 'lastBuyDate');
     if (d == null || d < 0 || d >= minHoldDays) return false;         // day 0 already caught by PDT block
-    const unlocks = addDays(String(accountActivity[row.sym].lastBuyDate).slice(0, 10), minHoldDays);
-    blockedSells.push({ ...row, blocked: 'min-hold', until: unlocks, heldDays: d,
-      note: `bought ${d}d ago (min-hold ${minHoldDays}d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks ${unlocks} (a business-broken drop or a ≤${exemptLoss}% loss would override)` });
-    return true;
+    const blockWhole = (until, days, why) => {
+      blockedSells.push({ ...row, blocked: 'min-hold', until, heldDays: days, note: why });
+      return true;
+    };
+    const churnNote = (until, days) => `bought ${days}d ago (min-hold ${minHoldDays}d) — churn guard: a just-opened position isn't flipped by the next target refresh; unlocks ${until} (a business-broken drop or a ≤${exemptLoss}% loss would override)`;
+    const nameUnlock = addDays(String(act.lastBuyDate).slice(0, 10), minHoldDays);
+    const lots = Array.isArray(act.buys)
+      ? act.buys.filter((l) => { const age = daysSince(String(l.date || '').slice(0, 10), opts.asOf); return age != null && age > 0 && age < minHoldDays; })
+      : null;
+    // No usable lot detail for the buy `lastBuyDate` is pointing at — legacy per-name behaviour.
+    if (!lots || !lots.length) return blockWhole(nameUnlock, d, churnNote(nameUnlock, d));
+    const latest = lots.reduce((a, l) => (String(l.date) > String(a.date) ? l : a), lots[0]);
+    const lotDate = String(latest.date).slice(0, 10);
+    const unlocks = addDays(lotDate, minHoldDays);
+    const heldDays = daysSince(lotDate, opts.asOf);
+    if (lots.some((l) => !(Number.isFinite(l.shares) && l.shares >= 0)))
+      return blockWhole(unlocks, heldDays, `bought ${heldDays}d ago (min-hold ${minHoldDays}d) and that lot's SIZE is unknown (the recorded leg carries no price) — locking the whole position rather than guessing how much of it is free; unlocks ${unlocks}`);
+    const lockedShares = +lots.reduce((s, l) => s + l.shares, 0).toFixed(6);
+    const heldQty = num((held[row.sym] || {}).qty) || 0;
+    const freeShares = +Math.max(0, heldQty - lockedShares).toFixed(6);
+    const price = num(row.price) ?? num((held[row.sym] || {}).px);
+    const want = num(row.shares);
+    // Without a share count and a price the split cannot be sized — fail safe to the whole-name block.
+    if (want == null || !(price > 0)) return blockWhole(unlocks, heldDays, churnNote(unlocks, heldDays));
+    if (freeShares <= LOT_EPS)
+      return blockWhole(unlocks, heldDays, `all ${shTxt(heldQty)} sh held were bought inside the ${minHoldDays}d min-hold (${shTxt(lockedShares)} sh, latest ${lotDate}) — no older lot is free to sell yet; unlocks ${unlocks}`);
+    if (want <= freeShares + LOT_EPS) return false;                   // fits entirely inside the free lots
+    const freeDollars = +(freeShares * price).toFixed(2);
+    if (freeDollars < minBuy)
+      return blockWhole(unlocks, heldDays, `only ${shTxt(freeShares)} sh (${money(freeDollars)}) sit outside the ${minHoldDays}d min-hold — under the ${money(minBuy)} order floor, so the whole ${row.kind || 'sell'} waits rather than placing a dust sale; the ${shTxt(lockedShares)} sh bought ${lotDate} unlock ${unlocks}`);
+    // SPLIT — the free lots trade now (the row is resized in place), the locked remainder is reported.
+    const lockedPart = +(want - freeShares).toFixed(6);
+    const lockedDollars = +(lockedPart * price).toFixed(2);
+    const plPerShare = (row.pl != null && want > 0) ? row.pl / want : null;
+    const verb = row.kind === 'exit' ? 'exit' : row.kind === 'trim' ? 'trim' : 'sell';
+    blockedSells.push({ ...row, blocked: 'min-hold', until: unlocks, heldDays, partial: true,
+      shares: lockedPart, dollars: lockedDollars,
+      pl: plPerShare == null ? null : +(plPerShare * lockedPart).toFixed(2),
+      note: `${shTxt(lockedPart)} sh bought ${lotDate} are inside the ${minHoldDays}d min-hold (unlocks ${unlocks}); the ${shTxt(freeShares)} sh from older lots ${verb} now` });
+    row.shares = freeShares;
+    row.dollars = freeDollars;
+    if (plPerShare != null) row.pl = +(plPerShare * freeShares).toFixed(2);
+    row.partial = true;
+    row.lockedShares = lockedPart;
+    row.note = `${row.note} · PARTIAL: ${shTxt(lockedPart)} sh bought ${lotDate} are inside the ${minHoldDays}d min-hold (unlock ${unlocks}) — only the ${shTxt(freeShares)} sh from older lots ${verb} now`;
+    return false;                                                     // the RESIZED row proceeds
   };
   const sellBlocked = (row) => dayTradeBlock(row) || minHoldBlock(row);
   const currentWeights = {}, targetWeights = {};
@@ -582,9 +651,11 @@ export function planDeployment(input = {}) {
         const pl = h.avgCost != null ? +((h.px - h.avgCost) * shares).toFixed(2) : null;
         const row = { sym, kind: 'drawdown-raise', dollars, shares, price: h.px, pl, plPct, term: 'short',
           note: `book ${ddPct} from its peak — raising defensive cash to ${floorPct}% of book (losses first)` };
+        // A min-hold lot split resizes `row` in place, so the shortfall must fall by what this leg
+        // will ACTUALLY raise, not by what it was sized to before the guard trimmed it.
         if (sellBlocked(row)) continue;
         ddRaises.push(row);
-        need = +(need - dollars).toFixed(2);
+        need = +(need - row.dollars).toFixed(2);
       }
       if (need > 0) warnings.push(`drawdown hard tier: could not reach the ${floorPct}% cash floor — ${money(need)} short after the PDT and min-hold guards (they are not overridden by the breaker)`);
     }
@@ -798,7 +869,7 @@ export function planDeployment(input = {}) {
   const pdtBlocked = blockedSells.filter((b) => b.blocked === 'day-trade');
   const holdBlocked = blockedSells.filter((b) => b.blocked === 'min-hold');
   if (pdtBlocked.length) warnings.push(`${pdtBlocked.length} sell(s) held to the next session (${pdtBlocked.map((b) => b.sym).join(', ')}) — bought today, selling now would be a day trade (PDT guard)`);
-  if (holdBlocked.length) warnings.push(`${holdBlocked.length} sell(s) held by the ${minHoldDays}d min-hold (${holdBlocked.map((b) => b.sym).join(', ')}) — churn guard: positions opened within the window aren't flipped by the next research refresh`);
+  if (holdBlocked.length) warnings.push(`${holdBlocked.length} sell(s) held by the ${minHoldDays}d min-hold (${holdBlocked.map((b) => `${b.sym}${b.partial ? ' — part' : ''}`).join(', ')}) — churn guard: only the SHARES bought inside the window are held; older lots trim/exit normally (“part” = the rest of that name already sold this ticket)`);
   // Judge "fully funded" against what was actually FUNDABLE, not against a pool that counted a release
   // which never fired — otherwise a plan that just held a buy back reports itself as fully deployed.
   const fundablePool = +(cashThisPass + proceeds + releaseD).toFixed(2);

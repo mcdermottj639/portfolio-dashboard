@@ -377,6 +377,16 @@ export function snapshotHoldingsSanity({ positions = [], activity = {}, parked =
 // lets the exec gate see "we bought AAPL two days ago / sold MSFT yesterday" BETWEEN producer runs
 // (raw/ is wiped; the ledger is the committed record of every placed rebalance). The executor still
 // overlays today's live fills from get_equity_orders — this covers everything before today.
+//
+// PER-LOT DETAIL (2026-09-09): each symbol also carries `buys: [{date, dollars, shares}]` — every BUY
+// leg inside the window, oldest first. `lastBuyDate` alone can only answer "was ANY of this name bought
+// recently", which made the min-hold a per-NAME lock: a $200 SPY top-up on 09-08 froze the whole $2,265
+// SPY position for two weeks and left the first Mandate A rebalance with nothing to sell. The lot list
+// is what lets `agentic-deploy`'s minHoldBlock lock only the SHARES bought inside the window and trade
+// the older ones. `shares` is dollars ÷ the leg's recorded `priceAt`; a leg with no usable price yields
+// `shares: null`, which the planner reads as "size unknown" and fails SAFE by locking the whole
+// position — an unknown lot must never be treated as a zero-share one. SELL/TRIM/EXIT legs never enter
+// `buys` (they release shares; they don't lock any).
 export function activityFromDecisions(decisions = [], { asOf, sinceDays = 30 } = {}) {
   const map = {};
   for (const d of decisions) {
@@ -390,8 +400,19 @@ export function activityFromDecisions(decisions = [], { asOf, sinceDays = 30 } =
       const m = map[sym] || (map[sym] = {});
       const key = side === 'BUY' ? 'lastBuyDate' : 'lastSellDate'; // SELL/TRIM/EXIT all count as sells
       if (!m[key] || d.date > m[key]) m[key] = d.date;
+      if (side !== 'BUY') continue;
+      const dollars = Number(t.dollars), px = Number(t.priceAt);
+      (m.buys || (m.buys = [])).push({
+        date: String(d.date).slice(0, 10),
+        dollars: Number.isFinite(dollars) ? +dollars.toFixed(2) : null,
+        shares: (Number.isFinite(dollars) && dollars >= 0 && Number.isFinite(px) && px > 0)
+          ? +(dollars / px).toFixed(6) : null,
+      });
     }
   }
+  // Oldest first — the planner reads the LATEST in-window lot for the unlock date, and a ledger is not
+  // guaranteed to be in date order (an owner overlay or a re-derived day can land out of sequence).
+  for (const m of Object.values(map)) if (m.buys) m.buys.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   return map;
 }
 

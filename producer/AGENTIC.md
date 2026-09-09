@@ -540,10 +540,15 @@ claude.ai Routine UI, enables it, and disables the persistent one — the API ca
       name bought earlier today** (a day trade; this book is under $25k), and **overlay them onto the
       gate's ledger-derived buy/sell dates** (2026-08-12 churn governor: the gate already passed
       `{SYM:{lastBuyDate,lastSellDate}}` from `agentic-decisions.json`; your live fills cover anything
-      placed since its last append). A sell of a name bought <14d ago, or a buy of a name sold <14d ago,
-      that somehow reaches you anyway must be dropped for the same reasons the planner would have
-      (min-hold / re-entry cooldown) — unless the plan explicitly carries the business-broken drop or
-      deep-loss override. A recent margin-account buy of
+      placed since its last append). **Do NOT re-apply a per-name 14-day test to the sells.** Since 2026-09-09 the
+      min-hold is PER LOT: the planner has already sized every sell to the shares held OUTSIDE the
+      window, and a partial sell of a name with a recent top-up is legitimate (the row carries
+      `partial:true`, and the locked remainder is in `blockedSells` with its unlock date). Re-blocking
+      it by name would re-freeze exactly the lots the planner just freed — the $200 SPY top-up that
+      locked a $2,265 position. The only per-name sell test that survives here is the PDT one above: a
+      name bought TODAY is dropped, because FINRA counts a day trade per security. A BUY of a name sold
+      <14d ago is still dropped on the re-entry cooldown as before — unless the plan explicitly carries
+      the business-broken drop or deep-loss override. A recent margin-account buy of
       the same symbol kills a harvest (keep exits, flag `washRisk`). The gate can see neither, so this is
       the only place both are enforced. **Also (v105): `get_pnl_trade_history` on the margin account
       (…0741, span `month`) — drop any BUY of a name that account realized a LOSS on within 30 days**
@@ -555,6 +560,10 @@ claude.ai Routine UI, enables it, and disables the persistent one — the API ca
       — instant settlement makes the proceeds spendable on fill, so the whole ticket goes in one session.
       Fractional **dollar-market** orders via `review_equity_order → place_equity_order`, regular hours.
       If a sell is still pending, leave the ticket at `sells-placed`; the next pass places the rest.
+      **A sell carrying `partial:true` is a per-lot min-hold split (2026-09-09): place it for the dollars
+      on the row — that is already only the shares held outside the window — and say "partial" in the
+      push, naming the locked remainder's unlock date from the matching `blockedSells` entry. Placing the
+      FULL position there would sell shares the guard is holding.**
    e. Advance the ticket (`advanceTicket` → `sells-placed`, then `buys-placed`/`done`), **append the
       decision** to `agentic-decisions.json`, commit + push both files,
 
