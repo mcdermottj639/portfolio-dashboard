@@ -24,7 +24,7 @@ import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions, applyMarks } from './agentic-ledger.mjs';
 import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
-import { appendEquityPoint, derivativesRealized } from './equityseries.mjs';
+import { appendEquityPoint, derivativesRealized, brokerageEquity } from './equityseries.mjs';
 import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
@@ -467,12 +467,19 @@ const data = {
   // modelled return understate the real swing by exactly the leverage factor.
   //
   // So this account now records forward exactly like the agentic one, through the same module.
-  // EQUITY IS `total_value`, never `equity_value` (v116) — on a margin book those differ by the whole
-  // loan. Robinhood publishes no account-equity history, so this CANNOT be backfilled; the consumer
+  // EQUITY IS THE BROKERAGE BOOK — `equity_value + options_value + cash`, via brokerageEquity().
+  // The v116 lesson is intact and is the reason for the `+ cash` term: `equity_value` ALONE is gross
+  // long market value, which on a margin book overstates equity by the whole loan. What changed
+  // (2026-09-10) is only the SOURCE: this used to read `total_value`, on the documented premise that
+  // Robinhood keeps the derivatives sleeves outside it. That premise was never true — see
+  // brokerageEquity() — and reading it off the components makes the basis independent of which
+  // convention the broker is using, which is what keeps derivativesRealized() correct.
+  // Robinhood publishes no account-equity history, so this CANNOT be backfilled; the consumer
   // says "since {date}" until a full year accrues, and falls back to the modelled figure (clearly
   // labelled) while fewer than two points exist.
   {
-    const eqTotal = parseFloat(portfolio.total_value ?? '');
+    const be = brokerageEquity(portfolio);
+    const eqTotal = be.equity;
     const optVal = parseFloat(portfolio.options_value ?? '');
     const cashVal = parseFloat(portfolio.cash ?? '') || 0;
     const pxOf = (sym) => { const q = quotes[sym]; if (!q) return 0;
@@ -494,18 +501,18 @@ const data = {
         since: priorMain ? priorMain.asOf : null, until: data.generatedAt,
       });
       if (mainDeriv) console.log(`main: ${fmtMoney(mainDeriv)} of derivatives (prediction-market/futures) P&L this step — counted as return, not a transfer`);
-      // The whole correction rests on total_value being the BROKERAGE account only. Robinhood
-      // reports it as equity_value + options_value + cash, with event/futures/crypto as separate
-      // top-level buckets. If that identity ever breaks while one of those buckets is non-zero,
-      // the sleeve has been folded INTO total_value and this term would double-count — say so
-      // loudly rather than drifting silently.
-      const sleeves = ['event_contracts_value', 'futures_value', 'crypto_value']
-        .reduce((a, k) => a + (parseFloat(portfolio[k] ?? '') || 0), 0);
-      const identity = eqTotal - ((parseFloat(portfolio.equity_value ?? '') || 0)
-        + (Number.isFinite(optVal) ? optVal : 0) + cashVal);
-      if (Math.abs(sleeves) > 1 && Math.abs(identity) > 1) {
-        console.warn(`⚠️  main: total_value no longer reconciles as equity+options+cash (off by ${fmtMoney(identity)}) while ${fmtMoney(sleeves)} sits in event/futures/crypto buckets — the derivatives sleeve may now be INSIDE total_value, which would double-count derivativesRealized(). Re-check equityseries.mjs before trusting cumFlow.`);
+      // THE INVARIANT, checked against the payload rather than restating the model: whatever
+      // `total_value` carries beyond the brokerage book must be exactly the sleeves brokerageEquity
+      // knows about. A residual means an asset bucket exists that this producer has never heard of,
+      // so the recorded basis is wrong — and a wrong basis corrupts cumFlow, which is a RUNNING
+      // TOTAL and therefore the one failure here the next snapshot cannot republish away.
+      // It rides the alerts sidecar to the owner's phone (alerts.mjs), because a warning that only
+      // reaches a scheduled run's log is this repo's own "guard that fires silently".
+      if (be.residual != null && Math.abs(be.residual) > 1) {
+        console.warn(`⚠️  main: ${fmtMoney(be.total)} total_value − ${fmtMoney(be.equity)} brokerage − ${fmtMoney(be.sleeves)} known sleeves leaves ${fmtMoney(be.residual)} UNACCOUNTED FOR — an asset bucket equityseries.mjs does not model. The recorded equity basis is wrong until it is either added to EXTERNAL_SLEEVE_KEYS or folded into the brokerage book.`);
       }
+      if (be.basis !== 'brokerage') console.warn(`⚠️  main: portfolio payload is missing a component (equity_value / options_value / cash) — recording equity from total_value rather than the brokerage book, so any derivatives sleeve sits INSIDE the recorded figure. Expected on the Railway path (fetch_rh.py writes no options_value); unexpected on a Claude-agent run.`);
+      if (be.sleeves) console.log(`main: ${fmtMoney(be.sleeves)} sits in derivatives sleeves, held OUTSIDE the recorded brokerage equity of ${fmtMoney(be.equity)}`);
       const r = appendEquityPoint({
         prev: (priorMain && priorMain.equityHistory) || [],
         day: new Date(data.generatedAt).toISOString().slice(0, 10),
@@ -517,10 +524,17 @@ const data = {
         extraPnl: mainDeriv,
         cash: cashVal,
         priorCash: priorMain && typeof priorMain.cash === 'number' ? priorMain.cash : undefined,
+        // Only when the basis was actually derivable (see brokerageEquity): stamping a sleeve value
+        // we could not compute would tell the next run this series is already on the brokerage
+        // basis and skip the one-time perimeter shift it still owes.
+        sleeveValue: be.basis === 'brokerage' ? be.sleeves : undefined,
       });
+      if (r.basisShift) console.warn(`main: recorded basis moved from total_value to the brokerage book — ${fmtMoney(be.sleeves)} of derivatives sleeve carved out of the perimeter and booked as a transfer, not a loss (one time only)`);
       data.main = {
         asOf: data.generatedAt, equity: +eqTotal.toFixed(2), cash: +cashVal.toFixed(2),
         optionsValue: Number.isFinite(optVal) ? +optVal.toFixed(2) : null,
+        // Diagnostics for the invariant above — alerts.mjs transitions on basisResidual.
+        sleeveValue: be.sleeves, basisResidual: be.residual, equityBasis: be.basis,
         // Kept only so the NEXT run can difference prices for the flow inference — not rendered.
         positions: mainPos, equityHistory: r.history,
       };

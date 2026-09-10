@@ -64,16 +64,79 @@ export function flowThreshold(priorEquity) {
   return Math.max(FLOW_FLOOR_ABS, Math.min(pct, FLOW_FLOOR_CAP));
 }
 
+/* THE MEASURED PERIMETER (2026-09-10). Sleeves that are not part of the brokerage account —
+   prediction markets, futures, crypto — are held by separate legal entities, and the whole
+   `derivativesRealized` treatment below depends on them sitting OUTSIDE the equity we record.
+   `total_value` cannot be trusted to express that: on 2026-09-10 it demonstrably INCLUDED the
+   event-contract sleeve (see the derivativesRealized docstring for the arithmetic).
+
+   `equity_value + options_value + cash` is the brokerage book under BOTH readings — it equals
+   `total_value − sleeves` when the broker folds them in, and equals `total_value` when it doesn't —
+   so computing it from the components removes the dependency on which convention is in force
+   rather than detecting it.
+
+   `residual` is the invariant, and it is checked against REALITY rather than restating the model:
+   whatever `total_value` carries beyond the brokerage book should be exactly the sleeves we know
+   about. A non-zero residual means a bucket exists that this function has never heard of, and the
+   recorded equity is therefore wrong — so it is surfaced (build-data warns, alerts.mjs pushes)
+   instead of drifting silently. `mutual_funds_value` / `fixed_income_value` are deliberately NOT
+   listed: they are brokerage-held securities, so if they ever go non-zero they belong INSIDE the
+   measured book, and the residual is how we find out where the broker actually puts them.
+
+   FAILS BACK to `total_value` when ANY component is missing — never worse than the old behaviour, and
+   the absent component is never read as a zero. That is not hypothetical: the Railway producer
+   (`producer/railway/fetch_rh.py`) writes `{total_value, equity_value, cash, buying_power}` and NO
+   `options_value`, so coercing a missing field to 0 would drop the whole options mark out of the
+   basis on that path — silently, and only on the producer that is not usually live, which is the
+   worst possible place for a silent divergence. `absent !== zero`, the same rule `finalize-target`
+   learned about `entryQuality`. A real account always reports `options_value` (the agentic book,
+   which holds no options, returns the string "0"), so requiring it costs the Claude path nothing. */
+export const EXTERNAL_SLEEVE_KEYS = ['event_contracts_value', 'futures_value', 'crypto_value'];
+
+export function brokerageEquity(portfolio) {
+  const p = portfolio || {};
+  const n = (k) => { const v = parseFloat(p[k] ?? ''); return Number.isFinite(v) ? v : null; };
+  const total = n('total_value');
+  const eq = n('equity_value'), cash = n('cash'), opt = n('options_value');
+  if (eq == null || cash == null || opt == null) {
+    // `sleeves: null`, not 0 — the caller must NOT stamp a sleeve value it could not compute, or a
+    // later run on a complete payload would see the series as already on the brokerage basis and
+    // skip the one-time perimeter shift it still owes.
+    return { equity: total, sleeves: null, total, residual: null, basis: 'total' };
+  }
+  const equity = eq + opt + cash;
+  const sleeves = EXTERNAL_SLEEVE_KEYS.reduce((a, k) => a + (n(k) ?? 0), 0);
+  return {
+    equity: +equity.toFixed(2),
+    sleeves: +sleeves.toFixed(2),
+    total,
+    residual: total == null ? null : +(total - equity - sleeves).toFixed(2),
+    basis: 'brokerage',
+  };
+}
+
 /* Realized P&L on the DERIVATIVES sleeves — prediction markets (event contracts) and futures.
 
-   WHY THIS TERM EXISTS. `total_value` is the BROKERAGE account: it reconciles exactly as
-   `equity_value + options_value + cash`, and Robinhood reports `event_contracts_value`,
-   `futures_value` and `crypto_value` as separate top-level buckets OUTSIDE it — those sleeves are
-   different legal entities (Robinhood Derivatives, LLC is a registered FCM; Robinhood Crypto, LLC).
-   So money moving between the brokerage account and a derivatives sleeve is an INTERNAL transfer
-   that the flow inference cannot see: buying a contract looks like a withdrawal, and a winning
-   settlement paying into cash looks EXACTLY like a deposit — cash appears with no matching change
-   in any equity position, which is the literal definition the inference keys on.
+   WHY THIS TERM EXISTS. The MEASURED book is the brokerage account — `equity_value + options_value
+   + cash`, which `brokerageEquity` above computes directly. Robinhood's derivatives sleeves
+   (`event_contracts_value`, `futures_value`, `crypto_value`) are different legal entities
+   (Robinhood Derivatives, LLC is a registered FCM; Robinhood Crypto, LLC) and sit OUTSIDE that
+   figure by construction. So money moving between the brokerage account and a sleeve is an INTERNAL
+   transfer the flow inference cannot see: buying a contract looks like a withdrawal, and a winning
+   settlement paying into cash looks EXACTLY like a deposit — cash appears with no matching change in
+   any equity position, which is the literal definition the inference keys on.
+
+   THIS DOCSTRING USED TO SAY the sleeves sit outside `total_value`, "verified to 9 decimals on the
+   live payload". That claim was never actually tested, and it is false (2026-09-10). The identity
+   `total = equity + options + cash` is VACUOUS whenever the sleeve is empty, and it was checked
+   moments after the 08-30 settlement CLOSED the position. Measured against a live OPEN position it
+   fails by exactly the sleeve: 41351.32550084 − 51 − 21146.93 = 20153.39550084 against a
+   `total_value` of 20374.14550084 — a residual of precisely the 220.75 in `event_contracts_value`.
+   (Control, same run: the agentic account's sleeve is 0 and the identity holds to nine decimals,
+   which is what made it look verified.) Nothing about Robinhood changed; the premise was wrong from
+   the start. Hence `brokerageEquity`: deriving the basis from the COMPONENTS instead of reading it
+   off `total_value` keeps this term correct whether or not the broker folds a sleeve into its
+   headline number, so the question never has to be re-litigated.
 
    That is not academic. On 2026-08-30 a prediction-market position settled for $1,245 on a $236.55
    cost — $1,008.45 of real profit — into a book carrying $17,469.76 of equity. The noise floor at
@@ -212,7 +275,8 @@ export function inferFlow(priorEquity, priorPositions, equity, positions, option
    Returns { history, flow, cumFlow } — `flow` is this step's inferred transfer (0 = none detected),
    for logging. */
 export function appendEquityPoint({ prev, day, equity, positions, priorEquity, priorPositions,
-                                    optionsValue, priorOptionsValue, extraPnl, cash, priorCash }) {
+                                    optionsValue, priorOptionsValue, extraPnl, cash, priorCash,
+                                    sleeveValue }) {
   const eq = num(equity);
   const history = (Array.isArray(prev) ? prev : []).filter((e) => e && e.t);
   if (!(eq > 0) || !day) return { history: history.slice(-HISTORY_CAP), flow: 0, cumFlow: null };
@@ -229,13 +293,49 @@ export function appendEquityPoint({ prev, day, equity, positions, priorEquity, p
   } else {
     flow = inferFlow(priorEquity, priorPositions, eq, positions, optionsValue, priorOptionsValue, extraPnl);
   }
+  /* BASIS SHIFT (2026-09-10) — the one step where the perimeter itself moved. Points recorded before
+     `brokerageEquity` carried `total_value`, which on this broker INCLUDES the derivatives sleeves;
+     points after it carry the brokerage book alone. Differencing across that boundary would read the
+     carve-out as a loss — $220.75 on a $20.5k book is −1.07%, permanently compounded into a series
+     whose entire purpose is a deposit-immune return.
+
+     It is booked as a FLOW, not smoothed away, because that is what it actually is: money that is
+     still the owner's but has left the perimeter we measure — the same treatment a withdrawal gets,
+     which is exactly how the settlement half of `derivativesRealized` already reasons. It is NOT
+     subject to the noise floor: the floor exists to keep INFERRED transfers from firing on ordinary
+     P&L, and this figure is read off the payload, not inferred.
+
+     Self-disabling by construction: the trigger is the prior point lacking `sleeveValue`, and every
+     point written from here on carries it (including a 0, so an account that later starts trading
+     event contracts never re-fires — it was already on the brokerage basis). Known and accepted
+     edge: if the sleeve settled to 0 between the last old-basis run and this one, the shift records
+     0 while the true boundary was the prior mark. One-time, bounded by one position's value, and
+     the alternative — carrying a per-account migration constant — is worse. `basisShift` is stamped
+     on the point so the consumer's contributions strip does not list a perimeter change as a
+     transfer the owner made. */
+  let basisShift = 0;
+  if (last && typeof sleeveValue === 'number' && Number.isFinite(sleeveValue)
+      && typeof last.sleeveValue !== 'number' && Math.abs(sleeveValue) > 0.5) {
+    basisShift = -(+sleeveValue.toFixed(2));
+    flow = +(flow + basisShift).toFixed(2);
+  }
   const cumFlow = flow ? +(priorCum + flow).toFixed(2) : priorCum;
+  // The producer runs ~13x/day and each run REPLACES the day's point, so anything stamped on it has
+  // to survive that replacement or it exists only until the next fire. `basisShift` is stamped when
+  // the shift fires, but its cumFlow persists — so a replacement that dropped the flag would leave
+  // the consumer listing the perimeter change as a transfer the owner made, from the second hourly
+  // run onward. Carry it forward off the point being replaced.
+  const sameDay = history.find((e) => e.t === day) || null;
   const out = history.filter((e) => e.t !== day);
   const point = { t: day, equity: +eq.toFixed(2), cumFlow };
   // Recorded so the NEXT run can difference it (raw/ is wiped every run — the snapshot is the only
   // place this can live). Omitted entirely on an account with no options book.
   if (typeof optionsValue === 'number') point.optionsValue = +optionsValue.toFixed(2);
+  // Recorded on EVERY point from here on — its presence is what tells the next run the series is
+  // already on the brokerage basis, so the shift above can never fire twice.
+  if (typeof sleeveValue === 'number' && Number.isFinite(sleeveValue)) point.sleeveValue = +sleeveValue.toFixed(2);
+  if (basisShift || (sameDay && sameDay.basisShift)) point.basisShift = true;
   out.push(point);
   out.sort((a, b) => (a.t < b.t ? -1 : a.t > b.t ? 1 : 0));
-  return { history: out.slice(-HISTORY_CAP), flow, cumFlow };
+  return { history: out.slice(-HISTORY_CAP), flow, cumFlow, basisShift: !!basisShift };
 }

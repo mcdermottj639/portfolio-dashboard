@@ -121,5 +121,31 @@ ok('isDerivativeTrade keys on a blank symbol (shared with equityseries)',
   && isDerivativeTrade({ symbol: 'NVDA', side: 'sell' }) === false
   && isDerivativeTrade(null) === false);
 
+// ── mergeEventTrades: sub-cent precision must not fork the dedupe key (2026-09-10) ────────────────
+// Robinhood returned realized_gain "127.542" on the live 2026-06-26 settlement. The key used to be
+// built from the RAW value while the ROUNDED value was stored, so run 2 re-added the stored 127.54
+// under a different key and the win was counted twice — YTD read $223.05 against a true $95.51.
+const subcent = { data: { trades: [{ timestamp: '2026-06-26T22:07:15Z', symbol: '', side: '',
+  quantity: '174', price: '1', realized_gain: '127.542' }] } };
+let sc1 = mergeEventTrades(null, subcent, { asOf: '2026-06-26T23:00:00Z' });
+for (let i = 0; i < 4; i++) sc1 = mergeEventTrades(sc1, subcent, { asOf: '2026-06-30T00:00:00Z' });
+ok('a sub-cent settlement re-delivered 5 times stays ONE row', sc1.trades.length === 1);
+ok('and is counted once in YTD', sc1.ytd === 127.54);
+// The fix RETIRES the damage rather than needing a migration: an already-duplicated ledger
+// collapses on the next run, because both stored rows now hash to the same key.
+const dupLedger = { trades: [ { t: '2026-06-26T22:07:15Z', qty: 174, realized: 127.54 },
+                              { t: '2026-06-26T22:07:15Z', qty: 174, realized: 127.54 } ] };
+const healed = mergeEventTrades(dupLedger, subcent, { asOf: '2026-09-10T00:00:00Z' });
+ok('an already-duplicated ledger self-heals to one row', healed.trades.length === 1);
+ok('and its YTD drops back to the true figure', healed.ytd === 127.54);
+// Rounding must not COLLAPSE genuinely distinct settlements that merely round alike.
+const twoSame = { data: { trades: [
+  { timestamp: '2026-07-01T10:00:00Z', symbol: '', side: '', quantity: '10', realized_gain: '50.00' },
+  { timestamp: '2026-07-02T10:00:00Z', symbol: '', side: '', quantity: '10', realized_gain: '50.00' } ] } };
+ok('two distinct settlements with equal amounts both survive',
+  mergeEventTrades(null, twoSame, { asOf: '2026-07-03T00:00:00Z' }).trades.length === 2);
+ok('and both count toward YTD',
+  mergeEventTrades(null, twoSame, { asOf: '2026-07-03T00:00:00Z' }).ytd === 100);
+
 console.log(`\nrealizedpnl.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -200,9 +200,19 @@ export function mergeEventTrades(prior, raw, { asOf } = {}) {
   const stamp = asOf || new Date().toISOString();
   const year = new Date(stamp).getUTCFullYear();
   const keep = new Map();
+  // ROUND FIRST, THEN KEY. The key has to be built from the SAME value that is stored, or a prior
+  // entry and the raw row it was derived from hash differently and the ledger keeps BOTH. Robinhood
+  // returns sub-cent precision on some settlements — a live 2026-06-26 row came back
+  // `realized_gain: "127.542"` — so run 1 stored 127.54 under key `...|127.542`, run 2 re-added the
+  // stored 127.54 under key `...|127.54`, and that $127.54 win was counted TWICE for as long as the
+  // raw row stayed inside the rolling 3-month fetch window. Measured on the live 2026-09-10
+  // snapshot: prediction-market YTD read $223.05 against a true $95.51. Keying on the rounded value
+  // also RETIRES the damage — the two stored rows collapse onto one key on the next run — which is
+  // why no migration is needed here, unlike the cumFlow repair.
   const add = (t, qty, realized) => {
     if (!t || !Number.isFinite(realized)) return;
-    keep.set(`${t}|${qty}|${realized}`, { t, qty, realized: +realized.toFixed(2) });
+    const r = +realized.toFixed(2);
+    keep.set(`${t}|${qty}|${r}`, { t, qty, realized: r });
   };
   for (const e of (prior && Array.isArray(prior.trades)) ? prior.trades : []) {
     if (e) add(String(e.t || ''), num(e.qty) ?? 0, num(e.realized));

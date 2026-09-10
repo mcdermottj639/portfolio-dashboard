@@ -1,7 +1,7 @@
 // Unit tests for the recorded account-equity series — the shared basis of BOTH accounts' real YTD.
 //   node producer/equityseries.test.mjs
 import assert from 'node:assert/strict';
-import { appendEquityPoint, inferFlow, inferCashFlow, flowThreshold, HISTORY_CAP, derivativesRealized } from './equityseries.mjs';
+import { appendEquityPoint, inferFlow, inferCashFlow, flowThreshold, HISTORY_CAP, derivativesRealized, brokerageEquity, EXTERNAL_SLEEVE_KEYS } from './equityseries.mjs';
 
 let n = 0; const t = (name, fn) => { fn(); n++; console.log(`  ✓ ${name}`); };
 const pos = (o) => Object.entries(o).map(([symbol, [qty, px]]) => ({ symbol, qty, px }));
@@ -280,6 +280,169 @@ t('no recorded cash ⇒ the legacy quote-priced result, unchanged', () => {
 t('a first point can never be a transfer, even with cash present', () => {
   const r = appendEquityPoint({ prev: [], day: '2026-08-28', equity: 6000,
     positions: [], priorEquity: null, priorPositions: null, cash: 5000, priorCash: 0 });
+  assert.equal(r.flow, 0);
+  assert.equal(r.cumFlow, 0);
+});
+
+console.log('brokerageEquity — the measured perimeter, derived from components not total_value');
+// The LIVE 2026-09-10 self-directed payload, pinned verbatim. This is the one that disproved the
+// old "sleeves sit outside total_value" premise: total_value exceeds the brokerage book by exactly
+// the open event-contract position.
+const LIVE_INSIDE = { total_value: '20374.14550084', equity_value: '41351.32550084',
+  options_value: '-51', futures_value: '0', event_contracts_value: '220.75', crypto_value: '0',
+  cash: '-21146.93' };
+t('the sleeve is carved out of the recorded equity', () => {
+  assert.equal(brokerageEquity(LIVE_INSIDE).equity, 20153.4);
+});
+t('the sleeve total is reported alongside it', () => {
+  assert.equal(brokerageEquity(LIVE_INSIDE).sleeves, 220.75);
+});
+t('THE INVARIANT: total_value is fully explained by the brokerage book plus known sleeves', () => {
+  assert.equal(brokerageEquity(LIVE_INSIDE).residual, 0);
+});
+// The whole point of deriving from components: the SAME formula is right under the other reading,
+// so the question of which convention Robinhood uses never has to be settled again.
+t('a sleeve-OUTSIDE payload yields the IDENTICAL equity (the basis is convention-independent)', () => {
+  const outside = { ...LIVE_INSIDE, total_value: '20153.39550084' };
+  const r = brokerageEquity(outside);
+  assert.equal(r.equity, 20153.4);
+  assert.equal(r.residual, -220.75); // total omits the sleeve, so the known sleeve is unexplained…
+  // …which is exactly why the invariant is a DIAGNOSTIC on total_value, never an input to equity:
+  // the recorded basis is right either way.
+});
+// The live agentic account the same run — sleeve 0, identity holds to nine decimals. This is the
+// shape that made the old premise LOOK verified: it is vacuously true whenever the sleeve is empty.
+t('a zero-sleeve account reconciles exactly (the vacuous case that hid the bug)', () => {
+  const r = brokerageEquity({ total_value: '13210.065267674', equity_value: '13197.145267674',
+    options_value: '0', event_contracts_value: '0', futures_value: '0', crypto_value: '0', cash: '12.92' });
+  assert.equal(r.residual, 0);
+  assert.equal(r.sleeves, 0);
+});
+t('an UNKNOWN asset bucket shows up as a residual rather than silently skewing the basis', () => {
+  const r = brokerageEquity({ ...LIVE_INSIDE, total_value: '21374.14550084' });
+  assert.equal(r.residual, 1000);
+});
+t('v116 holds: equity_value alone would overstate a margin book by the whole loan', () => {
+  assert.ok(brokerageEquity(LIVE_INSIDE).equity < parseFloat(LIVE_INSIDE.equity_value) - 21000);
+});
+t('missing components fail BACK to total_value — never worse than the old behaviour', () => {
+  const r = brokerageEquity({ total_value: '1000' });
+  assert.equal(r.equity, 1000);
+  assert.equal(r.basis, 'total');
+  assert.equal(r.residual, null);
+});
+// The Railway producer writes {total_value, equity_value, cash, buying_power} and NO options_value.
+// Coercing that absence to 0 would drop the entire options mark out of the basis — silently, and
+// only on the producer that is not usually live. `absent !== zero`.
+t('a RAILWAY-shaped payload (no options_value) falls back rather than dropping the options mark', () => {
+  const r = brokerageEquity({ total_value: '18032.86', equity_value: '29906.51', cash: '-11282.65' });
+  assert.equal(r.basis, 'total');
+  assert.equal(r.equity, 18032.86);          // NOT 29906.51 - 11282.65 + 0 = 18623.86
+});
+t('…and reports sleeves as null, so the caller cannot stamp a value it never computed', () => {
+  assert.equal(brokerageEquity({ total_value: '18032.86', equity_value: '29906.51', cash: '-11282.65' }).sleeves, null);
+});
+t('an options-free account still uses the brokerage basis — the broker sends "0", not nothing', () => {
+  const r = brokerageEquity({ total_value: '13210.07', equity_value: '13197.15', options_value: '0', cash: '12.92' });
+  assert.equal(r.basis, 'brokerage');
+});
+t('a null sleeveValue never counts as "already on the brokerage basis"', () => {
+  // Railway records a point; a later Claude run with a complete payload must STILL owe the shift.
+  const railway = appendEquityPoint({ prev: [{ t: '2026-09-10', equity: 20374.15, cumFlow: 0 }],
+    day: '2026-09-11', equity: 20374.15, positions: [], priorPositions: [], priorEquity: 20374.15,
+    cash: -21146.93, priorCash: -21146.93, sleeveValue: undefined });
+  assert.equal(railway.history[railway.history.length - 1].sleeveValue, undefined);
+  const claude = appendEquityPoint({ prev: railway.history, day: '2026-09-12', equity: 20153.40,
+    positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93, priorCash: -21146.93,
+    sleeveValue: 220.75 });
+  assert.equal(claude.basisShift, true);
+});
+t('mutual funds / fixed income are deliberately NOT external sleeves', () => {
+  assert.deepEqual(EXTERNAL_SLEEVE_KEYS, ['event_contracts_value', 'futures_value', 'crypto_value']);
+});
+
+console.log('appendEquityPoint — the one-time basis shift off total_value');
+// Prior point recorded under the OLD basis (total_value, sleeve included). Nothing traded and no
+// money moved: the only change is that the perimeter shrank by the sleeve.
+const oldPoint = [{ t: '2026-09-10', equity: 20374.15, cumFlow: 0 }];
+t('the carve-out is booked as a flow, so it cannot read as a loss', () => {
+  const r = appendEquityPoint({ prev: oldPoint, day: '2026-09-11', equity: 20153.40,
+    positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93, priorCash: -21146.93,
+    sleeveValue: 220.75 });
+  assert.equal(r.flow, -220.75);
+  assert.equal(r.basisShift, true);
+  // The return for the step nets to zero — which is the whole point.
+  const p = r.history[r.history.length - 1];
+  assert.equal(+((p.equity - r.flow) / 20374.15 - 1).toFixed(6), 0);
+});
+t('it is NOT subject to the noise floor — it is read off the payload, not inferred', () => {
+  // $220.75 is far below flowThreshold($20k) = $750, so an inferred flow this size would be zeroed.
+  assert.ok(220.75 < flowThreshold(20374.15));
+  const r = appendEquityPoint({ prev: oldPoint, day: '2026-09-11', equity: 20153.40,
+    positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93, priorCash: -21146.93,
+    sleeveValue: 220.75 });
+  assert.equal(r.flow, -220.75);
+});
+t('the point carries basisShift so the consumer does not list it as a transfer', () => {
+  const r = appendEquityPoint({ prev: oldPoint, day: '2026-09-11', equity: 20153.40,
+    positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93, priorCash: -21146.93,
+    sleeveValue: 220.75 });
+  assert.equal(r.history[r.history.length - 1].basisShift, true);
+});
+t('IT FIRES EXACTLY ONCE — the next run sees sleeveValue on the prior point', () => {
+  const first = appendEquityPoint({ prev: oldPoint, day: '2026-09-11', equity: 20153.40,
+    positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93, priorCash: -21146.93,
+    sleeveValue: 220.75 });
+  const second = appendEquityPoint({ prev: first.history, day: '2026-09-12', equity: 20153.40,
+    positions: [], priorPositions: [], priorEquity: 20153.40, cash: -21146.93, priorCash: -21146.93,
+    sleeveValue: 220.75 });
+  assert.equal(second.flow, 0);
+  assert.equal(second.basisShift, false);
+  assert.equal(second.history[second.history.length - 1].basisShift, undefined);
+});
+t('a zero-sleeve account records sleeveValue anyway, so it can never fire later', () => {
+  const r = appendEquityPoint({ prev: [{ t: '2026-09-10', equity: 5000, cumFlow: 0 }],
+    day: '2026-09-11', equity: 5000, positions: [], priorPositions: [], priorEquity: 5000,
+    cash: 100, priorCash: 100, sleeveValue: 0 });
+  assert.equal(r.flow, 0);
+  assert.equal(r.basisShift, false);
+  assert.equal(r.history[r.history.length - 1].sleeveValue, 0);
+  // A sleeve appearing later must NOT be read as a perimeter change — the basis was already right.
+  const later = appendEquityPoint({ prev: r.history, day: '2026-09-12', equity: 5000,
+    positions: [], priorPositions: [], priorEquity: 5000, cash: 100, priorCash: 100, sleeveValue: 300 });
+  assert.equal(later.basisShift, false);
+});
+t('omitting sleeveValue entirely reproduces the pre-2026-09-10 behaviour exactly', () => {
+  const r = appendEquityPoint({ prev: oldPoint, day: '2026-09-11', equity: 20374.15,
+    positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93, priorCash: -21146.93 });
+  assert.equal(r.flow, 0);
+  assert.equal(r.basisShift, false);
+  assert.equal(r.history[r.history.length - 1].sleeveValue, undefined);
+});
+t('THE HOURLY CADENCE: the shift fires once and its flag survives every same-day re-run', () => {
+  // The producer fires ~13x/day and each run REPLACES the day's point. The shift must not re-fire
+  // (which would double the carve-out) and its flag must not be dropped (which would make the
+  // consumer list the perimeter change as an owner transfer from the second run onward).
+  let hist = oldPoint;
+  for (let i = 0; i < 4; i++) {
+    const r = appendEquityPoint({ prev: hist, day: '2026-09-11', equity: 20153.40,
+      positions: [], priorPositions: [], priorEquity: 20374.15, cash: -21146.93,
+      priorCash: -21146.93, sleeveValue: 220.75 });
+    hist = r.history;
+    assert.equal(r.cumFlow, -220.75, `cumFlow drifted on run ${i + 1}`);
+    assert.equal(r.flow, i === 0 ? -220.75 : 0, `flow re-fired on run ${i + 1}`);
+    assert.equal(hist[hist.length - 1].basisShift, true, `flag lost on run ${i + 1}`);
+  }
+  assert.equal(hist.length, 2); // still one point for the day
+});
+t('REGRESSION: the real 08-30 settlement still nets to no transfer under the new basis', () => {
+  // 1245 contracts settle at $1 on a $236.55 cost. The payout lands in brokerage cash; the sleeve
+  // it came from is outside the perimeter, so the gain is RETURN and only the cost basis reads as a
+  // transfer — and that is below the $750 floor, exactly as it was on the live run.
+  const r = appendEquityPoint({
+    prev: [{ t: '2026-08-28', equity: 17469.76, cumFlow: 0, sleeveValue: 236.55 }],
+    day: '2026-08-31', equity: 18960.57, positions: [], priorPositions: [],
+    priorEquity: 17469.76, cash: 1245, priorCash: 0, extraPnl: 1008.45, sleeveValue: 0 });
   assert.equal(r.flow, 0);
   assert.equal(r.cumFlow, 0);
 });

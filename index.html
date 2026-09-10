@@ -832,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v142'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v143'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1674,9 +1674,14 @@ function acctPerfStats(AG, spySeries){
   // The individual contribution events behind netFlow, so the card can SHOW its work: a single
   // cumulative "you put in" figure sitting next to today's deposit reads as though all of it
   // arrived today. $50 floor keeps rounding noise out of the list.
+  /* `basisShift` points are skipped: v143 moved the self-directed recorded basis off `total_value`
+     onto the brokerage book, and the producer books that one-off carve-out of the derivatives sleeve
+     as a flow so it can't read as a loss. It is a change of measuring perimeter, NOT money the owner
+     moved, so listing it here would claim a withdrawal that never happened — it still nets out of
+     the return, which is the part that has to be right. */
   const flows=[];
   for(let i=1;i<cumFlows.length;i++){ const amt=cumFlows[i]-cumFlows[i-1];
-    if(Math.abs(amt)>=50) flows.push({t:EH[i].t, amt, tagged:typeof EH[i].cumFlow==='number'}); }
+    if(Math.abs(amt)>=50&&!EH[i].basisShift) flows.push({t:EH[i].t, amt, tagged:typeof EH[i].cumFlow==='number'}); }
   let days=null; try{ days=Math.round((new Date(dkey(EH[EH.length-1].t)+'T00:00:00')-new Date(firstT+'T00:00:00'))/86400000); }catch(e){}
   return { EH, mult, cumFlows, flows, ret:(mult[mult.length-1]-1)*100, spy, since:EH[0].t,
            netFlow, firstEquity, lastEquity, pnl:lastEquity-firstEquity-netFlow, days };

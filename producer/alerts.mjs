@@ -123,5 +123,25 @@ export function computeAlerts(prior, fresh, heldSyms = []) {
     });
   }
 
+  // 4. BROKERAGE-BASIS RESIDUAL (2026-09-10). `brokerageEquity` records the self-directed account's
+  //    equity as `equity_value + options_value + cash` and carves the derivatives sleeves out of the
+  //    measured perimeter. The invariant is that `total_value` minus that book minus the sleeves we
+  //    model comes to zero; a residual means Robinhood is carrying an asset bucket this producer has
+  //    never heard of, so the recorded basis — and therefore `cumFlow`, a RUNNING TOTAL that no
+  //    later snapshot can repair — is wrong.
+  //
+  //    This is here rather than left as a console.warn for the reason the drawdown tier is: it is a
+  //    silent guard on an unattended pipeline, and a warning that only lands in a scheduled run's
+  //    log is indistinguishable from no warning at all. Transition-based like everything else in
+  //    this module, so a bucket that stays unexplained for a month says so ONCE.
+  {
+    const bad = (v) => typeof v === 'number' && Math.abs(v) > 1;
+    const pr = (prior.main || {}).basisResidual, fr = (fresh.main || {}).basisResidual;
+    if (!bad(pr) && bad(fr)) alerts.push({
+      kind: 'main-basis-residual', symbol: null, residual: fr,
+      msg: `🧮 Self-directed account value has ${money(Math.abs(fr))} that isn't holdings, options, cash or a known derivatives sleeve — Robinhood is reporting an asset bucket the producer doesn't model. Recorded return is measured on the wrong basis until it's classified.`,
+    });
+  }
+
   return alerts;
 }

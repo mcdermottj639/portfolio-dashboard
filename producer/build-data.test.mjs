@@ -37,10 +37,15 @@ const dayBars = (n, from, base) => Array.from({ length: n }, (_, i) => {
 });
 
 const FIXTURES = {
-  // The self-directed account. `total_value` is the account's EQUITY (v116) — equity_value is gross
-  // long market value and omits the loan. options_value rides along so the flow inference can
-  // subtract an options mark move rather than reading it as a transfer.
-  'portfolio.json': { data: { total_value: '1000.00', equity_value: '1200.00', options_value: '-597', cash: '397.00' } },
+  // The self-directed account. The recorded EQUITY is the brokerage book — equity_value + options_value
+  // + cash = 1000 — not `total_value`: v116 is why the loan-bearing `cash` term is in there
+  // (equity_value alone is gross long market value), and v143 is why it is not read off `total_value`,
+  // which on this broker INCLUDES the derivatives sleeves. The 220.75 event-contract sleeve below is
+  // what makes the two differ here, so this fixture actually exercises the carve-out: `total_value`
+  // is 1220.75 while the recorded equity must still be 1000. options_value rides along so the flow
+  // inference can subtract an options mark move rather than reading it as a transfer.
+  'portfolio.json': { data: { total_value: '1220.75', equity_value: '1200.00', options_value: '-597', cash: '397.00',
+                              event_contracts_value: '220.75', futures_value: '0', crypto_value: '0' } },
   'positions.json': { data: { positions: [{ symbol: 'AAA', quantity: '1', average_buy_price: '95' }] } },
   // Fresh quotes cover AAA only — BBB must carry forward from the prior snapshot.
   // AAA jumps to +9.1% on the day (prior snapshot had it at +1.0%) → a day-move alert must fire.
@@ -174,7 +179,11 @@ const prior = {
   main: {
     asOf: new Date(Date.now() - 24 * 3600e3).toISOString(), equity: 900, cash: 300, optionsValue: -597,
     positions: [{ symbol: 'AAA', qty: 1, px: 100 }],
-    equityHistory: [{ t: '2026-07-01', equity: 900, cumFlow: 0, optionsValue: -597 }],
+    // `sleeveValue` present ⇒ this series is already on the brokerage basis, so the one-time
+    // perimeter shift must NOT fire and the deposit below is measured cleanly. (The shift itself,
+    // including that it fires exactly once and survives ~13 same-day re-runs, is pinned in
+    // equityseries.test.mjs.)
+    equityHistory: [{ t: '2026-07-01', equity: 900, cumFlow: 0, optionsValue: -597, sleeveValue: 220.75 }],
     // The accumulated Rebalance Log. raw/ is wiped every run and the fetch only covers a window, so
     // the snapshot is the only place older records can live. The 2026-01 record is OUTSIDE the sweep
     // window and must survive untouched; the 2026-06-11 one is INSIDE it and the fresh derivation
@@ -358,7 +367,14 @@ try {
   // is what makes the Accounts tab's two YTD tiles the same kind of number (v119).
   const mnEH = out.main.equityHistory;
   const mnPt = mnEH[mnEH.length - 1];
-  eq('main equity recorded from total_value, not equity_value', mnPt.equity, 1000);
+  // THE CARVE-OUT AT THE BUILD-DATA SEAM. `total_value` is 1220.75; the recorded equity is the
+  // brokerage book alone. Asserting it here and not only in equityseries.test.mjs is the Mandate A
+  // verify lesson — a shared computation wired into one call site and not the other is exactly the
+  // seam that ships a guard which fires in the executor and nowhere else.
+  eq('main equity recorded from the BROKERAGE book, with the derivatives sleeve carved out', mnPt.equity, 1000);
+  eq('the sleeve total is stamped on the point (so the perimeter shift can never re-fire)', mnPt.sleeveValue, 220.75);
+  eq('no perimeter shift on a series already carrying sleeveValue', mnPt.basisShift, undefined);
+  eq('THE INVARIANT: total_value fully explained by the brokerage book + known sleeves', out.main.basisResidual, 0);
   // Cash-based inference (2026-08-30): Δcash is +97 (300 → 397) with AAA's quantity unchanged, and
   // $15 of that is the prediction-market settlement — so the real external deposit is $82. Note AAA
   // also moved 100 → 108 in the same run and contributes NOTHING, which is the stale-quote immunity:
