@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "note": "Owner-requested log of Analyze-tab recommendations, captured at the moment the call was read, so it can be graded later against what actually happened. Append-only: never rewrite a call's `call`/`levels`/`context` block after logging (the whole point is that the record predates the outcome). Only `review.status` and `outcome` are ever filled in.",
+  "calls": [
+    {
+      "id": "IREN-2026-09-11",
+      "symbol": "IREN",
+      "logged": "2026-09-12",
+      "loggedBy": "owner request (screenshot of the Analyze Recommendation card)",
+      "source": {
+        "surface": "Analyze tab -> Recommendation card",
+        "appVersion": "v144",
+        "snapshot": "2026-09-11T20:41:40.131Z",
+        "snapshotAgeAtRead": "~6h (bar showed the stale-snapshot amber nudge)"
+      },
+      "call": {
+        "action": "ACCUMULATE",
+        "headline": "Uptrend with room left to the first resistance.",
+        "confidencePct": 64,
+        "rr": 0.7,
+        "horizon": "2-6 weeks (swing)",
+        "fundamentalsScore": 28,
+        "why": "price is above the 50-day average, and RSI 54 - mid-range",
+        "engineWarning": "The targets don't pay for the risk here - the first target is only 0.70x the distance to the stop. Wait for a better entry (or a target that clears it) rather than sizing up.",
+        "note": "azCore's raw state was Buy Opportunity; the sub-1.5 reward:risk is what downgraded it to ACCUMULATE (v141 rule)."
+      },
+      "levels": {
+        "price": 43.85,
+        "entryLow": 43.19,
+        "entryHigh": 43.85,
+        "stop": 39.47,
+        "stopPct": -10.0,
+        "target1": 46.93,
+        "target1Pct": 7.0,
+        "target2": 76.87,
+        "target2Pct": 75.3,
+        "levelProvenance": {
+          "stop": "the -10% clamp ceiling (2xATR/swing-low was wider than the clamp on a ~100%-vol name)",
+          "target2": "the all-time high off hist.month (76.87) - not a 6-week objective"
+        },
+        "invalidates": "a daily close under 39.47 flips the call to Caution",
+        "upgrades": "a daily close above 46.93 (first resistance)"
+      },
+      "indicators": {
+        "rsi14": 54.6,
+        "sma20": 41.82,
+        "sma50": 40.21,
+        "lastDailyBar": "2026-09-09 @ 45.37",
+        "seriesHighYTD": 67.84,
+        "seriesLowYTD": 29.31,
+        "ivRank": 27,
+        "flowScore": 6.0,
+        "flowDetail": "revision 6.7 (consensus improving +0.09 over 3mo, 23 analysts); surprise 4.61 (2/4 beats, avg -1.1%); no insider/award coverage",
+        "vix": 15.84
+      },
+      "measuredEdge": {
+        "state": "Buy Opportunity",
+        "reads": 8922,
+        "names": 216,
+        "windowSessions": 20,
+        "avgForwardPct": -0.33,
+        "positiveRatePct": 47,
+        "vsSpyPp": -1.88,
+        "confidenceHaircut": -10,
+        "verdictAtCallTime": "this state HAS NOT been paying lately - the app marked its own call down for it"
+      },
+      "context": {
+        "account": "self-directed ....0741 (margin, aggressive mandate)",
+        "alreadyHeld": true,
+        "shares": 350.071851,
+        "positionValue": 15350.65,
+        "pctOfEquity": 77.9,
+        "accountEquity": 19700.57,
+        "accountCash": -20843.18,
+        "holdingsMarketValue": 40433.2,
+        "exposureToEquity": "~2.05x",
+        "shortCallOverlay": "three short $50 calls expiring 2026-09-11 marked at $0.005 - i.e. expiring worthless that same day, so the covered-call cap on upside lifts right as this call is made",
+        "materialTension": "an ACCUMULATE on a name that is already 78% of equity in a ~2x levered book. Under the v125 self-directed mandate concentration is advisory-only (deliberate gamble account), so this is not a rule breach - but it is the fact most worth judging the call against."
+      },
+      "review": {
+        "status": "pending",
+        "dueDate": "2026-10-24",
+        "horizonRationale": "6 weeks = the far edge of the call's own stated 2-6 week swing horizon, and inside pickgrade's 60-day GRADE_HORIZON_DAYS.",
+        "questions": [
+          "Path, on a CLOSING basis and in order: did a close clear target1 (46.93) before a close broke the stop (39.47), or the reverse? If a single bar spans both, the stop is tested first (pickgrade's rule).",
+          "Excursion: max favourable and max adverse move from 43.85 over the window, with dates. A call can be 'right' and still have been untradeable through the drawdown.",
+          "Base-rate calibration - the single most valuable answer here: the app predicted its own 'Buy Opportunity' state would average -0.33% over 20 sessions and -1.88pp vs SPY. What did IREN actually do over its next 20 sessions, and over the full 6 weeks, absolute and vs SPY? Did the self-measurement earn its keep?",
+          "R:R honesty: the card warned the targets don't pay (0.70:1). Even on a favourable outcome, did the realised move pay for a 10% stop? Was the warning the most useful line on the card?",
+          "Stop realism: -10% was the clamp CEILING on a ~100%-vol name. Did price whipsaw through 39.47 and recover? If so, the clamp - not the analysis - decided the outcome, and that is a code finding, not a market finding.",
+          "Confidence calibration: 64% after a -10 haircut. Over the app's logged calls so far, is 64% distinguishable from a coin toss? (n=1 here - record the datapoint, do not conclude from it.)",
+          "Fundamentals: scored 28/100. Over 6 weeks, did that matter at all, or is the fundamentals input just noise at a swing horizon on this kind of name?",
+          "Position context: would ACTING on this (adding to a name already at 78% of equity on ~2x leverage) have been prudent regardless of whether the direction was right? Separate 'was the call correct' from 'was the call actionable for THIS book'.",
+          "Did the short-$50-call expiry on 2026-09-11 change the picture - i.e. was the upside actually available this time in a way it had not been while the calls were on?"
+        ],
+        "outputContract": "Fill `outcome` below, set status to 'graded', keep every field above byte-identical, and push. A grade that quietly edits the original call is worthless."
+      },
+      "outcome": null
+    }
+  ]
+}
