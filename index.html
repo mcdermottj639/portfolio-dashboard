@@ -443,6 +443,26 @@ body.pf-private #pf-priv { filter: none; }
 .trk-detail > summary::-webkit-details-marker { display:none; }
 .trk-detail > summary::before { content:'▸ '; font-size:10px; }
 .trk-detail[open] > summary::before { content:'▾ '; }
+
+/* Construction note (v145). Theme tokens only — this renders inside a card that exists in both
+   Light and Gold, and a hardcoded background here is exactly how the gold theme ends up with a
+   grey slab in the middle of a black card. */
+.ag-method { margin-top:8px; }
+.ag-msec { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#9ca3af; margin:12px 0 6px; }
+.ag-msec:first-child { margin-top:4px; }
+/* One claim per line, with a rule down the left so ten lines read as a list rather than a wall. */
+.ag-mline { font-size:11.5px; line-height:1.5; color:var(--text); opacity:.9; padding:0 0 0 10px; margin:0 0 7px; border-left:2px solid var(--surface-2); }
+.ag-mline b, .ag-mblk b { font-weight:700; opacity:1; }
+.ag-mn { font-weight:600; opacity:1; }
+.ag-mblk { display:flex; gap:7px; align-items:flex-start; font-size:11.5px; line-height:1.5; color:var(--text); opacity:.9; margin:0 0 7px; }
+.ag-mico { flex:0 0 auto; font-size:12px; line-height:1.4; }
+/* Authoritative figures, from the target's structured fields. Leads the note because the prose's
+   own percentages can predate the final cap/sleeve pass — the note says so itself. */
+.ag-mkrow { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:2px 0 4px; }
+.ag-mk { display:inline-flex; align-items:baseline; gap:4px; background:var(--surface-2); border-radius:999px; padding:3px 9px; font-size:11px; white-space:nowrap; }
+.ag-mk-l { color:#9ca3af; font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
+.ag-mk b { font-weight:700; color:var(--text); }
+.ag-mk-note { font-size:10px; color:#9ca3af; }
 .conf2 { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
 .conf2-lbl { font-size:11px; color:#9ca3af; width:74px; }
 .conf2-track { flex:1; height:6px; background:#f3f4f6; border-radius:3px; }
@@ -832,7 +852,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v144'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v147'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2955,6 +2975,110 @@ function agenticExecMap(rows,targetAsOf,washMap,opts){
   return {map,zoneAge,stale};
 }
 
+/* ═══ Construction note — the research's own write-up, made scannable (v145) ═════════════
+   `target.method` is TWO different things glued together with ' | ': the synthesis's free prose,
+   then a deterministic tail that `finalize-target.mjs` appends (caps re-enforced, phase-outs
+   retained, the gold sleeve, the entry bar). Rendered as one 2,900-character paragraph at 11.5px
+   it was a wall nobody reads — which matters more than it sounds, because this is the ONLY place
+   the target explains itself: why a name got the weight it got, and why five names left.
+
+   The rule is CHUNK AND EMPHASIZE, NEVER REWRITE. Every character of `method` survives into the
+   output — `agentic-method.test.mjs` asserts exactly that, comparing the rendered text back to the
+   source with whitespace and the delimiters themselves removed — because the moment this starts
+   paraphrasing, the card is asserting something the research did not say, and a summary of a
+   summary is how a figure that was already caveated becomes one that reads as current.
+   Scannability has to come from structure and weight alone. */
+function agEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* The deterministic tail, keyed by the prefix each segment is emitted with in finalize-target.mjs.
+   The matched prefix becomes that block's bolded lead-in rather than a separate heading, so
+   labelling costs no duplicated words. An UNRECOGNIZED segment renders verbatim under a neutral
+   marker — a future segment must degrade to "shown plainly", never to "silently dropped", which is
+   why this classifies by prefix instead of assuming a fixed segment count. */
+var AG_METHOD_KINDS=[
+  {re:/^risk-adjusted/i,                    icon:'⚖️'},
+  {re:/^phase-out retained/i,               icon:'🔁'},
+  {re:/^[\d.]+%\s+gold diversifier added/i, icon:'🥇'},
+  {re:/^entry bands measured/i,             icon:'🎯'}
+];
+function agMethodParts(method){
+  var raw=String(method==null?'':method).trim(); if(!raw)return null;
+  var segs=raw.split('|').map(function(x){return x.trim();}).filter(Boolean);
+  if(!segs.length)return null;
+  var blocks=segs.slice(1).map(function(seg){
+    for(var i=0;i<AG_METHOD_KINDS.length;i++){ var m=seg.match(AG_METHOD_KINDS[i].re);
+      if(m)return {icon:AG_METHOD_KINDS[i].icon, lead:m[0], rest:seg.slice(m[0].length)}; }
+    return {icon:'·', lead:'', rest:seg};
+  });
+  return {summary:segs[0], blocks:blocks};
+}
+
+/* Prose → lines. Breaks at sentence ends AND at semicolons, because the synthesis writes its drop
+   list as one semicolon-joined sentence ("SPY …; GLDM exits …; KO exits …") — that clause IS the
+   unit the reader wants one per line, and splitting on full stops alone leaves it as a single
+   250-word block. Punctuation stays on the fragment it ends, so the split consumes nothing. */
+function agProseLines(text){
+  return String(text==null?'':text).split(/(?<=[.;])\s+(?=[A-Za-z(])/)
+    .map(function(x){return x.trim();}).filter(Boolean);
+}
+
+/* Emphasis. Tickers are bolded from a vocabulary derived from the TARGET ITSELF (its own names plus
+   anything it recorded as dropped), never from a \b[A-Z]{2,5}\b guess — that would light up RSI,
+   AFTER and COHORT and leave the reader's eye nowhere to land. Percentages are bolded outright,
+   since "what weight did X get" is the question this note is scanned for. Both run AFTER escaping
+   and insert only <b> tags, so a match that misfires costs a bold word and can never corrupt the
+   markup or alter a figure. */
+function agEmph(escaped,vocab){
+  // Two WEIGHTS, not one. A note this dense carries ~30 percentages and ~20 tickers, and bolding
+  // both equally is the "everything is emphasized so nothing is" failure — the earlier draft lit up
+  // half the paragraph. The scan question here is "what happened to X?", so the TICKER is the
+  // anchor (<b>, 700) and the figure is the confirmation (600), which keeps both findable while
+  // leaving the eye somewhere to land.
+  // '%' needs no word boundary after it (the next char is usually a space, which \b would reject);
+  // 'pp' does, or "5.0ppm" would read as a percentage-point figure.
+  var out=String(escaped).replace(/(\d+(?:\.\d+)?\s*(?:%|pp\b))/g,'<span class="ag-mn">$1</span>');
+  if(vocab&&vocab.length){
+    var uniq=vocab.filter(function(t){return /^[A-Z][A-Z0-9.]{0,5}$/.test(t);})
+                  .filter(function(t,i,a){return a.indexOf(t)===i;})
+                  .sort(function(a,b){return b.length-a.length;});
+    if(uniq.length) out=out.replace(new RegExp('\\b('+uniq.join('|')+')\\b','g'),'<b>$1</b>');
+  }
+  return out;
+}
+
+/* The whole block, as rendered inside the card's <details>. The header strip is built from the
+   STRUCTURED fields (names/defensive/diversifier), never parsed out of the prose, and it leads for
+   a specific reason: the note's own final segment warns that percentages quoted in the summary can
+   predate the last cap/sleeve pass, so the figures a reader scans FIRST had better be the ones that
+   are authoritative. It also gives `target.defensive`/`target.diversifier` their first render
+   anywhere — both have been emitted, and shown nowhere, since 2026-08-25. */
+function agMethodHtml(T){
+  if(!T||!T.method)return '';
+  var P=agMethodParts(T.method); if(!P)return '';
+  var names=Array.isArray(T.names)?T.names:[];
+  var vocab=names.map(function(n){return n&&n.ticker;})
+    .concat((Array.isArray(T.dropped)?T.dropped:[]).map(function(d){return d&&d.ticker;}))
+    .filter(Boolean);
+  var act=names.filter(function(n){return !n.phaseOut;}).length, ph=names.length-act;
+  var pill=function(lbl,val,tip){ return '<span class="ag-mk" title="'+agEsc(tip||'')+'"><span class="ag-mk-l">'+agEsc(lbl)+'</span> <b>'+agEsc(val)+'</b></span>'; };
+  var facts=[];
+  if(names.length) facts.push(pill('names',act+' active'+(ph?' + '+ph+' phase-out':''),'Phase-out names are retained at their prior weight for one more cycle (churn governor, strike 1) — held, never bought into. The prose below counts only the active ones.'));
+  if(T.defensive&&T.defensive.total!=null) facts.push(pill('defensive',fmt(T.defensive.total,1)+'%',
+    'Direct '+fmt(T.defensive.direct||0,1)+'% + '+fmt(T.defensive.lookThrough||0,1)+'pp inside index vehicles. Floor '+fmt(T.defensive.floor||0,0)+'% — a measurement, not an obligation, under Mandate A.'));
+  if(T.diversifier&&T.diversifier.direct!=null) facts.push(pill('diversifier',fmt(T.diversifier.direct,1)+'%',
+    'Gold/bullion sleeve. Floor '+fmt(T.diversifier.floor||0,0)+'% under Mandate A — held only if the research or a phase-out retention keeps it.'));
+  var head=facts.length?'<div class="ag-mkrow">'+facts.join('')+'<span class="ag-mk-note">authoritative — from the target’s own fields, not the prose</span></div>':'';
+  var prose=agProseLines(P.summary).map(function(l){ return '<div class="ag-mline">'+agEmph(agEsc(l),vocab)+'</div>'; }).join('');
+  var blocks=P.blocks.map(function(b){
+    return '<div class="ag-mblk"><span class="ag-mico">'+b.icon+'</span><span>'
+      +(b.lead?'<b>'+agEsc(b.lead)+'</b>':'')   // already the block's anchor — don't nest emphasis in it
+      +agEmph(agEsc(b.rest),vocab)+'</span></div>';
+  }).join('');
+  return head
+    +'<div class="ag-msec">What the research decided</div>'+prose
+    +(blocks?'<div class="ag-msec">What finalize-target then enforced</div>'+blocks:'');
+}
+
 /* The account's book, derived one way for every surface on this page (the hero, the perf card and
    the tracker card all need it — keep them incapable of disagreeing). */
 function agenticBook(A){
@@ -3298,7 +3422,28 @@ function renderAgenticCard(){
   const plCell=(pl,cost)=>{ if(!(cost>0))return '<span style="color:#9ca3af">—</span>';
     const col=pl>=0?'#065f46':'#991b1b', pct=pl/cost*100;
     return `<span style="color:${col};font-weight:600">${pl>=0?'+':'−'}${fmtD(Math.abs(pl))}</span><br><span style="color:#9ca3af;font-size:11px">${pl>=0?'+':''}${fmt(pct,1)}%</span>`; };
-  const perfCell=(day,ytd)=>`${pctCell(day)}<br><span style="font-size:11px">${ytd==null?'<span style="color:#9ca3af">—</span>':pctCell(ytd)}</span>`;
+  /* The day's move in CASH, under the day's move in percent. Same display-zero rule pctCell follows:
+     a move that ROUNDS to $0.00 renders neutral, never a red "−$0.00" — the colour has to match what
+     the reader sees, not the sign of an invisible fraction. Sign convention (+ / U+2212) matches
+     plCell so the two money columns read the same way. */
+  const cashCell=(v)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af">—</span>';
+    const r=+v.toFixed(2), col=r>0?'#065f46':(r<0?'#991b1b':'#6b7280');
+    return `<span style="color:${col};font-weight:600">${r>0?'+':(r<0?'−':'')}${fmtD(Math.abs(r))}</span>`; };
+  /* The sub-line percentage: plCell's grey-and-small treatment, but with pctCell's display-zero-aware
+     number formatting, so a flat name reads "0.0%" and never "−0.0%". Grey rather than coloured is
+     the right match and not just a cosmetic one — the dollars directly above always share this
+     figure's sign (both come from px − prevClose), so colouring both would state the direction twice
+     and leave nothing quieter for the eye to skip. Exactly why plCell greys its own percentage. */
+  const pctSub=(v)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af;font-size:11px">—</span>';
+    const r=+v.toFixed(1);
+    return `<span style="color:#9ca3af;font-size:11px">${r>0?'+':''}${fmt(Math.abs(r)===0?0:r,1)}%</span>`; };
+  // The second line was YTD % (owner's call, 2026-09-12: "just put the day's cash gain amount"). A
+  // percentage can't be added up across a book — "+0.6% and +0.8%" answers nothing about the account —
+  // whereas the dollars sum straight down the column into the total row. YTD rides along in the cell's
+  // title rather than being dropped outright, since nothing else on this side carries a per-name YTD.
+  // $ over %, matching Unreal. P&L one column across (owner's call, same day) — two adjacent money
+  // columns that order their own two lines differently make the eye re-read the row to find the figure.
+  const perfCell=(day,cash,ytd)=>`<span title="${ytd==null?'YTD not available — daily bars for this name have not been captured yet':'YTD '+(ytd>=0?'+':'')+fmt(ytd,1)+'% off the first recorded daily bar'}">${cashCell(cash)}<br>${pctSub(day)}</span>`;
   // wash-sale badge: a BUY into a name this account realized a loss on within 30d would disallow that loss
   const washAcctLbl=(sym)=>{ const w=washMap[sym]; return (w&&w.account==='main')?'in your self-directed ••••0741 account':'in this account'; };
   const washBadge=(sym)=>`<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${sym} ${washAcctLbl(sym)} on ${washMap[sym]?new Date(washMap[sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}. Rebuying in ANY of your accounts within 30 days disallows the loss — hold off until ${washUntilLbl(sym)}.">⚠️ wait · wash-sale</span> <span style="color:#9ca3af;font-size:10px">to ${washUntilLbl(sym)}</span>`;
@@ -3323,6 +3468,7 @@ function renderAgenticCard(){
       const val=Math.max(0,+p.value||(qty*px)), cost=qty*avg, pl=val-cost;
       const q=azQuote(p.symbol); const prev=q?(parseFloat(q.adjusted_previous_close||q.previous_close||0)||0):0;
       const dayPct=(prev>0&&px>0)?((px-prev)/prev*100):null;
+      const dayD=(prev>0&&px>0)?qty*(px-prev):null;   // what that move was worth on THIS position
       const bars=azBars(p.symbol); const start=bars.length?bars[0]:0;
       const ytdPct=(start>0&&px>0)?((px/start-1)*100):null;
       const curPct=book>0?val/book*100:0;
@@ -3336,12 +3482,15 @@ function renderAgenticCard(){
       totCost+=cost; totVal+=val;
       if(prev>0&&px>0){ totDayNow+=qty*px; totDayPrev+=qty*prev; }
       if(start>0&&px>0){ totYtdNow+=qty*px; totYtdBase+=qty*start; }
-      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector&&sector!=='—'?sector+' · ':''}${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares)}</td></tr>`;
+      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector&&sector!=='—'?sector+' · ':''}${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${perfCell(dayPct,dayD,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares)}</td></tr>`;
     }).join('');
     const totDay=totDayPrev>0?((totDayNow-totDayPrev)/totDayPrev*100):null;
+    // Only the priced rows are in this sum, which is the same set the percentage is computed over —
+    // so the column adds up to its own footer even when one name has no quote.
+    const totDayD=totDayPrev>0?(totDayNow-totDayPrev):null;
     const totYtd=totYtdBase>0?((totYtdNow-totYtdBase)/totYtdBase*100):null;
-    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr">${pctCell(totDay)}<br><span style="font-size:11px">${totYtd==null?'<span style="color:#9ca3af">—</span>':pctCell(totYtd)}</span></td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
-    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Day / YTD</th><th class="tr">Unreal. P&L</th><th class="tr">Trade</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
+    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr">${perfCell(totDay,totDayD,totYtd)}</td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
+    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Day</th><th class="tr">Unreal. P&L</th><th class="tr">Trade</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
   }
   // Target names ••••3900 doesn't hold yet used to get a "🎯 Targets to open" strip here. They're on the
   // Plan tab now (status "to open"), with the entry/stop/TP the strip carried — the hand-off below still
@@ -3377,7 +3526,7 @@ function renderAgenticCard(){
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day / YTD / unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as what the move was worth on your position over the percentage move itself; the dollars sum to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The producer hasn't captured ••••3900 yet — the account's live cash, holdings and performance appear here after the next scheduled run picks it up. The target itself is on the Plan tab.</div>`}
     ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your confirm</b> (one command, or a reply in Claude)'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The target it would deploy into is on the Plan tab — the button below places it.</div>`:'')}
@@ -3563,7 +3712,7 @@ function renderAgenticPlan(){
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-target" onclick="toggleSection('b-agp-target')"><span>🎯 The target — and why these names <span class="card-hint">${rows.length} names · as of ${T.asOf||'—'}</span></span><span class="chevron">▼</span></div><div id="b-agp-target">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The destination, not the book. Weekly deep multi-factor research (momentum · quality · growth · catalyst → adversarial verify → synthesis) proposes an allocation; <b>finalize-target</b> then re-enforces the correlation-cluster and vol-scaled caps deterministically, so the caps hold no matter what the research says. Business quality decides <b>inclusion</b>; today's price decides <b>size</b> — a stretched entry shrinks a position instead of vetoing it.</div>
       <div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Name</th><th class="tr">Target</th><th class="tr">Status</th><th class="tr">Entry · now</th><th class="tr">Stop · TP</th></tr></thead><tbody>${tRows}</tbody></table></div>
-      ${T.method?`<details class="trk-detail" style="margin-top:10px"><summary>View the research's construction note</summary><div style="font-size:11.5px;color:var(--text);opacity:.85;line-height:1.55;margin-top:6px">${String(T.method).replace(/\|/g,'<br>·')}</div></details>`:''}
+      ${T.method?`<details class="trk-detail" style="margin-top:10px"><summary>How this target was built <span style="color:#9ca3af;font-weight:400">— sizing, caps, and why names left</span></summary><div class="ag-method">${agMethodHtml(T)}</div></details>`:''}
       ${theses?`<details class="trk-detail" style="margin-top:6px"><summary>View the per-name thesis &amp; drivers</summary><div style="margin-top:6px">${theses}</div></details>`:''}
     </div></div>`;
 
@@ -4802,7 +4951,7 @@ window.switchTab=switchTab;
     <div class="hsub">Reading the table</div>
     <ul>
       <li><span class="hk">Position</span> — the holding's value and its share of the book, with cost basis under the ticker.</li>
-      <li><span class="hk">Day / YTD</span> — day move from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</li>
+      <li><span class="hk">Day</span> — the move since the live quote's prior close: the cash it was worth on your position, over the percentage move beneath it (same order as Unreal. P&amp;L). The dollars add up down the column, so the Total row is the account's day; the percentages deliberately do not. (Per-name YTD is in the cell's tooltip, and on the Analyze tab.)</li>
       <li><span class="hk">Unreal. P&amp;L</span> — gain or loss against cost. <span class="hk">Trade</span> — the buy/sell that would bring this name to its target weight, or the reason it's deferred.</li>
       <li>A holding tagged <span class="hk">off-target</span> isn't in the current research target and would be exited; <span class="hk">waiting ground</span> is the parking placeholder, which is held on purpose, never exited.</li>
     </ul>
