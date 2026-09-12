@@ -852,7 +852,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v146'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v147'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3429,11 +3429,21 @@ function renderAgenticCard(){
   const cashCell=(v)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af">—</span>';
     const r=+v.toFixed(2), col=r>0?'#065f46':(r<0?'#991b1b':'#6b7280');
     return `<span style="color:${col};font-weight:600">${r>0?'+':(r<0?'−':'')}${fmtD(Math.abs(r))}</span>`; };
+  /* The sub-line percentage: plCell's grey-and-small treatment, but with pctCell's display-zero-aware
+     number formatting, so a flat name reads "0.0%" and never "−0.0%". Grey rather than coloured is
+     the right match and not just a cosmetic one — the dollars directly above always share this
+     figure's sign (both come from px − prevClose), so colouring both would state the direction twice
+     and leave nothing quieter for the eye to skip. Exactly why plCell greys its own percentage. */
+  const pctSub=(v)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af;font-size:11px">—</span>';
+    const r=+v.toFixed(1);
+    return `<span style="color:#9ca3af;font-size:11px">${r>0?'+':''}${fmt(Math.abs(r)===0?0:r,1)}%</span>`; };
   // The second line was YTD % (owner's call, 2026-09-12: "just put the day's cash gain amount"). A
   // percentage can't be added up across a book — "+0.6% and +0.8%" answers nothing about the account —
   // whereas the dollars sum straight down the column into the total row. YTD rides along in the cell's
   // title rather than being dropped outright, since nothing else on this side carries a per-name YTD.
-  const perfCell=(day,cash,ytd)=>`<span title="${ytd==null?'YTD not available — daily bars for this name have not been captured yet':'YTD '+(ytd>=0?'+':'')+fmt(ytd,1)+'% off the first recorded daily bar'}">${pctCell(day)}<br><span style="font-size:11px">${cashCell(cash)}</span></span>`;
+  // $ over %, matching Unreal. P&L one column across (owner's call, same day) — two adjacent money
+  // columns that order their own two lines differently make the eye re-read the row to find the figure.
+  const perfCell=(day,cash,ytd)=>`<span title="${ytd==null?'YTD not available — daily bars for this name have not been captured yet':'YTD '+(ytd>=0?'+':'')+fmt(ytd,1)+'% off the first recorded daily bar'}">${cashCell(cash)}<br>${pctSub(day)}</span>`;
   // wash-sale badge: a BUY into a name this account realized a loss on within 30d would disallow that loss
   const washAcctLbl=(sym)=>{ const w=washMap[sym]; return (w&&w.account==='main')?'in your self-directed ••••0741 account':'in this account'; };
   const washBadge=(sym)=>`<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${sym} ${washAcctLbl(sym)} on ${washMap[sym]?new Date(washMap[sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}. Rebuying in ANY of your accounts within 30 days disallows the loss — hold off until ${washUntilLbl(sym)}.">⚠️ wait · wash-sale</span> <span style="color:#9ca3af;font-size:10px">to ${washUntilLbl(sym)}</span>`;
@@ -3516,7 +3526,7 @@ function renderAgenticCard(){
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as the percentage move and what it was worth on your position; the column sums to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as what the move was worth on your position over the percentage move itself; the dollars sum to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The producer hasn't captured ••••3900 yet — the account's live cash, holdings and performance appear here after the next scheduled run picks it up. The target itself is on the Plan tab.</div>`}
     ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your confirm</b> (one command, or a reply in Claude)'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The target it would deploy into is on the Plan tab — the button below places it.</div>`:'')}
@@ -4941,7 +4951,7 @@ window.switchTab=switchTab;
     <div class="hsub">Reading the table</div>
     <ul>
       <li><span class="hk">Position</span> — the holding's value and its share of the book, with cost basis under the ticker.</li>
-      <li><span class="hk">Day</span> — the move since the live quote's prior close, as a percentage and as the cash it was worth on your position. The dollars add up down the column, so the Total row is the account's day; the percentages deliberately do not. (Per-name YTD is in the cell's tooltip, and on the Analyze tab.)</li>
+      <li><span class="hk">Day</span> — the move since the live quote's prior close: the cash it was worth on your position, over the percentage move beneath it (same order as Unreal. P&amp;L). The dollars add up down the column, so the Total row is the account's day; the percentages deliberately do not. (Per-name YTD is in the cell's tooltip, and on the Analyze tab.)</li>
       <li><span class="hk">Unreal. P&amp;L</span> — gain or loss against cost. <span class="hk">Trade</span> — the buy/sell that would bring this name to its target weight, or the reason it's deferred.</li>
       <li>A holding tagged <span class="hk">off-target</span> isn't in the current research target and would be exited; <span class="hk">waiting ground</span> is the parking placeholder, which is held on purpose, never exited.</li>
     </ul>
