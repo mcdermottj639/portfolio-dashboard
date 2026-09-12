@@ -1420,6 +1420,30 @@ Three hazards this table exists to prevent:
   `finalists.mjs` pattern. Known, accepted: 69% of positive-tone reads now carry R:R under 1.5 on the
   tighter stops and read ACCUMULATE with the "targets don't pay" line — that is the honest number, not a
   bug; the swing engine's short-horizon edge in this tape is ~0R and the page now says so.
+- **A WRITER AND A READER OF THE SAME DAY STAMP DISAGREED ON THE TIME ZONE (2026-09-12).**
+  `fetchgate.fetchedToday(key, todayET)` compares `data.fetchDays[key]` for EQUALITY against a date every
+  fetcher computes in **ET** — the parameter is literally named `todayET` — while `build-data.mjs` stamped
+  `fetchDays` (and `data.flow.asOf`) from a **UTC** ISO slice, directly under a comment that said "records
+  the ET day". They agree for twenty hours a day and disagree for four, and **the failure is silent and
+  INVERTED**: a build landing at 01:00 UTC stamps TOMORROW's ET date, so the next morning's av/extfund/flow
+  fetcher sees "already fetched today" and **skips a whole day of provider data**. Same class as the
+  raw/-marker gate this stamp replaced, pointed the other way — that one over-spent the budget, this one
+  starves it. **Three things generalize.**
+  **(a) It was LATENT, and only incidentally so.** No scheduled build has ever landed in that window,
+  because preflight SKIPs once the day's close is captured — so the thing protecting this was a *different
+  module's* unrelated behavior, not anything structural. Two off-schedule 23:00 UTC commits in the history
+  show manual runs do happen off-cadence. **"It has never fired" is a fact about the current schedule, not
+  a property of the code.**
+  **(b) The duplicated helper is what let it drift.** `build-data.mjs` already imported `etDate` from
+  `market.mjs` AND carried a second, private inline copy of the same Intl formatter for `_extAsOf` — so the
+  file had two definitions of "today" and the newer stamp reached for neither. Both now go through `etDate`.
+  **(c) A nightly-red test is signal, not flake.** This surfaced as `build-data.test.mjs` failing for four
+  hours a night on an assertion comparing a stamp to a UTC slice. The tempting read is "timezone flake in
+  the test"; the test was right and the product was wrong. **Before relaxing a time-dependent assertion,
+  check which side is actually wrong.** Three assertions were on the UTC basis; fixing `flowDay` tripped the
+  third, which is the suite doing its job. The stamps that must stay UTC are the ones that are NOT gates —
+  `appendEquityPoint`'s day (documented as one point per UTC day), the wash-ledger cutoff, the decision-log
+  retention window. Only a value compared for equality against another module's ET date is affected.
 - **A THRESHOLD THAT WAS FINE BECAME A SILENT OFF-SWITCH WHEN THE DATA SHAPE CHANGED UNDER IT
   (2026-09-12).** `options-build.mjs` computed its realized-vol IV proxy from `raw/hist-day*.json`,
   skipping any batch with `bars.length < 20`. That gate was correct when every historicals fetch was a

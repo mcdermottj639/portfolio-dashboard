@@ -13,6 +13,14 @@
 // carries `data.flow.asOf`), carrying each forward on runs where that provider didn't fetch — so the
 // stamp survives the clone wipe and the day boundary is real.
 //
+// THE STAMP AND THE GATE MUST BOTH BE ET. Every fetcher computes its `todayET` in America/New_York and
+// this compares for EQUALITY, so build-data.mjs must stamp `fetchDays` / `data.flow.asOf` on the ET day
+// too. It stamped them in UTC until 2026-09-12, which disagrees for the four hours a night when the two
+// dates differ — and the failure is silent and INVERTED: a build landing at 01:00 UTC stamps TOMORROW's
+// ET date, so the next morning's fetcher sees "already fetched today" and skips a whole day of provider
+// data. Same class as the raw/-marker gate below, pointed the other way (that one over-spent, this one
+// starves). If you add a fetcher, compute its day with market.mjs's `etDate` — never a UTC ISO slice.
+//
 // Best-effort by design: no snapshot, no passphrase, a plaintext dev snapshot or a decrypt failure all
 // return false → the caller fetches. Failing OPEN is right here; the cost of an extra fetch is a few
 // API calls, while failing closed would silently starve the snapshot of data.

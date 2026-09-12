@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, copyFileSync, existsSync, unlinkSync, mkdi
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { avKey } from './av.mjs';
+import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -427,11 +428,12 @@ try {
   eq('margin-book fetch is logged', stdout.includes('cross-account wash ledger: 1 margin-book realized loss'), true);
 
   // Flow & Positioning: the fresh sidecar lands, the unfetched name carries forward, and asOf advances
-  // to THIS run's day (the block computes its own day — asOfDay is scoped to the agentic section).
+  // to THIS run's ET day — ET because flow-fetch.mjs gates on this exact field with etDate(), so a UTC
+  // stamp here would skip a whole day of flow data after any build in the 00:00-04:00 UTC window.
   eq('fresh flow sidecar lands in data.flow', out.flow.symbols.AAA.flow.score, 7.4);
   eq('flow component detail preserved for display', out.flow.symbols.AAA.insider.cluster, 'buy');
   eq('unfetched symbol flow carries forward', out.flow.symbols.BBB.flow.score, 6.1);
-  eq('flow asOf advances on a fresh fetch', out.flow.asOf, new Date(out.generatedAt).toISOString().slice(0, 10));
+  eq('flow asOf advances on a fresh fetch (ET, matching the flow-fetch gate)', out.flow.asOf, etDate(new Date(out.generatedAt)));
   eq('flow run logged', stdout.includes('flow signals: 2 symbols (1 fresh this run)'), true);
 
   // Congressional ledger accumulates across runs (raw/ is wiped every run, so it can only live here).
@@ -442,7 +444,13 @@ try {
   // Provider fetch-day stamps. These are what the once/day gates key off, and they MUST carry forward
   // on a run where that provider didn't fetch — raw/ is wiped every scheduled run, so if skipping
   // cleared the stamp the next run would re-fetch and the gate would never hold.
-  const today = new Date(out.generatedAt).toISOString().slice(0, 10);
+  /* ET, matching the producer. `fetchDays` and `_extAsOf` are both stamped on the ET day, because
+     fetchgate compares them for equality against a date every fetcher computes in ET. Slicing the UTC
+     ISO string made these assertions go red for the four hours a night when the two dates differ —
+     and that red was real signal: the stamps were genuinely UTC until 2026-09-12. */
+  const today = etDate(new Date(out.generatedAt));
+  const utcDay = new Date(out.generatedAt).toISOString().slice(0, 10);
+  if (utcDay !== today) eq('the stamp is the ET day, NOT the UTC day', out.fetchDays.extfund === utcDay, false);
   eq('extfund stamp set when fresh sidecars landed', out.fetchDays.extfund, today);
   // v141: the ext providers' per-symbol refresh clock (drives the FMP rotation).
   {

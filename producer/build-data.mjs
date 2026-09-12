@@ -214,7 +214,7 @@ const extDir = join(RAWDIR, 'ext-fund');
 // re-cover the same head of the list forever), so it rides in the snapshot on the overview itself
 // and is carried forward below. It is an extra key on an object every consumer reads BY NAME
 // (`ov.ForwardPE`, `ov.Sector`, …) and that `parseAV` returns verbatim, so nothing renders it.
-const extDayET = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const extDayET = etDate();   // shared helper (market.mjs) — a second private copy of "today" is how the fetchDays basis drifted
 let extCount = 0, extFilled = 0, extSeen = 0;
 if (existsSync(extDir)) for (const f of readdirSync(extDir).filter((x) => x.endsWith('.json'))) {
   const sym = f.replace(/^overview-/, '').replace(/\.json$/, '');
@@ -774,7 +774,16 @@ const data = {
   // the very act of skipping would clear the stamp and trigger a re-fetch on the next run.
   // (The flow layer keys off `data.flow.asOf`, which is part of the payload the card renders anyway.)
   {
-    const day = new Date(data.generatedAt).toISOString().slice(0, 10);
+    /* ET, NOT UTC. `fetchgate.fetchedToday(key, todayET)` compares this stamp for EQUALITY against a
+       date every fetcher computes in ET (av-fetch/extfund-fetch via Intl, flow-fetch via etDate), so a
+       UTC stamp and an ET gate disagree for the four hours a night when the two dates differ — and the
+       failure is SILENT AND INVERTED: a build landing at, say, 01:00 UTC stamps TOMORROW's ET date, so
+       the next morning's fetcher sees "already fetched today" and SKIPS a whole day of provider data.
+       That is the same class of bug as the raw/-marker gate this stamp replaced, pointed the other way:
+       that one over-spent the budget, this one silently starves it. Latent rather than historical —
+       preflight SKIPs once the day's close is captured, so no scheduled build has ever landed in that
+       window — but that is preflight's behavior protecting it, not anything structural here. */
+    const day = etDate(new Date(data.generatedAt));
     const priorDays = (prior && prior.fetchDays) || {};
     const fetchDays = { ...priorDays };
     if (avCount > 0) fetchDays.av = day;
@@ -812,7 +821,7 @@ const data = {
   }
 
   const flowDir = join(RAWDIR, 'flow');
-  const flowDay = new Date(data.generatedAt).toISOString().slice(0, 10);
+  const flowDay = etDate(new Date(data.generatedAt));   // ET for the same reason as fetchDays above — flow-fetch gates on this with etDate()
   const symbols = (prior && prior.flow && prior.flow.symbols) ? { ...prior.flow.symbols } : {};
   let fresh = 0;
   if (existsSync(flowDir)) {
