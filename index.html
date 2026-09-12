@@ -832,7 +832,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v143'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v144'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1325,7 +1325,7 @@ function agenticEnriched(){
     const dayD=(prev>0&&px>0)?qty*(px-prev):0;
     return {symbol:p.symbol, qty, avg, px, val, cost, pnlD, pnlP:cost>0?(pnlD/cost)*100:0, dayD,
             dayP:(prev>0&&px>0)?((px-prev)/prev*100):null};
-  });
+  }).sort((a,b)=>b.val-a.val);   // largest position first, matching agenticBook + every holdings table
   const book=Math.max(0,+A.cash||0)+rows.reduce((s,p)=>s+Math.max(p.val,0),0);
   // `r` is the concentration band enrich() attaches (risk(pct)); the shared renderers read
   // p.r.color, so a row without it throws and takes the whole card down.
@@ -2959,7 +2959,18 @@ function agenticExecMap(rows,targetAsOf,washMap,opts){
    the tracker card all need it — keep them incapable of disagreeing). */
 function agenticBook(A){
   const cash=A?Math.max(0,+A.cash||0):0;
-  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0):[];
+  // Largest position first, everywhere. The broker returns positions in its own order (roughly the
+  // order they were opened), which reads as random on a card — and every other holdings surface in
+  // this app (All Positions, the heatmap, Technicals, Fundamentals) is value-descending, so the one
+  // table that wasn't looked broken next to them. Sorting HERE rather than at each render site is
+  // what keeps them in step: the card's holdings table, its off-target orphan list and the Plan
+  // tab's off-target line all read this one array.
+  // `value` is what the broker/producer priced the lot at, but a name the snapshot couldn't quote
+  // comes back at 0 — and the table falls back to qty×px for exactly that row, so the sort key has
+  // to use the same fallback or the order would contradict the figures printed beside it.
+  const _pv=(p)=>{ const v=Math.max(0,+p.value||0); return v>0?v:Math.max(0,(+p.qty||0)*(+p.px||0)); };
+  const held=(A&&Array.isArray(A.positions))?A.positions.filter(p=>p&&p.symbol&&p.qty>0)
+    .sort((a,b)=>_pv(b)-_pv(a)):[];
   const invested=held.reduce((s,p)=>s+Math.max(0,+p.value||0),0);
   return { cash, held, invested, equity:A?(+A.equity||(cash+invested)):0 };
 }
@@ -4172,7 +4183,7 @@ async function load(){
       <div class="card" data-sec="income"><div class="card-title collapsible" data-toggle="b-inc" onclick="toggleSection('b-inc')"><span>💵 Income &amp; Tax <span class="card-hint">(dividends · harvest · by account)</span></span><span class="chevron">▼</span></div><div id="b-inc"><div id="inc-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Loading dividends…</div></div></div></div>
       <div class="card" data-sec="technicals"><div class="card-title collapsible" data-toggle="b-tech" onclick="toggleSection('b-tech')"><span>📡 Technical Signals <span class="card-hint">(RSI · 50-DMA trend)</span></span><span class="chevron">▼</span></div><div id="b-tech"><div id="tech-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching RSI…</div></div></div></div>
       <div class="card" data-sec="fundamentals"><div class="card-title collapsible" data-toggle="b-fund" onclick="toggleSection('b-fund')"><span>📋 Fundamentals <span class="card-hint">(P/E · growth · yield)</span></span><span class="chevron">▼</span></div><div id="b-fund"><div id="fund-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Fetching fundamentals…</div></div></div></div>
-      ${smalls.length>0?`<div class="card" data-sec="smalls"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>a.val-b.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
+      ${smalls.length>0?`<div class="card" data-sec="smalls"><div class="card-title collapsible" data-toggle="b-small" onclick="toggleSection('b-small')"><span>🧹 Positions Under $${SMALL_THR}</span><span class="chevron">▼</span></div><div id="b-small"><div class="smalls-wrap">${smalls.sort((a,b)=>b.val-a.val).map(p=>`<div class="small-chip">${p.symbol} ${fmtD(p.val)}</div>`).join('')}</div><div style="font-size:12px;color:#9ca3af;margin-top:10px">${smalls.length} positions · ${fmtD(smalls.reduce((s,p)=>s+p.val,0))} total — too small to move the needle; consider consolidating.</div></div></div>`:''}
       <div class="card" data-sec="flow"><div class="card-title collapsible" data-toggle="b-flow" onclick="toggleSection('b-flow')"><span>🏛️ Flow &amp; Positioning <span class="card-hint">(who's acting on ••••0741's names)</span></span><span class="chevron">▼</span></div><div id="b-flow"><div id="flow-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading flow…</div></div></div></div>
       <div class="card" data-sec="rebalance-log"><div class="card-title collapsible" data-help="sd rebalance log" data-toggle="b-sd-log" onclick="toggleSection('b-sd-log')"><span>🧾 Rebalance Log <span class="card-hint">(your trades, graded vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-sd-log"><div id="sd-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div></div></div>
       <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks + ⚡ Action Center (raise cash · redeploy plan) →</span></div>
