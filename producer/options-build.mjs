@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { analyzeLeg, buildIdeas, sharesLockedByShortCalls, positionPremium, orderPremium } from './options.mjs';
 import { decryptEnvelope } from './emit.mjs';
+import { buildIvBySym, VOL_WINDOW_BARS } from './optvol.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -145,25 +146,28 @@ if (existsSync(join(RAW, 'options-positions.json'))) {
   }).filter(Boolean);
 }
 
+/* The prior COMMITTED snapshot, decrypted ONCE and shared by the two consumers below: the picks
+   carry-forward on light runs, and the realized-vol IV proxy. Best-effort — no passphrase / no file /
+   a plaintext dev snapshot / a decrypt failure all degrade to null, i.e. the old behavior. */
+let prevSnap = null;
+try {
+  const prevPath = join(__dirname, '..', 'data.json');
+  if (existsSync(prevPath) && process.env.PF_PASSPHRASE) {
+    const env = JSON.parse(readFileSync(prevPath, 'utf8'));
+    prevSnap = env && env.enc ? await decryptEnvelope(env, process.env.PF_PASSPHRASE) : env;
+  }
+} catch { prevSnap = null; }
+
 // ideas: bullish calls from picks + covered calls from 100+ share holdings
 let picksCands = [];
 if (existsSync(join(RAW, 'picks.json'))) picksCands = readJSON(join(RAW, 'picks.json')).candidates ?? [];
-else {
+else if (prevSnap && prevSnap.picks && Array.isArray(prevSnap.picks.candidates)) {
   // Light intraday run: no fresh scan → no raw/picks.json (picks only build on the daily FETCH_ALL).
   // Fall back to the carried-forward picks in the prior committed snapshot so the picks-derived ideas
   // (long calls, cash-secured puts, the debit spread) persist across light runs instead of getting
-  // wiped to a covered-calls-only set until the next full run. Decrypt once; ignore any failure.
-  try {
-    const prevPath = join(__dirname, '..', 'data.json');
-    if (existsSync(prevPath) && process.env.PF_PASSPHRASE) {
-      const env = JSON.parse(readFileSync(prevPath, 'utf8'));
-      const prev = env && env.enc ? await decryptEnvelope(env, process.env.PF_PASSPHRASE) : env;
-      if (prev && prev.picks && Array.isArray(prev.picks.candidates)) {
-        picksCands = prev.picks.candidates;
-        console.log(`options: no raw picks — carried ${picksCands.length} picks forward from prior snapshot for ideas`);
-      }
-    }
-  } catch { /* no prior / wrong passphrase → covered-call ideas only, as before */ }
+  // wiped to a covered-calls-only set until the next full run.
+  picksCands = prevSnap.picks.candidates;
+  console.log(`options: no raw picks — carried ${picksCands.length} picks forward from prior snapshot for ideas`);
 }
 /* Covered-call ideas may only be written against UNPLEDGED shares. Both open positions and pending
    sell-to-open orders reserve collateral, so both count — otherwise a queued order would be double
@@ -177,23 +181,25 @@ const holdings100 = Object.entries(sharesBySym)
 for (const [sym, lk] of Object.entries(lockedBySym))
   console.log(`options: ${sym} — ${lk} sh pledged to open/pending short calls, ${Math.max(0, (sharesBySym[sym] || 0) - lk)} free for new covered calls`);
 
-// Per-symbol annualized realized vol from daily historicals (when present this run) — sharpens
-// the estimate-path premiums vs a flat 0.55/0.60 proxy. On light runs (no hist-day raw) this is
-// empty and buildIdeas falls back to the defaults. Read straight from the raw bars the agent saved.
-const ivBySym = {};
+/* Per-symbol annualized realized vol → the IV proxy for every ESTIMATE-path premium (`optvol.mjs`).
+   TWO sources, this run's raw bars first and the prior snapshot's merged series as the fill. The raw
+   half alone is NOT enough: since v141 most historicals arrive as 7-bar tails, which cannot support a
+   vol estimate, so a raw-only proxy comes back nearly empty and every idea silently falls through to
+   ivProxyFor's flat 0.55/0.60 default — the 2026-09-11 RCL bug (see optvol.mjs). Tail and full batches
+   for the same symbol are concatenated because closeSeries dedupes by date, so a tail simply refreshes
+   the head of the snapshot series. */
+const rawSeries = {};
 for (const f of readdirSync(RAW).filter((x) => /^hist-day.*\.json$/.test(x))) {
-  const d = unwrap(readJSON(join(RAW, f)));
-  for (const res of (d.data?.results ?? d.results ?? [])) {
-    if (!res.symbol || !Array.isArray(res.bars) || res.bars.length < 20) continue;
-    const closes = res.bars.map((b) => num(b.close_price ?? b.close)).filter((v) => v != null && v > 0);
-    if (closes.length < 20) continue;
-    const rets = [];
-    for (let i = 1; i < closes.length; i++) rets.push(Math.log(closes[i] / closes[i - 1]));
-    const mean = rets.reduce((s, r) => s + r, 0) / rets.length;
-    const variance = rets.reduce((s, r) => s + (r - mean) ** 2, 0) / (rets.length - 1);
-    ivBySym[res.symbol] = +(Math.sqrt(variance) * Math.sqrt(252)).toFixed(3); // annualized
-  }
+  try {
+    const d = unwrap(readJSON(join(RAW, f)));
+    for (const res of (d.data?.results ?? d.results ?? []))
+      if (res && res.symbol && Array.isArray(res.bars))
+        rawSeries[res.symbol] = (rawSeries[res.symbol] || []).concat(res.bars);
+  } catch { /* one malformed batch must not take the whole proxy down */ }
 }
+const snapSeries = (prevSnap && prevSnap.hist && (prevSnap.hist.day || prevSnap.hist.daily)) || {};
+const ivBySym = buildIvBySym([rawSeries, snapSeries]);
+console.log(`options: realized-vol IV proxy — ${Object.keys(ivBySym).length} symbols over a ${VOL_WINDOW_BARS}-bar window (raw batches ${Object.keys(rawSeries).length}, prior snapshot ${Object.keys(snapSeries).length})`);
 
 // live option quotes for the idea contracts (producer/raw/option-quotes.json), if fetched
 const liveBySym = {};
@@ -203,6 +209,11 @@ if (existsSync(join(RAW, 'option-quotes.json'))) {
 }
 const ideas = buildIdeas(picksCands, holdings100, pxBySym, liveBySym, ivBySym);
 const liveCount = ideas.ideas.filter((i) => i.live).length;
+/* A guard that fires silently is indistinguishable from a broken system: an estimate-path idea with
+   no realized vol is priced off a flat default that can be 2-3x the name's real volatility, and the
+   only place that shows is a premium nobody can check. Name them in the run log. */
+const noVol = [...new Set(ideas.ideas.filter((i) => !i.live && i.underlying && ivBySym[i.underlying] == null).map((i) => i.underlying))];
+if (noVol.length) console.warn(`options: WARNING — no realized vol for ${noVol.join(', ')}; their ESTIMATE premiums use the flat default and may be far off. Fix is upstream: keep these symbols' daily bars in the fetch.`);
 
 // Sidecar for the Robinhood OPTIONS-watchlist sync — the single-leg Trade Ideas that resolved to a
 // real contract this run (live quote → optionId). Multi-leg structures (debit spread, collar) and

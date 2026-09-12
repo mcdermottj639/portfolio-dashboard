@@ -408,8 +408,12 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       roll suggestions — builds the directional + defined-risk ideas using live quotes when present
       else estimates, and emits the portfolio `exposure` roll-up + `ivObserved`). `build-data.mjs`
       embeds it as `data.options` and maintains the rolling `ivHistory` → `ivRank`. Needs
-      `positions.json`, `quotes.json`, and (for ideas) `picks.json`; `hist-day*.json` sharpens
-      estimate premiums via realized vol when present.
+      `positions.json`, `quotes.json`, and (for ideas) `picks.json`. Estimate premiums are priced off
+      a per-symbol realized-vol proxy (`optvol.mjs`) built from `hist-day*.json` **and the prior
+      committed snapshot's `data.hist.day`** — the snapshot half is what makes it work on a light run
+      and on a day of 7-bar tails, so `PF_PASSPHRASE` being set matters here. A symbol with neither
+      falls back to a flat 0.55/0.60 default and is NAMED in a `WARNING` line; that warning means the
+      fix is upstream, in keeping that symbol's daily bars in the fetch.
 
 4. **Build + validate + publish — ONE command.** Once every raw file from steps 2–3c is in
    `producer/raw/`, run the orchestrator. It does everything deterministically (optional AV
