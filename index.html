@@ -852,7 +852,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v145'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v146'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3422,7 +3422,18 @@ function renderAgenticCard(){
   const plCell=(pl,cost)=>{ if(!(cost>0))return '<span style="color:#9ca3af">—</span>';
     const col=pl>=0?'#065f46':'#991b1b', pct=pl/cost*100;
     return `<span style="color:${col};font-weight:600">${pl>=0?'+':'−'}${fmtD(Math.abs(pl))}</span><br><span style="color:#9ca3af;font-size:11px">${pl>=0?'+':''}${fmt(pct,1)}%</span>`; };
-  const perfCell=(day,ytd)=>`${pctCell(day)}<br><span style="font-size:11px">${ytd==null?'<span style="color:#9ca3af">—</span>':pctCell(ytd)}</span>`;
+  /* The day's move in CASH, under the day's move in percent. Same display-zero rule pctCell follows:
+     a move that ROUNDS to $0.00 renders neutral, never a red "−$0.00" — the colour has to match what
+     the reader sees, not the sign of an invisible fraction. Sign convention (+ / U+2212) matches
+     plCell so the two money columns read the same way. */
+  const cashCell=(v)=>{ if(v==null||!isFinite(v))return '<span style="color:#9ca3af">—</span>';
+    const r=+v.toFixed(2), col=r>0?'#065f46':(r<0?'#991b1b':'#6b7280');
+    return `<span style="color:${col};font-weight:600">${r>0?'+':(r<0?'−':'')}${fmtD(Math.abs(r))}</span>`; };
+  // The second line was YTD % (owner's call, 2026-09-12: "just put the day's cash gain amount"). A
+  // percentage can't be added up across a book — "+0.6% and +0.8%" answers nothing about the account —
+  // whereas the dollars sum straight down the column into the total row. YTD rides along in the cell's
+  // title rather than being dropped outright, since nothing else on this side carries a per-name YTD.
+  const perfCell=(day,cash,ytd)=>`<span title="${ytd==null?'YTD not available — daily bars for this name have not been captured yet':'YTD '+(ytd>=0?'+':'')+fmt(ytd,1)+'% off the first recorded daily bar'}">${pctCell(day)}<br><span style="font-size:11px">${cashCell(cash)}</span></span>`;
   // wash-sale badge: a BUY into a name this account realized a loss on within 30d would disallow that loss
   const washAcctLbl=(sym)=>{ const w=washMap[sym]; return (w&&w.account==='main')?'in your self-directed ••••0741 account':'in this account'; };
   const washBadge=(sym)=>`<span class="badge" style="background:#fef3c7;color:#92400e" title="Wash-sale: you realized a loss on ${sym} ${washAcctLbl(sym)} on ${washMap[sym]?new Date(washMap[sym].date+'T00:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}. Rebuying in ANY of your accounts within 30 days disallows the loss — hold off until ${washUntilLbl(sym)}.">⚠️ wait · wash-sale</span> <span style="color:#9ca3af;font-size:10px">to ${washUntilLbl(sym)}</span>`;
@@ -3447,6 +3458,7 @@ function renderAgenticCard(){
       const val=Math.max(0,+p.value||(qty*px)), cost=qty*avg, pl=val-cost;
       const q=azQuote(p.symbol); const prev=q?(parseFloat(q.adjusted_previous_close||q.previous_close||0)||0):0;
       const dayPct=(prev>0&&px>0)?((px-prev)/prev*100):null;
+      const dayD=(prev>0&&px>0)?qty*(px-prev):null;   // what that move was worth on THIS position
       const bars=azBars(p.symbol); const start=bars.length?bars[0]:0;
       const ytdPct=(start>0&&px>0)?((px/start-1)*100):null;
       const curPct=book>0?val/book*100:0;
@@ -3460,12 +3472,15 @@ function renderAgenticCard(){
       totCost+=cost; totVal+=val;
       if(prev>0&&px>0){ totDayNow+=qty*px; totDayPrev+=qty*prev; }
       if(start>0&&px>0){ totYtdNow+=qty*px; totYtdBase+=qty*start; }
-      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector&&sector!=='—'?sector+' · ':''}${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${perfCell(dayPct,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares)}</td></tr>`;
+      return `<tr><td><span class="sym">${p.symbol}</span>${park?' <span style="color:#6b7280;font-size:9px">waiting ground</span>':off?' <span style="color:#d97706;font-size:9px">off-target</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${sector&&sector!=='—'?sector+' · ':''}${shFmt(qty)}@${P(avg)}</span></td><td class="tr"><b>${fmtD(val)}</b><br><span style="color:#9ca3af;font-size:11px">${fmt(curPct,1)}% bk</span></td><td class="tr">${perfCell(dayPct,dayD,ytdPct)}</td><td class="tr">${plCell(pl,cost)}</td><td class="tr">${tradeCell(p.symbol,side,delta,shares)}</td></tr>`;
     }).join('');
     const totDay=totDayPrev>0?((totDayNow-totDayPrev)/totDayPrev*100):null;
+    // Only the priced rows are in this sum, which is the same set the percentage is computed over —
+    // so the column adds up to its own footer even when one name has no quote.
+    const totDayD=totDayPrev>0?(totDayNow-totDayPrev):null;
     const totYtd=totYtdBase>0?((totYtdNow-totYtdBase)/totYtdBase*100):null;
-    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr">${pctCell(totDay)}<br><span style="font-size:11px">${totYtd==null?'<span style="color:#9ca3af">—</span>':pctCell(totYtd)}</span></td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
-    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Day / YTD</th><th class="tr">Unreal. P&L</th><th class="tr">Trade</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
+    const hfoot=`<tr style="border-top:2px solid #9ca3af;font-weight:700;background:var(--surface-2)"><td>Total<br><span style="color:#9ca3af;font-size:11px;font-weight:400">book ${fmtD(book)}</span></td><td class="tr">${fmtD(totVal)}<br><span style="color:#9ca3af;font-size:11px;font-weight:400">+${fmtD(cash)} cash</span></td><td class="tr">${perfCell(totDay,totDayD,totYtd)}</td><td class="tr">${plCell(totVal-totCost,totCost)}</td><td class="tr"></td></tr>`;
+    holdingsBlock=`<div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Holding</th><th class="tr">Position</th><th class="tr">Day</th><th class="tr">Unreal. P&L</th><th class="tr">Trade</th></tr></thead><tbody>${hrows}${hfoot}</tbody></table></div>`;
   }
   // Target names ••••3900 doesn't hold yet used to get a "🎯 Targets to open" strip here. They're on the
   // Plan tab now (status "to open"), with the entry/stop/TP the strip carried — the hand-off below still
@@ -3501,7 +3516,7 @@ function renderAgenticCard(){
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day / YTD / unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as the percentage move and what it was worth on your position; the column sums to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The producer hasn't captured ••••3900 yet — the account's live cash, holdings and performance appear here after the next scheduled run picks it up. The target itself is on the Plan tab.</div>`}
     ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your confirm</b> (one command, or a reply in Claude)'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The target it would deploy into is on the Plan tab — the button below places it.</div>`:'')}
@@ -4926,7 +4941,7 @@ window.switchTab=switchTab;
     <div class="hsub">Reading the table</div>
     <ul>
       <li><span class="hk">Position</span> — the holding's value and its share of the book, with cost basis under the ticker.</li>
-      <li><span class="hk">Day / YTD</span> — day move from the live quote's prior close; YTD off the daily-bar series (— until bars are captured).</li>
+      <li><span class="hk">Day</span> — the move since the live quote's prior close, as a percentage and as the cash it was worth on your position. The dollars add up down the column, so the Total row is the account's day; the percentages deliberately do not. (Per-name YTD is in the cell's tooltip, and on the Analyze tab.)</li>
       <li><span class="hk">Unreal. P&amp;L</span> — gain or loss against cost. <span class="hk">Trade</span> — the buy/sell that would bring this name to its target weight, or the reason it's deferred.</li>
       <li>A holding tagged <span class="hk">off-target</span> isn't in the current research target and would be exited; <span class="hk">waiting ground</span> is the parking placeholder, which is held on purpose, never exited.</li>
     </ul>
