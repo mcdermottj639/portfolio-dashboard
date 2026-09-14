@@ -850,6 +850,154 @@
           "weightAfter": 4.48
         }
       ]
+    },
+    {
+      "id": "2026-09-14-rebalance",
+      "date": "2026-09-14",
+      "kind": "rebalance",
+      "targetAsOf": "2026-09-14",
+      "book": 13240.5,
+      "equityAtDecision": 13240.5,
+      "spyAt": 759.26,
+      "rationale": "First execution of the 2026-09-14 Mandate A target (research refreshed this morning). Two-sided: exited the three names the new target dropped — KO, GLDM and BKNG, all phase-out flagged and all existing only to fill a structural slot Mandate A deleted (KO the retired 15% defensive floor, GLDM the retired 5% gold sleeve, BKNG an unverified consumer-cyclical) — and redeployed the proceeds into eight underweight target names, opening NEM as the only new position. KO and GLDM are PARTIAL exits: 1.710215 KO and 1.061195 GLDM shares bought 2026-09-08 sit inside the 14d per-lot min-hold and unlock 2026-09-22; only the older lots were sold. BKNG exited in full. Gate printed EXEC_AUTO at $3,834.90 turnover, inside the $10,000 auto tier. Pre-checks clean: book $13,240.50 vs the $13,255.19 plan basis (-0.11%); no ••••3900 fills today so the PDT day-trade guard is untouched; none of the eight buy names reports earnings within 7 days; and the margin book ••••0741 has no realized loss in 30 days on any buy name (its only losses are TSM and CIFR), so no cross-account wash block. Buys were re-sized $1,923.91 → $1,899.96 against actual buying power of $1,906.22 — BKNG filled at $176.44 against the plan’s $180.575 basis, so proceeds came in ~$17 light. Every leg was shaved pro-rata (factor 0.9876) and capped at the remaining pool, honouring the spend ≤ cash + proceeds invariant rather than shipping an unfundable last leg. SPY’s $354.24 top-up stays deferred on the 14d re-entry cooldown (sold 5d ago, clears 2026-09-23) and waits in CASH, not VTI. The $32.19 waiting ground was left untouched: the shortfall was under the $100 parking floor, so no release fired and no dust sale of the vehicle was forced. Est. short-term tax: $0 gains − $119.99 losses = net −$119.99.",
+      "trades": [
+        {
+          "sym": "NEM",
+          "side": "BUY",
+          "dollars": 489.64,
+          "shares": 4.026105,
+          "priceAt": 121.6163,
+          "weightBefore": 0,
+          "weightAfter": 6.29,
+          "drivers": [
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "MA",
+          "side": "BUY",
+          "dollars": 340.02,
+          "shares": 0.59133,
+          "priceAt": 575.0084,
+          "weightBefore": 4.43,
+          "weightAfter": 8.8,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "UNP",
+          "side": "BUY",
+          "dollars": 319.02,
+          "shares": 1.118583,
+          "priceAt": 285.2,
+          "weightBefore": 2.6,
+          "weightAfter": 6.7,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 223.06,
+          "shares": 0.66991,
+          "priceAt": 332.9699,
+          "weightBefore": 2.58,
+          "weightAfter": 5.45,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 181.2,
+          "shares": 0.862082,
+          "priceAt": 210.1887,
+          "weightBefore": 7.73,
+          "weightAfter": 10.06,
+          "drivers": [
+            "growth",
+            "quality",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "AMZN",
+          "side": "BUY",
+          "dollars": 150.13,
+          "shares": 0.596331,
+          "priceAt": 251.7561,
+          "weightBefore": 7.71,
+          "weightAfter": 9.64,
+          "drivers": [
+            "growth",
+            "quality",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 128.83,
+          "shares": 0.113159,
+          "priceAt": 1138.48,
+          "weightBefore": 5.88,
+          "weightAfter": 7.54,
+          "drivers": [
+            "quality",
+            "growth",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "V",
+          "side": "BUY",
+          "dollars": 68.06,
+          "shares": 0.181779,
+          "priceAt": 374.4102,
+          "weightBefore": 6.67,
+          "weightAfter": 7.54,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "BKNG",
+          "side": "TRIM",
+          "dollars": 600.99,
+          "shares": 3.406178,
+          "priceAt": 176.4401,
+          "weightBefore": null,
+          "weightAfter": 0
+        },
+        {
+          "sym": "GLDM",
+          "side": "TRIM",
+          "dollars": 534.95,
+          "shares": 6.338026,
+          "priceAt": 84.4031,
+          "weightBefore": null,
+          "weightAfter": 0
+        },
+        {
+          "sym": "KO",
+          "side": "TRIM",
+          "dollars": 757.43,
+          "shares": 8.470293,
+          "priceAt": 89.4214,
+          "weightBefore": null,
+          "weightAfter": 0
+        }
+      ]
     }
   ]
 }
