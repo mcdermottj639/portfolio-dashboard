@@ -1,3 +1,4 @@
+import { mock } from 'node:test';
 /* optvol.mjs — the realized-vol IV proxy behind every ESTIMATE-path option premium.
    The defect these pin: on 2026-09-11 the RCL cash-secured put idea advertised ~$1,305 of income and
    a 58% annualized yield off a $13.05 estimated premium that implied ~68% IV, because the proxy read
@@ -107,13 +108,15 @@ t('REGRESSION — the live RCL case: a real vol cuts the CSP premium to a third 
   const picks = [{ ticker: 'A', price: 100 }, { ticker: 'B', price: 100 }, { ticker: 'C', price: 100 },
                  { ticker: 'RCL', price: 260 }];
   const q = { RCL: 260 };
+  mock.timers.enable({apis:['Date'], now:new Date('2026-09-11T12:00:00Z')});
   const cspOf = (iv) => buildIdeas(picks, [], q, {}, iv).ideas.find((i) => i.underlying === 'RCL' && i.strategy === 'Cash-secured put');
 
   const dflt = cspOf({});                                  // what shipped: flat 0.60 default
-  const fixed = cspOf({ RCL: 0.322 });                     // RCL's real 60-day realized vol
+  const fixed = cspOf({ RCL: 0.322 });
+  mock.timers.reset();                     // RCL's real 60-day realized vol
 
   assert.strictEqual(dflt.strike, 242, 'strike is round(260*0.93)');
-  assert.ok(Math.abs(dflt.estPremium - 13.05) < 0.2, `default path should reproduce the shipped $13.05, got ${dflt.estPremium}`);
+  assert.ok(Math.abs(dflt.estPremium - 13.31) < 0.02, `fixed-date default path should price at $13.31, got ${dflt.estPremium}`);
   assert.ok(fixed.estPremium < dflt.estPremium / 2, `fixed ${fixed.estPremium} should be far under default ${dflt.estPremium}`);
   // and every derived figure moves with it — income, breakeven and the headline annualized yield
   assert.strictEqual(fixed.income, +(fixed.estPremium * 100).toFixed(0));

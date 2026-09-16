@@ -38,6 +38,12 @@ export function makeTicket(plan, { asOf } = {}) {
   return {
     id: `${asOf || 'undated'}-${Math.abs(hashCode(planHash(plan))).toString(36)}`,
     created: asOf || null,
+    targetId: plan.targetId || null,
+    modelVersion: plan.modelVersion || 'legacy-unversioned',
+    mandateVersion: plan.mandateVersion || 'legacy-unversioned',
+    riskVersion: plan.riskVersion || 'legacy-unversioned',
+    factorWeights: plan.factorWeights || null,
+    universeVersion: plan.universeVersion || null,
     status: 'proposed',
     autoEligible: !!plan.autoEligible,
     turnover: round2(plan.turnover),

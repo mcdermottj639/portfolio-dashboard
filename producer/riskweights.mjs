@@ -284,6 +284,13 @@ export function volScaledCap(name) {
 // Deterministic: iterative water-filling — clamp violators to their cap, redistribute the freed weight to
 // names with headroom (proportionally), repeat until stable. Index ballast absorbs overflow last.
 export function riskAdjustWeights(names, opts = {}) {
+  const seen = new Set();
+  for (const n of names || []) {
+    const t = String(n?.ticker || '').trim().toUpperCase();
+    if (!t || seen.has(t) || typeof n.weightPct !== 'number' || !Number.isFinite(n.weightPct) || n.weightPct < 0)
+      throw new Error('INVALID_TARGET: duplicate/missing ticker or invalid weight');
+    seen.add(t);
+  }
   const clusterCaps = { ...CLUSTER_CAPS, ...(opts.clusterCaps || {}) };
   const items = (names || []).filter((n) => n && n.ticker && num(n.weightPct) > 0).map((n) => ({
     ...n,
@@ -291,6 +298,7 @@ export function riskAdjustWeights(names, opts = {}) {
     weightPct: num(n.weightPct),
     _cluster: clusterOf(n.ticker),
     _isIndex: INDEX_SYMS.includes(String(n.ticker).toUpperCase()),
+    _isDiv: isDiversifier(n.ticker),
     // Index ballast is uncapped; the gold diversifier gets its OWN band rather than the vol-scaled
     // equity cap — gold's range/price (~0.47) would cap the hedge hardest exactly when volatility makes
     // it most useful, which is backwards. Bounded above by AG_DIVERSIFIER_MAX so it never becomes the
@@ -444,18 +452,22 @@ export function riskAdjustWeights(names, opts = {}) {
         idx.weightPct = +(idx.weightPct + rem).toFixed(4);
         notes.push(`${rem.toFixed(1)}pp had no cap headroom anywhere — parked in ${idx.ticker} (which raises its look-through contribution)`);
       } else {
-        const t2 = totalOf(kept) || 1;
-        kept.forEach((it) => { it.weightPct = +(it.weightPct * 100 / t2).toFixed(4); });
-        notes.push(`${rem.toFixed(1)}pp had no cap headroom and there is no index sleeve to park it in — weights scaled up and caps MAY be exceeded`);
+        throw new Error(`INVALID_TARGET: ${rem.toFixed(2)}pp cannot be allocated within hard caps; retain the last valid target and re-run research with a broader survivor set`);
       }
     }
   }
-  // Final 2dp rounding, with any residual rounding drift absorbed by the largest holding.
-  kept.forEach((it) => { it.weightPct = +it.weightPct.toFixed(2); });
-  const drift = +(100 - totalOf(kept)).toFixed(2);
-  if (Math.abs(drift) >= 0.01 && kept.length) {
-    const big = kept.slice().sort((a, b) => b.weightPct - a.weightPct)[0];
-    big.weightPct = +(big.weightPct + drift).toFixed(2);
+  // Round DOWN then distribute cents only where there is real name + cluster headroom.
+  // Rounding into the biggest holding used to undo a binding limit by a few basis points.
+  kept.forEach(it => { it.weightPct = Math.floor((it.weightPct + 1e-9) * 100) / 100; });
+  for (let cents = Math.round((100 - totalOf(kept)) * 100); cents > 0; cents--) {
+    const recipient = kept.slice().sort((a,b) => b.weightPct-a.weightPct).find(it => {
+      if (it.weightPct + .01 > it._nameCap + 1e-8) return false;
+      const trial = kept.map(n => n === it ? {...n, weightPct:n.weightPct+.01} : n);
+      return Object.entries(clusterExposure(trial)).every(([cl,e]) => clusterCaps[cl] == null
+        || (LOOKTHROUGH_ENFORCE ? e.total : e.direct) <= clusterCaps[cl] + 1e-8);
+    });
+    if (!recipient) throw new Error('INVALID_TARGET: rounding cannot satisfy hard caps');
+    recipient.weightPct = +(recipient.weightPct + .01).toFixed(2);
   }
   // Report any cluster still over its cap after the fill (an honest residual, not a silent one).
   {
@@ -489,6 +501,7 @@ export function riskAdjustWeights(names, opts = {}) {
   const clusters = groupSum(kept);
   const exposure = clusterExposure(kept);
   const out = kept.map(({ _cluster, _isIndex, _isDiv, _nameCap, _defRoom, ...rest }) => rest);
+  assertTarget({ names: out }, { clusterCaps });
   return {
     names: out, notes, defensive,
     // Gold sits on its OWN axis — it is not an equity, carries no sector exposure, and is measured
@@ -529,21 +542,66 @@ function redistribute(items, amount, clusterCaps) {
       // Its room is the tightest of its own look-through headroom across every cluster it feeds.
       const lt = LOOKTHROUGH[it.ticker];
       clRoom = Infinity;
-      if (lt) for (const [cl, frac] of Object.entries(lt)) {
+      if (LOOKTHROUGH_ENFORCE && lt) for (const [cl, frac] of Object.entries(lt)) {
         const cap = clusterCaps[cl];
         if (cap == null || !(frac > 0)) continue;
         clRoom = Math.min(clRoom, (cap - ((exp[cl] && exp[cl].total) || 0)) / frac);
       }
     } else {
       const cap = clusterCaps[it._cluster];
-      clRoom = cap == null ? Infinity : cap - ((exp[it._cluster] && exp[it._cluster].total) || 0);
+      clRoom = cap == null ? Infinity : cap - ((exp[it._cluster] && exp[it._cluster][LOOKTHROUGH_ENFORCE ? 'total' : 'direct']) || 0);
     }
     return Math.max(0, Math.min(nameRoom, clRoom));
   };
   let targets = items.filter((it) => room(it) > 1e-6);
-  if (!targets.length) return; // nowhere to put it — normalization will absorb
-  const totalRoom = targets.reduce((s, it) => s + room(it), 0) || 1;
-  targets.forEach((it) => { it.weightPct = +(it.weightPct + amount * room(it) / totalRoom).toFixed(4); });
+  if (!targets.length) return; // caller rejects any remaining unallocatable weight
+  // A cluster's remaining room is SHARED, never counted once per member. Allocate sequentially,
+  // refreshing exposure after each increment. Repeated passes share it without overfilling.
+  for (let pass = 0; pass < 40 && amount > 1e-7; pass++) {
+    Object.assign(exp, clusterExposure(items));
+    targets = items.filter(it => room(it) > 1e-7);
+    if (!targets.length) break;
+    const totalRoom = targets.reduce((s,it) => s+room(it),0);
+    const budget = amount;
+    const shares = targets.map(it => [it, budget * room(it) / totalRoom]);
+    for (const [it, proposed] of shares) {
+      Object.assign(exp, clusterExposure(items));
+      const add = Math.min(amount, proposed, room(it));
+      it.weightPct += add; amount -= add;
+    }
+  }
+}
+
+// Validates already-finalized targets too; used before publishing and before executor resumption.
+// Legacy targets lack per-name cap stamps; they still face the base and cluster caps.
+export function validateTarget(target, opts = {}) {
+  const errors = [], seen = new Set(), names = target?.names;
+  if (!Array.isArray(names) || !names.length) return { valid: false, errors: ['empty target'] };
+  let sum = 0;
+  for (const n of names) {
+    const t = String(n?.ticker || '').trim().toUpperCase(), w = n?.weightPct;
+    if (!t || seen.has(t)) errors.push(`missing or duplicate ticker ${t}`);
+    seen.add(t);
+    if (typeof w !== 'number' || !Number.isFinite(w) || w <= 0) { errors.push(`${t}: invalid weight`); continue; }
+    sum += w;
+    const cap = INDEX_SYMS.includes(t) ? 100 : isDiversifier(t) ? AG_DIVERSIFIER_MAX
+      : Math.min(volScaledCap(n), Number.isFinite(n.singleNameCapPct) ? n.singleNameCapPct : BASE_SINGLE_CAP);
+    if (w > cap + 1e-6) errors.push(`${t}: ${w}% exceeds ${cap}% single-name cap`);
+  }
+  if (Math.abs(sum - 100) > .011) errors.push(`weights total ${sum.toFixed(4)}%, expected 100%`);
+  const indexPct = names.filter(n=>INDEX_SYMS.includes(String(n?.ticker).toUpperCase())).reduce((s,n)=>s+(Number(n.weightPct)||0),0);
+  if (Number.isFinite(target?.riskSettings?.indexMaxPct) && indexPct > target.riskSettings.indexMaxPct + 1e-6) errors.push(`index residual ${indexPct}% exceeds ${target.riskSettings.indexMaxPct}%`);
+  const caps = {...CLUSTER_CAPS, ...(opts.clusterCaps || {})};
+  for (const [cl,e] of Object.entries(clusterExposure(names))) {
+    const measured = LOOKTHROUGH_ENFORCE ? e.total : e.direct;
+    if (caps[cl] != null && measured > caps[cl]+1e-6) errors.push(`${cl}: ${measured}% exceeds ${caps[cl]}% cluster cap`);
+  }
+  return { valid: !errors.length, errors };
+}
+export function assertTarget(target, opts = {}) {
+  const result = validateTarget(target, opts);
+  if (!result.valid) throw new Error(`INVALID_TARGET: ${result.errors.join('; ')}`);
+  return result;
 }
 function groupSum(items) {
   const g = {};

@@ -31,7 +31,7 @@ ok(`decision <${MIN_GRADE_DAYS}d old is "open"`, young.grade.verdict === 'open')
 
 // missing spyAt → no alpha, still grades on absolute contribution
 const noBench = gradeDecision({ ...dec, spyAt: null }, quotesNow, '2026-07-20');
-ok('no benchmark → alpha null but still graded', noBench.grade.alpha == null && noBench.grade.verdict === 'ahead');
+ok('no benchmark → alpha null and unknown', noBench.grade.alpha == null && noBench.grade.verdict === 'unknown');
 
 // portfolio-level stats + newest-first ordering
 const set = gradeDecisions([
@@ -245,8 +245,8 @@ const idxBoth = closeIndex({ X: [
 eq('closeIndex reads both bar shapes and drops placeholder/live/zero rows', idxBoth.X.map((r) => r[1]), [10, 11]);
 
 const sold = { id: 'b4', date: '2026-06-01', spyAt: 700, trades: [{ sym: 'DROP', side: 'SELL', dollars: 1000, priceAt: 100 }] };
-ok('a sell of a name that then FELL marks positive',
-  markFromBars(sold, closeIndex({ DROP: barsFor('2026-06-01', 60, 100, -1), SPY: HIST.SPY }), 30, '2026-08-27').contribPct > 0);
+ok('a sold basket that fell reports its negative subsequent return',
+  markFromBars(sold, closeIndex({ DROP: barsFor('2026-06-01', 60, 100, -1), SPY: HIST.SPY }), 30, '2026-08-27').soldReturnPct < 0);
 
 // A stamped mark is still never recomputed, even once bars would answer differently.
 const first = applyMarks(gradeDecisions([oldDec], { NVDA: 230, SPY: 721 }, '2026-07-01'), [], '2026-07-01');

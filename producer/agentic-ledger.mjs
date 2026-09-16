@@ -1,3 +1,4 @@
+import { GRADING_VERSION, provenance } from './agentic-model.mjs';
 // producer/agentic-ledger.mjs — PURE rebalance-decision ledger + grader for the agentic account.
 //
 // The picks screen has a Track Record (every pick graded win/loss); the agentic ACCOUNT's rebalance
@@ -41,22 +42,30 @@ export function gradeDecision(dec, quotesNow = {}, asOf) {
       ...(Array.isArray(t.drivers) && t.drivers.length ? { drivers: t.drivers } : {}) };
   });
 
-  // dollar-weighted average decision contribution across trades that priced
-  const priced = byTrade.filter((b) => b.contribPct != null && b.dollars > 0);
-  const wsum = priced.reduce((s, b) => s + b.dollars, 0);
-  const avgContrib = wsum > 0 ? +(priced.reduce((s, b) => s + b.contribPct * b.dollars, 0) / wsum).toFixed(2) : null;
-
-  // benchmark: SPY over the same window (alpha), when spyAt was recorded at decision time
+  // Each basket needs complete coverage. Missing prices never improve a score by omission.
+  const basket = (legs) => {
+    const dollars = legs.reduce((sum, t) => sum + (t.dollars > 0 ? t.dollars : 0), 0);
+    const complete = legs.length > 0 && legs.every(t => t.dollars > 0 && t.retPct != null);
+    return { dollars, returnPct: complete ? +(legs.reduce((sum, t) => sum + t.retPct * t.dollars, 0) / dollars).toFixed(2) : null };
+  };
+  const buys = basket(byTrade.filter(t => t.side === 'BUY'));
+  const sells = basket(byTrade.filter(t => ['SELL', 'TRIM', 'EXIT'].includes(t.side)));
   const spyAt = num(dec.spyAt), spyNow = pxNow('SPY');
-  const spyRet = (spyAt > 0 && spyNow > 0) ? +(100 * (spyNow - spyAt) / spyAt).toFixed(2) : null;
-  const alpha = (avgContrib != null && spyRet != null) ? +(avgContrib - spyRet).toFixed(2) : null;
-
+  const spyRet = spyAt > 0 && spyNow > 0 ? +(100 * (spyNow - spyAt) / spyAt).toFixed(2) : null;
+  const alpha = buys.returnPct != null && spyRet != null ? +(buys.returnPct - spyRet).toFixed(2) : null;
+  const rotationPct = buys.returnPct != null && sells.returnPct != null ? +(buys.returnPct - sells.returnPct).toFixed(2) : null;
+  const matchedDollars = Math.min(buys.dollars, sells.dollars);
   const daysSince = daysBetween(dec.date, asOf);
-  let verdict = 'open';
-  if (daysSince != null && daysSince >= MIN_GRADE_DAYS && avgContrib != null) {
-    verdict = (alpha != null ? alpha : avgContrib) >= 0 ? 'ahead' : 'behind';
-  }
-  return { ...dec, grade: { byTrade, avgContrib, spyRet, alpha, daysSince, verdict } };
+  const verdict = daysSince == null || daysSince < MIN_GRADE_DAYS ? 'open' : alpha == null ? 'unknown' : alpha >= 0 ? 'ahead' : 'behind';
+  return { ...dec, grade: { metricVersion: GRADING_VERSION, byTrade,
+    // Compatibility fields now mean BUY basket return and BUY excess return, never a signed blend.
+    avgContrib: buys.returnPct, spyRet, alpha, daysSince, verdict,
+    buyReturnPct: buys.returnPct, soldReturnPct: sells.returnPct,
+    sellAvoidedPct: sells.returnPct == null ? null : -sells.returnPct,
+    rotationPct, matchedDollars,
+    rotationBenefit: rotationPct == null ? null : +(matchedDollars * rotationPct / 100).toFixed(2),
+    basis: 'price-return', buys, sells } };
+
 }
 
 // Minimum graded buys per sleeve before its attribution means anything. Attribution over two trades is
@@ -69,9 +78,8 @@ export const SLEEVE_MIN_N = 4;
 // did the names a sleeve backed actually outperform? Dollar-weighted, and measured as alpha vs SPY over
 // the same window so a sleeve isn't credited for a rising tape.
 //
-// A leg with k drivers splits its dollars 1/k across them. That is crude — it cannot separate a name
-// that momentum carried from one quality carried when both tagged it — but it is unbiased and needs no
-// extra data. Anything cleverer (regression on sleeve scores) needs far more decisions than this account
+// A leg with k drivers splits its dollars 1/k across them. This is descriptive and cannot identify
+// causal effects. Overlapping buys and correlated sleeves are not independent samples. Anything cleverer (regression on sleeve scores) needs far more decisions than this account
 // will generate in a year.
 export function sleeveStats(gradedDecisions = []) {
   const acc = {};
@@ -149,20 +157,9 @@ export function closeIndex(histDay = {}) {
       const close = parseFloat(b.close_price ?? b.c);
       if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(close) && close > 0) rows.push([day, close]);
     }
-    if (rows.length) out[sym] = rows.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    if (rows.length) out[sym] = [...new Map(rows).entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
   }
   return out;
-}
-
-// The close on the first recorded trading day AT OR AFTER `day`. Returns null past the window rather
-// than reaching backwards — see the stale-series note above.
-function closeAtOrAfter(series, day, window = MARK_BAR_WINDOW_DAYS) {
-  if (!series) return null;
-  const limit = shiftDayL(day, window);
-  for (let i = 0; i < series.length; i++) {
-    if (series[i][0] >= day) return series[i][0] <= limit ? { day: series[i][0], close: series[i][1] } : null;
-  }
-  return null;   // the series ends before the horizon — not yet measurable, possibly never
 }
 
 // One decision measured at date + h days, entirely from recorded closes. Returns null if it cannot be
@@ -173,22 +170,23 @@ export function markFromBars(dec, idx, h, asOf) {
   if (asOf && target > asOf) return null;                 // the horizon is still in the future
   const legs = Array.isArray(dec.trades) ? dec.trades : [];
   if (!legs.length) return null;
-  let wSum = 0, cSum = 0;
-  for (const t of legs) {
-    const px = Number(t.priceAt), dollars = Math.abs(Number(t.dollars) || 0);
-    if (!(px > 0) || !(dollars > 0)) return null;
-    const hit = closeAtOrAfter(idx[String(t.sym || '').toUpperCase()], target);
-    if (!hit) return null;
-    const ret = ((hit.close - px) / px) * 100;
-    cSum += (String(t.side).toUpperCase() === 'BUY' ? ret : -ret) * dollars;
-    wSum += dollars;
+  if (legs.some(t => !(Number(t.priceAt) > 0) || !(Number(t.dollars) > 0))) return null;
+  const symbols = [...new Set(legs.map(t => String(t.sym).toUpperCase()))];
+  // Every leg uses the SAME terminal close; no future bars beyond the producer's asOf.
+  const dates = (idx[symbols[0]] || []).map(b => b[0]).filter(day => day >= target && day <= shiftDayL(target, MARK_BAR_WINDOW_DAYS) && (!asOf || day <= asOf));
+  for (const day of dates) {
+    const quotes = {};
+    for (const sym of [...symbols, 'SPY']) {
+      const row = (idx[sym] || []).find(b => b[0] === day);
+      if (row) quotes[sym] = row[1];
+    }
+    if (!symbols.every(sym => quotes[sym] > 0)) continue;
+    const g = gradeDecision(dec, quotes, day).grade;
+    return { at: day, days: daysBetween(dec.date, day), horizon: h, metricVersion: GRADING_VERSION,
+      contribPct: g.buyReturnPct, soldReturnPct: g.soldReturnPct, rotationPct: g.rotationPct,
+      src: 'bars', spyRet: g.spyRet, alphaPct: g.alpha };
   }
-  if (!(wSum > 0)) return null;
-  const contribPct = +(cSum / wSum).toFixed(2);
-  const spyHit = dec.spyAt > 0 ? closeAtOrAfter(idx.SPY, target) : null;
-  const spyRet = spyHit ? +(((spyHit.close - dec.spyAt) / dec.spyAt) * 100).toFixed(2) : null;
-  return { at: (spyHit && spyHit.day) || target, days: h, contribPct, src: 'bars',
-    ...(spyRet != null ? { spyRet, alphaPct: +(contribPct - spyRet).toFixed(2) } : {}) };
+  return null;
 }
 
 // Local so this module stays standalone (maindecisions.mjs exports the same helper for its own use).
@@ -210,10 +208,12 @@ function shiftDayL(day, delta) {
 // daily bars is possible and is the natural follow-up; it is NOT the same thing as guessing.)
 export function applyMarks(graded, priorDecisions = [], asOf, { histDay = null } = {}) {
   const priorById = new Map();
+  const legacyById = new Map((priorDecisions || []).filter(Boolean).map(d => [d.id, d.legacyMarks]));
   for (const d of priorDecisions || []) if (d && d.id && d.marks) priorById.set(d.id, d.marks);
   const idx = histDay ? closeIndex(histDay) : null;
   const decisions = (graded.decisions || []).map((d) => {
-    const marks = { ...(priorById.get(d.id) || {}) };
+    const oldMarks = priorById.get(d.id) || {};
+    const marks = Object.fromEntries(Object.entries(oldMarks).filter(([, m]) => m.metricVersion === GRADING_VERSION));
     const g = d.grade || {};
     for (const h of MARK_HORIZONS) {
       if (marks[h]) continue;                              // stamped once — never restamped
@@ -222,12 +222,12 @@ export function applyMarks(graded, priorDecisions = [], asOf, { histDay = null }
       // backfilled log gets real statistics now instead of in three months.
       const fromBars = idx ? markFromBars(d, idx, h, asOf) : null;
       if (fromBars) { marks[h] = fromBars; continue; }
-      if (g.daysSince > h + MARK_GRACE_DAYS) { marks[h] = { missed: true, firstSeenDays: g.daysSince }; continue; }
+      if (g.daysSince > h + MARK_GRACE_DAYS) { marks[h] = { missed: true, firstSeenDays: g.daysSince, metricVersion: GRADING_VERSION }; continue; }
       if (g.avgContrib == null) continue;                  // unpriced: wait, don't record a false miss
-      marks[h] = { at: asOf, days: g.daysSince, contribPct: g.avgContrib, src: 'live',
+      marks[h] = { at: asOf, days: g.daysSince, metricVersion: GRADING_VERSION, contribPct: g.avgContrib, soldReturnPct: g.soldReturnPct, rotationPct: g.rotationPct, src: 'live',
         ...(g.spyRet != null ? { spyRet: g.spyRet } : {}), ...(g.alpha != null ? { alphaPct: g.alpha } : {}) };
     }
-    return Object.keys(marks).length ? { ...d, marks } : d;
+    return { ...d, marks, ...(Object.values(oldMarks).some(m => m.metricVersion !== GRADING_VERSION) ? { legacyMarks: d.legacyMarks || legacyById.get(d.id) || oldMarks } : legacyById.get(d.id) ? {legacyMarks:legacyById.get(d.id)} : {}) };
   });
   return { ...graded, decisions, markStats: markStats(decisions) };
 }
@@ -239,15 +239,15 @@ export function markStats(decisions = []) {
   const out = {};
   for (const h of MARK_HORIZONS) {
     const all = decisions.map((d) => d.marks && d.marks[h]).filter(Boolean);
-    const real = all.filter((m) => !m.missed);
+    const real = all.filter((m) => !m.missed && m.metricVersion === GRADING_VERSION);
     const withAlpha = real.filter((m) => m.alphaPct != null);
     out[h] = {
-      n: real.length,
+      n: real.length, comparableN: withAlpha.length, unknown: real.length - withAlpha.length,
       fromBars: real.filter((m) => m.src === 'bars').length,
       missed: all.length - real.length,
       ahead: withAlpha.filter((m) => m.alphaPct >= 0).length,
       avgAlpha: withAlpha.length ? +(withAlpha.reduce((s, m) => s + m.alphaPct, 0) / withAlpha.length).toFixed(2) : null,
-      avgContrib: real.length ? +(real.reduce((s, m) => s + m.contribPct, 0) / real.length).toFixed(2) : null,
+      avgContrib: real.some(m=>m.contribPct!=null) ? +(real.filter(m=>m.contribPct!=null).reduce((s,m)=>s+m.contribPct,0)/real.filter(m=>m.contribPct!=null).length).toFixed(2) : null,
     };
   }
   return out;
@@ -255,7 +255,7 @@ export function markStats(decisions = []) {
 
 // BUY-SIDE ALPHA — the honest read on whether the RESEARCH is working (2026-09-08).
 //
-// The record-level stat above blends BUY legs and SELL legs into one average, and those answer two
+// Before metric v2 the record-level stat blended BUY legs and SELL legs into one average, and those answer two
 // different questions. A trim scores well when the name it sold kept falling — which is the churn
 // governor and the risk caps doing their job, not the screen picking a winner. Measured on the live
 // ledger the difference was not cosmetic: record-level read 5 ahead / 5 behind at −0.30% average alpha,
@@ -263,10 +263,10 @@ export function markStats(decisions = []) {
 // being read as "the picks are working" when what it partly showed was "the exits were well timed".
 //
 // So: buys only, DOLLAR-weighted (a $500 leg and a $25 leg are not one vote each), alpha vs SPY over
-// each leg's own window. Purely additive — `stats` and `sleeves` are untouched, so the flow burn-in
-// Routine and every existing consumer read exactly what they read before.
+// each leg's own window. Metric v2 also makes record-level stats buy-only and tracks missing
+// benchmarks explicitly; consumers must check gradingVersion before showing these results.
 export function buyStats(graded = []) {
-  let dollars = 0, wContrib = 0, wAlpha = 0, alphaDollars = 0, n = 0, ahead = 0;
+  let dollars = 0, wContrib = 0, wAlpha = 0, alphaDollars = 0, n = 0, ahead = 0, comparableN = 0;
   for (const d of graded) {
     for (const t of ((d.grade && d.grade.byTrade) || [])) {
       if (String(t.side || '').toUpperCase() !== 'BUY') continue;
@@ -275,16 +275,16 @@ export function buyStats(graded = []) {
       n++; dollars += $; wContrib += $ * t.retPct;
       // The leg's alpha is its return less SPY's over the SAME window — the decision's own spyRet.
       const spy = d.grade && d.grade.spyRet;
-      if (spy != null) { const a = t.retPct - spy; wAlpha += $ * a; alphaDollars += $; if (a >= 0) ahead++; }
+      if (spy != null) { comparableN++; const a = t.retPct - spy; wAlpha += $ * a; alphaDollars += $; if (a >= 0) ahead++; }
     }
   }
   return {
     n, dollars: +dollars.toFixed(2),
     avgRetPct: dollars > 0 ? +(wContrib / dollars).toFixed(2) : null,
     avgAlphaPct: alphaDollars > 0 ? +(wAlpha / alphaDollars).toFixed(2) : null,
-    ahead, behind: n - ahead,
+    ahead, behind: comparableN - ahead, comparableN, unknown: n - comparableN,
     // Below this the number is a curiosity, not a finding — same posture as the sleeve `thin` flag.
-    thin: n < BUY_MIN_N,
+    thin: comparableN < BUY_MIN_N,
   };
 }
 export const BUY_MIN_N = 8;
@@ -292,12 +292,15 @@ export const BUY_MIN_N = 8;
 export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const graded = decisions.map((d) => gradeDecision(d, quotesNow, asOf))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
-  const resolved = graded.filter((d) => d.grade.verdict !== 'open');
+  const resolved = graded.filter((d) => ['ahead', 'behind'].includes(d.grade.verdict));
   const ahead = resolved.filter((d) => d.grade.verdict === 'ahead').length;
   const withAlpha = resolved.filter((d) => d.grade.alpha != null);
   const avgAlpha = withAlpha.length ? +(withAlpha.reduce((s, d) => s + d.grade.alpha, 0) / withAlpha.length).toFixed(2) : null;
   const sleeves = sleeveStats(graded);
-  return { decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves, buys: buyStats(graded) };
+  const versions = {};
+  for (const d of graded) { const key = d.modelVersion || 'legacy-unversioned'; (versions[key] ||= []).push(d); }
+  const byModelVersion = Object.fromEntries(Object.entries(versions).map(([key, rows]) => [key, { decisions: rows.length, buys: buyStats(rows), sleeves: sleeveStats(rows) }]));
+  return { gradingVersion: GRADING_VERSION, byModelVersion, decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves, buys: buyStats(graded) };
 }
 
 // Build a new decision record from a deployment/rebalance plan (agent calls this on confirm, then appends).
@@ -330,7 +333,7 @@ export function makeDecision({ date, kind = 'deploy', targetAsOf, book, equity, 
     ...buys.map((b) => { const d = driversOf(b.sym); return ({ sym: String(b.sym).toUpperCase(), side: 'BUY', dollars: num(b.dollars), shares: num(b.shares), priceAt: num(b.price ?? b.priceAt), weightBefore: num(b.weightNow), weightAfter: num(b.weightTarget), ...(d ? { drivers: d } : {}) }); }),
     ...trims.map((t) => ({ sym: String(t.sym).toUpperCase(), side: 'TRIM', dollars: num(t.dollars), shares: num(t.shares), priceAt: num(t.price ?? t.priceAt), weightBefore: num(t.weightNow), weightAfter: num(t.weightTarget) })),
   ];
-  return { id: `${date}-${kind}`, date, kind, targetAsOf: targetAsOf || null, book: num(book), equityAtDecision: num(equity), spyAt: num(spyAt), rationale: rationale || '', trades };
+  return { ...provenance(target), id: `${date}-${kind}`, date, kind, targetAsOf: targetAsOf || null, book: num(book), equityAtDecision: num(equity), spyAt: num(spyAt), rationale: rationale || '', trades };
 }
 
 // SNAPSHOT IDENTITY GUARD (2026-08-31). Does the snapshot's agentic book agree with what THIS system's

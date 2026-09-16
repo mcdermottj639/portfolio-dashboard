@@ -1,5 +1,16 @@
 # AGENTIC.md — Agentic account (••••3900) automation & rebalancing
 
+> **v148 correctness contract (2026-09-16):** Read [CORRECTNESS.md](CORRECTNESS.md).
+> Finalization now rejects infeasible caps and missing research evidence before replacing the target.
+> Pass the full evidence-v1 workflow output. Keep the prior target on rejection; report the missing
+> inputs instead of hand-editing weights or bypassing validation. The workflow can collect missing
+> source provenance for older Routine argument shapes. New tickets carry target/model provenance.
+> Grading v2 separates buys/sells/rotations; unknown benchmarks stay unknown. Forward shadows and
+> realized risk diagnostics are built automatically. Verified total-return/account-close feeds remain
+> outstanding, so the strict execution comparison reports unavailable until coverage is supplied.
+> This repository update does not itself verify or edit the server-side Claude Routine configuration.
+
+
 How the **agentic account** is researched, targeted, monitored, and rebalanced. Read with
 `CLAUDE.md` (architecture) and `SCHEDULING.md` (how the producer is scheduled — same web-trigger model).
 

@@ -1,3 +1,4 @@
+import { provenance } from './agentic-model.mjs';
 // producer/agentic-deploy.mjs — PURE deployment / rebalance planner for the agentic account (••••3900).
 //
 // Turns (research target + current holdings + idle cash + live prices) into a READY-TO-CONFIRM ticket,
@@ -894,7 +895,7 @@ export function planDeployment(input = {}) {
     // waiting ground as holding money on behalf of a name it never parked for.
     forNames: parkable.map((d) => d.sym) };
   const summary = buildSummary({ buys, buysT1, trims, exits, harvests, ddRaises, deferred, spent, cashLeft, book, taxSummary, turnover, buysNeedProceeds, parking, drawdown });
-  return { book, cash: +settledNow.toFixed(2), deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, ddRaises, sells,
+  return { ...provenance(target), book, cash: +settledNow.toFixed(2), deployable, currentWeights, targetWeights, buys, buysT1, trims, exits, harvests, ddRaises, sells,
     proceeds, buysNeedProceeds, blockedSells, taxSummary, turnover, autoCap, autoEligible, entryPolicy, parking,
     drawdown: drawdown ? { dd: drawdown.dd, level: drawdown.level, peakT: drawdown.peakT, note: drawdown.note } : null,
     regime: { regime, vix: vix && vix.v != null ? vix.v : null, idleDeadlineDays: idleDeadline, tranchePct },

@@ -1,3 +1,4 @@
+import { shadowSymbols } from './agentic-observatory.mjs';
 // producer/hist-plan.mjs — the day's HISTORICALS plan, printed as batches the agent can execute.
 //
 // Mirrors av-plan.mjs: a deterministic planner that reads what we already hold, decides what to
@@ -147,7 +148,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try { const pk = snap && snap.picks; grading = gradingUniverse((pk && pk.history) || [], { asOf: today, grades: pk && pk.grades }); } catch { grading = []; }
   const base = analyzeUniverse({ positions, target });
   const pri = new Set([...positions, ...target].map((x) => String(x || '').toUpperCase()));
-  const universe = [...new Set([...base.filter((x) => pri.has(x)), ...grading.map((x) => String(x).toUpperCase()), ...base.filter((x) => !pri.has(x))])];
+  const universe = [...new Set([...base.filter((x) => pri.has(x)), ...shadowSymbols(snap?.agentic?.correctness?.shadow), ...grading.map((x) => String(x).toUpperCase()), ...base.filter((x) => !pri.has(x))])];
   const plan = planHistoricals(universe, (snap && snap.hist) || {}, today);
 
   const tailStart = isoAgo(HIST_TAIL_LOOKBACK, today);

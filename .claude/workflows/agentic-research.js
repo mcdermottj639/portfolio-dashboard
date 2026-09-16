@@ -102,12 +102,30 @@ const U = (args && Array.isArray(args.universe) && args.universe.length) ? args.
   {t:'AMT', sec:'Finance',               px:203.60, pe:31.8,  hi:243.60, lo:172.50},
   {t:'SCHD',sec:'Miscellaneous',         px:27.90,  pe:16.4,  hi:29.40,  lo:23.80},
 ]
+if (!args || !Array.isArray(args.universe) || !args.universe.length) throw new Error('Fresh sourced universe required; baked-in prices cannot be promoted');
+const EVIDENCE_SCHEMA = {type:'array', items:{type:'object', additionalProperties:false,
+  properties:{source:{type:'string'}, asOf:{type:'string'}, claim:{type:'string'}}, required:['source','asOf','claim']}}
+const evidenceHint = 'Return evidence for each factual score: source (https URL or mcp:tool-name/record-id), asOf (the data date YYYY-MM-DD, not retrieval date), claim (specific supporting fact). Never invent citations. Missing data means status missing, score null, evidence []; it is not neutral evidence. Momentum/catalyst facts must be within 14 days, financial facts within 120 days.'
+
+
+// Existing scheduled prompts may omit provenance. Collect it here so the new contract is
+// exercised even before a server-side routine prompt is updated. No unsupported fallback.
+if (U.some(u=>!Array.isArray(u.evidence)||!u.evidence.length)) {
+  const fresh = await agent(`Fetch current quotes and 52-week fundamentals for these tickers using MCP tools discovered with ToolSearch. Return only actually observed values. Evidence must cover price and range and use the provider's data date. On failure omit the ticker; never restamp old inputs or invent sources. ${evidenceHint} Tickers: ${U.map(u=>u.t).join(',')}`,
+    {schema:{type:'object',additionalProperties:false,properties:{rows:{type:'array',items:{type:'object',additionalProperties:false,
+      properties:{t:{type:'string'},px:{type:'number'},hi:{type:'number'},lo:{type:'number'},pe:{type:['number','null']},evidence:EVIDENCE_SCHEMA},required:['t','px','hi','lo','pe','evidence']}}},required:['rows']},phase:'Sleeves',label:'source-inputs',effort:'medium'});
+  for(const u of U) {
+    const r=(fresh?.rows||[]).find(r=>r.t===u.t);
+    if(r) Object.assign(u,r);
+    else if(!u.evidence?.length) Object.assign(u,{px:null,hi:null,lo:null,pe:null,evidence:[]});
+  }
+}
 const baseline = JSON.stringify(U)
 
 const SLEEVE_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ scores:{ type:'array', items:{ type:'object', additionalProperties:false,
-    properties:{ ticker:{type:'string'}, score:{type:'number'}, note:{type:'string'} },
-    required:['ticker','score','note'] } } }, required:['scores'] }
+    properties:{ ticker:{type:'string'}, score:{type:['number','null']}, note:{type:'string'}, status:{type:'string',enum:['observed','missing']}, evidence:EVIDENCE_SCHEMA },
+    required:['ticker','score','note','status','evidence'] } } }, required:['scores'] }
 // SPLIT VERDICT (v102). `supports` used to collapse two independent judgements into one boolean, and
 // the failure mode showed up live on 2026-08-11: 5 of 6 names came back unsupported and EVERY rejection
 // said the same thing — "the business is sound, the price is wrong". One yes/no can't express that, so a
@@ -120,8 +138,8 @@ const VERDICT_SCHEMA = { type:'object', additionalProperties:false,
     confidence:{type:'number'}, biggestRisk:{type:'string'}, supports:{type:'boolean'},
     businessOk:{type:'boolean'},                 // is this a business worth owning at SOME price?
     entryQuality:{type:'number'},                // 0-10: how good is TODAY's price for entering?
-    entryRisk:{type:'string'} },                 // the price-specific objection, kept apart from the thesis
-  required:['ticker','recommendation','confidence','biggestRisk','supports','businessOk','entryQuality','entryRisk'] }
+    entryRisk:{type:'string'}, evidence:EVIDENCE_SCHEMA },                 // the price-specific objection, kept apart from the thesis
+  required:['ticker','recommendation','confidence','biggestRisk','supports','businessOk','entryQuality','entryRisk','evidence'] }
 const ALLOC_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ summary:{type:'string'}, picks:{ type:'array', items:{ type:'object', additionalProperties:false,
     properties:{ ticker:{type:'string'}, sector:{type:'string'}, weightPct:{type:'number'}, dollars:{type:'number'},
@@ -129,7 +147,7 @@ const ALLOC_SCHEMA = { type:'object', additionalProperties:false,
     required:['ticker','sector','weightPct','dollars','thesis','entryZone','stop','target','rr'] } } },
   required:['summary','picks'] }
 
-const toolHint = 'Discover MCP tools with ToolSearch (e.g. "select:mcp__Robinhood__get_equity_historicals,mcp__Robinhood__get_equity_quotes" or keyword "alpha vantage company overview"). Batch Robinhood calls (fundamentals/quotes take many symbols; historicals up to 3). Alpha Vantage is per-symbol + rate-limited — prioritize the highest-signal field; on failure fall back to the baseline and note reduced coverage. Score EVERY ticker; if you truly cannot get data, score 5.0 and say "no data".'
+const toolHint = evidenceHint + ' Discover MCP tools with ToolSearch (e.g. "select:mcp__Robinhood__get_equity_historicals,mcp__Robinhood__get_equity_quotes" or keyword "alpha vantage company overview"). Batch Robinhood calls (fundamentals/quotes take many symbols; historicals up to 3). Alpha Vantage is per-symbol + rate-limited — prioritize the highest-signal field; on failure fall back to the baseline and note reduced coverage. Report EVERY ticker; missing inputs must be explicitly missing, never an invented neutral score.'
 
 phase('Sleeves')
 const [mom, qual, growth, cat] = await parallel([
@@ -141,7 +159,7 @@ const [mom, qual, growth, cat] = await parallel([
 
 const mapOf=(r)=>{ const m={}; if(r&&Array.isArray(r.scores)) for(const s of r.scores){ if(s&&s.ticker) m[String(s.ticker).toUpperCase()]=s; } return m }
 const M=mapOf(mom), Q=mapOf(qual), G=mapOf(growth), C=mapOf(cat)
-const sc=(m,t)=>{ const x=m[t]; const v=x&&typeof x.score==='number'?x.score:5; return Math.max(0,Math.min(10,v)) }
+const sc=(m,t)=>{ const x=m[t]; return x&&x.status==='observed'&&typeof x.score==='number'&&x.evidence&&x.evidence.length?Math.max(0,Math.min(10,x.score)):null }
 const note=(m,t)=>{ const x=m[t]; return x&&x.note?x.note:'' }
 const valOf=(u)=>{ let peS; const pe=u.pe; if(!(pe>0))peS=2.5; else if(pe<=12)peS=9; else if(pe<=18)peS=8; else if(pe<=25)peS=6.5; else if(pe<=35)peS=5; else if(pe<=50)peS=3.5; else peS=2;
   let rgS=5; if(u.hi>u.lo){ const rp=(u.px-u.lo)/(u.hi-u.lo); rgS=rp<0.15?9:rp<0.30?7.5:rp<0.50?6:rp<0.70?4.5:3; } return 0.6*peS+0.4*rgS }
@@ -187,10 +205,11 @@ const ranked = U.map(u=>{ const t=u.t, m=sc(M,t), q=sc(Q,t), g=sc(G,t), c=sc(C,t
   const f=flowOf(t)
   // A name with no flow read must not be penalised for the silence: renormalize the five base sleeves
   // over themselves so it competes on exactly the terms it did before this sleeve existed.
-  const composite = (FLOW_WEIGHT>0 && f!=null)
-    ? W.m*m + W.q*q + W.g*g + W.c*c + W.v*v + FLOW_WEIGHT*f
-    : BASE.m*m + BASE.q*q + BASE.g*g + BASE.c*c + BASE.v*v;
-  return {...u,m,q,g,c,v:+v.toFixed(2),f,composite:+composite.toFixed(3),
+  const covered=[m,q,g,c].filter(x=>x!=null).length
+  const composite = covered<3||q==null||!(u.px>0&&u.hi>u.lo&&u.lo>0)||!u.evidence?.length ? null : (FLOW_WEIGHT>0 && f!=null)
+    ? W.m*(m??5) + W.q*(q??5) + W.g*(g??5) + W.c*(c??5) + W.v*v + FLOW_WEIGHT*f
+    : BASE.m*(m??5) + BASE.q*(q??5) + BASE.g*(g??5) + BASE.c*(c??5) + BASE.v*v;
+  return {...u,m,q,g,c,v:+v.toFixed(2),f,composite:composite==null?null:+composite.toFixed(3),
     notes:{momentum:note(M,t),quality:note(Q,t),growth:note(G,t),catalyst:note(C,t),
       flow:(FLOW_WEIGHT>0&&f!=null)?`flow ${f}/10 (${(FLOWMAP[t].flow.coverage||[]).join('+')})`:''}} }).sort((a,b)=>b.composite-a.composite)
 log('Composite top 14: '+ranked.slice(0,14).map(r=>`${r.t} ${r.composite}`).join(' · '))
@@ -214,13 +233,13 @@ const secCount={}, finalists=[], taken=new Set(), challengers=[]
 const _fits=(r)=>(secCount[r.sec]||0)<PER_SECTOR
 const _take=(r)=>{ secCount[r.sec]=(secCount[r.sec]||0)+1; finalists.push(r); taken.add(r.t) }
 // pass 1 — MERIT (any name, incumbent or not)
-for(const r of ranked){ if(finalists.length>=FINALIST_CAP-CHALLENGER_SLOTS)break; if(taken.has(r.t)||!_fits(r))continue; _take(r) }
+for(const r of ranked){ if(finalists.length>=FINALIST_CAP-CHALLENGER_SLOTS)break; if(r.composite==null||taken.has(r.t)||!_fits(r))continue; _take(r) }
 const meritCount=finalists.length
 // pass 2 — CHALLENGERS (non-incumbents only; they share the SAME per-sector budget, so five
 // challengers from one sector can't trade one concentration for another)
-for(const r of ranked){ if(finalists.length>=FINALIST_CAP)break; if(taken.has(r.t)||INCUMBENTS.has(String(r.t).toUpperCase())||!_fits(r))continue; _take(r); challengers.push(r.t) }
+for(const r of ranked){ if(finalists.length>=FINALIST_CAP)break; if(r.composite==null||taken.has(r.t)||INCUMBENTS.has(String(r.t).toUpperCase())||!_fits(r))continue; _take(r); challengers.push(r.t) }
 // pass 3 — BACKFILL (a reserved slot that can't be filled must not become a wasted one)
-for(const r of ranked){ if(finalists.length>=FINALIST_CAP)break; if(taken.has(r.t)||!_fits(r))continue; _take(r) }
+for(const r of ranked){ if(finalists.length>=FINALIST_CAP)break; if(r.composite==null||taken.has(r.t)||!_fits(r))continue; _take(r) }
 log(`Finalists (${finalists.length}, ${meritCount} on merit): `+finalists.map(r=>challengers.includes(r.t)?r.t+'*':r.t).join(', '))
 log(challengers.length
   ? `Challengers* (${challengers.length}/${CHALLENGER_SLOTS} reserved slots, none held or in the prior target): ${challengers.join(', ')}`
@@ -241,7 +260,7 @@ const polNote = (t)=>{ const c=POLC[t]; return c
   ? `\nCONGRESSIONAL DISCLOSURE (weak, heavily lagged context — NOT a recommendation, do not treat as informed trading): ${c.filers} members ${c.side==='buy'?'bought':'sold'} this, last transaction ${c.lastTxn} (~${c.staleDays}d ago${c.medianLagDays!=null?`, disclosed ~${c.medianLagDays}d after the trade`:''}). Median disclosure lag makes this public information by the time we see it. Weigh accordingly — if your verdict rests on this, your verdict is wrong.`
   : '' }
 const verdicts = await parallel(finalists.map((r,i)=>()=>
-  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}${heldNote(r.t)}\nREFUTE, don't confirm. Pull live data via ToolSearch. Default skeptical.\nSCORE TWO SEPARATE THINGS — do not let one contaminate the other:\n  1. businessOk — is this a business worth owning at SOME price? Value trap? deteriorating fundamentals/margins? secular decline? legal/regulatory impairment? accounting or earnings-quality problem? false ⇒ we don't want it at any price.\n  2. entryQuality 0-10 — how good is TODAY'S price specifically? Extended vs its moving averages, RSI, distance to 52wk high, multiple vs history, imminent binary catalyst, reward:risk to the consensus target. 10 = a gift, 5 = fair, 0 = badly chased. Put the price-specific objection in entryRisk, NOT in biggestRisk.\nThis split matters: 'great company, wrong price' must come back businessOk=true with a LOW entryQuality, never businessOk=false — the allocator sizes down on a poor entry, it does not need you to veto the name. Reserve businessOk=false for a thesis that is actually broken.\nsupports = businessOk && entryQuality >= 4 (kept for back-compat; the allocator reads the two fields).`,
+  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}${heldNote(r.t)}\nREFUTE, don't confirm. Pull live data via ToolSearch. ${evidenceHint} Default skeptical.\nSCORE TWO SEPARATE THINGS — do not let one contaminate the other:\n  1. businessOk — is this a business worth owning at SOME price? Value trap? deteriorating fundamentals/margins? secular decline? legal/regulatory impairment? accounting or earnings-quality problem? false ⇒ we don't want it at any price.\n  2. entryQuality 0-10 — how good is TODAY'S price specifically? Extended vs its moving averages, RSI, distance to 52wk high, multiple vs history, imminent binary catalyst, reward:risk to the consensus target. 10 = a gift, 5 = fair, 0 = badly chased. Put the price-specific objection in entryRisk, NOT in biggestRisk.\nThis split matters: 'great company, wrong price' must come back businessOk=true with a LOW entryQuality, never businessOk=false — the allocator sizes down on a poor entry, it does not need you to veto the name. Reserve businessOk=false for a thesis that is actually broken.\nsupports = businessOk && entryQuality >= 4 (kept for back-compat; the allocator reads the two fields).`,
     {schema:VERDICT_SCHEMA, phase:'Verify', label:'verify:'+r.t, effort:'high'}).then(v=> v?{...r,verdict:v}:null)))
 // INCLUSION is now the business test alone. A weak entry no longer removes a name — it shrinks it
 // (entryHaircut below), so a market where everything is a bit extended produces a smaller, more
@@ -250,7 +269,8 @@ const ok = (x)=> x && x.verdict && x.verdict.businessOk !== false && x.verdict.r
 const survivors = verdicts.filter(Boolean).filter(ok)
 const eq = (x)=> (typeof x.verdict.entryQuality === 'number' ? x.verdict.entryQuality : (x.verdict.supports ? 6 : 3))
 log(`Survivors ${survivors.length}/${finalists.length} (business test): `+survivors.map(s=>`${s.t}${eq(s)<4?` [thin entry ${eq(s)}/10]`:''}`).join(', '))
-const synthPool=(survivors.length?survivors:verdicts.filter(Boolean).filter(x=>x.verdict&&x.verdict.recommendation!=='avoid'))
+const synthPool=survivors
+if (!synthPool.length) throw new Error('No verified survivors; retain the previous target')
 // THE HAIRCUT IS RELATIVE TO THE COHORT, NOT TO A FIXED BAR (Mandate A, 2026-09-08).
 // The old scale was `0.55 + 0.045*entryQuality`, measured against an absolute notion of a "good" entry.
 // But entryQuality verdicts cluster hard — on 2026-08-25 all sixteen came back 2-5, TEN of them exactly
@@ -286,12 +306,12 @@ INDEX CORE IS A RESIDUAL — 5-10% MAX. Include SPY only as somewhere to put wei
 // its `universe`, and WITHOUT px/hi/lo the vol gate silently cannot bind — volProxy falls back to the
 // neutral REF_RANGE, so a wide-range pharma name (LLY, 52wk range/price 0.48) counts as defensive
 // ballast and satisfies the floor with exactly the kind of position that floor exists to offset.
-return { ranking: ranked.map(r=>({t:r.t,sec:r.sec,px:r.px,hi:r.hi,lo:r.lo,composite:r.composite,m:r.m,q:r.q,g:r.g,c:r.c,v:r.v,f:r.f})),
+return { researchVersion:'evidence-v1', research:{evidence:Object.fromEntries(U.map(u=>[u.t,{momentum:M[u.t]||null,quality:Q[u.t]||null,growth:G[u.t]||null,catalyst:C[u.t]||null}]))}, ranking: ranked.map(r=>({t:r.t,sec:r.sec,px:r.px,hi:r.hi,lo:r.lo,evidence:r.evidence||[],composite:r.composite,m:r.m,q:r.q,g:r.g,c:r.c,v:r.v,f:r.f})),
   flowWeight: FLOW_WEIGHT,
   finalists: finalists.map(f=>f.t),
   challengers,          // names that reached verify ONLY because of the reserved quota (2026-08-25)
   meritCount,
   verdicts: verdicts.filter(Boolean).map(x=>({t:x.t,rec:x.verdict.recommendation,conf:x.verdict.confidence,
     supports:x.verdict.supports,businessOk:x.verdict.businessOk,entryQuality:x.verdict.entryQuality,
-    risk:x.verdict.biggestRisk,entryRisk:x.verdict.entryRisk})),
+    risk:x.verdict.biggestRisk,entryRisk:x.verdict.entryRisk,evidence:x.verdict.evidence||[]})),
   allocation: alloc }

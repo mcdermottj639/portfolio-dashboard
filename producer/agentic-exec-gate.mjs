@@ -1,3 +1,5 @@
+import { validateTarget } from './riskweights.mjs';
+import { provenance, targetIdentity } from './agentic-model.mjs';
 // producer/agentic-exec-gate.mjs — deterministic gate for the AGENTIC EXECUTOR (v96).
 //
 // The executor is a scheduled Claude session (hourly during market hours — see AGENTIC.md §executor)
@@ -132,11 +134,17 @@ if (String(process.env.PF_AGENTIC_AUTO || '').toLowerCase() === 'off') idle('kil
 // which is after the close.)
 if (!isMarketOpen()) idle('market closed — nothing is placeable until the next open; the next in-hours pass re-plans from the fresh snapshot');
 
+const canonicalTarget = readTargetFile();
+const targetCheck = validateTarget(canonicalTarget);
+if (!targetCheck.valid) idleDegraded(`invalid research target: ${targetCheck.errors.join('; ')}`);
+
 // ── 1. an in-flight ticket owns the run ─────────────────────────────────────────────────────────────
 let ticket = null;
 try { const f = join(__dirname, 'agentic-pending.json'); if (existsSync(f)) ticket = JSON.parse(readFileSync(f, 'utf8')); } catch { ticket = null; }
 if (ticket && !['done', 'aborted'].includes(ticket.status)) {
-  const na = nextAction(ticket, today);
+  const bound = ticket.targetId === targetIdentity(canonicalTarget);
+  if (!bound && ['sells-placed', 'buys-placed'].includes(ticket.status)) idleDegraded('in-flight ticket target changed or is unversioned — reconcile fills before resuming');
+  const na = bound ? nextAction(ticket, today) : { action: 'stale', reason: 'target changed; re-plan before any orders' };
   // Market hours are already guaranteed by the hoisted gate above, so these branches act directly.
   if (na.action === 'place-trades') act('EXEC_TRADE', { reason: na.reason, ticket });
   if (na.action === 'place-buys') act('EXEC_BUYS', { reason: na.reason, ticket });
@@ -226,6 +234,8 @@ const plan = planDeployment({
   // the gate sees a park/release the executor wrote this session, before the next producer run.
   opts: { asOf: today, cashIdleDays: A.cashIdleDays ?? null },
 });
+
+Object.assign(plan, provenance(canonicalTarget));
 
 if (!(plan.turnover >= MIN_TURNOVER)) idle(`plan turnover $${plan.turnover} < $${MIN_TURNOVER} — nothing worth a ticket`);
 if (plan.autoEligible) {

@@ -11,6 +11,21 @@ Orientation for future Claude sessions. Read this first. Deep producer detail li
 > sync. A quick self-check before finishing: did anything here go stale (file paths, the composite
 > weights, the version, the feature list)? Fix it now.
 
+## v148 — correctness and forward observation (2026-09-16)
+
+See `producer/CORRECTNESS.md` for the authoritative new contracts and verification limits.
+Hard target admission/executor validation now rejects impossible allocations, including resumed tickets;
+new plans bind to target content IDs. Research records evidence/source dates and coverage, with a
+code-side source-enrichment stage for older Routine argument shapes. `finalize-target --write` requires
+the whole evidence-v1 workflow output and leaves the previous canonical target intact on rejection.
+Final construction prose is computed from final weights. Grading v2 separates buys, sold baskets and
+rotations; missing benchmarks are unknown; historical mixed marks stay outside current stats.
+Forward target vintages and display-only realized risk diagnostics live in the encrypted snapshot and
+render on Plan. Strict actual/model/SPY total-return comparison is implemented but awaits verified
+closing cash-flow and stable dividend-adjusted data feeds; it explicitly shows unavailable meanwhile.
+Historical targets/decisions are not relabeled as the new model. Existing mandate weights and trading
+safeguards remain in force. App/cache versions are **v148 / pf-v148**.
+
 ## What this is
 A personal **portfolio dashboard PWA** served as a **static site on GitHub Pages**
 (`https://mcdermottj639.github.io/portfolio-dashboard/`). The repo is **public**, so all holdings
@@ -296,7 +311,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently around **v147** (`pf-v147`) — v146/v147 are the
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v148** (`pf-v148`); see the correctness section above. Earlier **v147** (`pf-v147`) — v146/v147 are the
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

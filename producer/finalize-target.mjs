@@ -1,3 +1,4 @@
+import { assessResearch } from './agentic-evidence.mjs';
 // producer/finalize-target.mjs — turn the agentic-research workflow's raw allocation into the committed
 // producer/agentic-target.json, ENFORCING the deterministic risk caps (riskweights.mjs) on top of the
 // model's conviction weights. The workflow proposes; this disposes — so correlation-cluster and vol-scaled
@@ -10,12 +11,14 @@
 //
 // Output shape matches AGENTIC.md: { asOf, method, account, book, driftTriggerPp, names:[{ticker,sector,
 // weightPct,entry,stop,target,thesis}] }.
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { riskAdjustWeights, AG_DEFENSIVE_MIN, isDefensive, isDiversifier,
-  DIVERSIFIER_SYMS, AG_DIVERSIFIER_MIN } from './riskweights.mjs';
+  DIVERSIFIER_SYMS, AG_DIVERSIFIER_MIN, volScaledCap, INDEX_SYMS, AG_DIVERSIFIER_MAX, assertTarget } from './riskweights.mjs';
 import { etDate } from './market.mjs';
+import { MODEL_VERSION, MANDATE_VERSION, RISK_VERSION, FACTOR_WEIGHTS, stableHash, targetIdentity } from './agentic-model.mjs';
+import { finalTargetExplanation, targetFacts } from './agentic-target-facts.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -181,6 +184,17 @@ export function tightenEntryByQuality(name, entryQuality, opts = {}) {
 
 export function finalizeTarget(allocation, meta = {}) {
   const picks = (allocation && (allocation.picks || allocation.names)) || [];
+  if (!Array.isArray(picks) || !picks.length) throw new Error('INVALID_TARGET: allocation is empty');
+  const seenPicks = new Set();
+  for (const p of picks) {
+    const t = String(p?.ticker || '').trim().toUpperCase();
+    if (!t || seenPicks.has(t) || typeof p.weightPct !== 'number' || !Number.isFinite(p.weightPct) || p.weightPct <= 0)
+      throw new Error('INVALID_TARGET: missing/duplicate ticker or non-positive/non-finite weight');
+    seenPicks.add(t);
+    const verdict = (meta.verdicts || []).find(v => String(v.t || v.ticker).toUpperCase() === t);
+    if (verdict && (verdict.businessOk === false || (verdict.rec || verdict.recommendation) === 'avoid'))
+      throw new Error(`INVALID_TARGET: ${t} failed the business verifier and cannot be allocated`);
+  }
   const uni = Object.fromEntries((meta.universe || []).map((u) => [String(u.t || u.ticker).toUpperCase(), u]));
   // carry price/52wk range into each name so riskweights can compute a vol proxy
   const named = picks.filter((p) => p && p.ticker).map((p) => {
@@ -331,21 +345,12 @@ export function finalizeTarget(allocation, meta = {}) {
   });
   const names = withBands.map(({ px, hi, lo, ...rest }) => {
     const d = driversFor(rest.ticker);
-    return d ? { ...rest, drivers: d } : rest;
+    const cap = INDEX_SYMS.includes(rest.ticker) ? 100 : isDiversifier(rest.ticker) ? AG_DIVERSIFIER_MAX
+      : volScaledCap({px,hi,lo});
+    return { ...rest, singleNameCapPct: cap, ...(d ? {drivers:d} : {}) };
   });
   const out = {
     asOf: meta.asOf || etDate(),
-    method: (meta.method || (allocation && allocation.summary) || 'deep multi-factor research → adversarial verify → synthesis')
-      + ' | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps)'
-      + (adj.notes.length ? ` — ${adj.notes.join('; ')}` : '')
-      + (phaseOuts.length ? ` | phase-out retained (churn governor, strike 1): ${phaseOuts.map((p) => p.ticker).join(', ')}` : '')
-      // The synthesis wrote its summary before the gold sleeve existed, so any percentages quoted in that
-      // prose predate it. Say so rather than let stale figures read as current — the `defensive`,
-      // `diversifier` and cluster blocks below are the authoritative numbers.
-      + (injectedGold && adj.diversifier && adj.diversifier.direct > 0
-        ? ` | ${adj.diversifier.direct.toFixed(1)}% gold diversifier added structurally AFTER synthesis (mandate sleeve — the sleeves cannot score bullion), so percentages quoted in the summary above predate it; the defensive/diversifier/cluster fields are authoritative`
-        : '')
-      + (entryBar != null ? ` | entry bands measured against the COHORT MEDIAN entryQuality ${entryBar} (Mandate A: a name is tightened for being a worse entry than its peers, never for the tape as a whole being rich)` : ''),
     account: meta.account || 'AGENTIC',
     book: meta.book != null ? Math.round(meta.book) : null,
     driftTriggerPp: meta.driftTriggerPp != null ? meta.driftTriggerPp : 5,
@@ -362,6 +367,25 @@ export function finalizeTarget(allocation, meta = {}) {
     // target was supplied, so pre-governor callers see an unchanged shape.
     ...(prior ? { dropped } : {}),
   };
+  out.researchSummary = meta.method || allocation.summary || '';
+  out.adjustments = adj.notes;
+  out.construction = targetFacts(out);
+  out.method = finalTargetExplanation(out)
+    + ' | risk-adjusted (finalize-target.mjs: hard correlation-cluster + vol-scaled caps)'
+    + (adj.notes.length ? ' | ' + adj.notes.join(' | ') : '')
+    + (phaseOuts.length ? ` | phase-out retained: ${phaseOuts.map(n => n.ticker).join(', ')}` : '')
+    + (injectedGold ? ` | ${adj.diversifier.direct.toFixed(1)}% gold diversifier added structurally` : '')
+    + (entryBar != null ? ` | entry bands measured against the COHORT MEDIAN entryQuality ${entryBar}` : '');
+  out.modelVersion = meta.researchVersion === 'evidence-v1' ? MODEL_VERSION : 'legacy-unversioned';
+  out.mandateVersion = MANDATE_VERSION;
+  out.riskVersion = RISK_VERSION;
+  out.factorWeights = { ...FACTOR_WEIGHTS };
+  out.universeVersion = stableHash((meta.universe || []).map(u => ({ticker:u.t || u.ticker, sector:u.sec || u.sector})).sort((a,b) => a.ticker.localeCompare(b.ticker)));
+  out.research = meta.research || { coverage: null, status: 'not-recorded' };
+  out.riskSettings = { ...(meta.researchVersion === 'evidence-v1' ? {indexMaxPct:10} : {}), singleNameCaps: Object.fromEntries(names.map(n => [n.ticker,n.singleNameCapPct])), lookThroughEnforced: false };
+  out.targetId = targetIdentity(out);
+  assertTarget(out);
+  out.construction = targetFacts(out);
   return { target: out, notes: adj.notes, entryBands: tightened, diversifier: adj.diversifier, clusters: adj.clusters, defensive: adj.defensive, phaseOuts: phaseOuts.map((p) => p.ticker), dropped };
 }
 
@@ -382,6 +406,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     try { const pf = join(__dirname, 'agentic-target.json'); if (existsSync(pf)) prior = JSON.parse(readFileSync(pf, 'utf8')); } catch { prior = null; }
   }
   const heldArg = flag('held');
+  const research = assessResearch(raw, flag('asOf', etDate()));
+  if (args.includes('--write') && research.errors.length) throw new Error('RESEARCH_INCOMPLETE: ' + research.errors.join('; '));
   const { target, notes, clusters, defensive, diversifier, phaseOuts, dropped, entryBands } = finalizeTarget(allocation, {
     book: flag('book') != null ? +flag('book') : (allocation.book || null),
     asOf: flag('asOf'),
@@ -393,6 +419,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     prior,
     held: heldArg ? heldArg.split(',').map((s) => s.trim()).filter(Boolean) : null,
     verdicts: raw.verdicts || null, // the workflow return's adversarial verdicts → business-broken drops
+    researchVersion: raw.researchVersion,
+    research,
   });
   console.log('risk-adjust notes:', notes.length ? notes.join('\n  ') : '(none — allocation already within caps)');
   console.log('cluster weights:', JSON.stringify(clusters));
@@ -405,7 +433,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (dropped.length) console.log('dropped:', dropped.map((d) => `${d.ticker} (${d.reason})`).join(', '));
   console.log(JSON.stringify(target, null, 2));
   if (args.includes('--write')) {
-    writeFileSync(join(__dirname, 'agentic-target.json'), JSON.stringify(target, null, 2) + '\n');
+    mkdirSync(join(__dirname, 'raw'), { recursive: true });
+    const tmp = join(__dirname, 'raw', 'agentic-target.candidate.json');
+    // Validate before touching the canonical file. A rejected candidate leaves it byte-for-byte intact.
+    assertTarget(target);
+    writeFileSync(tmp, JSON.stringify(target, null, 2) + '\n');
+    renameSync(tmp, join(__dirname, 'agentic-target.json'));
     console.log('→ wrote producer/agentic-target.json');
   }
 }

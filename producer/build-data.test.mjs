@@ -346,6 +346,8 @@ try {
 
   // Agentic deposit inference: equity 1050 → 3080 (10sh AAA @108 = 1080 + 2000 cash). Price move on the
   // held 10 sh = 10×(108−100)=+80; the rest (~1950) is a deposit → cumFlow ≈ 1950, NOT return.
+  eq('forward observations are emitted by the real producer', !!out.agentic.correctness?.shadow, true);
+  eq('risk diagnostics reach the snapshot', Array.isArray(out.agentic.correctness.risk.vol), true);
   const agEH = out.agentic.equityHistory;
   const newPt = agEH[agEH.length - 1];
   eq('agentic equity point recorded', newPt.equity, 3080);

@@ -214,8 +214,9 @@ ok('without a prior target the shape is unchanged (no dropped key)',
 // defensive when the honest figure was 14.5%.
 {
   const picks = [
-    { ticker: 'LLY', sector: 'Health Technology', weightPct: 40, thesis: 'x', entryZone: '', stop: 1, target: 2 },
-    { ticker: 'MSFT', sector: 'Technology Services', weightPct: 60, thesis: 'x', entryZone: '', stop: 1, target: 2 },
+    { ticker: 'SPY', weightPct: 50, thesis: 'residual' },
+    { ticker: 'LLY', sector: 'Health Technology', weightPct: 20, thesis: 'x', entryZone: '', stop: 1, target: 2 },
+    { ticker: 'MSFT', sector: 'Technology Services', weightPct: 30, thesis: 'x', entryZone: '', stop: 1, target: 2 },
   ];
   // LLY: (1292.65 - 694.23) / 1246.93 = 0.48 — wider than the ~0.42 gate.
   const universe = [
@@ -263,6 +264,7 @@ ok('without a prior target the shape is unchanged (no dropped key)',
     // End-to-end: a whole finalize run over a uniform cohort must leave every zone alone.
     const uni = [{ t: 'NVDA', px: 209, hi: 236, lo: 164 }, { t: 'MSFT', px: 388, hi: 555, lo: 349 }, { t: 'JPM', px: 348, hi: 351, lo: 279 }];
     const r = finalizeTarget({ picks: [
+      { ticker: 'SPY', weightPct: 40 },
       { ticker: 'NVDA', sector: 'Electronic Technology', weightPct: 40, entryZone: '200-215', stop: 190, target: 258, thesis: 'ai' },
       { ticker: 'MSFT', sector: 'Technology Services', weightPct: 35, entryZone: '370-395', stop: 340, target: 460, thesis: 'azure' },
       { ticker: 'JPM', sector: 'Finance', weightPct: 25, entryZone: '335-355', stop: 320, target: 400, thesis: 'bank' },
@@ -298,8 +300,9 @@ ok('without a prior target the shape is unchanged (no dropped key)',
 }
 {
   const picks = [
-    { ticker: 'MA', sector: 'Finance', weightPct: 50, thesis: 'x', entryZone: '$565-$604', stop: 1, target: 2 },
-    { ticker: 'KO', sector: 'Consumer Non-Durables', weightPct: 50, thesis: 'x', entryZone: '$85-$93', stop: 1, target: 2 },
+    { ticker: 'SPY', weightPct: 50 },
+    { ticker: 'MA', sector: 'Finance', weightPct: 25, thesis: 'x', entryZone: '$565-$604', stop: 1, target: 2 },
+    { ticker: 'KO', sector: 'Consumer Non-Durables', weightPct: 25, thesis: 'x', entryZone: '$85-$93', stop: 1, target: 2 },
   ];
   const universe = [{ t: 'MA', px: 600, hi: 601, lo: 464 }, { t: 'KO', px: 92, hi: 92.5, lo: 65 }];
   // MA is a genuinely WORSE entry than its cohort (2 vs KO's 5, median 3.5) — under the relative scale

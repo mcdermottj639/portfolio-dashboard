@@ -1,6 +1,6 @@
 {
   "asOf": "2026-09-14",
-  "method": "Eleven names, all but one an incumbent: the nine verified survivors the account already holds keep their slots and the only new position is NEM, added because it carries the highest composite (6.98) and second-highest momentum (8.2) of any non-held survivor and because the cluster caps physically prevent putting that weight into the megacap names. The megacap-tech/AI cluster totals 47.5% (NVDA 12.0 + AMZN 11.5 + MSFT 10.5 + GOOGL 7.0 + AAPL 6.5), just inside the 48% ceiling and the primary risk control here; payments are 19.5% (MA 10.5 + V 9.0) inside the 20% cap; and the DEFENSIVE TOTAL IS 0.0% DIRECT — no staples, utilities, telecom, REIT or low-vol vehicle is held, LLY does not count (healthcare label, but a 0.52 range/price is far outside the 0.42 ballast gate), and the only defensive exposure in the book is ~0.8% look-through inside the 8.5% SPY residual. Vol-scaling is doing real work rather than being asserted: the two widest names, LLY (0.52) and GOOGL (0.51), sit below their composite-implied weight while the two tightest, MA (0.241) and V (0.247), sit above theirs, and MA leads V on both entry quality (5 vs 4) and EPS growth. Turnover is deliberately small — MSFT, GOOGL, AMZN, V and LLY move less than 2.5pp from their current weights, and GOOGL is held flat at its 6.91% exactly as its verdict directs; the freed weight comes from KO, GLDM, VTI and BKNG, which were already phase-out flagged and did not clear this cycle's verified cut. Their thesis is broken in the specific sense that mattered: each existed to satisfy a structural slot Mandate A deleted (KO the 15% defensive floor, GLDM the 5% gold sleeve, VTI/BKNG index-duplicate and an unverified consumer-cyclical), so they were weight that could only track or lag the benchmark this account exists to beat rather than positions the research ever rated on merit — VTI remains exempt as the parking vehicle. SHEL, JNJ and JPM were NOT dropped: they are simply absent from this cycle's survivor set, so the governor retains them at prior weight as first-strike phase-outs with zero trades. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps) — megacap-tech is 47.5% direct (within its 48% cap) but 50.7% including 3.2pp held inside index vehicles — reported, not enforced | phase-out retained (churn governor, strike 1): JPM, JNJ, SHEL | entry bands measured against the COHORT MEDIAN entryQuality 3 (Mandate A: a name is tightened for being a worse entry than its peers, never for the tape as a whole being rich)",
+  "method": "11 active names plus 3 phase-out holdings (16.19% of the final target). Megacap-tech is 39.82% direct and 42.49% including index look-through. Index vehicles total 7.12%. Defensive exposure is 4.73% direct and 5.65% including index look-through. Gold/bullion exposure is 0.00%. Figures describe the final weights after risk adjustment and phase-out retention. Thesis-review levels are monitored; they are not resting stop orders.",
   "account": "AGENTIC",
   "book": 13242,
   "driftTriggerPp": 5,
@@ -240,5 +240,102 @@
       "detail": "absent from two consecutive research targets",
       "since": "2026-09-14"
     }
-  ]
+  ],
+  "researchSummary": "Eleven names, all but one an incumbent: the nine verified survivors the account already holds keep their slots and the only new position is NEM, added because it carries the highest composite (6.98) and second-highest momentum (8.2) of any non-held survivor and because the cluster caps physically prevent putting that weight into the megacap names. The megacap-tech/AI cluster totals 47.5% (NVDA 12.0 + AMZN 11.5 + MSFT 10.5 + GOOGL 7.0 + AAPL 6.5), just inside the 48% ceiling and the primary risk control here; payments are 19.5% (MA 10.5 + V 9.0) inside the 20% cap; and the DEFENSIVE TOTAL IS 0.0% DIRECT — no staples, utilities, telecom, REIT or low-vol vehicle is held, LLY does not count (healthcare label, but a 0.52 range/price is far outside the 0.42 ballast gate), and the only defensive exposure in the book is ~0.8% look-through inside the 8.5% SPY residual. Vol-scaling is doing real work rather than being asserted: the two widest names, LLY (0.52) and GOOGL (0.51), sit below their composite-implied weight while the two tightest, MA (0.241) and V (0.247), sit above theirs, and MA leads V on both entry quality (5 vs 4) and EPS growth. Turnover is deliberately small — MSFT, GOOGL, AMZN, V and LLY move less than 2.5pp from their current weights, and GOOGL is held flat at its 6.91% exactly as its verdict directs; the freed weight comes from KO, GLDM, VTI and BKNG, which were already phase-out flagged and did not clear this cycle's verified cut. Their thesis is broken in the specific sense that mattered: each existed to satisfy a structural slot Mandate A deleted (KO the 15% defensive floor, GLDM the 5% gold sleeve, VTI/BKNG index-duplicate and an unverified consumer-cyclical), so they were weight that could only track or lag the benchmark this account exists to beat rather than positions the research ever rated on merit — VTI remains exempt as the parking vehicle. SHEL, JNJ and JPM were NOT dropped: they are simply absent from this cycle's survivor set, so the governor retains them at prior weight as first-strike phase-outs with zero trades. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps) — megacap-tech is 47.5% direct (within its 48% cap) but 50.7% including 3.2pp held inside index vehicles — reported, not enforced | phase-out retained (churn governor, strike 1): JPM, JNJ, SHEL | entry bands measured against the COHORT MEDIAN entryQuality 3 (Mandate A: a name is tightened for being a worse entry than its peers, never for the tape as a whole being rich)",
+  "construction": {
+    "names": 14,
+    "active": 11,
+    "phaseOut": 3,
+    "phaseOutWeightPct": 16.19,
+    "indexPct": 7.12,
+    "exposure": {
+      "megacap-tech": {
+        "direct": 39.82,
+        "lookThrough": 2.67,
+        "total": 42.49
+      },
+      "payments": {
+        "direct": 16.34,
+        "lookThrough": 0.1139,
+        "total": 16.4539
+      },
+      "pharma": {
+        "direct": 12.27,
+        "lookThrough": 0.2136,
+        "total": 12.4836
+      },
+      "index": {
+        "direct": 7.12,
+        "lookThrough": 0,
+        "total": 7.12
+      },
+      "banks": {
+        "direct": 6.67,
+        "lookThrough": 0.2634,
+        "total": 6.9334
+      },
+      "staples": {
+        "direct": 0,
+        "lookThrough": 0.1922,
+        "total": 0.1922
+      },
+      "energy": {
+        "direct": 4.79,
+        "lookThrough": 0.1282,
+        "total": 4.9182
+      },
+      "utilities": {
+        "direct": 0,
+        "lookThrough": 0.1566,
+        "total": 0.1566
+      },
+      "reits": {
+        "direct": 0,
+        "lookThrough": 0.1282,
+        "total": 0.1282
+      },
+      "telecom": {
+        "direct": 0,
+        "lookThrough": 0.0997,
+        "total": 0.0997
+      },
+      "health-svc": {
+        "direct": 0,
+        "lookThrough": 0.1282,
+        "total": 0.1282
+      },
+      "single:UNP": {
+        "direct": 6.7,
+        "lookThrough": 0,
+        "total": 6.7
+      },
+      "single:NEM": {
+        "direct": 6.29,
+        "lookThrough": 0,
+        "total": 6.29
+      }
+    },
+    "defensive": {
+      "direct": 4.73,
+      "lookThrough": 0.9185,
+      "total": 5.6485,
+      "floor": 0,
+      "shortfall": 0
+    },
+    "diversifier": {
+      "direct": 0,
+      "floor": 0,
+      "shortfall": 0
+    },
+    "validation": {
+      "valid": true,
+      "errors": []
+    }
+  },
+  "modelVersion": "legacy-unversioned",
+  "research": {
+    "coverage": null,
+    "status": "not-recorded"
+  },
+  "targetId": "0873441e43e53ffd7747"
 }

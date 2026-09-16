@@ -310,13 +310,14 @@ ok('bare ticker form works (no price data ⇒ membership decides)', isDefensive(
 
   // The equity ballast must never be funded by selling the non-correlated sleeve.
   const raid = riskAdjustWeights([
-    { ticker: 'NVDA', weightPct: 85, px: 209, hi: 236, lo: 164 },
+    { ticker: 'SPY', weightPct: 60 },
+    { ticker: 'NVDA', weightPct: 25, px: 209, hi: 236, lo: 164 },
     { ticker: 'GLDM', weightPct: 15, px: 92, hi: 110, lo: 67 },
   ], { defensiveMin: 15 });
   ok('the defensive floor never raids the gold sleeve to fund itself',
     raid.names.find((n) => n.ticker === 'GLDM').weightPct >= 9.5);
 
-  const off = riskAdjustWeights([{ ticker: 'NVDA', weightPct: 100, px: 209, hi: 236, lo: 164 }],
+  const off = riskAdjustWeights([{ticker:'SPY',weightPct:75}, { ticker: 'NVDA', weightPct: 25, px: 209, hi: 236, lo: 164 }],
     { diversifierMin: 0 });
   ok('diversifierMin:0 is a real off switch', off.diversifier.shortfall === 0);
 }

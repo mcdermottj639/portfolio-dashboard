@@ -74,10 +74,21 @@ const bare = (s) => String(s).replace(/[\s|]/g, '');
     P.blocks.every((b) => out.includes(bare(b.lead + b.rest))));
 }
 
+// The new panel must remain usable before the next producer refresh and escape source evidence.
+{
+  const cardSrc=grab(/function agCorrectnessCard\(A\)\{[\s\S]*?\n\}/,'agCorrectnessCard');
+  const render=new Function('fmt','agEsc',cardSrc+';return agCorrectnessCard;')(fmt,agEsc);
+  const empty=render({target:{}});
+  ok('correctness panel explains absent forward/account data',empty.includes('Unavailable') && empty.includes('Waiting for completed closes'));
+  const unsafe=render({target:{research:{evidence:{AAA:{quality:{status:'observed',evidence:[{source:'<script>bad</script>',asOf:'2026-09-01',claim:'<img src=x>'}]}}}}}});
+  ok('evidence cannot inject markup', !unsafe.includes('<script>bad') && unsafe.includes('&lt;script&gt;'));
+  ok('risk diagnostics remain accessible in native details',empty.includes('<summary>Realized volatility and strongest correlations</summary>'));
+}
+
 // ── segmentation ──────────────────────────────────────────────────────────────────────────────
 {
-  const P = agMethodParts(TARGET.method);
-  eq('live target: prose + 4 deterministic tail segments', P.blocks.length, 4);
+  const P = agMethodParts('Synthetic rationale | risk-adjusted (caps) | phase-out retained: XYZ | 5% gold diversifier added structurally | entry bands measured against the COHORT MEDIAN entryQuality 3');
+  eq('fixture: prose + 4 deterministic tail segments', P.blocks.length, 4);
   eq('live target: caps segment classified', P.blocks[0].icon, '⚖️');
   eq('live target: phase-out segment classified', P.blocks[1].icon, '🔁');
   eq('live target: gold segment classified', P.blocks[2].icon, '🥇');

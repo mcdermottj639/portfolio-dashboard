@@ -149,7 +149,7 @@ ok('a real record just past the truncation point survives', kept.some((d) => d.t
 
 // ── The derived log grades through the SAME ledger the agentic side uses ───────────────────────
 const graded = gradeDecisions(D, { CIFR: 14.0, PLTR: 200.0, SPY: 756.0 }, '2026-09-05');
-ok('grades through agentic-ledger.gradeDecisions unchanged', graded.stats.total === 3 && graded.stats.resolved === 3);
+ok('sell-only records stay outside buy-vs-SPY win counts', graded.stats.total === 3 && graded.stats.resolved === 2);
 ok('a sell of a name that then FELL contributes positively',
   graded.decisions.find((d) => d.date === '2026-08-14').grade.byTrade[0].contribPct > 0);
 ok('alpha is measured against the SPY close stamped at decision time',

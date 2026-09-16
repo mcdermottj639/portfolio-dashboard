@@ -1,5 +1,16 @@
 # Scheduling the producer (Claude Code on the web)
 
+> **v148 correctness contract (2026-09-16):** Read [CORRECTNESS.md](CORRECTNESS.md).
+> Finalization now rejects infeasible caps and missing research evidence before replacing the target.
+> Pass the full evidence-v1 workflow output. Keep the prior target on rejection; report the missing
+> inputs instead of hand-editing weights or bypassing validation. The workflow can collect missing
+> source provenance for older Routine argument shapes. New tickets carry target/model provenance.
+> Grading v2 separates buys/sells/rotations; unknown benchmarks stay unknown. Forward shadows and
+> realized risk diagnostics are built automatically. Verified total-return/account-close feeds remain
+> outstanding, so the strict execution comparison reports unavailable until coverage is supplied.
+> This repository update does not itself verify or edit the server-side Claude Routine configuration.
+
+
 The dashboard only refreshes when the **producer** runs and pushes a new `data.json`. The
 producer needs the **Robinhood + Alpha Vantage connectors**, which only exist inside Claude —
 so it can't run as a plain GitHub Action or OS cron. The durable home is a **scheduled run on
@@ -312,7 +323,7 @@ Step 0 — get the repo CHEAPLY, and never any other way. The history is >1.7GB 
 
 Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and stop. AGENTIC_DUE → continue, following producer/PRODUCER.md step 7 exactly (it is the source of truth):
   2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
-  3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo}, with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
+  3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo, evidence:[{source,asOf,claim}]} (real provider source and underlying data date; the workflow fetches missing provenance), with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
   4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
   5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main`. If the push is REJECTED because main moved (the producer commits hourly at ~:41): save your commit's hash `C=$(git rev-parse HEAD)`, then `git fetch --depth 1 origin main && git checkout -f -B pf-research FETCH_HEAD && git checkout $C -- producer/agentic-target.json`, commit the target again and push again (up to 3 tries). Never `git reset --soft` here — after a shallow fetch it leaves every file that changed upstream STAGED AS A REVERSION (on 2026-09-09 it staged the producer's previous data.json, which would have rolled back a live snapshot) — and never rebase or merge. If the push is refused 403 "not in this session's authorized repository set", this Routine has no repo SOURCE: call add_repo(owner:"mcdermottj639", repo:"portfolio-dashboard", access:"push") ONCE and retry the push; if it is still refused, PushNotification "research Routine: push denied — select portfolio-dashboard as this Routine's repository in the claude.ai Routine UI" together with the full proposal, and attach producer/agentic-target.json with SendUserFile so the target is not lost. If finalize runs a second time, re-check target.dropped.
   6. PushNotification a concise rebalance proposal (drift vs actual holdings, adds/trims ± dollars, anything over the 5pp trigger; if a HELD name is dropped, say the exit may be held by the 14d min-hold/PDT guard and give the unlock date). PLACE NO ORDERS.

@@ -1,3 +1,4 @@
+import { observeTargets, riskDiagnostics } from './agentic-observatory.mjs';
 // Assembles ../data.json from raw MCP tool outputs the producer agent drops in producer/raw/.
 // Tolerant of the common response shapes (structuredContent / content[].text / plain).
 //
@@ -1182,6 +1183,17 @@ try {
     if (trig.refreshResearch) console.log('[agentic-trigger]   ↻ refresh research early: ' + trig.refreshReasons.join(' · '));
   } else console.log('[agentic-trigger] none');
 } catch (e) { console.warn('[agentic-trigger] skipped:', e && e.message); }
+
+if (data.agentic) {
+  const optional = name => { try { return readJSON(join(RAWDIR,name)); } catch { return null; } };
+  const old = prior?.agentic?.correctness || {};
+  data.agentic.correctness = {
+    shadow: observeTargets({prior:old.shadow, target:data.agentic.target, histDay:hist.day,
+      asOf:data.generatedAt, totalReturn:optional('agentic-total-return.json') || {},
+      actualCloses:optional('agentic-performance-closes.json') || []}),
+    risk: riskDiagnostics(data.agentic.target?.names || [],hist.day,data.generatedAt),
+  };
+}
 
 await emit(data);
 console.log('built:',

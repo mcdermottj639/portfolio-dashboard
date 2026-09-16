@@ -852,7 +852,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v147'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v148'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3075,8 +3075,9 @@ function agMethodHtml(T){
       +agEmph(agEsc(b.rest),vocab)+'</span></div>';
   }).join('');
   return head
-    +'<div class="ag-msec">What the research decided</div>'+prose
-    +(blocks?'<div class="ag-msec">What finalize-target then enforced</div>'+blocks:'');
+    +'<div class="ag-msec">'+(T.construction?'Final target construction':'Legacy research rationale · figures may predate final weights')+'</div>'+prose
+    +(blocks?'<div class="ag-msec">What finalize-target then enforced</div>'+blocks:'')
+    +(T.researchSummary?'<details><summary>Original research rationale · before final weights</summary><p>'+agEsc(T.researchSummary)+'</p></details>':'');
 }
 
 /* The account's book, derived one way for every surface on this page (the hero, the perf card and
@@ -3594,6 +3595,29 @@ function agRegimeBanner(){
     <b>🌡️ ${st?'Stressed':'Elevated'} tape (VIX ${v}):</b> deployment <b>pacing</b> is stretched — the idle-cash deadline goes from ${AG_IDLE_DEPLOY_D}d to <b>${Math.round(AG_IDLE_DEPLOY_D*(st?2:1.5))}d</b>${st?`, the forced tranche halves to <b>${(AG_IDLE_TRANCHE_PCT/2)}%</b>, and a name whose entry zones have gone advisory is deferred rather than bought unbanded`:''}. Regime only changes <b>how fast</b> cash goes in — never which names are chosen, and never a sell.</div>`;
 }
 
+function agCorrectnessCard(A){
+  if(!A)return '';
+  const C=A.correctness||{}, T=A.target||{}, S=C.shadow||{}, R=C.risk||{};
+  const tracks=S.tracks||[], current=tracks.find(t=>t.targetId===S.currentTargetId), last=current&&current.latest;
+  const num=(v,suffix)=>v==null?'—':fmt(v,2)+(suffix||'');
+  const rows=tracks.slice().reverse().slice(0,12).map(t=>`<tr><td>${agEsc(t.observedDay)}<br><small>${agEsc(t.modelVersion)}</small></td><td>${agEsc(t.startDay||'Pending')}</td><td class="tr">${num(t.latest?t.latest.model-100:null,'%')}</td><td class="tr">${num(t.latest?t.latest.spy-100:null,'%')}</td><td class="tr">${num(t.latest?t.latest.excessPp:null,'pp')}</td><td>${agEsc(t.basis||'Pending')} · ${agEsc(t.status)}</td></tr>`).join('');
+  const vol=(R.vol||[]).map(v=>`<tr><td>${agEsc(v.ticker)}</td><td class="tr">${num(v.annualizedPct,'%')}</td><td class="tr">${v.n}</td><td>${agEsc(v.last||'Missing')}${v.stale?' · stale':''}</td></tr>`).join('');
+  const pairs=(R.pairs||[]).slice(0,5).map(p=>`${agEsc(p.a)} / ${agEsc(p.b)}: <b>${num(p.correlation)}</b> (${p.n} matched intervals)`).join('<br>');
+  const research=T.research||{};
+  const missing=(research.rows||[]).filter(r=>!r.eligible).map(r=>`${agEsc(r.ticker)}: ${r.reasons.map(agEsc).join('; ')}`).join('<br>');
+  const actual=current&&current.actual;
+  return `<div class="card" style="margin-bottom:14px;overflow-wrap:anywhere"><div class="card-title">Model correctness &amp; forward record</div><div>
+    <p><b>${agEsc(T.modelVersion||'Legacy · version not recorded')}</b><br>Mandate ${agEsc(T.mandateVersion||'not recorded')} · risk ${agEsc(T.riskVersion||'not recorded')}</p>
+    <p>Research coverage: <b>${research.coverage==null?'Not recorded':fmt(research.coverage*100,0)+'%'}</b> of screened names meet the evidence checks. ${agEsc(research.note||'Next research refresh will record sources and dates.')}</p>
+    <details><summary>Research coverage and evidence</summary><p>${missing||'No recorded coverage failures.'}</p>${Object.entries(research.evidence||{}).map(([ticker,sleeves])=>`<details><summary>${agEsc(ticker)}</summary>${Object.entries(sleeves||{}).map(([s,x])=>`<p><b>${agEsc(s)}</b>: ${agEsc(x?.status||'missing')} · ${(x?.evidence||[]).map(e=>`${agEsc(e.asOf)} — ${agEsc(e.claim)} (${agEsc(e.source)})`).join('<br>')}</p>`).join('')}</details>`).join('')}</details>
+    <p><b>Forward shadow comparison</b><br>${last?'Latest common close '+agEsc(last.day):'Waiting for completed closes after this target was first observed.'} Each row holds that target at fixed initial weights, with no simulated rebalancing or hindsight.</p>
+    ${rows?`<div style="overflow-x:auto"><table><caption>Returns since each vintage’s first common close</caption><thead><tr><th>Observed / model</th><th>Start</th><th>Target</th><th>SPY</th><th>Difference</th><th>Coverage / basis</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
+    <p>Actual account on the same window: <b>${actual?.status==='aligned'?num(actual.returnPct,'%'):'Unavailable'}</b>${actual?.status==='aligned'?' · actual minus shadow '+num(actual.implementationGapPp,'pp'):' — '+agEsc(actual?.reason||'Matching account closing valuations and verified cash flows are required.')}</p>
+    <p class="fund-note">Price returns exclude dividends. Total-return comparisons require explicitly dividend-adjusted data. The shadow excludes fees and slippage. Your existing account chart uses inferred cash flows and is separate from this stricter comparison.</p>
+    <details><summary>Realized volatility and strongest correlations</summary><p>${agEsc(R.note||'Diagnostics will appear after the next data refresh.')}</p>${vol?`<div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Annualized volatility</th><th>Returns</th><th>Latest close</th></tr></thead><tbody>${vol}</tbody></table></div>`:''}<p>${pairs||'Not enough matching daily returns to measure correlations.'}</p></details>
+  </div></div>`;
+}
+
 function renderAgenticPlan(){
   const host=document.getElementById('plan-agentic-app'); if(!host)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
@@ -3837,7 +3861,7 @@ function renderAgenticPlan(){
       <div class="disclaimer" style="margin-top:12px">⚠️ Not financial advice. This page reports what the automated system intends and why; it places nothing. Levels are monitor-only — fractional positions can't carry resting stops.</div>
     </div></div>`;
 
-  host.innerHTML=hero+statusCard+targetCard+blockedCard+parkCard+rulesCard+loopCard;
+  host.innerHTML=hero+statusCard+agCorrectnessCard(A)+targetCard+blockedCard+parkCard+rulesCard+loopCard;
 }
 window.renderAgenticPlan=renderAgenticPlan;
 
@@ -3854,32 +3878,32 @@ window.renderAgenticPlan=renderAgenticPlan;
    the honest number was being hidden by the well-timed exits sitting beside it. Dollar-weighted, because
    a $25 leg and a $500 leg are not one vote each. Reads data.agentic.decisions.buys (agentic-ledger). */
 function decBuyStrip(D){
-  const b=D&&D.buys; if(!b||!b.n)return '';
+  const b=D&&D.buys; if(D?.gradingVersion!==2||!b||!b.n)return '';
   const a=b.avgAlphaPct;
   const col=a==null?'#9ca3af':(a>=0?'#065f46':'#991b1b');
   return `<div class="fund-note" style="margin:0 0 8px" data-priv="on">
     <b>🛒 Buys only</b> — ${b.n} buy leg${b.n===1?'':'s'}, <span data-priv="val">${fmtD(b.dollars)}</span> deployed ·
-    alpha vs SPY <b style="color:${col}">${a==null?'—':`${a>=0?'+':''}${fmt(a,1)}pp`}</b>
-    <span style="color:#9ca3af">(${b.ahead}/${b.n} beat SPY)</span>${b.thin?' <span class="badge" style="background:#f3f4f6;color:#6b7280">thin — not yet measurable</span>':''}
-    <div style="font-size:10.5px;color:#9ca3af;margin-top:3px">The row above blends buys with trims, and a trim of a name that then fell counts as a win — that is risk control working, not the research picking well. This line is the research alone.</div></div>`;
+    excess return vs SPY <b style="color:${col}">${a==null?'—':`${a>=0?'+':''}${fmt(a,1)}pp`}</b>
+    <span style="color:#9ca3af">(${b.ahead}/${b.comparableN} beat SPY; ${b.unknown||0} unknown)</span>${b.thin?' <span class="badge" style="background:#f3f4f6;color:#6b7280">thin — not yet measurable</span>':''}
+    <div style="font-size:10.5px;color:#9ca3af;margin-top:3px">Dollar-weighted buy price returns less SPY over each decision’s window. Repeated purchases can overlap; these are not independent experiments. Missing benchmark returns are unknown.</div></div>`;
 }
 function decMarkStrip(D,label){
-  const M=D&&D.markStats; if(!M)return '';
+  const M=D&&D.markStats; if(D?.gradingVersion!==2||!M)return '';
   const ent=Object.entries(M).filter(([,v])=>v.n||v.missed);
   if(!ent.length) return '';
   const any=ent.some(([,v])=>v.n>0);
   const one=([h,v])=>{
     if(!v.n) return `<span style="display:inline-block;margin:0 12px 4px 0;color:#9ca3af"><b>${h}d</b> —</span>`;
     const a=v.avgAlpha;
-    return `<span style="display:inline-block;margin:0 12px 4px 0"><b>${h}d</b> ${a==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${a>=0?'#065f46':'#991b1b'};font-weight:600">${a>=0?'+':''}${fmt(a,1)}pp</span>`} <span style="color:#9ca3af;font-size:10.5px">(${v.ahead}/${v.n} beat SPY)</span></span>`;
+    return `<span style="display:inline-block;margin:0 12px 4px 0"><b>${h}d</b> ${a==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${a>=0?'#065f46':'#991b1b'};font-weight:600">${a>=0?'+':''}${fmt(a,1)}pp</span>`} <span style="color:#9ca3af;font-size:10.5px">(${v.ahead}/${v.comparableN||0} beat SPY; ${v.unknown||0} unknown)</span></span>`;
   };
   const missed=ent.reduce((s,[,v])=>Math.max(s,v.missed||0),0);
   const bars=ent.some(([,v])=>v.fromBars>0);
   return `<div class="fund-note" style="margin:0 0 8px">
-    <b>⏱️ Frozen outcomes</b> <span style="color:#9ca3af;font-size:10.5px">— each decision's alpha vs SPY measured AT the horizon and never re-marked</span><br>
+    <b>⏱️ Frozen outcomes</b> <span style="color:#9ca3af;font-size:10.5px">— buy basket excess return vs SPY, measured at each horizon</span><br>
     ${ent.map(one).join('')}
     ${!any?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Nothing measurable yet — this starts accruing from the first ${label} decision recorded live and builds from there.</div>`:''}
-    ${bars?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Earlier decisions are measured from this snapshot's own <b>recorded daily closes</b> — real prices, close to close over exactly the window — so the record starts full rather than empty.</div>`:''}
+    ${bars?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Earlier decisions are measured from this snapshot's own <b>recorded daily closes</b> — decision-time prices to a common recorded closing date, within five calendar days of the horizon — so the record starts full rather than empty.</div>`:''}
     ${missed?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">${missed} decision${missed===1?'':'s'} ${missed===1?'is':'are'} not measurable: ${missed===1?'its':'their'} price history doesn't reach the horizon (a name that left the book stops being tracked), and pricing off a series that simply <i>stops</i> would read its last day as the outcome. Counted as unknown, never scored.</div>`:''}
   </div>`;
 }
@@ -3893,24 +3917,26 @@ function renderAgenticLog(){
   const A=(window.__DATA&&window.__DATA.agentic)||null;
   const D=A&&A.decisions;
   if(!D||!Array.isArray(D.decisions)||!D.decisions.length){ el.innerHTML=`<div class="tech-empty">No rebalance decisions logged yet. Each confirmed deploy/rebalance is recorded here and graded against what happens next (and vs SPY) — the account's own track record.</div>`; return; }
-  const chip=(v)=> v==='ahead'?'<span class="badge" style="background:#dcfce7;color:#065f46">✅ ahead</span>':(v==='behind'?'<span class="badge" style="background:#fee2e2;color:#991b1b">🔻 behind</span>':'<span class="badge" style="background:#f3f4f6;color:#6b7280">• open</span>');
+  const chip=(v)=> v==='ahead'?'<span class="badge" style="background:#dcfce7;color:#065f46">✅ ahead</span>':(v==='behind'?'<span class="badge" style="background:#fee2e2;color:#991b1b">🔻 behind</span>':'<span class="badge" style="background:#f3f4f6;color:#6b7280">'+(v==='open'?'• open':'unknown')+'</span>');
   const pct=(v)=> v==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${v>=0?'#065f46':'#991b1b'};font-weight:600">${v>=0?'+':''}${fmt(v,1)}%</span>`;
   const rows=D.decisions.map(d=>{
-    const g=d.grade||{};
+    const g=D.gradingVersion===2?(d.grade||{}):{};
     const trades=(d.trades||[]).map(t=>`${t.side==='BUY'?'+':'−'}${t.sym}`).join(' ')||'—';
     const days=g.daysSince!=null?g.daysSince+'d':'';
     const rat=d.rationale?(d.rationale.length>96?d.rationale.slice(0,94)+'…':d.rationale):'';
     return `<tr>
       <td><b>${d.date}</b><br><span style="color:#9ca3af;font-size:10.5px">${d.kind}${days?' · '+days:''}</span></td>
       <td style="font-size:11.5px">${trades}${rat?`<br><span style="color:#9ca3af;font-size:10px">${rat}</span>`:''}</td>
-      <td class="tr">${pct(g.avgContrib)}<br><span style="font-size:10px;color:#9ca3af">vs SPY ${g.alpha==null?'—':(g.alpha>=0?'+':'')+fmt(g.alpha,1)+'pp'}</span></td>
-      <td class="tr">${chip(g.verdict)}</td>
+      <td class="tr">${pct(g.buyReturnPct)}<br><span style="font-size:10px;color:#9ca3af">vs SPY ${g.alpha==null?'—':(g.alpha>=0?'+':'')+fmt(g.alpha,1)+'pp'}</span></td>
+      <td class="tr">${chip(g.verdict)}${g.rotationPct==null?'':`<br><small>Rotation ${fmt(g.rotationPct,1)}pp</small>`}${g.soldReturnPct==null?'':`<br><small>Sold basket ${fmt(g.soldReturnPct,1)}%</small>`}</td>
     </tr>`;
   }).join('');
-  const s=D.stats||{};
-  const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Contribution</b> = dollar-weighted price move since the decision (a trim that then fell counts positive); <b>vs SPY</b> = the same window's alpha. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
-    <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
-  el.innerHTML=hdr+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const s=D.gradingVersion===2?(D.stats||{}):{};
+  const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Buy return</b> is dollar-weighted. <b>vs SPY</b> compares only buys with the benchmark. <b>Rotation</b> is buy-basket return minus sold-basket return on matched dollars; a sold basket’s subsequent return is reported separately. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
+    <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg buy excess <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
+  const versionRows=Object.entries(D.byModelVersion||{}).map(([v,r])=>`<tr><td>${agEsc(v)}</td><td>${r.decisions}</td><td>${r.buys.comparableN}</td><td>${r.buys.avgAlphaPct==null?'—':fmt(r.buys.avgAlphaPct,2)+'pp'}</td></tr>`).join('');
+  const versionTable=versionRows?`<details><summary>Compare recorded model versions</summary><p>Different periods and overlapping buys; descriptive results, not a controlled experiment.</p><table><thead><tr><th>Model</th><th>Decisions</th><th>Comparable buys</th><th>Buy excess</th></tr></thead><tbody>${versionRows}</tbody></table></details>`:'';
+  el.innerHTML=(D.gradingVersion===2?'':'<p>Corrected grading will appear after the next producer refresh. Previous mixed buy/sell scores are hidden.</p>')+hdr+versionTable+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Buy return</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* Sleeve attribution (v121) — which research sleeve is actually earning its keep. Every target name
    carries `drivers` (the sleeves that scored ≥7) and the ledger stamps them onto each BUY leg AT
@@ -3920,15 +3946,15 @@ function renderAgenticLog(){
    prints it as signal is worse than one that says nothing); and legs recorded before drivers existed
    carry none and are simply absent — the history is not backfilled or guessed at. */
 function agSleeveStrip(D){
-  const S=D&&D.sleeves; if(!S||!Object.keys(S).length) return '';
+  const S=D&&D.sleeves; if(D?.gradingVersion!==2||!S||!Object.keys(S).length) return '';
   const ent=Object.entries(S).sort((a,b)=>(b[1].alphaPct==null?-99:b[1].alphaPct)-(a[1].alphaPct==null?-99:a[1].alphaPct));
   const solid=ent.filter(([,v])=>!v.thin), thin=ent.filter(([,v])=>v.thin);
   const one=([k,v])=>`<span style="display:inline-block;margin:0 10px 4px 0"><b>${k}</b> ${v.alphaPct==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${v.alphaPct>=0?'#065f46':'#991b1b'};font-weight:600">${v.alphaPct>=0?'+':''}${fmt(v.alphaPct,1)}pp</span>`} <span style="color:#9ca3af;font-size:10.5px">(${fmtD(v.dollars)}, ${v.n} buy${v.n===1?'':'s'})</span></span>`;
   return `<div class="fund-note" style="margin:0 0 8px">
-    <b>🔬 By research sleeve</b> <span style="color:#9ca3af;font-size:10.5px">— alpha vs SPY on the buys each sleeve backed</span><br>
+    <b>🔬 By research sleeve</b> <span style="color:#9ca3af;font-size:10.5px">— excess return vs SPY on the buys each sleeve backed</span><br>
     ${solid.length?solid.map(one).join(''):'<span style="color:#9ca3af">Nothing has enough graded buys yet.</span>'}
     ${thin.length?`<div style="margin-top:6px;font-size:10.5px;color:#9ca3af">Not yet measurable (under ${AG_SLEEVE_MIN_N} graded buys): ${thin.map(([k,v])=>`${k} (${v.n})`).join(', ')} — shown so they aren't mistaken for absent, not as a result.</div>`:''}
-    <div style="margin-top:6px;font-size:10.5px;color:var(--text);opacity:.7">A buy backed by more than one sleeve splits its dollars evenly between them. This is what makes a sleeve <i>removable</i>: the <b>flow</b> sleeve is measured here while its allocation weight is still 0, so it can be judged on evidence before it ever moves a dollar.</div>
+    <div style="margin-top:6px;font-size:10.5px;color:var(--text);opacity:.7">A buy backed by more than one sleeve splits its dollars evenly between them. These are exploratory associations, not causal attribution. Overlapping buys and correlated sleeves reduce the effective sample. Do not change factor weights from this table alone.</div>
   </div>`;
 }
 window.renderAgenticLog=renderAgenticLog;
@@ -3957,11 +3983,11 @@ function renderSdLog(){
   const D=M&&M.decisions;
   if(!D||!Array.isArray(D.decisions)||!D.decisions.length){
     el.innerHTML=`<div class="tech-empty">No trades logged yet on <b>••••0741</b>. Every day you buy or sell in this account is recorded here from your filled orders and graded against what happened next — and against SPY over the same window.</div>`; return; }
-  const chip=(v)=> v==='ahead'?'<span class="badge" style="background:#dcfce7;color:#065f46">✅ ahead</span>':(v==='behind'?'<span class="badge" style="background:#fee2e2;color:#991b1b">🔻 behind</span>':'<span class="badge" style="background:#f3f4f6;color:#6b7280">• open</span>');
+  const chip=(v)=> v==='ahead'?'<span class="badge" style="background:#dcfce7;color:#065f46">✅ ahead</span>':(v==='behind'?'<span class="badge" style="background:#fee2e2;color:#991b1b">🔻 behind</span>':'<span class="badge" style="background:#f3f4f6;color:#6b7280">'+(v==='open'?'• open':'unknown')+'</span>');
   const pct=(v)=> v==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${v>=0?'#065f46':'#991b1b'};font-weight:600">${v>=0?'+':''}${fmt(v,1)}%</span>`;
   const kindLbl={deploy:'bought',raise:'raised cash',rebalance:'rebalanced'};
   const row=(d)=>{
-    const g=d.grade||{};
+    const g=D.gradingVersion===2?(d.grade||{}):{};
     // Rendered exactly like the agentic log's trade cell (plain text, +/− carrying the direction).
     // Colouring the tickers was tried and reverted: the same dark green/red the numbers use goes
     // muddy against the gold theme's true-black surface, and the two cards should read identically.
@@ -3978,18 +4004,18 @@ function renderSdLog(){
     return `<tr>
       <td><b style="white-space:nowrap">${d.date}</b><br><span style="color:#9ca3af;font-size:10.5px">${kindLbl[d.kind]||d.kind}${days?' · '+days:''}</span></td>
       <td style="font-size:11.5px">${trades}${rat?`<br><span style="color:#9ca3af;font-size:10px">${rat}</span>`:''}</td>
-      <td class="tr">${pct(g.avgContrib)}<br><span style="font-size:10px;color:#9ca3af">vs SPY ${g.alpha==null?'—':(g.alpha>=0?'+':'')+fmt(g.alpha,1)+'pp'}</span></td>
-      <td class="tr">${chip(g.verdict)}</td>
+      <td class="tr">${pct(g.buyReturnPct)}<br><span style="font-size:10px;color:#9ca3af">vs SPY ${g.alpha==null?'—':(g.alpha>=0?'+':'')+fmt(g.alpha,1)+'pp'}</span></td>
+      <td class="tr">${chip(g.verdict)}${g.rotationPct==null?'':`<br><small>Rotation ${fmt(g.rotationPct,1)}pp</small>`}${g.soldReturnPct==null?'':`<br><small>Sold basket ${fmt(g.soldReturnPct,1)}%</small>`}</td>
     </tr>`;
   };
-  const tbl=(list)=>`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Contribution</th><th class="tr">Result</th></tr></thead><tbody>${list.map(row).join('')}</tbody></table></div>`;
+  const tbl=(list)=>`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Buy return</th><th class="tr">Result</th></tr></thead><tbody>${list.map(row).join('')}</tbody></table></div>`;
   const head=D.decisions.slice(0,SD_LOG_ROWS), rest=D.decisions.slice(SD_LOG_ROWS);
-  const s=D.stats||{};
+  const s=D.gradingVersion===2?(D.stats||{}):{};
   const noSpy=D.decisions.filter(d=>d.spyAt==null).length;
-  const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every day you traded <b>••••0741</b>, graded against what happened next — this account's own track record, the same way the agentic book grades its rebalances. <b>Contribution</b> = dollar-weighted price move since the fill (a sell of a name that then <i>fell</i> counts positive); <b>vs SPY</b> = the same window's alpha. A day less than 5d old is still <b>open</b>. Monitor/education only.</div>
-    <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg alpha <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
-  const foot=`<div class="fund-note" style="margin-top:8px">Built from this account's <b>filled orders</b>, not from a position diff — a fill is a fact with a price and a timestamp. Same-day fills of the same name are one leg, share-weighted; DRIP and recurring-buy fills are excluded (a standing instruction firing isn't an allocation call).${noSpy?` ${noSpy} day${noSpy===1?'':'s'} had no SPY close on record and ${noSpy===1?'is':'are'} graded on absolute return only.`:''}</div>`;
-  el.innerHTML=hdr+decMarkStrip(D,'self-directed')+tbl(head)+(rest.length?`<details class="trk-detail"><summary>View ${rest.length} older trading day${rest.length===1?'':'s'}</summary>${tbl(rest)}</details>`:'')+foot;
+  const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every day you traded <b>••••0741</b>, graded against what happened next — this account's own track record, the same way the agentic book grades its rebalances. <b>Buy return</b> is dollar-weighted; <b>vs SPY</b> compares buys only. Rotation compares the bought and sold baskets; sold returns remain separate. A day less than 5d old is still <b>open</b>. Monitor/education only.</div>
+    <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg buy excess <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
+  const foot=`<div class="fund-note" style="margin-top:8px">Built from this account's <b>filled orders</b>, not from a position diff — a fill is a fact with a price and a timestamp. Same-day fills of the same name are one leg, share-weighted; DRIP and recurring-buy fills are excluded (a standing instruction firing isn't an allocation call).${noSpy?` ${noSpy} day${noSpy===1?'':'s'} had no SPY close on record and ${noSpy===1?'is':'are'} unknown against the benchmark.`:''}</div>`;
+  el.innerHTML=(D.gradingVersion===2?'':'<p>Awaiting corrected grading on the next refresh.</p>')+hdr+decMarkStrip(D,'self-directed')+tbl(head)+(rest.length?`<details class="trk-detail"><summary>View ${rest.length} older trading day${rest.length===1?'':'s'}</summary>${tbl(rest)}</details>`:'')+foot;
 }
 window.renderSdLog=renderSdLog;
 

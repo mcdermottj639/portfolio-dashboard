@@ -31,6 +31,8 @@ const lineFor = (needle) => SRC.split('\n').find(
 // Reasons that will STILL BE TRUE on the next fire, and the one after that: the loop is broken and
 // waiting cannot fix it. Each must reach the owner's phone.
 const FATAL = [
+  'invalid research target',
+  'in-flight ticket target changed',
   'no PF_PASSPHRASE',                    // can never read the snapshot ⇒ can never trade
   'snapshot unreadable',                 // same, by a different route
   'no agentic block in the snapshot',    // the producer's ••••3900 fetch is broken
