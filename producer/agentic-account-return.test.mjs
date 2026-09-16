@@ -1,0 +1,28 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import { recordedAccountReturn } from './agentic-account-return.mjs';
+import { observeTargets } from './agentic-observatory.mjs';
+const rows=[{t:'2026-09-01',equity:1000,cumFlow:0},{t:'2026-09-02',equity:1600,cumFlow:500},{t:'2026-09-03',equity:1560,cumFlow:300}];
+assert.equal(recordedAccountReturn(rows).returnPct,21); // +10%, then +10%; deposit/withdrawal removed
+assert.equal(recordedAccountReturn(rows,'2026-09-02','2026-09-03').returnPct,10);
+assert.equal(recordedAccountReturn(rows,'2026-08-31','2026-09-03').status,'pending');
+assert.equal(recordedAccountReturn([...rows,rows[1]]).status,'pending');
+assert.equal(recordedAccountReturn(rows.map(r=>({...r,cumFlow:undefined}))).status,'pending');
+assert.equal(recordedAccountReturn([rows[0],{...rows[1],basisShift:true}]).status,'pending');
+assert.equal(recordedAccountReturn([rows[0],{...rows[1],equity:Infinity}]).status,'pending');
+assert.equal(recordedAccountReturn([rows[0]]).status,'pending');
+assert.equal(recordedAccountReturn(rows).implementationGapPp,undefined);
+const root=new URL('../',import.meta.url);
+const html=readFileSync(new URL('index.html',root),'utf8');
+const browser=html.match(/function recordedAccountReturn\(history, start, end\) \{[\s\S]*?\n\}/)[0];
+const producer=readFileSync(new URL('./agentic-account-return.mjs',import.meta.url),'utf8').split('export ')[1].trim();
+assert.equal(browser.trim(),producer,'producer/browser estimator must remain identical');
+const client=new Function(browser+';return recordedAccountReturn;')();
+assert.deepEqual(client(rows),recordedAccountReturn(rows));
+const target={asOf:'2026-08-31',names:[{ticker:'SPY',weightPct:100}]};
+const first=observeTargets({target,asOf:'2026-08-31T18:00:00Z',equityHistory:rows});
+const next=observeTargets({prior:first,target,asOf:'2026-09-04T18:00:00Z',equityHistory:rows,histDay:{SPY:rows.map((r,i)=>({t:r.t,c:100+i}))}});
+assert.equal(next.accountSummary.returnPct,21);
+assert.equal(next.tracks[0].accountEstimate.returnPct,21);
+assert.equal(next.tracks[0].actual.status,'unavailable','estimates must never masquerade as verified');
+console.log('Account estimates: flows, matching dates, coverage, browser parity and producer integration passed');

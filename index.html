@@ -852,7 +852,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v148'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v149'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3595,6 +3595,27 @@ function agRegimeBanner(){
     <b>🌡️ ${st?'Stressed':'Elevated'} tape (VIX ${v}):</b> deployment <b>pacing</b> is stretched — the idle-cash deadline goes from ${AG_IDLE_DEPLOY_D}d to <b>${Math.round(AG_IDLE_DEPLOY_D*(st?2:1.5))}d</b>${st?`, the forced tranche halves to <b>${(AG_IDLE_TRANCHE_PCT/2)}%</b>, and a name whose entry zones have gone advisory is deferred rather than bought unbanded`:''}. Regime only changes <b>how fast</b> cash goes in — never which names are chosen, and never a sell.</div>`;
 }
 
+function recordedAccountReturn(history, start, end) {
+  const pending = reason => ({status:'pending',reason});
+  const rows = Array.isArray(history) ? history.filter(r=>r && /^\d{4}-\d{2}-\d{2}$/.test(r.t)
+    && (!start || r.t>=start) && (!end || r.t<=end)).slice().sort((a,b)=>a.t.localeCompare(b.t)) : [];
+  if(rows.length<2) return pending('Needs two recorded account dates');
+  if(start && rows[0].t!==start || end && rows.at(-1).t!==end) return pending('Account history does not cover both comparison dates');
+  if(new Set(rows.map(r=>r.t)).size!==rows.length) return pending('Duplicate account dates need reconciliation');
+  if(rows.some(r=>!Number.isFinite(r.equity)||r.equity<=0||!Number.isFinite(r.cumFlow))) return pending('Account values or cash-flow estimates are missing');
+  let nav=100;
+  for(let i=1;i<rows.length;i++) {
+    const previous=rows[i-1],row=rows[i];
+    if(row.basisShift) return pending('Account measurement changed inside this window');
+    const factor=(row.equity-(row.cumFlow-previous.cumFlow))/previous.equity;
+    if(!Number.isFinite(factor)||factor<=0) return pending('Invalid flow-adjusted account interval');
+    nav*=factor;
+  }
+  return {status:'estimated',start:rows[0].t,end:rows.at(-1).t,observations:rows.length,
+    returnPct:+(nav-100).toFixed(4),method:'recorded-account-inferred-flows',
+    note:'Estimated from recorded account values and inferred external flows. Dates match the selected window, but valuation times and dividend treatment may differ from the shadow; no execution gap is inferred.'};
+}
+
 function agCorrectnessCard(A){
   if(!A)return '';
   const C=A.correctness||{}, T=A.target||{}, S=C.shadow||{}, R=C.risk||{};
@@ -3606,14 +3627,20 @@ function agCorrectnessCard(A){
   const research=T.research||{};
   const missing=(research.rows||[]).filter(r=>!r.eligible).map(r=>`${agEsc(r.ticker)}: ${r.reasons.map(agEsc).join('; ')}`).join('<br>');
   const actual=current&&current.actual;
+  const summary=recordedAccountReturn(A.equityHistory);
+  const accountEstimate=current?.startDay&&last?recordedAccountReturn(A.equityHistory,current.startDay,last.day):null;
+  const stamp=S.asOf||A.asOf||'';
+  const trackingStatus=!C.shadow?'This snapshot predates the tracking update. A successful producer refresh is needed; reloading the app alone cannot create new data.':!current?'No valid target is being tracked. The producer needs attention.':!last?'Target recorded '+agEsc(current.observedDay)+'. Waiting for a completed trading close after that date.':current.status==='stale-coverage'?'Price coverage is stale. The producer must refresh all names in this target.':'Tracking through '+agEsc(last.day)+'.';
   return `<div class="card" style="margin-bottom:14px;overflow-wrap:anywhere"><div class="card-title">Model correctness &amp; forward record</div><div>
-    <p><b>${agEsc(T.modelVersion||'Legacy · version not recorded')}</b><br>Mandate ${agEsc(T.mandateVersion||'not recorded')} · risk ${agEsc(T.riskVersion||'not recorded')}</p>
-    <p>Research coverage: <b>${research.coverage==null?'Not recorded':fmt(research.coverage*100,0)+'%'}</b> of screened names meet the evidence checks. ${agEsc(research.note||'Next research refresh will record sources and dates.')}</p>
-    <details><summary>Research coverage and evidence</summary><p>${missing||'No recorded coverage failures.'}</p>${Object.entries(research.evidence||{}).map(([ticker,sleeves])=>`<details><summary>${agEsc(ticker)}</summary>${Object.entries(sleeves||{}).map(([s,x])=>`<p><b>${agEsc(s)}</b>: ${agEsc(x?.status||'missing')} · ${(x?.evidence||[]).map(e=>`${agEsc(e.asOf)} — ${agEsc(e.claim)} (${agEsc(e.source)})`).join('<br>')}</p>`).join('')}</details>`).join('')}</details>
+    <p class="fund-note"><b>Tracking status</b><br>${trackingStatus}${stamp?'<br>Last data observation: '+agEsc(stamp):''}</p>
+    <p><b>${T.modelVersion&&T.modelVersion!=='legacy-unversioned'?agEsc(T.modelVersion):'Existing target · created before evidence tracking'}</b><br>${research.coverage==null?'This historical target has no source-coverage record. The next successful research run will record it.':'Research coverage: <b>'+fmt(research.coverage*100,0)+'%</b> of screened names meet the evidence checks.'}</p>
+    <p><b>Recorded account return · estimate</b><br>${summary.status==='estimated'?num(summary.returnPct,'%')+' from '+agEsc(summary.start)+' to '+agEsc(summary.end)+' ('+summary.observations+' recorded dates).':agEsc(summary.reason)}<br><small>Uses your recorded account history and inferred cash flows. This is your existing account record, not a backfilled model result.</small></p>
+    <details><summary>Research coverage and evidence</summary><p>${missing||(research.coverage==null?'Evidence has not been collected for this historical target.':'No recorded coverage failures.')}</p>${Object.entries(research.evidence||{}).map(([ticker,sleeves])=>`<details><summary>${agEsc(ticker)}</summary>${Object.entries(sleeves||{}).map(([s,x])=>`<p><b>${agEsc(s)}</b>: ${agEsc(x?.status||'missing')} · ${(x?.evidence||[]).map(e=>`${agEsc(e.asOf)} — ${agEsc(e.claim)} (${agEsc(e.source)})`).join('<br>')}</p>`).join('')}</details>`).join('')}</details>
     <p><b>Forward shadow comparison</b><br>${last?'Latest common close '+agEsc(last.day):'Waiting for completed closes after this target was first observed.'} Each row holds that target at fixed initial weights, with no simulated rebalancing or hindsight.</p>
     ${rows?`<div style="overflow-x:auto"><table><caption>Returns since each vintage’s first common close</caption><thead><tr><th>Observed / model</th><th>Start</th><th>Target</th><th>SPY</th><th>Difference</th><th>Coverage / basis</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
-    <p>Actual account on the same window: <b>${actual?.status==='aligned'?num(actual.returnPct,'%'):'Unavailable'}</b>${actual?.status==='aligned'?' · actual minus shadow '+num(actual.implementationGapPp,'pp'):' — '+agEsc(actual?.reason||'Matching account closing valuations and verified cash flows are required.')}</p>
-    <p class="fund-note">Price returns exclude dividends. Total-return comparisons require explicitly dividend-adjusted data. The shadow excludes fees and slippage. Your existing account chart uses inferred cash flows and is separate from this stricter comparison.</p>
+    <p><b>Account estimate on the shadow’s dates</b><br>${accountEstimate?.status==='estimated'?num(accountEstimate.returnPct,'%')+' from '+agEsc(accountEstimate.start)+' to '+agEsc(accountEstimate.end):agEsc(accountEstimate?.reason||'Available after the shadow has two completed dates and matching account observations.')}<br><small>Valuation times and dividend treatment can differ. This estimate is not an execution-quality score.</small></p>
+    <details><summary>Verified comparison · ${actual?.status==='aligned'?'available':'additional data required'}</summary><p>${actual?.status==='aligned'?num(actual.returnPct,'%')+' · actual minus shadow '+num(actual.implementationGapPp,'pp'):'Not connected: requires dividend-reinvested price series plus independently verified account closing values and timed external flows. Waiting or refreshing alone cannot supply this feed.'}</p></details>
+    <p class="fund-note">Shadow returns use the stated basis; price returns exclude dividends. No fees or slippage are modeled. Account estimates update automatically from the existing producer; no additional account connection is needed for estimates.</p>
     <details><summary>Realized volatility and strongest correlations</summary><p>${agEsc(R.note||'Diagnostics will appear after the next data refresh.')}</p>${vol?`<div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Annualized volatility</th><th>Returns</th><th>Latest close</th></tr></thead><tbody>${vol}</tbody></table></div>`:''}<p>${pairs||'Not enough matching daily returns to measure correlations.'}</p></details>
   </div></div>`;
 }

@@ -1189,7 +1189,7 @@ if (data.agentic) {
   const old = prior?.agentic?.correctness || {};
   data.agentic.correctness = {
     shadow: observeTargets({prior:old.shadow, target:data.agentic.target, histDay:hist.day,
-      asOf:data.generatedAt, totalReturn:optional('agentic-total-return.json') || {},
+      asOf:data.generatedAt, equityHistory:data.agentic.equityHistory || [], totalReturn:optional('agentic-total-return.json') || {},
       actualCloses:optional('agentic-performance-closes.json') || []}),
     risk: riskDiagnostics(data.agentic.target?.names || [],hist.day,data.generatedAt),
   };

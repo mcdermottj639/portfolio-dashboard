@@ -1,5 +1,17 @@
 # CLAUDE.md — Portfolio Dashboard
 
+> **v149 follow-up:** Account estimates now consume existing recorded equity history automatically
+> (producer and browser share the same calculation), with matching-date coverage checks and explicit
+> inferred-flow / valuation-time limitations. The panel shows the existing account record even before
+> a v148+ producer refresh, then adds an estimate on each shadow vintage's dates. No estimate is called
+> verified and no execution gap is derived from it. The optional verified comparison still requires
+> feeds not available in this session; it is labeled "Not connected" rather than implying waiting fixes
+> it. Tracking status distinguishes pre-upgrade snapshots, pending closes, invalid targets and stale
+> bars. Historical evidence is labeled as historical, not a current mandate/configuration failure.
+> App/cache: v149 / pf-v149. Production Claude Routine access remains unavailable here; its next
+> successful publish is required for new forward observations. Browser reload only reloads published data.
+
+
 Orientation for future Claude sessions. Read this first. Deep producer detail lives in
 `producer/PRODUCER.md` (runbook) and `producer/SCHEDULING.md` (the scheduled job).
 

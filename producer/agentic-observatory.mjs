@@ -1,3 +1,4 @@
+import { recordedAccountReturn } from './agentic-account-return.mjs';
 // Forward-only target vintages. No historical backtest of today's holdings; no invented dividends.
 import { closeIndex } from './agentic-ledger.mjs';
 import { provenance, targetIdentity } from './agentic-model.mjs';
@@ -5,7 +6,7 @@ import { validateTarget } from './riskweights.mjs';
 const round = n => Number.isFinite(n) ? +n.toFixed(4) : null;
 const dayAge = (a,b) => (Date.parse(b)-Date.parse(a))/86400000;
 const mapSeries = rows => new Map(rows || []);
-export function observeTargets({ prior = {}, target, histDay = {}, asOf, totalReturn = {}, actualCloses = [] } = {}) {
+export function observeTargets({ prior = {}, target, histDay = {}, asOf, totalReturn = {}, actualCloses = [], equityHistory = [] } = {}) {
   const today = String(asOf || '').slice(0,10), prices = closeIndex(histDay);
   totalReturn = totalReturn && typeof totalReturn === 'object' ? totalReturn : {};
   actualCloses = Array.isArray(actualCloses) ? actualCloses : [];
@@ -45,11 +46,12 @@ export function observeTargets({ prior = {}, target, histDay = {}, asOf, totalRe
     const last = t.points.at(-1);
     t.status = !last ? 'awaiting-next-close' : dayAge(last.day,today)>5 ? 'stale-coverage' : 'tracking';
     t.latest = last || null;
+    t.accountEstimate = recordedAccountReturn(equityHistory,t.startDay,last?.day);
     t.actual = compareActual(accountRows,t.startDay,last?.day,t.basis,last);
   }
   // Keep complete vintages for one year, never rewrite them using the next target's weights.
   const kept = tracks.filter(t=>dayAge(t.observedDay,today)<=400 || t.targetId===id);
-  return { version:1, asOf, currentTargetId:id, tracks:kept, actualCloses:accountRows,
+  return { version:2, asOf, accountSummary:recordedAccountReturn(equityHistory), currentTargetId:id, tracks:kept, actualCloses:accountRows,
     note:'Each target is a separate buy-and-hold shadow vintage, filled at the next available common close after first observation. No fees/slippage. Price basis excludes dividends. It is not a simulated rebalance strategy.' };
 }
 export function compareActual(rows,start,end,basis,model) {

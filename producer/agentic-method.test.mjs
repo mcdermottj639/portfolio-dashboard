@@ -77,9 +77,10 @@ const bare = (s) => String(s).replace(/[\s|]/g, '');
 // The new panel must remain usable before the next producer refresh and escape source evidence.
 {
   const cardSrc=grab(/function agCorrectnessCard\(A\)\{[\s\S]*?\n\}/,'agCorrectnessCard');
-  const render=new Function('fmt','agEsc',cardSrc+';return agCorrectnessCard;')(fmt,agEsc);
+  const calcSrc=grab(/function recordedAccountReturn\(history, start, end\) \{[\s\S]*?\n\}/,'recordedAccountReturn');
+  const render=new Function('fmt','agEsc',calcSrc+'\n'+cardSrc+';return agCorrectnessCard;')(fmt,agEsc);
   const empty=render({target:{}});
-  ok('correctness panel explains absent forward/account data',empty.includes('Unavailable') && empty.includes('Waiting for completed closes'));
+  ok('correctness panel explains absent forward/account data',empty.includes('Not connected:') && empty.includes('successful producer refresh is needed'));
   const unsafe=render({target:{research:{evidence:{AAA:{quality:{status:'observed',evidence:[{source:'<script>bad</script>',asOf:'2026-09-01',claim:'<img src=x>'}]}}}}}});
   ok('evidence cannot inject markup', !unsafe.includes('<script>bad') && unsafe.includes('&lt;script&gt;'));
   ok('risk diagnostics remain accessible in native details',empty.includes('<summary>Realized volatility and strongest correlations</summary>'));
