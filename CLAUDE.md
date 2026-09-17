@@ -1,5 +1,9 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v151 — visual daily brief
+
+Today adds an account hero, signed contribution bars, a concentration ring, and compact plan/source cards. The ring measures priced long holdings, not account equity. Bars show captured dollar contributions with explicit quote coverage. Original themes, detailed views, and producer routines remain unchanged. App/cache v151.
+
 ## v150 — navigation, daily brief, and decision explorer (2026-09-16)
 
 The consumer now loads `ui/experience.css`, `ui/experience-model.js`, and `ui/experience.js`

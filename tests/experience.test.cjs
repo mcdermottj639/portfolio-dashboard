@@ -36,9 +36,9 @@ for(const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)){
   if(!script[0].includes('application/json'))new Function(script[1]);
 }
 new Function(fs.readFileSync(path.join(root,'ui/experience.js'),'utf8'));
-assert.ok(html.includes("APP_VERSION='v150'"));
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v150'"));
+assert.ok(html.includes("APP_VERSION='v151'"));
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v151'"));
 for(const asset of ['experience.css','experience-model.js','experience.js']){
-  assert.ok(html.includes('ui/'+asset+'?v=150'));assert.ok(sw.includes('ui/'+asset+'?v=150'));
+  assert.ok(html.includes('ui/'+asset+'?v=151'));assert.ok(sw.includes('ui/'+asset+'?v=151'));
 }
 console.log('PASS: display models, missing data, scenarios, source links, preserved destinations, script syntax, cache versions');
