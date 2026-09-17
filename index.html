@@ -28,7 +28,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Portfolio Dashboard</title>
-<meta name="theme-color" content="#16213e">
+<meta name="theme-color" content="#f4f5ef">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -36,11 +36,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<link rel="stylesheet" href="ui/experience.css?v=151">
 <!-- Live-only controls (write to MCP / trigger scans) are hidden in the offline PWA. -->
 <style>.kyle-btn,.run-btn{display:none!important}</style>
-<!-- Set theme before paint (no flash). Default: saved choice, else system preference. -->
-<script>(function(){try{var t=localStorage.getItem('pf_theme');if(t==='dark'||t==='neon'){t='gold';localStorage.setItem('pf_theme','gold');}if(!t)t=((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'gold':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<!-- Set theme before paint (no flash). Signal Ledger is the default; the retained toggle opens Midnight. -->
+<script>(function(){try{var t=localStorage.getItem('pf_theme'),m=localStorage.getItem('pf_signal_ledger_v152');if(!m&&t==='gold'){t='light';localStorage.setItem('pf_theme',t);}localStorage.setItem('pf_signal_ledger_v152','1');if(t==='dark'||t==='neon')t='gold';if(!t)t='light';document.documentElement.setAttribute('data-theme',t);if(t!=='light'&&t!=='gold')localStorage.setItem('pf_theme','light');}catch(e){}})();</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -697,6 +696,7 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
+<link rel="stylesheet" href="ui/experience.css?v=152">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -853,7 +853,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v151'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v152'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -8008,7 +8008,7 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=151"></script>
-<script src="ui/experience.js?v=151"></script>
+<script src="ui/experience-model.js?v=152"></script>
+<script src="ui/experience.js?v=152"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 # CLAUDE.md — Portfolio Dashboard
 
-## v151 — visual daily brief
+## v152 — Signal Ledger visual system
 
-Today adds an account hero, signed contribution bars, a concentration ring, and compact plan/source cards. The ring measures priced long holdings, not account equity. Bars show captured dollar contributions with explicit quote coverage. Original themes, detailed views, and producer routines remain unchanged. App/cache v151.
+The consumer now uses Signal Ledger as its default: warm off-white surfaces, deep ink, restrained green for verified/positive states, quieter cards, and a consistent desktop/mobile shell. The retained theme toggle now switches between Signal Ledger and a clean Midnight view; legacy gold preferences resolve to Midnight without reviving gold gradients, glow, HUD brackets, or color-coded decorative cards. The existing Today / Portfolio / Research / Activity structure, detailed original views, privacy, charts, account controls, data contracts, producer routines, allocations, and investment mandate are unchanged. App/cache v152.
 
 ## v150 — navigation, daily brief, and decision explorer (2026-09-16)
 

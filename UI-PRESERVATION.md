@@ -18,7 +18,7 @@ Classic view is available from the header. The original feature search and saved
 | Analyze, technical chart, scanner, fundamentals, live/estimated option context | Research → Analyze |
 | Technical Signals / Fundamentals / Flow & Positioning | Research shortcuts to original account cards |
 | Rebalance logs, grading, methodology | Activity → Rebalance log for selected account |
-| Find, Help, saved pins, collapse, privacy, refresh, theme, PWA offline | Original controls and implementations retained |
+| Find, Help, saved pins, collapse, privacy, refresh, Signal Ledger/Midnight theme toggle, PWA offline | Original controls and implementations retained |
 
 ## New views and their limits
 
