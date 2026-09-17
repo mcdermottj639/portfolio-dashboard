@@ -1,5 +1,27 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v150 — navigation, daily brief, and decision explorer (2026-09-16)
+
+The consumer now loads `ui/experience.css`, `ui/experience-model.js`, and `ui/experience.js`
+after the original dashboard. Today / Portfolio / Research / Activity organize the existing
+five pages; all original cards, chart renderers, account controls, Find, My view/pins, Help,
+privacy masking, and analysis links remain. The Gold and Light palettes and original chart
+colors are unchanged. **Classic view** restores the original navigation; missing shell scripts
+leave the original dashboard usable. `UI-PRESERVATION.md` maps the retained functionality.
+
+Today summarizes the published account and quoted-holding day contributions, with coverage
+labels; it does not invent a daily narrative or equate stock contributions to full account P&L.
+Activity distinguishes published records from unavailable live routine/broker/delivery telemetry.
+Decision evidence displays the existing agentic target and its recorded evidence, with explicit
+missing-source states. What if uses a selected priced position and equity in the snapshot;
+its adjustable shock, cash shift, and user-assumed transaction costs do not write targets or orders.
+These views use the existing app-wide privacy scanner. No producer, mandate, trade, schedule,
+or snapshot schema changes are required; no Routine is touched. App/cache: **v150 / pf-v150**.
+
+Verification: `node tests/experience.test.cjs` plus the existing sequential producer suite.
+`node tests/preview.mjs` serves isolated synthetic sample data, never the committed encrypted
+snapshot. Verification is self-audited; an independent Fable reviewer is unavailable here.
+
 > **v149 follow-up:** Account estimates now consume existing recorded equity history automatically
 > (producer and browser share the same calculation), with matching-date coverage checks and explicit
 > inferred-flow / valuation-time limitations. The panel shows the existing account record even before
