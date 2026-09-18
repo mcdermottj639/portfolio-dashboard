@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Today tab — pick A, B, or C</title>
+<style>
+:root{--ground:#f3f4ee;--panel:#fffefa;--ink:#1c241c;--muted:#657063;--rule:#d7ddd4;--accent:#3d7a4a;--accent-soft:#e5efe4;--good:#24733d;--bad:#b14c43;--warn:#a76420;--warn-soft:#f6ecd9;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased}
+.chooser{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--rule);padding:10px 12px calc(10px + env(safe-area-inset-top))}
+.chooser p{margin:0 0 8px;font-size:12px;color:var(--muted);line-height:1.4}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;border:1px solid var(--rule);background:var(--panel);color:var(--ink);border-radius:10px;padding:10px 8px;font:inherit;font-size:14px;font-weight:650}
+.seg button.on{background:var(--accent);color:#f7faf4;border-color:var(--accent)}
+.phone{max-width:430px;margin:0 auto;padding:0 16px 28px}
+h1{margin:8px 0 4px;font-size:32px;font-weight:620;letter-spacing:-1.1px;line-height:1.05}
+.lede{color:var(--muted);font-size:13px;margin:0 0 16px}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:18px;padding:16px;margin-bottom:12px}
+.kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.money{font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.up{color:var(--good)}.down{color:var(--bad)}
+.tabbar{display:flex;height:72px;background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:8px;margin-top:8px}
+.tabbar span{flex:1;display:grid;place-items:center;color:var(--muted);font-size:13px;font-weight:560;border-radius:10px}
+.tabbar span.on{background:var(--accent-soft);color:var(--accent)}
+.link{display:inline-block;color:var(--accent);font-size:13px;font-weight:600;margin-top:12px}
+.cta{display:block;width:100%;text-align:center;background:var(--accent);color:#f7faf4;border:0;border-radius:12px;padding:13px 16px;font:inherit;font-size:15px;font-weight:620;margin-top:14px}
+.chip{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:650}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding-top:12px;margin-top:12px;border-top:1px solid var(--rule);font-size:13px}
+.note{font-size:12px;color:var(--muted);line-height:1.5;margin:10px 0 0}
+.mover{margin:14px 0}
+.mover-top{display:flex;justify-content:space-between;font-size:15px;font-weight:650;margin-bottom:7px}
+.spine{display:grid;grid-template-columns:1fr 2px 1fr;height:10px}
+.spine i{background:var(--rule)}
+.half{display:flex}.half.l{justify-content:flex-end}
+.bar{height:10px;border-radius:3px}.bar.pos{background:var(--good)}.bar.neg{background:var(--bad)}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:8px}
+.exposure{display:flex;gap:16px;align-items:center}
+.ring{width:112px;height:112px;flex:0 0 112px;border-radius:50%;background:conic-gradient(var(--accent) 0 57.4%,var(--rule) 57.4%);display:grid;place-items:center;position:relative}
+.ring::after{content:"";position:absolute;inset:22px;background:var(--panel);border-radius:50%}
+.ring span{position:relative;z-index:1;text-align:center;font-weight:700;font-size:18px;letter-spacing:-.04em}
+.ring small{display:block;font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.sym{font-size:22px;font-weight:680;letter-spacing:-.03em}
+.legend{display:flex;flex-wrap:wrap;gap:10px 14px;font-size:12px;color:var(--muted)}
+.sw{width:8px;height:8px;border-radius:99px;display:inline-block;margin-right:6px}
+.hero-split{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}
+.hero-val{font-size:34px;font-weight:650;letter-spacing:-.06em;line-height:1.05}
+.day-val{font-size:26px;font-weight:650;letter-spacing:-.05em}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px;font-size:13px;color:var(--muted)}
+.daybox{background:#eef6ee;border-radius:14px;padding:12px 12px 10px}
+.next-head{display:flex;justify-content:space-between;align-items:center}
+.next-mark{width:42px;height:42px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:20px;font-weight:600}
+.opt{display:none}.opt.show{display:block}
+.heroB{background:#101510;color:#edf2ea;margin:0 -16px;padding:16px 20px 22px}
+.heroB h2{color:#edf2ea;font-size:15px;font-weight:560;margin:0 0 14px}
+.heroB .hero-val{color:#f7faf4;font-size:38px}
+.day-pill{display:inline-flex;gap:8px;align-items:center;background:#1e3020;color:#a5d79c;border-radius:999px;padding:7px 12px;font-weight:680;font-size:14px;margin-top:10px}
+.bodyB{background:var(--ground);border-radius:22px 22px 0 0;margin:0 -16px;padding:16px}
+.chart-row{display:grid;grid-template-columns:64px 1fr 72px;gap:8px;align-items:center;margin:12px 0}
+.track{position:relative;height:28px}
+.track .zero{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#c5cdc2}
+.fill{position:absolute;top:4px;bottom:4px;border-radius:6px}
+.fill.pos{left:50%;background:var(--good)}.fill.neg{right:50%;background:var(--bad)}
+.alloc{height:18px;display:flex;border-radius:8px;overflow:hidden;margin:12px 0 10px}
+.alloc span:first-child{background:#2f5d38;width:57.4%}.alloc span:last-child{background:#b7c4b4;width:42.6%}
+.eq{height:8px;background:var(--rule);border-radius:99px;overflow:hidden;margin-top:8px}
+.eq i{display:block;width:83.5%;height:100%;background:var(--accent)}
+.big-pct{font-size:64px;font-weight:640;letter-spacing:-3px;line-height:.9;color:var(--accent);margin:4px 0 6px}
+.fat{height:22px;border-radius:8px;display:flex;overflow:hidden;margin:12px 0;background:#dfe6dc}
+.fat .g{background:var(--good)}.fat .r{background:var(--bad)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.mini{background:var(--ground);border-radius:12px;padding:12px}
+.mini .t{font-size:13px;color:var(--muted);font-weight:600}
+.mini .v{font-size:22px;font-weight:680;letter-spacing:-.05em;margin-top:4px}
+.pltr-card{background:#1b2a1d;color:#eef6ea;border:0}
+.pltr-card .kicker,.pltr-card .note{color:#b7c6b4}
+.pltr-card .row{border-top-color:#314831}
+.track-wide{height:10px;background:#314831;border-radius:99px;overflow:hidden;margin-top:10px}
+.track-wide i{display:block;height:100%;width:83.5%;background:#9dcea0}
+.optC h1{font-size:40px;letter-spacing:-1.6px;margin-bottom:2px}
+.optC .hero-val{font-size:40px}
+.wrapB{background:#101510;margin:0 -16px;padding-bottom:8px}
+caption-note{display:block}
+</style>
+</head>
+<body>
+<div class="chooser">
+  <p>Design review only — not the live dashboard. Tap A / B / C, then reply in chat with the letter you want built.</p>
+  <div class="seg">
+    <button class="on" data-opt="a">A Ledger</button>
+    <button data-opt="b">B Desk</button>
+    <button data-opt="c">C Weight</button>
+  </div>
+</div>
+
+<div class="phone">
+  <div id="a" class="opt show">
+    <h1>Your daily brief.</h1>
+    <p class="lede">Self-directed · Sep 18, 2026</p>
+    <section class="card">
+      <div class="hero-split">
+        <div>
+          <div class="kicker">Account value</div>
+          <div class="hero-val money">$21,103.37</div>
+          <div class="meta"><span>2 holdings</span><span class="chip warn">Margin −$8,870</span></div>
+        </div>
+        <div class="daybox">
+          <div class="kicker">Holdings move</div>
+          <div class="day-val money up">+$1.50</div>
+          <p class="note" style="margin-top:6px">Quotes on 2 / 2 names. Stocks only.</p>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="kicker">What moved</div>
+      <div class="mover">
+        <div class="mover-top"><span>IREN</span><span class="up money">+$7.50</span></div>
+        <div class="spine"><div class="half l"></div><i></i><div class="half"><span class="bar pos" style="width:100%"></span></div></div>
+      </div>
+      <div class="mover">
+        <div class="mover-top"><span>PLTR</span><span class="down money">−$6.00</span></div>
+        <div class="spine"><div class="half l"><span class="bar neg" style="width:80%"></span></div><i></i><div class="half"></div></div>
+      </div>
+      <div class="axis"><span>Detractors</span><span>Contributors</span></div>
+      <span class="link">Open heatmap</span>
+    </section>
+    <section class="card">
+      <div class="kicker">Where the weight sits</div>
+      <div class="exposure" style="margin-top:12px">
+        <div class="ring"><span>57%<small>of longs</small></span></div>
+        <div>
+          <div class="kicker">Largest holding</div>
+          <div class="sym">PLTR</div>
+          <div class="money" style="font-size:18px;font-weight:650">$17,619.10</div>
+          <p class="note">83.5% of account equity. Margin makes a long look larger than the book.</p>
+        </div>
+      </div>
+      <span class="link">Risk & allocation</span>
+    </section>
+    <section class="card">
+      <div class="next-head">
+        <div><div class="kicker">Next</div><div class="sym" style="font-size:18px;margin-top:4px">Action Center</div></div>
+        <div class="next-mark">→</div>
+      </div>
+      <p class="note">Cash-raising, redeployment, and Picks — using this account’s rules.</p>
+      <button class="cta">Open the plan</button>
+    </section>
+  </div>
+
+  <div id="b" class="opt">
+    <div class="wrapB">
+      <div class="heroB">
+        <h2>Self-directed · daily brief</h2>
+        <div class="kicker" style="color:#a4afa2">Account value</div>
+        <div class="hero-val money">$21,103.37</div>
+        <div class="meta" style="color:#a4afa2"><span>2 holdings</span><span class="chip warn">On margin −$8,870</span></div>
+        <div class="day-pill"><span>Holdings today</span><span class="money">+$1.50</span></div>
+      </div>
+      <div class="bodyB">
+        <section class="card">
+          <div class="kicker">Quoted contribution</div>
+          <div class="chart-row"><strong>IREN</strong><div class="track"><span class="zero"></span><span class="fill pos" style="width:50%"></span></div><span class="up money" style="text-align:right;font-weight:700">+$7.50</span></div>
+          <div class="chart-row"><strong>PLTR</strong><div class="track"><span class="zero"></span><span class="fill neg" style="width:40%"></span></div><span class="down money" style="text-align:right;font-weight:700">−$6.00</span></div>
+          <p class="note">Top names by absolute dollar move. Cash and options are not in this tape.</p>
+          <span class="link">Full heatmap</span>
+        </section>
+        <section class="card">
+          <div class="kicker">Book composition</div>
+          <div class="sym" style="margin-top:8px">PLTR leads the longs</div>
+          <div class="alloc"><span></span><span></span></div>
+          <div class="legend">
+            <span><i class="sw" style="background:#2f5d38"></i>PLTR 57% of priced longs · $17,619</span>
+            <span><i class="sw" style="background:#b7c4b4"></i>IREN 43%</span>
+          </div>
+          <div class="row" style="margin-top:14px"><span>Share of equity</span><strong>83.5%</strong></div>
+          <div class="eq"><i></i></div>
+          <p class="note">Equity share is higher than long-share because this book is on margin.</p>
+          <span class="link">Risk & allocation</span>
+        </section>
+        <section class="card" style="border-color:#c9dccb;background:#f7fbf6">
+          <div class="kicker">Do next</div>
+          <div class="sym" style="font-size:20px;margin:6px 0 4px">Review Action Center</div>
+          <p class="note" style="margin-top:0">Cash-raising, redeployment, and Picks for the self-directed book.</p>
+          <button class="cta">Open the plan</button>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="c" class="opt optC">
+    <p class="lede" style="margin:8px 0 0">Self-directed · 8:43 AM snapshot</p>
+    <h1>Morning.</h1>
+    <div class="hero-val money">$21,103.37</div>
+    <div class="meta"><span class="chip">+$1.50 on quoted longs</span><span class="chip warn">Margin −$8,870</span></div>
+    <section class="card pltr-card" style="margin-top:16px">
+      <div class="kicker">The weight</div>
+      <div class="big-pct money">83.5%</div>
+      <div style="font-size:20px;font-weight:650">of equity is PLTR</div>
+      <div class="track-wide"><i></i></div>
+      <div class="row"><span>Position</span><strong class="money">$17,619.10</strong></div>
+      <div class="row" style="margin-top:0;padding-top:10px"><span>Share of priced longs</span><strong>57.4%</strong></div>
+      <p class="note">Two different pictures: longs vs equity. Margin is why they disagree.</p>
+    </section>
+    <section class="card">
+      <div class="kicker">What paid for the day</div>
+      <div class="fat"><span class="r" style="width:44.4%"></span><span class="g" style="width:55.6%"></span></div>
+      <div class="pair">
+        <div class="mini"><div class="t">PLTR</div><div class="v down money">−$6.00</div></div>
+        <div class="mini"><div class="t">IREN</div><div class="v up money">+$7.50</div></div>
+      </div>
+      <p class="note">Net +$1.50 from these two. Options and cash are not in the tape.</p>
+    </section>
+    <button class="cta">Review Action Center</button>
+    <p class="note" style="text-align:center">Cash-raising, redeployment, and Picks</p>
+  </div>
+
+  <div class="tabbar"><span class="on">Today</span><span>Portfolio</span><span>Research</span><span>Activity</span></div>
+</div>
+<script>
+const buttons=[...document.querySelectorAll('.seg button')];
+function show(id){
+  document.querySelectorAll('.opt').forEach(el=>el.classList.toggle('show', el.id===id));
+  buttons.forEach(b=>b.classList.toggle('on', b.dataset.opt===id));
+}
+buttons.forEach(b=>b.addEventListener('click',()=>show(b.dataset.opt)));
+</script>
+</body>
+</html>
