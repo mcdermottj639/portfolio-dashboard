@@ -40,10 +40,17 @@ const experience=fs.readFileSync(path.join(root,'ui/experience.js'),'utf8');
 for(const route of ['technicals','fundamentals','flow']){
   assert.match(experience,new RegExp(route+": \\{area:'portfolio'"),'portfolio nav owns '+route);
 }
-assert.ok(html.includes("APP_VERSION='v153'"));
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v153'"));
+assert.ok(html.includes("APP_VERSION='v154'"));
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v154'"));
 for(const asset of ['experience.css','experience-model.js','experience.js']){
-  const version=asset==='experience.js'?'153':'152';
-  assert.ok(html.includes('ui/'+asset+'?v='+version));assert.ok(sw.includes('ui/'+asset+'?v='+version));
+  assert.ok(html.includes('ui/'+asset+'?v=154'));assert.ok(sw.includes('ui/'+asset+'?v=154'));
 }
-console.log('PASS: display models, missing data, scenarios, source links, preserved destinations, script syntax, cache versions');
+assert.doesNotMatch(experience,/01 \/ What moved|02 \/ Where|03 \/ Your next/);
+assert.match(experience,/class="ex-cta"/);
+assert.match(experience,/ex-div-left/);
+assert.match(experience,/Open the plan/);
+const css=fs.readFileSync(path.join(root,'ui/experience.css'),'utf8');
+assert.match(css,/\.ex-brief-hero\{display:grid/);
+assert.match(css,/\.ex-ring\{width:112px/);
+assert.match(css,/\.ex-cta\{display:block/);
+console.log('PASS: display models, missing data, scenarios, source links, preserved destinations, script syntax, cache versions, today brief visuals');

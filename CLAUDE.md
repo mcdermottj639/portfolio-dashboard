@@ -1,5 +1,9 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v154 — Today brief visuals
+
+The Today tab keeps the v150 card language and snapshot math. Numbered 01/02/03/04 labels are gone. Quoted-move bars now diverge from a center spine, the concentration ring is sized, negative cash is labeled Margin, and Next is an Action Center button to the existing Plan. No producer, mandate, or snapshot-schema change. App/cache v154.
+
 ## v153 — Portfolio analysis navigation
 
 Technicals, Fundamentals, and Flow & Positioning are now grouped in the **Portfolio** sub-navigation, alongside the Portfolio cards they open. Their destinations, account behavior, card rendering, snapshot contracts, and research surfaces are unchanged. App/cache v153.
@@ -353,7 +357,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v148** (`pf-v148`); see the correctness section above. Earlier **v147** (`pf-v147`) — v146/v147 are the
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v154** (`pf-v154`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
