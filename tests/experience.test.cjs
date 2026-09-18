@@ -40,15 +40,18 @@ const experience=fs.readFileSync(path.join(root,'ui/experience.js'),'utf8');
 for(const route of ['technicals','fundamentals','flow']){
   assert.match(experience,new RegExp(route+": \\{area:'portfolio'"),'portfolio nav owns '+route);
 }
-assert.ok(html.includes("APP_VERSION='v154'"));
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v154'"));
+assert.ok(html.includes("APP_VERSION='v155'"));
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v155'"));
 for(const asset of ['experience.css','experience-model.js','experience.js']){
-  assert.ok(html.includes('ui/'+asset+'?v=154'));assert.ok(sw.includes('ui/'+asset+'?v=154'));
+  assert.ok(html.includes('ui/'+asset+'?v=155'));assert.ok(sw.includes('ui/'+asset+'?v=155'));
 }
 assert.doesNotMatch(experience,/01 \/ What moved|02 \/ Where|03 \/ Your next/);
 assert.match(experience,/class="ex-cta"/);
 assert.match(experience,/ex-div-left/);
 assert.match(experience,/Open the plan/);
+assert.match(experience,/None in flight/);
+assert.match(experience,/Not in this app/);
+assert.doesNotMatch(experience,/Not connected/);
 const css=fs.readFileSync(path.join(root,'ui/experience.css'),'utf8');
 assert.match(css,/\.ex-brief-hero\{display:grid/);
 assert.match(css,/\.ex-ring\{width:112px/);

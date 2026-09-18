@@ -1,5 +1,9 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v155 — Activity copy
+
+Activity no longer says "Not connected" for feeds this PWA cannot see. Research rows humanize `not-recorded` and idle tickets as "None in flight". Telemetry is labeled "Not in this app" and the last published snapshot is the proof a producer run finished. No invented routine/broker/push health. App/cache v155.
+
 ## v154 — Today brief visuals
 
 The Today tab keeps the v150 card language and snapshot math. Numbered 01/02/03/04 labels are gone. Quoted-move bars now diverge from a center spine, the concentration ring is sized, negative cash is labeled Margin, and Next is an Action Center button to the existing Plan. No producer, mandate, or snapshot-schema change. App/cache v154.
@@ -357,7 +361,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v154** (`pf-v154`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v155** (`pf-v155`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

@@ -43,6 +43,12 @@
   const jump = (key, text) => '<button type="button" class="ex-link" data-ex-route="'+key+'">'+esc(text || routes[key].label)+' →</button>';
   const row = (label, value, detail = '') => '<div class="ex-row"><span>'+esc(label)+(detail?'<small>'+esc(detail)+'</small>':'')+'</span><span>'+value+'</span></div>';
   const card = (title, html, wide = false) => '<section class="ex-card'+(wide?' ex-wide':'')+'"><h2>'+esc(title)+'</h2>'+html+'</section>';
+  const prettyStatus = value => {
+    if (value === null || value === undefined || value === '') return 'Not in this snapshot';
+    const s = String(value).trim();
+    if (s === 'not-recorded') return 'Not recorded on this target';
+    return s.replace(/-/g, ' ');
+  };
   const note = text => '<div class="ex-note">'+esc(text)+'</div>';
   const unavailable = text => note(text || 'Unlock a published snapshot to view this account.');
   function goClassic() { save('pf_classic','1'); location.reload(); }
@@ -100,8 +106,8 @@
     const s=model(), d=window.__DATA, t=d?.agentic?.target, p=d?.agentic?.pending;
     let html='<h1>See what actually happened.</h1><p class="ex-muted">Published records and unavailable telemetry are kept separate.</p>';
     html+='<div class="ex-grid">'+card('Published data',row('Snapshot',esc(d?'Loaded':'Not loaded'),d?date(d.generatedAt):'Unlock the snapshot first.')+row('Snapshot age',esc(ageText(d?.generatedAt)))+row('Selected account',esc(s.available?'Present in snapshot':'Not available'))+row('Agentic account as of',esc(date(d?.agentic?.asOf)))+note('This checks what the app received. It does not verify the current broker balance or prove a scheduled run succeeded.'));
-    html+=card('Research & execution record',row('Agentic target',esc(t?.asOf || 'Not recorded'))+row('Evidence coverage status',esc(t?.research?.status || 'Not recorded'))+row('Latest recorded agentic ticket',esc(p?.status || 'Not recorded'))+row('Ticket completion timestamp',esc(date(p?.completedAt)))+jump('plan','Open the full plan'));
-    html+=card('Routine and delivery telemetry',row('Claude routine runs','Not connected')+row('Live broker reconciliation','Not connected')+row('Push delivery receipts','Not recorded in snapshot')+note('Snapshot presence and ticket status are historical records. Live routine health, retry queues, and confirmed alert delivery need a separate data feed; this interface does not invent those states.'),true);
+    html+=card('Research & execution record',row('Agentic target',esc(t?.asOf || 'No target in this snapshot'))+row('Evidence coverage',esc(prettyStatus(t?.research?.status)))+row('Rebalance ticket',esc(p?.status ? prettyStatus(p.status) : 'None in flight'))+row('Ticket completed',p?.completedAt?esc(date(p.completedAt)):'—')+jump('plan','Open the full plan'));
+    html+=card('What this phone app cannot see',row('Last published snapshot',esc(ageText(d?.generatedAt)),d?date(d.generatedAt):'Unlock the snapshot first.')+row('Live Claude Routine heartbeat','Not in this app')+row('Live broker check','Not in this app')+row('Push receipts','Not in this app')+note('A fresh snapshot means a producer run finished and was published. This screen cannot watch Claude Routine, Robinhood, or push while you hold the phone, so those stay unlabeled rather than guessed.'),true);
     html+=card('Decision history','<p>Use the original account-specific Rebalance Log for filled decisions, grading, and benchmark methodology.</p>'+jump('log','Open this account’s Rebalance Log'));
     const history=Array.isArray(p?.history)?p.history:[];
     html+=card('Agentic ticket timeline',history.length?history.slice(-12).map(h=>row(String(h.to || 'Recorded event'),esc(date(h.at)))).join(''):'<p class="ex-muted">No ticket history was included in this snapshot.</p>')+'</div>';
