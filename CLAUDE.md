@@ -1,5 +1,9 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v153 — Portfolio analysis navigation
+
+Technicals, Fundamentals, and Flow & Positioning are now grouped in the **Portfolio** sub-navigation, alongside the Portfolio cards they open. Their destinations, account behavior, card rendering, snapshot contracts, and research surfaces are unchanged. App/cache v153.
+
 ## v152 — Signal Ledger visual system
 
 The consumer now uses Signal Ledger as its default: warm off-white surfaces, deep ink, restrained green for verified/positive states, quieter cards, and a consistent desktop/mobile shell. The retained theme toggle now switches between Signal Ledger and a clean Midnight view; legacy gold preferences resolve to Midnight without reviving gold gradients, glow, HUD brackets, or color-coded decorative cards. The existing Today / Portfolio / Research / Activity structure, detailed original views, privacy, charts, account controls, data contracts, producer routines, allocations, and investment mandate are unchanged. App/cache v152.

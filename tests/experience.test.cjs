@@ -36,9 +36,14 @@ for(const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)){
   if(!script[0].includes('application/json'))new Function(script[1]);
 }
 new Function(fs.readFileSync(path.join(root,'ui/experience.js'),'utf8'));
-assert.ok(html.includes("APP_VERSION='v152'"));
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v152'"));
+const experience=fs.readFileSync(path.join(root,'ui/experience.js'),'utf8');
+for(const route of ['technicals','fundamentals','flow']){
+  assert.match(experience,new RegExp(route+": \\{area:'portfolio'"),'portfolio nav owns '+route);
+}
+assert.ok(html.includes("APP_VERSION='v153'"));
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v153'"));
 for(const asset of ['experience.css','experience-model.js','experience.js']){
-  assert.ok(html.includes('ui/'+asset+'?v=152'));assert.ok(sw.includes('ui/'+asset+'?v=152'));
+  const version=asset==='experience.js'?'153':'152';
+  assert.ok(html.includes('ui/'+asset+'?v='+version));assert.ok(sw.includes('ui/'+asset+'?v='+version));
 }
 console.log('PASS: display models, missing data, scenarios, source links, preserved destinations, script syntax, cache versions');
