@@ -1,5 +1,23 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v156 — Entry quality vs trend strength (self-directed plan)
+
+The aggressive plan still **ranks** leadership with `sdMomentum` (6m/3m RS vs SPY, 50/100-DMA, proximity to the trailing high). It no longer **buys** the high with borrowed buying power just because that score is 10.0.
+
+New money only (nothing here sells a winner for being large — the 2026-08-25 lesson stands):
+
+- **Entry gate** — within 3% of the 20-day high cannot be bought unless momentum ≥ 9, and then at half size. Failed entries with an intact 50-DMA become the **asymmetric pullback book** (GTD 30–90d limits, no leverage), not an empty leftover sleeve.
+- **Floors** — core 7.0 / satellite 7.5. A 5-handle miner (NBIS 5.6, CLSK 5.2) does not print as a buy.
+- **Caps on new money** — 20% of **equity** per name (the 60%-of-line clamp is a backstop), 30% of the ending book per theme (crypto-beta, ai-infra, cyber, megacap-software). A full cluster skips the next name.
+- **Stops** — ATR × 1.75/2.25, capped at 12% core / 20% high-beta. If the cap is tighter than the vol budget, size is cut rather than the stop widened. HV > 80% halves size again; a book already >1.3× multiplies by 0.65.
+- **Heat / borrow** — no incremental cruise-band borrow or press-room add when the median proposed fill is <5% off the 20-day high, when more than half the fills are <3% off, or when average HV > 40% on a >1.3× book. Press room, when open, funds pullbacks — not a second share of the same extended mega-cap.
+- **Targets** — min(app 3R, 12-month consensus, 1.5× measured move). App > 1.4× street is speculative (size ×0.5). Reward/risk after the tighter target must be ≥ 2:1.
+- **Trim advisory** — 25% of equity or +25% from cost peels back to the 20% target weight. Still not a forced sell.
+- **Do not chase** — reprice at order time; if last > limit + 0.5×ATR, cancel.
+
+Helpers live in `ui/sd-rules.js` (pure, unit-tested by `producer/sd-rules.test.mjs`) so the consumer cannot drift from the tests. App/cache v156.
+
+## v155 — Activity copy
 ## v155 — Activity copy
 
 Activity no longer says "Not connected" for feeds this PWA cannot see. Research rows humanize `not-recorded` and idle tickets as "None in flight". Telemetry is labeled "Not in this app" and the last published snapshot is the proof a producer run finished. No invented routine/broker/push health. App/cache v155.
@@ -361,7 +379,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v155** (`pf-v155`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v156** (`pf-v156`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
