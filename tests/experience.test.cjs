@@ -19,6 +19,16 @@ assert.equal(M.number(0),0);
 assert.equal(M.age('invalid'),null);
 assert.equal(M.age('2026-09-17',Date.parse('2026-09-16')),null);
 assert.equal(M.age('2026-09-16T14:00:00Z',Date.parse('2026-09-16T15:00:00Z')),60);
+// Cash-flow changes remain visible as account value; invalid/duplicate observations cannot
+// create spurious chart points. Account selection must never borrow the other account's history.
+const histories={main:{equityHistory:[{t:'2026-09-02',equity:1200},{t:'bad',equity:8},{t:'2026-09-01',equity:1000},{t:'2026-09-02',equity:1500},{t:'2026-09-03',equity:null}]},agentic:{equityHistory:[{t:'2026-09-01',equity:50}]}};
+assert.deepEqual(M.valueHistory(histories,'main').map(p=>p.equity),[1000,1500]);
+assert.deepEqual(M.valueHistory(histories,'agentic').map(p=>p.equity),[50]);
+assert.deepEqual(M.valueHistory({},'main'),[]);
+const groups=M.composition([{symbol:'A',value:800},{symbol:'B',value:100},{symbol:'C',value:50},{symbol:'D',value:50},{symbol:'X',value:null}]);
+assert.deepEqual(groups.map(p=>[p.label,p.share]),[['A',80],['B',10],['C',5],['Other',5]]);
+assert.deepEqual(M.composition([]),[]);
+assert.deepEqual(M.breadth([{day:null},{day:0},{day:2},{day:-1},{}]),{up:1,down:1,flat:1,missing:2});
 // A cash shift helps on the downside and sacrifices upside; costs always reduce the shifted result.
 const base={equity:25000,positionValue:11500,shiftPct:50,costBps:40};
 let r=M.scenario({...base,shockPct:-10});assert.equal(r.before,-1150);assert.equal(r.after,-598);assert.equal(r.cost,23);assert.equal(r.difference,552);
@@ -40,10 +50,10 @@ const experience=fs.readFileSync(path.join(root,'ui/experience.js'),'utf8');
 for(const route of ['technicals','fundamentals','flow']){
   assert.match(experience,new RegExp(route+": \\{area:'portfolio'"),'portfolio nav owns '+route);
 }
-assert.ok(html.includes("APP_VERSION='v156'"));
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v156'"));
+assert.ok(html.includes("APP_VERSION='v157'"));
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v157'"));
 for(const asset of ['experience.css','experience-model.js','experience.js','sd-rules.js']){
-  assert.ok(html.includes('ui/'+asset+'?v=156'));assert.ok(sw.includes('ui/'+asset+'?v=156'));
+  assert.ok(html.includes('ui/'+asset+'?v=157'));assert.ok(sw.includes('ui/'+asset+'?v=157'));
 }
 assert.doesNotMatch(experience,/01 \/ What moved|02 \/ Where|03 \/ Your next/);
 assert.match(experience,/class="ex-cta"/);

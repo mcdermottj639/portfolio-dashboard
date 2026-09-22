@@ -28,7 +28,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Portfolio Dashboard</title>
-<meta name="theme-color" content="#f4f5ef">
+<meta name="theme-color" content="#f7f6f2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -38,8 +38,8 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <!-- Live-only controls (write to MCP / trigger scans) are hidden in the offline PWA. -->
 <style>.kyle-btn,.run-btn{display:none!important}</style>
-<!-- Set theme before paint (no flash). Signal Ledger is the default; the retained toggle opens Midnight. -->
-<script>(function(){try{var t=localStorage.getItem('pf_theme'),m=localStorage.getItem('pf_signal_ledger_v152');if(!m&&t==='gold'){t='light';localStorage.setItem('pf_theme',t);}localStorage.setItem('pf_signal_ledger_v152','1');if(t==='dark'||t==='neon')t='gold';if(!t)t='light';document.documentElement.setAttribute('data-theme',t);if(t!=='light'&&t!=='gold')localStorage.setItem('pf_theme','light');}catch(e){}})();</script>
+<!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
+<script>(function(){try{var t=localStorage.getItem('pf_theme'),m=localStorage.getItem('pf_signal_ledger_v152');if(!localStorage.getItem('pf_ivory_v157')){t='light';localStorage.setItem('pf_theme',t);localStorage.setItem('pf_ivory_v157','1');}if(!m&&t==='gold'){t='light';localStorage.setItem('pf_theme',t);}localStorage.setItem('pf_signal_ledger_v152','1');if(t==='dark'||t==='neon')t='gold';if(!t)t='light';document.documentElement.setAttribute('data-theme',t);if(t!=='light'&&t!=='gold')localStorage.setItem('pf_theme','light');}catch(e){}})();</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -696,7 +696,7 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=156">
+<link rel="stylesheet" href="ui/experience.css?v=157">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -745,7 +745,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=156"></script>
+<script src="ui/sd-rules.js?v=157"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -854,7 +854,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v156'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v157'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -881,7 +881,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
       if(_th==='dark'||_th==='neon')_th='gold';
       var themeIco=_th==='gold'?'☀️':'✨';
       var privOn=document.body&&document.body.classList.contains('pf-private');
-      bar.innerHTML='<span id="pf-fresh-left" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></span><span style="display:flex;gap:12px;align-items:center;flex:0 0 auto"><button type="button" class="pf-find" onclick="__pfFind()" aria-label="Find any section"><span aria-hidden="true">🔍</span><span>Find</span></button><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" role="button" tabindex="0" aria-pressed="'+(privOn?'true':'false')+'" style="cursor:pointer;font-size:15px" title="'+(privOn?'Private mode ON — your balances, share counts and account numbers are hidden. Tap to show them.':'Private mode OFF — tap to hide your balances, share counts and account numbers.')+'" aria-label="'+(privOn?'Private mode on. Show my figures.':'Private mode off. Hide my figures.')+'">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: light ⇄ gold">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
+      bar.innerHTML='<span id="pf-fresh-left" style="min-width:0;overflow:hidden;text-overflow:ellipsis"></span><span style="display:flex;gap:12px;align-items:center;flex:0 0 auto"><button type="button" class="pf-find" onclick="__pfFind()" aria-label="Find any section"><span aria-hidden="true">🔍</span><span>Find</span></button><span onclick="pfForceUpdate()" style="cursor:pointer;font-size:10px;color:#94a3b8;font-weight:700" title="App build — tap to force the latest">'+APP_VERSION+'</span><span id="pf-priv" onclick="togglePrivacy()" role="button" tabindex="0" aria-pressed="'+(privOn?'true':'false')+'" style="cursor:pointer;font-size:15px" title="'+(privOn?'Private mode ON — your balances, share counts and account numbers are hidden. Tap to show them.':'Private mode OFF — tap to hide your balances, share counts and account numbers.')+'" aria-label="'+(privOn?'Private mode on. Show my figures.':'Private mode off. Hide my figures.')+'">'+(privOn?'🙈':'👁️')+'</span><span id="theme-toggle" onclick="toggleTheme()" style="cursor:pointer;font-size:15px" title="Theme: Ivory ⇄ Midnight">'+themeIco+'</span><span id="pf-refresh" style="color:#2563eb;cursor:pointer">'+(locked?'🔓 Unlock':'↻ Refresh')+'</span></span>';
       if(document.body) document.body.insertBefore(bar, document.body.firstChild);
       // Staleness — recomputed on every repaint (not just once at boot) so a snapshot that ages
       // past 3h while the PWA stays resident tints amber instead of silently looking fresh.
@@ -7914,7 +7914,7 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 /* Theme cycles Light → Dark → Neon → Light. The icon shows the theme you'll switch TO. */
 var THEME_ORDER=['light','gold']; /* Light ⇄ Gold (champagne-on-black dark theme) */
 function themeIcon(t){ return t==='gold'?'☀️':'✨'; } /* icon = the theme you'll switch TO (✨ = the gold dark theme) */
-function themeColor(t){ return t==='gold'?'#000':'#16213e'; }
+function themeColor(t){ return t==='gold'?'#101923':'#f7f6f2'; }
 function toggleTheme(){ const h=document.documentElement; let cur=h.getAttribute('data-theme')||'light'; if(cur==='dark'||cur==='neon')cur='gold'; const next=THEME_ORDER[(THEME_ORDER.indexOf(cur)+1)%THEME_ORDER.length]; h.setAttribute('data-theme',next); try{localStorage.setItem('pf_theme',next);}catch(e){} const b=document.getElementById('theme-toggle'); if(b)b.textContent=themeIcon(next); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content',themeColor(next)); try{ if(typeof applyChartTheme==='function') applyChartTheme(); }catch(e){} try{ if(typeof renderHeatmap==='function') renderHeatmap(); }catch(e){} }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -8085,7 +8085,7 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=156"></script>
-<script src="ui/experience.js?v=156"></script>
+<script src="ui/experience-model.js?v=157"></script>
+<script src="ui/experience.js?v=157"></script>
 </body>
 </html>

@@ -1,5 +1,9 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v157 — Ivory Ledger and source-backed visual summaries
+
+Today and Activity use the approved Ivory Ledger palette (warm ivory, ink, emerald) with responsive icon navigation, a prominent Action Center, and retained Midnight toggle. A one-time v157 preference migration opens the approved Ivory theme; later theme choices persist. Today adds a dated account-value line from the selected account’s `equityHistory` (last 30 valid unique observations; includes flows, never labeled return), priced-long allocation segments, and quote breadth (up/down/flat/missing). Activity adds a published-record timeline and recorded Agentic ticket timeline, with elapsed snapshot age and unavailable live telemetry explicitly distinguished. Empty/partial records stay explicit. Chart geometry is hidden in privacy mode; numeric labels use the existing scanner. No producer, Routine, account mandate, trade, data schema, or original destination changes. App/cache v157. Verification: model edge cases, full sequential producer suite, and DOM interaction checks. Browser layout verification was blocked by the preview environment; self-audited because the specified Fable reviewer is unavailable.
+
 ## v156 — Entry quality vs trend strength (self-directed plan)
 
 The aggressive plan still **ranks** leadership with `sdMomentum` (6m/3m RS vs SPY, 50/100-DMA, proximity to the trailing high). It no longer **buys** the high with borrowed buying power just because that score is 10.0.

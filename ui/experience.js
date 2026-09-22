@@ -9,8 +9,12 @@
   const save = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
   const money = n => n === null || !Number.isFinite(n) ? 'Unavailable' : new Intl.NumberFormat('en-US', {style:'currency',currency:'USD',maximumFractionDigits:2}).format(n);
   const percent = n => n === null || !Number.isFinite(n) ? 'Unavailable' : (n > 0 ? '+' : '') + n.toFixed(2) + '%';
-  const date = value => { const d = value ? new Date(value) : null; return d && Number.isFinite(d.getTime()) ? d.toLocaleString() : 'Not recorded'; };
+  const date = value => { if(typeof value==='string' && /^\d{4}-\d{2}-\d{2}$/.test(value))return value; const d = value ? new Date(value) : null; return d && Number.isFinite(d.getTime()) ? d.toLocaleString() : 'Not recorded'; };
   const ageText = iso => { const n = M.age(iso); return n === null ? 'Age unavailable' : n < 60 ? Math.floor(n)+' min old' : n < 1440 ? (n/60).toFixed(1)+' hours old' : Math.floor(n/1440)+' days old'; };
+  const icon = name => {
+    const paths={today:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',portfolio:'M12 3v9h9M9 3.5A9 9 0 1 0 20.5 15H9Z',research:'M5 3h10l4 4v14H5ZM9 11h6M9 15h6',activity:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2'};
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+paths[name]+'"/></svg>';
+  };
   const routes = {
     today: {area:'today', label:'Daily brief', custom:'today'},
     accounts: {area:'portfolio', label:'Accounts overview', tab:'portfolio'},
@@ -59,7 +63,7 @@
   const top = document.createElement('header'); top.className='ex-top'; top.id='ex-top';
   top.innerHTML='<div><div class="ex-brand">Portfolio <span>/</span></div><div class="ex-caption" id="ex-context">Your accounts, research, and activity</div></div><div class="ex-tools"><label>Account <select id="ex-account" aria-label="Account"><option value="main">Self-directed</option><option value="agentic">Agentic</option></select></label><button type="button" id="ex-find">Find a feature</button><button type="button" id="ex-classic" title="Return to the original five-tab layout">Classic view</button></div>';
   const main = document.createElement('nav'); main.className='ex-main'; main.setAttribute('aria-label','Main navigation');
-  main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+a[0].toUpperCase()+a.slice(1)+'</button>').join('');
+  main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+icon(a)+'<span>'+a[0].toUpperCase()+a.slice(1)+'</span></button>').join('');
   const sub = document.createElement('nav'); sub.id='ex-subnav'; sub.className='ex-subnav'; sub.setAttribute('aria-label','Section navigation');
   const first = $('tabbar'); first.before(top,main,sub);
   ['today','activity','decisions','scenario'].forEach(name=>{
@@ -73,6 +77,27 @@
     $('ex-context').textContent=r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }
+  function historyChart() {
+    const points=M.valueHistory(window.__DATA,account());
+    if(points.length<2)return '<p class="ex-muted">At least two dated account values are needed to draw the history.</p>';
+    const values=points.map(p=>p.equity),low=Math.min(...values),high=Math.max(...values),span=high-low||Math.max(Math.abs(high)*.01,1);
+    const start=points[0],end=points[points.length-1];
+    const coords=points.map(p=>[(16+(p.stamp-start.stamp)/(end.stamp-start.stamp)*608).toFixed(1),(20+(high-p.equity)/span*110).toFixed(1)]);
+    const path=coords.map((p,i)=>(i?'L':'M')+p.join(' ')).join(' ');
+    return '<div class="ex-history-head"><div><span class="ex-label">Latest recorded value</span><strong>'+money(end.equity)+'</strong></div><span class="ex-badge">'+points.length+' observations</span></div><div class="ex-private-chart"><svg class="ex-value-chart" viewBox="0 0 640 152" role="img" aria-label="Account value history; includes deposits and withdrawals"><path d="M16 20H624M16 75H624M16 130H624" class="ex-chart-grid"/><path d="'+path+' L624 145 L16 145 Z" class="ex-chart-area"/><path d="'+path+'" class="ex-chart-line"/><circle cx="'+coords[coords.length-1][0]+'" cy="'+coords[coords.length-1][1]+'" r="4" class="ex-chart-dot"/></svg></div><div class="ex-history-range"><span>'+esc(start.t.slice(0,10))+'</span><span>'+esc(end.t.slice(0,10))+'</span></div><p class="ex-muted">Account value, including deposits and withdrawals — not investment return. Last '+points.length+' recorded observations.</p><details><summary>View dated values</summary><div class="ex-history-values">'+points.map(p=>row(p.t.slice(0,10),money(p.equity))).join('')+'</div></details>';
+  }
+  function allocationVisual(s) {
+    const groups=M.composition(s.positions);
+    if(!groups.length)return '';
+    return '<div class="ex-allocation" aria-hidden="true">'+groups.map((p,i)=>'<span class="ex-slice ex-slice-'+i+'" style="width:'+p.share+'%"></span>').join('')+'</div><div class="ex-allocation-key">'+groups.map((p,i)=>'<div><i class="ex-slice-'+i+'"></i><span>'+esc(p.label)+'</span><strong>'+p.share.toFixed(1)+'%</strong></div>').join('')+'</div><p class="ex-muted">Share of priced long holdings · '+s.pricedCount+' / '+s.positions.length+' valued. Excludes cash and options.</p>';
+  }
+  function breadthVisual(s) {
+    const b=M.breadth(s.positions),labels={up:'Up',down:'Down',flat:'Flat',missing:'No quote'};
+    return '<div class="ex-breadth">'+Object.entries(b).map(([key,n])=>'<div class="ex-breadth-'+key+'"><strong>'+n+'</strong><span>'+labels[key]+'</span></div>').join('')+'</div>';
+  }
+  function timeline(events,empty) {
+    return events.length?'<ol class="ex-timeline">'+events.map(e=>'<li><div><strong>'+esc(e.label)+'</strong><time>'+esc(date(e.at))+'</time></div>'+(e.detail?'<p class="ex-muted">'+esc(e.detail)+'</p>':'')+'</li>').join('')+'</ol>':'<div class="ex-empty">'+icon('activity')+'<p>'+esc(empty)+'</p></div>';
+  }
   function renderToday() {
     const s=model(), d=window.__DATA, name=account()==='agentic'?'Agentic':'Self-directed';
     let html='<h1>Your daily brief.</h1><p class="ex-muted">'+esc(name)+' · '+esc(d?.generatedAtLabel || 'No published snapshot loaded')+'</p>';
@@ -96,22 +121,26 @@
       : '<span>Cash '+esc(money(s.cash))+'</span>';
     const cta=(key,text)=>'<button type="button" class="ex-cta" data-ex-route="'+key+'">'+esc(text)+'</button>';
     html+='<div class="ex-brief-hero"><div><div class="ex-label">Account value</div><div class="ex-hero-value">'+money(s.equity)+'</div><div class="ex-hero-meta"><span>'+s.positions.length+' holdings</span>'+cashChip+'</div>'+jump('performance','Performance & benchmarks')+'</div><div class="ex-move-tile"><div class="ex-label">'+esc(dayLabel)+'</div><div class="ex-daily-value ex-'+tone+'">'+money(s.day)+'</div><div class="ex-coverage"><span style="width:'+(s.positions.length?s.dayCoverage/s.positions.length*100:0)+'%"></span></div><p class="ex-muted">Quotes on '+s.dayCoverage+' / '+s.positions.length+' names. Stocks only.</p></div></div>';
-    html+='<div class="ex-brief-grid">'+card('What moved',movers?movers+'<div class="ex-axis"><span>Detractors</span><span>Contributors</span></div><p class="ex-muted">Top names by absolute dollar move from captured quotes. Cash flows and option changes are excluded.</p>'+jump('heatmap','Open heatmap'):unavailable('Previous-close quotes are missing.'));
-    html+=card('Where the weight sits',largest?'<div class="ex-exposure"><div class="ex-ring" style="--share:'+share.toFixed(1)+'%" role="img" aria-label="Largest holding represents '+share.toFixed(1)+' percent of priced long holdings"><div><strong>'+share.toFixed(0)+'%</strong><small>of longs</small></div></div><div><div class="ex-label">Largest holding</div><div class="ex-number">'+esc(largest.symbol)+'</div><div class="ex-holding-val">'+money(largest.value)+'</div><p class="ex-muted">'+(weight===null?'Equity share unavailable':weight.toFixed(1)+'% of account equity. Margin can make a long look larger than the book.')+'</p></div></div>'+jump('risk','Risk & allocation'):unavailable('Position valuations are unavailable.'));
-    html+='<section class="ex-card ex-next-card"><div class="ex-next-head"><div><div class="ex-label">Next</div><h2>Action Center</h2></div><div class="ex-plan-mark" aria-hidden="true">→</div></div>'+(s.target?row('Research date',esc(s.target.asOf || 'Not recorded'))+row('Recorded ticket',esc(s.pending?.status || 'No ticket in snapshot'))+'<p class="ex-muted">Cash-raising, redeployment, and Picks — using this account’s rules.</p>'+cta('plan','Open the plan')+jump('decisions','Read the research & sources'):'<p class="ex-muted">Cash-raising, redeployment, and Picks — using this account’s rules.</p>'+cta('plan','Open the plan'))+'</section>';
-    html+='<p class="ex-muted ex-brief-age">Published snapshot · '+esc(ageText(s.generatedAt))+' · '+esc(date(s.generatedAt))+'. '+jump('activity','Inspect data & routine status')+'</p></div>';
+    html+='<div class="ex-brief-grid">'+card('Account value over time',historyChart(),true)+card('What moved',breadthVisual(s)+(movers?movers+'<div class="ex-axis"><span>Detractors</span><span>Contributors</span></div><p class="ex-muted">Top names by absolute dollar move from captured quotes. Cash flows and option changes are excluded.</p>'+jump('heatmap','Open heatmap'):unavailable('Previous-close quotes are missing.')));
+    html+=card('Where the weight sits',largest?'<div class="ex-exposure"><div class="ex-ring" style="--share:'+share.toFixed(1)+'%" role="img" aria-label="Largest holding represents '+share.toFixed(1)+' percent of priced long holdings"><div><strong>'+share.toFixed(0)+'%</strong><small>of longs</small></div></div><div><div class="ex-label">Largest holding</div><div class="ex-number">'+esc(largest.symbol)+'</div><div class="ex-holding-val">'+money(largest.value)+'</div><p class="ex-muted">'+(weight===null?'Equity share unavailable':weight.toFixed(1)+'% of account equity. Margin can make a long look larger than the book.')+'</p></div></div>'+allocationVisual(s)+jump('risk','Risk & allocation'):unavailable('Position valuations are unavailable.'));
+    html+='<section class="ex-card ex-next-card ex-wide"><div class="ex-next-head"><div><div class="ex-label">Next</div><h2>Action Center</h2></div><div class="ex-plan-mark" aria-hidden="true">→</div></div>'+(s.target?row('Research date',esc(s.target.asOf || 'Not recorded'))+row('Recorded ticket',esc(s.pending?.status || 'No ticket in snapshot'))+'<p class="ex-muted">Cash-raising, redeployment, and Picks — using this account’s rules.</p>'+cta('plan','Open the plan')+jump('decisions','Read the research & sources'):'<p class="ex-muted">Cash-raising, redeployment, and Picks — using this account’s rules.</p>'+cta('plan','Open the plan'))+'</section>';
+    html+='<p class="ex-muted ex-brief-age ex-wide">Published snapshot · '+esc(ageText(s.generatedAt))+' · '+esc(date(s.generatedAt))+'. '+jump('activity','Inspect data & routine status')+'</p></div>';
     $('page-ex-today').innerHTML=html;
   }
   function renderActivity() {
     const s=model(), d=window.__DATA, t=d?.agentic?.target, p=d?.agentic?.pending;
-    let html='<h1>See what actually happened.</h1><p class="ex-muted">Published records and unavailable telemetry are kept separate.</p>';
-    html+='<div class="ex-grid">'+card('Published data',row('Snapshot',esc(d?'Loaded':'Not loaded'),d?date(d.generatedAt):'Unlock the snapshot first.')+row('Snapshot age',esc(ageText(d?.generatedAt)))+row('Selected account',esc(s.available?'Present in snapshot':'Not available'))+row('Agentic account as of',esc(date(d?.agentic?.asOf)))+note('This checks what the app received. It does not verify the current broker balance or prove a scheduled run succeeded.'));
-    html+=card('Research & execution record',row('Agentic target',esc(t?.asOf || 'No target in this snapshot'))+row('Evidence coverage',esc(prettyStatus(t?.research?.status)))+row('Rebalance ticket',esc(p?.status ? prettyStatus(p.status) : 'None in flight'))+row('Ticket completed',p?.completedAt?esc(date(p.completedAt)):'—')+jump('plan','Open the full plan'));
-    html+=card('What this phone app cannot see',row('Last published snapshot',esc(ageText(d?.generatedAt)),d?date(d.generatedAt):'Unlock the snapshot first.')+row('Live Claude Routine heartbeat','Not in this app')+row('Live broker check','Not in this app')+row('Push receipts','Not in this app')+note('A fresh snapshot means a producer run finished and was published. This screen cannot watch Claude Routine, Robinhood, or push while you hold the phone, so those stay unlabeled rather than guessed.'),true);
-    html+=card('Decision history','<p>Use the original account-specific Rebalance Log for filled decisions, grading, and benchmark methodology.</p>'+jump('log','Open this account’s Rebalance Log'));
-    const history=Array.isArray(p?.history)?p.history:[];
-    html+=card('Agentic ticket timeline',history.length?history.slice(-12).map(h=>row(String(h.to || 'Recorded event'),esc(date(h.at)))).join(''):'<p class="ex-muted">No ticket history was included in this snapshot.</p>')+'</div>';
-    $('page-ex-activity').innerHTML=html;
+    const name=account()==='agentic'?'Agentic':'Self-directed';
+    let html='<h1>See what actually happened.</h1><p class="ex-muted">Published records, with a clear view of what is available.</p>';
+    html+='<div class="ex-status-strip"><div>'+icon('activity')+'<span class="ex-label">Published snapshot</span><strong>'+esc(d?ageText(d.generatedAt):'Not loaded')+'</strong></div><div><span class="ex-label">'+esc(name)+' account</span><strong>'+esc(s.available?'Present in snapshot':'Not available')+'</strong></div><div><span class="ex-label">Agentic ticket</span><strong>'+esc(p?.status?prettyStatus(p.status):d?'None in flight':'Not available')+'</strong></div></div>';
+    html+='<div class="ex-grid">'+card('Published data',row('Snapshot',esc(d?'Loaded':'Not loaded'),d?date(d.generatedAt):'Unlock the snapshot first.')+row('Snapshot age',esc(ageText(d?.generatedAt)))+row('Selected account',esc(s.available?'Present in snapshot':'Not available'))+row('Agentic account as of',esc(date(d?.agentic?.asOf)))+note('This checks what the app received. Snapshot age is elapsed time, not a live broker or Routine health check.'));
+    html+=card('Research & execution record',row('Agentic target',esc(t?.asOf || 'No target in this snapshot'))+row('Evidence coverage',esc(prettyStatus(t?.research?.status)))+row('Rebalance ticket',esc(p?.status ? prettyStatus(p.status) : d?'None in flight':'Not available'))+row('Ticket completed',p?.completedAt?esc(date(p.completedAt)):'—')+'<p class="ex-muted">These research and ticket records belong to the Agentic account.</p>'+jump('plan',account()==='agentic'?'Open the full plan':'Open selected account’s plan'));
+    const events=[{label:'Snapshot published',at:d?.generatedAt,detail:'Data received by this app.'},{label:'Agentic account captured',at:d?.agentic?.asOf},{label:'Agentic research dated',at:t?.asOf}].filter(e=>M.age(e.at)!==null).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
+    html+=card('Published record timeline',timeline(events,'No dated records are available. Unlock a published snapshot to see them.')+'<p class="ex-muted">Dates from the snapshot; this is not a live execution feed.</p>');
+    const history=(Array.isArray(p?.history)?p.history:[]).filter(h=>h && M.age(h.at)!==null).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)).slice(-12).reverse();
+    html+=card('Agentic ticket timeline',timeline(history.map(h=>({label:prettyStatus(h.to || 'Recorded event'),at:h.at})),'No dated ticket history was included in this snapshot.'));
+    html+=card('Decision history','<p>Review '+esc(name.toLowerCase())+' filled decisions, grading, and benchmark methodology.</p>'+jump('log','Open this account’s Rebalance Log'));
+    html+=card('What this app cannot see','<details class="ex-telemetry"><summary>Live services · not in this app</summary>'+row('Live Claude Routine heartbeat','Not in this app')+row('Live broker check','Not in this app')+row('Push receipts','Not in this app')+note('A fresh snapshot means a producer run finished and was published. This screen cannot watch Claude Routine, Robinhood, or push while you hold the phone.')+'</details>');
+    $('page-ex-activity').innerHTML=html+'</div>';
   }
   function renderDecisions() {
     const target=window.__DATA?.agentic?.target;

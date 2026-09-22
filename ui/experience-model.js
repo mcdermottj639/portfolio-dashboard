@@ -39,7 +39,7 @@
       accountAsOf: agentic ? data?.agentic?.asOf || null : null,
       target: agentic ? data?.agentic?.target || null : null,
       pending: agentic ? data?.agentic?.pending || null : null,
-      contributors: [...daily].sort((a, b) => Math.abs(b.day) - Math.abs(a.day)).slice(0, 3)
+      contributors: [...daily].sort((a, b) => Math.abs(b.day) - Math.abs(a.day)).slice(0, 5)
     };
   }
   function age(iso, now = Date.now()) {
@@ -47,6 +47,33 @@
     const stamp = Date.parse(iso);
     if (!Number.isFinite(stamp) || stamp > now + 60000) return null;
     return Math.max(0, (now - stamp) / 60000);
+  }
+  // Value history is deliberately NOT a return series: external flows remain included.
+  function valueHistory(data, account) {
+    const raw = data?.[account === 'agentic' ? 'agentic' : 'main']?.equityHistory;
+    const points = new Map();
+    for (const p of Array.isArray(raw) ? raw : []) {
+      const stamp = typeof p?.t === 'string' ? Date.parse(p.t) : NaN;
+      const equity = number(p?.equity);
+      if (Number.isFinite(stamp) && equity !== null) points.set(stamp, {t:p.t, stamp, equity});
+    }
+    return [...points.values()].sort((a,b)=>a.stamp-b.stamp).slice(-30);
+  }
+  function composition(positions) {
+    const priced = positions.filter(p => number(p.value) !== null && p.value > 0).sort((a,b)=>b.value-a.value);
+    const total = priced.reduce((sum,p)=>sum+p.value,0);
+    const groups = priced.slice(0,3).map(p=>({label:p.symbol,value:p.value}));
+    const other = priced.slice(3).reduce((sum,p)=>sum+p.value,0);
+    if (other > 0) groups.push({label:'Other',value:other});
+    return groups.map(p=>({...p,share:p.value/total*100}));
+  }
+  function breadth(positions) {
+    const counts = {up:0,down:0,flat:0,missing:0};
+    for (const p of positions) {
+      const day=number(p.day);
+      counts[day===null?'missing':day>0?'up':day<0?'down':'flat']++;
+    }
+    return counts;
   }
   function scenario({ equity, positionValue, shockPct, shiftPct, costBps }) {
     const values = [equity, positionValue, shockPct, shiftPct, costBps].map(number);
@@ -68,5 +95,5 @@
         href: typeof e.source === 'string' && /^https:\/\//i.test(e.source) ? e.source : null
       })));
   }
-  return { number, snapshot, age, scenario, evidence };
+  return { number, snapshot, age, valueHistory, composition, breadth, scenario, evidence };
 });
