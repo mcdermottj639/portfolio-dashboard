@@ -998,6 +998,90 @@
           "weightAfter": 0
         }
       ]
+    },
+    {
+      "modelVersion": "legacy-unversioned",
+      "mandateVersion": "legacy-unversioned",
+      "riskVersion": "legacy-unversioned",
+      "targetId": "0873441e43e53ffd7747",
+      "factorWeights": null,
+      "universeVersion": null,
+      "evidenceCoverage": null,
+      "id": "2026-09-23-rebalance",
+      "date": "2026-09-23",
+      "kind": "rebalance",
+      "targetAsOf": "2026-09-14",
+      "book": 13336.85,
+      "equityAtDecision": 13336.85,
+      "spyAt": 768.56,
+      "rationale": "EXEC_AUTO ticket 2026-09-23-fohkat: five underweight target names topped up with idle cash ($254.30 turnover, no sells). NVDA and LLY deferred above their entry bands ($92.09 of intended weight held). Entry zones 9d old — below-entry advisory, above-entry still binding. Drawdown ok (-2.3pp relative), regime calm (VIX 14.2).",
+      "trades": [
+        {
+          "sym": "MA",
+          "side": "BUY",
+          "dollars": 49.77,
+          "shares": 0.08819,
+          "priceAt": 564.348,
+          "weightBefore": 6.8,
+          "weightAfter": 8.8,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 65.34,
+          "shares": 0.085001,
+          "priceAt": 768.6882,
+          "weightBefore": 4.5,
+          "weightAfter": 7.12,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "UNP",
+          "side": "BUY",
+          "dollars": 46.9,
+          "shares": 0.169169,
+          "priceAt": 277.2368,
+          "weightBefore": 4.82,
+          "weightAfter": 6.7,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "NEM",
+          "side": "BUY",
+          "dollars": 64.47,
+          "shares": 0.528876,
+          "priceAt": 121.8999,
+          "weightBefore": 3.7,
+          "weightAfter": 6.29,
+          "drivers": [
+            "momentum",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 27.82,
+          "shares": 0.082615,
+          "priceAt": 336.7399,
+          "weightBefore": 4.33,
+          "weightAfter": 5.45,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        }
+      ]
     }
   ]
 }
