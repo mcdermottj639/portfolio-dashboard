@@ -1082,6 +1082,98 @@
           ]
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v2",
+      "targetId": "b3f1b35660b974922e53",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "eaadd513e31f43b4995e",
+      "evidenceCoverage": 0.7377049180327869,
+      "id": "2026-09-24-rebalance",
+      "date": "2026-09-24",
+      "kind": "rebalance",
+      "targetAsOf": "2026-09-24",
+      "book": 13255.62,
+      "equityAtDecision": 13255.62,
+      "spyAt": 766.05,
+      "rationale": "EXEC_AUTO ticket 2026-09-24-wrmfp4: exited JPM (-$29.45, not in current target) and SHEL (+$70.80, not in current target); proceeds + cash funded underweight LLY/NEM/SPY/AVGO toward target. KO deferred to re-entry cooldown (until 2026-09-28, $1,157.63 held in cash — sub-floor top-up left in VTI). Drawdown ok (-3.2pp relative to SPY), regime calm (VIX 15.7). Turnover $3,248.48.",
+      "trades": [
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 173.39,
+          "shares": 0.145035,
+          "priceAt": 1195.5,
+          "weightBefore": 7.06,
+          "weightAfter": 8.79,
+          "drivers": [
+            "growth",
+            "quality",
+            "catalyst"
+          ]
+        },
+        {
+          "sym": "NEM",
+          "side": "BUY",
+          "dollars": 600.03,
+          "shares": 4.949113,
+          "priceAt": 121.2399,
+          "weightBefore": 4.2,
+          "weightAfter": 10.18,
+          "drivers": [
+            "momentum"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 425.31,
+          "shares": 0.55522,
+          "priceAt": 766.0199,
+          "weightBefore": 4.99,
+          "weightAfter": 9.23
+        },
+        {
+          "sym": "AVGO",
+          "side": "BUY",
+          "dollars": 428.3,
+          "shares": 1.230323,
+          "priceAt": 348.1199,
+          "weightBefore": 0,
+          "weightAfter": 4.27,
+          "drivers": [
+            "growth",
+            "quality"
+          ]
+        },
+        {
+          "sym": "JPM",
+          "side": "TRIM",
+          "dollars": 519.15,
+          "shares": 1.536955,
+          "priceAt": 337.7786,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "SHEL",
+          "side": "TRIM",
+          "dollars": 1108.55,
+          "shares": 11.474137,
+          "priceAt": 96.6152,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }

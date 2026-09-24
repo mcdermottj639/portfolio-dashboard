@@ -1,113 +1,130 @@
 {
-  "id": "2026-09-23-fohkat",
-  "created": "2026-09-23",
-  "targetId": "0873441e43e53ffd7747",
-  "modelVersion": "legacy-unversioned",
-  "mandateVersion": "legacy-unversioned",
-  "riskVersion": "legacy-unversioned",
-  "factorWeights": null,
-  "universeVersion": null,
+  "id": "2026-09-24-wrmfp4",
+  "created": "2026-09-24",
+  "targetId": "b3f1b35660b974922e53",
+  "modelVersion": "mandate-a-ai-evidence-v1",
+  "mandateVersion": "A-2026-09-08",
+  "riskVersion": "hard-caps-v2",
+  "factorWeights": {
+    "momentum": 0.22,
+    "quality": 0.24,
+    "growth": 0.22,
+    "catalyst": 0.14,
+    "valuation": 0.18,
+    "flow": 0
+  },
+  "universeVersion": "eaadd513e31f43b4995e",
   "status": "done",
   "autoEligible": true,
-  "turnover": 254.3,
-  "book": 13336.85,
-  "planHash": "s[]b[AAPL:28,MA:50,NEM:64,SPY:65,UNP:47]t[]",
+  "turnover": 3248.48,
+  "book": 13214.92,
+  "planHash": "s[JPM:517,SHEL:1105]b[AVGO:428,LLY:173,NEM:600,SPY:425]t[]",
   "legs": {
-    "sells": [],
+    "sells": [
+      {
+        "sym": "JPM",
+        "kind": "exit",
+        "dollars": 516.83,
+        "shares": 1.536955,
+        "price": 336.27,
+        "pl": -29.45,
+        "note": "not in the current target — exit funds the underweight names"
+      },
+      {
+        "sym": "SHEL",
+        "kind": "exit",
+        "dollars": 1104.62,
+        "shares": 11.474137,
+        "price": 96.27,
+        "pl": 70.8,
+        "note": "not in the current target — exit funds the underweight names"
+      }
+    ],
     "buysNow": [
       {
-        "sym": "MA",
+        "sym": "LLY",
         "kind": "buy",
-        "dollars": 49.77,
-        "shares": 0.08819,
-        "price": 564.348,
+        "dollars": 173.39,
+        "shares": 0.1478,
+        "price": 1172.81,
         "pl": null,
-        "note": "6.8% → 8.8% target"
-      },
-      {
-        "sym": "SPY",
-        "kind": "buy",
-        "dollars": 65.34,
-        "shares": 0.085001,
-        "price": 768.6882,
-        "pl": null,
-        "note": "4.5% → 7.12% target"
-      },
-      {
-        "sym": "UNP",
-        "kind": "buy",
-        "dollars": 46.9,
-        "shares": 0.169169,
-        "price": 277.2368,
-        "pl": null,
-        "note": "4.8% → 6.7% target"
+        "note": "7.1% → 8.79% target"
       },
       {
         "sym": "NEM",
         "kind": "buy",
-        "dollars": 64.47,
-        "shares": 0.528876,
-        "price": 121.8999,
+        "dollars": 600.03,
+        "shares": 4.9268,
+        "price": 121.79,
         "pl": null,
-        "note": "3.7% → 6.29% target"
+        "note": "4.2% → 10.18% target"
       },
       {
-        "sym": "AAPL",
+        "sym": "SPY",
         "kind": "buy",
-        "dollars": 27.82,
-        "shares": 0.082615,
-        "price": 336.7399,
+        "dollars": 425.31,
+        "shares": 0.556,
+        "price": 764.88,
         "pl": null,
-        "note": "4.3% → 5.45% target"
+        "note": "5.0% → 9.23% target"
+      },
+      {
+        "sym": "AVGO",
+        "kind": "buy",
+        "dollars": 428.3,
+        "shares": 1.2267,
+        "price": 349.16,
+        "pl": null,
+        "note": "0.0% → 4.27% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0,
-    "realizedLoss": 0,
-    "net": 0,
+    "realizedGain": 70.8,
+    "realizedLoss": -29.45,
+    "net": 41.35,
     "term": "short",
-    "note": null
+    "note": "harvested losses offset the gains — net is ST, taxed as ordinary income"
   },
   "deferred": [
     {
-      "sym": "NVDA",
-      "reason": "above-entry",
-      "until": null
-    },
-    {
-      "sym": "LLY",
-      "reason": "above-entry",
-      "until": null
+      "sym": "KO",
+      "reason": "reentry",
+      "until": "2026-09-28"
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "2 name(s) deferred (NVDA, LLY) — ~$92.09 of intended weight held pending earnings/re-verify/wash-sale",
-    "$5.59 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "entry zones are 9d old (target asOf 2026-09-14) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up"
+    "buys re-sized $1,659.23 → $1,627.03: the $32.19 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
+    "$1,157.63 of deferred weight (KO) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "1 name(s) deferred (KO) — ~$1,157.63 of intended weight held pending earnings/re-verify/wash-sale"
   ],
   "history": [
     {
-      "at": "2026-09-23",
+      "at": "2026-09-24",
       "to": "proposed"
     },
     {
-      "at": "2026-09-23",
+      "at": "2026-09-24",
       "to": "confirmed"
     },
     {
-      "at": "2026-09-23",
+      "at": "2026-09-24",
+      "to": "sells-placed"
+    },
+    {
+      "at": "2026-09-24",
       "to": "buys-placed"
     },
     {
-      "at": "2026-09-23",
+      "at": "2026-09-24",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-09-23",
-  "buys-placedAt": "2026-09-23",
-  "doneAt": "2026-09-23",
-  "completedAt": "2026-09-23T14:22:55.511Z"
+  "confirmedAt": "2026-09-24",
+  "sells-placedAt": "2026-09-24",
+  "buys-placedAt": "2026-09-24",
+  "doneAt": "2026-09-24",
+  "completedAt": "2026-09-24T14:24:36.414Z"
 }
