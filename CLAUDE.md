@@ -1,6 +1,6 @@
 # CLAUDE.md — Portfolio Dashboard
 
-## 2026-09-24 — research cost: 22 agents → 6, and a fortnightly cadence
+## 2026-09-24 — research cost: 22 agents → 7, and a fortnightly cadence
 
 The weekly research was measured, not estimated: **per-agent fixed context on this harness is ~177k
 tokens** — a one-word, zero-tool subagent costs that before it reasons — so the dominant expense of

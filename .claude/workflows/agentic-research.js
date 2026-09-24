@@ -122,21 +122,17 @@ if (U.some(u=>!Array.isArray(u.evidence)||!u.evidence.length)) {
 }
 const baseline = JSON.stringify(U)
 
-// USAGE (2026-09-24): quality, growth and catalyst were three agents that EACH re-read the whole
-// universe. Per-agent fixed context measured ~177k tokens on this harness — a one-word, zero-tool
-// subagent costs that before it thinks — so three passes cost three floors AND three copies of the
-// universe. One agent scoring all three factors in a single pass returns the identical downstream
-// shape (see splitOf) at roughly a third of the cost. Momentum stays separate: it is the sleeve whose
-// data (bars/RS) the PRODUCER already holds, and it is next to move into code entirely.
-const MULTI_SLEEVE_SCHEMA = { type:'object', additionalProperties:false,
-  properties:{ scores:{ type:'array', items:{ type:'object', additionalProperties:false,
-    properties:{ ticker:{type:'string'},
-      quality:{type:['number','null']}, qualityNote:{type:'string'},
-      growth:{type:['number','null']}, growthNote:{type:'string'},
-      catalyst:{type:['number','null']}, catalystNote:{type:'string'},
-      status:{type:'string',enum:['observed','missing']}, evidence:EVIDENCE_SCHEMA },
-    required:['ticker','quality','qualityNote','growth','growthNote','catalyst','catalystNote','status','evidence'] } } },
-  required:['scores'] }
+// USAGE (2026-09-24) — MERGING THE THREE SLEEVES INTO ONE AGENT WAS TRIED AND REVERTED THE SAME DAY.
+// The idea was sound on cost (per-agent fixed context is ~177k tokens here, so three passes over one
+// universe pay three floors). It failed on BEHAVIOUR: asked for three factors x 61 names = 183 scored
+// fields with evidence in a single pass, the agent made ZERO ToolSearch and ZERO MCP calls and returned
+// all 61 rows as status:'missing' — taking the "a missing factor is not a neutral 5" escape hatch
+// wholesale rather than fetching anything. The single-factor agents, same tools and same model, made 3
+// ToolSearch and 14 data calls and returned real scores with citations.
+// THE LESSON: an agent's willingness to do the work is a function of how large the ask looks, and an
+// explicit abstention path turns "too big" into a clean-looking empty result rather than an error. If
+// this is retried, cut the universe per agent (e.g. two agents of ~30 names each scoring all three
+// factors) rather than widening what one agent must produce, and assert a minimum observed rate.
 const SLEEVE_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ scores:{ type:'array', items:{ type:'object', additionalProperties:false,
     properties:{ ticker:{type:'string'}, score:{type:['number','null']}, note:{type:'string'}, status:{type:'string',enum:['observed','missing']}, evidence:EVIDENCE_SCHEMA },
@@ -188,21 +184,22 @@ if (PRE_MOM) {
 }
 const _sleeveCalls = []
 if (!PRE_MOM) _sleeveCalls.push(()=>agent(`Score this universe on MOMENTUM / relative strength (0-10) for a swing-to-position portfolio. Assess price vs 50/200-DMA, 3- and 6-month RS vs SPY, recent trend. Use RH historicals + quotes; optionally AV SMA/MACD. ${toolHint}\n10 = strong sustained uptrend above rising 50/200-DMA + positive RS; 5 = basing; 0 = broken downtrend. A name deep below its MAs scores LOW.\nUniverse: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'momentum', effort:'medium'}))
-_sleeveCalls.push(()=>agent(`Score this universe on THREE factors in ONE pass. For EVERY ticker return quality, growth and catalyst (each 0-10 or null) with a short note for each. ${toolHint}
-QUALITY — ROE, margins and their trend, FCF, leverage; RH get_financials + fundamentals (PE/PB), AV COMPANY_OVERVIEW/BALANCE_SHEET where reachable. 10 = high ROE, fat stable margins, strong FCF, low leverage; 0 = unprofitable / over-levered / value trap. Penalize negative earnings hard.
-GROWTH — revenue and EPS growth YoY and whether the RATE is rising or fading, plus estimate-revision direction and surprise history. 10 = strong/accelerating growth WITH upward revisions; 0 = shrinking with downward revisions.
-CATALYST — upcoming earnings proximity, news tone, analyst ratings/target, insider open-market activity. 10 = positive news + insider buying + favorable setup; 0 = negative sentiment / insider selling / overhang. An earnings report within ~2 weeks is a RISK for a fresh entry — nudge DOWN and flag it.
-Score the three INDEPENDENTLY: a wonderful business with fading growth is quality 9 / growth 3, not 6/6. Set status 'missing' and the score null for any factor you could not observe — a missing factor is NOT a neutral 5.
-Universe: ${baseline}`, {schema:MULTI_SLEEVE_SCHEMA, phase:'Sleeves', label:'quality+growth+catalyst', effort:'medium', model:'sonnet'}))
+_sleeveCalls.push(()=>agent(`Score this universe on QUALITY (0-10). Use AV COMPANY_OVERVIEW (ROE, margins) + BALANCE_SHEET/CASH_FLOW (leverage, FCF) + RH fundamentals (PE/PB) and RH get_financials. ${toolHint}
+10 = high ROE, fat stable margins, strong FCF, low leverage; 0 = unprofitable / over-levered / value trap. Penalize negative earnings hard.
+Universe: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'quality', effort:'medium', model:'sonnet'}))
+_sleeveCalls.push(()=>agent(`Score this universe on GROWTH & ESTIMATE REVISIONS (0-10). Use RH get_financials for revenue/EPS YoY and whether the RATE is rising or fading, AV COMPANY_OVERVIEW growth fields, EARNINGS_ESTIMATES (forward EPS revision direction), EARNINGS (surprise history). ${toolHint}
+10 = strong/accelerating rev+EPS growth WITH upward revisions + positive surprises; 0 = shrinking with downward revisions.
+Universe: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'growth', effort:'medium', model:'sonnet'}))
+_sleeveCalls.push(()=>agent(`Score this universe on CATALYSTS & SENTIMENT (0-10). Use RH earnings calendar/results, RH analyst ratings, RH news, AV NEWS_SENTIMENT, AV INSIDER_TRANSACTIONS (insider buying bullish). ${toolHint}
+10 = positive news + insider buying + favorable setup; 0 = negative sentiment / insider selling / overhang. An earnings report within ~2 weeks is a RISK for a fresh entry — nudge DOWN and flag it.
+Universe: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'catalyst', effort:'medium', model:'sonnet'}))
 const _sleeveOut = await parallel(_sleeveCalls)
+const _off = PRE_MOM ? 0 : 1
 const mom = PRE_MOM || _sleeveOut[0]
-const qgc = _sleeveOut[_sleeveOut.length-1]
+const [qual, growth, cat] = [_sleeveOut[_off], _sleeveOut[_off+1], _sleeveOut[_off+2]]
 
 const mapOf=(r)=>{ const m={}; if(r&&Array.isArray(r.scores)) for(const s of r.scores){ if(s&&s.ticker) m[String(s.ticker).toUpperCase()]=s; } return m }
-const splitOf=(r,key)=>{ const m={}; if(r&&Array.isArray(r.scores)) for(const x of r.scores){ if(!x||!x.ticker) continue;
-  const v=x[key]; m[String(x.ticker).toUpperCase()]={ ticker:x.ticker, score:v, note:x[key+'Note']||'',
-    status:(typeof v==='number')?'observed':'missing', evidence:x.evidence||[] } } return m }
-const M=mapOf(mom), Q=splitOf(qgc,'quality'), G=splitOf(qgc,'growth'), C=splitOf(qgc,'catalyst')
+const M=mapOf(mom), Q=mapOf(qual), G=mapOf(growth), C=mapOf(cat)
 const sc=(m,t)=>{ const x=m[t]; return x&&x.status==='observed'&&typeof x.score==='number'&&x.evidence&&x.evidence.length?Math.max(0,Math.min(10,x.score)):null }
 const note=(m,t)=>{ const x=m[t]; return x&&x.note?x.note:'' }
 const valOf=(u)=>{ let peS; const pe=u.pe; if(!(pe>0))peS=2.5; else if(pe<=12)peS=9; else if(pe<=18)peS=8; else if(pe<=25)peS=6.5; else if(pe<=35)peS=5; else if(pe<=50)peS=3.5; else peS=2;

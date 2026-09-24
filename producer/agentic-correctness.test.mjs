@@ -116,7 +116,6 @@ test('scheduled research rejects incomplete evidence without touching canonical 
     if(opts.label==='source-inputs') return {rows:universe};
     if(opts.label==='synthesize') return {summary:'Synthetic proposal',picks};
     if(opts.label.startsWith('verify:')) return {verdicts:opts.label.slice(7).split('+').map(ticker=>({ticker,businessOk:true,recommendation:'buy',confidence:8,supports:true,entryQuality:6,biggestRisk:'test',entryRisk:'test',evidence}))};
-    if(opts.label==='quality+growth+catalyst') return {scores:symbols.map(ticker=>({ticker,quality:8,qualityNote:'Synthetic test',growth:8,growthNote:'Synthetic test',catalyst:8,catalystNote:'Synthetic test',status:'observed',evidence}))};
     return {scores:symbols.map(ticker=>({ticker,score:8,status:'observed',note:'Synthetic test',evidence}))};
   };
   // Old server-side args shape: no evidence. The workflow's source-inputs stage must fill it.
