@@ -127,3 +127,36 @@ export function momentumScores({ symbols, histDay, quotes, asOf, benchSymbol = '
   };
   return { scores: (symbols || []).map(s => momentumFor(s, (histDay || {})[s], spy, pxOf(s), asOf)) };
 }
+
+// CLI (2026-09-24) — what the weekly research Routine runs for its step 3b, so the prompt names a
+// command instead of carrying hand-edited JS:
+//   node producer/momentum.mjs --symbols AAPL,MSFT,... [--out producer/raw/momentum.json]
+// Reads the COMMITTED data.json (PF_PASSPHRASE decrypts it; a plaintext sample works too) and prints
+// or writes { scores:[...] } — the exact args.momentum shape. Symbols only reach the log, never money.
+if (process.argv[1] && import.meta.url === (await import('node:url')).pathToFileURL(process.argv[1]).href) {
+  const { readFileSync, writeFileSync, mkdirSync } = await import('node:fs');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const argv = process.argv.slice(2);
+  const opt = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : null; };
+  const symbols = String(opt('--symbols') || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (!symbols.length) { console.error('usage: node producer/momentum.mjs --symbols A,B,C [--out file]'); process.exit(2); }
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  let d = JSON.parse(readFileSync(join(root, 'data.json'), 'utf8'));
+  if (d && d.enc) {
+    if (!process.env.PF_PASSPHRASE) { console.error('momentum: data.json is encrypted and PF_PASSPHRASE is not set'); process.exit(3); }
+    const { decryptEnvelope } = await import('./emit.mjs');
+    d = await decryptEnvelope(d, process.env.PF_PASSPHRASE);
+  }
+  const res = momentumScores({ symbols, histDay: (d.hist || {}).day, quotes: d.quotes, asOf: String(d.generatedAt || '').slice(0, 10) });
+  const scored = res.scores.filter(s => s && s.score != null).length;
+  const out = opt('--out');
+  if (out) {
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, JSON.stringify(res));
+    console.log(`momentum: ${scored}/${symbols.length} scored -> ${out}`);
+  } else {
+    console.log(JSON.stringify(res));
+    console.error(`momentum: ${scored}/${symbols.length} scored`);
+  }
+}

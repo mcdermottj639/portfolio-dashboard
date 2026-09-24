@@ -149,7 +149,7 @@ The compaction halved its bytes anyway. If revisited, test the shallow **push** 
 
 #
 > **CADENCE (2026-09-24): the research is FORTNIGHTLY, and the cron did NOT change.** It still fires
-> `12 11 * * 1` every Monday; `producer/agentic-due.mjs` gates it to alternate weeks (anchored to
+> `12 23 * * 0` every Sunday (moved from Monday `12 11 * * 1` on 2026-09-15); `producer/agentic-due.mjs` gates it to alternate weeks (anchored to
 > `FORTNIGHT_EPOCH` 2026-01-05), so the off-week fire prints `AGENTIC_NOT_DUE` and stops in seconds.
 > Nothing in the Routine's server-side config needs editing for this — which matters, because that
 > config is the one thing a session cannot reliably change. The reason for the change is the churn
@@ -165,7 +165,7 @@ be set to; re-check it whenever a Routine misbehaves, because the failure mode i
 
 | | **Portfolio dashboard refresh** | **Agentic weekly research** | **Agentic executor** |
 |---|---|---|---|
-| Cron (UTC) | `35 * * * *` | `12 11 * * 1` | `20 14-20 * * 1-5` |
+| Cron (UTC) | `35 * * * *` | `12 23 * * 0` (Sunday; was `12 11 * * 1` until 2026-09-15) | `20 14-20 * * 1-5` |
 | Connectors | Robinhood + Alpha Vantage | Robinhood + Alpha Vantage | Robinhood |
 | Session | fresh per fire (already) | **fresh per fire** — `trig_0114s3r8yBA7rQXLsBY7MG1y` since 2026-09-09. It was **bound to an interactive session** 2026-09-02 → 09-09 (`trig_01YRmfzy…`, then `trig_01Ucxm…`); that session died and the binding took the Routine with it — see below | fresh per fire — `trig_01Cy4shsbcDMX2HKvCLXrJos`, live since 2026-09-08 |
 | Model | *unset* — served by `claude-sonnet-5` on 09-02; **the owner should pin it** | `claude-opus-5` (pinned via `update_trigger` at creation — the 09-09 fallback run with `model:""` came up on Sonnet 5) | `claude-opus-5` |
@@ -345,12 +345,7 @@ Step 0 — get the repo CHEAPLY, and never any other way. The history is >1.7GB 
 Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and stop. AGENTIC_DUE → continue, following producer/PRODUCER.md step 7 exactly (it is the source of truth):
   2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
   3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo, evidence:[{source,asOf,claim}]} (real provider source and underlying data date; the workflow fetches missing provenance), with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
-  3b. Momentum is CODE, not an agent (2026-09-24). From the decrypted snapshot run:
-      node -e "import('./producer/momentum.mjs').then(async M=>{const {decryptEnvelope}=await import('./producer/emit.mjs');const d=await decryptEnvelope(JSON.parse(require('fs').readFileSync('data.json','utf8')),process.env.PF_PASSPHRASE);const syms=/*the universe tickers*/;console.log(JSON.stringify(M.momentumScores({symbols:syms,histDay:d.hist.day,quotes:d.quotes,asOf:d.generatedAt.slice(0,10)})))})"
-      and pass the result as args.momentum. It scores off data.hist.day — bars the producer already
-      holds — so this replaces the heaviest-fetching sleeve agent entirely. If you omit it the
-      workflow LOGS that it is falling back to the momentum agent and runs as before: it degrades,
-      it does not break, so a stale copy of this prompt is safe.
+  3b. Momentum is CODE, not an agent (2026-09-24). Run `node producer/momentum.mjs --symbols <every universe ticker from step 3, comma-separated> --out producer/raw/momentum.json` (it decrypts the committed data.json with PF_PASSPHRASE and scores off data.hist.day — bars the producer already holds) and pass that file's contents ({scores:[...]}) as args.momentum. This replaces the heaviest-fetching sleeve agent. If the command fails, continue WITHOUT args.momentum — the workflow logs that it is falling back to the momentum agent and runs as before (it degrades, it does not break).
   4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, momentum:<step 3b>, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
   5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main`. If the push is REJECTED because main moved (the producer commits hourly at ~:41): save your commit's hash `C=$(git rev-parse HEAD)`, then `git fetch --depth 1 origin main && git checkout -f -B pf-research FETCH_HEAD && git checkout $C -- producer/agentic-target.json`, commit the target again and push again (up to 3 tries). Never `git reset --soft` here — after a shallow fetch it leaves every file that changed upstream STAGED AS A REVERSION (on 2026-09-09 it staged the producer's previous data.json, which would have rolled back a live snapshot) — and never rebase or merge. If the push is refused 403 "not in this session's authorized repository set", this Routine has no repo SOURCE: call add_repo(owner:"mcdermottj639", repo:"portfolio-dashboard", access:"push") ONCE and retry the push; if it is still refused, PushNotification "research Routine: push denied — select portfolio-dashboard as this Routine's repository in the claude.ai Routine UI" together with the full proposal, and attach producer/agentic-target.json with SendUserFile so the target is not lost. If finalize runs a second time, re-check target.dropped.
   6. PushNotification a concise rebalance proposal (drift vs actual holdings, adds/trims ± dollars, anything over the 5pp trigger; if a HELD name is dropped, say the exit may be held by the 14d min-hold/PDT guard and give the unlock date). PLACE NO ORDERS.
