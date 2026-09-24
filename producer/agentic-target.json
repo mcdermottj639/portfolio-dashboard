@@ -1,89 +1,146 @@
 {
-  "asOf": "2026-09-14",
-  "method": "11 active names plus 3 phase-out holdings (16.19% of the final target). Megacap-tech is 39.82% direct and 42.49% including index look-through. Index vehicles total 7.12%. Defensive exposure is 4.73% direct and 5.65% including index look-through. Gold/bullion exposure is 0.00%. Figures describe the final weights after risk adjustment and phase-out retention. Thesis-review levels are monitored; they are not resting stop orders.",
+  "asOf": "2026-09-24",
   "account": "AGENTIC",
-  "book": 13242,
+  "book": 13196,
   "driftTriggerPp": 5,
   "names": [
     {
       "ticker": "NVDA",
       "sector": "Electronic Technology",
-      "weightPct": 10.06,
-      "entry": "$205-222 (pre-market $212.68 is sitting on the 50-DMA at $212.58; zone brackets it so the FOMC/AI-slowdown gap is bought rather than chased)",
-      "stop": 196,
-      "target": 252,
-      "thesis": "Top composite in the batch (7.83) on growth 9.8 / quality 9.7 with operating margin still expanding 60.8%->66.2% — momentum 6.8 is the only soft sleeve and it is scoring a five-day drawdown, not deterioration.",
+      "weightPct": 9.25,
+      "entry": "$214.00-$228.00 (around the $222.00 live print; 52wk high $236.54 caps the upper band)",
+      "stop": 198,
+      "target": 268,
+      "thesis": "Highest composite in the cohort on growth 10.0 and quality 9.5 — +68.8% sequential-quarter revenue and a sixth straight EPS beat — and the tightest 52wk range (0.32) in the book, so it earns the largest single slot; entry haircut 1.03 (best-in-cohort entry) with RSI 55.7 and price ~6% off the high, not chased.",
+      "singleNameCapPct": 25,
       "drivers": [
         "growth",
         "quality",
-        "catalyst"
-      ]
-    },
-    {
-      "ticker": "AMZN",
-      "sector": "Retail Trade",
-      "weightPct": 9.64,
-      "entry": "$246-261 (spot $255.31 pre-market, essentially on the 50-DMA at $255.25; mid-range consolidation, no momentum tailwind either way)",
-      "stop": 231,
-      "target": 300,
-      "thesis": "Best entry quality in the cohort (5 vs median 3, haircut 1.12) on top of growth 8.3 / catalyst 7.3, with revenue accelerating 13.6%->19.6% and AWS operating income +63.6% — the cleanest risk-adjusted add available.",
-      "drivers": [
-        "growth",
-        "quality",
-        "catalyst"
-      ]
-    },
-    {
-      "ticker": "MSFT",
-      "sector": "Technology Services",
-      "weightPct": 8.8,
-      "entry": "$462-500 (spot $497.21; the July breakout shelf at $465 and the 50-DMA near $461 anchor the low end — reachable, and where the verdict says it becomes buyable)",
-      "stop": 442,
-      "target": 570,
-      "thesis": "Quality 9.6 / momentum 8.3 with operating cash flow +34% to $182.9B and Azure capacity-constrained; the FCF decline is a capex choice, not unit-economics decay, so this is a weight hold near its current 9.35%.",
-      "drivers": [
-        "quality",
-        "momentum",
-        "growth",
-        "catalyst"
-      ]
-    },
-    {
-      "ticker": "MA",
-      "sector": "Finance",
-      "weightPct": 8.8,
-      "entry": "$552-578 (spot $572.24; the 50-DMA at $562.28 is the level to accumulate against after the failed $601.62 retest)",
-      "stop": 516,
-      "target": 655,
-      "thesis": "Quality 9.6 with margins at a series high (47.3%) and NI +18.6%, entry quality 5 (haircut 1.12) and the tightest 52wk range in the book (0.241) — vol-scaling earns it the larger of the two payments slots at ~27x forward vs V's ~28x on triple the EPS growth.",
-      "drivers": [
-        "quality",
-        "growth",
         "momentum"
-      ]
-    },
-    {
-      "ticker": "V",
-      "sector": "Finance",
-      "weightPct": 7.54,
-      "entry": "$358-375 (spot $372.95; only ~1.4% over the 50-DMA, so the pullback from the $385.57 high has already happened)",
-      "stop": 336,
-      "target": 425,
-      "thesis": "Quality 9.6 / momentum 7.6 duopoly at a de-rated 28x forward, sized below MA because net margin fell 3.44pp YoY on client incentives and the honest 12-month expected return (~12-13%) is close to the benchmark this account must beat.",
-      "drivers": [
-        "quality",
-        "momentum",
-        "growth"
       ]
     },
     {
       "ticker": "LLY",
       "sector": "Health Technology",
-      "weightPct": 7.54,
-      "entry": "$1,060-1,130 (spot $1,127.41; resting on 100-DMA support near $1,109 with the June shelf at $1,050 as the lower bound)",
-      "stop": 1005,
-      "target": 1290,
-      "thesis": "Growth 8.5 / catalyst 7.6 / quality 8.8 with 60.9% obesity share and gaining, entry quality 5 at ~31x guided FY26 — held below its composite-implied weight purely on the vol rule (0.52 range/price, the widest name in the book).",
+      "weightPct": 8.79,
+      "entry": "$1,150.00-$1,200.00 (live $1,193.59, just above the $1,176.62 50-DMA; the $1,137 100-DMA is the support below)",
+      "stop": 1090,
+      "target": 1345,
+      "thesis": "Third-highest composite on catalyst 8.0 and growth 9.0 — FDA approval of Onswik plus the Inluriyo/Verzenio full approval, +47.7% YoY revenue and two consecutive ~25-39% EPS beats — reclaiming its 50-DMA after a real 6.8% pullback; sized at 13% rather than higher because the 0.50 52wk range is the second-widest here and CagriSema/VK2735 are live competitive threats to the GLP-1 franchise.",
+      "singleNameCapPct": 20.85,
+      "drivers": [
+        "growth",
+        "quality",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "NEM",
+      "sector": "Non-Energy Minerals",
+      "weightPct": 10.18,
+      "entry": "$115.00-$125.00 (live $121.37, into the sector-wide gold-miner selloff; 50-DMA $113.79 is the floor of the zone)",
+      "stop": 108,
+      "target": 148,
+      "thesis": "Best momentum in the cohort (8.03) and the best entry haircut (1.06) — price above both its 50-DMA ($113.79) and 100-DMA ($109.10), three target raises in 14 days (RBC $155, NBF $140, GS $127.50) and the Fourmile overhang removed; the only genuinely non-tech-correlated return stream in the book, taken on its composite rather than as a hedge, and held below the health/tech leaders because gold-price and real-yield sensitivity is the whole risk.",
+      "singleNameCapPct": 21.91,
+      "drivers": [
+        "momentum"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "sector": "Technology Services",
+      "weightPct": 7.47,
+      "entry": "$475.02-$497.02 (entry-quality 5/10 vs cohort 5.5 → ceiling held 0.8% under the $500.78 spot; was $478.00-$500.00 (live $492.47; 50-DMA $469.15 is the support below the zone))",
+      "stop": 455,
+      "target": 565,
+      "thesis": "Second-highest composite with the strongest megacap momentum (8.41) plus catalyst 7.0 — Stifel's upgrade took the last major holdout to 57 of 60 Buys — on quality 9.0; trimmed from a conviction-only weight by the 0.94 entry haircut, since it sits +5.2% over its 50-DMA at a ~25x forward multiple with cloud gross margin compressing toward 66%.",
+      "entryTightened": {
+        "from": 500,
+        "to": 497.02,
+        "discountPct": 0.8,
+        "entryQuality": 5,
+        "bar": 5.5
+      },
+      "singleNameCapPct": 25,
+      "drivers": [
+        "quality",
+        "momentum",
+        "growth",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "KO",
+      "sector": "Consumer Non-Durables",
+      "weightPct": 8.76,
+      "entry": "$86.50-$90.50 (live $89.07, ~2% over the $87.31 50-DMA)",
+      "stop": 82,
+      "target": 101,
+      "thesis": "Wins its slot on quality 8.0 with margins expanding (33.07% vs 30.39% a year ago), +16.1% YoY net income and raised FY guidance (comparable EPS to 9-10%) — not held as ballast; the tightest 52wk range in the cohort (0.31) is what lets it carry a double-digit weight efficiently where LLY and AVGO cannot.",
+      "singleNameCapPct": 25,
+      "drivers": [
+        "quality"
+      ]
+    },
+    {
+      "ticker": "JNJ",
+      "sector": "Health Technology",
+      "weightPct": 6.76,
+      "entry": "$251.25-$263.25 (entry-quality 4/10 vs cohort 5.5 → ceiling held 2.3% under the $269.31 spot; was $264.00-$276.00 (live $274.46; 50-DMA $264.07 anchors the lower band))",
+      "stop": 250,
+      "target": 305,
+      "thesis": "Catalyst 8.0 on the MajesTEC-3 myeloma readout, Caplyta bipolar phase 3 and the Rybrevant OS extension, with quality 8.0 and a moderate 0.39 range; deliberately the smallest of the four non-cluster stocks because it carries the cohort's worst entry (haircut 0.88, ~3% off a three-week-old high), a 'hold' verdict, consensus only ~3% above spot, and the Apollo orthopedics rumor puts the MedTech diversification supporting the multiple in question.",
+      "entryTightened": {
+        "from": 276,
+        "to": 263.25,
+        "discountPct": 2.3,
+        "entryQuality": 4,
+        "bar": 5.5
+      },
+      "singleNameCapPct": 25,
+      "drivers": [
+        "quality",
+        "catalyst"
+      ]
+    },
+    {
+      "ticker": "GOOGL",
+      "sector": "Technology Services",
+      "weightPct": 6.41,
+      "entry": "$316.33-$335.33 (entry-quality 5/10 vs cohort 5.5 → ceiling held 0.8% under the $337.86 spot; was $326.00-$345.00 (live $338.69, just under the $345.51 50-DMA — reclaiming it is the confirmation))",
+      "stop": 303,
+      "target": 405,
+      "thesis": "Quality 9.5 and the best valuation sleeve of the megacaps (6.6) with Gemini 4 possibly landing early, bought 17% below the 52wk high; held to 9% — below its composite rank — because momentum is the weakest of the held tech names (4.05, under both the 50- and 100-DMA), the 0.51 range is wide, and Meta's Muse agent is an unresolved threat to search-ad auction traffic that has not yet played out.",
+      "entryTightened": {
+        "from": 345,
+        "to": 335.33,
+        "discountPct": 0.8,
+        "entryQuality": 5,
+        "bar": 5.5
+      },
+      "singleNameCapPct": 20.53,
+      "drivers": [
+        "quality",
+        "growth"
+      ]
+    },
+    {
+      "ticker": "AMZN",
+      "sector": "Retail Trade",
+      "weightPct": 6.05,
+      "entry": "$230.48-$247.48 (entry-quality 5/10 vs cohort 5.5 → ceiling held 0.8% under the $249.35 spot; was $238.00-$255.00 (live $246.40, ~2-3% under both the 50-DMA $256.26 and 100-DMA $254.99))",
+      "stop": 224,
+      "target": 296,
+      "thesis": "Catalyst 7.0 and quality/growth 7.5 each on record 13.7% company operating margin and AWS at a record 39.4% margin (+36.7% revenue); trimmed slightly from its held 8.73% by the 0.94 haircut and the FTC monopoly trial now docketed for March 2027, and because the headline net-income comp is inflated by a ~$53.4B non-operating Anthropic mark.",
+      "entryTightened": {
+        "from": 255,
+        "to": 247.48,
+        "discountPct": 0.8,
+        "entryQuality": 5,
+        "bar": 5.5
+      },
+      "singleNameCapPct": 25,
       "drivers": [
         "quality",
         "growth",
@@ -93,105 +150,80 @@
     {
       "ticker": "SPY",
       "sector": "Index",
-      "weightPct": 7.12,
-      "entry": "$735-770 (spot $759.10) — core hold, buy anywhere in range",
-      "stop": 660,
-      "target": 855,
-      "thesis": "Index residual only — the weight the 48% cluster cap and the 20% payments cap forbid me from putting into the conviction names, not ballast; inside the 5-10% Mandate A limit.",
+      "weightPct": 9.23,
+      "entry": "$755.00-$775.00 (live $766.06) — core hold, buy at market",
+      "stop": 690,
+      "target": 860,
+      "thesis": "Residual only — the 48% correlation-cluster cap and just four verified non-cluster survivors leave ~7% that cannot be placed on conviction without overweighting a wide-range single name; core hold, not ballast, and kept under the 10% residual ceiling.",
+      "singleNameCapPct": 100
+    },
+    {
+      "ticker": "AVGO",
+      "sector": "Electronic Technology",
+      "weightPct": 4.27,
+      "entry": "$335.00-$360.00 (live $348.13; reclaiming the $378.62 50-DMA is the trend confirmation)",
+      "stop": 312,
+      "target": 450,
+      "thesis": "Growth 9.5 and quality 8.5 — AI semi revenue +221% YoY to $16.7B, FCF 46% of revenue, at ~19.3x forward, below the IT sector median — bought 30% off its high; held at the 6% floor because it is the widest 52wk range in the cohort (0.58) with the worst momentum (2.66, below both moving averages and no confirmed reversal), and the FY27 ~$115B AI guide plus $59.6B of VMware debt is the cohort's most leveraged bet on hyperscaler capex.",
+      "singleNameCapPct": 18.18,
+      "drivers": [
+        "growth",
+        "quality"
+      ]
+    },
+    {
+      "ticker": "MA",
+      "sector": "Finance",
+      "weightPct": 6.99,
+      "entry": "$552-578 (spot $572.24; the 50-DMA at $562.28 is the level to accumulate against after the failed $601.62 retest)",
+      "stop": 516,
+      "target": 655,
+      "phaseOut": true,
+      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 9.6 with margins at a series high (47.3%) and NI +18.6%, entry quality 5 (haircut 1.12) and the tightest 52wk range in the book (0.241) — vol-scaling earns it the larger of the two payments slots at ~27x forward vs V's ~28x on triple the EPS growth.",
+      "singleNameCapPct": 25,
       "drivers": [
         "quality"
+      ]
+    },
+    {
+      "ticker": "V",
+      "sector": "Finance",
+      "weightPct": 6.01,
+      "entry": "$358-375 (spot $372.95; only ~1.4% over the 50-DMA, so the pullback from the $385.57 high has already happened)",
+      "stop": 336,
+      "target": 425,
+      "phaseOut": true,
+      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 9.6 / momentum 7.6 duopoly at a de-rated 28x forward, sized below MA because net margin fell 3.44pp YoY on client incentives and the honest 12-month expected return (~12-13%) is close to the benchmark this account must beat.",
+      "singleNameCapPct": 25,
+      "drivers": [
+        "quality",
+        "growth"
       ]
     },
     {
       "ticker": "UNP",
       "sector": "Transportation",
-      "weightPct": 6.7,
+      "weightPct": 5.95,
       "entry": "$266-288 (spot $284.39; the 200-DMA near $264 is the shelf, so the zone accumulates into the de-rating instead of chasing it)",
       "stop": 254,
       "target": 332,
-      "thesis": "Quality 8.6 rail duopoly at 29.0% net margin and ~40% ROE with the franchise unimpaired; sized at the floor rather than at conviction because the NS merger spread has widened to 14.2% and two binary STB/DOJ dates sit inside 90 days.",
+      "phaseOut": true,
+      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 8.6 rail duopoly at 29.0% net margin and ~40% ROE with the franchise unimpaired; sized at the floor rather than at conviction because the NS merger spread has widened to 14.2% and two binary STB/DOJ dates sit inside 90 days.",
+      "singleNameCapPct": 25,
       "drivers": [
         "quality"
       ]
     },
     {
-      "ticker": "NEM",
-      "sector": "Non-Energy Minerals",
-      "weightPct": 6.29,
-      "entry": "$115-127 (spot $123.51; the August base at $113-115 is the lower bound, so size is the expression of the 0.6:1 near-term R/R rather than an unreachable zone)",
-      "stop": 111,
-      "target": 145,
-      "thesis": "The only new name: momentum 8.2 / catalyst 7.4 / valuation 6.0 for a composite of 6.98, the highest of any non-held survivor and above both LLY and UNP — a genuinely non-correlated cash-flow asset that won its slot on the research, not a gold sleeve reinstated by mandate.",
-      "drivers": [
-        "momentum",
-        "catalyst"
-      ]
-    },
-    {
-      "ticker": "GOOGL",
-      "sector": "Technology Services",
-      "weightPct": 5.87,
-      "entry": "$322-348 (spot $344.73; wedged between a falling 50-DMA at $347.18 and the 200-DMA at $336.81, with the July low $314.90 below)",
-      "stop": 305,
-      "target": 408,
-      "thesis": "Quality 9.5 / growth 8.7 with revenue +24.2% and gross margin expanding 59.5%->61.65%, but held flat at roughly its current 6.91% on a 0.51 vol and a known Oct-28 de-rating as the non-operating artifact rolls out of TTM — the verdict's own instruction is hold, do not add.",
-      "drivers": [
-        "quality",
-        "growth"
-      ]
-    },
-    {
       "ticker": "AAPL",
       "sector": "Electronic Technology",
-      "weightPct": 5.45,
+      "weightPct": 3.88,
       "entry": "$314-335 (spot $332.55; the rising 50-DMA at $317.97 is the accumulation level, 3.6% below the high rather than at it)",
       "stop": 299,
       "target": 375,
-      "thesis": "Momentum 8.7 / quality 9.5 with margins expanding 24.9%->27.2% net, but the smallest megacap slot: valuation 3.3 at 38.1x is the richest in the set and $344.57 is proven overhead supply that rejected an earnings beat.",
-      "drivers": [
-        "quality",
-        "momentum",
-        "growth"
-      ]
-    },
-    {
-      "ticker": "JPM",
-      "sector": "Finance",
-      "weightPct": 6.67,
-      "entry": "$340-$356 (post-FOMC pullback to spot)",
-      "stop": 325,
-      "target": 400,
       "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: The only survivor with no sleeve below 6.0 (momentum 8.2 / quality 7.8 / growth 7.4 / catalyst 7.0 / valuation 6.0) and the tightest 52wk range in the batch (0.247), so it carries size at low vol cost — NII guidance raised to ~$96.5B, beats widening to +9.8%, credit improving; the 2.66x P/B on above-normal ROE is what holds it to 10.5% rather than more, and the 9/16 FOMC is why the zone sits below spot.",
-      "drivers": [
-        "quality",
-        "momentum",
-        "growth"
-      ]
-    },
-    {
-      "ticker": "JNJ",
-      "sector": "Health Technology",
-      "weightPct": 4.73,
-      "entry": "$258-$270 (50-DMA up to spot)",
-      "stop": 244,
-      "target": 305,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Held at weight and not topped up, per the verdict — momentum 8.1 / quality 8.5 / catalyst 7.0, but the talc-resolution re-rating that drove +54.9% off the low has already fired and cannot repeat, leaving ~24-25x forward against a 15-17x history on 6.6% revenue growth; it stays because the composite earns the slot, not because the book needs ballast (it is the entire defensive total).",
-      "drivers": [
-        "quality",
-        "momentum"
-      ]
-    },
-    {
-      "ticker": "SHEL",
-      "sector": "Energy Minerals",
-      "weightPct": 4.79,
-      "entry": "$87-$93 (50-DMA mean reversion)",
-      "stop": 82,
-      "target": 108,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Held and trimmed 8.31%→7.5% rather than exited into a taxable short-term sale — catalyst 7.5 / momentum 8.1 / valuation 6.6 with 370 kboe/d added and a covered dividend, but entry haircut 0.91 on a 52wk-high breakout that reversed intraday while XOM/CVX/XLE rallied, so no new money here; the zone is deliberately the 50-DMA mean-reversion level the verdict names.",
+      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Momentum 8.7 / quality 9.5 with margins expanding 24.9%->27.2% net, but the smallest megacap slot: valuation 3.3 at 38.1x is the richest in the set and $344.57 is proven overhead supply that rejected an earnings beat.",
+      "singleNameCapPct": 25,
       "drivers": [
         "momentum",
         "quality"
@@ -199,9 +231,9 @@
     }
   ],
   "defensive": {
-    "direct": 4.73,
-    "lookThrough": 0.9185,
-    "total": 5.6485,
+    "direct": 15.52,
+    "lookThrough": 1.1907,
+    "total": 16.7107,
     "floor": 0,
     "shortfall": 0
   },
@@ -212,113 +244,109 @@
   },
   "dropped": [
     {
-      "ticker": "META",
-      "reason": "not-held",
-      "since": "2026-09-14"
-    },
-    {
-      "ticker": "KO",
+      "ticker": "JPM",
       "reason": "phase-out-complete",
       "detail": "absent from two consecutive research targets",
-      "since": "2026-09-14"
+      "since": "2026-09-24"
+    },
+    {
+      "ticker": "SHEL",
+      "reason": "phase-out-complete",
+      "detail": "absent from two consecutive research targets",
+      "since": "2026-09-24"
     },
     {
       "ticker": "VTI",
       "reason": "phase-out-complete",
       "detail": "absent from two consecutive research targets",
-      "since": "2026-09-14"
-    },
-    {
-      "ticker": "GLDM",
-      "reason": "phase-out-complete",
-      "detail": "absent from two consecutive research targets",
-      "since": "2026-09-14"
-    },
-    {
-      "ticker": "BKNG",
-      "reason": "phase-out-complete",
-      "detail": "absent from two consecutive research targets",
-      "since": "2026-09-14"
+      "since": "2026-09-14",
+      "carried": true
     }
   ],
-  "researchSummary": "Eleven names, all but one an incumbent: the nine verified survivors the account already holds keep their slots and the only new position is NEM, added because it carries the highest composite (6.98) and second-highest momentum (8.2) of any non-held survivor and because the cluster caps physically prevent putting that weight into the megacap names. The megacap-tech/AI cluster totals 47.5% (NVDA 12.0 + AMZN 11.5 + MSFT 10.5 + GOOGL 7.0 + AAPL 6.5), just inside the 48% ceiling and the primary risk control here; payments are 19.5% (MA 10.5 + V 9.0) inside the 20% cap; and the DEFENSIVE TOTAL IS 0.0% DIRECT — no staples, utilities, telecom, REIT or low-vol vehicle is held, LLY does not count (healthcare label, but a 0.52 range/price is far outside the 0.42 ballast gate), and the only defensive exposure in the book is ~0.8% look-through inside the 8.5% SPY residual. Vol-scaling is doing real work rather than being asserted: the two widest names, LLY (0.52) and GOOGL (0.51), sit below their composite-implied weight while the two tightest, MA (0.241) and V (0.247), sit above theirs, and MA leads V on both entry quality (5 vs 4) and EPS growth. Turnover is deliberately small — MSFT, GOOGL, AMZN, V and LLY move less than 2.5pp from their current weights, and GOOGL is held flat at its 6.91% exactly as its verdict directs; the freed weight comes from KO, GLDM, VTI and BKNG, which were already phase-out flagged and did not clear this cycle's verified cut. Their thesis is broken in the specific sense that mattered: each existed to satisfy a structural slot Mandate A deleted (KO the 15% defensive floor, GLDM the 5% gold sleeve, VTI/BKNG index-duplicate and an unverified consumer-cyclical), so they were weight that could only track or lag the benchmark this account exists to beat rather than positions the research ever rated on merit — VTI remains exempt as the parking vehicle. SHEL, JNJ and JPM were NOT dropped: they are simply absent from this cycle's survivor set, so the governor retains them at prior weight as first-strike phase-outs with zero trades. | risk-adjusted (finalize-target.mjs: correlation-cluster + vol-scaled caps) — megacap-tech is 47.5% direct (within its 48% cap) but 50.7% including 3.2pp held inside index vehicles — reported, not enforced | phase-out retained (churn governor, strike 1): JPM, JNJ, SHEL | entry bands measured against the COHORT MEDIAN entryQuality 3 (Mandate A: a name is tightened for being a worse entry than its peers, never for the tape as a whole being rich)",
+  "researchSummary": "Ten names, sector-diversified (max 2 per sector: NVDA/AVGO in Electronic Technology, MSFT/GOOGL in Technology Services, LLY/JNJ in Health Technology), weighted toward multi-sleeve strength and scaled down where the 52wk range is wide — LLY (0.50), GOOGL (0.51) and AVGO (0.58) all carry less than their composites alone would buy, while tight-range NVDA (0.32) and KO (0.31) carry more. Megacap-tech/AI cluster total is 47.0% (NVDA 13.0 + MSFT 10.5 + GOOGL 9.0 + AMZN 8.5 + AVGO 6.0), just inside the 48% cap and the binding constraint on this book; the defensive total is 20.5% direct (KO 10.5 staples + JNJ 10.0 healthcare — LLY's 0.50 range fails the defensive vol gate and does not count) plus ~0.6pp look-through from the 7.0% SPY residual, and both were picked on composite merit, not as ballast — with only four non-cluster survivors verified, the 48% cluster cap mechanically forces ~46% into LLY/NEM/JNJ/KO rather than any decision to de-risk. Seven incumbents (NVDA, MSFT, AMZN, LLY, GOOGL, JNJ, NEM) are retained with weight adjustments only; AVGO and KO are the two new names, funded by exits rather than by displacing a survivor. Held names left out: JPM and SHEL are second-strike phase-outs from the prior target and genuinely exit; MA, V, UNP and AAPL did not clear adversarial verify this cycle, so there is no current verdict to size them on — they are set down on absence of a live thesis, not on a broken one, and the churn governor retains them one more cycle, so a re-verified name next week costs nothing to restore (VTI is the parking vehicle and is exempt from the target).",
+  "adjustments": [
+    "megacap-tech cluster trimmed 4.5pp to its 48% cap — 52.5% direct + 2.6% via index look-through (NVDA/MSFT/GOOGL/AMZN/AVGO/AAPL)",
+    "pharma cluster trimmed 3.0pp to its 20% cap — 23.0% direct + 0.2% via index look-through (LLY/JNJ)",
+    "megacap-tech is 48.0% direct (within its 48% cap) but 52.4% including 4.4pp held inside index vehicles — reported, not enforced",
+    "pharma is 20.0% direct (within its 20% cap) but 20.4% including 0.4pp held inside index vehicles — reported, not enforced"
+  ],
   "construction": {
     "names": 14,
-    "active": 11,
-    "phaseOut": 3,
-    "phaseOutWeightPct": 16.19,
-    "indexPct": 7.12,
+    "active": 10,
+    "phaseOut": 4,
+    "phaseOutWeightPct": 22.83,
+    "indexPct": 9.23,
     "exposure": {
       "megacap-tech": {
-        "direct": 39.82,
-        "lookThrough": 2.67,
-        "total": 42.49
-      },
-      "payments": {
-        "direct": 16.34,
-        "lookThrough": 0.1139,
-        "total": 16.4539
+        "direct": 37.33,
+        "lookThrough": 3.4613,
+        "total": 40.7913
       },
       "pharma": {
-        "direct": 12.27,
-        "lookThrough": 0.2136,
-        "total": 12.4836
+        "direct": 15.55,
+        "lookThrough": 0.2769,
+        "total": 15.8269
       },
-      "index": {
-        "direct": 7.12,
+      "single:NEM": {
+        "direct": 10.18,
         "lookThrough": 0,
-        "total": 7.12
-      },
-      "banks": {
-        "direct": 6.67,
-        "lookThrough": 0.2634,
-        "total": 6.9334
+        "total": 10.18
       },
       "staples": {
+        "direct": 8.76,
+        "lookThrough": 0.2492,
+        "total": 9.0092
+      },
+      "index": {
+        "direct": 9.23,
+        "lookThrough": 0,
+        "total": 9.23
+      },
+      "banks": {
         "direct": 0,
-        "lookThrough": 0.1922,
-        "total": 0.1922
+        "lookThrough": 0.3415,
+        "total": 0.3415
       },
       "energy": {
-        "direct": 4.79,
-        "lookThrough": 0.1282,
-        "total": 4.9182
+        "direct": 0,
+        "lookThrough": 0.1661,
+        "total": 0.1661
+      },
+      "payments": {
+        "direct": 13,
+        "lookThrough": 0.1477,
+        "total": 13.1477
       },
       "utilities": {
         "direct": 0,
-        "lookThrough": 0.1566,
-        "total": 0.1566
+        "lookThrough": 0.2031,
+        "total": 0.2031
       },
       "reits": {
         "direct": 0,
-        "lookThrough": 0.1282,
-        "total": 0.1282
+        "lookThrough": 0.1661,
+        "total": 0.1661
       },
       "telecom": {
         "direct": 0,
-        "lookThrough": 0.0997,
-        "total": 0.0997
+        "lookThrough": 0.1292,
+        "total": 0.1292
       },
       "health-svc": {
         "direct": 0,
-        "lookThrough": 0.1282,
-        "total": 0.1282
+        "lookThrough": 0.1661,
+        "total": 0.1661
       },
       "single:UNP": {
-        "direct": 6.7,
+        "direct": 5.95,
         "lookThrough": 0,
-        "total": 6.7
-      },
-      "single:NEM": {
-        "direct": 6.29,
-        "lookThrough": 0,
-        "total": 6.29
+        "total": 5.95
       }
     },
     "defensive": {
-      "direct": 4.73,
-      "lookThrough": 0.9185,
-      "total": 5.6485,
+      "direct": 15.52,
+      "lookThrough": 1.1907,
+      "total": 16.7107,
       "floor": 0,
       "shortfall": 0
     },
@@ -332,10 +360,4578 @@
       "errors": []
     }
   },
-  "modelVersion": "legacy-unversioned",
-  "research": {
-    "coverage": null,
-    "status": "not-recorded"
+  "method": "10 active names plus 4 phase-out holdings (22.83% of the final target). Megacap-tech is 37.33% direct and 40.79% including index look-through. Index vehicles total 9.23%. Defensive exposure is 15.52% direct and 16.71% including index look-through. Gold/bullion exposure is 0.00%. Figures describe the final weights after risk adjustment and phase-out retention. Thesis-review levels are monitored; they are not resting stop orders. | risk-adjusted (finalize-target.mjs: hard correlation-cluster + vol-scaled caps) | megacap-tech cluster trimmed 4.5pp to its 48% cap — 52.5% direct + 2.6% via index look-through (NVDA/MSFT/GOOGL/AMZN/AVGO/AAPL) | pharma cluster trimmed 3.0pp to its 20% cap — 23.0% direct + 0.2% via index look-through (LLY/JNJ) | megacap-tech is 48.0% direct (within its 48% cap) but 52.4% including 4.4pp held inside index vehicles — reported, not enforced | pharma is 20.0% direct (within its 20% cap) but 20.4% including 0.4pp held inside index vehicles — reported, not enforced | phase-out retained: MA, V, UNP, AAPL | entry bands measured against the COHORT MEDIAN entryQuality 5.5",
+  "modelVersion": "mandate-a-ai-evidence-v1",
+  "mandateVersion": "A-2026-09-08",
+  "riskVersion": "hard-caps-v2",
+  "factorWeights": {
+    "momentum": 0.22,
+    "quality": 0.24,
+    "growth": 0.22,
+    "catalyst": 0.14,
+    "valuation": 0.18,
+    "flow": 0
   },
-  "targetId": "0873441e43e53ffd7747"
+  "universeVersion": "eaadd513e31f43b4995e",
+  "research": {
+    "version": "evidence-v1",
+    "status": "verified-coverage",
+    "coverage": 0.7377049180327869,
+    "eligible": 45,
+    "universe": 61,
+    "rows": [
+      {
+        "ticker": "NVDA",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "MSFT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "LLY",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "GOOGL",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "META",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "AMZN",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "JNJ",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "NEM",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "MA",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "V",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "AVGO",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "AAPL",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "KO",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "JPM",
+        "supported": [
+          "momentum",
+          "quality",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "UNP",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "CAT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "XOM",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "TMUS",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "CVX",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "ABBV",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "PLD",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "WM",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "FCX",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "SHW",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "GE",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "LIN",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "AMT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "BKNG",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "T",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "NEE",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "SO",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "O",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "PEP",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "DUK",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "PG",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "MCD",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "VZ",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "CI",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "COST",
+        "supported": [
+          "momentum",
+          "quality",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "UNH",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "SYY",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "WMT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "LEN",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "UPS",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "TSLA",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "SPY",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "ELV",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "FAST",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "VRSK",
+        "supported": [
+          "momentum"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "SBUX",
+        "supported": [
+          "momentum",
+          "growth",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "DECK",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "VTI",
+        "supported": [
+          "momentum"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "ETN",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "SHEL",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "ECL",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "VMC",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "CSX",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "GWW",
+        "supported": [
+          "momentum"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "CTAS",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "SCHD",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
+        "ticker": "GLDM",
+        "supported": [
+          "momentum",
+          "catalyst"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      }
+    ],
+    "errors": [],
+    "evidence": {
+      "NVDA": {
+        "momentum": {
+          "ticker": "NVDA",
+          "score": 7.06,
+          "note": "222.99 vs 50-DMA 215.11 / 100-DMA 212.10",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/NVDA",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 7.06/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "NVDA",
+          "score": 9.5,
+          "note": "Extreme, stable margins with accelerating revenue; minimal leverage risk given cash-rich balance sheet (not directly evidenced this run).",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/NVDA",
+              "asOf": "2026-07-26",
+              "claim": "Q2 FY27 revenue $96.22B, net margin 62.03%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/NVDA",
+              "asOf": "2026-04-26",
+              "claim": "Q1 FY27 revenue $81.62B, net margin 71.46%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/NVDA",
+              "asOf": "2026-09-24",
+              "claim": "PE 28.51, PB 23.78 (positive book equity)"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "NVDA",
+          "score": 10,
+          "status": "observed",
+          "note": "Revenue accelerating sharply (+68.8% vs 3 quarters prior); no estimate-revision data available (no AV EARNINGS_ESTIMATES call made this pass) — score based on reported revenue/NI trend only.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/NVDA",
+              "asOf": "2026-07-26",
+              "claim": "Q2 FY27 revenue $96.221B, net income $59.688B, net margin 62.0%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/NVDA",
+              "asOf": "2025-10-26",
+              "claim": "Q3 FY26 revenue $57.006B, net income $31.910B, net margin 56.0%"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "NVDA",
+          "score": 5,
+          "status": "observed",
+          "note": "No direct NVDA rating change or catalyst within 14d; sector chatter (Huang AI-boom remarks, SMCI/AMD moves) is indirect/mixed. Stock -1.5% Wed on broad tech pullback, no NVDA-specific driver.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/c71202cb-8e7a-452f-abf5-5647b2120aea",
+              "asOf": "2026-09-24",
+              "claim": "Jensen Huang says AI boom will eventually hit a digestion period but not for 2-3 years; NVDA closed Wed down 1.5% at $225.51"
+            }
+          ]
+        }
+      },
+      "MSFT": {
+        "momentum": {
+          "ticker": "MSFT",
+          "score": 8.41,
+          "note": "493.51 vs 50-DMA 469.15 / 100-DMA 436.05",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/MSFT",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 8.41/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "MSFT",
+          "score": 9,
+          "note": "Very high, stable margins (~38-40%) with growing revenue; no leverage red flag (positive, moderate PB).",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/MSFT",
+              "asOf": "2026-06-30",
+              "claim": "Q4 FY26 revenue $90.01B, net margin 39.74%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/MSFT",
+              "asOf": "2026-03-31",
+              "claim": "Q3 FY26 revenue $82.89B, net margin 38.34%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/MSFT",
+              "asOf": "2026-09-24",
+              "claim": "PE 27.89, PB 8.40"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "MSFT",
+          "score": 7.5,
+          "status": "observed",
+          "note": "Steady double-digit revenue and margin growth over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/MSFT",
+              "asOf": "2026-06-30",
+              "claim": "Q4 FY26 revenue $90.007B, net income $35.766B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/MSFT",
+              "asOf": "2025-09-30",
+              "claim": "Q1 FY26 revenue $77.673B, net income $27.747B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "MSFT",
+          "score": 7,
+          "status": "observed",
+          "note": "Stifel upgraded Hold→Buy and raised PT $530→$575 on 9/23; positive catalyst within window; minor OpenAI-Australia reputational overhang.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/62fae54a-ce29-4486-a2f8-fedaf8b81496",
+              "asOf": "2026-09-23",
+              "claim": "Stifel analyst Brad Reback upgraded Microsoft from Hold to Buy and raised the price target from $530 to $575; MSFT rose 5% to $500.59"
+            }
+          ]
+        }
+      },
+      "AMZN": {
+        "momentum": {
+          "ticker": "AMZN",
+          "score": 5.35,
+          "note": "246.97 vs 50-DMA 256.26 / 100-DMA 254.99",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/AMZN",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.35/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "AMZN",
+          "score": 7.5,
+          "note": "Solid and improving margin trend (16.7%→31.2%), reasonable leverage (moderate PB).",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AMZN",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $200.61B, net margin 31.23%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AMZN",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $181.52B, net margin 16.67%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/AMZN",
+              "asOf": "2026-09-24",
+              "claim": "PE 20.05, PB 4.87"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "AMZN",
+          "score": 7.5,
+          "status": "observed",
+          "note": "Revenue +11% over 3 quarters; net income growth strong (62.6B vs 21.2B) though partly margin mix/AWS-driven.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AMZN",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $200.606B, net income $62.647B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AMZN",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $180.169B, net income $21.187B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "AMZN",
+          "score": 7,
+          "status": "observed",
+          "note": "Multiple positive operational catalysts within 14d: Prime delivery expansion for merchants, $3B India quick-commerce investment, Anthropic medical-AI partnership. No negative offsets found.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/af84b11d-0a30-424b-9d32-195d20c07ffd",
+              "asOf": "2026-09-24",
+              "claim": "Amazon adding Prime delivery option and preferred pricing (up to 25% fee cuts) for Multichannel Fulfillment merchants"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/747237d6-7335-4592-a95c-c34f74640959",
+              "asOf": "2026-09-24",
+              "claim": "Amazon earmarking $3 billion to expand quick-commerce in India by 2030"
+            }
+          ]
+        }
+      },
+      "JPM": {
+        "momentum": {
+          "ticker": "JPM",
+          "score": 5.05,
+          "note": "336.27 vs 50-DMA 353.62 / 100-DMA 334.60",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/JPM",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.05/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "JPM",
+          "score": 7.5,
+          "note": "Strong, improving net margin (28.9%→33.1%) for a money-center bank; low PB indicates conservative leverage vs equity for the sector.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/JPM",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $49.84B, net margin 33.10%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/JPM",
+              "asOf": "2025-12-31",
+              "claim": "Q4 FY25 revenue $49.17B, net margin 28.88%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/JPM",
+              "asOf": "2026-09-24",
+              "claim": "PE 14.46, PB 2.54"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "JPM",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue and net income up ~10-11% over trailing quarters; steady bank growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/JPM",
+              "asOf": "2026-03-31",
+              "claim": "Q1 2026 revenue $49.836B, net income $16.494B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/JPM",
+              "asOf": "2025-06-30",
+              "claim": "Q2 2025 revenue $44.912B, net income $14.987B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "JPM",
+          "score": 5,
+          "status": "observed",
+          "note": "Jefferies trimmed PT $370→$365 (Hold) on 9/24; otherwise routine deal-flow news (Bird financing). Earnings 10/13 outside 14d window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/cb22e4b0-df17-4b9a-9e57-202619cf2be6",
+              "asOf": "2026-09-24",
+              "claim": "Jefferies adjusted JPMorgan Chase price target to $365 from $370, keeps Hold rating"
+            }
+          ]
+        }
+      },
+      "LLY": {
+        "momentum": {
+          "ticker": "LLY",
+          "score": 5.97,
+          "note": "1172.81 vs 50-DMA 1176.65 / 100-DMA 1135.01",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/LLY",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.97/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "LLY",
+          "score": 8.5,
+          "note": "High, stable margins (~31-37%) in a durable-moat pharma business; PB is very high (31.99), a leverage/intangibles caution flag.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/LLY",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $22.97B, net margin 30.88%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/LLY",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $19.80B, net margin 37.36%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/LLY",
+              "asOf": "2026-09-24",
+              "claim": "PE 39.11, PB 31.99"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "LLY",
+          "score": 9,
+          "status": "observed",
+          "note": "Revenue +30.5% over trailing quarters with margin holding/expanding; strong pharma growth story.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/LLY",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $22.974B, net income $7.095B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/LLY",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $17.601B, net income $5.583B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "LLY",
+          "score": 8,
+          "status": "observed",
+          "note": "FDA approved Onswik once-weekly insulin for type 2 diabetes (9/24); new InnoCare drug-research deal worth up to $3.25B (9/24). Two positive regulatory/deal catalysts.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/e1b00218-1ddf-49e9-9a3c-761d2f2ca2c6",
+              "asOf": "2026-09-24",
+              "claim": "FDA approved Eli Lilly's once-weekly Onswik basal insulin for adults with type 2 diabetes"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/c4219e89-0c1f-40b2-8b7d-7fc1b2bd56a9",
+              "asOf": "2026-09-24",
+              "claim": "Eli Lilly and InnoCare Pharma signed drug research deal worth up to $3.25 billion"
+            }
+          ]
+        }
+      },
+      "UNH": {
+        "momentum": {
+          "ticker": "UNH",
+          "score": 4.57,
+          "note": "369.34 vs 50-DMA 402.26 / 100-DMA 400.38",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/UNH",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.57/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "UNH",
+          "score": 3.5,
+          "note": "Thin, deteriorating net margin (5.62%→4.90%) despite huge revenue base; quality has clearly weakened vs historical UNH margins.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/UNH",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $112.03B, net margin 4.90%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/UNH",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $111.72B, net margin 5.62%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/UNH",
+              "asOf": "2026-09-24",
+              "claim": "PE 23.88, PB 3.41"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "UNH",
+          "score": 2.5,
+          "status": "observed",
+          "note": "Revenue roughly flat/declining, net margin severely compressed (near 0% in Q4 2025) versus prior quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/UNH",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $112.032B, net income $5.484B, net margin 4.9%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/UNH",
+              "asOf": "2025-12-31",
+              "claim": "Q4 2025 revenue $113.215B, net income $0.01B, net margin 0.01%"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "UNH",
+          "score": 5.5,
+          "status": "observed",
+          "note": "No fresh directional catalyst within 14d beyond a bullish options sweep (weak signal); earnings 10/13 outside window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/b0923e99-f3ca-43f4-949a-0ffdfe0f6071",
+              "asOf": "2026-09-21",
+              "claim": "UNH call option sweep with bullish sentiment, strike $270 exp 6/17/27"
+            }
+          ]
+        }
+      },
+      "GE": {
+        "momentum": {
+          "ticker": "GE",
+          "score": 2.86,
+          "note": "319.88 vs 50-DMA 346.60 / 100-DMA 337.49",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/GE",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.86/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "GE",
+          "score": 6.5,
+          "note": "Improving margin trend (15.4%→17.8%) on a manufacturing/aerospace base; PB elevated (18.81) suggesting thin tangible book / leverage from restructuring legacy.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/GE",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $13.35B, net margin 17.75%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/GE",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $12.39B, net margin 15.36%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/GE",
+              "asOf": "2026-09-24",
+              "claim": "PE 37.69, PB 18.81"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "GE",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +9.6% and net income growing over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/GE",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $13.349B, net income $2.370B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/GE",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $12.181B, net income $2.157B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "GE",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Jefferies trimmed PT $455→$435 but kept Buy (9/23); Kratos/GE missile-propulsion test milestone (9/21) positive; dividend maintained. Mixed, net neutral.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/8100343f-18ec-4057-955a-ead4799fd923",
+              "asOf": "2026-09-23",
+              "claim": "Jefferies adjusted GE Aerospace price target to $435 from $455, keeps Buy rating"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/e5074830-dc5f-4f23-988c-a87e7bf8822f",
+              "asOf": "2026-09-21",
+              "claim": "Kratos and GE Aerospace successfully ignited the GEK800 turbofan cruise missile propulsion system"
+            }
+          ]
+        }
+      },
+      "XOM": {
+        "momentum": {
+          "ticker": "XOM",
+          "score": 5.35,
+          "note": "163.64 vs 50-DMA 158.46 / 100-DMA 152.55",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/XOM",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.35/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "XOM",
+          "score": 5.5,
+          "note": "Volatile margin (4.9%→12.5%) reflecting commodity-price sensitivity; capital-intensive, moderate PB is reasonable.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/XOM",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $116.02B, net margin 12.52%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/XOM",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $85.14B, net margin 4.91%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/XOM",
+              "asOf": "2026-09-24",
+              "claim": "PE 20.75, PB 2.56"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "XOM",
+          "score": 7,
+          "status": "observed",
+          "note": "Revenue and net income jumped sharply Q2 2026 (likely M&A-driven, e.g. Permian consolidation) vs prior quarters; commodity-price sensitive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/XOM",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $116.017B, net income $14.525B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/XOM",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $85.294B, net income $7.548B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "XOM",
+          "score": 5,
+          "status": "observed",
+          "note": "Only macro/industry news (diesel-export-ban pushback lobbying, oil price swings) within 14d; no XOM-specific rating change or earnings catalyst.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/d9ecdc0c-9349-4aa1-8cc3-331a2373b19f",
+              "asOf": "2026-09-24",
+              "claim": "ExxonMobil among oil executives pushing back on Trump's proposed diesel export ban"
+            }
+          ]
+        }
+      },
+      "PG": {
+        "momentum": {
+          "ticker": "PG",
+          "score": 3.61,
+          "note": "148.01 vs 50-DMA 146.10 / 100-DMA 146.24",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/PG",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.61/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "PG",
+          "score": 6.5,
+          "note": "Stable but unremarkable margin (14.4%-18.5%) for a staples leader; PB moderate.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/PG",
+              "asOf": "2026-06-30",
+              "claim": "Q4 FY26 revenue $21.20B, net margin 14.36%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/PG",
+              "asOf": "2026-03-31",
+              "claim": "Q3 FY26 revenue $21.24B, net margin 18.52%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/PG",
+              "asOf": "2026-09-24",
+              "claim": "PE 22.25, PB 6.42"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "PG",
+          "score": 2.5,
+          "status": "observed",
+          "note": "Revenue and net income both declining across trailing quarters (NI -35.9%).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/PG",
+              "asOf": "2026-06-30",
+              "claim": "Q4 FY26 revenue $21.203B, net income $3.045B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/PG",
+              "asOf": "2025-09-30",
+              "claim": "Q1 FY26 revenue $22.386B, net income $4.750B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "PG",
+          "score": 5,
+          "status": "observed",
+          "note": "AI quality-inspection expansion with Siemens is a minor positive; no analyst rating action found inside 14d. Neutral.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/f237f8c5-5af4-4d19-a9cf-8fae6821702b",
+              "asOf": "2026-09-16",
+              "claim": "Procter & Gamble expanding AI-based quality inspection technology deployment with Siemens"
+            }
+          ]
+        }
+      },
+      "NEE": {
+        "momentum": {
+          "ticker": "NEE",
+          "score": 1.73,
+          "note": "77.02 vs 50-DMA 85.12 / 100-DMA 87.02",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/NEE",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.73/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "NEE",
+          "score": 7,
+          "note": "High, improving net margin (35.8%→46.9%) typical of regulated utility scale; moderate PB reasonable for capital-intensive utility.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/NEE",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $6.70B, net margin 46.93%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/NEE",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $6.10B, net margin 35.77%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/NEE",
+              "asOf": "2026-09-24",
+              "claim": "PE 17.28, PB 2.81"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "NEE",
+          "score": 4.5,
+          "status": "observed",
+          "note": "Revenue declining across trailing quarters (-9.5%) but net income growing (+29%, margin expansion); mixed signal, utility seasonality confounds trend.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/NEE",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $6.700B, net income $3.144B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/NEE",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $7.400B, net income $2.438B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "NEE",
+          "score": 4,
+          "status": "observed",
+          "note": "Morgan Stanley cut PT $114→$111 (9/18, still Overweight); Jim Cramer told viewers to sell NEE (9/17). Two negative-leaning items within 14d.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/a0ebc5f3-5785-4d9f-889b-20e1293921ef",
+              "asOf": "2026-09-18",
+              "claim": "Morgan Stanley adjusted NextEra Energy price target to $111 from $114, maintains Overweight"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/e84c8b47-b07d-463c-9a91-594fa8179891",
+              "asOf": "2026-09-17",
+              "claim": "Jim Cramer said NextEra Energy is not a good stock to own: 'Take the money and run'"
+            }
+          ]
+        }
+      },
+      "VZ": {
+        "momentum": {
+          "ticker": "VZ",
+          "score": 3.63,
+          "note": "46.53 vs 50-DMA 47.85 / 100-DMA 46.99",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/VZ",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.63/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "VZ",
+          "score": 5,
+          "note": "Declining margin (14.65%→11.20%) with low PB (1.86) consistent with heavy telecom debt load.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/VZ",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $34.25B, net margin 11.20%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/VZ",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $34.44B, net margin 14.65%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/VZ",
+              "asOf": "2026-09-24",
+              "claim": "PE 12.11, PB 1.86"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "VZ",
+          "score": 3,
+          "status": "observed",
+          "note": "Revenue roughly flat, net income declining -22.5% over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/VZ",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $34.253B, net income $3.835B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/VZ",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $33.821B, net income $4.950B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "VZ",
+          "score": 5.5,
+          "status": "observed",
+          "note": "MoffettNathanson raised PT slightly to $50 (9/22, Neutral); $70M AI-training program announcement (9/23) is a minor positive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/22cf8eb4-eb90-42b2-83bc-8ce0cc9e4010",
+              "asOf": "2026-09-22",
+              "claim": "MoffettNathanson adjusted Verizon price target to $50 from $49, maintains Neutral rating"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/07801451-997f-4a4d-af1d-26d579981fea",
+              "asOf": "2026-09-23",
+              "claim": "Verizon investing $70 million in nationwide AI training program"
+            }
+          ]
+        }
+      },
+      "O": {
+        "momentum": {
+          "ticker": "O",
+          "score": 2.01,
+          "note": "55.64 vs 50-DMA 62.20 / 100-DMA 62.14",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/O",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.01/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "O",
+          "score": 6.5,
+          "note": "Improving net margin (19.9%→23.9%) for a triple-net REIT; low PB (1.33) typical for REIT structure, not itself a distress flag.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/O",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $1.548B, net margin 23.94%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/O",
+              "asOf": "2025-12-31",
+              "claim": "Q4 FY25 revenue $1.488B, net margin 19.90%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/O",
+              "asOf": "2026-09-24",
+              "claim": "PE 40.67, PB 1.33"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "O",
+          "score": 7,
+          "status": "observed",
+          "note": "Revenue +9.7%, net income +88% over trailing quarters — steady REIT growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/O",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $1.548B, net income $370.5M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/O",
+              "asOf": "2025-06-30",
+              "claim": "Q2 2025 revenue $1.410B, net income $196.9M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "O",
+          "score": 3,
+          "status": "observed",
+          "note": "Scotiabank downgraded to Sector Perform from Sector Outperform and cut PT $67→$59 (9/23); Evercore and BMO also cut PTs same week. Cluster of negative analyst actions.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/eb056892-2f6a-40a3-9ecd-2f7899e4ca09",
+              "asOf": "2026-09-23",
+              "claim": "Scotiabank downgraded Realty Income to Sector Perform from Sector Outperform, cut price target to $59 from $67"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/1ce66eb0-5604-41b3-a63d-4cbd5f323184",
+              "asOf": "2026-09-21",
+              "claim": "Evercore ISI adjusted Realty Income price target to $65 from $68, maintains In Line rating"
+            }
+          ]
+        }
+      },
+      "LIN": {
+        "momentum": {
+          "ticker": "LIN",
+          "score": 2.18,
+          "note": "469.87 vs 50-DMA 487.07 / 100-DMA 499.95",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/LIN",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.18/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "LIN",
+          "score": 8,
+          "note": "Stable, healthy ~20-21% net margin for industrial gases leader; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/LIN",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $9.29B, net margin 20.76%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/LIN",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $8.78B, net margin 21.15%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/LIN",
+              "asOf": "2026-09-24",
+              "claim": "PE 30.33, PB 5.54"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "LIN",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue +7.8%, net income roughly flat over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/LIN",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $9.289B, net income $1.928B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/LIN",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $8.615B, net income $1.929B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "LIN",
+          "score": null,
+          "status": "missing",
+          "note": "No news, ratings action, or earnings evidence found dated within the 14-day catalyst window (most recent relevant items are 15-20 days old).",
+          "evidence": []
+        }
+      },
+      "FCX": {
+        "momentum": {
+          "ticker": "FCX",
+          "score": 7.6,
+          "note": "72.59 vs 50-DMA 68.91 / 100-DMA 66.19",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/FCX",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 7.60/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "FCX",
+          "score": 5,
+          "note": "Declining margin (22.25%→14.0%) reflecting commodity price/cost sensitivity; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/FCX",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $7.03B, net margin 14.00%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/FCX",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $6.23B, net margin 22.25%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/FCX",
+              "asOf": "2026-09-24",
+              "claim": "PE 35.84, PB 5.18"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "FCX",
+          "score": 4,
+          "status": "observed",
+          "note": "Revenue roughly flat, net income declining -21% over trailing quarters; commodity/copper-price sensitive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/FCX",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $7.029B, net income $984M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/FCX",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $6.972B, net income $1.247B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "FCX",
+          "score": 6.5,
+          "status": "observed",
+          "note": "RBC raised PT $73→$85 (9/16, within window) on continued Sector Perform; Greenland rare-earths deal boosting critical-minerals theme is a sector tailwind.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/b8735006-7794-4306-8680-81ed0b5c45fc",
+              "asOf": "2026-09-16",
+              "claim": "RBC raised price target on Freeport-McMoRan to $85 from $73, keeps Sector Perform rating"
+            }
+          ]
+        }
+      },
+      "UNP": {
+        "momentum": {
+          "ticker": "UNP",
+          "score": 4.92,
+          "note": "274.72 vs 50-DMA 293.95 / 100-DMA 281.67",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/UNP",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.92/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "UNP",
+          "score": 7.5,
+          "note": "Strong, improving margin (27.4%→29.0%) for a rail with scale moat; elevated PB (7.92) reflects capital intensity/buybacks, not distress.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/UNP",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $6.86B, net margin 29.04%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/UNP",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $6.22B, net margin 27.36%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/UNP",
+              "asOf": "2026-09-24",
+              "claim": "PE 22.31, PB 7.92"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "UNP",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +9.9%, net income +11.5% over trailing quarters — steady growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/UNP",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $6.864B, net income $1.993B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/UNP",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $6.244B, net income $1.788B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "UNP",
+          "score": 5.5,
+          "status": "observed",
+          "note": "RBC trimmed PT $339→$326 (9/24) but kept Outperform; Surface Transportation Board denied requests to dismiss the Norfolk Southern merger, a positive procedural step (9/22).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/a34b9c02-deb7-4407-a8fb-2d853ac4add7",
+              "asOf": "2026-09-24",
+              "claim": "RBC lowered price target on Union Pacific to $326 from $339, keeps Outperform rating"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/92bd830c-ebcb-4b7c-82c2-85849da7b311",
+              "asOf": "2026-09-22",
+              "claim": "Surface Transportation Board denied requests to dismiss Union Pacific/Norfolk Southern's revised merger application"
+            }
+          ]
+        }
+      },
+      "SYY": {
+        "momentum": {
+          "ticker": "SYY",
+          "score": 3.05,
+          "note": "77.14 vs 50-DMA 82.39 / 100-DMA 79.97",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SYY",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.05/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SYY",
+          "score": 2.5,
+          "note": "Very thin, deteriorating margin (1.66%→2.50%) typical of low-margin distribution; high PB (13.85) vs thin margin is a value-trap style caution.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SYY",
+              "asOf": "2026-06-27",
+              "claim": "Q4 FY26 revenue $22.12B, net margin 2.50%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SYY",
+              "asOf": "2026-03-28",
+              "claim": "Q3 FY26 revenue $20.52B, net margin 1.66%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/SYY",
+              "asOf": "2026-09-24",
+              "claim": "PE 21.10, PB 13.85"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "SYY",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue +4.6%, net income +16% over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SYY",
+              "asOf": "2026-06-27",
+              "claim": "Q4 FY26 revenue $22.124B, net income $552M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SYY",
+              "asOf": "2025-09-27",
+              "claim": "Q1 FY26 revenue $21.148B, net income $476M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "SYY",
+          "score": 4,
+          "status": "observed",
+          "note": "Shares fell on a $1B dilutive stock offering priced to fund the Jetro Restaurant Depot acquisition (9/15, within window) — negative near-term catalyst.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/5fff6bc0-b825-4c29-8159-f1eb7b497161",
+              "asOf": "2026-09-15",
+              "claim": "Sysco shares down 2% after pricing $1 billion common stock offering (12.35M shares at $81) to help fund Jetro Restaurant Depot acquisition"
+            }
+          ]
+        }
+      },
+      "WM": {
+        "momentum": {
+          "ticker": "WM",
+          "score": 2.37,
+          "note": "207.93 vs 50-DMA 224.26 / 100-DMA 222.84",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/WM",
+              "asOf": "2026-09-23",
+              "claim": "producer/momentum.mjs RS/MA composite 2.37/10 from recorded daily closes through 2026-09-23"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "WM",
+          "score": 6.5,
+          "note": "Stable ~11.6-11.7% margin for waste-services leader; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/WM",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $6.68B, net margin 11.74%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/WM",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $6.23B, net margin 11.61%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/WM",
+              "asOf": "2026-09-24",
+              "claim": "PE 29.43, PB 8.38"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "WM",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +3.7%, net income +30% over trailing quarters — margin expansion.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/WM",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $6.684B, net income $785M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/WM",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $6.443B, net income $603M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "WM",
+          "score": 5,
+          "status": "observed",
+          "note": "Wolfe Research assumed coverage at Peer Perform (9/22, neutral); no strongly directional catalyst within window (the $300K insider sale is 16 days old, outside window).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/bf642f05-d7c6-4bbf-8f5e-2089133c1239",
+              "asOf": "2026-09-22",
+              "claim": "Wolfe Research analyst Nigel Coe assumed Waste Management with a Peer Perform rating"
+            }
+          ]
+        }
+      },
+      "MCD": {
+        "momentum": {
+          "ticker": "MCD",
+          "score": 1.31,
+          "note": "238.36 vs 50-DMA 264.42 / 100-DMA 271.46",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/MCD",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.31/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "MCD",
+          "score": 6,
+          "note": "Strong, stable margin (~31-33%); negative PB (-164.84) indicates negative/near-zero book equity from heavy buybacks, a real leverage flag despite good margins.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/MCD",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $7.10B, net margin 33.27%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/MCD",
+              "asOf": "2025-12-31",
+              "claim": "Q4 FY25 revenue $7.01B, net margin 30.88%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/MCD",
+              "asOf": "2026-09-24",
+              "claim": "PE 19.36, PB -164.84 (negative book equity)"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "MCD",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue +3.7%, net income +4.8% over trailing quarters — modest steady growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/MCD",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $7.099B, net income $2.362B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/MCD",
+              "asOf": "2025-06-30",
+              "claim": "Q2 2025 revenue $6.843B, net income $2.253B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "MCD",
+          "score": 3,
+          "status": "observed",
+          "note": "BTIG slashed PT $350→$295 (still Buy) and RBC cut PT $290→$285 both on 9/24, following investor-day franchisee support plan that 'spooked investors' and drove a 5.8% drop (referenced 9/23). Cluster of negative sentiment.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/44ec8bdb-c328-45ea-94de-f40bbc8816e2",
+              "asOf": "2026-09-24",
+              "claim": "BTIG adjusted McDonald's price target to $295 from $350, keeps Buy rating"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/00048649-f89b-4d1e-a76f-220e6ffa58e8",
+              "asOf": "2026-09-23",
+              "claim": "McDonald's tumbled 5.8% after investor day unveiled an $8.5 billion franchisee support plan that spooked investors"
+            }
+          ]
+        }
+      },
+      "TSLA": {
+        "momentum": {
+          "ticker": "TSLA",
+          "score": 3.13,
+          "note": "380.24 vs 50-DMA 349.28 / 100-DMA 379.46",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/TSLA",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.13/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "TSLA",
+          "score": 2,
+          "note": "Weak, low single-digit net margin (2.1%→4.0%) despite very high PE (352), a growth-priced/thin-quality combination.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/TSLA",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $28.24B, net margin 3.95%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/TSLA",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $22.39B, net margin 2.13%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/TSLA",
+              "asOf": "2026-09-24",
+              "claim": "PE 353.17, PB 17.28"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "TSLA",
+          "score": 3.5,
+          "status": "observed",
+          "note": "Revenue roughly flat, net income declining -18.9% over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/TSLA",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $28.236B, net income $1.114B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/TSLA",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $28.095B, net income $1.373B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "TSLA",
+          "score": 4,
+          "status": "observed",
+          "note": "BNP Paribas cut PT and kept Underperform (9/24); independent Brussels test found Tesla FSD exceeded speed limits 55% of tested segments (9/24) — negative regulatory-relevant finding ahead of an Oct 6 EU vote. Partial offset from +53% YoY EU registrations.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/39297c69-1e59-4ba9-96c1-4d7830331adb",
+              "asOf": "2026-09-24",
+              "claim": "BNP Paribas adjusted Tesla price target to $268 from $280, keeps Underperform rating"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/db539369-63ae-4e2a-aa85-176b60193be5",
+              "asOf": "2026-09-24",
+              "claim": "Tesla FSD exceeded legal speed limit in 55% of tested 30km/h segments in Brussels; EU approval vote due Oct 6"
+            }
+          ]
+        }
+      },
+      "SPY": {
+        "momentum": {
+          "ticker": "SPY",
+          "score": 5.59,
+          "note": "764.88 vs 50-DMA 760.59 / 100-DMA 751.29",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SPY",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.59/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SPY",
+          "score": null,
+          "note": "Index fund, not an operating company; no ROE/margin/leverage applicable.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "SPY",
+          "score": null,
+          "status": "missing",
+          "note": "Index ETF — no company-level growth/estimate-revision data applies; get_financials returned no data.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "SPY",
+          "score": 5,
+          "status": "observed",
+          "note": "Index fund; only broad macro sentiment (yields, Middle East tensions, Trump-Xi summit) available, no single-name catalyst applicable.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/0107d11d-2148-48f2-be2f-507e4045bac3",
+              "asOf": "2026-09-24",
+              "claim": "SPY down 0.4% premarket amid Middle East tensions ahead of Trump-Xi talks"
+            }
+          ]
+        }
+      },
+      "AVGO": {
+        "momentum": {
+          "ticker": "AVGO",
+          "score": 2.66,
+          "note": "349.16 vs 50-DMA 378.62 / 100-DMA 392.32",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/AVGO",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.66/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "AVGO",
+          "score": 8.5,
+          "note": "High and improving net margin (41.96%→44.23%) for a semis/software leader; elevated PB (17.0) reflects intangibles from M&A, not distress.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AVGO",
+              "asOf": "2026-08-02",
+              "claim": "Q3 FY26 revenue $29.59B, net margin 44.23%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AVGO",
+              "asOf": "2026-05-03",
+              "claim": "Q2 FY26 revenue $22.19B, net margin 41.96%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/AVGO",
+              "asOf": "2026-09-24",
+              "claim": "PE 45.32, PB 17.00"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "AVGO",
+          "score": 9.5,
+          "status": "observed",
+          "note": "Revenue +64.3%, net income +53.6% over trailing quarters — AI-driven acceleration.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AVGO",
+              "asOf": "2026-08-02",
+              "claim": "Q3 FY26 revenue $29.591B, net income $13.088B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AVGO",
+              "asOf": "2025-11-02",
+              "claim": "Q4 FY25 revenue $18.015B, net income $8.518B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "AVGO",
+          "score": 6,
+          "status": "observed",
+          "note": "No AVGO-specific rating change within 14d, but positive sector halo as AI-infra investors (Jensen Investment) name it a top pick alongside NVDA-adjacent momentum (AMD crossing $1T).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/d3d561c0-82ec-4e72-9112-c6f1c6c684d7",
+              "asOf": "2026-09-23",
+              "claim": "Jensen Investment's Allen Bond names Broadcom among top AI-infrastructure picks regardless of which model wins"
+            }
+          ]
+        }
+      },
+      "GOOGL": {
+        "momentum": {
+          "ticker": "GOOGL",
+          "score": 4.05,
+          "note": "338.61 vs 50-DMA 345.51 / 100-DMA 359.15",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/GOOGL",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.05/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "GOOGL",
+          "score": 9.5,
+          "note": "Exceptional margin (56.9%→93.7%, latest boosted by a large one-time gain) with strong underlying core profitability; low leverage (PB 6.64).",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/GOOGL",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $119.80B, net margin 93.65%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/GOOGL",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $109.90B, net margin 56.94%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/GOOGL",
+              "asOf": "2026-09-24",
+              "claim": "PE 16.97, PB 6.64"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "GOOGL",
+          "score": 8,
+          "status": "observed",
+          "note": "Revenue +17.1% over trailing quarters; net income also up strongly though Q2 2026 figure may include a one-time item (net margin 93.65% is anomalous).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/GOOGL",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $119.796B, net income $112.193B, net margin 93.65%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/GOOGL",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $102.346B, net income $34.979B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "GOOGL",
+          "score": 6,
+          "status": "observed",
+          "note": "DeepMind exec said Gemini 4 could launch 'much earlier' than year-end (9/24) — positive product catalyst; stock still down amid broader tech pullback.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/a30500cd-62e5-4d3c-9cfb-60b6629ce1b1",
+              "asOf": "2026-09-24",
+              "claim": "Google DeepMind's Koray Kavukcuoglu says Gemini 4 could launch much earlier than year-end"
+            }
+          ]
+        }
+      },
+      "COST": {
+        "momentum": {
+          "ticker": "COST",
+          "score": 2.4,
+          "note": "906.50 vs 50-DMA 935.64 / 100-DMA 959.85",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/COST",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.40/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "COST",
+          "score": 3.5,
+          "note": "Very thin, stable margin (2.9%-3.1%) typical of membership-retail model; very high PB (11.97) vs thin margin is a value-trap style caution despite operational quality.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/COST",
+              "asOf": "2026-05-10",
+              "claim": "Q3 FY26 revenue $70.53B, net margin 3.11%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/COST",
+              "asOf": "2026-02-15",
+              "claim": "Q2 FY26 revenue $69.60B, net margin 2.92%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/COST",
+              "asOf": "2026-09-24",
+              "claim": "PE 45.50, PB 11.97"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "COST",
+          "score": 6,
+          "status": "observed",
+          "note": "Revenue and net income fairly stable across trailing quarters; comparison confounded by fiscal-quarter seasonality (Q4 is largest).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/COST",
+              "asOf": "2026-05-10",
+              "claim": "Q3 FY26 revenue $70.527B, net income $2.192B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/COST",
+              "asOf": "2025-08-31",
+              "claim": "Q4 FY25 revenue $86.156B, net income $2.610B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "COST",
+          "score": 5,
+          "status": "observed",
+          "note": "EARNINGS RISK FLAG: Costco reports fiscal Q4 results after close TODAY (9/24), est. EPS $6.53-6.54 vs $5.87 YoY — a binary catalyst inside the 2-week entry-risk window; nudged toward neutral pending the print.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/71e766a4-63f1-4cd8-a3c7-4d9c6c561bc6",
+              "asOf": "2026-09-24",
+              "claim": "Costco Wholesale expected to report fiscal Q4 earnings after market close Thursday 9/24; analysts expect $6.54 EPS on $94.97B revenue"
+            }
+          ]
+        }
+      },
+      "V": {
+        "momentum": {
+          "ticker": "V",
+          "score": 6.06,
+          "note": "362.57 vs 50-DMA 367.59 / 100-DMA 349.06",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/V",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 6.06/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "V",
+          "score": 8.5,
+          "note": "High, stable margin (48.4%-53.6%) for a payments-network moat business; elevated PB (19.49) reflects asset-light model.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/V",
+              "asOf": "2026-06-30",
+              "claim": "Q3 FY26 revenue $11.63B, net margin 48.38%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/V",
+              "asOf": "2026-03-31",
+              "claim": "Q2 FY26 revenue $11.23B, net margin 53.62%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/V",
+              "asOf": "2026-09-24",
+              "claim": "PE 31.03, PB 19.49"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "V",
+          "score": 7,
+          "status": "observed",
+          "note": "Revenue +8.5%, net income +10.6% over trailing quarters — steady growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/V",
+              "asOf": "2026-06-30",
+              "claim": "Q3 FY26 revenue $11.633B, net income $5.628B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/V",
+              "asOf": "2025-09-30",
+              "claim": "Q4 FY25 revenue $10.724B, net income $5.090B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "V",
+          "score": 5,
+          "status": "observed",
+          "note": "$167.5M ATM-fee antitrust settlement (9/24, negative legal cost) offset by Reap stablecoin card partnership expansion (9/23, positive). Net neutral.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/4a6fceb7-4e9a-419f-97bc-5be606319f7f",
+              "asOf": "2026-09-24",
+              "claim": "Visa and Mastercard agreed to a proposed $167.5 million ATM-fee antitrust settlement"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/e907f05f-4035-47b7-9736-504ae144da6a",
+              "asOf": "2026-09-23",
+              "claim": "Visa collaborated with Reap to bring stablecoin-linked Visa credit card programs to 100+ markets"
+            }
+          ]
+        }
+      },
+      "JNJ": {
+        "momentum": {
+          "ticker": "JNJ",
+          "score": 6.35,
+          "note": "273.79 vs 50-DMA 263.76 / 100-DMA 250.24",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/JNJ",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 6.35/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "JNJ",
+          "score": 8,
+          "note": "Solid, stable margin (~21.8%-21.9%) for a diversified pharma/medtech leader; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/JNJ",
+              "asOf": "2026-06-28",
+              "claim": "Q2 FY26 revenue $25.31B, net margin 21.86%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/JNJ",
+              "asOf": "2026-03-29",
+              "claim": "Q1 FY26 revenue $24.06B, net margin 21.76%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/JNJ",
+              "asOf": "2026-09-24",
+              "claim": "PE 31.20, PB 7.63"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "JNJ",
+          "score": 6,
+          "status": "observed",
+          "note": "Revenue +5.5%, net income +7.4% over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/JNJ",
+              "asOf": "2026-06-28",
+              "claim": "Q2 2026 revenue $25.310B, net income $5.534B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/JNJ",
+              "asOf": "2025-09-28",
+              "claim": "Q3 2025 revenue $23.993B, net income $5.152B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "JNJ",
+          "score": 8,
+          "status": "observed",
+          "note": "Positive Phase 3 MajesTEC-3 multiple myeloma data (9/23); UBS says Caplyta bipolar data supports $5B+ peak sales potential, reiterated Buy $320 PT (9/22). Strong positive clinical catalyst cluster.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/48071369-dd1b-42fd-a825-6721133505b5",
+              "asOf": "2026-09-23",
+              "claim": "J&J new MajesTEC-3 phase 3 data shows sustained disease control/survival for multiple myeloma combo therapy"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/7dedab3e-0608-4c2f-8c71-6695f8469b25",
+              "asOf": "2026-09-22",
+              "claim": "UBS says J&J's Caplyta positive phase 3 bipolar mania data supports >$5B peak sales potential, maintains Buy $320 PT"
+            }
+          ]
+        }
+      },
+      "ELV": {
+        "momentum": {
+          "ticker": "ELV",
+          "score": 6.28,
+          "note": "398.64 vs 50-DMA 396.62 / 100-DMA 396.61",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/ELV",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 6.28/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "ELV",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited (25/day exhausted) before this symbol could be fetched. Cannot cite a within-120-day ROE/margin figure.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "ELV",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "ELV",
+          "score": 6.5,
+          "status": "observed",
+          "note": "BofA Securities raised PT $460→$480 (9/11, at edge of window) — positive analyst move; no offsetting negative found within 14d.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/28543021-4bf4-4a9f-9b8e-aef4d890a59e",
+              "asOf": "2026-09-11",
+              "claim": "BofA Securities adjusted Elevance Health price target to $480 from $460"
+            }
+          ]
+        }
+      },
+      "CAT": {
+        "momentum": {
+          "ticker": "CAT",
+          "score": 2.56,
+          "note": "812.42 vs 50-DMA 834.95 / 100-DMA 881.52",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/CAT",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.56/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "CAT",
+          "score": 6.5,
+          "note": "Improving margin (14.63%→17.49%) on cyclical machinery demand; high PB (19.25) reflects buybacks/leverage typical of the name.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/CAT",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $20.54B, net margin 17.49%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/CAT",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $17.42B, net margin 14.63%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/CAT",
+              "asOf": "2026-09-24",
+              "claim": "PE 34.93, PB 19.25"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "CAT",
+          "score": 8,
+          "status": "observed",
+          "note": "Revenue +16.5%, net income +56% over trailing quarters — accelerating.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/CAT",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $20.543B, net income $3.593B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/CAT",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $17.638B, net income $2.299B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "CAT",
+          "score": 7,
+          "status": "observed",
+          "note": "President Capital initiated coverage at Buy with $999 PT (9/18); AI data-center buildout named as a demand tailwind for CAT-adjacent equipment names (9/21). Positive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/ff6ffbb5-95de-44de-861d-3aeddf56a586",
+              "asOf": "2026-09-18",
+              "claim": "President Capital initiated Caterpillar at Buy with $999 price target"
+            }
+          ]
+        }
+      },
+      "CVX": {
+        "momentum": {
+          "ticker": "CVX",
+          "score": 5.43,
+          "note": "205.54 vs 50-DMA 199.72 / 100-DMA 191.13",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/CVX",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.43/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "CVX",
+          "score": 4.5,
+          "note": "Highly volatile margin (4.55%→17.23%) reflecting commodity/one-time item sensitivity; low PB reasonable for the sector.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/CVX",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $70.06B, net margin 17.23%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/CVX",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $48.61B, net margin 4.55%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/CVX",
+              "asOf": "2026-09-24",
+              "claim": "PE 19.70, PB 2.14"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "CVX",
+          "score": 7.5,
+          "status": "observed",
+          "note": "Revenue +40.9%, net income +241% over trailing quarters, likely reflecting the Hess acquisition closing rather than organic growth alone.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/CVX",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $70.055B, net income $12.072B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/CVX",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $49.726B, net income $3.539B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "CVX",
+          "score": 5,
+          "status": "observed",
+          "note": "Only macro/industry items within 14d (diesel export-ban lobbying, LNG portfolio expansion talk); no CVX-specific rating change or earnings.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/d9ecdc0c-9349-4aa1-8cc3-331a2373b19f",
+              "asOf": "2026-09-24",
+              "claim": "Chevron among oil executives pushing back on Trump's proposed diesel export ban"
+            }
+          ]
+        }
+      },
+      "KO": {
+        "momentum": {
+          "ticker": "KO",
+          "score": 6.08,
+          "note": "88.09 vs 50-DMA 87.21 / 100-DMA 83.96",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/KO",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 6.08/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "KO",
+          "score": 8,
+          "note": "High, stable margin (31.5%-33.1%) typical of a durable consumer-staples moat; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/KO",
+              "asOf": "2026-07-03",
+              "claim": "Q2 FY26 revenue $13.38B, net margin 33.07%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/KO",
+              "asOf": "2026-04-03",
+              "claim": "Q1 FY26 revenue $12.47B, net margin 31.46%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/KO",
+              "asOf": "2026-09-24",
+              "claim": "PE 26.54, PB 10.49"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "KO",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +7.4%, net income +19.7% over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/KO",
+              "asOf": "2026-07-03",
+              "claim": "Q2 2026 revenue $13.380B, net income $4.425B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/KO",
+              "asOf": "2025-09-26",
+              "claim": "Q3 2025 revenue $12.455B, net income $3.696B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "KO",
+          "score": 6,
+          "status": "observed",
+          "note": "$10 billion US infrastructure investment plan through 2030 announced (9/16, within window), framed as growth strategy with raised FY organic revenue outlook. Positive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/44cd3fb6-468b-4111-bf73-8180991bfdab",
+              "asOf": "2026-09-16",
+              "claim": "Coca-Cola plans $10 billion US infrastructure investment through 2030; raised full-year organic revenue outlook to ~5%"
+            }
+          ]
+        }
+      },
+      "DUK": {
+        "momentum": {
+          "ticker": "DUK",
+          "score": 2.33,
+          "note": "114.19 vs 50-DMA 122.88 / 100-DMA 123.96",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/DUK",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.33/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "DUK",
+          "score": 5.5,
+          "note": "Declining margin (17.23%→14.70%) for a regulated utility; low PB (1.66) typical/appropriate for the sector.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/DUK",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $7.43B, net margin 14.70%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/DUK",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $9.00B, net margin 17.23%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/DUK",
+              "asOf": "2026-09-24",
+              "claim": "PE 17.13, PB 1.66"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "DUK",
+          "score": 4,
+          "status": "observed",
+          "note": "Revenue -11.3%, net income -23% over trailing quarters, though utility revenue is seasonal.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/DUK",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $7.428B, net income $1.092B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/DUK",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $8.377B, net income $1.421B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "DUK",
+          "score": 4.5,
+          "status": "observed",
+          "note": "Morgan Stanley cut PT $133→$127 (9/18, Equalweight) — modest negative; no offsetting positive within window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/2757583c-bcdb-442c-95e5-8eda817e96ed",
+              "asOf": "2026-09-18",
+              "claim": "Morgan Stanley adjusted Duke Energy price target to $127 from $133, maintains Equalweight rating"
+            }
+          ]
+        }
+      },
+      "TMUS": {
+        "momentum": {
+          "ticker": "TMUS",
+          "score": 1.62,
+          "note": "165.60 vs 50-DMA 180.24 / 100-DMA 183.09",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/TMUS",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.62/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "TMUS",
+          "score": 6,
+          "note": "Improving margin (10.84%→14.21%) for a scaled wireless carrier; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/TMUS",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $22.79B, net margin 14.21%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/TMUS",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $23.11B, net margin 10.84%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/TMUS",
+              "asOf": "2026-09-24",
+              "claim": "PE 17.34, PB 3.16"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "TMUS",
+          "score": 6,
+          "status": "observed",
+          "note": "Revenue +3.8%, net income +19.3% over trailing quarters — margin expansion.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/TMUS",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $22.791B, net income $3.239B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/TMUS",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $21.957B, net income $2.714B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "TMUS",
+          "score": 7,
+          "status": "observed",
+          "note": "Launched new AI-powered AutoPilot network capabilities (9/24); MoffettNathanson raised PT $242→$246, Buy (9/22); world-first 5G SA roaming milestone with Jio (9/21). Positive cluster.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/8abccc72-ebc5-4d73-a72b-929eea696535",
+              "asOf": "2026-09-24",
+              "claim": "T-Mobile launching new AI-powered AutoPilot network capabilities and expanding Dynamic CX nationwide"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/2f1581a4-b79a-47d6-b17e-0233a1142997",
+              "asOf": "2026-09-22",
+              "claim": "MoffettNathanson raised T-Mobile price target to $246 from $242, keeps Buy rating"
+            }
+          ]
+        }
+      },
+      "AMT": {
+        "momentum": {
+          "ticker": "AMT",
+          "score": 3.2,
+          "note": "170.82 vs 50-DMA 173.06 / 100-DMA 175.93",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/AMT",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.20/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "AMT",
+          "score": 6.5,
+          "note": "Stable ~32% net margin for a tower REIT; high PB (21.39) typical for asset-light REIT structure, not distress.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AMT",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $2.749B, net margin 32.28%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AMT",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $2.738B, net margin 32.09%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/AMT",
+              "asOf": "2026-09-24",
+              "claim": "PE 23.48, PB 21.39"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "AMT",
+          "score": 4,
+          "status": "observed",
+          "note": "Revenue roughly flat (+1.2%), net income slightly declining over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AMT",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $2.749B, net income $887.5M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AMT",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $2.717B, net income $912.6M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "AMT",
+          "score": 5,
+          "status": "observed",
+          "note": "Dividend maintained (9/18, neutral); no rating change or material catalyst within 14d (the $1.6B notes offering is 9/9, outside window).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/9c5a3b04-eabb-4e9d-8318-0648baddb20b",
+              "asOf": "2026-09-18",
+              "claim": "American Tower keeps quarterly dividend at $1.79/share, payable Oct 20"
+            }
+          ]
+        }
+      },
+      "SHW": {
+        "momentum": {
+          "ticker": "SHW",
+          "score": 3.89,
+          "note": "326.48 vs 50-DMA 339.00 / 100-DMA 328.47",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SHW",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.89/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SHW",
+          "score": 6.5,
+          "note": "Improving margin (9.44%→12.43%) for a paints/coatings leader; high PB (20.56) reflects asset-light brand value, watch leverage.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SHW",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $6.789B, net margin 12.43%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SHW",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $5.667B, net margin 9.44%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/SHW",
+              "asOf": "2026-09-24",
+              "claim": "PE 30.10, PB 20.56"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "SHW",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue +6.8%, net income roughly flat over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SHW",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $6.789B, net income $843.6M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SHW",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $6.358B, net income $833.1M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "SHW",
+          "score": 4.5,
+          "status": "observed",
+          "note": "Stephens cut PT $375→$353 (Hold, 9/22) same day as RBC noted 'choppy' demand/cost-pressure commentary ahead of investor event. Mildly negative.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/f49d7a17-5d63-4652-aee2-0e691d0167a9",
+              "asOf": "2026-09-22",
+              "claim": "Stephens adjusted Sherwin-Williams price target to $353 from $375, keeps Hold rating"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/99934298-bd11-44f4-a9bd-c74d9ae499cb",
+              "asOf": "2026-09-22",
+              "claim": "RBC says Sherwin-Williams expected to discuss choppy demand and cost pressures at investor event"
+            }
+          ]
+        }
+      },
+      "NEM": {
+        "momentum": {
+          "ticker": "NEM",
+          "score": 8.03,
+          "note": "121.79 vs 50-DMA 113.79 / 100-DMA 109.10",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/NEM",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 8.03/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "NEM",
+          "score": 6,
+          "note": "High but declining margin (44.64%→35.99%) reflecting gold-price sensitivity; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/NEM",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $6.118B, net margin 35.99%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/NEM",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $7.307B, net margin 44.64%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/NEM",
+              "asOf": "2026-09-24",
+              "claim": "PE 15.60, PB 3.71"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "NEM",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +10.8%, net income +20.2% over trailing quarters, aided by higher gold prices.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/NEM",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $6.118B, net income $2.202B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/NEM",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $5.524B, net income $1.832B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "NEM",
+          "score": 5.5,
+          "status": "observed",
+          "note": "RBC raised PT to $155 (9/16, within window, still Outperform) — positive; stock fell >2% same week purely on gold-price pullback, a commodity move rather than NEM-specific news.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/77628974-352c-485b-9bd8-c625bba981f2",
+              "asOf": "2026-09-23",
+              "claim": "Newmont fell 2.4% premarket as gold retreated; RBC Capital maintained Outperform and raised PT to $155 on Sept 16"
+            }
+          ]
+        }
+      },
+      "UPS": {
+        "momentum": {
+          "ticker": "UPS",
+          "score": 1.84,
+          "note": "95.80 vs 50-DMA 105.35 / 100-DMA 105.34",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/UPS",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.84/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "UPS",
+          "score": 2,
+          "note": "Weak and deteriorating net margin (4.08%→2.65%) for a capital-intensive logistics operator.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/UPS",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $22.83B, net margin 2.65%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/UPS",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $21.20B, net margin 4.08%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/UPS",
+              "asOf": "2026-09-24",
+              "claim": "PE 17.84, PB 5.41"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "UPS",
+          "score": 3.5,
+          "status": "observed",
+          "note": "Revenue +6.6% but net income declining -54% over trailing quarters — margin compression despite top-line growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/UPS",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $22.834B, net income $604M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/UPS",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $21.415B, net income $1.311B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "UPS",
+          "score": 3,
+          "status": "observed",
+          "note": "BofA cut PT $115→$108 (Neutral, 9/21) and shares fell ~4.5% same day, among worst S&P performers. Negative cluster within window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/1df97126-809b-4b33-b24b-5e7d2a9a6f60",
+              "asOf": "2026-09-21",
+              "claim": "BofA Securities cut UPS price target to $108 from $115, maintains Neutral; shares fell about 4.5%, among worst S&P performers"
+            }
+          ]
+        }
+      },
+      "FAST": {
+        "momentum": {
+          "ticker": "FAST",
+          "score": 5.88,
+          "note": "51.01 vs 50-DMA 49.11 / 100-DMA 47.32",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/FAST",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.88/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "FAST",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched. High PE(42.6)/PB(14.4) noted but not sufficient alone for a quality score.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "FAST",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "FAST",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Named as an AI/data-center infrastructure beneficiary in a sector piece (9/21) — a mild positive tailwind, not a company-specific catalyst. Earnings 10/14 outside window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/6bfd5294-a01d-45a6-bde9-8319643a8359",
+              "asOf": "2026-09-21",
+              "claim": "Fastenal named among infrastructure names positioned for AI data-center buildout demand"
+            }
+          ]
+        }
+      },
+      "VRSK": {
+        "momentum": {
+          "ticker": "VRSK",
+          "score": 2.67,
+          "note": "171.75 vs 50-DMA 188.60 / 100-DMA 183.07",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/VRSK",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.67/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "VRSK",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched. Negative PB (-18.80) is suggestive of negative book equity but not sufficient alone without margin/ROE data.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "VRSK",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "VRSK",
+          "score": null,
+          "status": "missing",
+          "note": "No news, rating action, or earnings evidence dated within the 14-day window (Barclays PT cut and data-center database launch are both >16 days old).",
+          "evidence": []
+        }
+      },
+      "SBUX": {
+        "momentum": {
+          "ticker": "SBUX",
+          "score": 2.7,
+          "note": "94.17 vs 50-DMA 103.99 / 100-DMA 103.31",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SBUX",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.70/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SBUX",
+          "score": 3,
+          "note": "Duplicate placeholder skipped; see prior SBUX entry.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "SBUX",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue roughly flat/-2.6%, but net income recovering sharply from a depressed base (+685%) over trailing quarters — turnaround signal, not organic growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SBUX",
+              "asOf": "2026-06-28",
+              "claim": "Q3 FY26 revenue $9.323B, net income $1.045B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SBUX",
+              "asOf": "2025-09-28",
+              "claim": "Q4 FY25 revenue $9.569B, net income $133.1M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "SBUX",
+          "score": 4.5,
+          "status": "observed",
+          "note": "Announced closure of ~250 North American stores and ~$300M restructuring charges (9/24) — negative operational catalyst, though stock reaction was muted (+0.6% premarket).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/a4fd4bb9-d8bd-4354-9d71-56a7c7a8ae7a",
+              "asOf": "2026-09-24",
+              "claim": "Starbucks to close ~250 North American coffeehouses, take ~$300M in restructuring charges"
+            }
+          ]
+        }
+      },
+      "DECK": {
+        "momentum": {
+          "ticker": "DECK",
+          "score": 0.52,
+          "note": "78.58 vs 50-DMA 91.91 / 100-DMA 98.31",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/DECK",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 0.52/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "DECK",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "DECK",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "DECK",
+          "score": 4,
+          "status": "observed",
+          "note": "Bearish put-option sweep noted (9/17, weak signal); no bullish catalyst found inside window (BMO's Underperform initiation is 9/9, just outside 14d).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/c83b6609-e33a-4ecc-92b9-7bfee59d53b1",
+              "asOf": "2026-09-17",
+              "claim": "DECK bearish put option trade, $75 strike exp 6/17/27, $84.2K total premium"
+            }
+          ]
+        }
+      },
+      "VTI": {
+        "momentum": {
+          "ticker": "VTI",
+          "score": 5.5,
+          "note": "376.82 vs 50-DMA 375.27 / 100-DMA 370.64",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/VTI",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.50/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "VTI",
+          "score": null,
+          "note": "Total-market index fund, not an operating company; no ROE/margin/leverage applicable.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "VTI",
+          "score": null,
+          "status": "missing",
+          "note": "Index ETF — no company-level growth/estimate-revision data applies; get_financials returned no data.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "VTI",
+          "score": 5,
+          "status": "observed",
+          "note": "Index fund; only broad macro commentary (Fed policy, rate expectations) available, no single-name catalyst applicable.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/f5566136-d665-44bf-98c0-17e73d58cec6",
+              "asOf": "2026-08-31",
+              "claim": "Broad-market commentary on Fed rate-hike odds affecting index-fund flows (outside strict 14d window, included for context only)"
+            }
+          ]
+        }
+      },
+      "AAPL": {
+        "momentum": {
+          "ticker": "AAPL",
+          "score": 7.76,
+          "note": "335.65 vs 50-DMA 321.06 / 100-DMA 309.89",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/AAPL",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 7.76/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "AAPL",
+          "score": 7.5,
+          "note": "Strong, stable margin (26.6%-27.2%); very high PB (45.79) reflects heavy buyback-driven low book equity, a leverage caution despite operating quality.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AAPL",
+              "asOf": "2026-06-27",
+              "claim": "Q3 FY26 revenue $109.42B, net margin 27.23%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AAPL",
+              "asOf": "2026-03-28",
+              "claim": "Q2 FY26 revenue $111.18B, net margin 26.60%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/AAPL",
+              "asOf": "2026-09-24",
+              "claim": "PE 38.63, PB 45.79"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "AAPL",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +6.8%, net income +8.5% over trailing quarters — steady growth.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/AAPL",
+              "asOf": "2026-06-27",
+              "claim": "Q3 FY26 revenue $109.417B, net income $29.789B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/AAPL",
+              "asOf": "2025-09-27",
+              "claim": "Q4 FY25 revenue $102.466B, net income $27.466B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "AAPL",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Square/Apple Business integration (9/24, minor positive); Qualcomm patent-license renewal through 2027 (9/24, neutral/positive); a member of Congress sold $100-250K AAPL (9/22, mild bearish signal but not fundamental). Net mildly positive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/fdb13a40-b67a-4c35-951d-66be8e12531a",
+              "asOf": "2026-09-24",
+              "claim": "Block's Square launched new integration with Apple Business platform"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/3961915f-a705-4043-9e78-91b2e543f8f2",
+              "asOf": "2026-09-24",
+              "claim": "Qualcomm renewed global patent license agreement with Apple effective April 1, 2027"
+            }
+          ]
+        }
+      },
+      "META": {
+        "momentum": {
+          "ticker": "META",
+          "score": 7.92,
+          "note": "759.79 vs 50-DMA 610.42 / 100-DMA 605.31",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/META",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 7.92/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "META",
+          "score": 7.5,
+          "note": "High margin though volatile quarter-to-quarter (47.5%→26.1%, likely a one-time item in Q1); moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/META",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $60.80B, net margin 26.07%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/META",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $56.31B, net margin 47.54%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/META",
+              "asOf": "2026-09-24",
+              "claim": "PE 28.03, PB 7.26"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "META",
+          "score": 7.5,
+          "status": "observed",
+          "note": "Revenue +18.7% over trailing quarters; net income comparison confounded by a Q3 2025 one-time tax-related charge that depressed that quarter's margin.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/META",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $60.801B, net income $15.848B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/META",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $51.242B, net income $2.709B, net margin 5.29%"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "META",
+          "score": 7,
+          "status": "observed",
+          "note": "Tigress cut PT $995→$945 but kept Strong Buy (9/24, stock +1.56%); Muse AI agent became most-downloaded free iPhone app for 3 straight days, a strong product catalyst (9/24). Net positive.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/66929773-cd92-43d0-97d0-3eecf498843d",
+              "asOf": "2026-09-24",
+              "claim": "Tigress Financial cut Meta price target to $945 from $995, keeps Strong Buy; META +1.56% to $755.69"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/9bbeb010-d74d-450d-b607-06f6048e83ee",
+              "asOf": "2026-09-24",
+              "claim": "Meta's Muse personal AI agent ranked as most-downloaded free iPhone app in the US for three consecutive days"
+            }
+          ]
+        }
+      },
+      "WMT": {
+        "momentum": {
+          "ticker": "WMT",
+          "score": 2.16,
+          "note": "109.58 vs 50-DMA 109.69 / 100-DMA 115.36",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/WMT",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.16/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "WMT",
+          "score": 2.5,
+          "note": "Very thin margin (3.0%-3.4%) typical of low-margin retail; high PB (8.94) vs thin margin is a value-trap style caution.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/WMT",
+              "asOf": "2026-07-31",
+              "claim": "Q2 FY27 revenue $187.94B, net margin 3.39%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/WMT",
+              "asOf": "2026-04-30",
+              "claim": "Q1 FY27 revenue $177.75B, net margin 3.00%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/WMT",
+              "asOf": "2026-09-24",
+              "claim": "PE 40.05, PB 8.94"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "WMT",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue +4.7%, net income roughly flat over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/WMT",
+              "asOf": "2026-07-31",
+              "claim": "Q2 FY27 revenue $187.937B, net income $6.366B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/WMT",
+              "asOf": "2025-10-31",
+              "claim": "Q3 FY26 revenue $179.496B, net income $6.143B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "WMT",
+          "score": 6,
+          "status": "observed",
+          "note": "Opened new Neighborhood Market (9/23, minor positive); named as a Meta smart-glasses retail partner (9/24, minor positive halo). No negative found within window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/ae4ad04a-4078-4044-a36a-c0d94df77aef",
+              "asOf": "2026-09-23",
+              "claim": "Walmart opened new 45,000 sq-ft Neighborhood Market in Mesquite, TX; invested $2.5B+ in Texas stores over 5 years"
+            }
+          ]
+        }
+      },
+      "MA": {
+        "momentum": {
+          "ticker": "MA",
+          "score": 5.94,
+          "note": "561.94 vs 50-DMA 567.45 / 100-DMA 533.61",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/MA",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.94/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "MA",
+          "score": 9,
+          "note": "Very high, stable margin (46.2%-47.3%) for a payments-network moat; high PB (87.62) reflects asset-light model, not distress.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/MA",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $9.277B, net margin 47.30%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/MA",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $8.398B, net margin 46.23%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/MA",
+              "asOf": "2026-09-24",
+              "claim": "PE 30.80, PB 87.62"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "MA",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +7.8%, net income +11.7% over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/MA",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $9.277B, net income $4.388B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/MA",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $8.602B, net income $3.927B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "MA",
+          "score": 5,
+          "status": "observed",
+          "note": "$167.5M ATM-fee antitrust settlement (9/24, negative) offset by SoFi stablecoin-settlement launch across Mastercard's network (9/22, positive). Net neutral.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/4a6fceb7-4e9a-419f-97bc-5be606319f7f",
+              "asOf": "2026-09-24",
+              "claim": "Mastercard party to proposed $167.5 million ATM-fee antitrust settlement"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/1afb3ae8-fe64-4baa-8fd3-0ce59a66fd43",
+              "asOf": "2026-09-22",
+              "claim": "SoFi Technologies launched stablecoin settlement across Mastercard's global payments network"
+            }
+          ]
+        }
+      },
+      "ABBV": {
+        "momentum": {
+          "ticker": "ABBV",
+          "score": 7.37,
+          "note": "265.15 vs 50-DMA 256.02 / 100-DMA 240.41",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/ABBV",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 7.37/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "ABBV",
+          "score": 4.5,
+          "note": "Volatile margin, weak latest-but-one quarter (4.63%→21.27%); negative PB (-78.92) indicates negative book equity, a real leverage flag despite high margins.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/ABBV",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $16.99B, net margin 21.27%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/ABBV",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $15.00B, net margin 4.63%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/ABBV",
+              "asOf": "2026-09-24",
+              "claim": "PE 74.95, PB -78.92 (negative book equity)"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "ABBV",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Revenue +7.7% over trailing quarters; net income sharply higher versus a Q3 2025 quarter depressed by one-time charges (margin 21.3% vs 1.2%).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/ABBV",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $16.990B, net income $3.613B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/ABBV",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $15.776B, net income $186M, net margin 1.18%"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "ABBV",
+          "score": 7,
+          "status": "observed",
+          "note": "Health Canada issued Notice of Compliance for EPKINLY new follicular lymphoma indication, supported by phase 3 data showing 79% reduced progression/death risk (9/24). Positive regulatory catalyst.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/e19cd4f1-437a-4a9d-b401-1ddb76a969e0",
+              "asOf": "2026-09-24",
+              "claim": "Health Canada issued Notice of Compliance for AbbVie's EPKINLY in follicular lymphoma, phase 3 showed 79% reduced progression/death risk"
+            }
+          ]
+        }
+      },
+      "CI": {
+        "momentum": {
+          "ticker": "CI",
+          "score": 3.27,
+          "note": "268.22 vs 50-DMA 281.94 / 100-DMA 283.94",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/CI",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.27/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "CI",
+          "score": 2.5,
+          "note": "Very thin, stable margin (2.32%-2.41%) typical of a low-margin managed-care/PBM model; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/CI",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $71.67B, net margin 2.32%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/CI",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $68.49B, net margin 2.41%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/CI",
+              "asOf": "2026-09-24",
+              "claim": "PE 11.09, PB 1.66"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "CI",
+          "score": 4.5,
+          "status": "observed",
+          "note": "Revenue +2.8%, net margin thin and roughly flat (~2.3-2.8%) over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/CI",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $71.668B, net income $1.660B, net margin 2.32%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/CI",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $69.748B, net income $1.973B, net margin 2.83%"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "CI",
+          "score": null,
+          "status": "missing",
+          "note": "No news, rating action, or earnings evidence dated within the 14-day window (Evercore initiation is 9/9, just outside the cutoff).",
+          "evidence": []
+        }
+      },
+      "ETN": {
+        "momentum": {
+          "ticker": "ETN",
+          "score": 5.82,
+          "note": "439.01 vs 50-DMA 417.68 / 100-DMA 411.37",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/ETN",
+              "asOf": "2026-09-23",
+              "claim": "producer/momentum.mjs RS/MA composite 5.82/10 from recorded daily closes through 2026-09-23"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "ETN",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "ETN",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "ETN",
+          "score": 5,
+          "status": "observed",
+          "note": "A single bearish call option trade noted (9/17, weak signal); named as an AI/power-infrastructure beneficiary in a sector piece (9/21, mild positive). Net neutral.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/6bfd5294-a01d-45a6-bde9-8319643a8359",
+              "asOf": "2026-09-21",
+              "claim": "Eaton named among electrical-equipment makers positioned along the AI infrastructure chain"
+            }
+          ]
+        }
+      },
+      "SHEL": {
+        "momentum": {
+          "ticker": "SHEL",
+          "score": 6.19,
+          "note": "96.27 vs 50-DMA 91.13 / 100-DMA 87.44",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SHEL",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 6.19/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SHEL",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "SHEL",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "SHEL",
+          "score": 7.5,
+          "status": "observed",
+          "note": "Close to final investment decision to double LNG Canada capacity (9/24); finalized Trinidad & Tobago gas project agreements (9/24); prior $16.4B ARC Resources acquisition cited as strategic consolidation. Positive cluster.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/0e979988-cb34-40ea-a825-9017c2c5efa2",
+              "asOf": "2026-09-24",
+              "claim": "Shell and LNG Canada Development close to financial commitment to double capacity to 28 million metric tons/year"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/b2fe92d6-a0b3-46f7-9664-96de434ea6ac",
+              "asOf": "2026-09-24",
+              "claim": "Shell's Trinidad and Tobago unit finalized agreements to advance the Aphrodite gas project, first gas expected Q2 2027"
+            }
+          ]
+        }
+      },
+      "PEP": {
+        "momentum": {
+          "ticker": "PEP",
+          "score": 1.9,
+          "note": "130.50 vs 50-DMA 138.31 / 100-DMA 142.00",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/PEP",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.90/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "PEP",
+          "score": 6.5,
+          "note": "Stable margin (~12.0%-12.3%), reasonable for a food/beverage conglomerate; moderate PB.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/PEP",
+              "asOf": "2026-06-13",
+              "claim": "Q2 FY26 revenue $24.18B, net margin 12.33%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/PEP",
+              "asOf": "2026-03-21",
+              "claim": "Q1 FY26 revenue $19.44B, net margin 11.97%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/PEP",
+              "asOf": "2026-09-24",
+              "claim": "PE 17.07, PB 8.05"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "PEP",
+          "score": 4.5,
+          "status": "observed",
+          "note": "Revenue roughly flat (+1.0%), net income roughly flat over trailing quarters.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/PEP",
+              "asOf": "2026-06-13",
+              "claim": "Q2 2026 revenue $24.181B, net income $2.981B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/PEP",
+              "asOf": "2025-09-06",
+              "claim": "Q3 2025 revenue $23.937B, net income $2.603B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "PEP",
+          "score": 3.5,
+          "status": "observed",
+          "note": "Citigroup cut PT $145→$142 (Neutral, 9/24) and BNP Paribas cut PT $183→$161 (still Outperform, 9/23) — two significant price-target cuts within the window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/02d015f3-df93-4b9c-9525-023bee0d885b",
+              "asOf": "2026-09-24",
+              "claim": "Citigroup adjusted PepsiCo price target to $142 from $145, maintains Neutral"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/6e7db0bd-71ac-4e1e-bc2b-60492df06b9a",
+              "asOf": "2026-09-23",
+              "claim": "BNP Paribas adjusted PepsiCo price target to $161 from $183, maintains Outperform"
+            }
+          ]
+        }
+      },
+      "SO": {
+        "momentum": {
+          "ticker": "SO",
+          "score": 1.93,
+          "note": "83.53 vs 50-DMA 91.28 / 100-DMA 92.69",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SO",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.93/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SO",
+          "score": 6.5,
+          "note": "Stable ~16-17% margin for a regulated utility; low PB (2.43) appropriate for the sector.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SO",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $6.977B, net margin 16.83%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SO",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $8.397B, net margin 16.15%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/SO",
+              "asOf": "2026-09-24",
+              "claim": "PE 20.14, PB 2.43"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "SO",
+          "score": 3.5,
+          "status": "observed",
+          "note": "Revenue -10.8%, net income -31% over trailing quarters (utility seasonality a factor).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/SO",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $6.977B, net income $1.174B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/SO",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $7.823B, net income $1.711B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "SO",
+          "score": 6.5,
+          "status": "observed",
+          "note": "Georgia Power (SO unit) formed partnership with Google to advance nuclear energy, providing ~$900M in consumer benefits (9/21/22). Positive strategic catalyst.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/63dd4017-409e-494f-90ba-fc6a2d90613b",
+              "asOf": "2026-09-22",
+              "claim": "Southern unit Georgia Power formed partnership with Alphabet's Google to advance nuclear energy, providing ~$900 million in consumer benefits"
+            }
+          ]
+        }
+      },
+      "T": {
+        "momentum": {
+          "ticker": "T",
+          "score": 4.59,
+          "note": "25.32 vs 50-DMA 24.53 / 100-DMA 24.01",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/T",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.59/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "T",
+          "score": 5.5,
+          "note": "Improving margin (12.15%→14.66%); low PB (1.58) consistent with heavy telecom debt load.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/T",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $31.56B, net margin 14.66%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/T",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $31.51B, net margin 12.15%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/T",
+              "asOf": "2026-09-24",
+              "claim": "PE 8.37, PB 1.58"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "T",
+          "score": 4,
+          "status": "observed",
+          "note": "Revenue roughly flat (+2.8%); net income comparison confounded by a large one-time gain in Q3 2025 that inflates the prior-quarter base.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/T",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $31.558B, net income $4.627B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/T",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $30.709B, net income $9.314B, net margin 30.33%"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "T",
+          "score": 4,
+          "status": "observed",
+          "note": "MoffettNathanson cut PT $24→$23 (Neutral, 9/22) — modest negative; CFO Pascal Desroches set to retire and join GE Healthcare board (9/22, neutral/succession item).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/a74b860a-a753-44ca-8b85-5c25fd269c8f",
+              "asOf": "2026-09-22",
+              "claim": "MoffettNathanson adjusted AT&T price target to $23 from $24, maintains Neutral rating"
+            }
+          ]
+        }
+      },
+      "PLD": {
+        "momentum": {
+          "ticker": "PLD",
+          "score": 3.06,
+          "note": "134.00 vs 50-DMA 141.09 / 100-DMA 141.90",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/PLD",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.06/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "PLD",
+          "score": 7.5,
+          "note": "High, improving margin (42.74%→43.79%) for an industrial REIT; low PB (2.33) typical/appropriate for REIT structure.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/PLD",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $2.425B, net margin 43.79%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/PLD",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $2.298B, net margin 42.74%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/PLD",
+              "asOf": "2026-09-24",
+              "claim": "PE 29.83, PB 2.33"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "PLD",
+          "score": 6,
+          "status": "observed",
+          "note": "Revenue +9.6% over trailing quarters; net income growing versus Q3 2025 baseline though Q4 2025 included a one-time gain (net margin 62.1%).",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/PLD",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $2.425B, net income $1.062B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/PLD",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $2.214B, net income $764.3M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "PLD",
+          "score": null,
+          "status": "missing",
+          "note": "No news, rating action, or earnings evidence dated within the 14-day window (dividend announcement and Wells Fargo PT are from 9/1-9/2, outside cutoff).",
+          "evidence": []
+        }
+      },
+      "ECL": {
+        "momentum": {
+          "ticker": "ECL",
+          "score": 4.3,
+          "note": "276.80 vs 50-DMA 277.74 / 100-DMA 270.45",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/ECL",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.30/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "ECL",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "ECL",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "ECL",
+          "score": 8,
+          "status": "observed",
+          "note": "Director Eric Green bought $1M in ECL shares at $276.64 on 9/11 (within window) — bullish insider buying; Smart Insider upgraded the stock to +1 (strong positive signal) on 9/22, noting purchases occurred near multi-year highs.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/5bc08184-0894-43a6-9f53-23f45cbbcc74",
+              "asOf": "2026-09-22",
+              "claim": "Ecolab Director Eric Green bought $1 million in shares at $276.64 on Sept 11; Smart Insider upgraded Ecolab from +N to +1 (strong positive signal)"
+            }
+          ]
+        }
+      },
+      "VMC": {
+        "momentum": {
+          "ticker": "VMC",
+          "score": 1.26,
+          "note": "244.44 vs 50-DMA 271.60 / 100-DMA 279.15",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/VMC",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.26/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "VMC",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "VMC",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "VMC",
+          "score": 4,
+          "status": "observed",
+          "note": "Jefferies cut PT $345→$320 (9/23, still Buy) — modest negative price-target revision within window.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/71b66714-c9c7-4a25-b2ca-214c20dd47c8",
+              "asOf": "2026-09-23",
+              "claim": "Jefferies & Co adjusted Vulcan Materials price target to $320 from $345, maintains Buy rating"
+            }
+          ]
+        }
+      },
+      "CSX": {
+        "momentum": {
+          "ticker": "CSX",
+          "score": 4.77,
+          "note": "47.21 vs 50-DMA 50.01 / 100-DMA 48.29",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/CSX",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.77/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "CSX",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "CSX",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "CSX",
+          "score": 5,
+          "status": "observed",
+          "note": "RBC trimmed PT $54→$53 (9/24, still Outperform) — minor negative; sector merger context (UNP/NSC) is indirect. Net neutral.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/5f6ef436-f64d-4001-b221-73448130a4a7",
+              "asOf": "2026-09-24",
+              "claim": "RBC trimmed price target on CSX to $53 from $54, keeps Outperform rating"
+            }
+          ]
+        }
+      },
+      "GWW": {
+        "momentum": {
+          "ticker": "GWW",
+          "score": 4.4,
+          "note": "1271.17 vs 50-DMA 1320.30 / 100-DMA 1303.44",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/GWW",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.40/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "GWW",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "GWW",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "GWW",
+          "score": null,
+          "status": "missing",
+          "note": "No news, rating action, or earnings evidence dated within the 14-day window.",
+          "evidence": []
+        }
+      },
+      "CTAS": {
+        "momentum": {
+          "ticker": "CTAS",
+          "score": 5.81,
+          "note": "191.99 vs 50-DMA 202.14 / 100-DMA 187.61",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/CTAS",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 5.81/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "CTAS",
+          "score": null,
+          "note": "Robinhood quarterly financials unavailable this run and Alpha Vantage was rate-limited before this symbol could be fetched.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "CTAS",
+          "score": null,
+          "status": "missing",
+          "note": "get_financials returned no data for this symbol this pass.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "CTAS",
+          "score": 8.5,
+          "status": "observed",
+          "note": "Reported fiscal Q1 EPS beat ($1.36 vs $1.33 est, 9/23) followed by three separate analyst price-target raises (UBS, Truist, Baird) all on 9/24 maintaining Buy/Outperform. Strong positive earnings-beat + analyst cluster.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/00048649-f89b-4d1e-a76f-220e6ffa58e8",
+              "asOf": "2026-09-23",
+              "claim": "Cintas Corporation posted EPS of $1.36 versus a $1.33 estimate, a beat"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/43fa637b-01a7-4aa9-8591-f4985686b9ed",
+              "asOf": "2026-09-24",
+              "claim": "UBS raised Cintas price target to $235 from $230, keeps Buy rating"
+            }
+          ]
+        }
+      },
+      "BKNG": {
+        "momentum": {
+          "ticker": "BKNG",
+          "score": 2.4,
+          "note": "155.89 vs 50-DMA 192.55 / 100-DMA 180.57",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/BKNG",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 2.40/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "BKNG",
+          "score": 6.5,
+          "note": "Improving margin (19.58%→26.52%) for a travel-platform leader; negative PB (-10.96) indicates negative book equity from buybacks, a real leverage flag.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/BKNG",
+              "asOf": "2026-06-30",
+              "claim": "Q2 FY26 revenue $7.352B, net margin 26.52%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/BKNG",
+              "asOf": "2026-03-31",
+              "claim": "Q1 FY26 revenue $5.532B, net margin 19.58%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/BKNG",
+              "asOf": "2026-09-24",
+              "claim": "PE 17.24, PB -10.96 (negative book equity)"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "BKNG",
+          "score": 5.5,
+          "status": "observed",
+          "note": "Revenue and net income comparison confounded by strong travel-industry seasonality (Q3 is peak booking quarter) — no clear YoY signal from this data alone.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/BKNG",
+              "asOf": "2026-06-30",
+              "claim": "Q2 2026 revenue $7.352B, net income $1.950B"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/BKNG",
+              "asOf": "2025-09-30",
+              "claim": "Q3 2025 revenue $9.008B, net income $2.748B"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "BKNG",
+          "score": 3,
+          "status": "observed",
+          "note": "Down 18.6% in September; AI-agentic-commerce disruption thesis (Joseph Carlson, 9/23) argues Booking is structurally at risk; dragged down 4.5% in sympathy with Expedia downgrade (9/23). Negative cluster.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/48981790-7fdd-43af-8fab-8de12866cbd5",
+              "asOf": "2026-09-23",
+              "claim": "Joseph Carlson argues AI agents pose disruption risk to Booking Holdings ('losing your customer is the risk')"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_news/00048649-f89b-4d1e-a76f-220e6ffa58e8",
+              "asOf": "2026-09-23",
+              "claim": "Booking Holdings moved lower in sympathy with Expedia's downgrade, down 4.5%"
+            }
+          ]
+        }
+      },
+      "LEN": {
+        "momentum": {
+          "ticker": "LEN",
+          "score": 1.7,
+          "note": "81.53 vs 50-DMA 84.01 / 100-DMA 86.22",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/LEN",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 1.70/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "LEN",
+          "score": 3,
+          "note": "Thin, weak margin (3.47%→3.84%) for a homebuilder amid a soft housing cycle; low PB (0.91, below book) reflects market's discount to book, not a positive leverage signal alone.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/LEN",
+              "asOf": "2026-05-31",
+              "claim": "Q2 FY26 revenue $7.940B, net margin 3.84%"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/LEN",
+              "asOf": "2026-02-28",
+              "claim": "Q1 FY26 revenue $6.619B, net margin 3.47%"
+            },
+            {
+              "source": "mcp:Robinhood-get_equity_fundamentals/LEN",
+              "asOf": "2026-09-24",
+              "claim": "PE 15.39, PB 0.91"
+            }
+          ]
+        },
+        "growth": {
+          "ticker": "LEN",
+          "score": 3,
+          "status": "observed",
+          "note": "Revenue declining, net income -48% over trailing quarters — homebuilder weakness.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_financials/LEN",
+              "asOf": "2026-05-31",
+              "claim": "Q2 FY26 revenue $7.940B, net income $304.8M"
+            },
+            {
+              "source": "mcp:Robinhood-get_financials/LEN",
+              "asOf": "2025-08-31",
+              "claim": "Q3 FY25 revenue $8.810B, net income $591.0M"
+            }
+          ]
+        },
+        "catalyst": {
+          "ticker": "LEN",
+          "score": 2.5,
+          "status": "observed",
+          "note": "Reported weaker-than-expected fiscal Q3 results (EPS 1.23 actual vs 1.29 est, miss, per earnings calendar 9/16); mortgage rates hit highest since May 2024, a direct headwind for homebuilders (9/23); stock near 52-week low.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/5cfa0f0b-6773-49d1-810b-1a095d5573dc",
+              "asOf": "2026-09-23",
+              "claim": "Lennar reported weaker-than-expected fiscal Q3 results last week as affordability challenges slowed home-buying activity; stock touched 52-week low $75.70 on Sept 18"
+            },
+            {
+              "source": "mcp:Robinhood-get_earnings_calendar/LEN",
+              "asOf": "2026-09-16",
+              "claim": "Lennar reported EPS $1.23 actual vs $1.29 estimate (miss)"
+            }
+          ]
+        }
+      },
+      "SCHD": {
+        "momentum": {
+          "ticker": "SCHD",
+          "score": 4.99,
+          "note": "33.29 vs 50-DMA 34.02 / 100-DMA 33.08",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/SCHD",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 4.99/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "SCHD",
+          "score": null,
+          "note": "Dividend-equity ETF, not an operating company; no ROE/margin/leverage applicable.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "SCHD",
+          "score": null,
+          "status": "missing",
+          "note": "Dividend-focused index ETF — no company-level growth/estimate-revision data applies; get_financials returned no data.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "SCHD",
+          "score": 5,
+          "status": "observed",
+          "note": "Dividend ETF; only technical/flow commentary within window (rising-wedge breakdown, RSI decline) — not a fundamental company catalyst.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/b6b924f1-f38d-47b9-a98a-094bc41c3439",
+              "asOf": "2026-09-20",
+              "claim": "SCHD ETF technicals (RSI down from 74 to 38, PPO crossing zero) suggest possible further downside to $31.54"
+            }
+          ]
+        }
+      },
+      "GLDM": {
+        "momentum": {
+          "ticker": "GLDM",
+          "score": 3.63,
+          "note": "84.75 vs 50-DMA 85.00 / 100-DMA 85.63",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_historicals/GLDM",
+              "asOf": "2026-09-22",
+              "claim": "producer/momentum.mjs RS/MA composite 3.63/10 from recorded daily closes through 2026-09-22"
+            }
+          ]
+        },
+        "quality": {
+          "ticker": "GLDM",
+          "score": null,
+          "note": "Gold bullion ETF, not an operating company; no ROE/margin/leverage applicable.",
+          "status": "missing",
+          "evidence": []
+        },
+        "growth": {
+          "ticker": "GLDM",
+          "score": null,
+          "status": "missing",
+          "note": "Gold commodity ETF — growth/estimate-revision framework does not apply; no fundamentals data queried.",
+          "evidence": []
+        },
+        "catalyst": {
+          "ticker": "GLDM",
+          "score": 5,
+          "status": "observed",
+          "note": "Gold ETF; only macro commodity commentary within window (rate-hike odds pressuring gold, debasement/TIPS debate) — not a fundamental company catalyst.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood-get_equity_news/992ef59e-b766-41de-a1e2-cabe37deb02f",
+              "asOf": "2026-09-10",
+              "claim": "GLDM closed 0.93% higher at $87.03; gold near $4,395/oz amid Fed rate-hike uncertainty"
+            }
+          ]
+        }
+      }
+    },
+    "note": "Traceable sources and coverage; not independent fact verification."
+  },
+  "riskSettings": {
+    "indexMaxPct": 10,
+    "singleNameCaps": {
+      "NVDA": 25,
+      "LLY": 20.85,
+      "NEM": 21.91,
+      "MSFT": 25,
+      "KO": 25,
+      "JNJ": 25,
+      "GOOGL": 20.53,
+      "AMZN": 25,
+      "SPY": 100,
+      "AVGO": 18.18,
+      "MA": 25,
+      "V": 25,
+      "UNP": 25,
+      "AAPL": 25
+    },
+    "lookThroughEnforced": false
+  },
+  "targetId": "b3f1b35660b974922e53"
 }
