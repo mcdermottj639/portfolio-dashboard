@@ -39,7 +39,40 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // The asymmetry that settles the direction of the errors: running a day early costs one research
 // pass, while not running costs a WHOLE WEEK — and a stale target is invisible, because what shows
 // up downstream is the deploy planner quietly waiving entry bands. Err toward running.
-export const REFRESH_DAYS = 6;
+//
+// ── FORTNIGHTLY (2026-09-24, owner-set) ───────────────────────────────────────────────────────────
+// The cadence moved weekly → fortnightly, for two reasons that point the same way.
+//
+// STRATEGY: the churn governor runs on a 14-day clock (MIN_HOLD_DAYS 14, REENTRY_COOLDOWN_DAYS 14).
+// A target refreshed every 7 days was, for half its life, proposing trades the governor would refuse
+// anyway — so the second target of any fortnight largely re-derived a book that could not move. The
+// research cadence now matches the clock the execution actually runs on.
+//
+// COST: the workflow's dominant expense is per-agent fixed context (~177k tokens each on this
+// harness, measured), so halving the number of RUNS halves the largest line in the whole system.
+//
+// The gate is still a CALENDAR test, never an age test — that lesson is unchanged and was learned
+// twice (see the history above). It is now anchored to a fixed epoch Monday so "which fortnight" is
+// a pure function of the date and cannot drift with when the last target happened to land.
+// REFRESH_DAYS rises to 13 so the backstop still sits just inside one period.
+//
+// THE ASYMMETRY GOT MORE EXPENSIVE, SO THE BIAS MATTERS MORE. Running a period early costs one pass;
+// MISSING one now costs a FORTNIGHT of stale entry zones rather than a week. Err toward running.
+export const REFRESH_DAYS = 13;
+
+/* The Monday that starts the fortnight containing `day`. Anchored to FORTNIGHT_EPOCH (a Monday) so
+   the boundary is absolute: two runs in the same fortnight always agree, whatever order they land in. */
+export const FORTNIGHT_EPOCH = '2026-01-05';   // a Monday
+
+export function fortnightStart(day) {
+  const ws = weekStart(day);
+  const w = Date.parse(ws + 'T00:00:00Z'), e = Date.parse(FORTNIGHT_EPOCH + 'T00:00:00Z');
+  if (isNaN(w) || isNaN(e)) return ws;
+  const weeks = Math.floor((w - e) / (7 * 86400000));
+  // Math.floor on a negative week index keeps dates before the epoch on the same parity.
+  const back = ((weeks % 2) + 2) % 2;
+  return new Date(w - back * 7 * 86400000).toISOString().slice(0, 10);
+}
 
 /* Monday of the ET week containing `day` (YYYY-MM-DD → YYYY-MM-DD). Weeks start Monday to match the
    research cron; a Sunday belongs to the week that began the previous Monday. */
@@ -57,12 +90,12 @@ export function researchDue(asOf, today) {
     return { due: true, asOf: asOf || null, ageDays: null, reason: 'no committed target' };
   }
   const ageDays = Math.floor((Date.parse(today + 'T00:00:00Z') - Date.parse(asOf + 'T00:00:00Z')) / 86400000);
-  const ws = weekStart(today);
-  // A future-dated target reads as this week's (asOf >= ws) and a negative age, so it correctly
+  const fs_ = fortnightStart(today);
+  // A future-dated target reads as this fortnight's (asOf >= fs_) and a negative age, so it correctly
   // fails both arms rather than forcing a refresh off a clock skew.
-  if (asOf < ws) return { due: true, asOf, ageDays, reason: `last refreshed before this week (week of ${ws})` };
+  if (asOf < fs_) return { due: true, asOf, ageDays, reason: `last refreshed before this fortnight (from ${fs_})` };
   if (ageDays >= REFRESH_DAYS) return { due: true, asOf, ageDays, reason: `${ageDays}d old ≥ ${REFRESH_DAYS}d staleness backstop` };
-  return { due: false, asOf, ageDays, reason: `already refreshed this week (week of ${ws}), ${ageDays}d ago` };
+  return { due: false, asOf, ageDays, reason: `already refreshed this fortnight (from ${fs_}), ${ageDays}d ago` };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

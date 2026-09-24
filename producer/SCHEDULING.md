@@ -147,7 +147,16 @@ whose `git fetch origin main` is still unbounded: adding `--depth 1` there conve
 repo to shallow, and the producer is the one pipeline whose failure takes the whole dashboard down.
 The compaction halved its bytes anyway. If revisited, test the shallow **push** path in isolation first.
 
-### 5. Routine configuration that lives server-side (not in git)
+#
+> **CADENCE (2026-09-24): the research is FORTNIGHTLY, and the cron did NOT change.** It still fires
+> `12 11 * * 1` every Monday; `producer/agentic-due.mjs` gates it to alternate weeks (anchored to
+> `FORTNIGHT_EPOCH` 2026-01-05), so the off-week fire prints `AGENTIC_NOT_DUE` and stops in seconds.
+> Nothing in the Routine's server-side config needs editing for this — which matters, because that
+> config is the one thing a session cannot reliably change. The reason for the change is the churn
+> governor's own 14-day clock (`MIN_HOLD_DAYS`/`REENTRY_COOLDOWN_DAYS`), plus the measured ~177k
+> per-agent context floor that makes the number of RUNS the largest cost lever in the system.
+
+## 5. Routine configuration that lives server-side (not in git)
 **Three Routines drive this repo, and roughly half of what makes each one work is not in this
 repository at all.** A Routine's prompt, its connectors, its `allowed_tools`, its model, whether it
 resumes a session or starts fresh, and whether it can push a notification are all stored server-side.
@@ -336,7 +345,13 @@ Step 0 — get the repo CHEAPLY, and never any other way. The history is >1.7GB 
 Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and stop. AGENTIC_DUE → continue, following producer/PRODUCER.md step 7 exactly (it is the source of truth):
   2. get_portfolio + get_equity_positions for account 694553900 (••••3900) → book (total_value) and held [{t,w}] as % of book.
   3. Universe = `node producer/research-universe.mjs --symbols --max 60` (GLDM stays in the symbol list — the sleeve is no longer forced, but the row must exist for the day it is restored) ∪ current holdings, nothing else (never the Daily Picks). get_equity_quotes + get_equity_fundamentals (≤10 per call) → rows {t, sec, px, pe, hi, lo, evidence:[{source,asOf,claim}]} (real provider source and underlying data date; the workflow fetches missing provenance), with sec from research-universe.mjs's RESEARCH_UNIVERSE labels, not Robinhood's.
-  4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
+  3b. Momentum is CODE, not an agent (2026-09-24). From the decrypted snapshot run:
+      node -e "import('./producer/momentum.mjs').then(async M=>{const {decryptEnvelope}=await import('./producer/emit.mjs');const d=await decryptEnvelope(JSON.parse(require('fs').readFileSync('data.json','utf8')),process.env.PF_PASSPHRASE);const syms=/*the universe tickers*/;console.log(JSON.stringify(M.momentumScores({symbols:syms,histDay:d.hist.day,quotes:d.quotes,asOf:d.generatedAt.slice(0,10)})))})"
+      and pass the result as args.momentum. It scores off data.hist.day — bars the producer already
+      holds — so this replaces the heaviest-fetching sleeve agent entirely. If you omit it the
+      workflow LOGS that it is falling back to the momentum agent and runs as before: it degrades,
+      it does not break, so a stale copy of this prompt is safe.
+  4. Run the repo workflow by name: Workflow({name:"agentic-research", args:{book, universe, held, momentum:<step 3b>, priorTarget:<committed producer/agentic-target.json, names[] with ticker/weightPct/phaseOut>, flow:<data.flow.symbols from the decrypted snapshot, shaped {SYM:{flow:{score,coverage}}}>}}). held + priorTarget are mandatory (churn governor + challenger quota).
   5. Write the WHOLE workflow return to a file and run `node producer/finalize-target.mjs <file> --book <book> --held <SYM,SYM,…> --write`. Never hand-write agentic-target.json. Commit ONLY producer/agentic-target.json and `git push origin HEAD:main`. If the push is REJECTED because main moved (the producer commits hourly at ~:41): save your commit's hash `C=$(git rev-parse HEAD)`, then `git fetch --depth 1 origin main && git checkout -f -B pf-research FETCH_HEAD && git checkout $C -- producer/agentic-target.json`, commit the target again and push again (up to 3 tries). Never `git reset --soft` here — after a shallow fetch it leaves every file that changed upstream STAGED AS A REVERSION (on 2026-09-09 it staged the producer's previous data.json, which would have rolled back a live snapshot) — and never rebase or merge. If the push is refused 403 "not in this session's authorized repository set", this Routine has no repo SOURCE: call add_repo(owner:"mcdermottj639", repo:"portfolio-dashboard", access:"push") ONCE and retry the push; if it is still refused, PushNotification "research Routine: push denied — select portfolio-dashboard as this Routine's repository in the claude.ai Routine UI" together with the full proposal, and attach producer/agentic-target.json with SendUserFile so the target is not lost. If finalize runs a second time, re-check target.dropped.
   6. PushNotification a concise rebalance proposal (drift vs actual holdings, adds/trims ± dollars, anything over the 5pp trigger; if a HELD name is dropped, say the exit may be held by the 14d min-hold/PDT guard and give the unlock date). PLACE NO ORDERS.
   7. Sanity lines: 10-12 names; megacap-tech direct vs the 48% cap; SPY+VTI index core within the 5-10% residual band (flag it if the synthesis went higher — that is weight which can only MATCH the benchmark this account exists to beat); defensive total REPORTED as a measurement only, with no floor to miss; entry bands — note the cohort MEDIAN entryQuality that finalize used and which names were tightened relative to it (a batch where nearly every verdict is a 3 should tighten NOBODY: that is the tape, not a ranking); target.dropped with reasons; challengers reaching verify; any RESIDUAL note.

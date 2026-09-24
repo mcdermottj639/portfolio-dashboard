@@ -28,9 +28,12 @@
 // incumbent only when MATERIALLY stronger"), the 14-day min-hold and the re-entry cooldown all still
 // decide what actually trades. This makes the incumbents' win meaningful instead of unfalsifiable.
 
-export const FINALIST_CAP = 16;      // was 10 — see the cut analysis above
+export const FINALIST_CAP = 10;      // 16 -> 10 (2026-09-24): verify was the workflow's largest phase
+                                     // and every finalist cost a ~177k per-agent context floor. The
+                                     // cut analysis above still holds; the quota below shrank WITH it
+                                     // rather than being dropped, so challengers keep the same share.
 export const PER_SECTOR = 2;         // unchanged: the only diversity rule the old cut had
-export const CHALLENGER_SLOTS = 5;   // of FINALIST_CAP, reserved for non-incumbents
+export const CHALLENGER_SLOTS = 3;   // of FINALIST_CAP, reserved for non-incumbents (5/16 -> 3/10)
 
 // ranked: [{t, sec, composite, …}] ALREADY sorted best-first (the workflow's `ranked`).
 // incumbents: iterable of tickers currently held or in the prior target.

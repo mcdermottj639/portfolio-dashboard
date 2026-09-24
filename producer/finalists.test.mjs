@@ -137,10 +137,15 @@ ok('no duplicate tickers', new Set(RESEARCH_UNIVERSE.map((r) => r.sym)).size ===
       mirrored.challengers.join(',') === canonical.challengers.join(','));
     ok('mirror splits merit/challenger identically', mirrored.meritCount === canonical.meritCount);
     // And the constants themselves must match, since they are typed twice.
+    // Derived from the module's exports rather than hardcoded: what matters is that the two copies
+    // AGREE. A literal here just guarantees this assertion goes stale the next time the cut is retuned,
+    // which is exactly what happened when FINALIST_CAP moved 16 -> 10.
+    const lit = (name, v) => new RegExp(name + '=' + v + '(?![0-9])').test(block);
     ok('mirror uses the same cap / quota / sector rule',
-      /FINALIST_CAP=16/.test(block) && /CHALLENGER_SLOTS=5/.test(block) && /PER_SECTOR=2/.test(block));
-    ok('…which are the values this module exports',
-      FINALIST_CAP === 16 && CHALLENGER_SLOTS === 5 && PER_SECTOR === 2);
+      lit('FINALIST_CAP', FINALIST_CAP) && lit('CHALLENGER_SLOTS', CHALLENGER_SLOTS) && lit('PER_SECTOR', PER_SECTOR));
+    // The VALUES stay pinned separately and deliberately: retuning the cut should have to touch a test.
+    ok('…and those values are the owner-set cut (10, 3 reserved, max 2 per sector)',
+      FINALIST_CAP === 10 && CHALLENGER_SLOTS === 3 && PER_SECTOR === 2);
   }
 }
 

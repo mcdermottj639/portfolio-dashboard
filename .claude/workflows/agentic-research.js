@@ -122,6 +122,21 @@ if (U.some(u=>!Array.isArray(u.evidence)||!u.evidence.length)) {
 }
 const baseline = JSON.stringify(U)
 
+// USAGE (2026-09-24): quality, growth and catalyst were three agents that EACH re-read the whole
+// universe. Per-agent fixed context measured ~177k tokens on this harness — a one-word, zero-tool
+// subagent costs that before it thinks — so three passes cost three floors AND three copies of the
+// universe. One agent scoring all three factors in a single pass returns the identical downstream
+// shape (see splitOf) at roughly a third of the cost. Momentum stays separate: it is the sleeve whose
+// data (bars/RS) the PRODUCER already holds, and it is next to move into code entirely.
+const MULTI_SLEEVE_SCHEMA = { type:'object', additionalProperties:false,
+  properties:{ scores:{ type:'array', items:{ type:'object', additionalProperties:false,
+    properties:{ ticker:{type:'string'},
+      quality:{type:['number','null']}, qualityNote:{type:'string'},
+      growth:{type:['number','null']}, growthNote:{type:'string'},
+      catalyst:{type:['number','null']}, catalystNote:{type:'string'},
+      status:{type:'string',enum:['observed','missing']}, evidence:EVIDENCE_SCHEMA },
+    required:['ticker','quality','qualityNote','growth','growthNote','catalyst','catalystNote','status','evidence'] } } },
+  required:['scores'] }
 const SLEEVE_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ scores:{ type:'array', items:{ type:'object', additionalProperties:false,
     properties:{ ticker:{type:'string'}, score:{type:['number','null']}, note:{type:'string'}, status:{type:'string',enum:['observed','missing']}, evidence:EVIDENCE_SCHEMA },
@@ -140,6 +155,13 @@ const VERDICT_SCHEMA = { type:'object', additionalProperties:false,
     entryQuality:{type:'number'},                // 0-10: how good is TODAY's price for entering?
     entryRisk:{type:'string'}, evidence:EVIDENCE_SCHEMA },                 // the price-specific objection, kept apart from the thesis
   required:['ticker','recommendation','confidence','biggestRisk','supports','businessOk','entryQuality','entryRisk','evidence'] }
+// Verify used to be one agent PER finalist — 16 agents, and measured as the single largest phase in
+// the workflow (~2.7x the whole sleeve phase). Batching several names into one agent removes that many
+// fixed context floors. The per-name SCHEMA is unchanged, so every downstream consumer is untouched;
+// batches are dealt ROUND-ROBIN over the ranked list so one batch is never all-high-rank or one sector,
+// which is what would let the verifier anchor across names instead of judging each on its own.
+const VERDICT_BATCH_SCHEMA = { type:'object', additionalProperties:false,
+  properties:{ verdicts:{ type:'array', items:VERDICT_SCHEMA } }, required:['verdicts'] }
 const ALLOC_SCHEMA = { type:'object', additionalProperties:false,
   properties:{ summary:{type:'string'}, picks:{ type:'array', items:{ type:'object', additionalProperties:false,
     properties:{ ticker:{type:'string'}, sector:{type:'string'}, weightPct:{type:'number'}, dollars:{type:'number'},
@@ -150,15 +172,37 @@ const ALLOC_SCHEMA = { type:'object', additionalProperties:false,
 const toolHint = evidenceHint + ' Discover MCP tools with ToolSearch (e.g. "select:mcp__Robinhood__get_equity_historicals,mcp__Robinhood__get_equity_quotes" or keyword "alpha vantage company overview"). Batch Robinhood calls (fundamentals/quotes take many symbols; historicals up to 3). Alpha Vantage is per-symbol + rate-limited — prioritize the highest-signal field; on failure fall back to the baseline and note reduced coverage. Report EVERY ticker; missing inputs must be explicitly missing, never an invented neutral score.'
 
 phase('Sleeves')
-const [mom, qual, growth, cat] = await parallel([
-  ()=>agent(`Score this universe on MOMENTUM / relative strength (0-10) for a swing-to-position portfolio. Assess price vs 50/200-DMA, 3- and 6-month RS vs SPY, recent trend. Use RH historicals + quotes; optionally AV SMA/MACD. ${toolHint}\n10 = strong sustained uptrend above rising 50/200-DMA + positive RS; 5 = basing; 0 = broken downtrend. A name deep below its MAs scores LOW.\nUniverse: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'momentum', effort:'medium'}),
-  ()=>agent(`Score this universe on QUALITY (0-10). Use AV COMPANY_OVERVIEW (ROE, margins) + BALANCE_SHEET/CASH_FLOW (leverage, FCF) + RH fundamentals (PE/PB). ${toolHint}\n10 = high ROE, fat stable margins, strong FCF, low leverage; 0 = unprofitable / over-levered / value trap. Penalize negative earnings hard.\nUniverse: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'quality', effort:'medium'}),
-  ()=>agent(`Score this universe on GROWTH & ESTIMATE REVISIONS (0-10). Use AV COMPANY_OVERVIEW growth fields, EARNINGS_ESTIMATES (forward EPS revision direction), EARNINGS (surprise history). ${toolHint}\n10 = strong/accelerating rev+EPS growth WITH upward revisions + positive surprises; 0 = shrinking with downward revisions.\nUniverse: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'growth', effort:'medium'}),
-  ()=>agent(`Score this universe on CATALYSTS & SENTIMENT (0-10). Use RH earnings calendar/results, AV NEWS_SENTIMENT, AV INSIDER_TRANSACTIONS (insider buying bullish). ${toolHint}\n10 = positive news + insider buying + favorable setup; 0 = negative sentiment / insider selling / overhang. An earnings report within ~2 weeks is a RISK for a fresh entry — nudge DOWN and flag it.\nUniverse: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'catalyst', effort:'medium'}),
-])
+// MOMENTUM COMES FROM THE PRODUCER WHEN IT CAN (2026-09-24). producer/momentum.mjs scores this
+// deterministically off data.hist.day — the same bars the sleeve agent used to re-fetch — with the
+// rubric index.html's sdMomentum has used since v113 and the staleness gate that stops a stopped
+// series ranking at its own high. Pass it as args.momentum ({scores:[...]}, the sleeve shape) and no
+// agent is spawned at all. Absent, the agent still runs, so an un-updated Routine prompt degrades to
+// the old behaviour rather than losing the sleeve. Same pattern as args.flow.
+const PRE_MOM = (args && args.momentum && Array.isArray(args.momentum.scores) && args.momentum.scores.length)
+  ? args.momentum : null
+if (PRE_MOM) {
+  const scored = PRE_MOM.scores.filter(x=>x && typeof x.score==='number').length
+  log(`Momentum: ${scored}/${PRE_MOM.scores.length} scored in the producer (producer/momentum.mjs) — no agent spawned.`)
+} else {
+  log('Momentum: no args.momentum supplied — falling back to the sleeve AGENT. Pass producer/momentum.mjs output to skip it.')
+}
+const _sleeveCalls = []
+if (!PRE_MOM) _sleeveCalls.push(()=>agent(`Score this universe on MOMENTUM / relative strength (0-10) for a swing-to-position portfolio. Assess price vs 50/200-DMA, 3- and 6-month RS vs SPY, recent trend. Use RH historicals + quotes; optionally AV SMA/MACD. ${toolHint}\n10 = strong sustained uptrend above rising 50/200-DMA + positive RS; 5 = basing; 0 = broken downtrend. A name deep below its MAs scores LOW.\nUniverse: ${baseline}`, {schema:SLEEVE_SCHEMA, phase:'Sleeves', label:'momentum', effort:'medium'}))
+_sleeveCalls.push(()=>agent(`Score this universe on THREE factors in ONE pass. For EVERY ticker return quality, growth and catalyst (each 0-10 or null) with a short note for each. ${toolHint}
+QUALITY — ROE, margins and their trend, FCF, leverage; RH get_financials + fundamentals (PE/PB), AV COMPANY_OVERVIEW/BALANCE_SHEET where reachable. 10 = high ROE, fat stable margins, strong FCF, low leverage; 0 = unprofitable / over-levered / value trap. Penalize negative earnings hard.
+GROWTH — revenue and EPS growth YoY and whether the RATE is rising or fading, plus estimate-revision direction and surprise history. 10 = strong/accelerating growth WITH upward revisions; 0 = shrinking with downward revisions.
+CATALYST — upcoming earnings proximity, news tone, analyst ratings/target, insider open-market activity. 10 = positive news + insider buying + favorable setup; 0 = negative sentiment / insider selling / overhang. An earnings report within ~2 weeks is a RISK for a fresh entry — nudge DOWN and flag it.
+Score the three INDEPENDENTLY: a wonderful business with fading growth is quality 9 / growth 3, not 6/6. Set status 'missing' and the score null for any factor you could not observe — a missing factor is NOT a neutral 5.
+Universe: ${baseline}`, {schema:MULTI_SLEEVE_SCHEMA, phase:'Sleeves', label:'quality+growth+catalyst', effort:'medium', model:'sonnet'}))
+const _sleeveOut = await parallel(_sleeveCalls)
+const mom = PRE_MOM || _sleeveOut[0]
+const qgc = _sleeveOut[_sleeveOut.length-1]
 
 const mapOf=(r)=>{ const m={}; if(r&&Array.isArray(r.scores)) for(const s of r.scores){ if(s&&s.ticker) m[String(s.ticker).toUpperCase()]=s; } return m }
-const M=mapOf(mom), Q=mapOf(qual), G=mapOf(growth), C=mapOf(cat)
+const splitOf=(r,key)=>{ const m={}; if(r&&Array.isArray(r.scores)) for(const x of r.scores){ if(!x||!x.ticker) continue;
+  const v=x[key]; m[String(x.ticker).toUpperCase()]={ ticker:x.ticker, score:v, note:x[key+'Note']||'',
+    status:(typeof v==='number')?'observed':'missing', evidence:x.evidence||[] } } return m }
+const M=mapOf(mom), Q=splitOf(qgc,'quality'), G=splitOf(qgc,'growth'), C=splitOf(qgc,'catalyst')
 const sc=(m,t)=>{ const x=m[t]; return x&&x.status==='observed'&&typeof x.score==='number'&&x.evidence&&x.evidence.length?Math.max(0,Math.min(10,x.score)):null }
 const note=(m,t)=>{ const x=m[t]; return x&&x.note?x.note:'' }
 const valOf=(u)=>{ let peS; const pe=u.pe; if(!(pe>0))peS=2.5; else if(pe<=12)peS=9; else if(pe<=18)peS=8; else if(pe<=25)peS=6.5; else if(pe<=35)peS=5; else if(pe<=50)peS=3.5; else peS=2;
@@ -227,7 +271,8 @@ log('Composite top 14: '+ranked.slice(0,14).map(r=>`${r.t} ${r.composite}`).join
 // This buys nothing and sells nothing: the verify stage, the incumbency framing below, the 14-day
 // min-hold and the re-entry cooldown still decide what actually trades. It only makes the incumbents'
 // win falsifiable.
-const FINALIST_CAP=16, PER_SECTOR=2, CHALLENGER_SLOTS=5
+const FINALIST_CAP=10, PER_SECTOR=2, CHALLENGER_SLOTS=3   // was 16/5 — see VERIFY_BATCH note
+const VERIFY_BATCH_COUNT=3   // agents, not names: 10 finalists -> 3 agents (was 16)
 const INCUMBENTS=new Set([...Object.keys(HELD), ...((PRIOR_TARGET||[]).map(p=>p.t))].map(s=>String(s).toUpperCase()))
 const secCount={}, finalists=[], taken=new Set(), challengers=[]
 const _fits=(r)=>(secCount[r.sec]||0)<PER_SECTOR
@@ -259,9 +304,22 @@ const heldNote = (t)=>{ const h=HELD[t]; return h
 const polNote = (t)=>{ const c=POLC[t]; return c
   ? `\nCONGRESSIONAL DISCLOSURE (weak, heavily lagged context — NOT a recommendation, do not treat as informed trading): ${c.filers} members ${c.side==='buy'?'bought':'sold'} this, last transaction ${c.lastTxn} (~${c.staleDays}d ago${c.medianLagDays!=null?`, disclosed ~${c.medianLagDays}d after the trade`:''}). Median disclosure lag makes this public information by the time we see it. Weigh accordingly — if your verdict rests on this, your verdict is wrong.`
   : '' }
-const verdicts = await parallel(finalists.map((r,i)=>()=>
-  agent(`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${i+1}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}${heldNote(r.t)}\nREFUTE, don't confirm. Pull live data via ToolSearch. ${evidenceHint} Default skeptical.\nSCORE TWO SEPARATE THINGS — do not let one contaminate the other:\n  1. businessOk — is this a business worth owning at SOME price? Value trap? deteriorating fundamentals/margins? secular decline? legal/regulatory impairment? accounting or earnings-quality problem? false ⇒ we don't want it at any price.\n  2. entryQuality 0-10 — how good is TODAY'S price specifically? Extended vs its moving averages, RSI, distance to 52wk high, multiple vs history, imminent binary catalyst, reward:risk to the consensus target. 10 = a gift, 5 = fair, 0 = badly chased. Put the price-specific objection in entryRisk, NOT in biggestRisk.\nThis split matters: 'great company, wrong price' must come back businessOk=true with a LOW entryQuality, never businessOk=false — the allocator sizes down on a poor entry, it does not need you to veto the name. Reserve businessOk=false for a thesis that is actually broken.\nsupports = businessOk && entryQuality >= 4 (kept for back-compat; the allocator reads the two fields).`,
-    {schema:VERDICT_SCHEMA, phase:'Verify', label:'verify:'+r.t, effort:'high'}).then(v=> v?{...r,verdict:v}:null)))
+// Deal finalists ROUND-ROBIN into batches so each agent sees a mix of ranks and sectors. Slicing the
+// ranked list consecutively would hand one agent the top four names and another the bottom four, which
+// invites exactly the cross-name anchoring that makes a batched verdict worse than an isolated one.
+const _batches=Array.from({length:Math.min(VERIFY_BATCH_COUNT,finalists.length)},()=>[])
+finalists.forEach((r,i)=>{ _batches[i%_batches.length].push({r,rank:i+1}) })
+const _nameBlock=({r,rank})=>`Adversarially STRESS-TEST the buy case for ${r.t} (${r.sec}, ~$${r.px}). Screen rank #${rank}; sleeves momentum=${r.m} quality=${r.q} growth=${r.g} catalyst=${r.c} valuation=${r.v}${(FLOW_WEIGHT>0&&r.f!=null)?` flow=${r.f}`:''}. Notes: ${JSON.stringify(r.notes)}.${polNote(r.t)}${heldNote(r.t)}\nREFUTE, don't confirm. Pull live data via ToolSearch. ${evidenceHint} Default skeptical.\nSCORE TWO SEPARATE THINGS — do not let one contaminate the other:\n  1. businessOk — is this a business worth owning at SOME price? Value trap? deteriorating fundamentals/margins? secular decline? legal/regulatory impairment? accounting or earnings-quality problem? false ⇒ we don't want it at any price.\n  2. entryQuality 0-10 — how good is TODAY'S price specifically? Extended vs its moving averages, RSI, distance to 52wk high, multiple vs history, imminent binary catalyst, reward:risk to the consensus target. 10 = a gift, 5 = fair, 0 = badly chased. Put the price-specific objection in entryRisk, NOT in biggestRisk.\nThis split matters: 'great company, wrong price' must come back businessOk=true with a LOW entryQuality, never businessOk=false — the allocator sizes down on a poor entry, it does not need you to veto the name. Reserve businessOk=false for a thesis that is actually broken.\nsupports = businessOk && entryQuality >= 4 (kept for back-compat; the allocator reads the two fields).`
+const batchResults = await parallel(_batches.filter(b=>b.length).map((b)=>()=>
+  agent(`You are adversarially stress-testing ${b.length} INDEPENDENT buy cases. Judge each name entirely on its own evidence — do NOT rank them against each other, do not let one name's verdict colour another's, and return one verdict object per name in \`verdicts\`.
+
+${b.map(_nameBlock).join('\n\n──────────\n\n')}`,
+    {schema:VERDICT_BATCH_SCHEMA, phase:'Verify', label:'verify:'+b.map(x=>x.r.t).join('+'), effort:'high', model:'sonnet'})))
+const _vByT={}
+for(const br of batchResults){ if(br&&Array.isArray(br.verdicts)) for(const v of br.verdicts){ if(v&&v.ticker) _vByT[String(v.ticker).toUpperCase()]=v } }
+const verdicts = finalists.map(r=>{ const v=_vByT[String(r.t).toUpperCase()]; return v?{...r,verdict:v}:null })
+const _missing = finalists.filter(r=>!_vByT[String(r.t).toUpperCase()]).map(r=>r.t)
+if(_missing.length) log(`Verify returned no verdict for: ${_missing.join(', ')} — treated as unverified, NOT as a pass.`)
 // INCLUSION is now the business test alone. A weak entry no longer removes a name — it shrinks it
 // (entryHaircut below), so a market where everything is a bit extended produces a smaller, more
 // defensive book rather than an empty one.
