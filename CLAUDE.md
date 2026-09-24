@@ -1660,6 +1660,21 @@ Three hazards this table exists to prevent:
   forward), so the cadence stays inexpensive. (See `SCHEDULING.md`, incl. how to get 30-min cadence
   back with a second offset trigger.)
 
+- **`Workflow({name})` CAN SERVE A STALE COPY OF A WORKFLOW YOU EDITED THIS SESSION (2026-09-24).** After
+  editing `.claude/workflows/agentic-research.js` and verifying the file on disk was correct, a launch by
+  `name` ran the PRE-EDIT version: four sleeve agents on Opus instead of one, `args.momentum` ignored,
+  ~459k tokens before it was spotted on the phone. The working tree was right the whole time; the
+  launcher resolved a copy cached earlier in the same session. **After editing a workflow, launch it by
+  `scriptPath` pointing at the repo file** — the launch result echoes the path it actually used, so check
+  that line rather than assuming. The scheduled Routine is NOT exposed to this (a fresh session per fire
+  has nothing cached, so `name` reads the clone), which is exactly why it is easy to miss in development
+  and never see in production.
+- **A SCHEDULED RUN AND A HAND RUN DO NOT SHARE A CADENCE (2026-09-24).** Refreshing the target on demand
+  writes today's date into `agentic-target.json`, and `agentic-due` gates on that date — so an ad-hoc
+  refresh CONSUMES the fortnight rather than adding to it. Doing one on 09-24 made the scheduled 09-27
+  fire print NOT_DUE and pushed the next real research to 10-04. That is correct behaviour and it is
+  easy to mistake for a missed run, so say which one you are spending before you spend it.
+
 ## Feature inventory (what's built)
 - **Accounts tab (v99 — the two real accounts, one per side of a segmented toggle):** the tab formerly
   called "Portfolio" now leads with an **Accounts segmented control** (`.acct-seg` → `setAccount('main'|'agentic')`,
