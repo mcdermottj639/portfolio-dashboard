@@ -96,7 +96,9 @@ let pass = 0; const ok = (m) => { pass++; console.log('  ok -', m); };
   assert.strictEqual(byT.STALE.status, 'missing');
   assert.strictEqual(byT.MISSING.status, 'missing', 'a symbol with no bars abstains');
   assert.strictEqual(byT.AAA.status, 'observed');
-  assert.ok(byT.AAA.evidence.length === 1 && /momentum\.mjs/.test(byT.AAA.evidence[0].source), 'evidence cites the module and the snapshot');
+  assert.ok(byT.AAA.evidence.length === 1 && /^mcp:Robinhood-get_equity_historicals/.test(byT.AAA.evidence[0].source),
+    'evidence cites the PROVIDER RECORD the bars came from — validEvidence rejects anything else');
+  assert.match(byT.AAA.evidence[0].claim, /momentum\.mjs/, 'the claim names the module that computed the score');
   assert.ok(/\d{4}-\d{2}-\d{2}/.test(byT.AAA.evidence[0].asOf), 'evidence asOf is the last real bar date');
   assert.ok(out.scores.every(s => 'ticker' in s && 'score' in s && 'note' in s && 'status' in s && 'evidence' in s),
     'every row matches SLEEVE_SCHEMA required keys');
@@ -122,6 +124,26 @@ let pass = 0; const ok = (m) => { pass++; console.log('  ok -', m); };
     if (r.score != null) assert.ok(r.score >= 0 && r.score <= 10, `score in range for drift ${d} (got ${r.score})`);
   }
   ok('score stays within 0-10 across the whole drift range');
+}
+
+// ---- THE EVIDENCE GATE IS THE REAL CONTRACT ------------------------------------------------------
+// momentum rows were being silently dropped from the supported-sleeve count because the source named
+// the CALCULATOR ('producer/momentum.mjs') rather than a provider record, which agentic-evidence.mjs
+// requires. A target built on it was refused with an error that never mentioned momentum. Assert
+// against the real validator, not a hand-rolled shape check.
+{
+  const { validEvidence } = await import('./agentic-evidence.mjs');
+  const spy = flat(200, 500).map(b => Number(b.close_price));
+  const bars = series(200, 10, 0.004, 0);
+  const r = momentumFor('X', bars, spy, Number(bars.at(-1).close_price), ASOF);
+  assert.ok(validEvidence(r.evidence, ASOF, 14), 'momentum evidence must pass validEvidence at the 14-day momentum window');
+  assert.match(r.evidence[0].source, /^mcp:/, 'source names the provider record, not the transform');
+  assert.match(r.evidence[0].claim, /momentum\.mjs/, 'the claim still names the module that computed it');
+  assert.ok(r.evidence[0].claim.trim().length >= 8, 'claim meets the minimum length the validator enforces');
+  const stale = momentumFor('OLD', series(200, 10, 0.004, 20), spy, 40, ASOF);
+  assert.ok(stale.score === null || !validEvidence(stale.evidence, ASOF, 14),
+    'a series too old to be momentum evidence must not present passing evidence');
+  ok('evidence satisfies agentic-evidence.validEvidence — the gate that actually admits a target');
 }
 
 console.log(`\nmomentum.test.mjs — ${pass} groups passed`);

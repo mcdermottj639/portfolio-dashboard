@@ -74,8 +74,18 @@ export function momentumFor(sym, bars, spyCloses, px, asOf) {
   const mk = (score, note, extra) => ({
     ticker: sym, score, note,
     status: (typeof score === 'number') ? 'observed' : 'missing',
+    // PROVENANCE MUST NAME THE ORIGINAL SOURCE, NOT THE TRANSFORM (2026-09-24). agentic-evidence.mjs's
+    // validEvidence requires source to match /^(https:\/\/|mcp:)/ — it is checking that a claim is
+    // traceable to a real provider record. 'producer/momentum.mjs' named the CALCULATOR, matched
+    // neither, and so every momentum row was silently dropped from the supported-sleeve count; the
+    // first real target built on it was refused with "need quality and at least three supported
+    // sleeves" and no indication that momentum was the missing one. The bars genuinely ARE recorded
+    // Robinhood historicals — the producer fetched them through that tool and stored them in
+    // data.hist.day — so the MCP record is the honest source and the module belongs in the claim.
     evidence: (typeof score === 'number')
-      ? [{ source: 'producer/momentum.mjs over data.hist.day/' + sym, asOf: (extra && extra.lastBar) || asOf, claim: note }]
+      ? [{ source: 'mcp:Robinhood-get_equity_historicals/' + sym,
+           asOf: (extra && extra.lastBar) || asOf,
+           claim: 'producer/momentum.mjs scored ' + Number(score).toFixed(2) + '/10 over recorded daily closes through ' + ((extra && extra.lastBar) || asOf) + ' — ' + note }]
       : [],
   });
   if (!(px > 0)) return mk(null, 'no live quote — cannot price or rank', {});
