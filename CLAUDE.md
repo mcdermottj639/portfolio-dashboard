@@ -11,8 +11,19 @@ the pipeline decides:
   pattern). It was the sleeve doing the heaviest fetching and none of it was needed — since v141
   `hist-plan.mjs` keeps the ~230-name bench fresh in `data.hist.day`, so the producer already HELD the
   bars the agent was re-fetching. Rubric and staleness gate mirror `index.html`'s `sdMomentum`.
-- **quality/growth/catalyst are ONE agent** scoring three factors in one pass (they each re-read the
-  whole universe before). `splitOf` rebuilds the three maps the ranker already consumed.
+- **quality/growth/catalyst were merged into ONE agent and REVERTED the same day.** The cost reasoning
+  was right and the behaviour was not: asked for three factors across 61 names — 183 scored fields with
+  evidence in a single pass — the agent made **zero** ToolSearch calls and **zero** MCP calls and
+  returned all 61 rows as `status:"missing"`, taking the "a missing factor is NOT a neutral 5" escape
+  hatch wholesale instead of fetching anything, then exited cleanly. Verify had no finalists and the run
+  died on "No verified survivors" having produced nothing. The single-factor agents, same model and same
+  tools on the same universe, made 3 ToolSearch and 14 data calls and returned real scores with
+  citations. **An agent’s willingness to do the work scales with how large the ask LOOKS, and an
+  explicit abstention path turns "too big" into a clean-looking EMPTY RESULT rather than an error** —
+  this repo’s silent-guard failure mode wearing a new hat, since every step reported success. If it is
+  retried, cut the UNIVERSE per agent (e.g. two agents of ~30 names each scoring all three factors)
+  rather than widening what one agent must produce, and assert a minimum observed rate so an all-miss
+  fails loudly instead of quietly.
 - **verify is BATCHED**: it was one agent per finalist and measured the largest phase (~2.7× the whole
   sleeve phase). Finalists are dealt ROUND-ROBIN into `VERIFY_BATCH_COUNT` (3) agents — round-robin, not
   consecutive slicing, so no agent gets the whole top of the ranked list and anchors across names.
