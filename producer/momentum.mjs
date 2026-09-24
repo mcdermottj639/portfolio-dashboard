@@ -85,7 +85,7 @@ export function momentumFor(sym, bars, spyCloses, px, asOf) {
     evidence: (typeof score === 'number')
       ? [{ source: 'mcp:Robinhood-get_equity_historicals/' + sym,
            asOf: (extra && extra.lastBar) || asOf,
-           claim: 'producer/momentum.mjs scored ' + Number(score).toFixed(2) + '/10 over recorded daily closes through ' + ((extra && extra.lastBar) || asOf) + ' — ' + note }]
+           claim: 'producer/momentum.mjs RS/MA composite ' + Number(score).toFixed(2) + '/10 from recorded daily closes through ' + ((extra && extra.lastBar) || asOf) }]
       : [],
   });
   if (!(px > 0)) return mk(null, 'no live quote — cannot price or rank', {});
