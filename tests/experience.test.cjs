@@ -53,7 +53,7 @@ for(const route of ['technicals','fundamentals','flow']){
 assert.ok(html.includes("APP_VERSION='v160'"));
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v160'"));
 for(const asset of ['experience.css','experience-model.js','experience.js','sd-rules.js']){
-  assert.ok(html.includes('ui/'+asset+'?v=159'));assert.ok(sw.includes('ui/'+asset+'?v=159'));
+  assert.ok(html.includes('ui/'+asset+'?v=160'));assert.ok(sw.includes('ui/'+asset+'?v=160'));
 }
 assert.doesNotMatch(experience,/01 \/ What moved|02 \/ Where|03 \/ Your next/);
 assert.match(experience,/class="ex-cta"/);
