@@ -455,6 +455,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       want estimates instead.) Only the single-leg ideas are priced live — the defined-risk
       structures (call debit spread, collar) are estimate-only and need nothing here.
    4. `node producer/options-build.mjs` → writes `producer/raw/options.json`
+      Open positions use fresh broker quantities and exact-contract metadata from both the current
+      order batch and retained `incomeHistory.orders`; older open contracts survive incremental fetches.
+      If the build reports missing contract metadata, fetch all option-order pages without a date
+      filter and retry. Never remove a live position to make the build pass.
       (analyzes your contracts — covered/naked, DTE, breakeven, moneyness, full greeks, concrete
       roll suggestions — builds the directional + defined-risk ideas using live quotes when present
       else estimates, and emits the portfolio `exposure` roll-up + `ivObserved`). `build-data.mjs`

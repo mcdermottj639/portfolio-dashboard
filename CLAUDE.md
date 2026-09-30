@@ -1,5 +1,20 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## 2026-09-30 — Keep older open options visible on incremental refreshes
+
+`options-build.mjs` resolves live position contract IDs against both retained encrypted
+`incomeHistory.orders` and the current order batch. Only fresh broker positions determine
+which contracts remain open and their quantity; saved orders cannot resurrect closed positions.
+Position direction uses the broker's long/short type, with opening-side (or inverse closing-side)
+metadata as fallback. Unknown contract metadata fails the options build explicitly instead of
+silently dropping a position; recover with a full order fetch. The existing producer Routine
+picks up this change through `run.mjs`; no prompt or fetch-window change is needed.
+Integration coverage replays encrypted incremental runs with old PLTR/new IREN fixtures, live
+quotes, partial closes, collateral, direction and missing metadata. Live broker refresh remains
+unverified here; no connected Robinhood tool or dashboard decryption key is available.
+Self-audited because the specified Fable reviewer is unavailable.
+
+
 ## 2026-09-30 — Keep confirmed option expirations out of the stock-loss guard
 
 `lossesFromTrades` excludes a zero-price/blank-side loss only when it exactly matches a

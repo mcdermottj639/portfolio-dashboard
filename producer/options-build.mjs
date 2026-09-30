@@ -124,43 +124,60 @@ function analyzeOrder(o) {
   return a;
 }
 
+/* The prior COMMITTED snapshot, decrypted ONCE and shared by open-position metadata,
+   picks carry-forward, income history, and the realized-vol IV proxy. Plaintext dev snapshots are
+   supported; missing/unreadable snapshots degrade to null and require fresh contract metadata. */
+let prevSnap = null;
+try {
+  const prevPath = join(__dirname, '..', 'data.json');
+  if (existsSync(prevPath)) {
+    const env = JSON.parse(readFileSync(prevPath, 'utf8'));
+    prevSnap = env && env.enc ? await decryptEnvelope(env, process.env.PF_PASSPHRASE) : env;
+  }
+} catch { prevSnap = null; }
+
 const ordersRaw = existsSync(join(RAW, 'options-orders.json')) ? unwrap(readJSON(join(RAW, 'options-orders.json'))) : null;
-const orders = ordersRaw?.data?.orders ?? [];
+const orders = ordersRaw?.data?.orders ?? ordersRaw?.orders ?? [];
 // `fullHistory:true` is written ONLY after every page of an unfiltered get_option_orders was merged
 // (option-fetch-plan.mjs prints FULL until the snapshot records one). Incremental runs omit it.
 const ordersFullHistory = ordersRaw?.fullHistory === true;
 const PENDING = new Set(['queued', 'confirmed', 'partially_filled', 'unconfirmed']);
 const pending = orders.filter((o) => PENDING.has(o.state)).map(analyzeOrder).filter(Boolean);
 
-// open option positions (if any) — map by option_id to an order leg for strike/type/expiry
+// Orders provide contract metadata, never evidence that a position is still open.
+// Incremental fetches omit older opening orders; their exact-contract legs live in the snapshot.
+const retainedOrders = new Map((prevSnap?.options?.incomeHistory?.orders || []).map(o => [o.id, o]));
+for (const o of orders) retainedOrders.set(o.id, o);
 const legByOptId = {};
-for (const o of orders) for (const l of (o.legs || [])) legByOptId[l.option_id] = { leg: l, o };
+for (const o of retainedOrders.values()) for (const l of (o.legs || [])) {
+  if (!l.option_id) continue;
+  // Prefer opening side: a buy-to-close must not turn a surviving short into a long.
+  const prior = legByOptId[l.option_id];
+  if (!prior || l.position_effect === 'open' || prior.leg.position_effect !== 'open')
+    legByOptId[l.option_id] = { leg: l, o };
+}
 let positions = [];
 if (existsSync(join(RAW, 'options-positions.json'))) {
   const d = unwrap(readJSON(join(RAW, 'options-positions.json')));
-  positions = (d.data?.positions ?? d.positions ?? []).map((p) => {
-    const ref = legByOptId[p.option_id]; if (!ref) return null;
-    const a = analyzeLeg(ref.leg, pxBySym[p.chain_symbol] || 0, sharesBySym[p.chain_symbol] || 0,
-      { quantity: p.quantity, premium: positionPremium(p), direction: ref.o.direction,
+  positions = (d.data?.positions ?? d.positions ?? []).filter(p => Math.abs(num(p.quantity) || 0) > 0).map((p) => {
+    const ref = legByOptId[p.option_id];
+    const leg = ref?.leg;
+    if (!leg || !['call', 'put'].includes(leg.option_type) || !(num(leg.strike_price) > 0) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(leg.expiration_date || '') || !['buy', 'sell'].includes(leg.side))
+      throw new Error(`Open option ${p.chain_symbol} (${p.option_id}) has no complete contract metadata. Run a FULL option-order fetch; refusing to silently drop an open position.`);
+    const positionType = p.position_type || p.type;
+    const side = positionType === 'short' ? 'sell' : positionType === 'long' ? 'buy'
+      : leg.position_effect === 'close' ? (leg.side === 'buy' ? 'sell' : 'buy') : leg.side;
+    const a = analyzeLeg({...leg, side}, pxBySym[p.chain_symbol] || 0, sharesBySym[p.chain_symbol] || 0,
+      { quantity: p.quantity, premium: positionPremium(p), direction: side === 'sell' ? 'credit' : 'debit',
         chain_symbol: p.chain_symbol, costBasis: costBySym[p.chain_symbol] });
+    a.optionId = p.option_id;
     a.costBasis = costBySym[p.chain_symbol] != null ? +costBySym[p.chain_symbol] : null;
     enrichLive(a, p.option_id);
     a.rollAlert = rollAlert(a);
     return a;
   }).filter(Boolean);
 }
-
-/* The prior COMMITTED snapshot, decrypted ONCE and shared by the two consumers below: the picks
-   carry-forward on light runs, and the realized-vol IV proxy. Best-effort — no passphrase / no file /
-   a plaintext dev snapshot / a decrypt failure all degrade to null, i.e. the old behavior. */
-let prevSnap = null;
-try {
-  const prevPath = join(__dirname, '..', 'data.json');
-  if (existsSync(prevPath) && process.env.PF_PASSPHRASE) {
-    const env = JSON.parse(readFileSync(prevPath, 'utf8'));
-    prevSnap = env && env.enc ? await decryptEnvelope(env, process.env.PF_PASSPHRASE) : env;
-  }
-} catch { prevSnap = null; }
 
 // ideas: bullish calls from picks + covered calls from 100+ share holdings
 let picksCands = [];
