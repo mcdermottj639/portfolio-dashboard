@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {optionFetchPlan} from './option-fetch-plan.mjs';
+const now=new Date('2026-09-30T15:00:00Z');
+assert.equal(optionFetchPlan(null,now).mode,'FULL','no ledger → one full backfill');
+assert.equal(optionFetchPlan({orders:[]},now).mode,'FULL','ledger without a recorded backfill → full');
+const done={fullHistoryAt:'2026-09-30T14:00:00Z',orders:[{id:'a',state:'filled',date:'2024-05-16T00:00:00Z'}]};
+assert.deepEqual([optionFetchPlan(done,now).mode,optionFetchPlan(done,now).since],['SINCE','2026-09-16'],'incremental 14-day window');
+const working={...done,orders:[...done.orders,{id:'g',state:'confirmed',created:'2026-08-01T12:00:00Z',date:'2026-09-20T00:00:00Z'}]};
+assert.equal(optionFetchPlan(working,now).since,'2026-07-31','window reaches back to cover a still-working order');
+assert.equal(optionFetchPlan({...done,orders:[{id:'x',state:'queued'}]},now).mode,'FULL','undatable working order fails open');
+console.log('option-fetch-plan tests passed');

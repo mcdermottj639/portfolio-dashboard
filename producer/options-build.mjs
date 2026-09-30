@@ -124,8 +124,11 @@ function analyzeOrder(o) {
   return a;
 }
 
-const orders = existsSync(join(RAW, 'options-orders.json'))
-  ? (unwrap(readJSON(join(RAW, 'options-orders.json'))).data?.orders ?? []) : [];
+const ordersRaw = existsSync(join(RAW, 'options-orders.json')) ? unwrap(readJSON(join(RAW, 'options-orders.json'))) : null;
+const orders = ordersRaw?.data?.orders ?? [];
+// `fullHistory:true` is written ONLY after every page of an unfiltered get_option_orders was merged
+// (option-fetch-plan.mjs prints FULL until the snapshot records one). Incremental runs omit it.
+const ordersFullHistory = ordersRaw?.fullHistory === true;
 const PENDING = new Set(['queued', 'confirmed', 'partially_filled', 'unconfirmed']);
 const pending = orders.filter((o) => PENDING.has(o.state)).map(analyzeOrder).filter(Boolean);
 
@@ -274,7 +277,14 @@ const exposure = (() => {
 const eventFile = join(RAW, 'options-events.json');
 const eventData = existsSync(eventFile) ? unwrap(readJSON(eventFile)) : null;
 const events = eventData?.data?.events ?? eventData?.events ?? eventData?.results ?? [];
-const incomeHistory = optionHistory(orders, prevSnap?.options?.incomeHistory, new Date().toISOString(), Array.isArray(events) ? events : []);
+// Settlement evidence: the self-directed P&L rows the producer already fetches EVERY-RUN (no extra call).
+const pnlFile = join(RAW, 'main-trades.json');
+const pnlData = existsSync(pnlFile) ? unwrap(readJSON(pnlFile)) : null;
+const pnlTrades = pnlData?.data?.trades ?? pnlData?.trades ?? [];
+const incomeHistory = optionHistory(orders, prevSnap?.options?.incomeHistory, new Date().toISOString(),
+  Array.isArray(events) ? events : [], {pnlTrades: Array.isArray(pnlTrades) ? pnlTrades : [], fullHistory: ordersFullHistory});
+if (incomeHistory.awaitingSettlement.length) console.warn(`options history: ${incomeHistory.awaitingSettlement.length} expired contract(s) still lack settlement evidence — ` +
+  incomeHistory.awaitingSettlement.map((t) => `${t.symbol} ${t.strike}${t.type?.[0] || ''} ${t.expiration}`).join(', '));
 const history = incomeHistory.trades;
 const realized = null, realizedYTD = null; // broker aggregate is authoritative, never a partial ledger sum
 const premiumYTD = incomeHistory.premiumYTD;

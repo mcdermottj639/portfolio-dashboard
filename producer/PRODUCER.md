@@ -162,7 +162,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > report "can't be graded" instead of a made-up outcome, and the build log says which names it wanted.
    | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
-   | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` | `producer/raw/main-trades.json` | EVERY-RUN |
+   | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` — if `next_cursor` is non-empty, fetch the next page(s) and merge every page's `trades` into this ONE file | `producer/raw/main-trades.json` | EVERY-RUN (also the option-expiry evidence, step 3c) |
    | `Robinhood · get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<120 days ago, YYYY-MM-DD>" }` | `producer/raw/main-orders.json` | EVERY-RUN |
    | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
    | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
@@ -406,20 +406,36 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
 3c. **Options page** (the Options tab) — **EVERY-RUN** (cheap; run it on `FETCH_LIGHT` too).
    Fully Robinhood-driven; can run every snapshot
    (cheap) or once/day with picks.
-   1. `Robinhood · get_option_orders { account_number: <account> }`
-      → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
-   History v160: fetch **all pages** of past orders, retaining order IDs and exact contract IDs,
-   side, position effect, filled quantity, processed premium and fill date. Also fetch the broker's
-   option events/settlements (all pages) when supported and write `producer/raw/options-events.json`
-   as `{data:{events:[{id, option_id, type, state, quantity, event_date, total_cash_amount, equity_components}]}}`.
-   If the connector lacks events, explicitly report that limitation; do not substitute open positions,
-   invent expiry outcomes, or declare historical coverage complete. Railway now fetches these events.
-   `option-history.mjs` retains source orders AND events in the encrypted snapshot, matches exact
-   single-leg contracts, and recognizes only confirmed zero-cash/no-equity expiration events as
-   worthless closes. Assignment/exercise proceeds belong to the stock transaction; they are listed
-   for reconciliation with null options P&L. Missing settlement contracts are shown separately with
-   known opening cash and unknown result. Broker YTD stays separate from same-year matched results;
-   historical years never enter the current-year subtotal. A browser refresh cannot fetch broker data.
+   1. **Option orders — run `node producer/option-fetch-plan.mjs` FIRST and obey its one line.**
+      - `OPTION_ORDERS FULL` (only until the snapshot records a full backfill — a one-time cost):
+        `Robinhood · get_option_orders { account_number: <account> }` with NO `created_at_gte`, then
+        call again with `cursor` = the response's `next` until `next` is empty. Merge every page's
+        `orders` into ONE file and write `producer/raw/options-orders.json` as
+        `{"fullHistory": true, "data": {"orders": [ …all pages… ]}}`. Only write `fullHistory: true`
+        when you really fetched every page — it is what switches later runs to incremental.
+      - `OPTION_ORDERS SINCE <date>` (every run after that): `get_option_orders { account_number:
+        <account>, created_at_gte: "<date>" }`; follow `next` only if it is non-empty; write
+        `{"data": {"orders": [ … ]}}` with **no** `fullHistory` key. The window covers every order
+        that can still change (it reaches back to any retained working order); everything older is
+        final and already retained in the encrypted snapshot, merged by order id.
+      Either way this file also feeds the pending-order cards (legs carry strike/type/expiry/premium).
+   **Settlements need NO extra call.** The Robinhood connector exposes no option-event endpoint.
+   Expirations are read from the self-directed `main-trades.json` (`get_pnl_trade_history`, already
+   EVERY-RUN): an expiry arrives as a row with the ticker, an EMPTY `side`, `price` "0" and a 20:00Z
+   timestamp on the expiration date, `realized_gain` = the opening premium (e.g. IREN 3 × $50C,
+   2026-09-11, +876). `option-history.mjs` accepts it only when it reconciles exactly — one retained
+   contract of that underlying expiring that ET day, same open quantity, realized equal to the
+   retained opening cash to the cent, and no same-day equity trade at the strike (assignment
+   evidence) — then stores it in the snapshot as a confirmed zero-cash expiration, so it survives
+   after the 3-month window drops the row. Anything that does not reconcile stays "Settlement record
+   missing" and is warned by name in the options-build log. A Railway-style
+   `producer/raw/options-events.json` (`{data:{events:[{id, option_id, type, state, quantity,
+   event_date, total_cash_amount, equity_components}]}}`) is still accepted when a producer has it.
+   Never substitute open positions or a disappeared position for settlement evidence.
+   `option-history.mjs` retains source orders AND settlements in the encrypted snapshot, matches exact
+   single-leg contracts, and leaves assignment/exercise P&L uncalculated (the proceeds belong to the
+   stock transaction). Broker YTD stays separate from same-year matched results; historical years never
+   enter the current-year subtotal. A browser refresh cannot fetch broker data.
    2. `Robinhood · get_option_positions { account_number: <account>, nonzero: true }`
       → `producer/raw/options-positions.json` (open contracts; may be empty).
    2b. **Live quotes for YOUR contracts:** collect the `option_id` of every pending order leg

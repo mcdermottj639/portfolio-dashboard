@@ -3,7 +3,23 @@
 // No expiry/assignment inference: disappearance is not evidence of a zero-cost close.
 const number = v => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null;
 const cents = v => Math.round(v * 100) / 100;
-export function optionHistory(orders = [], prior = null, asOf = new Date().toISOString(), events = []) {
+// Broker P&L rows (get_pnl_trade_history) report an option expiring worthless as a closed trade with a
+// ticker, NO side and price 0 at the expiration-day close. That row is the only settlement evidence the
+// Robinhood connector exposes, so it is accepted ONLY when it reconciles exactly: one contract of that
+// underlying expiring that ET day, open quantity equal to the row's, realized gain equal to the retained
+// opening cash to the cent, and no same-day equity trade at the strike (assignment/exercise evidence).
+// A matched row is stored as a normal confirmed zero-cash expiration event, so it survives after the
+// rolling trade-history window stops returning it.
+const etDay = ts => { const d = new Date(ts); return Number.isFinite(d.getTime())
+  ? new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York'}).format(d) : null; };
+export function pnlExpiryCandidates(trades = []) {
+  return (Array.isArray(trades) ? trades : []).filter(t => t && t.symbol && !t.side && number(t.price) === 0 &&
+      number(t.quantity) > 0 && number(t.realized_gain) !== null && etDay(t.timestamp))
+    .map(t => ({id:`pnl:${t.symbol}:${etDay(t.timestamp)}:${number(t.quantity)}:${number(t.realized_gain).toFixed(2)}`,
+      pnl:true, symbol:t.symbol, quantity:number(t.quantity), date:t.timestamp, day:etDay(t.timestamp),
+      realized_gain:number(t.realized_gain)}));
+}
+export function optionHistory(orders = [], prior = null, asOf = new Date().toISOString(), events = [], opts = {}) {
   const saved = new Map((prior?.orders || []).map(o => [o.id, o]));
   for (const o of orders) {
     if (!o.id) continue;
@@ -11,7 +27,7 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
       strike_price:l.strike_price, expiration_date:l.expiration_date, side:l.side,
       position_effect:l.position_effect}));
     saved.set(o.id, {id:o.id, state:o.state, symbol:o.chain_symbol, quantity:o.quantity,
-      premium:o.processed_premium, direction:o.direction, opening:o.opening_strategy,
+      premium:o.processed_premium, direction:o.direction, created:o.created_at || saved.get(o.id)?.created, opening:o.opening_strategy,
       closing:o.closing_strategy, date:o.last_transaction_at || o.updated_at || o.created_at, legs});
   }
   const settlements = new Map((prior?.events || []).map(e => [e.id, e]));
@@ -20,13 +36,34 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
     type:e.type, state:e.state, quantity:e.quantity, date:e.event_date || e.date,
     total_cash_amount:e.total_cash_amount, equity_components:e.equity_components,
   });
+  const equitySells = (Array.isArray(opts.pnlTrades) ? opts.pnlTrades : []).filter(t => t?.symbol && t.side)
+    .map(t => ({symbol:t.symbol, day:etDay(t.timestamp), price:number(t.price)}));
+  const pnlRows = pnlExpiryCandidates(opts.pnlTrades).filter(r => !settlements.has(r.id));
   const source = [...saved.values()].sort((a,b) => String(a.date).localeCompare(String(b.date)) || a.id.localeCompare(b.id));
   const lots = new Map(), trades = [], unresolved = [], blocked = new Set();
   let premiumYTD = 0, openingCount = 0;
-  const timeline = [...source, ...[...settlements.values()].map(e => ({...e, settlement:true}))]
+  const timeline = [...source, ...[...settlements.values()].map(e => ({...e, settlement:true})), ...pnlRows.map(r => ({...r, settlement:true}))]
     .sort((a,b) => String(a.date).slice(0,10).localeCompare(String(b.date).slice(0,10)) ||
       Number(!!a.settlement)-Number(!!b.settlement) || String(a.date).localeCompare(String(b.date)) || a.id.localeCompare(b.id));
   for (const o of timeline) {
+    if (o.pnl) {
+      const open = [...lots.entries()].filter(([k]) => !blocked.has(k))
+        .map(([k, arr]) => ({k, live:arr.filter(l => l.qty > 0 && l.symbol === o.symbol && l.leg?.expiration_date === o.day)}))
+        .filter(x => x.live.length);
+      if (!open.length) continue;              // not an option of ours (or basis not retained) — no evidence either way
+      const fits = open.filter(x => {
+        const first = x.live[0], same = x.live.filter(l => l.direction === first.direction);
+        const qty = same.reduce((s, l) => s + l.qty, 0), cash = same.reduce((s, l) => s + l.qty * l.unit * l.direction, 0);
+        const strike = number(first.leg.strike_price);
+        const assigned = equitySells.some(e => e.symbol === o.symbol && e.day === o.day && strike !== null && e.price !== null && Math.abs(e.price - strike) < 0.01);
+        return same.length === x.live.length && qty === o.quantity && cents(cash) === cents(o.realized_gain) && !assigned;
+      });
+      if (fits.length !== 1) { unresolved.push(o.id); continue; }
+      const ev = {id:o.id, option_id:fits[0].k, type:'expiration', state:'confirmed', quantity:o.quantity, date:o.date,
+        total_cash_amount:0, equity_components:[], source:'robinhood_pnl_trade_history', realized_gain:o.realized_gain};
+      settlements.set(ev.id, ev);
+      Object.assign(o, ev);
+    }
     if (o.settlement) {
       // Only an explicit completed, zero-cash expiration proves a worthless close.
       // Assignment/exercise cash is the stock transaction, never option profit.
@@ -90,8 +127,9 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
     .map(l=>({id:'pending:'+l.id,symbol:l.symbol,type:l.leg.option_type,strike:number(l.leg.strike_price),
       expiration:l.leg.expiration_date,quantity:l.qty,opened:l.date.slice(0,10),date:l.leg.expiration_date,
       opening:cents(l.qty*l.unit*l.direction),closing:null,net:null,status:'Settlement record missing'}));
-  return {version:2, asOf, orders:source, events:[...settlements.values()], awaitingSettlement,
+  const fullHistoryAt = opts.fullHistory ? asOf : prior?.fullHistoryAt || null;
+  return {version:2, asOf, fullHistoryAt, orders:source, events:[...settlements.values()], awaitingSettlement,
     trades:trades.sort((a,b)=>b.date.localeCompare(a.date)), unresolved:unresolved.length,
     pendingResolution, premiumYTD:openingCount ? cents(premiumYTD) : null,
-    coverage:'Exact-contract filled orders and confirmed zero-cash expirations; before fees. Assignments/exercises, missing settlements, multi-leg and partial fills require broker reconciliation.'};
+    coverage:'Exact-contract filled orders and confirmed zero-cash expirations (broker events, or reconciled broker P&L expiry rows); before fees. Assignments/exercises, missing settlements, multi-leg and partial fills require broker reconciliation.'};
 }
