@@ -696,7 +696,7 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=158">
+<link rel="stylesheet" href="ui/experience.css?v=159">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -745,7 +745,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=158"></script>
+<script src="ui/sd-rules.js?v=159"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -854,7 +854,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v158'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v159'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5944,16 +5944,18 @@ function optIncomeHistory(o,realized){
   const total=valid.length?valid.reduce((s,r)=>s+r.net,0):null;
   const premium=ledger?num(ledger.premiumYTD):null;
   let h='<div class="card"><div class="card-title"><span>📒 Options Income &amp; History <span class="card-hint">self-directed</span></span></div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px">'+
-    [[esc(realized&&realized.year||'YTD')+' realized',broker,'Broker-reported options P&L'],['Premium collected YTD',premium,'Recorded opening sales · before fees'],['Matched closed P&L',total,'Listed trades · before fees']].map(x=>'<div style="background:var(--surface-2);padding:12px;border-radius:12px"><div style="font-size:12px;color:var(--muted)">'+x[0]+'</div><div style="font-size:23px;font-weight:700;margin:6px 0">'+money(x[1])+'</div><div style="font-size:11px">'+x[2]+'</div></div>').join('')+'</div>';
-  h+='<div class="fund-note">Premium collected includes open trades and is not realized profit. Broker total as of '+esc(realized&&realized.asOf?realized.asOf.slice(0,10):null)+'.</div>';
-  if(!ledger) return h+'<div class="tech-empty">Detailed contract history needs the next producer refresh. Older stock-level totals are withheld because they can mix open and closed contracts.</div></div>';
+  h+='<div class="opt-income-summary"><span class="opt-income-label">'+esc(realized&&realized.year||'YTD')+' realized profit / loss</span><strong class="opt-income-amount">'+money(broker)+'</strong><span class="opt-income-note">'+(broker==null?'Broker total unavailable in this snapshot.':'Broker-reported options P&amp;L · '+esc(realized&&realized.asOf?realized.asOf.slice(0,10):null))+'</span></div>';
+  const metrics=[];
+  if(premium!=null)metrics.push(['Premium collected YTD',premium,'Includes open trades · before fees']);
+  if(total!=null)metrics.push(['Closed trades listed below',total,'Matched fills · before fees']);
+  if(metrics.length)h+='<div class="opt-income-metrics">'+metrics.map(x=>'<div><span class="opt-income-label">'+x[0]+'</span><strong>'+money(x[1])+'</strong><span class="opt-income-note">'+x[2]+'</span></div>').join('')+'</div>';
+  if(!ledger)return h+'<div class="opt-income-status"><b>Trade history is not in this snapshot yet.</b><p>The account data refresh must supply the past contract records. The Refresh button only reloads the latest published snapshot.</p></div></div>';
   const months={};valid.forEach(r=>{const m=r.date.slice(0,7);months[m]=(months[m]||0)+r.net;});
   const monthKeys=Object.keys(months).sort().reverse();
   if(monthKeys.length)h+='<details style="margin:14px 0"><summary>Monthly closed results · before fees</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+monthKeys.map(m=>'<div style="padding:10px;background:var(--surface-2);border-radius:10px">'+esc(m)+'<br><b>'+money(months[m])+'</b></div>').join('')+'</div></details>';
-  if(!rows.length)h+='<div class="tech-empty">No closing fills with usable contract details are recorded yet.</div>';
+  if(!rows.length)h+='<div class="opt-income-status"><b>No closing trades are available in this snapshot.</b><p>This does not mean you have no past options income.</p></div>';
   h+=rows.map(r=>'<div style="border-top:1px solid var(--border);padding:13px 0"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+esc(r.symbol)+' '+esc(r.strike==null?'':('$'+r.strike))+' '+esc(r.type||'option')+'</b><b class="'+(r.net<0?'neg':'pos')+'">'+money(r.net)+'</b></div><div style="font-size:12px;margin-top:5px">'+esc(r.quantity)+' contract(s) · Exp '+esc(r.expiration)+' · '+esc(r.status)+'</div><div style="font-size:12px;margin-top:5px">Opened '+esc(r.opened)+' → Closed '+esc(r.date)+'</div><div style="font-size:12px;margin-top:5px">Opening cash '+money(r.opening)+' · Closing cash '+money(r.closing)+'</div></div>').join('');
-  h+='<div class="fund-note">History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+' '+esc(ledger.unresolved)+' order(s) need additional detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Listed results may not reconcile to broker YTD until all historical fills and settlement events are available.</div></div>';
+  h+='<details class="opt-income-details"><summary>Data coverage &amp; calculation details</summary><p>History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+'</p><p>'+esc(ledger.unresolved)+' order(s) need more detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Premium collected includes open trades; it is not realized profit. Listed results may differ from broker YTD until all fills and settlements are available.</p></details></div>';
   return h;
 }
 function renderOptions(app,o,realized){
@@ -8103,7 +8105,7 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=158"></script>
-<script src="ui/experience.js?v=158"></script>
+<script src="ui/experience-model.js?v=159"></script>
+<script src="ui/experience.js?v=159"></script>
 </body>
 </html>

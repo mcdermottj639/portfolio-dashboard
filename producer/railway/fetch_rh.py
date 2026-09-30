@@ -512,10 +512,11 @@ def fetch_options(rh):
         legs = []
         for l in (o.get("legs") or []):
             oid = _opt_id(l.get("option"))
-            need_full = is_pending or (oid in open_ids)  # only these legs are analyzed downstream
+            need_full = is_pending or (oid in open_ids) or o.get("state") == "filled"  # closed history needs contract details too
             leg = {
                 "option_id": oid,
                 "side": l.get("side"),
+                "position_effect": l.get("position_effect"),
                 "option_type": l.get("option_type"),
                 "strike_price": l.get("strike_price"),
                 "expiration_date": l.get("expiration_date"),
@@ -529,6 +530,7 @@ def fetch_options(rh):
                     pending_ids.add(oid)
             legs.append(leg)
         norm_orders.append({
+            "id": o.get("id"),
             "chain_symbol": o.get("chain_symbol"), "chain_id": o.get("chain_id"),
             "state": o.get("state"), "direction": o.get("direction"),
             "quantity": o.get("quantity"), "price": o.get("price"),

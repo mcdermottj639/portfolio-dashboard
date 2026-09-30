@@ -68,3 +68,17 @@ html[data-theme="gold"]{--sl-ground:#101923;--sl-panel:#192530;--sl-panel-muted:
 @media(max-width:650px){.ex-page h1{font-size:28px}.ex-top{gap:12px}.ex-brand{font-size:23px}.ex-tools{gap:6px;width:100%;justify-content:space-between}.ex-tools label{flex:1}.ex-tools select{padding:8px;font-size:12px}.ex-caption{font-size:11px}.ex-brief-grid{grid-template-columns:1fr;gap:12px}.ex-card{padding:18px;border-radius:12px}.ex-brief-hero{grid-template-columns:1fr;padding:20px;gap:16px}.ex-hero-value{font-size:38px;letter-spacing:-1.5px}.ex-move-tile{padding:14px 16px}.ex-daily-value{font-size:28px}.ex-move-tile .ex-muted{margin-bottom:0;font-size:11px}.ex-page h2{font-size:17px}.ex-mover{grid-template-columns:52px 1fr 85px;gap:8px}.ex-axis{padding:0 92px 0 60px}.ex-exposure{gap:18px}.ex-holding-val{font-size:22px}.ex-next-card{grid-template-columns:1fr;gap:0}.ex-next-card .ex-next-head,.ex-next-card>.ex-muted,.ex-next-card .ex-cta,.ex-next-card .ex-link{grid-column:1}.ex-next-card .ex-cta{margin-top:12px}.ex-next-card .ex-row{grid-column:1}.ex-value-chart{height:140px}.ex-status-strip{grid-template-columns:1fr 1fr}.ex-status-strip>div:first-child{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between}.ex-status-strip .ex-label{font-size:9px}.ex-row{gap:10px;font-size:12px}.ex-brief-age{font-size:11px!important}}
 
 .ex-next-card .ex-row>span:first-child{color:#d4e9df}
+
+/* Options income: one headline, only populated supporting metrics, readable status. */
+.opt-income-summary{display:flex;flex-direction:column;gap:5px;margin:4px 0 14px;padding:16px;background:var(--surface-2);border-radius:12px;color:var(--text)}
+.opt-income-label{display:block;font-size:13px;line-height:1.4;color:var(--text)}
+.opt-income-amount{font-size:32px;line-height:1.2;letter-spacing:-.5px}
+.opt-income-note{display:block;font-size:12px;line-height:1.5;color:var(--text);opacity:.85}
+.opt-income-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.opt-income-metrics>div{padding:12px;background:var(--surface-2);border-radius:10px}
+.opt-income-metrics strong{display:block;font-size:21px;margin:5px 0;overflow-wrap:anywhere}
+.opt-income-metrics>div:only-child{grid-column:1/-1}
+.opt-income-status{padding:12px 14px;border-left:3px solid var(--text);background:var(--surface-2);border-radius:0 8px 8px 0;font-size:13px;line-height:1.5;color:var(--text)}
+.opt-income-status p{margin:5px 0 0}
+.opt-income-details{margin-top:12px;font-size:12px;line-height:1.5;color:var(--text)}
+.opt-income-details summary{font-weight:600;cursor:pointer}
