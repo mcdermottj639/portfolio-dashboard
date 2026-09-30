@@ -1,5 +1,17 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## 2026-09-30 — Keep confirmed option expirations out of the stock-loss guard
+
+`lossesFromTrades` excludes a zero-price/blank-side loss only when it exactly matches a
+contract-reconciled, confirmed P&L expiration in the same account's options history.
+Main-account evidence is loaded from the fresh options build (or retained snapshot) and is
+never applied to agentic-account rows. Ambiguous losses, real stock sales, blank-side cash-in-lieu
+losses, and the existing daily loss floor remain guarded. Option losses remain in options P&L;
+this does not determine option wash-sale treatment or add an option tax engine. Producer-only,
+no UI/cache change, broker calls, trades, schedule changes, or snapshot decryption required.
+Regression coverage: long expiry, same-day stock loss, missing/conflicting evidence, account
+isolation, daily floor, and incremental history retention (`option-wash.test.mjs`).
+
 ## 2026-09-30 — Options history: broker-evidenced expirations, one-time backfill, incremental fetch
 
 The Robinhood connector has **no option-event/settlement endpoint**, so the v160 events path only ever
@@ -19,9 +31,8 @@ order, since filled/cancelled orders are final. Backfill against the live accoun
 has **7 filled option orders in total** (one page); the three expired short calls (IREN $70C and CIFR
 $30C 2026-07-17, IREN $50C×3 2026-09-11) reconcile to **$1,426**, exactly Robinhood's options-realized
 YTD. The producer Routine is `http_api`, so its prompt was NOT edited; it already defers to PRODUCER.md
-§3c, and SCHEDULING.md §5 has the paste-ready text. **Known gap, not fixed here:** `lossesFromTrades`
-would read a LONG option expiring worthless (blank side, negative gain, real ticker) as an equity loss in
-the wash-sale ledger — no such row exists today.
+§3c, and SCHEDULING.md §5 has the paste-ready text. The long-option expiration stock-loss
+classification gap noted in this release is addressed by the follow-up entry above.
 
 ## v160 — Settlement-aware history and explicit year reconciliation
 

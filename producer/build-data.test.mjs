@@ -274,6 +274,15 @@ writeFileSync(TICKET, JSON.stringify({
 let stdout = '';
 try {
   writeFileSync(DATA, JSON.stringify(prior));
+  // A confirmed long-option expiry must not manufacture a stock rebuy block.
+  const expiryStamp = new Date(Date.now() - 2 * 86400e3).toISOString();
+  const expiryRow = {symbol:'OPTLOSS', side:'', quantity:'1', price:'0', realized_gain:'-100', timestamp:expiryStamp};
+  const { pnlExpiryCandidates } = await import('./option-history.mjs');
+  const expiryId = pnlExpiryCandidates([expiryRow])[0].id;
+  FIXTURES['main-trades.json'].data.trades.push(expiryRow);
+  FIXTURES['options.json'] = {incomeHistory:{events:[{id:expiryId, source:'robinhood_pnl_trade_history',
+    option_id:'exact-long-contract', type:'expiration', state:'confirmed', date:expiryStamp,
+    quantity:1, realized_gain:-100, total_cash_amount:0, equity_components:[]}]}};
   for (const [f, obj] of Object.entries(FIXTURES)) writeFileSync(join(RAW, f), JSON.stringify(obj));
   mkdirSync(FLOWDIR, { recursive: true });
   writeFileSync(join(FLOWDIR, 'AAA.json'), JSON.stringify(FLOW_FIXTURE));
@@ -421,6 +430,7 @@ try {
   eq('both accounts\' losses merged, most-recent-first', out.agentic.recentLosses.map((l) => l.sym), ['CCC', 'MMM']);
   eq('entries carry their account tag', out.agentic.recentLosses.map((l) => l.account), ['agentic', 'main']);
   eq('margin-book GAIN ignored', out.agentic.recentLosses.some((l) => l.sym === 'DDD'), false);
+  eq('confirmed long-option expiry is not a stock loss', out.agentic.recentLosses.some(l => l.sym === 'OPTLOSS'), false);
   eq('phantom inferred entry dropped', out.agentic.recentLosses.some((l) => l.sym === 'ZZZ'), false);
   eq('dropped phantom is logged', stdout.includes('no matching closing trade'), true);
   eq('realized loss amounts carried', out.agentic.recentLosses.map((l) => l.realized), [-118.40, -431.76]);

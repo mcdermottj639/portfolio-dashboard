@@ -640,7 +640,11 @@ const data = {
     let mainLosses;
     const mainTradesFile = filesMatching(/^main-trades\.json$/)[0];
     if (mainTradesFile) {
-      mainLosses = lossesFromTrades(readJSON(mainTradesFile), { asOf: data.generatedAt, days: 31, account: 'main' });
+      // options-build runs before this builder; data.options is assigned later.
+      // Never apply main-account settlement evidence to the agentic account.
+      const freshOptions = filesMatching(/^options\.json$/)[0];
+      const mainOptionHistory = (freshOptions ? readJSON(freshOptions) : prior?.options)?.incomeHistory;
+      mainLosses = lossesFromTrades(readJSON(mainTradesFile), { asOf: data.generatedAt, days: 31, account: 'main', optionHistory: mainOptionHistory });
       console.log(`cross-account wash ledger: ${mainLosses.length} margin-book realized loss(es) in the last 31d${mainLosses.length ? ' — ' + mainLosses.map((e) => e.sym).join(' ') : ''}`);
     } else {
       mainLosses = priorOf('main');

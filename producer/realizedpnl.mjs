@@ -13,6 +13,8 @@
 //
 // Everything here is pure (no I/O, no clock) so it can be unit-tested offline — realizedpnl.test.mjs.
 
+import { pnlExpiryCandidates } from './option-history.mjs';
+
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 
 // Unwrap the connector's envelope. Responses arrive as {data:{…}}, occasionally already unwrapped,
@@ -131,16 +133,28 @@ export function buildRealized({ accounts = {}, year, asOf } = {}) {
 // size, so it keeps blocking. That is the right way round: unknown magnitude must fail safe.
 export const WASH_MIN_LOSS = 25;
 
-export function lossesFromTrades(raw, { asOf, days = 31, account, minLoss = WASH_MIN_LOSS } = {}) {
+export function lossesFromTrades(raw, { asOf, days = 31, account, minLoss = WASH_MIN_LOSS, optionHistory } = {}) {
   const r = unwrapPnl(raw);
   const trades = Array.isArray(r.trades) ? r.trades : [];
   const cutoff = asOf ? shiftDays(asOf.slice(0, 10), -days) : null;
   const floor = Math.max(0, num(minLoss) ?? 0);
   const byKey = new Map();
   const dayTotal = new Map();
+  // Only contract-reconciled broker evidence can remove a row from the STOCK
+  // rebuy guard. Blank side/zero price alone is ambiguous and must keep guarding.
+  // This is not an option wash-sale determination; option P&L remains in its ledger.
+  const expirations = new Map((optionHistory?.events || []).filter(e =>
+    e.source === 'robinhood_pnl_trade_history' && e.type === 'expiration' &&
+    e.state === 'confirmed' && e.option_id && Number(e.total_cash_amount) === 0 &&
+    Array.isArray(e.equity_components) && !e.equity_components.length
+  ).map(e => [e.id, e]));
   for (const t of trades) {
     const g = num(t && t.realized_gain);
     if (g == null || g >= 0) continue;                       // gains aren't wash-sale relevant
+    const candidate = pnlExpiryCandidates([t])[0];
+    const expiry = candidate && expirations.get(candidate.id);
+    if (expiry && expiry.date === t.timestamp && Number(expiry.quantity) === Number(t.quantity) &&
+        Number(expiry.realized_gain) === g) continue;
     const sym = String(t.symbol || '').toUpperCase();
     const date = String(t.timestamp || '').slice(0, 10);
     if (!sym || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
