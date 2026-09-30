@@ -271,7 +271,10 @@ const exposure = (() => {
 })();
 
 // Preserve exact-contract fills; legacy chain totals are not reliable realized profit.
-const incomeHistory = optionHistory(orders, prevSnap?.options?.incomeHistory);
+const eventFile = join(RAW, 'options-events.json');
+const eventData = existsSync(eventFile) ? unwrap(readJSON(eventFile)) : null;
+const events = eventData?.data?.events ?? eventData?.events ?? eventData?.results ?? [];
+const incomeHistory = optionHistory(orders, prevSnap?.options?.incomeHistory, new Date().toISOString(), Array.isArray(events) ? events : []);
 const history = incomeHistory.trades;
 const realized = null, realizedYTD = null; // broker aggregate is authoritative, never a partial ledger sum
 const premiumYTD = incomeHistory.premiumYTD;

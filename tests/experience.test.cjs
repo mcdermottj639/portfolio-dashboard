@@ -50,8 +50,8 @@ const experience=fs.readFileSync(path.join(root,'ui/experience.js'),'utf8');
 for(const route of ['technicals','fundamentals','flow']){
   assert.match(experience,new RegExp(route+": \\{area:'portfolio'"),'portfolio nav owns '+route);
 }
-assert.ok(html.includes("APP_VERSION='v159'"));
-const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v159'"));
+assert.ok(html.includes("APP_VERSION='v160'"));
+const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v160'"));
 for(const asset of ['experience.css','experience-model.js','experience.js','sd-rules.js']){
   assert.ok(html.includes('ui/'+asset+'?v=159'));assert.ok(sw.includes('ui/'+asset+'?v=159'));
 }

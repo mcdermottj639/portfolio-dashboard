@@ -854,7 +854,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v159'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v160'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5935,27 +5935,37 @@ function optIdeaControls(ideas){
 }
 function optIncomeHistory(o,realized){
   const ledger=o&&o.incomeHistory;
-  const rows=ledger&&Array.isArray(ledger.trades)?ledger.trades:[];
+  const allRows=ledger&&Array.isArray(ledger.trades)?ledger.trades:[];
+  const pending=ledger&&Array.isArray(ledger.awaitingSettlement)?ledger.awaitingSettlement:[];
+  const year=String(realized&&realized.year||ledger&&ledger.asOf||'').slice(0,4);
+  const rows=allRows.filter(r=>String(r.date).slice(0,4)===year);
+  const older=allRows.filter(r=>String(r.date).slice(0,4)!==year);
   const num=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
   const esc=v=>String(v==null?'—':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>num(v)==null?'—':(v<0?'-':'')+fmtD(Math.abs(v));
   const broker=realized&&realized.source==='robinhood'?num(realized.accounts&&realized.accounts.main&&realized.accounts.main.options):null;
   const valid=rows.filter(r=>num(r.net)!=null);
   const total=valid.length?valid.reduce((s,r)=>s+r.net,0):null;
-  const premium=ledger?num(ledger.premiumYTD):null;
+  const premium=ledger&&String(ledger.asOf).slice(0,4)===year?num(ledger.premiumYTD):null;
+  const difference=broker!=null&&total!=null?Math.round((broker-total)*100)/100:null;
   let h='<div class="card"><div class="card-title"><span>📒 Options Income &amp; History <span class="card-hint">self-directed</span></span></div>';
-  h+='<div class="opt-income-summary"><span class="opt-income-label">'+esc(realized&&realized.year||'YTD')+' realized profit / loss</span><strong class="opt-income-amount">'+money(broker)+'</strong><span class="opt-income-note">'+(broker==null?'Broker total unavailable in this snapshot.':'Broker-reported options P&amp;L · '+esc(realized&&realized.asOf?realized.asOf.slice(0,10):null))+'</span></div>';
+  h+='<div class="opt-income-summary"><span class="opt-income-label">'+esc(year)+' YTD realized profit / loss</span><strong class="opt-income-amount">'+money(broker)+'</strong><span class="opt-income-note">'+(broker==null?'Broker total unavailable in this snapshot.':'Broker-reported options P&amp;L · '+esc(realized&&realized.asOf?realized.asOf.slice(0,10):null))+'</span></div>';
   const metrics=[];
-  if(premium!=null)metrics.push(['Premium collected YTD',premium,'Includes open trades · before fees']);
-  if(total!=null)metrics.push(['Closed trades listed below',total,'Matched fills · before fees']);
+  if(premium!=null)metrics.push(['Gross opening premiums · '+esc(year),premium,'Recorded sales, including open trades · not profit']);
+  if(total!=null)metrics.push(['Matched results · '+esc(year),total,'Confirmed closes / expirations · before fees']);
   if(metrics.length)h+='<div class="opt-income-metrics">'+metrics.map(x=>'<div><span class="opt-income-label">'+x[0]+'</span><strong>'+money(x[1])+'</strong><span class="opt-income-note">'+x[2]+'</span></div>').join('')+'</div>';
   if(!ledger)return h+'<div class="opt-income-status"><b>Trade history is not in this snapshot yet.</b><p>The account data refresh must supply the past contract records. The Refresh button only reloads the latest published snapshot.</p></div></div>';
+  if(total==null||difference!==0||ledger.unresolved||pending.length||ledger.version!==2){
+    h+='<div class="opt-income-status"><b>History is not fully reconciled.</b><p>'+(total==null?'No matched '+esc(year)+' results are available to explain the broker total.':difference!=null?'Broker total minus matched '+esc(year)+' results: <b>'+money(difference)+'</b>. This is a reconciliation difference, not additional earnings.':'The broker total is unavailable for comparison.')+' Missing settlements, fees and other incomplete records still need checking.</p></div>';
+  }
+  const renderRows=items=>items.map(r=>'<div style="border-top:1px solid var(--border);padding:13px 0"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+esc(r.symbol)+' '+esc(r.strike==null?'':('$'+r.strike))+' '+esc(r.type||'option')+'</b><b class="'+(num(r.net)==null?'':r.net<0?'neg':'pos')+'">'+(num(r.net)==null?'Unreconciled':money(r.net))+'</b></div><div style="font-size:12px;margin-top:5px">'+esc(r.quantity)+' contract(s) · Exp '+esc(r.expiration)+' · '+esc(r.status)+'</div><div style="font-size:12px;margin-top:5px">Opened '+esc(r.opened)+' · Event '+esc(r.date)+'</div><div style="font-size:12px;margin-top:5px">Opening cash '+money(r.opening)+' · Closing cash '+money(r.closing)+'</div></div>').join('');
   const months={};valid.forEach(r=>{const m=r.date.slice(0,7);months[m]=(months[m]||0)+r.net;});
   const monthKeys=Object.keys(months).sort().reverse();
-  if(monthKeys.length)h+='<details style="margin:14px 0"><summary>Monthly closed results · before fees</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+monthKeys.map(m=>'<div style="padding:10px;background:var(--surface-2);border-radius:10px">'+esc(m)+'<br><b>'+money(months[m])+'</b></div>').join('')+'</div></details>';
-  if(!rows.length)h+='<div class="opt-income-status"><b>No closing trades are available in this snapshot.</b><p>This does not mean you have no past options income.</p></div>';
-  h+=rows.map(r=>'<div style="border-top:1px solid var(--border);padding:13px 0"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+esc(r.symbol)+' '+esc(r.strike==null?'':('$'+r.strike))+' '+esc(r.type||'option')+'</b><b class="'+(r.net<0?'neg':'pos')+'">'+money(r.net)+'</b></div><div style="font-size:12px;margin-top:5px">'+esc(r.quantity)+' contract(s) · Exp '+esc(r.expiration)+' · '+esc(r.status)+'</div><div style="font-size:12px;margin-top:5px">Opened '+esc(r.opened)+' → Closed '+esc(r.date)+'</div><div style="font-size:12px;margin-top:5px">Opening cash '+money(r.opening)+' · Closing cash '+money(r.closing)+'</div></div>').join('');
-  h+='<details class="opt-income-details"><summary>Data coverage &amp; calculation details</summary><p>History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+'</p><p>'+esc(ledger.unresolved)+' order(s) need more detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Premium collected includes open trades; it is not realized profit. Listed results may differ from broker YTD until all fills and settlements are available.</p></details></div>';
+  if(monthKeys.length)h+='<details style="margin:14px 0"><summary>'+esc(year)+' monthly matched results · before fees</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+monthKeys.map(m=>'<div style="padding:10px;background:var(--surface-2);border-radius:10px">'+esc(m)+'<br><b>'+money(months[m])+'</b></div>').join('')+'</div></details>';
+  h+=renderRows(rows);
+  if(pending.length)h+='<details open class="opt-income-details"><summary>Past contracts awaiting settlement records ('+pending.length+')</summary><p>Opening cash is known. Profit stays uncalculated until the broker supplies the outcome.</p>'+renderRows(pending)+'</details>';
+  if(older.length)h+='<details class="opt-income-details"><summary>Other years · '+older.length+' historical result(s)</summary><p>Excluded from '+esc(year)+' totals.</p>'+renderRows(older)+'</details>';
+  h+='<details class="opt-income-details"><summary>Data coverage &amp; calculation details</summary><p>History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+'</p><p>'+esc(ledger.unresolved)+' record(s) need more detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Gross premiums are not realized profit. Assignment/exercise stock proceeds are never counted as option earnings. Matching totals alone does not establish complete coverage.</p></details></div>';
   return h;
 }
 function renderOptions(app,o,realized){

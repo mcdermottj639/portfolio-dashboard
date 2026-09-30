@@ -23,3 +23,29 @@ assert.equal(optionHistory([a],null,'2027-01-01').premiumYTD,null);
 assert.equal(optionHistory([{...a,legs:[...a.legs,...a.legs]}],null,asOf).unresolved,1);
 assert.equal(optionHistory([{...a,processed_premium:null}],null,asOf).unresolved,1);
 console.log('Option history tests passed');
+// Settlement history is essential for premium sellers who let contracts expire.
+const expiredOrder={...order('expiry-open','expiry','open','sell',2,400,'2026-09-01'),legs:[{...a.legs[0],option_id:'expiry',expiration_date:'2026-09-18'}]};
+const event={id:'expiry-event',option_id:'expiry',type:'expiration',state:'confirmed',quantity:'2',event_date:'2026-09-18',total_cash_amount:'0.00',equity_components:[]};
+let settled=optionHistory([expiredOrder],null,asOf,[event]);
+assert.equal(settled.trades[0].net,400);
+assert.equal(settled.trades[0].status,'Expired');
+assert.equal(settled.awaitingSettlement.length,0);
+assert.deepEqual(optionHistory([expiredOrder],settled,asOf,[event,event]),settled,'repeat event fetch cannot double count');
+assert.deepEqual(optionHistory([],settled,asOf),settled,'missing event fetch retains confirmed settlements');
+const missing=optionHistory([expiredOrder],null,asOf);
+assert.equal(missing.trades.length,0);
+assert.equal(missing.awaitingSettlement[0].opening,400);
+assert.equal(missing.awaitingSettlement[0].net,null,'past expiry without evidence is not profit');
+for (const patch of [{state:'pending'},{total_cash_amount:null},{total_cash_amount:'100'},{equity_components:[{quantity:'200'}]}]) {
+  const result=optionHistory([expiredOrder],null,asOf,[{...event,...patch}]);
+  assert(!result.trades.some(t=>t.net!==null),'incomplete or cash/equity settlement cannot invent a gain');
+}
+const assigned=optionHistory([expiredOrder],null,asOf,[{...event,type:'assignment',total_cash_amount:'10000',equity_components:[{quantity:'200'}]}]);
+assert.equal(assigned.trades[0].net,null,'assignment stock proceeds never become option earnings');
+assert.equal(assigned.trades[0].opening,400);
+const partialClose=order('expiry-buyback','expiry','close','buy',1,50,'2026-09-10');
+settled=optionHistory([expiredOrder,partialClose],null,asOf,[{...event,quantity:1}]);
+assert.equal(settled.trades.reduce((sum,t)=>sum+t.net,0),350,'buyback and remaining expiration allocate basis exactly once');
+const longExpired={...expiredOrder,legs:[{...expiredOrder.legs[0],side:'buy'}]};
+assert.equal(optionHistory([longExpired],null,asOf,[event]).trades[0].net,-400);
+console.log('Expiration, assignment, missing settlements and retention tests passed');

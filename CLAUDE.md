@@ -1,5 +1,10 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v160 — Settlement-aware history and explicit year reconciliation
+
+History now separates current-year matched results from other years (the 2024 AMC loss no longer sits in the 2026 subtotal). A prominent reconciliation status compares broker YTD with same-year matched results. Gross premiums are labeled not profit. Expired contracts with missing outcomes are visible with known opening cash and unknown profit. The producer retains broker events and recognizes confirmed zero-cash/no-equity expirations, handles partial-close basis allocation, and leaves assignment/exercise P&L uncalculated. Railway fetches all event pages; the active connector producer requirements are updated in PRODUCER.md. No brokerage data was available for backfill in this session; Railway reports no latest deployment, so live completeness is NOT verified. App/cache v160. New tests cover settlements, assignment exclusion, idempotency, year isolation, and event pagination; full suite run before publishing. Self-audited; Fable unavailable. Mobile screenshot verification is blocked by the missing Chromium runtime.
+
+
 ## v159 — Compact options history and Railway source repair
 
 Replaces the three sparse tiles with one broker-realized headline and supporting metrics only when present. High-contrast missing-history status accurately explains that browser Refresh reloads published data; it does not run the producer. Calculation details collapse below populated trades. Railway option normalization now preserves order IDs and leg position effects and enriches filled historical contracts with strike/type/expiry, enabling v158 matching. The connected Railway service had no latest deployment; a fresh broker snapshot remains unverified, and no completeness promise is made. Existing broker figures and encrypted data are unchanged. App/cache v159. Full sequential producer suite, display tests, zero/missing rendering checks, inline syntax, and mocked Railway-to-ledger integration passed. Self-audited; browser layout remains unverified because Chromium is unavailable.

@@ -9,10 +9,15 @@ selected=[n for n in source.body if isinstance(n,ast.FunctionDef) and n.name in 
 helper=types.ModuleType('robin_stocks.robinhood.helper')
 calls=[]
 def request_get(url):
+    if url.startswith('https://api.example/events'):
+        return {'results':[{'id':'event-1','option':'https://api.example/options/test-id/','type':'expiration','state':'confirmed','quantity':'1','event_date':'2026-09-25','total_cash_amount':'0','equity_components':[]}] if url.endswith('page2') else [], 'next': None if url.endswith('page2') else 'https://api.example/events/page2'}
     calls.append(url)
     return {'type':'call','strike_price':'50','expiration_date':'2026-09-25'}
 helper.request_get=request_get
 sys.modules['robin_stocks.robinhood.helper']=helper
+urls=types.ModuleType('robin_stocks.robinhood.urls')
+urls.events_url=lambda:'https://api.example/events/'
+sys.modules['robin_stocks.robinhood.urls']=urls
 saved={}
 ns={'log':lambda _:None,'write_raw':lambda name,data:saved.update({name:data}),'_num':lambda x:float(x) if x is not None else None}
 exec(compile(ast.Module(body=selected,type_ignores=[]),'<test>','exec'),ns)
@@ -21,6 +26,7 @@ def order(id,effect,side,premium,date):
 rh=types.SimpleNamespace(get_all_option_orders=lambda:[order('open','open','sell',200,'2026-09-01'),order('close','close','buy',50,'2026-09-20')],get_open_option_positions=lambda:[])
 ns['fetch_options'](rh)
 assert len(calls)==1, 'historical contract metadata should be cached per instrument'
+assert saved['options-events.json']['data']['events'][0]['id']=='event-1', 'must follow all event pages'
 print(json.dumps(saved['options-orders.json']['data']['orders']))
 `;
 const r=spawnSync('python3',['-c',code],{encoding:'utf8'});

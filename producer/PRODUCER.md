@@ -408,12 +408,18 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    (cheap) or once/day with picks.
    1. `Robinhood · get_option_orders { account_number: <account> }`
       → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
-   History v158: `option-history.mjs` retains normalized orders in the encrypted snapshot and
-   matches exact single-leg contracts, including partial closes. Fetch all available order pages
-   when supported for historical coverage. Broker YTD is the authoritative headline; matched rows
-   are before fees, not a complete realized/tax ledger. Expiration and assignment events are not
-   currently fetched; multi-leg/partial fills and missing basis are flagged. Do not infer a
-   worthless expiry merely because an option disappeared. No new required fetch or Routine change.
+   History v160: fetch **all pages** of past orders, retaining order IDs and exact contract IDs,
+   side, position effect, filled quantity, processed premium and fill date. Also fetch the broker's
+   option events/settlements (all pages) when supported and write `producer/raw/options-events.json`
+   as `{data:{events:[{id, option_id, type, state, quantity, event_date, total_cash_amount, equity_components}]}}`.
+   If the connector lacks events, explicitly report that limitation; do not substitute open positions,
+   invent expiry outcomes, or declare historical coverage complete. Railway now fetches these events.
+   `option-history.mjs` retains source orders AND events in the encrypted snapshot, matches exact
+   single-leg contracts, and recognizes only confirmed zero-cash/no-equity expiration events as
+   worthless closes. Assignment/exercise proceeds belong to the stock transaction; they are listed
+   for reconciliation with null options P&L. Missing settlement contracts are shown separately with
+   known opening cash and unknown result. Broker YTD stays separate from same-year matched results;
+   historical years never enter the current-year subtotal. A browser refresh cannot fetch broker data.
    2. `Robinhood · get_option_positions { account_number: <account>, nonzero: true }`
       → `producer/raw/options-positions.json` (open contracts; may be empty).
    2b. **Live quotes for YOUR contracts:** collect the `option_id` of every pending order leg

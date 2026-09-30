@@ -541,6 +541,29 @@ def fetch_options(rh):
             "legs": legs,
         })
 
+    # Fetch every event page explicitly; get_events(symbol) only returns its first page.
+    # Restrict to instruments in this order history; never infer expiration from absence.
+    try:
+        from robin_stocks.robinhood.urls import events_url
+        page_url = events_url()
+        seen_pages, events = set(), []
+        known_ids = {l["option_id"] for o in norm_orders for l in o["legs"] if l.get("option_id")}
+        while page_url:
+            if page_url in seen_pages:
+                raise ValueError("repeated option event page")
+            seen_pages.add(page_url)
+            page = request_get(page_url)
+            if not isinstance(page, dict) or not isinstance(page.get("results"), list):
+                raise ValueError("invalid option event response")
+            for e in page["results"]:
+                oid = _opt_id(e.get("option"))
+                if oid in known_ids:
+                    events.append({k: e.get(k) for k in ["id", "type", "state", "quantity", "event_date", "total_cash_amount", "equity_components"]} | {"option_id": oid})
+            page_url = page.get("next")
+        write_raw("options-events.json", {"data": {"events": events}})
+    except Exception as e:
+        log(f"⚠️  option settlements unavailable — prior events retained: {e}")
+
     write_raw("options-orders.json", {"data": {"orders": norm_orders}})
     write_raw("options-positions.json", {"data": {"positions": positions}})
 
