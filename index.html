@@ -696,7 +696,7 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=157">
+<link rel="stylesheet" href="ui/experience.css?v=158">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -745,7 +745,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=157"></script>
+<script src="ui/sd-rules.js?v=158"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -854,7 +854,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v157'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v158'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5238,7 +5238,7 @@ window.switchTab=switchTab;
       <li><span class="hk">Annualized yield</span> lets you rank opportunities like any income stream.</li>
     </ul>
     <p>Only sell puts on names you'd genuinely be happy to <b>own</b> at the strike — assignment is the point, not a failure.</p>` },
-  'options p l': { tag:'Options', t:'Options P&amp;L', h:`
+  'options income history': { tag:'Options', t:'Options Income &amp; History', h:`
     <p>Your <b>closed</b> option trades and what they actually made or lost — the realized scoreboard for your options activity.</p>
     <div class="hsub">What to look for</div>
     <ul>
@@ -5765,7 +5765,7 @@ window.switchTab=switchTab;
    OPTIONS PAGE  (your contracts · ideas · knowledge)
 ═══════════════════════════════════════════ */
 let _optionsInit=false;
-function initOptions(){ const app=document.getElementById('options-app'); if(!app)return; (window.__dataReady||Promise.resolve(window.__DATA||{})).then(function(d){ try{ renderOptions(app,(d&&d.options)||null); }catch(e){ app.innerHTML='<div class="card"><div class="tech-empty">Options data error: '+(e&&e.message)+'</div></div>'; } }); }
+function initOptions(){ const app=document.getElementById('options-app'); if(!app)return; (window.__dataReady||Promise.resolve(window.__DATA||{})).then(function(d){ try{ renderOptions(app,(d&&d.options)||null,d&&d.realized); }catch(e){ app.innerHTML='<div class="card"><div class="tech-empty">Options data error: '+(e&&e.message)+'</div></div>'; } }); }
 
 function optSideBadge(o){ const isShort=o.side==='short'; const c=isShort?'#f59e0b':'#6366f1'; return '<span class="badge" style="background:'+(isShort?'#fef3c7':'#ede9fe')+';color:'+(isShort?'#92400e':'#5b21b6')+'">'+(o.side||'').toUpperCase()+' '+(o.type||'').toUpperCase()+'</span>'; }
 // IV rank badge — where today's implied vol sits in its trailing range. High = options rich
@@ -5933,12 +5933,36 @@ function optIdeaControls(ideas){
     '<label style="color:#9ca3af">Direction <select id="opt-idea-dir" onchange="optIdeaApply()" style="font-size:12px;padding:3px 6px">'+dopt+'</select></label>'+
     '<label style="color:#9ca3af">Sort <select id="opt-idea-sort" onchange="optIdeaApply()" style="font-size:12px;padding:3px 6px">'+sopt+'</select></label></div>';
 }
-function renderOptions(app,o){
+function optIncomeHistory(o,realized){
+  const ledger=o&&o.incomeHistory;
+  const rows=ledger&&Array.isArray(ledger.trades)?ledger.trades:[];
+  const num=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
+  const esc=v=>String(v==null?'—':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>num(v)==null?'—':(v<0?'-':'')+fmtD(Math.abs(v));
+  const broker=realized&&realized.source==='robinhood'?num(realized.accounts&&realized.accounts.main&&realized.accounts.main.options):null;
+  const valid=rows.filter(r=>num(r.net)!=null);
+  const total=valid.length?valid.reduce((s,r)=>s+r.net,0):null;
+  const premium=ledger?num(ledger.premiumYTD):null;
+  let h='<div class="card"><div class="card-title"><span>📒 Options Income &amp; History <span class="card-hint">self-directed</span></span></div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px">'+
+    [[esc(realized&&realized.year||'YTD')+' realized',broker,'Broker-reported options P&L'],['Premium collected YTD',premium,'Recorded opening sales · before fees'],['Matched closed P&L',total,'Listed trades · before fees']].map(x=>'<div style="background:var(--surface-2);padding:12px;border-radius:12px"><div style="font-size:12px;color:var(--muted)">'+x[0]+'</div><div style="font-size:23px;font-weight:700;margin:6px 0">'+money(x[1])+'</div><div style="font-size:11px">'+x[2]+'</div></div>').join('')+'</div>';
+  h+='<div class="fund-note">Premium collected includes open trades and is not realized profit. Broker total as of '+esc(realized&&realized.asOf?realized.asOf.slice(0,10):null)+'.</div>';
+  if(!ledger) return h+'<div class="tech-empty">Detailed contract history needs the next producer refresh. Older stock-level totals are withheld because they can mix open and closed contracts.</div></div>';
+  const months={};valid.forEach(r=>{const m=r.date.slice(0,7);months[m]=(months[m]||0)+r.net;});
+  const monthKeys=Object.keys(months).sort().reverse();
+  if(monthKeys.length)h+='<details style="margin:14px 0"><summary>Monthly closed results · before fees</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+monthKeys.map(m=>'<div style="padding:10px;background:var(--surface-2);border-radius:10px">'+esc(m)+'<br><b>'+money(months[m])+'</b></div>').join('')+'</div></details>';
+  if(!rows.length)h+='<div class="tech-empty">No closing fills with usable contract details are recorded yet.</div>';
+  h+=rows.map(r=>'<div style="border-top:1px solid var(--border);padding:13px 0"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+esc(r.symbol)+' '+esc(r.strike==null?'':('$'+r.strike))+' '+esc(r.type||'option')+'</b><b class="'+(r.net<0?'neg':'pos')+'">'+money(r.net)+'</b></div><div style="font-size:12px;margin-top:5px">'+esc(r.quantity)+' contract(s) · Exp '+esc(r.expiration)+' · '+esc(r.status)+'</div><div style="font-size:12px;margin-top:5px">Opened '+esc(r.opened)+' → Closed '+esc(r.date)+'</div><div style="font-size:12px;margin-top:5px">Opening cash '+money(r.opening)+' · Closing cash '+money(r.closing)+'</div></div>').join('');
+  h+='<div class="fund-note">History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+' '+esc(ledger.unresolved)+' order(s) need additional detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Listed results may not reconcile to broker YTD until all historical fills and settlement events are available.</div></div>';
+  return h;
+}
+function renderOptions(app,o,realized){
   _optCharts=[];
   let h='<div class="picks-hero"><div><div class="ph-label">Options</div><div class="ph-date">Contracts · Ideas · Knowledge</div><div class="ph-stale">Research &amp; education only — not financial advice.</div></div></div>';
   const pend=(o&&o.pending)||[], pos=(o&&o.positions)||[];
   // Exposure roll-up (when you hold/await any contracts)
   h+=optExposureStrip(o&&o.exposure);
+  h+=optIncomeHistory(o,realized);
   // Your options
   h+='<div class="card"><div class="card-title"><span>📂 Your Options</span></div>';
   if(!pend.length&&!pos.length){ h+='<div class="tech-empty">No open or pending option contracts in the snapshot. Any covered calls, cash-secured puts or long options you place will appear here on the next producer run.</div>'; }
@@ -5959,12 +5983,6 @@ function renderOptions(app,o){
   // Cash-secured put income ranker (oversold names, by annualized yield)
   const csps=ideas.filter(function(i){return i.strategy==='Cash-secured put';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
   if(csps.length){ h+='<div class="card" data-priv="market"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
-  // Options P&L (closed trades)
-  const hist=(o&&o.history)||[];
-  h+='<div class="card"><div class="card-title"><span>📒 Options P&amp;L <span class="card-hint">closed trades</span></span></div>';
-  if(!hist.length)h+='<div class="tech-empty">No closed option trades in the history yet.</div>';
-  else{ const rz=(o.realized||0); h+='<div style="font-size:13px;margin-bottom:8px">Realized: <b style="color:'+(rz>=0?'#10b981':'#ef4444')+'">'+(rz>=0?'+':'-')+fmtD(Math.abs(rz))+'</b></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Net P&amp;L</th><th class="tr">Trades</th><th class="tr">Closed</th></tr></thead><tbody>'+hist.map(function(x){return '<tr><td class="sym">'+x.symbol+'</td><td class="tr '+(x.net>=0?'pos':'neg')+'">'+(x.net>=0?'+':'-')+fmtD(Math.abs(x.net))+'</td><td class="tr">'+x.trades+'</td><td class="tr" style="color:#9ca3af">'+(x.date||'')+'</td></tr>';}).join('')+'</tbody></table></div>'; }
-  h+='</div>';
   // Knowledge
   h+='<div class="card" data-priv="off"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+
      OPT_KNOWLEDGE.map(function(k){return '<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">'+k[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.82;line-height:1.5">'+k[1]+'</div></div>';}).join('')+'</div></div>';
@@ -8085,7 +8103,7 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=157"></script>
-<script src="ui/experience.js?v=157"></script>
+<script src="ui/experience-model.js?v=158"></script>
+<script src="ui/experience.js?v=158"></script>
 </body>
 </html>

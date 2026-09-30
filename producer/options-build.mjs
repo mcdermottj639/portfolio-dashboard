@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { analyzeLeg, buildIdeas, sharesLockedByShortCalls, positionPremium, orderPremium } from './options.mjs';
 import { decryptEnvelope } from './emit.mjs';
+import { optionHistory } from './option-history.mjs';
 import { buildIvBySym, VOL_WINDOW_BARS } from './optvol.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -269,42 +270,16 @@ const exposure = (() => {
     cspCash: +cspCash.toFixed(0), sharesCapped, openPremium: +openPremium.toFixed(0) };
 })();
 
-// Realized P&L history from filled orders: net per chain that has a closing fill.
-const byChain = {};
-for (const o of orders) {
-  if (o.state !== 'filled') continue;
-  const c = (byChain[o.chain_id] = byChain[o.chain_id] || { symbol: o.chain_symbol, net: 0, trades: 0, closed: false, last: '' });
-  const pp = num(o.processed_premium) || 0;
-  c.net += (o.direction === 'credit' ? pp : -pp);
-  c.trades++;
-  if (o.closing_strategy) c.closed = true;
-  const d = o.last_transaction_at || o.updated_at || o.created_at || ''; if (d > c.last) c.last = d;
-}
-const history = Object.values(byChain).filter((c) => c.closed)
-  .map((c) => ({ symbol: c.symbol, net: +c.net.toFixed(2), trades: c.trades, date: (c.last || '').slice(0, 10) }))
-  .sort((a, b) => (a.date < b.date ? 1 : -1));
-const realized = +history.reduce((s, h) => s + h.net, 0).toFixed(2);
-
-// Year-to-date views for the Income & Tax widget:
-//  • realizedYTD  — realized option P&L from chains CLOSED this calendar year (expired / bought
-//    back / assigned). An open covered call contributes $0 here until it resolves.
-//  • premiumYTD   — gross premium COLLECTED this year from opening income trades (sell-to-open
-//    credits), e.g. the IREN covered call. Cash in hand, but unrealized until the trade closes.
-const YEAR = String(new Date().getUTCFullYear());
-const realizedYTD = +history.filter((h) => (h.date || '').startsWith(YEAR)).reduce((s, h) => s + h.net, 0).toFixed(2);
-let premiumYTD = 0;
-for (const o of orders) {
-  if (o.state !== 'filled' || o.direction !== 'credit') continue;
-  if (o.closing_strategy && !o.opening_strategy) continue;          // skip pure buy-to-close credits
-  const d = o.last_transaction_at || o.created_at || '';
-  if (d.startsWith(YEAR)) premiumYTD += num(o.processed_premium) || 0;
-}
-premiumYTD = +premiumYTD.toFixed(2);
+// Preserve exact-contract fills; legacy chain totals are not reliable realized profit.
+const incomeHistory = optionHistory(orders, prevSnap?.options?.incomeHistory);
+const history = incomeHistory.trades;
+const realized = null, realizedYTD = null; // broker aggregate is authoritative, never a partial ledger sum
+const premiumYTD = incomeHistory.premiumYTD;
 
 const out = {
   asOf: new Date().toISOString(),
   pending, positions, ideas, exposure, ivObserved,
-  history, realized, realizedYTD, premiumYTD,
+  incomeHistory, history, realized, realizedYTD, premiumYTD,
 };
 writeFileSync(join(RAW, 'options.json'), JSON.stringify(out, null, 2));
 console.log(`options: ${pending.length} pending · ${positions.length} open · ${ideas.ideas.length} ideas (${liveCount} live, ${ideas.ideas.length - liveCount} est)` +

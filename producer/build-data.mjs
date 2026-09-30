@@ -1029,7 +1029,8 @@ if (data.options && optionsFile) {
   }
 }
 
-// Options realized + premium-collected (YTD) come from options.json fresh every run (cheap). The
+// Legacy options snapshots may supply realizedYTD; v158 emits null and uses broker realized.
+// Recorded premium-collected (YTD) comes from options.json every run. The
 // PREMIUM figure is always worth carrying (it's the cash banked selling calls/puts, which the tile
 // shows separately), but the realized OVERRIDE only applies to owner/carry-forward sourced figures —
 // a broker-reported block already has the real per-account options realized and must not be

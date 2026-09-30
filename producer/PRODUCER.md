@@ -408,6 +408,12 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    (cheap) or once/day with picks.
    1. `Robinhood · get_option_orders { account_number: <account> }`
       → `producer/raw/options-orders.json` (pending + history; legs carry strike/type/expiry/premium).
+   History v158: `option-history.mjs` retains normalized orders in the encrypted snapshot and
+   matches exact single-leg contracts, including partial closes. Fetch all available order pages
+   when supported for historical coverage. Broker YTD is the authoritative headline; matched rows
+   are before fees, not a complete realized/tax ledger. Expiration and assignment events are not
+   currently fetched; multi-leg/partial fills and missing basis are flagged. Do not infer a
+   worthless expiry merely because an option disappeared. No new required fetch or Routine change.
    2. `Robinhood · get_option_positions { account_number: <account>, nonzero: true }`
       → `producer/raw/options-positions.json` (open contracts; may be empty).
    2b. **Live quotes for YOUR contracts:** collect the `option_id` of every pending order leg

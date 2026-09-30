@@ -1,5 +1,10 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v158 — Options income and contract history
+
+Options Income & History now sits below exposure and above open positions. Shows self-directed broker-reported YTD options realized P&L, recorded sell-to-open premiums (includes open trades), monthly matched results, and exact-contract closing rows. `producer/option-history.mjs` retains normalized source orders in the encrypted snapshot, deduplicates by order ID, and FIFO-matches filled single-leg contracts with partial-close allocation. Removed unsafe underlying-chain netting and its realized fallback. Before-fee ledger results are deliberately separate from broker totals. Expirations/assignments, multi-leg/partial fills, and missing basis are explicit coverage gaps, never inferred zero-cost closes. Existing refresh fetches are unchanged; the next successful producer refresh is needed for the new ledger. No brokerage access or snapshot decryption was available during this implementation, so historical completeness is unverified. Live backfill/settlement reconciliation remains outstanding. App/cache v158. Verification: full sequential producer suite, display-model tests, inline script syntax, and isolated history rendering checks passed. Self-audited; the specified Fable reviewer was unavailable. Browser visual verification was blocked by the missing Chromium runtime.
+
+
 ## 2026-09-24 — research cost: 22 agents → 7, and a fortnightly cadence
 
 The weekly research was measured, not estimated: **per-agent fixed context on this harness is ~177k
