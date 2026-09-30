@@ -235,20 +235,25 @@ weekly Routine produces a Mandate-A target on its next fire whether or not its p
 updated. What goes stale in the un-editable prompt is only its step-7 *reporting* wording (it still
 asks for "defensive total vs 15% floor" and "GLDM ≈5%"), which will now simply report zeroes.
 
-<details><summary><strong>Paste-ready prompt — "Portfolio dashboard refresh" (updated 2026-09-04)</strong></summary>
+<details><summary><strong>Paste-ready prompt — "Portfolio dashboard refresh" (updated 2026-09-30 — options history)</strong></summary>
 
 ```text
 Run the portfolio dashboard producer (repo mcdermottj639/portfolio-dashboard) by following producer/PRODUCER.md exactly.
 
-First run `node producer/preflight.mjs` and obey its directive: if it prints SKIP, stop immediately and do nothing; if FETCH_ALL, do the full fetch (steps 1-3c); if FETCH_LIGHT, fetch only the EVERY-RUN items — BOTH accounts' portfolio + positions (the main account AND the ••••3900 agentic cash account, account_number 694553900, resolved via get_accounts → write agentic-portfolio.json and agentic-positions.json), plus quotes, VIX, and options — and skip historicals, fundamentals, the Alpha Vantage refresh, and the picks rebuild.
+First run `node producer/preflight.mjs` and obey its directive: if it prints SKIP, stop immediately and do nothing; if FETCH_ALL, do the full fetch (steps 1-3c); if FETCH_LIGHT, fetch only the EVERY-RUN items — BOTH accounts' portfolio + positions (the main account AND the ••••3900 agentic cash account, account_number 694553900, resolved via get_accounts → write agentic-portfolio.json and agentic-positions.json), plus quotes, VIX, trade history, and options — and skip historicals, fundamentals, the Alpha Vantage refresh, and the picks rebuild.
+
+Options history (every run, light AND full): run `node producer/option-fetch-plan.mjs` and obey it. `OPTION_ORDERS FULL` → get_option_orders for the main account with no created_at_gte, following `next` until empty, and write ALL pages merged into producer/raw/options-orders.json as {"fullHistory": true, "data": {"orders": [...]}}. `OPTION_ORDERS SINCE <date>` → get_option_orders with created_at_gte <date> (follow `next` only if present) and write {"data": {"orders": [...]}} with no fullHistory key. Settlement evidence comes from main-trades.json (get_pnl_trade_history, span 3month) — if it returns a non-empty next_cursor, fetch the remaining pages and merge all trades into that one file. Never treat a disappeared option position as expired.
 
 Write each raw result into producer/raw/ with the Write tool; fetch historicals in batches of 3 symbols or fewer so each result comes back INLINE. Never use cp or mv to place a raw file. The hazard is not shell variables: when a tool result is too large to return inline the harness SPILLS it to a file under /root/.claude/projects/... and hands back only its path, and copying out of that directory is refused by the permission classifier — which on this unattended run means an approval card on the owner's phone and a STALLED run. So if a result arrives as a spilled file path instead of inline data, re-fetch it in a smaller batch; never copy the spill file. If you delegate a fetch to a subagent, that subagent must Write the raw file itself and return only a confirmation — a payload spilled inside a subagent is unreachable from here. IMPORTANT: the ••••3900 agentic fetch runs EVERY time (light AND full) — skipping it freezes the Agentic Portfolio card. If any Robinhood call fails, stop without building.
 
 Then run `node producer/run.mjs "<label>"` (label = current ET time, e.g. "Jul 28 2026, 1:30 PM ET"), which does the build, encryption, validation, and commit + push to main. Do not run those steps by hand. If run.mjs exits non-zero, STOP — do NOT attempt manual git recovery, alternate push, or branch surgery; the next scheduled run republishes. End the session.
 ```
 
-Only the third paragraph changed from the version live since 2026-07-28; the other three are
-byte-identical. It replaces the false "never use cp, mv, or **shell variables**" cause with the real
+**Not yet pasted as of 2026-09-30** — the live prompt is still the 2026-07-28 text (verified with
+`get_trigger`; `update_trigger` refuses this `http_api` Routine). Two changes vs the live text: the
+new options-history paragraph (2026-09-30) and the spill-file paragraph (2026-09-04). The options
+paragraph is belt-and-braces — the live prompt already says "follow PRODUCER.md exactly" and fetches
+options every run, so step 3c's planner is in its path either way. The 2026-09-04 change replaces the false "never use cp, mv, or **shell variables**" cause with the real
 one (copying out of `/root/.claude/projects/…`), names the spill-to-file mechanism that leads an
 agent there, and adds the subagent rule.
 
