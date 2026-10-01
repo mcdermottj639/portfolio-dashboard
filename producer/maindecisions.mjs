@@ -248,10 +248,21 @@ export function deriveLog(raw, { spyCloses = {}, sinceDay = null, prior = [] } =
   const coveredFrom = decisions.length ? decisions[decisions.length - 1].date : null;
   let windowFrom = sinceDay;
   let warning = null;
-  if (truncated) {
-    if (coveredFrom) { decisions = decisions.filter((d) => d.date > coveredFrom); windowFrom = shiftDay(coveredFrom, 1); }
-    else windowFrom = null;   // truncated with nothing usable ⇒ sweep nothing at all
-  } else if (coveredFrom && windowFrom && coveredFrom > windowFrom) {
+  if (!coveredFrom) {
+    // An empty, malformed, filtered-only or out-of-window response proves no coverage.
+    // In particular, zero orders from a narrowed fetch must never authorize a 120-day
+    // sweep. Preserve even one prior day: without a coverage boundary the usual
+    // SWEEP_MAX_DROP correction allowance has no evidence behind it.
+    windowFrom = null;
+    const atRisk = prior.filter((d) => d && d.source === 'orders'
+      && sinceDay && d.date >= sinceDay);
+    if (atRisk.length) {
+      warning = `main-orders.json has no usable decision days; coverage is unknown. Sweeping is disabled and ${atRisk.length} recorded day(s) are kept. Re-fetch the full ${FETCH_DAYS}-day window (PRODUCER.md step 2).`;
+    }
+  } else if (truncated) {
+    decisions = decisions.filter((d) => d.date > coveredFrom);
+    windowFrom = shiftDay(coveredFrom, 1);
+  } else if (windowFrom && coveredFrom > windowFrom) {
     // Untruncated, but the payload's oldest day sits INSIDE the sweep window. Either the account
     // genuinely placed no orders in the earlier part, or the fetch never reached back that far —
     // only the prior log separates them, and only in the direction that matters.

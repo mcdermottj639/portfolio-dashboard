@@ -229,6 +229,12 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > history. If it does shrink: `git checkout <last good commit> -- data.json` to restore the merge
    > base, fix the payload, re-run `run.mjs`. The prior log is recoverable ONLY from git.
    >
+   > **Empty-response protection (2026-10-01):** no usable decision days means unknown coverage,
+   > so `deriveLog()` disables sweeping entirely and carries the saved log forward (normal retention
+   > still applies). This also covers malformed, filtered-only and out-of-window rows. A warning
+   > names any in-window history protected; fetch the full 120-day window to restore coverage.
+   > An empty result is never evidence that previously recorded decisions should be deleted.
+   >
    > A failure on any of these rows is not fatal — build-data falls back to the prior snapshot's figures.
 
    > ### 🔑 Resolve the agentic account number FIRST (don't skip the agentic-* rows)

@@ -121,6 +121,35 @@ eq('…so the merge KEEPS every pre-coverage day',
   mergeDecisions(short.decisions, ORPHANS, { windowFrom: short.windowFrom }).map((d) => d.date),
   ['2026-08-25', '2026-08-14', '2026-08-09', '2026-07-29', '2026-07-08', '2026-06-22', '2026-06-10']);
 
+// Empty/unusable responses cannot establish coverage, even below SWEEP_MAX_DROP.
+// Regression: an empty 14-day fetch swept 15 real days from the 120-day window.
+const SAVED = Array.from({ length: 39 }, (_, i) => ({
+  id: `${shiftDay('2026-09-16', -i * 3)}-sd`,
+  date: shiftDay('2026-09-16', -i * 3), source: 'orders',
+  trades: [{ sym: 'REAL', side: 'BUY', dollars: 100, priceAt: 10 }],
+}));
+const unusablePayloads = [
+  [], { orders: [] }, { results: [] }, { data: { orders: [], next: null } },
+  { data: { results: [] } }, null, { data: {} },
+  { orders: [ORDERS.data.orders[4], ORDERS.data.orders[5]] }, // cancelled + DRIP only
+  { orders: [{ ...ORDERS.data.orders[0], average_price: 'bad' }] },
+  { orders: [{ ...ORDERS.data.orders[0], last_transaction_at: '2020-01-01T12:00:00Z' }] },
+  { data: { orders: [], next: 'cursor' } },
+];
+for (const [i, raw] of unusablePayloads.entries()) {
+  for (const prior of [SAVED.slice(0, 1), SAVED]) {
+    const r = deriveLog(raw, { sinceDay: '2026-06-03', prior });
+    eq(`unusable payload ${i}/${prior.length}: sweep disabled`, r.windowFrom, null);
+    eq(`unusable payload ${i}/${prior.length}: entire log retained`,
+      mergeDecisions(r.decisions, prior, { windowFrom: r.windowFrom }), prior);
+    ok(`unusable payload ${i}/${prior.length}: actionable warning`,
+      /no usable/i.test(r.warning || '') && /120-day/.test(r.warning || ''));
+  }
+}
+const quiet = deriveLog({ orders: [] }, { sinceDay: '2026-06-03' });
+eq('empty first run remains empty without a loss warning',
+  [quiet.decisions, quiet.windowFrom, quiet.warning], [[], null, null]);
+
 // The guard must not become a licence to keep stale records: a run of genuine cancellations at or
 // under the threshold still sweeps exactly as before.
 const fewGone = deriveLog(ORDERS, { spyCloses: spy, sinceDay: '2026-05-01', prior: ORPHANS.slice(0, 3) });

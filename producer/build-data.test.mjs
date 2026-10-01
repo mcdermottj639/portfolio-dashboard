@@ -490,6 +490,16 @@ try {
     ['min-hold', farFuture, 'exit']);
   eq('the source ticket is identified so the card can date it',
     [out.agentic.blockedSells.ticket, out.agentic.blockedSells.status], ['TEST-TICKET', 'done']);
+  // Replay a refresh with an empty narrow order response over the built snapshot.
+  // Derivation, snapshot carry-forward and grading must all retain the saved history.
+  const savedDecisions = out.main.decisions.decisions;
+  writeFileSync(join(RAW, 'main-orders.json'), JSON.stringify({ data: { orders: [], next: null } }));
+  execFileSync(process.execPath, [join(__dirname, 'build-data.mjs'), 'empty orders regression'],
+    { env: { ...process.env, PF_PASSPHRASE: '' }, cwd: ROOT, encoding: 'utf8', stderr: 'pipe' });
+  const refreshed = JSON.parse(readFileSync(DATA, 'utf8'));
+  const history = (rows) => rows.map(({ id, date, trades, source }) => ({ id, date, trades, source }));
+  eq('empty orders refresh preserves saved decision IDs, dates, sources and trades',
+    history(refreshed.main.decisions.decisions), history(savedDecisions));
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);

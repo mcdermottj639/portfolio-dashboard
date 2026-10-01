@@ -1,5 +1,16 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## 2026-10-01 — Preserve the Rebalance Log on empty equity-order responses
+
+`deriveLog()` now disables sweeping whenever no usable decision day establishes coverage,
+including empty, malformed, filtered-only and out-of-window payloads. Any in-window saved
+broker decisions trigger a warning to re-fetch the full 120-day window. This protects even
+one saved day; the nonempty short-payload/correction rules and normal retention remain intact.
+Regression tests reproduce the empty narrow-fetch loss, preserve a 39-record fixture across
+supported envelopes, and replay an empty refresh through `build-data.mjs`. Full producer
+suite passed. Producer-only patch; live encrypted snapshot and broker accounts untouched.
+
+
 ## 2026-09-30 — Keep older open options visible on incremental refreshes
 
 `options-build.mjs` resolves live position contract IDs against both retained encrypted
