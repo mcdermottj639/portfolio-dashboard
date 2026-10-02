@@ -44,7 +44,7 @@
   let navigating = false, refreshTimer, jumpToken = 0;
   const account = () => read('pf_acct','main') === 'agentic' ? 'agentic' : 'main';
   const model = () => M.snapshot(window.__DATA, window.__SNAP, account());
-  const jump = (key, text) => '<button type="button" class="ex-link" data-ex-route="'+key+'">'+esc(text || routes[key].label)+' →</button>';
+  const jump = (key, text, scope) => '<button type="button" class="ex-link" data-ex-route="'+key+'"'+(scope?' data-ex-account="'+scope+'"':'')+'>'+esc(text || routes[key].label)+' →</button>';
   const row = (label, value, detail = '') => '<div class="ex-row"><span>'+esc(label)+(detail?'<small>'+esc(detail)+'</small>':'')+'</span><span>'+value+'</span></div>';
   const card = (title, html, wide = false) => '<section class="ex-card'+(wide?' ex-wide':'')+'"><h2>'+esc(title)+'</h2>'+html+'</section>';
   const prettyStatus = value => {
@@ -61,7 +61,7 @@
     back.addEventListener('click',()=>{ save('pf_classic','0'); location.reload(); }); document.body.append(back); return;
   }
   const top = document.createElement('header'); top.className='ex-top'; top.id='ex-top';
-  top.innerHTML='<div><div class="ex-brand">Portfolio <span>/</span></div><div class="ex-caption" id="ex-context">Your accounts, research, and activity</div></div><div class="ex-tools"><label>Account <select id="ex-account" aria-label="Account"><option value="main">Self-directed</option><option value="agentic">Agentic</option></select></label><button type="button" id="ex-find">Find a feature</button><button type="button" id="ex-classic" title="Return to the original five-tab layout">Classic view</button></div>';
+  top.innerHTML='<div><div class="ex-brand">Portfolio <span>/</span></div><div class="ex-caption" id="ex-context">Your accounts, research, and activity</div></div><div class="ex-tools"><span id="ex-all-accounts" class="ex-badge" hidden>Both accounts</span><label id="ex-account-label">Account <select id="ex-account" aria-label="Account"><option value="main">Self-directed</option><option value="agentic">Agentic</option></select></label><button type="button" id="ex-find">Find a feature</button><button type="button" id="ex-classic" title="Return to the original five-tab layout">Classic view</button></div>';
   const main = document.createElement('nav'); main.className='ex-main'; main.setAttribute('aria-label','Main navigation');
   main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+icon(a)+'<span>'+a[0].toUpperCase()+a.slice(1)+'</span></button>').join('');
   const sub = document.createElement('nav'); sub.id='ex-subnav'; sub.className='ex-subnav'; sub.setAttribute('aria-label','Section navigation');
@@ -72,19 +72,19 @@
   document.documentElement.classList.add('experience-on');
   function header() {
     const r=routes[routeKey]; $('ex-account').value=account();
+    $('ex-account-label').hidden=routeKey==='today'; $('ex-all-accounts').hidden=routeKey!=='today';
     main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===r.area?'page':'false'));
     sub.innerHTML=Object.entries(routes).filter(([,v])=>v.area===r.area).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
-    $('ex-context').textContent=r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
+    $('ex-context').textContent=routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }
-  function historyChart() {
-    const points=M.valueHistory(window.__DATA,account());
-    if(points.length<2)return '<p class="ex-muted">At least two dated account values are needed to draw the history.</p>';
+  function historyChart(points=M.valueHistory(window.__DATA,account()),combined=false) {
+    if(points.length<2)return '<p class="ex-muted">At least two matching recorded dates for both accounts are needed to draw the combined history.</p>';
     const values=points.map(p=>p.equity),low=Math.min(...values),high=Math.max(...values),span=high-low||Math.max(Math.abs(high)*.01,1);
     const start=points[0],end=points[points.length-1];
     const coords=points.map(p=>[(16+(p.stamp-start.stamp)/(end.stamp-start.stamp)*608).toFixed(1),(20+(high-p.equity)/span*110).toFixed(1)]);
     const path=coords.map((p,i)=>(i?'L':'M')+p.join(' ')).join(' ');
-    return '<div class="ex-history-head"><div><span class="ex-label">Latest recorded value</span><strong>'+money(end.equity)+'</strong></div><span class="ex-badge">'+points.length+' observations</span></div><div class="ex-private-chart"><svg class="ex-value-chart" viewBox="0 0 640 152" role="img" aria-label="Account value history; includes deposits and withdrawals"><path d="M16 20H624M16 75H624M16 130H624" class="ex-chart-grid"/><path d="'+path+' L624 145 L16 145 Z" class="ex-chart-area"/><path d="'+path+'" class="ex-chart-line"/><circle cx="'+coords[coords.length-1][0]+'" cy="'+coords[coords.length-1][1]+'" r="4" class="ex-chart-dot"/></svg></div><div class="ex-history-range"><span>'+esc(start.t.slice(0,10))+'</span><span>'+esc(end.t.slice(0,10))+'</span></div><p class="ex-muted">Account value, including deposits and withdrawals — not investment return. Last '+points.length+' recorded observations.</p><details><summary>View dated values</summary><div class="ex-history-values">'+points.map(p=>row(p.t.slice(0,10),money(p.equity))).join('')+'</div></details>';
+    return '<div class="ex-history-head"><div><span class="ex-label">Latest recorded value</span><strong>'+money(end.equity)+'</strong></div><span class="ex-badge">'+points.length+' observations</span></div><div class="ex-private-chart"><svg class="ex-value-chart" viewBox="0 0 640 152" role="img" aria-label="Account value history; includes deposits and withdrawals"><path d="M16 20H624M16 75H624M16 130H624" class="ex-chart-grid"/><path d="'+path+' L624 145 L16 145 Z" class="ex-chart-area"/><path d="'+path+'" class="ex-chart-line"/><circle cx="'+coords[coords.length-1][0]+'" cy="'+coords[coords.length-1][1]+'" r="4" class="ex-chart-dot"/></svg></div><div class="ex-history-range"><span>'+esc(start.t.slice(0,10))+'</span><span>'+esc(end.t.slice(0,10))+'</span></div><p class="ex-muted">'+(combined?'Combined recorded equity on matching dates. ':'Account value. ')+'Includes deposits and withdrawals; this is not investment return. Last '+points.length+' observations.</p><details><summary>View dated values</summary><div class="ex-history-values">'+points.map(p=>row(p.t.slice(0,10),money(p.equity))).join('')+'</div></details>';
   }
   function allocationVisual(s) {
     const groups=M.composition(s.positions);
@@ -92,39 +92,49 @@
     return '<div class="ex-allocation" aria-hidden="true">'+groups.map((p,i)=>'<span class="ex-slice ex-slice-'+i+'" style="width:'+p.share+'%"></span>').join('')+'</div><div class="ex-allocation-key">'+groups.map((p,i)=>'<div><i class="ex-slice-'+i+'"></i><span>'+esc(p.label)+'</span><strong>'+p.share.toFixed(1)+'%</strong></div>').join('')+'</div><p class="ex-muted">Share of priced long holdings · '+s.pricedCount+' / '+s.positions.length+' valued. Excludes cash and options.</p>';
   }
   function breadthVisual(s) {
-    const b=M.breadth(s.positions),labels={up:'Up',down:'Down',flat:'Flat',missing:'No quote'};
+    const b=s.breadth||M.breadth(s.positions),labels={up:'Up',down:'Down',flat:'Flat',missing:'No quote'};
     return '<div class="ex-breadth">'+Object.entries(b).map(([key,n])=>'<div class="ex-breadth-'+key+'"><strong>'+n+'</strong><span>'+labels[key]+'</span></div>').join('')+'</div>';
   }
   function timeline(events,empty) {
     return events.length?'<ol class="ex-timeline">'+events.map(e=>'<li><div><strong>'+esc(e.label)+'</strong><time>'+esc(date(e.at))+'</time></div>'+(e.detail?'<p class="ex-muted">'+esc(e.detail)+'</p>':'')+'</li>').join('')+'</ol>':'<div class="ex-empty">'+icon('activity')+'<p>'+esc(empty)+'</p></div>';
   }
   function renderToday() {
-    const s=model(), d=window.__DATA, name=account()==='agentic'?'Agentic':'Self-directed';
-    let html='<h1>Your daily brief.</h1><p class="ex-muted">'+esc(name)+' · '+esc(d?.generatedAtLabel || 'No published snapshot loaded')+'</p>';
-    if(!s.available){ $('page-ex-today').innerHTML=html+unavailable(); return; }
-    const largest=s.positions.find(p=>p.value!==null), weight=largest && s.equity>0?largest.value/s.equity*100:null;
-
-    const dayLabel=s.partialDay?'Holdings move · partial':'Holdings move';
-    const tone=s.day===null?'neutral':s.day>0?'up':s.day<0?'down':'neutral';
-    const total=s.positions.reduce((sum,p)=>sum+(p.value||0),0);
-    const share=largest&&total>0?largest.value/total*100:0;
+    const d=window.__DATA;
+    const calendar=d&&typeof window._earnMap==='function'?window._earnMap():{};
+    const s=M.dailyBrief(d,window.__SNAP,{calendar});
+    const tone=n=>n===null||Math.abs(n)<.005?'neutral':n>0?'up':'down';
+    const amount=n=>'<span class="ex-'+tone(n)+'">'+esc(money(n))+'</span>';
+    const when=n=>n===0?'Today':n===1?'Tomorrow':'In '+n+' days';
+    const cta=(scope,text)=>'<button type="button" class="ex-cta" data-ex-route="plan" data-ex-account="'+scope+'">'+esc(text)+'</button>';
+    let html='<div class="ex-brief-heading"><div><div class="ex-label">Self-directed + Agentic</div><h1>Your daily brief.</h1><p class="ex-muted">The big picture, the drivers, and what deserves a closer look.</p></div><span class="ex-badge">'+esc(d?ageText(d.generatedAt):'Snapshot not loaded')+'</span></div>';
+    if(!d||!s.available){$('page-ex-today').innerHTML=html+unavailable('Unlock your published snapshot to see both accounts together.');return;}
+    html+='<div class="ex-brief-hero"><div><div class="ex-label">Combined '+(s.brokerageBasis?'brokerage':'account')+' equity</div><div class="ex-hero-value" id="ex-combined-equity">'+money(s.equity)+'</div><p class="ex-muted">'+(s.equity===null?'A combined total needs both account values.':'Self-directed + Agentic · net of account debt.')+'</p><div class="ex-hero-meta"><span>'+s.positions.length+' unique holdings</span><span>·</span><span>'+s.positions.filter(p=>p.shared).length+' held in both</span></div></div><div class="ex-move-tile"><div class="ex-label">Stock move'+(s.partialDay?' · partial quotes':'')+'</div><div class="ex-daily-value ex-'+tone(s.day)+'" id="ex-combined-move">'+money(s.day)+'</div><div class="ex-coverage" aria-hidden="true"><span style="width:'+(s.positionCount?s.dayCoverage/s.positionCount*100:0)+'%"></span></div><p class="ex-muted">'+s.dayCoverage+' / '+s.positionCount+' account positions quoted vs. previous close. Excludes option moves, trading and cash flows.</p></div></div>';
+    html+='<div class="ex-account-grid">'+s.accounts.map(a=>'<section class="ex-account-card" data-brief-account="'+a.account+'"><div class="ex-account-head"><h2>'+a.label+'</h2>'+jump('accounts','Open portfolio',a.account)+'</div><div class="ex-account-value">'+money(a.equity)+'</div><div class="ex-account-facts">'+row('Stock move',amount(a.day),a.dayCoverage+' / '+a.positions.length+' positions quoted')+row(a.cash!==null&&a.cash<0?'Margin owed':'Cash',money(a.cash===null?null:Math.abs(a.cash)))+'</div><p class="ex-muted ex-account-date">Captured '+esc(date(a.accountAsOf))+'</p></section>').join('')+'</div>';
+    html+='<div class="ex-cash-strip"><div><span class="ex-label">Positive cash</span><strong>'+money(s.positiveCash)+'</strong></div><div><span class="ex-label">Margin debt</span><strong>'+money(s.marginDebt)+'</strong></div><p class="ex-muted">Cash stays in its own account. It does not offset the other account’s margin loan here.</p></div>';
+    const attention=s.attention.map(a=>'<div class="ex-radar-row '+(a.tone==='warn'?'ex-radar-warn':'')+'"><div><strong>'+esc(a.title)+'</strong><p class="ex-muted">'+esc(a.detail)+'</p></div>'+jump(a.route,'Review',a.account)+'</div>');
+    html+='<div class="ex-brief-grid">'+card('On your radar',attention.length?attention.slice(0,3).join('')+(attention.length>3?'<details><summary>'+ (attention.length-3)+' more items</summary>'+attention.slice(3).join('')+'</details>':''):'<p class="ex-muted">No near-term calendar or ticket flags in the available records.</p>'+jump('plan','Open the plan','main'),true);
     const peak=Math.max(...s.contributors.map(p=>Math.abs(p.day)),1);
     const movers=s.contributors.map(p=>{
       const pct=Math.abs(p.day)/peak*100;
-      const cls=p.day>0?'up':p.day<0?'down':'neutral';
       const left=p.day<0?'<span class="ex-bar negative" style="width:'+pct+'%"></span>':'';
       const right=p.day>0?'<span class="ex-bar positive" style="width:'+pct+'%"></span>':'';
-      return '<div class="ex-mover"><div class="ex-mover-label"><strong>'+esc(p.symbol)+'</strong><span class="ex-'+cls+' money">'+esc(money(p.day))+'</span></div><div class="ex-diverging" aria-hidden="true"><div class="ex-div-half ex-div-left">'+left+'</div><i></i><div class="ex-div-half ex-div-right">'+right+'</div></div></div>';
+      return '<div class="ex-mover"><div class="ex-mover-label"><strong>'+esc(p.symbol)+'</strong><span class="ex-'+tone(p.day)+' money">'+esc(money(p.day))+'</span></div><div class="ex-diverging" aria-hidden="true"><div class="ex-div-half ex-div-left">'+left+'</div><i></i><div class="ex-div-half ex-div-right">'+right+'</div></div><small class="ex-mover-scope">'+esc(p.shared?'Both accounts':p.sources[0].label)+(p.partialDay?' · partial quotes':'')+'</small></div>';
     }).join('');
-    const cashChip=s.cash!==null && s.cash<0
-      ? '<span class="ex-chip warn">Margin '+esc(money(s.cash))+'</span>'
-      : '<span>Cash '+esc(money(s.cash))+'</span>';
-    const cta=(key,text)=>'<button type="button" class="ex-cta" data-ex-route="'+key+'">'+esc(text)+'</button>';
-    html+='<div class="ex-brief-hero"><div><div class="ex-label">Account value</div><div class="ex-hero-value">'+money(s.equity)+'</div><div class="ex-hero-meta"><span>'+s.positions.length+' holdings</span>'+cashChip+'</div>'+jump('performance','Performance & benchmarks')+'</div><div class="ex-move-tile"><div class="ex-label">'+esc(dayLabel)+'</div><div class="ex-daily-value ex-'+tone+'">'+money(s.day)+'</div><div class="ex-coverage"><span style="width:'+(s.positions.length?s.dayCoverage/s.positions.length*100:0)+'%"></span></div><p class="ex-muted">Quotes on '+s.dayCoverage+' / '+s.positions.length+' names. Stocks only.</p></div></div>';
-    html+='<div class="ex-brief-grid">'+card('Account value over time',historyChart(),true)+card('What moved',breadthVisual(s)+(movers?movers+'<div class="ex-axis"><span>Detractors</span><span>Contributors</span></div><p class="ex-muted">Top names by absolute dollar move from captured quotes. Cash flows and option changes are excluded.</p>'+jump('heatmap','Open heatmap'):unavailable('Previous-close quotes are missing.')));
-    html+=card('Where the weight sits',largest?'<div class="ex-exposure"><div class="ex-ring" style="--share:'+share.toFixed(1)+'%" role="img" aria-label="Largest holding represents '+share.toFixed(1)+' percent of priced long holdings"><div><strong>'+share.toFixed(0)+'%</strong><small>of longs</small></div></div><div><div class="ex-label">Largest holding</div><div class="ex-number">'+esc(largest.symbol)+'</div><div class="ex-holding-val">'+money(largest.value)+'</div><p class="ex-muted">'+(weight===null?'Equity share unavailable':weight.toFixed(1)+'% of account equity. Margin can make a long look larger than the book.')+'</p></div></div>'+allocationVisual(s)+jump('risk','Risk & allocation'):unavailable('Position valuations are unavailable.'));
-    html+='<section class="ex-card ex-next-card ex-wide"><div class="ex-next-head"><div><div class="ex-label">Next</div><h2>Action Center</h2></div><div class="ex-plan-mark" aria-hidden="true">→</div></div>'+(s.target?row('Research date',esc(s.target.asOf || 'Not recorded'))+row('Recorded ticket',esc(s.pending?.status || 'No ticket in snapshot'))+'<p class="ex-muted">Cash-raising, redeployment, and Picks — using this account’s rules.</p>'+cta('plan','Open the plan')+jump('decisions','Read the research & sources'):'<p class="ex-muted">Cash-raising, redeployment, and Picks — using this account’s rules.</p>'+cta('plan','Open the plan'))+'</section>';
-    html+='<p class="ex-muted ex-brief-age ex-wide">Published snapshot · '+esc(ageText(s.generatedAt))+' · '+esc(date(s.generatedAt))+'. '+jump('activity','Inspect data & routine status')+'</p></div>';
+    html+=card('What drove your day',breadthVisual(s)+(movers||'<p class="ex-muted">Previous-close quotes are unavailable.</p>')+'<p class="ex-muted">Largest dollar moves on current stock holdings. Shared tickers combine both accounts; this is not full account P&amp;L.</p>');
+    const marketNames={SPY:'S&P 500',QQQ:'Nasdaq 100',IWM:'Small caps'};
+    const marketContent='<div class="ex-market-grid" data-priv="off">'+s.markets.map(m=>'<div><span>'+esc(marketNames[m.symbol])+' <small>'+m.symbol+'</small></span><strong class="ex-'+tone(m.change)+'">'+esc(percent(m.change))+'</strong></div>').join('')+'</div>'+row('VIX',s.vix.value===null?'Unavailable':s.vix.value.toFixed(1),s.vix.asOf?'As of '+s.vix.asOf:'Date not recorded')+'<p class="ex-muted">Captured quotes vs. previous close · '+esc(date(s.generatedAt))+'.</p>'+jump('markets','Explore markets');
+    const events=s.options.expirations.filter(p=>p.days>=0&&p.days<=30).map(p=>({days:p.days,date:p.expiration,title:p.underlying+' '+p.type+' expiration',detail:money(M.number(p.strike))+' strike · '+p.contracts+' contracts · Self-directed',route:'options',scope:'main'}))
+      .concat(s.earnings.map(e=>({days:e.days,date:e.date,title:e.symbol+' earnings',detail:e.accounts.join(' + ')+(e.when?' · '+e.when:''),route:'markets'}))).sort((a,b)=>a.days-b.days||a.title.localeCompare(b.title));
+    const eventRows=rows=>rows.map(e=>'<div class="ex-event"><div class="ex-event-date"><strong>'+esc(when(e.days))+'</strong><span>'+esc(e.date)+'</span></div><div><strong>'+esc(e.title)+'</strong><p class="ex-muted">'+esc(e.detail)+'</p></div>'+jump(e.route,'View',e.scope)+'</div>').join('');
+    html+=card('Market backdrop',marketContent+'<h3 class="ex-calendar-title">Coming up · next 30 days</h3>'+(events.length?eventRows(events.slice(0,4))+(events.length>4?'<details><summary>Show '+(events.length-4)+' more events</summary>'+eventRows(events.slice(4))+'</details>':''):'<p class="ex-muted">No dated earnings or option expirations in the next 30 days were found in this snapshot.</p>'));
+    html+='<section class="ex-card"><h2>Options income &amp; exposure</h2><span class="ex-label">Self-directed · '+esc(s.options.year||'Year not recorded')+' realized options P&amp;L</span><div class="ex-option-result">'+amount(s.options.broker)+'</div><p class="ex-muted">'+(s.options.broker===null?'Broker total unavailable.':'Broker reported · '+esc(date(s.options.asOf)))+'</p>'+(s.options.positionsKnown?row('Open contracts',esc(String(s.options.open.reduce((n,p)=>n+Number(p.contracts),0)))+' contracts'):'<p class="ex-muted">Open positions are unavailable.</p>')+(s.options.open.length?row('Open position P&L',amount(s.options.openPnl),'Unrealized · quoted marks, before fees'):'')+(s.options.sharesCapped>0?row('Shares capped by calls',esc(s.options.sharesCapped)+' shares','Open + pending contracts'):'')+(s.options.cspCash>0?row('Put collateral',money(s.options.cspCash)):'')+'<p class="ex-muted">'+(s.options.reconciled?'Matched contract results reconcile to the broker total.':'Contract history is not fully reconciled.')+'</p>'+jump('options','Open options & history','main')+'</section>';
+    const ag=s.accounts[1], dd=s.drawdown;
+    html+=card('Agentic at a glance',row('Research dated',esc(s.target?.asOf||'Not recorded'))+row('Recorded ticket',esc(s.pending?.status?prettyStatus(s.pending.status):ag.available?'None in flight':'Unavailable'))+(dd?row('Deployment guard',esc(dd.insufficient?'Insufficient history':prettyStatus(dd.level)),M.number(dd.dd)!==null?'Recorded drawdown '+percent(dd.dd*100):''):'')+'<p class="ex-muted">Published research and execution records. Open the plan for current eligibility, deferrals and details.</p>'+cta('agentic','Open agentic plan')+jump('decisions','Research & sources','agentic'));
+    const largest=s.positions.find(p=>p.value!==null),total=s.positions.reduce((n,p)=>n+(p.value||0),0),share=largest&&total>0?largest.value/total*100:0;
+    html+=card('Where the weight sits',largest?'<div class="ex-exposure"><div class="ex-ring" style="--share:'+share.toFixed(1)+'%" role="img" aria-label="Largest holding represents '+share.toFixed(1)+' percent of priced long holdings"><div><strong>'+share.toFixed(0)+'%</strong><small>of longs</small></div></div><div><div class="ex-label">Largest combined holding</div><div class="ex-number">'+esc(largest.symbol)+'</div><div class="ex-holding-val">'+money(largest.value)+'</div><p class="ex-muted">'+(s.equity>0?(largest.value/s.equity*100).toFixed(1)+'% of combined equity. ':'')+esc(largest.shared?'Held in both accounts.':largest.sources[0].label+'.')+'</p></div></div>'+allocationVisual(s):'<p class="ex-muted">Position valuations are unavailable.</p>');
+    html+=card('Combined value over time',historyChart(s.history,true));
+    html+='<section class="ex-card ex-wide ex-brief-plans"><div><h2>Your next move</h2><p class="ex-muted">Open either account’s full plan from this shared brief.</p></div><div>'+cta('main','Open self-directed plan')+cta('agentic','Open agentic plan')+'</div></section>';
+    html+='<details class="ex-wide ex-brief-method"><summary>Sources, coverage &amp; calculation notes</summary><p class="ex-muted">Combined equity uses each account’s published value, including account cash and option valuations, net of debt. '+(s.brokerageBasis?'The recorded brokerage basis excludes external prediction-market, futures and crypto sleeves.':'External sleeve coverage follows the recorded account basis and is not separately verified in this snapshot.')+' The stock move uses current quantities and captured prices against previous close; it does not reconstruct intraday trades, option changes, fees or cash flows. Cash and margin are shown separately across accounts. History sums only dates recorded for both accounts and includes deposits and withdrawals. Calendar coverage is limited to published records; no event listed does not mean no event exists.</p><p class="ex-muted">Snapshot published '+esc(date(s.generatedAt))+' · '+esc(ageText(s.generatedAt))+'. Options captured '+esc(date(s.options.positionsAsOf))+'.</p>'+jump('activity','Inspect data & routine status')+'</details></div>';
     $('page-ex-today').innerHTML=html;
   }
   function renderActivity() {
@@ -184,7 +194,10 @@
     protect();
   }
   function renderCustom() {
-    const r=routes[routeKey]; if(r.custom==='today')renderToday();if(r.custom==='activity')renderActivity();if(r.custom==='decisions')renderDecisions();if(r.custom==='scenario')renderScenario();protect();
+    const openDetails=routeKey==='today'?[...$('page-ex-today').querySelectorAll('details[open]')].map(el=>el.querySelector('summary')?.textContent):[];
+    const r=routes[routeKey]; if(r.custom==='today')renderToday();if(r.custom==='activity')renderActivity();if(r.custom==='decisions')renderDecisions();if(r.custom==='scenario')renderScenario();
+    if(routeKey==='today')$('page-ex-today').querySelectorAll('details').forEach(el=>{el.open=openDetails.includes(el.querySelector('summary')?.textContent);});
+    protect();
   }
   function queueRefresh() { clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{header();renderCustom();},60); }
   function placeSection(section, token, attempts=0) {
@@ -224,6 +237,7 @@
   });
   document.addEventListener('click',e=>{
     const b=e.target.closest('[data-ex-route],[data-ex-area]');if(!b)return;
+    if(b.dataset.exAccount==='main'||b.dataset.exAccount==='agentic')save('pf_acct',b.dataset.exAccount);
     if(b.dataset.exRoute)navigate(b.dataset.exRoute);else navigate(defaults[b.dataset.exArea]);
   });
   $('ex-find').addEventListener('click',()=>{if(window.__pfFind)window.__pfFind();});
@@ -238,6 +252,9 @@
   const observe=new MutationObserver(queueRefresh);
   ['app','agentic-app'].forEach(id=>{if($(id))observe.observe($(id),{childList:true});});
   if(window.__dataReady?.then)window.__dataReady.then(queueRefresh,queueRefresh);
+  // Keep ET event countdowns and snapshot age current in a resident PWA.
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&routeKey==='today')queueRefresh();});
+  setInterval(()=>{if(!document.hidden&&routeKey==='today')queueRefresh();},60000);
   window.__experienceRefresh=queueRefresh;
   navigate(routeKey,{keepScroll:true});
 })();

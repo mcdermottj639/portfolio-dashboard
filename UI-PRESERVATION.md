@@ -1,4 +1,4 @@
-# v150 interface preservation map
+# Interface preservation map · v161
 
 The navigation layer leaves the five original pages and all their contents in place. Section
 links scroll to original cards instead of copying or reimplementing their calculations.
@@ -16,14 +16,19 @@ Classic view is available from the header. The original feature search and saved
 | Agentic targets, bands, drift, parking, guardrails, diagnostics, forward observations | Research → Plan & Action Center (agentic) |
 | Markets, sectors, macro, breadth, retail buzz | Research → Markets |
 | Analyze, technical chart, scanner, fundamentals, live/estimated option context | Research → Analyze |
-| Technical Signals / Fundamentals / Flow & Positioning | Research shortcuts to original account cards |
+| Technical Signals / Fundamentals / Flow & Positioning | Portfolio shortcuts to original account cards |
 | Rebalance logs, grading, methodology | Activity → Rebalance log for selected account |
 | Find, Help, saved pins, collapse, privacy, refresh, Signal Ledger/Midnight theme toggle, PWA offline | Original controls and implementations retained |
 
 ## New views and their limits
 
-- Today reads the published snapshot and the existing main account calculations. Day contributions
-  are stock-quote changes, not a claim about cash flows, options P&L, or verified account return.
+- Today is one combined Daily Brief for Self-directed + Agentic. Its header has no account toggle;
+  the detailed pages keep theirs. Totals require both recorded account values. Shared tickers aggregate
+  across accounts; positive cash and margin debt stay separate. Stock contributions do not represent
+  full account return. Combined history uses only matching recorded dates and includes cash flows.
+- The brief also surfaces market context, dated earnings/options events, broker-reported self-directed
+  options income and exposure, and recorded agentic research/ticket/guard status. Missing, stale and
+  unreconciled evidence stays explicit. Links to each account or plan select the intended account.
 - Activity shows publication time, account/target/ticket records. The snapshot does not provide
   live Claude run health, broker reconciliation, or push-delivery receipts; these remain unavailable.
 - Decision evidence is for the agentic target only. It preserves research dates, recorded thesis,
@@ -33,7 +38,7 @@ Classic view is available from the header. The original feature search and saved
 
 ## Release checks
 
-Run `node tests/experience.test.cjs`, all `producer/*.test.mjs` sequentially, and browser checks
+Run `node tests/experience.test.cjs`, `node tests/daily-brief.test.cjs`, all `producer/*.test.mjs` sequentially, and browser checks
 using `node tests/preview.mjs` (synthetic data). Check both accounts, every navigation entry,
 existing charts and Analyze drill-down, privacy, Gold/Light, mobile width, and Classic view.
 The UI version, cache version, and versioned shell asset URLs must move together.
@@ -49,3 +54,15 @@ The UI version, cache version, and versioned shell asset URLs must move together
   outside the interface change; producer code is unchanged.
 - Browser preview uses synthetic data. Live decrypted broker data and production service
   worker upgrade behavior have not been verified in this local preview.
+
+### Daily Brief verification (2026-10-02)
+
+All 40 producer suites and both display-model suites pass. With `tests/preview.mjs` running,
+`tests/brief-browser.mjs` checks initial combined rendering from an Agentic preference, explicit
+account/plan/options links, unchanged detailed account switching, 320–1440px layouts, foreground
+updates, details persistence, privacy round-trip, Midnight, and a missing account. Set
+`PF_PLAYWRIGHT` and `PF_CHROME` to an available browser install; optional `PF_SCREENSHOT_DIR`
+keeps screenshots under local scratch. `producer/privacy-audit.mjs` now audits Today too;
+`PF_AUDIT_DATA=tmp/experience-preview/sample.json` uses the preview fixture without changing data.json.
+All eight audited surfaces reported zero leaks. Synthetic browser verification, Chart.js stub;
+no decrypted live balances or independent Fable reviewer were available. Self-audited.

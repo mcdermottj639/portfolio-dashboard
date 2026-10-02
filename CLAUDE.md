@@ -1,5 +1,46 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v161 — One combined Daily Brief (2026-10-02)
+
+Today always summarizes **Self-directed + Agentic** together; the global account selector is
+hidden only on Today. Other pages keep their existing account selection. Account/plan/options
+links from Today carry an explicit account destination, while returning to Today always restores
+the combined view. `ui/experience-model.js` owns the pure `dailyBrief` model; no broker calls or
+producer/trading changes are involved.
+
+The brief adds combined recorded equity, per-account values and stock contributions, separately
+summed positive cash and margin debt, shared-ticker dollar movers and breadth, SPY/QQQ/IWM plus
+VIX context, a 30-day earnings/option-expiration calendar, broker-reported self-directed options
+realized P&L with reconciliation status and open exposure, agentic target/ticket/drawdown state,
+combined concentration, and a combined value-history chart. Radar items identify incomplete or
+older captures, quote gaps, recorded valuation residuals, near-term events, overdue option records,
+active agentic guards/tickets, and unreconciled option history. Detail rows collapse for longer
+lists; source/calculation notes are expandable.
+
+Correctness: use `data.main.equity` (the recorded basis) rather than potentially sleeve-inclusive
+`stats.totalVal` when available; label brokerage scope only when `equityBasis` confirms it.
+A missing account never becomes a partial total labeled combined. Cash in one account never nets
+against another's loan. Shared tickers combine once; missing quote legs remain explicit. Stock
+moves are contributions on current quantities, not full account return. History joins only matching
+valid recorded dates, keeps the latest duplicate, and includes external cash flows. Event day
+countdowns use America/New_York and actual expiration dates, never stale persisted `dte`.
+The brief updates its date/age on foreground and every minute without closing expanded details.
+Options income uses only `realized.accounts.main.options` from the broker source, never gross
+premiums or another account's subtotal. Missing P&L and settlement evidence stay unknown.
+
+App/cache and all shell URLs: **v161 / pf-v161**. Routines touched: **none** (Portfolio dashboard
+refresh, Agentic research, and Agentic executor retain their existing inputs, schedules and mandates).
+Docs: this file and `UI-PRESERVATION.md`. `producer/privacy-audit.mjs` now includes Today and accepts
+`PF_AUDIT_DATA` pointing to a synthetic fixture within the repo without replacing encrypted data.
+
+Verification: all **40 producer suites**, `tests/experience.test.cjs`, and new
+`tests/daily-brief.test.cjs` passed. `tests/brief-browser.mjs` passed account navigation, both plans,
+options routing, 320/390/768/1440px layouts, missing-account state, detail persistence, privacy and
+Midnight checks; screenshots inspected. Expanded eight-surface privacy audit: zero readable account
+figures, clean toggle restoration. Browser checks used synthetic data and a Chart.js stub; the brief's
+own SVG/CSS visuals rendered normally. Live decrypted balances were not available. Self-audited;
+the specified independent Fable reviewer is unavailable in this environment.
+
 ## 2026-10-01 — Preserve the Rebalance Log on empty equity-order responses
 
 `deriveLog()` now disables sweeping whenever no usable decision day establishes coverage,
@@ -507,7 +548,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v156** (`pf-v156`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v161** (`pf-v161`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

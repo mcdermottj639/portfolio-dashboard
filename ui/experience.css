@@ -82,3 +82,29 @@ html[data-theme="gold"]{--sl-ground:#101923;--sl-panel:#192530;--sl-panel-muted:
 .opt-income-status p{margin:5px 0 0}
 .opt-income-details{margin-top:12px;font-size:12px;line-height:1.5;color:var(--text)}
 .opt-income-details summary{font-weight:600;cursor:pointer}
+
+/* v161 — a single, account-independent Daily Brief. */
+.ex-tools [hidden]{display:none!important}
+.ex-brief-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.ex-brief-heading h1{margin-top:7px}.ex-brief-heading>.ex-badge{flex-shrink:0;margin-top:6px}
+.ex-account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.ex-account-card{min-width:0;border:1px solid var(--ex-border);border-radius:12px;padding:18px 22px;background:var(--ex-panel)}
+.ex-account-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ex-account-head h2{margin:0;font-size:16px}.ex-account-head .ex-link{font-size:12px;white-space:nowrap}
+.ex-account-value{font-size:27px;font-weight:730;letter-spacing:-1px;margin:6px 0 10px;overflow-wrap:anywhere}
+.ex-account-facts .ex-row{padding:8px 0}.ex-account-date{font-size:10px!important;margin-bottom:0!important}
+.ex-cash-strip{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:20px;align-items:center;padding:16px 22px;border:1px solid var(--ex-border);background:var(--sl-panel-muted);border-radius:12px}
+.ex-cash-strip strong{display:block;margin-top:5px;font-size:20px}.ex-cash-strip p{font-size:12px;margin:0}
+.ex-radar-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:13px 0;border-top:1px solid var(--ex-border)}
+.ex-radar-row:first-child{border-top:0;padding-top:0}.ex-radar-row strong{font-size:14px}.ex-radar-row p{margin:4px 0 0;font-size:12px}.ex-radar-row .ex-link{flex-shrink:0}.ex-radar-warn strong{color:var(--sl-warning)}
+.ex-mover-scope{grid-column:1/-1;font-size:10px;color:var(--ex-muted);margin-top:-6px}
+.ex-market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:5px 0 18px}
+.ex-market-grid>div{background:var(--sl-panel-muted);padding:12px;border-radius:9px;min-width:0}.ex-market-grid span{font-size:11px;color:var(--ex-muted)}.ex-market-grid small{display:block;margin-top:3px;font-size:10px}.ex-market-grid strong{display:block;font-size:21px;margin-top:12px;overflow-wrap:anywhere}
+.ex-event{display:grid;grid-template-columns:82px minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--ex-border);font-size:13px}
+.ex-event:first-of-type{border-top:0}.ex-event-date strong{display:block;color:var(--ex-accent);font-size:12px}.ex-event-date span{display:block;font-size:10px;margin-top:5px;color:var(--ex-muted)}.ex-event p{font-size:11px;margin:4px 0 0}.ex-event .ex-link{font-size:12px}
+.ex-option-result{font-size:30px;font-weight:720;letter-spacing:-1px;margin-top:10px}
+.ex-brief-plans{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:24px}.ex-brief-plans h2{margin-bottom:4px}.ex-brief-plans p{margin-bottom:0}.ex-brief-plans .ex-cta{margin-top:8px}.ex-brief-plans .ex-cta:first-child{margin-top:0}.ex-brief-plans .ex-cta:last-child{background:var(--ex-soft);color:var(--ex-accent);border:1px solid var(--ex-border)}
+.ex-brief-method{padding:12px 0!important}.ex-brief-method p{max-width:960px}
+@media(max-width:650px){.ex-brief-heading{display:block}.ex-brief-heading>.ex-badge{margin:0}.ex-account-grid{gap:10px}.ex-account-card{padding:13px}.ex-account-head{display:block}.ex-account-head h2{font-size:14px}.ex-account-head .ex-link{font-size:11px;padding:5px 0}.ex-account-value{font-size:23px}.ex-account-facts .ex-row{display:block;font-size:11px}.ex-account-facts .ex-row>span{display:block;max-width:100%;text-align:left}.ex-account-facts .ex-row>span:last-child{font-size:16px;margin-top:3px}.ex-account-facts .ex-row small{font-size:10px}.ex-cash-strip{grid-template-columns:1fr 1fr;padding:15px;gap:14px}.ex-cash-strip p{grid-column:1/-1;font-size:11px}.ex-radar-row{gap:12px}.ex-market-grid{gap:7px}.ex-market-grid>div{padding:10px}.ex-market-grid strong{font-size:18px}.ex-brief-plans{grid-template-columns:1fr;gap:12px}.ex-event{grid-template-columns:72px minmax(0,1fr) auto;gap:8px}}
+@media(max-width:360px){.ex-account-grid{grid-template-columns:1fr}.ex-account-head{display:flex}.ex-account-facts .ex-row{display:flex}.ex-account-value{font-size:26px}}
+.ex-calendar-title{margin:20px 0 4px!important;padding-top:18px;border-top:1px solid var(--ex-border)}

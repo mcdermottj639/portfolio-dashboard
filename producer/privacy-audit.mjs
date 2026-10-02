@@ -25,6 +25,8 @@
  *     node producer/make-sample-data.mjs      # plaintext fixture, exercises margin + the breaker
  *   node producer/privacy-audit.mjs           # PF_CHROME=/path/to/chrome if not bundled
  *   git checkout origin/main -- data.json     # ALWAYS — never commit a plaintext snapshot
+ * PF_AUDIT_DATA can instead point to a synthetic JSON file under the repo (e.g.
+ * tmp/experience-preview/sample.json from tests/preview.mjs), preserving data.json.
  * Exits non-zero listing every leak. Chart.js is stubbed: the CDN is unreachable
  * offline and without it renderAgenticPlan throws, which silently audits nothing.
  */
@@ -48,7 +50,7 @@ if (!chromium) { console.error('playwright not found. `npm i playwright` somewhe
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.json':'application/json', '.css':'text/css', '.webmanifest':'application/manifest+json', '.png':'image/png', '.svg':'image/svg+xml' };
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
-  const file = path.join(ROOT, rel);
+  const file = rel === 'data.json' && process.env.PF_AUDIT_DATA ? path.resolve(process.env.PF_AUDIT_DATA) : path.join(ROOT, rel);
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end('nope'); }
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
   fs.createReadStream(file).pipe(res);
@@ -73,7 +75,7 @@ const SCAN = `(() => {
      reads "350.00". Check the two places bare figures legitimately live instead: a cell
      under a quantity header, and anything explicitly tagged data-priv="val". */
   for(const t of document.querySelectorAll('table')){
-    const root0=t.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets');
+    const root0=t.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today');
     if(!root0||getComputedStyle(root0).display==='none')continue;
     const heads=[...t.querySelectorAll('thead th')].map(h=>h.textContent.trim());
     const cols=heads.map(h=>/^(shares?|qty|quantity|contracts?|size|units?)$/i.test(h));
@@ -92,11 +94,11 @@ const SCAN = `(() => {
   for(const e of document.querySelectorAll('[data-priv="val"]')){
     if(e.querySelector('span.priv-m'))continue;
     if(!/\d/.test(e.textContent||''))continue;
-    const root0=e.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets');
+    const root0=e.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today');
     if(!root0||getComputedStyle(root0).display==='none')continue;
     out.push({page:root0.id,mode:'val',text:(e.textContent||'').trim().slice(0,60),hit:(e.textContent||'').trim().slice(0,24),where:'data-priv=val'});
   }
-  for(const root of document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets')){
+  for(const root of document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today')){
     if(getComputedStyle(root).display==='none') continue;
     const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n;
     while((n=w.nextNode())){
@@ -120,6 +122,7 @@ const SCAN = `(() => {
 /* Every surface that renders account figures, including BOTH sides of the two
    account-split tabs — a view you never navigate to is a view you never audit. */
 const VIEWS = [
+  ['Daily Brief · both accounts', p => p.locator('[data-ex-area="today"]').click()],
   ['Accounts · self-directed', p => p.evaluate(() => { switchTab('portfolio'); setAccount('main'); })],
   ['Accounts · agentic',       p => p.evaluate(() => { switchTab('portfolio'); setAccount('agentic'); })],
   ['Plan · self-directed',     p => p.evaluate(() => { switchTab('picks'); setPlanAccount('main'); })],
@@ -149,7 +152,7 @@ for (const [name, go] of VIEWS) {
   /* A view that rendered nothing leaks nothing, so "0 leaked" is only meaningful next to
      evidence the view exists AND that masking actually fired on it. */
   const stat = await page.evaluate(() => {
-    const vis = [...document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets')]
+    const vis = [...document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today')]
       .filter(r => getComputedStyle(r).display !== 'none');
     return { chars: vis.reduce((n, r) => n + r.innerText.length, 0),
              masked: vis.reduce((n, r) => n + r.querySelectorAll('span.priv-m').length, 0),
