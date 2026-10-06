@@ -1,6 +1,7 @@
 // Test-only transport, loaded with node --import. The production collector always uses native fetch.
 const now=Date.now();
 const market=(ticker,event)=>({ticker,event_ticker:event,title:'Fixture wins',yes_sub_title:'Fixture',yes_bid_dollars:'.48',yes_ask_dollars:'.5',no_bid_dollars:'.5',no_ask_dollars:'.52',last_price_dollars:'.49',previous_price_dollars:'.45',volume_fp:'2000',volume_24h_fp:'1000',close_time:new Date(now+86400000).toISOString(),expected_expiration_time:new Date(now+3600000).toISOString(),status:'active',rules_primary:'Fixture wins the scheduled event.'});
+const requests=new Map();
 globalThis.fetch=async input=>{
   const url=new URL(input),mode=process.env.PREDICTION_TEST_MODE;
   if(mode==='fail')return new Response('',{status:503});
@@ -9,6 +10,8 @@ globalThis.fetch=async input=>{
     return new Response('<script id="__NEXT_DATA__" type="application/json">'+JSON.stringify({props:{pageProps:{event:{name:'Fixture event',eventContracts:{a:{symbol:'KXNFLGAME-FIXTURE',exchange:'EXCHANGE_SOURCE_KALSHI',tradability:'EVENT_CONTRACT_TRADABILITY_TRADABLE'},wrong:{symbol:'WRONG',exchange:'OTHER'}}}}}})+'</script>');
   }
   if(url.pathname.endsWith('/candlesticks')){
+    const seen=requests.get(url.href)||0;requests.set(url.href,seen+1);
+    if(mode==='throttle'&&seen===0)return new Response('',{status:429,headers:{'Retry-After':'0'}});
     if(mode==='partial')return new Response('',{status:503});
     return Response.json({candlesticks:[{end_period_ts:Math.floor(now/1000)-3600,price:{close_dollars:'.4'}},{end_period_ts:Math.floor(now/1000),price:{close_dollars:null}}]});
   }

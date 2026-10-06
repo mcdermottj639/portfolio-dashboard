@@ -11,9 +11,18 @@ const now=Date.now(),asOf=new Date(now).toISOString();
 const configs=[['KXNFLGAME','NFL','Sports'],['KXNCAAFGAME','College football','Sports'],['KXMLBGAME','MLB','Sports'],['KXUFCFIGHT','MMA','Sports'],['KXFED','Fed rates','Economics'],['KXCPI','Inflation','Economics'],['KXCPICORE','Core inflation','Economics']].map(([ticker,label,category])=>({ticker,label,category}));
 let prior={};try{prior=JSON.parse(fs.readFileSync(OUT,'utf8'));}catch{}
 async function get(url,json=true){
-  const res=await fetch(url,{signal:AbortSignal.timeout(25000)});
-  if(!res.ok)throw Error('HTTP '+res.status);
-  return json?res.json():res.text();
+  for(let attempt=0;attempt<3;attempt++){
+    const res=await fetch(url,{signal:AbortSignal.timeout(25000)});
+    if(res.ok)return json?res.json():res.text();
+    if(attempt===2||![429,500,502,503,504].includes(res.status))throw Error('HTTP '+res.status);
+    const hint=res.headers.get('retry-after'),seconds=hint===null?NaN:Number(hint);
+    const hinted=Number.isFinite(seconds)?seconds*1000:hint?Date.parse(hint)-Date.now():NaN;
+    // Respect Retry-After. A longer wait leaves this source cached until the next scheduled run.
+    if(Number.isFinite(hinted)&&hinted>15000)throw Error('HTTP '+res.status+'; retry deferred');
+    const delay=Math.max(250,Number.isFinite(hinted)?hinted:500*2**attempt);
+    await res.body?.cancel();
+    await new Promise(resolve=>setTimeout(resolve,delay));
+  }
 }
 async function pool(items,fn,size=3){const results=Array(items.length);let cursor=0;await Promise.all(Array.from({length:Math.min(size,items.length)},async()=>{while(cursor<items.length){const i=cursor++;try{results[i]={ok:true,value:await fn(items[i],i)};}catch(e){results[i]={ok:false,error:e.message};}}}));return results;}
 const coverage=[];

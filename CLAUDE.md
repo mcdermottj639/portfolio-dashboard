@@ -12,7 +12,10 @@ Robinhood links, and an append-only research record. `producer/predictions-fetch
 NFL, college football, MLB, MMA, Fed and CPI series. `.github/workflows/predictions.yml` is a new
 independent 15-minute schedule including evenings/weekends, also run once on collector code changes.
 Production reads the public raw GitHub file, with same-origin/offline fallback: bot commits alone
-cannot trigger a Pages rebuild. Keep original per-source timestamps across failures.
+cannot trigger a Pages rebuild. Keep original per-source timestamps across failures. The collector
+retries HTTP 429/transient server errors with bounded backoff and respects Retry-After. The first
+production run exposed two rate-limited charts (quotes were fresh); this retry path is fixture-tested.
+The existing eight-surface privacy audit also passed with zero readable account figures.
 
 Ideas are liquidity/activity research candidates, **not directional forecasts or measured edges**.
 Results track a hypothetical Yes contract at each original asking price, before fees; they are not

@@ -44,7 +44,9 @@ the top of a card is expected resolution, not necessarily event start time.
 evenings. The workflow activates on the default branch after merge and runs once on collector code/config changes. The UI checks the published
 snapshot each minute while visible; Refresh reloads the file, not the collector. GitHub schedule
 and CDN delivery may be delayed. A failed series keeps its old collection time; total collection
-failure leaves the prior file unchanged. Stale targets are paused.
+failure leaves the prior file unchanged. Stale targets are paused. HTTP 429 and transient server errors
+retry at most twice with backoff; Retry-After is respected. A requested wait above 15 seconds defers
+that source to the next run while preserving its cached timestamp.
 
 Production reads the public `main/data/predictions.json` on raw.githubusercontent.com, with the
 same-origin file as a fallback. This avoids depending on a Pages rebuild for each bot data commit.

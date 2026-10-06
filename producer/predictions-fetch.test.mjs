@@ -23,6 +23,8 @@ test('collector follows pagination, exact RH symbols, historical settlement, and
     assert.ok(d.coverage.some(c=>c.series==='KXFED'&&c.status==='unavailable'));
     assert.ok(d.coverage.some(c=>c.series.endsWith(' history')&&c.status==='unavailable'));
     assert.deepEqual(d.ideas.slice(0,2),original);const settled=d.ideas.find(i=>i.marketId==='ARCHIVED');assert.equal(settled.grossChange,-.1);assert.equal(settled.settlementValue,.5);
+    const recovered=run('throttle');assert.equal(recovered.status,0,recovered.stderr);
+    const retried=JSON.parse(fs.readFileSync(out));assert.equal(retried.coverage.filter(c=>c.status!=='ok').length,0,'transient 429 chart responses recover');
     const before=fs.readFileSync(out,'utf8');assert.notEqual(run('fail').status,0);assert.equal(fs.readFileSync(out,'utf8'),before,'total provider failure cannot overwrite the last snapshot');
     for(const key of ['balance','positions','transactions','account','watchlist'])assert.equal(d[key],undefined);
   }finally{fs.rmSync(dir,{recursive:true,force:true});}
