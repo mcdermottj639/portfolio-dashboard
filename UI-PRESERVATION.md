@@ -1,4 +1,4 @@
-# Interface preservation map · v161
+# Interface preservation map · v162
 
 The navigation layer leaves the five original pages and all their contents in place. Section
 links scroll to original cards instead of copying or reimplementing their calculations.
@@ -21,6 +21,13 @@ Classic view is available from the header. The original feature search and saved
 | Find, Help, saved pins, collapse, privacy, refresh, Signal Ledger/Midnight theme toggle, PWA offline | Original controls and implementations retained |
 
 ## New views and their limits
+
+- Predict adds Positions, Ideas, Watchlist and Results without replacing any account, plan or
+  research page. It is a separate account/data scope and hides the stock-account picker.
+  Ideas are public liquidity-based research candidates; outcomes are hypothetical and before fees.
+  Private account values remain unavailable until authenticated event-contract coverage is verified.
+  The old Income & Tax derivatives row is now explicitly unverified, with its recorded values kept.
+  See `producer/PREDICTIONS.md` for source, refresh, import/export and connection details.
 
 - Today is one combined Daily Brief for Self-directed + Agentic. Its header has no account toggle;
   the detailed pages keep theirs. Totals require both recorded account values. Shared tickers aggregate
@@ -66,3 +73,11 @@ keeps screenshots under local scratch. `producer/privacy-audit.mjs` now audits T
 `PF_AUDIT_DATA=tmp/experience-preview/sample.json` uses the preview fixture without changing data.json.
 All eight audited surfaces reported zero leaks. Synthetic browser verification, Chart.js stub;
 no decrypted live balances or independent Fable reviewer were available. Self-audited.
+
+### Predictions verification (2026-10-06)
+
+All 42 producer suites and the dashboard model/cache suites pass. Predict and Daily Brief browser
+checks passed at 320/390/768/1440px, with synthetic account data, a Chart.js stub and real public
+prediction snapshots. Includes Classic reload, keyboard tabs, target persistence, export/import,
+stale and offline behavior, theme switching, privacy masking and production raw-feed fallback.
+Self-audited; authenticated Predict access and the first production schedule remain separate checks.

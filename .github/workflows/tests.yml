@@ -6,10 +6,10 @@ name: Producer tests
 
 on:
   pull_request:
-    paths: ['producer/**', '.github/workflows/tests.yml']
+    paths: ['producer/**', 'ui/**', 'tests/**', 'index.html', 'sw.js', '.github/workflows/tests.yml']
   push:
     branches: [main]
-    paths: ['producer/**', '.github/workflows/tests.yml']
+    paths: ['producer/**', 'ui/**', 'tests/**', 'index.html', 'sw.js', '.github/workflows/tests.yml']
   workflow_dispatch: {}
 
 permissions:
@@ -31,3 +31,6 @@ jobs:
             echo "::endgroup::"
           done
           exit $rc
+
+      - name: Run dashboard model tests
+        run: node --test tests/*.test.cjs

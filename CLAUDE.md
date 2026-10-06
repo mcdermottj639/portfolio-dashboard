@@ -1,5 +1,44 @@
 # CLAUDE.md — Portfolio Dashboard
 
+## v162 — Predictions research, watchlist and results (2026-10-06)
+
+Predict is a top-level section (also a sixth Classic tab), with Positions / Ideas / Watchlist /
+Results. `ui/predictions-model.js` owns public-market math; `ui/predictions.js` renders the page.
+The existing account picker is hidden on Predict because its event-contract account is a separate
+source. App/cache and shell assets are **v162 / pf-v162**.
+
+Public `data/predictions.json` contains only Kalshi markets, hourly charts, optional exact-symbol
+Robinhood links, and an append-only research record. `producer/predictions-fetch.mjs` collects
+NFL, college football, MLB, MMA, Fed and CPI series. `.github/workflows/predictions.yml` is a new
+independent 15-minute schedule including evenings/weekends, also run once on collector code changes.
+Production reads the public raw GitHub file, with same-origin/offline fallback: bot commits alone
+cannot trigger a Pages rebuild. Keep original per-source timestamps across failures.
+
+Ideas are liquidity/activity research candidates, **not directional forecasts or measured edges**.
+Results track a hypothetical Yes contract at each original asking price, before fees; they are not
+account returns. Missing/closed markets stay pending until explicit exchange settlement. Watchlists
+and chosen Yes/No target prices live on the device with export/import; stale prices pause checks.
+
+Authenticated Predict access remains pending. `producer/prediction-account.mjs` validates an optional
+`raw/prediction-account.json` into encrypted `data.predictions`. This is an adapter, not an active
+broker connection. Absent input preserves the original capture time. Blank-symbol derivative rows
+in `realized.predictionMarket` are legacy/unverified: older documentation calling them verified
+prediction contracts is superseded. The Income & Tax label now reflects this; existing derivative
+cash-flow calculations stay intact. Never infer named positions, event-only coverage, or net P&L.
+
+Routine impact: no change to the portfolio-refresh, Agentic-research or Agentic-executor prompts,
+schedules or mandates. The stock producer gains only the optional strictly validated account input.
+The new public collector is simulated with pagination, historic settlement, chart failures and total
+outage fixtures, plus successful live GET collection (671 markets, eight candidates, 28 link matches).
+
+Validation: all 42 producer test files, dashboard model/cache tests, Predict browser checks and the
+existing Daily Brief browser suite pass. Browser checks use synthetic account data and a Chart.js
+stub; public prediction prices come from the actual timestamped snapshot. New Predict privacy
+masking, mobile/desktop, Classic reload, themes, imports/exports, staleness, failure and production
+feed fallback were tested. Self-audited; a Fable verifier is unavailable in this environment.
+Full scope, future authenticated schema and remaining limits: `producer/PREDICTIONS.md`.
+
+
 ## v161 — One combined Daily Brief (2026-10-02)
 
 Today always summarizes **Self-directed + Agentic** together; the global account selector is
@@ -548,7 +587,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v161** (`pf-v161`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v162** (`pf-v162`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

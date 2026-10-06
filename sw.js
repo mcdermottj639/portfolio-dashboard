@@ -6,14 +6,17 @@
      - data.json: network-first with cache fallback (freshest snapshot; offline → last snapshot)
      - other shell assets (manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
    Bump CACHE_VERSION when the shell changes. */
-const CACHE_VERSION = 'pf-v161';
+const CACHE_VERSION = 'pf-v162';
 const SHELL = [
   './',
   './index.html',
-  './ui/experience.css?v=161',
-  './ui/sd-rules.js?v=161',
-  './ui/experience-model.js?v=161',
-  './ui/experience.js?v=161',
+  './ui/experience.css?v=162',
+  './ui/sd-rules.js?v=162',
+  './ui/experience-model.js?v=162',
+  './ui/experience.js?v=162',
+  './ui/predictions.css?v=162',
+  './ui/predictions-model.js?v=162',
+  './ui/predictions.js?v=162',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -43,6 +46,20 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+
+  // Public prediction snapshots must stay network-first and retain a real JSON fallback.
+  if ((url.origin === self.location.origin && url.pathname.endsWith('/data/predictions.json'))
+    || (url.hostname === 'raw.githubusercontent.com' && url.pathname === '/mcdermottj639/portfolio-dashboard/main/data/predictions.json')) {
+    e.respondWith(fetch(req).then(async res => {
+      if (!res.ok) throw new Error('Prediction feed unavailable');
+      const copy = res.clone();
+      const cache = await caches.open(CACHE_VERSION); await cache.put(req, copy);
+      return res;
+    }).catch(async () => (await caches.match(req)) || new Response('{"error":"offline"}', {
+      status: 503, headers: {'Content-Type':'application/json'}
+    })));
+    return;
+  }
 
   // HTML navigations + data.json — network-first so the newest UI/snapshot always loads when
   // online; fall back to cache offline.

@@ -38,6 +38,9 @@ const dayBars = (n, from, base) => Array.from({ length: n }, (_, i) => {
 });
 
 const FIXTURES = {
+  'prediction-account.json': {schemaVersion:1,source:'robinhood',asOf:'2026-09-01T12:00:00Z',
+    historyStart:'2026-01-01',historyComplete:true,coverage:{balance:true,positions:true,transactions:true,fees:true},
+    balance:{value:21,availableCash:21},positions:[],transactions:[]},
   // The self-directed account. The recorded EQUITY is the brokerage book — equity_value + options_value
   // + cash = 1000 — not `total_value`: v116 is why the loan-bearing `cash` term is in there
   // (equity_value alone is gross long market value), and v143 is why it is not read off `total_value`,
@@ -302,6 +305,8 @@ try {
     { env: { ...process.env, PF_PASSPHRASE: '' }, cwd: ROOT, encoding: 'utf8', stderr: 'pipe' });
 
   const out = JSON.parse(readFileSync(DATA, 'utf8'));
+  eq('explicit Predict account is normalized into the account snapshot', out.predictions.balance.value, 21);
+  eq('Predict capture timestamp is not the build timestamp', out.predictions.asOf, '2026-09-01T12:00:00Z');
   eq('empty fresh bars do NOT wipe carried hist', out.hist.day.AAA.length, 5);
   // Bars are compacted at build time (histbars.mjs) — hist was 91% of the snapshot and the
   // snapshot is an encrypted blob committed ~13x/day to a public repo. This assertion keeps
@@ -493,10 +498,12 @@ try {
   // Replay a refresh with an empty narrow order response over the built snapshot.
   // Derivation, snapshot carry-forward and grading must all retain the saved history.
   const savedDecisions = out.main.decisions.decisions;
+  unlinkSync(join(RAW, 'prediction-account.json'));
   writeFileSync(join(RAW, 'main-orders.json'), JSON.stringify({ data: { orders: [], next: null } }));
   execFileSync(process.execPath, [join(__dirname, 'build-data.mjs'), 'empty orders regression'],
     { env: { ...process.env, PF_PASSPHRASE: '' }, cwd: ROOT, encoding: 'utf8', stderr: 'pipe' });
   const refreshed = JSON.parse(readFileSync(DATA, 'utf8'));
+  eq('missing fresh Predict input carries forward the original account capture unchanged', refreshed.predictions, out.predictions);
   const history = (rows) => rows.map(({ id, date, trades, source }) => ({ id, date, trades, source }));
   eq('empty orders refresh preserves saved decision IDs, dates, sources and trades',
     history(refreshed.main.decisions.decisions), history(savedDecisions));

@@ -52,6 +52,13 @@ anyone else hitting the URL sees only ciphertext. The committed sample is fake p
 | `producer/serve.mjs` | Local static server for preview. |
 | `producer/gen-icons.mjs` | Regenerates the app icons. |
 
+## Prediction markets
+
+Predict adds public market research, a local watchlist with price targets and dated research outcomes.
+The independent public collector is scheduled every 15 minutes, including evenings/weekends;
+the private Robinhood Predict account remains pending a verified authenticated feed.
+See [producer/PREDICTIONS.md](producer/PREDICTIONS.md) for scope, validation and connection requirements.
+
 ## Local preview
 
 ```

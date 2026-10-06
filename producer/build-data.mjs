@@ -1,3 +1,4 @@
+import { normalizePredictionAccount } from './prediction-account.mjs';
 import { observeTargets, riskDiagnostics } from './agentic-observatory.mjs';
 // Assembles ../data.json from raw MCP tool outputs the producer agent drops in producer/raw/.
 // Tolerant of the common response shapes (structuredContent / content[].text / plain).
@@ -1198,6 +1199,20 @@ if (data.agentic) {
       actualCloses:optional('agentic-performance-closes.json') || []}),
     risk: riskDiagnostics(data.agentic.target?.names || [],hist.day,data.generatedAt),
   };
+}
+
+// Optional, explicitly authenticated event-contract feed. Kept inside the encrypted account
+// snapshot, never the public predictions file. Missing/invalid input retains its ORIGINAL age.
+{
+  const f = join(RAWDIR, 'prediction-account.json');
+  let fresh = null;
+  if (existsSync(f)) {
+    try { fresh = normalizePredictionAccount(unwrap(readJSON(f))); }
+    catch { console.warn('Predict: unreadable account payload; preserving the prior capture.'); }
+    if (!fresh) console.warn('Predict: account schema/source not verified; preserving the prior capture.');
+  }
+  if (fresh) data.predictions = fresh;
+  else if (prior?.predictions?.source === 'robinhood') data.predictions = prior.predictions;
 }
 
 await emit(data);

@@ -696,7 +696,8 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=161">
+<link rel="stylesheet" href="ui/experience.css?v=162">
+<link rel="stylesheet" href="ui/predictions.css?v=162">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -710,6 +711,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
   <button class="tab" id="tab-picks" role="tab" aria-current="false" onclick="switchTab('picks')"><span class="t-ico" aria-hidden="true">🎯</span><span class="t-lab">Plan</span><span class="tab-sub" id="tab-picks-date"></span></button>
   <button class="tab" id="tab-options" role="tab" aria-current="false" onclick="switchTab('options')"><span class="t-ico" aria-hidden="true">💹</span><span class="t-lab">Options</span></button>
   <button class="tab" id="tab-analyze" role="tab" aria-current="false" onclick="switchTab('analyze')"><span class="t-ico" aria-hidden="true">🔍</span><span class="t-lab">Analyze</span></button>
+  <button class="tab" id="tab-predictions" role="tab" aria-current="false" onclick="switchTab('predictions')"><span class="t-ico" aria-hidden="true">◈</span><span class="t-lab">Predict</span></button>
 </div>
 <div id="page-portfolio" data-priv="on">
   <div class="acct-seg-wrap" id="acct-seg-wrap">
@@ -743,9 +745,12 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 <div id="page-analyze" style="display:none" data-priv="market">
   <div id="analyze-app"><div class="loading-wrap"><div class="spinner"></div>Loading…</div></div>
 </div>
+<div id="page-predictions" style="display:none" data-priv="off">
+  <div id="predictions-app"><div class="loading-wrap">Loading prediction markets…</div></div>
+</div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=161"></script>
+<script src="ui/sd-rules.js?v=162"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -854,7 +859,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v161'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v162'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2068,7 +2073,7 @@ function renderIncomeTax(income, harvest, ovMap, opts){
          figure genuinely does not contain these. Adding them to it would desync the By-Account split
          from its own total. */
       const c=pm.ytd>=0?'#10b981':'#ef4444';
-      return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">🎯 Prediction markets ${pm.year||'YTD'}: <b style="color:${c}">${sign(pm.ytd)}</b> <span style="color:#9ca3af">— ${pm.count} settled event contract${pm.count===1?'':'s'} in ••••0741. Settled through Robinhood Derivatives, so they sit outside the Realized tile above (which covers stocks and options only) and are counted separately here.</span></div>`; })()}
+      return `<div style="font-size:11.5px;color:var(--text);opacity:.85;margin:-4px 0 12px">Derivatives settlements ${pm.year||'YTD'}: <b style="color:${c}">${sign(pm.ytd)}</b> <span style="color:#9ca3af">— ${pm.count} legacy derivative row${pm.count===1?'':'s'} in ••••0741. Event-contract classification and fees are not verified. These rows remain outside stocks/options realized P&amp;L and are excluded from verified Predict results.</span></div>`; })()}
     ${agOnly?'':`<div class="col-title">🏦 By Account</div>
     <div class="acct-wrap"><table class="acct-tbl">
       <thead><tr><th>Account</th><th>Value</th><th>Unrealized P&amp;L</th><th>Realized ${R&&R.year?R.year.replace(/^\d+ /,''):'YTD'}</th><th>Est. dividends</th><th>Harvestable</th></tr></thead>
@@ -4576,7 +4581,7 @@ let _pickSort={key:'rank',dir:1};           // table sort (rank asc = the compos
 let _pickFilter={sector:'all',hideFlagged:false};
 
 function switchTab(tab){
-  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze'};
+  const pages={portfolio:'page-portfolio',markets:'page-markets',picks:'page-picks',options:'page-options',analyze:'page-analyze',predictions:'page-predictions'};
   for(const t in pages){ const pg=document.getElementById(pages[t]); if(pg)pg.style.display=(t===tab)?'':'none';
     const bt=document.getElementById('tab-'+t); if(bt){ bt.classList.toggle('active',t===tab);
       // aria-current carries the active tab for a screen reader — the `.active` class only carries
@@ -4595,6 +4600,7 @@ function switchTab(tab){
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
   if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
   if(tab==='analyze'&&!_analyzeInit){_analyzeInit=true;initAnalyze();}
+  if(tab==='predictions')window.PFPredictions?.mount(document.getElementById('predictions-app'));
 }
 window.switchTab=switchTab;
 
@@ -7935,7 +7941,7 @@ window.__onPortReady=function(){ if(_picksInit){ renderPicksTable(); renderPicks
 
 (function(){
   try{ const d=document.getElementById('tab-picks-date'); if(d)d.textContent='· '+ANALYSIS_DATE.replace(', 2026',''); }catch(e){}
-  try{ const _dt=localStorage.getItem('dash_tab'); if(_dt==='picks'||_dt==='markets')switchTab(_dt); }catch(e){}
+  try{ const _dt=localStorage.getItem('dash_tab'); if(_dt==='picks'||_dt==='markets'||_dt==='predictions')switchTab(_dt); }catch(e){}
   // Reopen on the account side you left off on — shared by the Accounts and Plan tabs (v108), so
   // the app has one account context. switchTab brings whichever page you land on into line.
   try{ if(localStorage.getItem('pf_acct')==='agentic')setAccount('agentic'); }catch(e){}
@@ -8115,7 +8121,9 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=161"></script>
-<script src="ui/experience.js?v=161"></script>
+<script src="ui/experience-model.js?v=162"></script>
+<script src="ui/predictions-model.js?v=162"></script>
+<script src="ui/predictions.js?v=162"></script>
+<script src="ui/experience.js?v=162"></script>
 </body>
 </html>
