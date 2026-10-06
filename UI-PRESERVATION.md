@@ -81,3 +81,10 @@ checks passed at 320/390/768/1440px, with synthetic account data, a Chart.js stu
 prediction snapshots. Includes Classic reload, keyboard tabs, target persistence, export/import,
 stale and offline behavior, theme switching, privacy masking and production raw-feed fallback.
 Self-audited; authenticated Predict access and the first production schedule remain separate checks.
+
+## v163 — Broader Predict coverage
+
+29 catalog-verified series and category filters; featured candidates are selected across categories
+with a two-per-topic limit (CPI/core CPI combined). No portfolio/account or trading changes.
+Validation: full producer suites, dashboard model tests, collector election-horizon fixtures,
+public live collection, Predict responsive/browser checks. Self-audited; Fable unavailable.

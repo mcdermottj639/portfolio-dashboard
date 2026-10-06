@@ -20,6 +20,7 @@ globalThis.fetch=async input=>{
   if(url.pathname.endsWith('/markets')){
     const series=url.searchParams.get('series_ticker');
     if(mode==='partial'&&series==='KXFED')return new Response('',{status:503});
+    if(series==='KXSENATE')return Response.json({markets:[{...market('KXSENATE-FIXTURE','SENATE-E'),close_time:new Date(now+200*86400000).toISOString()}],cursor:''});
     if(series!=='KXNFLGAME')return Response.json({markets:[],cursor:''});
     if(url.searchParams.get('cursor'))return Response.json({markets:[market('KXNFLGAME-PAGE2','PAGE2-E')],cursor:''});
     return Response.json({markets:[market('KXNFLGAME-FIXTURE','FIXTURE-E')],cursor:'page2'});

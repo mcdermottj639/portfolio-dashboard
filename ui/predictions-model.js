@@ -20,23 +20,27 @@
       isCombo:!!raw.mve_collection_ticker||!!raw.mve_selected_legs?.length};
   }
   function isFresh(asOf,now=Date.now(),maxMinutes=45){const t=Date.parse(asOf||'');return Number.isFinite(t)&&t<=now+60000&&now-t<=maxMinutes*60000;}
+  function horizonDays(category){return category==='Sports'?21:category==='Economics'?120:category==='Elections'?1095:365;}
   function eligible(m,now=Date.now()){
     const close=Date.parse(m.closesAt||'');
     return !m.isCombo&&['active','open'].includes(m.status)&&isFresh(m.asOf,now)&&close>now&&
-      close-now<=(m.category==='Economics'?120:21)*86400000&&String(m.rules||'').length>15&&m.yesBid>0&&m.yesAsk>0&&m.yesAsk<1&&
+      close-now<=horizonDays(m.category)*86400000&&String(m.rules||'').length>15&&m.yesBid>0&&m.yesAsk>0&&m.yesAsk<1&&
       m.spread!==null&&m.spread<=.08&&(m.volume24h??0)>=100;
   }
   function ideaScore(m,now){const move=m.last!==null&&m.previous!==null?Math.abs(m.last-m.previous):0;return Math.log10(1+(m.volume24h||0))*10-(m.spread||0)*100+Math.min(move,.1)*30+Math.max(0,4-(Date.parse(m.closesAt)-now)/86400000);}
   function selectIdeas(markets,now=Date.now(),limit=8,prior=[]){
     const originals=new Map(prior.map(i=>[i.eventId,i.marketId]));
     const sorted=markets.filter(m=>(!originals.has(m.eventId)||originals.get(m.eventId)===m.id)&&eligible(m,now)).sort((a,b)=>ideaScore(b,now)-ideaScore(a,now)||a.id.localeCompare(b.id));
-    const selected=[],events=new Set();
-    // Keep an event's mutually exclusive outcomes together, never sell them as independent ideas.
-    for(const category of ['Sports','Economics'])for(const m of sorted.filter(m=>m.category===category)){
-      if(selected.filter(x=>x.category===category).length>=limit/2)break;
-      if(!events.has(m.eventId)){selected.push(m);events.add(m.eventId);}
+    const selected=[],events=new Set(),topics=new Map();
+    const topic=m=>/inflation/i.test(m.group||'')?'Inflation':m.group||m.series;
+    const add=m=>{const t=topic(m);if(events.has(m.eventId)||(topics.get(t)||0)>=2)return false;selected.push(m);events.add(m.eventId);topics.set(t,(topics.get(t)||0)+1);return true;};
+    // One active candidate per category first, then round-robin; topic cap stays firm.
+    const categories=[...new Set(sorted.map(m=>m.category))];
+    for(let round=0;round<limit&&selected.length<limit;round++){
+      let added=false;
+      for(const category of categories){if(selected.length>=limit)break;const m=sorted.find(m=>m.category===category&&!events.has(m.eventId)&&(topics.get(topic(m))||0)<2);if(m){add(m);added=true;}}
+      if(!added)break;
     }
-    for(const m of sorted){if(selected.length>=limit)break;if(!events.has(m.eventId)){selected.push(m);events.add(m.eventId);}}
     return selected.slice(0,limit);
   }
   function whyWatch(m){
@@ -88,5 +92,5 @@
     }
     return [...clean.values()];
   }
-  return {number,price,stamp,safeUrl,normalizeMarket,isFresh,eligible,selectIdeas,whyWatch,publishedIdeas,targetStatus,cleanWatchlist};
+  return {horizonDays,number,price,stamp,safeUrl,normalizeMarket,isFresh,eligible,selectIdeas,whyWatch,publishedIdeas,targetStatus,cleanWatchlist};
 });

@@ -39,7 +39,11 @@ try{
   await page.locator('#pred-search').fill('nonsensezzzz');assert.equal(await page.locator('.pred-market').count(),0);
   await page.locator('#pred-search').fill('');
   await page.locator('[data-pred-category="Economics"]').click();
-  assert.ok((await page.locator('.pred-market h3').allTextContents()).every(t=>/CPI|rate|inflation/i.test(t)));
+  assert.ok((await page.locator('.pred-market').evaluateAll(nodes=>nodes.map(n=>n.dataset.market))).every(id=>publicData.markets.find(m=>m.id===id)?.category==='Economics'));
+  await page.locator('[data-pred-category="Elections"]').click();
+  assert.ok(await page.locator('.pred-market').count()>0);
+  assert.ok((await page.locator('.pred-market').evaluateAll(nodes=>nodes.map(n=>n.dataset.market))).every(id=>publicData.markets.find(m=>m.id===id)?.category==='Elections'));
+  await page.locator('[data-pred-category="All"]').click();
   await page.locator('[data-pred-category="All"]').click();
   await first.locator('[data-pred-action="watch"]').click();
   await page.locator('#pred-tab-watchlist').click();

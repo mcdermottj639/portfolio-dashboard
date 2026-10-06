@@ -13,7 +13,7 @@ test('quotes: unknown is not zero; crossed, absent, stale and expired markets ca
   assert.equal(normalized.spread,null);assert.equal(normalized.noAsk,null);assert.equal(normalized.volume24h,null);
 });
 test('selection diversifies events and never replaces a saved reference with its opposite outcome',()=>{
-  const rows=Array.from({length:10},(_,i)=>market({id:'M'+i,eventId:'E'+i,category:i<5?'Sports':'Economics'}));
+  const rows=Array.from({length:10},(_,i)=>market({id:'M'+i,eventId:'E'+i,category:i<5?'Sports':'Economics',group:'Topic'+i}));
   rows.push({...rows[0],id:'M0-OPPOSITE',volume24h:100000});
   const selected=M.selectIdeas(rows,now);assert.equal(selected.length,8);assert.equal(new Set(selected.map(m=>m.eventId)).size,8);assert.equal(selected.filter(m=>m.category==='Economics').length,4);
   const prior=M.publishedIdeas([], [rows[0]],now);
@@ -59,4 +59,12 @@ test('service worker keeps public JSON network-first, including raw GitHub, with
     offline=true;assert.equal((await (await request()).json()).generatedAt,fresh,'cached timestamp preserved');
     stored.clear();const missing=await request();assert.equal(missing.status,503);assert.deepEqual(await missing.json(),{error:'offline'});
   }
+});
+
+test('broad categories and topic caps prevent CPI flooding while permitting long election horizons',()=>{
+  const rows=Array.from({length:12},(_,i)=>market({id:'C'+i,eventId:'C'+i,category:'Economics',group:i%2?'Core inflation':'Inflation',volume24h:100000}));
+  for(const category of ['Elections','Climate','Commodities','Crypto','Financials','Technology'])rows.push(market({id:category,eventId:category,category,group:category,closesAt:new Date(now+180*86400000).toISOString()}));
+  const chosen=M.selectIdeas(rows,now);assert.equal(chosen.length,8);assert.equal(chosen.filter(m=>m.category==='Economics').length,2);assert.ok(chosen.some(m=>m.category==='Elections'));
+  assert.ok(M.eligible(market({category:'Elections',closesAt:new Date(now+700*86400000).toISOString()}),now));
+  assert.equal(M.eligible(market({category:'Sports',closesAt:new Date(now+30*86400000).toISOString()}),now),false);
 });

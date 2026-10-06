@@ -1,4 +1,4 @@
-# Predictions (v162)
+# Predictions (v163)
 
 Predict is a top-level section in the existing portfolio dashboard. It has Positions, Ideas,
 Watchlist and Results; the default is Ideas. Both Ivory and Midnight work on desktop and mobile.
@@ -11,13 +11,17 @@ redirect output for an isolated trial. No keys, account balances, positions or w
 used by this collector. The initial committed file is actual public market data, timestamped
 at collection. It is not live streaming data.
 
-The seven initial series are NFL, college football, MLB, MMA, Fed rates, CPI and core CPI.
-Sports cover the next 21 days; economics the next 120. Combos are excluded. Pagination must
+The 29 curated series cover sports, elections (House/Senate control, governorships and selected
+state races), economics (Fed/CPI/jobs/unemployment/GDP), climate, oil/gold, Bitcoin/Ethereum,
+stock indexes, Best Picture, music charts and AI coding models. Series IDs were verified against the public
+exchange catalog. Empty series do not imply available contracts. Sports cover 21 days,
+economics 120, elections 1,095 and other topics 365. Combos are excluded. Pagination must
 complete before a series is considered successfully collected. This is a selected universe,
 not Robinhood's entire catalog. Market and chart timestamps remain separate.
 
 The Ideas screen selects up to eight liquid research candidates, with no more than one
-contract per event at a time and a balance of sports/economics when qualified candidates exist.
+contract per event at a time and category round-robin when qualified candidates exist. A firm two-contract topic cap
+combines CPI and core CPI into one inflation topic; it may leave fewer than eight ideas.
 Checks require fresh quotes (45 minutes), a positive Yes bid, an ask between zero and one,
 a spread no wider than eight cents, at least 100 contracts in 24 hours and readable rules.
 The score uses activity, spread, movement and proximity to resolution. It is **not a forecast**.
@@ -33,7 +37,7 @@ Original observations are never silently capped or pruned. Up to 60 absent unres
 are checked per run, oldest check first, so very large backlogs may take multiple runs.
 
 Public Robinhood pages supply optional links by exact Kalshi exchange symbol. The discovery
-runs at most every six hours and checks up to 18 linked events. An unmatched market says so;
+runs at most every six hours and checks up to 36 linked events. An unmatched market says so;
 a matched link does not establish account eligibility, available size or a Robinhood quote.
 Charts show hourly trade closes where available; missing intervals remain gaps. The date at
 the top of a card is expected resolution, not necessarily event start time.

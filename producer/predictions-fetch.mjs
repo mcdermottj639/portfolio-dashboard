@@ -8,7 +8,8 @@ const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const OUT=path.resolve(process.env.PREDICTIONS_OUTPUT||path.join(ROOT,'data/predictions.json'));
 const API='https://external-api.kalshi.com/trade-api/v2';
 const now=Date.now(),asOf=new Date(now).toISOString();
-const configs=[['KXNFLGAME','NFL','Sports'],['KXNCAAFGAME','College football','Sports'],['KXMLBGAME','MLB','Sports'],['KXUFCFIGHT','MMA','Sports'],['KXFED','Fed rates','Economics'],['KXCPI','Inflation','Economics'],['KXCPICORE','Core inflation','Economics']].map(([ticker,label,category])=>({ticker,label,category}));
+// Curated series verified against the exchange catalog; this is coverage, not the full venue universe.
+const configs=[["KXNFLGAME", "NFL", "Sports"], ["KXNCAAFGAME", "College football", "Sports"], ["KXMLBGAME", "MLB", "Sports"], ["KXUFCFIGHT", "MMA", "Sports"], ["KXFED", "Fed rates", "Economics"], ["KXCPI", "Inflation", "Economics"], ["KXCPICORE", "Core inflation", "Economics"], ["KXPAYROLLS", "Jobs", "Economics"], ["KXU3", "Unemployment", "Economics"], ["KXGDP", "GDP growth", "Economics"], ["KXSENATE", "Senate control", "Elections"], ["KXHOUSE", "House control", "Elections"], ["KXGOVWINS", "Governorships", "Elections"], ["GOVPARTYMA", "Massachusetts governor", "Elections"], ["GOVPARTYCT", "Connecticut governor", "Elections"], ["SENATEPARTY-PA", "Pennsylvania Senate", "Elections"], ["SENATEPARTY-MI", "Michigan Senate", "Elections"], ["KXHIGHNY", "New York temperature", "Climate"], ["KXHURRICANE", "Hurricanes", "Climate"], ["KXGOLD", "Gold", "Commodities"], ["WTI", "Oil", "Commodities"], ["KXBTC", "Bitcoin", "Crypto"], ["KXETH", "Ethereum", "Crypto"], ["KXINX", "S&P 500", "Financials"], ["KXNASDAQ100", "Nasdaq", "Financials"], ["KXOSCARPIC", "Best Picture", "Culture"], ["KXTOPSONG", "Top songs", "Culture"], ["KXTOPALBUM", "Top albums", "Culture"], ["KXCODINGMODEL", "AI coding models", "Technology"]].map(([ticker,label,category])=>({ticker,label,category}));
 let prior={};try{prior=JSON.parse(fs.readFileSync(OUT,'utf8'));}catch{}
 async function get(url,json=true){
   for(let attempt=0;attempt<3;attempt++){
@@ -35,7 +36,7 @@ const batches=await pool(configs,async cfg=>{
     rows.push(...data.markets);cursor=data.cursor||'';if(!cursor)break;
   }
   if(cursor)throw Error('Market pagination incomplete');
-  return rows.map(r=>M.normalizeMarket(r,cfg,asOf)).filter(m=>m&&Date.parse(m.closesAt)>now&&Date.parse(m.closesAt)-now<=(cfg.category==='Economics'?120:21)*86400000);
+  return rows.map(r=>M.normalizeMarket(r,cfg,asOf)).filter(m=>m&&Date.parse(m.closesAt)>now&&Date.parse(m.closesAt)-now<=M.horizonDays(cfg.category)*86400000);
 });
 let markets=[];
 batches.forEach((r,i)=>{
@@ -57,10 +58,13 @@ const ids=new Map(markets.map(m=>[m.id,m]));markets=[...ids.values()];
 // Exact symbol matching from public Robinhood pages. Page HTML is a best-effort discovery source,
 // not a supported personal-account API. Cached mappings retain their own observation time.
 let rhMap={...(prior.robinhoodLinks||{})},discoveryAt=prior.discoveryAt||null;
-if(!discoveryAt||now-Date.parse(discoveryAt)>6*3600000){
+if(prior.discoveryScope!=='broad-v2'||!discoveryAt||now-Date.parse(discoveryAt)>6*3600000){
   try{
     const html=await get('https://robinhood.com/us/en/prediction-markets/',false);
-    const paths=[...new Set([...html.matchAll(/href="([^\"]*\/prediction-markets\/[^\"]*\/events\/[^\"]+)"/g)].map(m=>m[1]))].filter(p=>/\/(pro-football|college-football|baseball|economics|mma)\//.test(p)).slice(0,18);
+    const allPaths=[...new Set([...html.matchAll(/href="([^\"]*\/prediction-markets\/[^\"]*\/events\/[^\"]+)"/g)].map(m=>m[1]))];
+    // First cover distinct categories, then fill remaining discovery slots.
+    const pathGroups=new Set(),first=allPaths.filter(p=>{const category=p.split('/prediction-markets/')[1]?.split('/')[0];if(!category||pathGroups.has(category))return false;pathGroups.add(category);return true;});
+    const paths=[...new Set([...first,...allPaths])].slice(0,36);
     let success=0;
     await pool(paths,async p=>{
       const url=M.safeUrl(p.startsWith('/')?'https://robinhood.com'+p:p);if(!url)throw Error('Unsupported URL');
@@ -91,7 +95,7 @@ const chartResults=await pool(chartIds,async id=>{
 chartResults.forEach((r,i)=>{if(!r.ok)coverage.push({series:chartIds[i]+' history',status:'unavailable',checkedAt:asOf,reason:r.error});});
 // Carry charts only with their original timestamp. Null prices remain gaps.
 for(const m of markets)if(!m.history){const old=(prior.markets||[]).find(p=>p.id===m.id);if(old?.history){m.history=old.history;m.historyAsOf=old.historyAsOf;}}
-const snapshot={schemaVersion:1,generatedAt:asOf,source:'Kalshi public API',targetRefreshMinutes:15,coverage,discoveryAt,robinhoodLinks:rhMap,
-  markets,featured,ideas,method:{version:'liquidity-v1',description:'Research candidates selected for recent activity, narrow spreads, and upcoming resolution. Not directional forecasts or purchase recommendations. Reference outcomes track one Yes contract at the recorded ask, before fees; fills are hypothetical.'}};
+const snapshot={schemaVersion:1,generatedAt:asOf,source:'Kalshi public API',targetRefreshMinutes:15,coverage,discoveryAt,discoveryScope:discoveryAt===asOf?'broad-v2':prior.discoveryScope||null,robinhoodLinks:rhMap,
+  markets,featured,ideas,method:{version:'liquidity-v1',description:'Research candidates selected for recent activity, narrow spreads, upcoming resolution and category/topic diversity. Coverage is a curated subset of public exchange markets; Robinhood availability requires an exact matched link. Not directional forecasts or purchase recommendations. Reference outcomes track one Yes contract at the recorded ask, before fees; fills are hypothetical.'}};
 fs.mkdirSync(path.dirname(OUT),{recursive:true});fs.writeFileSync(OUT+'.tmp',JSON.stringify(snapshot));fs.renameSync(OUT+'.tmp',OUT);
 console.log(JSON.stringify({at:asOf,markets:markets.length,featured:featured.length,publishedIdeas:ideas.length,settled:ideas.filter(i=>i.settledAt).length,links:Object.keys(rhMap).length,failedSources:coverage.filter(c=>c.status!=='ok').length,output:OUT}));

@@ -11,7 +11,8 @@ test('collector follows pagination, exact RH symbols, historical settlement, and
   const run=mode=>spawnSync(process.execPath,['--import',path.join(root,'tests/predictions-fetch-fixture.mjs'),path.join(root,'producer/predictions-fetch.mjs')],{encoding:'utf8',env:{...process.env,PREDICTIONS_OUTPUT:out,PREDICTION_TEST_MODE:mode},timeout:15000});
   try{
     const first=run('success');assert.equal(first.status,0,first.stderr);let d=JSON.parse(fs.readFileSync(out));
-    assert.equal(d.markets.length,2);assert.equal(d.ideas.length,2);assert.equal(d.markets.find(m=>m.id==='KXNFLGAME-FIXTURE').robinhood.name,'Fixture event');assert.equal(d.robinhoodLinks.WRONG,undefined);assert.equal(d.markets[0].history.at(-1).price,null);
+    assert.equal(d.markets.length,3);assert.equal(d.ideas.length,3);assert.equal(d.markets.find(m=>m.id==='KXNFLGAME-FIXTURE').robinhood.name,'Fixture event');assert.equal(d.robinhoodLinks.WRONG,undefined);assert.equal(d.markets[0].history.at(-1).price,null);
+    assert.equal(d.markets.find(m=>m.id==='KXSENATE-FIXTURE').category,'Elections');
     const original=structuredClone(d.ideas),old='2026-01-01T00:00:00Z';
     d.markets.forEach(m=>{m.historyAsOf=old;});
     d.markets.push({...d.markets[0],id:'KXFED-OLD',eventId:'FED-OLD',series:'KXFED',category:'Economics',asOf:old});
@@ -22,7 +23,7 @@ test('collector follows pagination, exact RH symbols, historical settlement, and
     assert.equal(d.markets.find(m=>m.id==='KXNFLGAME-FIXTURE').historyAsOf,old);
     assert.ok(d.coverage.some(c=>c.series==='KXFED'&&c.status==='unavailable'));
     assert.ok(d.coverage.some(c=>c.series.endsWith(' history')&&c.status==='unavailable'));
-    assert.deepEqual(d.ideas.slice(0,2),original);const settled=d.ideas.find(i=>i.marketId==='ARCHIVED');assert.equal(settled.grossChange,-.1);assert.equal(settled.settlementValue,.5);
+    assert.deepEqual(d.ideas.slice(0,original.length),original);const settled=d.ideas.find(i=>i.marketId==='ARCHIVED');assert.equal(settled.grossChange,-.1);assert.equal(settled.settlementValue,.5);
     const recovered=run('throttle');assert.equal(recovered.status,0,recovered.stderr);
     const retried=JSON.parse(fs.readFileSync(out));assert.equal(retried.coverage.filter(c=>c.status!=='ok').length,0,'transient 429 chart responses recover');
     const before=fs.readFileSync(out,'utf8');assert.notEqual(run('fail').status,0);assert.equal(fs.readFileSync(out,'utf8'),before,'total provider failure cannot overwrite the last snapshot');
