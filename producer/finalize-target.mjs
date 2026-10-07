@@ -15,7 +15,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from '
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { riskAdjustWeights, AG_DEFENSIVE_MIN, isDefensive, isDiversifier,
-  DIVERSIFIER_SYMS, AG_DIVERSIFIER_MIN, volScaledCap, INDEX_SYMS, AG_DIVERSIFIER_MAX, assertTarget } from './riskweights.mjs';
+  DIVERSIFIER_SYMS, AG_DIVERSIFIER_MIN, volScaledCap, INDEX_SYMS, AG_DIVERSIFIER_MAX, AG_INDEX_MAX, assertTarget } from './riskweights.mjs';
 import { etDate } from './market.mjs';
 import { MODEL_VERSION, MANDATE_VERSION, RISK_VERSION, FACTOR_WEIGHTS, stableHash, targetIdentity } from './agentic-model.mjs';
 import { finalTargetExplanation, targetFacts } from './agentic-target-facts.mjs';
@@ -304,7 +304,10 @@ export function finalizeTarget(allocation, meta = {}) {
   // synthesis prompt asks the research for defensive weight; this is the deterministic guarantee, exactly
   // as the cluster/vol caps are. meta.defensiveMin overrides the mandate dial (0 disables it).
   const defensiveMin = meta.defensiveMin != null ? +meta.defensiveMin : AG_DEFENSIVE_MIN;
-  const adj = riskAdjustWeights([...named, ...phaseOuts], { defensiveMin, diversifierMin: divMin });
+  // Use the SAME policy for construction and validation. The previous post-construction-only limit
+  // rejected feasible research after cluster trimming had redirected excess weight into SPY.
+  const indexPolicy = meta.researchVersion === 'evidence-v1' ? { indexMaxPct: AG_INDEX_MAX } : {};
+  const adj = riskAdjustWeights([...named, ...phaseOuts], { defensiveMin, diversifierMin: divMin, ...indexPolicy });
   // ATTRIBUTION (v95): tag each name with the sleeves that actually earned it a slot, derived
   // DETERMINISTICALLY from the workflow's sleeve scores rather than trusted from the model's prose. This
   // is what lets the Rebalance Log eventually answer "is the flow sleeve earning its weight?" — and
@@ -345,7 +348,7 @@ export function finalizeTarget(allocation, meta = {}) {
   });
   const names = withBands.map(({ px, hi, lo, ...rest }) => {
     const d = driversFor(rest.ticker);
-    const cap = INDEX_SYMS.includes(rest.ticker) ? 100 : isDiversifier(rest.ticker) ? AG_DIVERSIFIER_MAX
+    const cap = INDEX_SYMS.includes(rest.ticker) ? (indexPolicy.indexMaxPct ?? 100) : isDiversifier(rest.ticker) ? AG_DIVERSIFIER_MAX
       : volScaledCap({px,hi,lo});
     return { ...rest, singleNameCapPct: cap, ...(d ? {drivers:d} : {}) };
   });
@@ -382,7 +385,7 @@ export function finalizeTarget(allocation, meta = {}) {
   out.factorWeights = { ...FACTOR_WEIGHTS };
   out.universeVersion = stableHash((meta.universe || []).map(u => ({ticker:u.t || u.ticker, sector:u.sec || u.sector})).sort((a,b) => a.ticker.localeCompare(b.ticker)));
   out.research = meta.research || { coverage: null, status: 'not-recorded' };
-  out.riskSettings = { ...(meta.researchVersion === 'evidence-v1' ? {indexMaxPct:10} : {}), singleNameCaps: Object.fromEntries(names.map(n => [n.ticker,n.singleNameCapPct])), lookThroughEnforced: false };
+  out.riskSettings = { ...indexPolicy, singleNameCaps: Object.fromEntries(names.map(n => [n.ticker,n.singleNameCapPct])), lookThroughEnforced: false };
   out.targetId = targetIdentity(out);
   assertTarget(out);
   out.construction = targetFacts(out);

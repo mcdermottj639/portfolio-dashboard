@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 export const MODEL_VERSION = 'mandate-a-ai-evidence-v1';
 export const MANDATE_VERSION = 'A-2026-09-08';
 export const GRADING_VERSION = 2;
-export const RISK_VERSION = 'hard-caps-v2';
+export const RISK_VERSION = 'hard-caps-v3';
 export const FACTOR_WEIGHTS = { momentum: .22, quality: .24, growth: .22, catalyst: .14, valuation: .18, flow: 0 };
 export function stableHash(value) {
   const canonical = (v) => Array.isArray(v) ? v.map(canonical) : v && typeof v === 'object'

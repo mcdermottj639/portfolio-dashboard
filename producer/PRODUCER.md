@@ -618,6 +618,13 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       `phaseOut:true`, not exited), and writes **`producer/agentic-target.json`** (shape per `AGENTIC.md`), then
       `git add producer/agentic-target.json && git commit && git push origin main` (next run's
       `build-data.mjs` embeds it as `data.agentic.target`).
+      **Index-cap consistency (2026-10-07):** evidence-v1 construction and final validation share the
+      **10% combined index limit**. The proposal plus retained holdings is scaled to 100% before caps;
+      cluster trims, remaining-weight allocation and cent rounding all respect the index budget.
+      If the selected names lack enough capacity under the limits, finalization still fails and leaves
+      the prior target intact. Never raise the cap or bypass validation to make a run publish.
+      A failed run may retry its saved full workflow output after loading the updated code only while
+      its evidence remains fresh; otherwise run fresh research. A code fix alone does not update a target.
       **Check `target.dropped` after writing, and expect it to be non-empty whenever a name left the book.**
       Drops are detected by diffing against `prior.names`, and the CLI reads the COMMITTED target as prior —
       so a SECOND finalize run the same day (fixing a band, adding a sleeve) sees a prior that already lacks

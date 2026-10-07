@@ -1,3 +1,20 @@
+## 2026-10-07 — Keep research construction inside the combined index cap
+
+Evidence-v1 finalization now passes the same 10% combined index limit into `riskAdjustWeights`
+that it records for validation. All index vehicles share one budget during cluster trimming,
+redistribution and rounding. The proposal plus retained phase-out holdings is scaled to 100%
+before concentration is measured. Unallocatable weight rejects the candidate instead of being
+parked above the index limit, preserving the last valid target. Legacy callers without an index
+limit retain their policy. New targets use risk version `hard-caps-v3`; existing targets and
+decision history retain their recorded versions. Research dates, schedules and execution rules
+are unchanged. A successful research run is still required to replace the September 24 target.
+
+`agentic-index-cap.test.mjs` covers single/multiple index vehicles, initial excess, fractional
+rounding, a zero limit, infeasible allocations, phase-out retention and the scheduled CLI's
+successful write / failed-retry preservation. Fixtures are synthetic and fixed in the test.
+Validation: all 43 producer suites and the dashboard model tests pass, including all 12 new
+index-cap scenarios. Producer-only change; no app/cache bump or broker action.
+
 # v163 — Broader Predict coverage (2026-10-06)
 
 Expanded public collection from seven to 29 catalog-verified series across nine categories,

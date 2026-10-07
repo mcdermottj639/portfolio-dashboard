@@ -15,8 +15,8 @@
 // synthesis prompt (the sandbox can't import repo modules); THIS file is the canonical, enforced copy.
 
 // Correlation clusters (co-movement, not GICS sector). A name not listed is its own singleton cluster
-// (uncapped beyond the single-name cap). SPY/QQQ index ballast is intentionally UNCAPPED — it's the
-// diversifier, so capping it would be backwards.
+// (uncapped beyond the single-name cap). Index vehicles share the optional indexMaxPct budget;
+// evidence-v1 targets use the mandate's 10% residual limit. Legacy callers can omit that limit.
 //
 // THE SINGLETON LOOPHOLE (v124). A ticker absent from every list below falls through to its own
 // `single:<SYM>` cluster, which has NO correlation cap at all — only the single-name cap applies. That is
@@ -53,6 +53,7 @@ export const CLUSTERS = {
   'low-vol':      ['USMV', 'SPLV', 'SCHD', 'VIG', 'NOBL', 'DVY', 'SPHD'],
 };
 export const INDEX_SYMS = ['SPY', 'QQQ', 'VTI', 'VOO', 'IVV', 'DIA', 'IWM'];
+export const AG_INDEX_MAX = 10; // combined index residual in evidence-v1 targets (Mandate A)
 
 // LOOK-THROUGH COMPOSITION (v121). The cluster caps used to count only DIRECT holdings, so a book could
 // hold 44.8% megacap-tech directly, add 20% SPY + 5% VTI on top, and still report itself inside a "48%"
@@ -282,7 +283,8 @@ export function volScaledCap(name) {
 // `names` = [{ticker, weightPct, sector?, px?, hi?, lo?, vol?, ...}] (extra fields preserved untouched).
 // Returns { names:[…same shape, weightPct adjusted…], notes:[strings], clusters:{cluster:pct} }.
 // Deterministic: iterative water-filling — clamp violators to their cap, redistribute the freed weight to
-// names with headroom (proportionally), repeat until stable. Index ballast absorbs overflow last.
+// names with headroom (proportionally), repeat until stable. opts.indexMaxPct caps ALL index vehicles
+// together, including redistribution and rounding; an infeasible book must fail, never overflow it.
 export function riskAdjustWeights(names, opts = {}) {
   const seen = new Set();
   for (const n of names || []) {
@@ -292,6 +294,12 @@ export function riskAdjustWeights(names, opts = {}) {
     seen.add(t);
   }
   const clusterCaps = { ...CLUSTER_CAPS, ...(opts.clusterCaps || {}) };
+  if (opts.indexMaxPct != null) {
+    if (typeof opts.indexMaxPct !== 'number' || !Number.isFinite(opts.indexMaxPct)
+        || opts.indexMaxPct < 0 || opts.indexMaxPct > 100)
+      throw new Error('INVALID_TARGET: indexMaxPct must be a finite percentage from 0 to 100');
+    clusterCaps.index = Math.min(clusterCaps.index ?? 100, opts.indexMaxPct);
+  }
   const items = (names || []).filter((n) => n && n.ticker && num(n.weightPct) > 0).map((n) => ({
     ...n,
     ticker: String(n.ticker).toUpperCase(),
@@ -299,15 +307,24 @@ export function riskAdjustWeights(names, opts = {}) {
     _cluster: clusterOf(n.ticker),
     _isIndex: INDEX_SYMS.includes(String(n.ticker).toUpperCase()),
     _isDiv: isDiversifier(n.ticker),
-    // Index ballast is uncapped; the gold diversifier gets its OWN band rather than the vol-scaled
+    // Index vehicles also face their shared cluster budget; gold gets its OWN band rather than the vol-scaled
     // equity cap — gold's range/price (~0.47) would cap the hedge hardest exactly when volatility makes
     // it most useful, which is backwards. Bounded above by AG_DIVERSIFIER_MAX so it never becomes the
     // overflow sink for weight freed by cluster trims.
-    _nameCap: INDEX_SYMS.includes(String(n.ticker).toUpperCase()) ? 100
+    _nameCap: INDEX_SYMS.includes(String(n.ticker).toUpperCase()) ? Math.min(100, clusterCaps.index ?? 100)
       : isDiversifier(n.ticker) ? AG_DIVERSIFIER_MAX : volScaledCap(n),
   }));
   if (!items.length) return { names: [], notes: [], clusters: {} };
   const notes = [];
+
+  // Phase-out retention can append prior holdings to an already 100% proposal. Measure every cap
+  // on the resulting 100% book, not on that over-budget intermediate sum. Scaling down preserves
+  // relative conviction and retention flags without treating the appended weights as new capital.
+  const inputTotal = items.reduce((s, it) => s + it.weightPct, 0);
+  if (inputTotal > 100 + 1e-6) {
+    items.forEach(it => { it.weightPct *= 100 / inputTotal; });
+    notes.push(`combined allocation normalized from ${inputTotal.toFixed(2)}% to 100% before risk caps`);
+  }
 
   // 1. Single-name vol-scaled caps (water-filling).
   waterfill(items, (it) => it._nameCap, (it, capped) => {
@@ -436,8 +453,8 @@ export function riskAdjustWeights(names, opts = {}) {
   // A BLANKET re-normalization here silently UNDOES step 2: capping frees weight, the book then sums to
   // less than 100, and scaling every name back up by the same factor re-inflates the very names just
   // trimmed. Observed on a 70%-megacap fixture: JPM was capped to 22% and came out at 24.2%. So the
-  // shortfall is filled through the SAME cap-aware redistribution used above, and only a genuinely
-  // un-placeable remainder is parked — visibly — in the index sleeve.
+  // shortfall is filled through the SAME cap-aware redistribution used above. An un-placeable
+  // remainder rejects the candidate; an index sleeve at its limit is not an overflow escape hatch.
   const totalOf = (list) => list.reduce((a, it) => a + it.weightPct, 0);
   const t0 = totalOf(kept);
   if (t0 > 100 + 1e-6) {
@@ -447,18 +464,13 @@ export function riskAdjustWeights(names, opts = {}) {
     const t1 = totalOf(kept);
     if (t1 < 100 - 1e-6) {
       const rem = 100 - t1;
-      const idx = kept.filter((it) => it._isIndex).sort((a, b) => b.weightPct - a.weightPct)[0];
-      if (idx) {
-        idx.weightPct = +(idx.weightPct + rem).toFixed(4);
-        notes.push(`${rem.toFixed(1)}pp had no cap headroom anywhere — parked in ${idx.ticker} (which raises its look-through contribution)`);
-      } else {
-        throw new Error(`INVALID_TARGET: ${rem.toFixed(2)}pp cannot be allocated within hard caps; retain the last valid target and re-run research with a broader survivor set`);
-      }
+      throw new Error(`INVALID_TARGET: ${rem.toFixed(2)}pp cannot be allocated within hard caps; retain the last valid target and re-run research with a broader survivor set`);
     }
   }
   // Round DOWN then distribute cents only where there is real name + cluster headroom.
   // Rounding into the biggest holding used to undo a binding limit by a few basis points.
   kept.forEach(it => { it.weightPct = Math.floor((it.weightPct + 1e-9) * 100) / 100; });
+  kept = kept.filter(it => it.weightPct > 0); // zero index budgets / sub-cent residuals are not holdings
   for (let cents = Math.round((100 - totalOf(kept)) * 100); cents > 0; cents--) {
     const recipient = kept.slice().sort((a,b) => b.weightPct-a.weightPct).find(it => {
       if (it.weightPct + .01 > it._nameCap + 1e-8) return false;
@@ -541,7 +553,8 @@ function redistribute(items, amount, clusterCaps) {
       // very cap we just enforced — an oscillation that only terminated because the pass loop is bounded.
       // Its room is the tightest of its own look-through headroom across every cluster it feeds.
       const lt = LOOKTHROUGH[it.ticker];
-      clRoom = Infinity;
+      const ownCap = clusterCaps.index;
+      clRoom = ownCap == null ? Infinity : ownCap - (exp.index?.direct || 0);
       if (LOOKTHROUGH_ENFORCE && lt) for (const [cl, frac] of Object.entries(lt)) {
         const cap = clusterCaps[cl];
         if (cap == null || !(frac > 0)) continue;
