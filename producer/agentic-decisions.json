@@ -1174,6 +1174,170 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "e6d36f0f1e335c1094d6",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "8b9596cf04553997db2f",
+      "evidenceCoverage": 0.7213114754098361,
+      "id": "2026-10-07-rebalance",
+      "date": "2026-10-07",
+      "kind": "rebalance",
+      "targetAsOf": "2026-10-07",
+      "book": 7358.35,
+      "equityAtDecision": 7358.35,
+      "spyAt": 774.6466,
+      "rationale": "EXEC_AUTO ticket 2026-10-07-hb4843: exited MA (-$10.69, not in current target) and UNP (-$20.93, not in current target); trimmed over-target JNJ (-$33.36) and GOOGL (-$4.12). Proceeds + cash (50% deposit tranche, rest over next 3d) funded underweight NVDA/MSFT/META/AAPL/LLY/NEM/XOM/SPY toward target. BKNG deferred (wash-sale, to 2026-10-14, $410.22 held). AVGO exit blocked by 14d min-hold (unlocks 2026-10-08). Drawdown ok (-3.1pp relative to SPY), regime calm (VIX 15.75). Turnover $6,260.07.",
+      "trades": [
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 737.2,
+          "shares": 3.095529,
+          "priceAt": 238.1499,
+          "weightBefore": 0,
+          "weightAfter": 12.35,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 589.16,
+          "shares": 1.117972,
+          "priceAt": 526.9899,
+          "weightBefore": 0,
+          "weightAfter": 9.87,
+          "drivers": [
+            "momentum",
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "META",
+          "side": "BUY",
+          "dollars": 444.11,
+          "shares": 0.613318,
+          "priceAt": 724.1099,
+          "weightBefore": 0,
+          "weightAfter": 7.44,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 86.2,
+          "shares": 0.256891,
+          "priceAt": 335.5499,
+          "weightBefore": 3.57,
+          "weightAfter": 5.01,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "LLY",
+          "side": "BUY",
+          "dollars": 590.96,
+          "shares": 0.498284,
+          "priceAt": 1185.99,
+          "weightBefore": 0,
+          "weightAfter": 9.9,
+          "drivers": [
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "NEM",
+          "side": "BUY",
+          "dollars": 466.2,
+          "shares": 4.111042,
+          "priceAt": 113.4019,
+          "weightBefore": 0,
+          "weightAfter": 7.81,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "XOM",
+          "side": "BUY",
+          "dollars": 367.11,
+          "shares": 2.232179,
+          "priceAt": 164.4626,
+          "weightBefore": 0,
+          "weightAfter": 6.15,
+          "drivers": [
+            "quality"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 224.95,
+          "shares": 0.29039,
+          "priceAt": 774.6466,
+          "weightBefore": 4.4,
+          "weightAfter": 8.17
+        },
+        {
+          "sym": "JNJ",
+          "side": "TRIM",
+          "dollars": 553.76,
+          "shares": 2.13247,
+          "priceAt": 259.55,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "UNP",
+          "side": "TRIM",
+          "dollars": 692.25,
+          "shares": 2.501057,
+          "priceAt": 276.5901,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "MA",
+          "side": "TRIM",
+          "dollars": 968,
+          "shares": 1.697212,
+          "priceAt": 570.9101,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "GOOGL",
+          "side": "TRIM",
+          "dollars": 540.17,
+          "shares": 1.56912,
+          "priceAt": 344.2353,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }
