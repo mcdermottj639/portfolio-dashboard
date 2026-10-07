@@ -7,7 +7,7 @@ before concentration is measured. Unallocatable weight rejects the candidate ins
 parked above the index limit, preserving the last valid target. Legacy callers without an index
 limit retain their policy. New targets use risk version `hard-caps-v3`; existing targets and
 decision history retain their recorded versions. Research dates, schedules and execution rules
-are unchanged. A successful research run is still required to replace the September 24 target.
+are unchanged. The 2026-10-07 research refresh (`2edb506`, 13 names) already replaced the September 24 target and carries `hard-caps-v3`; the next fortnightly research is due the Sunday 2026-10-25 fire.
 
 `agentic-index-cap.test.mjs` covers single/multiple index vehicles, initial excess, fractional
 rounding, a zero limit, infeasible allocations, phase-out retention and the scheduled CLI's
