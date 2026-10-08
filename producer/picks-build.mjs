@@ -87,6 +87,7 @@ try {
 const cooldownList = Object.keys(cooldown);
 
 const picks = buildPicks(finalists, fundBySym, ovBySym, socialMap, cooldown);
+if (scanRaw.screen) picks.screen = scanRaw.screen;
 writeFileSync(join(RAW, 'picks.json'), JSON.stringify(picks, null, 2));
 
 // Sidecar for the Robinhood watchlist sync (FETCH_ALL only — this file's mere presence is the

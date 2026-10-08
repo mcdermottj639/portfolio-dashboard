@@ -1,3 +1,39 @@
+> **2026-10-08 refresh recovery — overrides older full-order-only instructions.**
+> Preflight requests one full recovery on first use of this schema, plus at most one retry
+> per day for incomplete picks/holdings research. This prevents indefinite full-fetch loops.
+> EVERY-RUN: run `node producer/main-order-plan.mjs` and fetch filled equity orders using
+> its `createdAtGte`. Save `raw/main-orders-incremental.json` as
+> `{ "mode":"incremental", "createdAtGte":"<actual requested date>", "payload": <entire response> }`.
+> This new input explicitly disables sweeping: existing older history is retained. Do NOT
+> write a short result to legacy `main-orders.json` or the full-window page files.
+> Default is a 14-day overlap, expanded after a known refresh outage. This refreshes recent
+> orders; it does not claim to backfill/reconcile all 120 historical days. Older GTC fills or
+> corrections that cannot be reconciled safely preserve that day's existing record and warn.
+> If even the planned recent request spills, report the blocker; do not access protected files.
+> A full-window fetch remains an optional reconciliation path when supported.
+>
+> FETCH_ALL: if the saved scanner spills, use `node producer/picks-local.mjs --plan`.
+> Execute its missing-input batches through the normal broker tools (fundamentals/quotes ≤10
+> symbols, daily history 1 symbol over the last 3 months), preserving each full response at the
+> printed filename prefixes. Repeat the planner until all inputs are present, then run
+> `node producer/picks-local.mjs` (without --plan). It writes `scan.json` and `picks-fund.json`
+> for the existing scoring pipeline. It uses 68 explicitly named large-cap candidates rather
+> than the market-wide saved scanner; provenance is saved with Picks. It reuses fresh merged
+> historicals and refuses to build from missing/stale inputs. No-match is a valid empty screen.
+> Run `picks-build.mjs` BEFORE `options-plan.mjs`, so option ideas use the refreshed candidates.
+>
+> After quotes, `node producer/refresh-check.mjs --full` prints the exact top-14 holdings
+> fundamentals batches. Save each whole response to `holdings-fund-1.json`, `-2.json`, etc.;
+> the builder now merges them. Complete all batches, not just the first ten holdings.
+> Live single-leg idea quotes are required attempts EVERY-RUN. Resolve each planned contract
+> and quote it. If unavailable, name the symbol/reason and retain the explicit estimate label.
+> Do not skip quotes merely to save effort. Defined-risk multi-leg ideas remain estimates.
+> Before publishing, rerun `refresh-check.mjs --full` (omit --full on FETCH_LIGHT) and complete
+> fixable missing inputs. Real provider failures may still publish fresh core data as partial.
+> The builder stores `refreshInputs` and emits REFRESH_PARTIAL for missing research inputs.
+> Report publication and input completeness separately. JSON parsing alone is not completeness.
+> Save broker results verbatim; deterministic in-repo code owns any normalization.
+
 # Producer runbook (scheduled agent)
 
 > **v149 follow-up:** Account estimates now consume existing recorded equity history automatically
@@ -163,7 +199,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` — if `next_cursor` is non-empty, fetch the next page(s) and merge every page's `trades` into this ONE file | `producer/raw/main-trades.json` | EVERY-RUN (also the option-expiry evidence, step 3c) |
-   | `Robinhood · get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<120 days ago, YYYY-MM-DD>" }` | `producer/raw/main-orders.json` | EVERY-RUN |
+   | `Robinhood · get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<main-order-plan.mjs date>" }` | `producer/raw/main-orders-incremental.json` (request wrapper above) | EVERY-RUN |
    | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
    | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
    | `Robinhood · get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
@@ -211,7 +247,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > can fall mid-day, leaving that day's legs incomplete) in favour of what an earlier complete fetch
    > already recorded. Widen `created_at_gte` freely; the code no longer depends on it being exact.
    >
-   > **NEVER NARROW IT, THOUGH — the "if the result is too large, fetch a smaller batch" rule in the
+   > **LEGACY INPUT ONLY: NEVER NARROW IT, THOUGH — the "if the result is too large, fetch a smaller batch" rule in the
    > ⚠️ CRITICAL callout below does NOT apply to this row.** The sweep is safe only because a full
    > 120-day fetch comes back TRUNCATED (200 orders + a `next` cursor), which makes `deriveLog` discard
    > the oldest day and sweep from the day after it. A *narrower* window returns few enough orders to
@@ -466,8 +502,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
       from the quote's `mark_price / bid_price / ask_price / break_even_price / implied_volatility /
       delta / theta / vega / gamma / open_interest / volume / chance_of_profit_long` — and set
       **`optionId` to the instrument UUID you just resolved** (the same id passed to
-      `get_option_quotes`); it's the contract the options-watchlist sync (step 6) adds. (Skip if you
-      want estimates instead.) Only the single-leg ideas are priced live — the defined-risk
+      `get_option_quotes`); it's the contract the options-watchlist sync (step 6) adds. (Attempt every planned single-leg quote; explicitly report unavailable contracts.) Only the single-leg ideas are priced live — the defined-risk
       structures (call debit spread, collar) are estimate-only and need nothing here.
    4. `node producer/options-build.mjs` → writes `producer/raw/options.json`
       Open positions use fresh broker quantities and exact-contract metadata from both the current

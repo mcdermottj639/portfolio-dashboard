@@ -527,6 +527,18 @@ try {
   const protectedLog = JSON.parse(readFileSync(DATA, 'utf8'));
   eq('invalid page chain preserves the actual prior ledger', history(protectedLog.main.decisions.decisions), history(paged.main.decisions.decisions));
   eq('invalid page chain is explicitly carried forward', protectedLog.main.orderHistoryRefresh.status, 'carried-forward');
+  const incFile=join(RAW,'main-orders-incremental.json');
+  fixturePaths.push(incFile);
+  writeFileSync(incFile, JSON.stringify({mode:'incremental',createdAtGte:recentDay,
+    payload:{data:{orders:[{...pageOrder,created_at:recentDay+'T16:00:00Z',cumulative_quantity:'3'}]}}}));
+  execFileSync(process.execPath,[join(__dirname,'build-data.mjs'),'incremental regression'],
+    {env:{...process.env,PF_PASSPHRASE:''},cwd:ROOT,encoding:'utf8',stderr:'pipe'});
+  const inc=JSON.parse(readFileSync(DATA,'utf8'));
+  eq('incremental updates current shares',inc.main.decisions.decisions.find(d=>d.date===recentDay).trades.find(t=>t.sym==='AAA').shares,3);
+  eq('incremental retains every older day',history(inc.main.decisions.decisions.filter(d=>d.date!==recentDay)),history(protectedLog.main.decisions.decisions.filter(d=>d.date!==recentDay)));
+  eq('incremental status never claims full history',inc.main.orderHistoryRefresh.historicalCoverage,'retained-not-reconciled');
+  eq('missing research inputs recorded in snapshot',inc.refreshInputs.status,'partial');
+
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);

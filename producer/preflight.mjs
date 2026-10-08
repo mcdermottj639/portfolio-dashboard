@@ -13,6 +13,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { needsResearchRefresh } from './refresh-check.mjs';
 import { decryptEnvelope } from './emit.mjs';
 import { isMarketOpen, isWeekday, isHoliday, closeMinutes, etDate, etMinutes } from './market.mjs';
 
@@ -42,6 +43,9 @@ const priorET = etDate(new Date(prior.generatedAt));
 
 // First run of a new trading day → fetch the heavy data once.
 if (priorET !== todayET) decide('FETCH_ALL', 0, `first run of ${todayET} (prior snapshot ${priorET}) — full fetch incl. history.`);
+
+// New fetch schema gets one full repair run; incomplete research gets at most one retry/day.
+if (needsResearchRefresh(prior, now)) decide('FETCH_ALL', 0, 'refresh recovery: initial migration or incomplete research retry (bounded).');
 
 // Prior snapshot is from today already, so history/AV/picks can carry forward.
 if (isMarketOpen(now)) decide('FETCH_LIGHT', 11, 'intraday, market open — light fetch; history/AV/picks carry forward.');

@@ -24,6 +24,8 @@ import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { computeAlerts } from './alerts.mjs';
 import { computeAgenticTriggers } from './agentic-triggers.mjs';
 import { gradeDecisions, applyMarks } from './agentic-ledger.mjs';
+import { checkRaw, needsResearchRefresh } from './refresh-check.mjs';
+import { deriveIncrementalOrders } from './order-incremental.mjs';
 import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint, derivativesRealized, brokerageEquity } from './equityseries.mjs';
@@ -110,6 +112,9 @@ async function loadPrior() {
   } catch { return null; }
 }
 const prior = await loadPrior();
+const refreshInputStatus = await checkRaw(RAWDIR, prior, needsResearchRefresh(prior));
+refreshInputStatus.fullAttempts = (prior?.generatedAt && etDate(new Date(prior.generatedAt)) === etDate(new Date()) ? prior?.refreshInputs?.fullAttempts || 0 : 0) + (refreshInputStatus.full ? 1 : 0);
+for (const issue of refreshInputStatus.missing) console.warn('REFRESH_PARTIAL: ' + issue);
 
 // --- portfolio + positions ---
 const pRaw = unwrap(readJSON(filesMatching(/^portfolio\.json$/)[0]));
@@ -248,8 +253,7 @@ if (extCount || extFilled) console.log(`fundamentals: ext providers added ${extC
 // where AV didn't already supply one (AV adds revenue growth / forward P/E that RH lacks).
 // Save get_equity_fundamentals for the covered holdings to producer/raw/holdings-fund.json.
 let rhOvCount = 0;
-const hfFile = filesMatching(/^holdings-fund\.json$/)[0];
-if (hfFile) {
+for (const hfFile of filesMatching(/^(?:holdings-fund|picks-screen-fund)(?:-\d+)?\.json$/).sort()) {
   const FREQ = { Quarterly: 4, Monthly: 12, 'Semi-Annual': 2, 'Semi-Annually': 2, Annual: 1, Annually: 1, Weekly: 52 };
   const hf = unwrap(readJSON(hfFile));
   for (const r of (hf.data?.results ?? hf.results ?? [])) {
@@ -323,6 +327,7 @@ if (prior && prior.recorded) {
 }
 
 const data = {
+  refreshInputs: { ...refreshInputStatus, checkedAt: new Date().toISOString() },
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
   generatedAtLabel: label,
@@ -733,9 +738,15 @@ const data = {
       ? prior.main.decisions.decisions : [];
     const ordersFile = filesMatching(/^main-orders\.json$/)[0];
     const orderPages = filesMatching(/^main-orders-page-\d+\.json$/).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+    const incrementalFile = filesMatching(/^main-orders-incremental\.json$/)[0];
+    let incremental = null;
     let ordersPayload = null;
     try {
-      if (orderPages.length) ordersPayload = mergeOrderPages(orderPages.map(readJSON), shiftDay(asOfDay, -FETCH_DAYS));
+      if (incrementalFile) {
+        incremental = deriveIncrementalOrders(readJSON(incrementalFile), { prior: priorLog,
+          spyCloses: spyClosesFrom((hist.day && hist.day.SPY) || []), asOfDay });
+        ordersPayload = {};
+      } else if (orderPages.length) ordersPayload = mergeOrderPages(orderPages.map(readJSON), shiftDay(asOfDay, -FETCH_DAYS));
       else if (ordersFile) ordersPayload = readJSON(ordersFile);
     } catch (error) {
       console.warn(`self-directed decisions: invalid order pages; preserving prior history. ${error.message}`);
@@ -753,13 +764,16 @@ const data = {
       // `prior` arms deriveLog's short-payload guard: an untruncated page cannot prove it reached
       // back to sinceDay, so the prior log is what reveals a narrowed fetch (by the history the
       // sweep would orphan) before it is deleted rather than after.
-      const r = deriveLog(ordersPayload, { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS), prior: priorLog });
+      const r = incremental || deriveLog(ordersPayload, { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS), prior: priorLog });
       if (r.warning) console.warn(`⚠️  self-directed decisions: ${r.warning}`);
-      const orderStatus = r.warning || r.truncated || !r.coveredFrom ? 'partial' : 'fetched';
+      const orderStatus = incremental ? r.status : (r.warning || r.truncated || !r.coveredFrom ? 'partial' : 'fetched');
       if (orderStatus === 'partial') console.warn('REFRESH_PARTIAL: order-history coverage is incomplete; prior uncovered history is preserved.');
       data.main.orderHistoryRefresh = { status: orderStatus,
         attemptedAt: data.generatedAt, pages: orderPages.length || 1, orders: r.orders,
-        coveredFrom: r.coveredFrom, warning: r.warning || null };
+        coveredFrom: r.coveredFrom, warning: r.warning || null,
+        requestedFrom: r.requestedFrom || shiftDay(asOfDay, -FETCH_DAYS),
+        historicalCoverage: incremental ? 'retained-not-reconciled' : orderStatus,
+        lastIncrementalAt: orderStatus === 'incremental' ? data.generatedAt : prior?.main?.orderHistoryRefresh?.lastIncrementalAt || null };
       ledger = mergeDecisions(r.decisions, priorLog, { windowFrom: r.windowFrom, committed: owned, asOf: asOfDay });
       const noSpy = ledger.filter((d) => d.spyAt == null).length;
       console.log(`self-directed decisions: ${r.decisions.length} trading day(s) derived from ${r.orders} filled order(s)${r.truncated ? ` · page truncated, sweeping only from ${r.windowFrom}` : ''} · ${ledger.length} in the log${noSpy ? ` · ${noSpy} without a SPY close (graded on absolute return)` : ''}`);

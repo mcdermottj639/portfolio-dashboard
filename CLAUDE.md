@@ -1,3 +1,24 @@
+## 2026-10-08 — Small refresh inputs without erasing history
+
+The refresh now has an explicit `main-orders-incremental.json` request envelope and
+`main-order-plan.mjs` (14-day overlap, expands after a recorded outage). This path NEVER
+sweeps older days; guards existing-day share aggregates against omitted old GTC fills.
+Full-history input and cursor-page safeguards remain unchanged. Incremental success means
+recent input ingested, not full historical reconciliation. Ambiguous corrections stay partial.
+
+Oversized saved scan results can use `picks-local.mjs`: small broker batches and local Wilder
+RSI on a disclosed 68-name universe, complete/fresh inputs required. Existing ranking weights
+are unchanged; this fallback has narrower coverage than the saved market-wide scanner.
+`holdings-fund-N.json` files now merge so the second top-14 batch is not dropped.
+`refresh-check.mjs` names missing research inputs; the builder saves encrypted refreshInputs.
+Live single-leg premium fetches are required attempts rather than an optional shortcut.
+Broker outputs remain verbatim, protected spill-file access remains forbidden.
+
+No brokerage orders, account mandates, schedules, encryption settings or host permissions
+changed. Local regression coverage includes real builder ingestion, old-day preservation,
+partial same-day protection, duplicate orders, empty responses and fallback screen readiness.
+Live Claude connector execution must still be verified by the scheduled host.
+
 ## 2026-10-07 — Refresh publication and paginated order safety
 
 `run.mjs` now gates publication on validation, a required encryption key, and authenticated
