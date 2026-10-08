@@ -1,9 +1,13 @@
 {
   "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 32.19,
-  "forNames": [],
-  "since": "2026-08-26",
+  "dollars": 388.78,
+  "forNames": [
+    "LLY",
+    "NEM",
+    "BKNG"
+  ],
+  "since": "2026-10-08",
   "history": [
     {
       "date": "2026-08-12",
@@ -50,6 +54,17 @@
         "V"
       ],
       "note": "MA and V funded from the waiting ground; released 1.209649 VTI @ 377.035 = $456.05 (-$1.00 ST). Waiting ground now $32.19 with no names pending. NOTE: both filled outside their entry bands on an advisory (9d-stale) target — see the decision record."
+    },
+    {
+      "date": "2026-10-08",
+      "action": "park",
+      "dollars": 356.59,
+      "forNames": [
+        "LLY",
+        "NEM",
+        "BKNG"
+      ],
+      "note": "LLY and NEM wash-blocked to 2026-11-06 (margin-book losses booked 2026-10-07, -$26.40/-$84.64); BKNG wash-blocked to 2026-10-14 (existing). Deferred weight parked in VTI at 380.3699/sh (0.937482 sh), ticket 2026-10-08-gflogj. Pool now $388.78 ($32.19 previously unattached + $356.59 new)."
     }
   ]
 }

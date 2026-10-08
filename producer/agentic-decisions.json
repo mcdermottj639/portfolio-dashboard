@@ -1338,6 +1338,101 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "e6d36f0f1e335c1094d6",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "8b9596cf04553997db2f",
+      "evidenceCoverage": 0.7213114754098361,
+      "id": "2026-10-08-rebalance",
+      "date": "2026-10-08",
+      "kind": "rebalance",
+      "targetAsOf": "2026-10-07",
+      "book": 7364.08,
+      "equityAtDecision": 7364.08,
+      "spyAt": 776.0999,
+      "rationale": "EXEC_AUTO ticket 2026-10-08-gflogj: AVGO exit (14d min-hold cleared today) funded underweight NVDA/MSFT/META/SPY toward target plus the VTI waiting ground. AAPL and XOM deferred above-entry; LLY and NEM deferred to the wash-sale clear date 2026-11-06 (margin-book losses booked 2026-10-07, -$26.40 and -$84.64); BKNG deferred to its existing 2026-10-14 wash-sale clear. Deferred weight ($356.59, LLY/NEM/BKNG) parked in VTI rather than left in cash. Live pre-checks clean: book $7,359.06 vs $7,364.08 plan basis (-0.07%); no ••3900 orders earlier today (PDT untouched); none of the four real buy names (NVDA, MSFT, META, SPY) reports earnings within 7 days; margin-book realized losses in the last 30 days are AMZN (-$58.11), NEM (-$84.64) and LLY (-$26.40) — NEM and LLY already deferred above, AMZN is not a target name so no cross-account wash block on any buy; margin-book realized gains on NVDA (+$136.45, +$20.78) and MSFT (+$67.30, +$17.22) carry no wash exposure. Est. short-term tax: +$25.52 gain (AVGO) = net +$25.52. Turnover $1,283.56, inside the $10,000 auto tier. Drawdown ok (-2.3% from 08-10 peak vs SPY +0.8%, i.e. -3.1pp relative); regime calm (VIX 15.37).",
+      "trades": [
+        {
+          "sym": "NVDA",
+          "side": "BUY",
+          "dollars": 183.69,
+          "shares": 0.7835,
+          "priceAt": 234.46,
+          "weightBefore": 9.86,
+          "weightAfter": 12.35,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 130.88,
+          "shares": 0.2455,
+          "priceAt": 533.07,
+          "weightBefore": 8.09,
+          "weightAfter": 9.87,
+          "drivers": [
+            "momentum",
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "META",
+          "side": "BUY",
+          "dollars": 105.17,
+          "shares": 0.1457,
+          "priceAt": 721.835,
+          "weightBefore": 6.01,
+          "weightAfter": 7.44,
+          "drivers": [
+            "quality",
+            "growth",
+            "momentum"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 53.41,
+          "shares": 0.0689,
+          "priceAt": 774.66,
+          "weightBefore": 7.44,
+          "weightAfter": 8.17
+        },
+        {
+          "sym": "VTI",
+          "side": "BUY",
+          "dollars": 356.59,
+          "shares": 0.9389,
+          "priceAt": 379.78,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "AVGO",
+          "side": "TRIM",
+          "dollars": 453.82,
+          "shares": 1.230323,
+          "priceAt": 368.8601,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }

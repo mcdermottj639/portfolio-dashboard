@@ -1,6 +1,6 @@
 {
-  "id": "2026-10-07-hb4843",
-  "created": "2026-10-07",
+  "id": "2026-10-08-gflogj",
+  "created": "2026-10-08",
   "targetId": "e6d36f0f1e335c1094d6",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,184 +16,135 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 6260.07,
-  "book": 7351.57,
-  "planHash": "s[GOOGL:540,JNJ:554,MA:968,UNP:692]b[AAPL:86,LLY:591,META:444,MSFT:589,NEM:466,NVDA:737,SPY:225,XOM:367]t[]",
+  "turnover": 1283.56,
+  "book": 7364.08,
+  "planHash": "s[AVGO:454]b[META:105,MSFT:131,NVDA:184,SPY:53,VTI:357]t[]",
   "legs": {
     "sells": [
       {
-        "sym": "JNJ",
-        "kind": "trim",
-        "dollars": 553.76,
-        "shares": 2.1594,
-        "price": 256.44,
-        "pl": -33.36,
-        "note": "over target by 7.5pp — taxable trim, sequenced before the buys it funds"
-      },
-      {
-        "sym": "UNP",
+        "sym": "AVGO",
         "kind": "exit",
-        "dollars": 692.25,
-        "shares": 2.501057,
-        "price": 276.7825,
-        "pl": -20.93,
+        "dollars": 453.82,
+        "shares": 1.230323,
+        "price": 368.8601,
+        "pl": 25.52,
         "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "MA",
-        "kind": "exit",
-        "dollars": 968,
-        "shares": 1.697212,
-        "price": 570.35,
-        "pl": -10.69,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "GOOGL",
-        "kind": "trim",
-        "dollars": 540.17,
-        "shares": 1.5655,
-        "price": 345.05,
-        "pl": -4.12,
-        "note": "over target by 7.3pp — taxable trim, sequenced before the buys it funds"
       }
     ],
     "buysNow": [
       {
         "sym": "NVDA",
         "kind": "buy",
-        "dollars": 737.2,
-        "shares": 3.0915,
-        "price": 238.4573,
+        "dollars": 183.69,
+        "shares": 0.7835,
+        "price": 234.46,
         "pl": null,
-        "note": "0.0% → 12.35% target"
+        "note": "9.9% → 12.35% target"
       },
       {
         "sym": "MSFT",
         "kind": "buy",
-        "dollars": 589.16,
-        "shares": 1.1145,
-        "price": 528.65,
+        "dollars": 130.88,
+        "shares": 0.2455,
+        "price": 533.07,
         "pl": null,
-        "note": "0.0% → 9.87% target"
+        "note": "8.1% → 9.87% target"
       },
       {
         "sym": "META",
         "kind": "buy",
-        "dollars": 444.11,
-        "shares": 0.6107,
-        "price": 727.235,
+        "dollars": 105.17,
+        "shares": 0.1457,
+        "price": 721.835,
         "pl": null,
-        "note": "0.0% → 7.44% target"
-      },
-      {
-        "sym": "AAPL",
-        "kind": "buy",
-        "dollars": 86.2,
-        "shares": 0.2582,
-        "price": 333.86,
-        "pl": null,
-        "note": "3.6% → 5.01% target"
-      },
-      {
-        "sym": "LLY",
-        "kind": "buy",
-        "dollars": 590.96,
-        "shares": 0.5031,
-        "price": 1174.625,
-        "pl": null,
-        "note": "0.0% → 9.9% target"
-      },
-      {
-        "sym": "NEM",
-        "kind": "buy",
-        "dollars": 466.2,
-        "shares": 4.0048,
-        "price": 116.41,
-        "pl": null,
-        "note": "0.0% → 7.81% target"
-      },
-      {
-        "sym": "XOM",
-        "kind": "buy",
-        "dollars": 367.11,
-        "shares": 2.2079,
-        "price": 166.27,
-        "pl": null,
-        "note": "0.0% → 6.15% target"
+        "note": "6.0% → 7.44% target"
       },
       {
         "sym": "SPY",
         "kind": "buy",
-        "dollars": 224.95,
-        "shares": 0.2901,
-        "price": 775.345,
+        "dollars": 53.41,
+        "shares": 0.0689,
+        "price": 774.66,
         "pl": null,
-        "note": "4.4% → 8.17% target"
+        "note": "7.4% → 8.17% target"
+      },
+      {
+        "sym": "VTI",
+        "kind": "park",
+        "dollars": 356.59,
+        "shares": 0.9389,
+        "price": 379.78,
+        "pl": null,
+        "note": "waiting ground — holds $356.59 of deferred weight (LLY, NEM, BKNG) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0,
-    "realizedLoss": -69.1,
-    "net": -69.1,
+    "realizedGain": 25.52,
+    "realizedLoss": 0,
+    "net": 25.52,
     "term": "short",
     "note": null
   },
   "deferred": [
+    {
+      "sym": "AAPL",
+      "reason": "above-entry",
+      "until": null
+    },
+    {
+      "sym": "LLY",
+      "reason": "wash-sale",
+      "until": "2026-11-06"
+    },
+    {
+      "sym": "NEM",
+      "reason": "wash-sale",
+      "until": "2026-11-06"
+    },
+    {
+      "sym": "XOM",
+      "reason": "above-entry",
+      "until": null
+    },
     {
       "sym": "BKNG",
       "reason": "wash-sale",
       "until": "2026-10-14"
     }
   ],
-  "blockedSells": [
-    {
-      "sym": "AVGO",
-      "kind": "exit",
-      "blocked": "min-hold",
-      "dollars": 459.35,
-      "shares": 1.230323,
-      "partial": false,
-      "pl": 31.05,
-      "plPct": 7.25,
-      "until": "2026-10-08",
-      "heldDays": 13,
-      "note": "all 1.2303 sh held were bought inside the 14d min-hold (1.2303 sh, latest 2026-09-24) — no older lot is free to sell yet; unlocks 2026-10-08"
-    }
-  ],
+  "blockedSells": [],
   "warnings": [
-    "buys re-sized $3,538.08 → $3,505.89: the $32.19 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
-    "1 name(s) deferred (BKNG) — ~$410.22 of intended weight held pending earnings/re-verify/wash-sale",
-    "1 sell(s) held by the 14d min-hold (AVGO) — churn guard: only the SHARES bought inside the window are held; older lots trim/exit normally (“part” = the rest of that name already sold this ticket)",
-    "fresh cash $1,503.42 arrived 0d ago — deploying a 50% tranche ($751.71) today and the rest one tranche per day over the next 3d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in"
+    "5 name(s) deferred (AAPL, LLY, NEM, XOM, BKNG) — ~$760.54 of intended weight held pending earnings/re-verify/wash-sale",
+    "fresh cash $751.83 arrived 1d ago — deploying a 50% tranche ($375.92) today and the rest one tranche per day over the next 2d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in",
+    "$356.59 of deferred weight parked in VTI rather than left in cash (LLY, NEM, BKNG) — released when those names clear; unparking is a taxable ST sale"
   ],
   "history": [
     {
-      "at": "2026-10-07",
+      "at": "2026-10-08",
       "to": "proposed"
     },
     {
-      "at": "2026-10-07",
+      "at": "2026-10-08",
       "to": "confirmed"
     },
     {
-      "at": "2026-10-07",
+      "at": "2026-10-08",
       "to": "sells-placed"
     },
     {
-      "at": "2026-10-07",
+      "at": "2026-10-08",
       "to": "buys-placed"
     },
     {
-      "at": "2026-10-07",
+      "at": "2026-10-08",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-10-07",
-  "sells-placedAt": "2026-10-07",
-  "buys-placedAt": "2026-10-07",
-  "doneAt": "2026-10-07",
-  "completedAt": "2026-10-07T14:27:02.683Z"
+  "confirmedAt": "2026-10-08",
+  "sells-placedAt": "2026-10-08",
+  "buys-placedAt": "2026-10-08",
+  "doneAt": "2026-10-08",
+  "completedAt": "2026-10-08T14:27:48.057Z"
 }
