@@ -1,3 +1,20 @@
+## 2026-10-07 — Refresh publication and paginated order safety
+
+`run.mjs` now gates publication on validation, a required encryption key, and authenticated
+prior/output envelopes. `snapshot-publish.mjs` builds a data-only commit with a detached Git
+worktree: no force checkout/reset, no staging unrelated files, no blind retry after rejection.
+It preserves concurrent code changes and rejects builds whose source snapshot was superseded.
+The publisher verifies the resulting remote commit. Permission denials remain terminal.
+
+`order-pages.mjs` accepts cursor-linked `main-orders-page-NNN.json` files retaining the full
+120-day request. It rejects gaps, shortened windows and conflicting broker IDs, and preserves
+an unfinished cursor so older history survives. Missing/invalid inputs carry the log forward,
+emit REFRESH_PARTIAL, and record encrypted `main.orderHistoryRefresh` metadata. That metadata
+is logged now; no new consumer UI is claimed. Live connector page-size/cursor availability and
+Claude host approvals cannot be tested in this environment. No host permissions were changed.
+Old statements below that Node wrappers guarantee prompt-free operation are superseded.
+Fable is unavailable; this repair is self-audited with synthetic local Git remotes and fixtures.
+
 ## 2026-10-07 — Keep research construction inside the combined index cap
 
 Evidence-v1 finalization now passes the same 10% combined index limit into `riskAdjustWeights`

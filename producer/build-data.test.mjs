@@ -507,6 +507,26 @@ try {
   const history = (rows) => rows.map(({ id, date, trades, source }) => ({ id, date, trades, source }));
   eq('empty orders refresh preserves saved decision IDs, dates, sources and trades',
     history(refreshed.main.decisions.decisions), history(savedDecisions));
+  // Cursor-linked pages reach the real builder and ledger, not just the pure merger.
+  const pageFile = join(RAW, 'main-orders-page-001.json');
+  fixturePaths.push(pageFile);
+  const recentDay = new Date().toISOString().slice(0, 10);
+  const pageOrder = { id: 'synthetic-page-order', symbol: 'AAA', side: 'buy', state: 'filled',
+    cumulative_quantity: '2', average_price: '101', last_transaction_at: recentDay + 'T16:00:00Z' };
+  const page = { requestCursor: null, createdAtGte: '2020-01-01', payload: { data: { orders: [pageOrder], next: null } } };
+  writeFileSync(pageFile, JSON.stringify(page));
+  execFileSync(process.execPath, [join(__dirname, 'build-data.mjs'), 'paged orders regression'],
+    { env: { ...process.env, PF_PASSPHRASE: '' }, cwd: ROOT, encoding: 'utf8', stderr: 'pipe' });
+  const paged = JSON.parse(readFileSync(DATA, 'utf8'));
+  eq('paged broker order reaches the ledger', paged.main.decisions.decisions.some(d => d.date === recentDay && d.trades.some(t => t.sym === 'AAA' && t.shares === 2)), true);
+  eq('page count reaches encrypted-snapshot metadata', paged.main.orderHistoryRefresh.pages, 1);
+  page.requestCursor = 'missing-first-page';
+  writeFileSync(pageFile, JSON.stringify(page));
+  execFileSync(process.execPath, [join(__dirname, 'build-data.mjs'), 'invalid pages regression'],
+    { env: { ...process.env, PF_PASSPHRASE: '' }, cwd: ROOT, encoding: 'utf8', stderr: 'pipe' });
+  const protectedLog = JSON.parse(readFileSync(DATA, 'utf8'));
+  eq('invalid page chain preserves the actual prior ledger', history(protectedLog.main.decisions.decisions), history(paged.main.decisions.decisions));
+  eq('invalid page chain is explicitly carried forward', protectedLog.main.orderHistoryRefresh.status, 'carried-forward');
 } catch (e) {
   fail++;
   console.error('✗ build-data run failed:', e.status != null ? `exit ${e.status}` : e.message);

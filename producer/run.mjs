@@ -7,8 +7,8 @@
 //
 // This script does EVERYTHING else deterministically — optional Alpha Vantage fetch, picks,
 // options, the encrypted build, validation, and the git commit/push — with no improvised shell,
-// so an unattended run can't stall on a permission prompt. A hard failure aborts BEFORE any
-// commit, so a broken or plaintext build never ships.
+// subject to the host permission checks. A denial is terminal; do not bypass it.
+// Mandatory validation and authenticated encryption precede every publish.
 //
 // Flags:
 //   --require-open   exit without building/pushing when US equities are closed (old behavior).
@@ -16,10 +16,11 @@
 //   --no-push        build + validate but don't commit/push (dry run).
 //   --no-av          skip the direct Alpha Vantage fetch even if ALPHAVANTAGE_KEY is set.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { isMarketOpen } from './market.mjs';
+import { assertEncryptedSnapshot, publishSnapshot } from './snapshot-publish.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -41,6 +42,21 @@ function tryNode(script, extra = []) {
 const open = isMarketOpen();
 log(`market is ${open ? 'OPEN' : 'CLOSED'} · label "${label}"`);
 if (!open && flags.has('--require-open')) { log('closed + --require-open → nothing to do, exiting clean.'); process.exit(0); }
+
+// Fail before building if we cannot preserve/decrypt the prior history. Publishing always
+// requires a passphrase; plaintext remains available only for explicit local --no-push runs.
+let sourceBlob;
+try {
+  if (!flags.has('--no-push') && !process.env.PF_PASSPHRASE)
+    throw new Error('PF_PASSPHRASE is required for publishing.');
+  const priorBytes = readFileSync(join(ROOT, 'data.json'));
+  if (JSON.parse(priorBytes).enc === 1)
+    await assertEncryptedSnapshot(priorBytes, process.env.PF_PASSPHRASE);
+  if (!flags.has('--no-push')) sourceBlob = execFileSync('git', ['rev-parse', 'HEAD:data.json'], { cwd: ROOT, encoding: 'utf8' }).trim();
+} catch (e) {
+  console.error('[run] ABORT — prior snapshot / encryption preflight failed:', e.message.split('\n')[0]);
+  process.exit(1);
+}
 
 // Guard: never build (and risk pushing) without the core portfolio inputs the agent should have
 // fetched. If they're missing, the RH fetch failed — abort loudly rather than ship a broken file.
@@ -72,8 +88,9 @@ log('building data.json…');
 try { node('build-data.mjs', [label]); }
 catch (e) { console.error('[run] ABORT — build-data failed:', e.message.split('\n')[0]); process.exit(1); }
 
-// 5. Validate the replay contract (warn-only).
-tryNode('validate.mjs');
+// 5. Validation is a publication gate, not a warning.
+try { node('validate.mjs'); }
+catch { console.error('[run] ABORT — validation failed; no commit or push.'); process.exit(1); }
 
 // 5b. Watchlist reminders — picks-build / options-build emit these sidecars only on FETCH_ALL.
 // run.mjs can't do the syncs itself (MCP writes are agent-only), so just remind the agent of the
@@ -83,45 +100,16 @@ if (existsSync(join(RAW, 'picks-watchlist.json')))
 if (existsSync(join(RAW, 'option-watchlist.json')))
   log('NOTE: options ideas rebuilt → after publishing, sync the Robinhood OPTIONS watchlist (PRODUCER.md → "Sync the options watchlist").');
 
-// 6. Safety check, then commit + push.
-const dataPath = join(ROOT, 'data.json');
-let parsed;
-try { parsed = JSON.parse(readFileSync(dataPath, 'utf8')); }
-catch { console.error('[run] ABORT — data.json is not valid JSON after build.'); process.exit(1); }
-if (process.env.PF_PASSPHRASE && parsed.enc !== 1) {
-  console.error('[run] ABORT — PF_PASSPHRASE is set but data.json is NOT encrypted. Refusing to push plaintext holdings.');
+// 6. Publish from a detached worktree. Keep the caller's branch and edits intact.
+if (flags.has('--no-push')) { log('built and validated · --no-push set (not published).'); process.exit(0); }
+try {
+  const result = await publishSnapshot({ root: ROOT, bytes: readFileSync(join(ROOT, 'data.json')),
+    passphrase: process.env.PF_PASSPHRASE, sourceBlob, label });
+  log(result.published ? `PUBLISHED ${result.commit} — encrypted data.json verified on origin/main`
+    : `UNCHANGED ${result.commit} — data.json already matches origin/main`);
+} catch (e) {
+  console.error(`[run] ${e.code === 'PUBLISH_UNVERIFIED' ? 'PUBLISH_UNVERIFIED' : 'NOT_PUBLISHED'} —`, e.message.split('\n')[0]);
+  if (e.stderr) console.error(e.stderr.toString().trim());
+  console.error('[run] STOP. Preserve the exact error. Permission/auth/validation failures need diagnosis; do not try alternate push methods.');
   process.exit(1);
 }
-
-if (flags.has('--no-push')) { log('built OK · --no-push set, stopping (no commit).'); process.exit(0); }
-
-// Publish the built data.json onto origin/main DETERMINISTICALLY — regardless of the (often
-// upstream-less) scheduled-session branch, and tolerating main moving mid-flight. Hold the file in
-// memory and re-apply it on a fresh branch at the newest origin/main each attempt, so the producer
-// never needs the agent to improvise git. (run.mjs is Node, so the in-memory copy avoids any cp.)
-function git(a, stdio = ['ignore', 'pipe', 'pipe']) { return execFileSync('git', a, { cwd: ROOT, stdio }); }
-function sleep(s) { execFileSync(process.execPath, ['-e', `setTimeout(()=>{}, ${s * 1000})`]); } // blocking, no shell
-const fresh = readFileSync(dataPath);
-let pushed = false;
-for (let i = 1; i <= 4 && !pushed; i++) {
-  try {
-    git(['fetch', 'origin', 'main']);
-    git(['checkout', '-f', '-B', 'pf-publish', 'origin/main']); // newest main; -f drops the local data.json
-    writeFileSync(dataPath, fresh);                              // re-apply our snapshot on top
-    git(['add', 'data.json']);
-    const staged = git(['diff', '--cached', '--name-only']).toString().trim();
-    if (!staged) { log('data.json identical to main — nothing to publish.'); process.exit(0); }
-    git(['commit', '-m', `data: snapshot ${label}`]);
-    git(['push', 'origin', 'HEAD:main'], 'inherit');
-    pushed = true;
-  } catch (e) {
-    if (i === 4) {
-      console.error('[run] publish failed after 4 attempts:', e.message.split('\n')[0]);
-      console.error('[run] STOP — do NOT attempt manual git recovery, alternate push methods, or file searches. This is usually a transient proxy/egress (e.g. 403); the data.json build is fine and the NEXT scheduled run will republish it. Ending now.');
-      process.exit(1);
-    }
-    const wait = 2 ** i; log(`publish failed (main may have moved), retrying in ${wait}s…`);
-    sleep(wait);
-  }
-}
-log('✅ published data.json to origin/main');

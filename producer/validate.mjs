@@ -58,7 +58,7 @@ const hist = parse(call(RH + 'get_equity_historicals', { symbols: [...allSyms, '
 console.log('✓ portfolio total_value :', '$' + totalVal.toLocaleString());
 console.log('✓ positions parsed      :', positions.length);
 console.log('✓ quotes mapped         :', Object.keys(qMap).length, 'of', allSyms.length);
-console.log('✓ historicals symbols   :', hist.map((h) => h.symbol).join(', '), '(' + hist[0].bars.length + ' bars each)');
+console.log('✓ historicals symbols   :', hist.map((h) => h.symbol).join(', '), '(' + hist.reduce((n, h) => n + (h.bars?.length || 0), 0) + ' bars total)');
 console.log('\nPer-position P&L:');
 for (const p of enriched) console.log('  ' + p.symbol.padEnd(5), 'val $' + Math.round(p.val).toLocaleString().padStart(8), ' P&L ' + (p.pnlP >= 0 ? '+' : '') + p.pnlP.toFixed(0) + '%');
 const totalPnL = enriched.reduce((s, p) => s + p.pnlD, 0), dayPnL = enriched.reduce((s, p) => s + p.dayD, 0);

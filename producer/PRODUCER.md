@@ -222,12 +222,21 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > `self-directed decision log SHRANK 36 → 20` — 16 real records gone. It reads as an ordinary
    > successful run; nothing else in the output moves.
    >
-   > So when the 120-day result is too large to return inline, do **not** shrink the window. The full
-   > page is already saved to a tool-result file — read THAT and write `{data}` straight to
-   > `producer/raw/main-orders.json` with `node` (literal paths, no shell variables, so no permission
-   > prompt). The `next` cursor MUST survive into the saved file: that flag is what protects the older
-   > history. If it does shrink: `git checkout <last good commit> -- data.json` to restore the merge
-   > base, fix the payload, re-run `run.mjs`. The prior log is recoverable ONLY from git.
+   > **For large results, retain the 120-day lower bound and use supported smaller pages.**
+   > Inspect the connector schema; only use page-size/cursor arguments if actually exposed.
+   > Write each inline response to `raw/main-orders-page-001.json`, `002.json`, etc., as:
+   > `{ "createdAtGte": "<same 120-day lower bound>", "requestCursor": null, "payload": <untouched response> }`.
+   > Page 1 uses null; later pages record the exact cursor used in that request. The builder
+   > validates the chain, deduplicates broker IDs and retains the last outstanding `next` cursor.
+   > An unfinished chain protects its boundary day and older history. Gaps, shortened windows,
+   > conflicting IDs or malformed pages preserve the prior log. Page files take precedence over
+   > legacy `main-orders.json`; do not mix different fetches.
+   >
+   > If smaller inline pages are unsupported and the saved-result reader is denied, do not
+   > access the protected file through another command/runtime/transport. Record the exact denial
+   > and leave order input absent. Core portfolio updates may still publish with `REFRESH_PARTIAL`
+   > and encrypted `main.orderHistoryRefresh.status = "carried-forward"`. Restoring order coverage
+   > requires supported connector/result access in the host; repository edits cannot grant it.
    >
    > **Empty-response protection (2026-10-01):** no usable decision days means unknown coverage,
    > so `deriveLog()` disables sweeping entirely and carries the saved log forward (normal retention
@@ -270,8 +279,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > Both are one extra symbol in the SAME batched quotes call — never a separate fetch.
 
    > ### ⚠️ CRITICAL — how to save raw files (or the scheduled run hangs)
-   > A scheduled run is unattended: **any command that triggers a permission prompt stalls the
-   > whole run forever.**
+   > A scheduled run is unattended. Host checks can reject an action; preserve the exact reason.
+   > Broad allow settings or a Node wrapper do not guarantee approval.
    >
    > **What actually prompts is copying OUT of Claude's own state directory
    > (`/root/.claude/projects/…`), not shell variables** — measured 2026-09-04, and the earlier
@@ -300,7 +309,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    >   PAYLOAD SIZE, not symbol count, and a 7-bar tail is ~1/20th of a YTD series, so eight symbols
    >   of tail is smaller than one three-symbol YTD call.
    > - If a result is *still* too large to read inline, fetch a smaller batch — do **not** copy a
-   >   temp file. Following this, a scheduled run completes with zero approval prompts.
+   >   protected temp file. Smaller requests remain subject to host permission checks.
 
    Notes:
    - "all position symbols" = every `symbol` from the positions response.
@@ -479,13 +488,13 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
 4. **Build + validate + publish — ONE command.** Once every raw file from steps 2–3c is in
    `producer/raw/`, run the orchestrator. It does everything deterministically (optional AV
    fetch → picks → options → encrypted build → validate → commit → push) with **no improvised
-   shell**, so an unattended run can't stall on a permission prompt:
+   shell**. Host permission checks still apply; never reroute a denied action:
    ```
    node producer/run.mjs "Jun 18 2026, 3:45 PM ET"
    ```
    where the argument is the snapshot label shown in the phone's freshness bar. `PF_PASSPHRASE`
    must be set in the environment (it is, for scheduled runs) — `run.mjs` **refuses to push** a
-   plaintext `data.json`, so holdings can't leak even if the passphrase is missing. The repo is
+   plaintext `data.json`; a missing key or undecryptable prior snapshot aborts before building. The repo is
    public; the passphrase lives only in the environment, never in git.
 
    What `run.mjs` does, in order (each step guarded — a missing optional input is skipped, a hard
@@ -505,8 +514,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      `producer/notes.json` (a plain string, or `{ "risk": "…" }`) is embedded as `data.notes` and
      rendered in the dashboard's Risk card; absent → carried forward from the prior snapshot, so it
      persists across fresh-clone runs like `realized.json`/picks.
-   - **validate** — replay-contract sanity check (warn-only).
-   - **commit + push** — only if `data.json` actually changed; retries the push with backoff.
+   - **validate** — mandatory replay-contract gate; failure prevents publication.
+   - **commit + push** — only encrypted `data.json`, through an detached Git worktree with no forced
+     checkout/reset. Concurrent code changes survive; changed remote snapshot data aborts the run.
+     Permission/auth/push failures stop without retries. Success verifies the remote commit.
 
    Useful flags: `--no-push` (dry run / local build), `--no-av` (skip the AV fetch),
    `--no-extfund` (skip the Finnhub/FMP supplementary fetch), `--require-open`.
@@ -661,16 +672,17 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    Railway producer has no push channel — its runs only log alerts, so pushes fire on agent runs.)
 
 ## Failure handling
-- `run.mjs` aborts (no commit) if the core `portfolio.json`/`positions.json` are missing, if the
-  build fails, or if `data.json` came out unencrypted while `PF_PASSPHRASE` is set. A stale
+- `run.mjs` aborts (no commit) if core `portfolio.json`/`positions.json` are missing, the build or
+  validation fails, the encryption key is missing, or authenticated encryption fails. A stale
   snapshot is always preferred over a broken one — the freshness bar shows the data is old.
-- If a Robinhood call fails during fetching, stop there (don't run `run.mjs`); keep the last good
-  `data.json`.
+- If a core portfolio/positions call fails, stop without building. Unavailable optional order
+  history carries forward as described above; do not fabricate its contents.
 - **If `run.mjs` exits non-zero — including a push failure (403 / proxy / egress) — STOP.** Do not
   attempt manual git recovery, alternate push methods (GitHub MCP, etc.), branch surgery, or file
-  searches. A failed push is almost always a transient proxy/egress blip; the build is fine and the
-  next scheduled run republishes. Improvising here just stalls the unattended run on permission
-  prompts — exactly what we avoid.
+  searches. Preserve the exact error. Permission denials are not transient network failures;
+  later runs are not guaranteed repairs. `PUBLISHED <sha>` confirms a verified remote commit;
+  `NOT_PUBLISHED` does not. Report `REFRESH_PARTIAL` separately from publication. For a denied
+  tool call before Node starts, capture its actual classifier reason from the transcript.
 - The **freshness watchdog** (`.github/workflows/freshness.yml`) opens a GitHub issue if
   `data.json`'s commit goes **>90 min without a refresh while the market is open** (holiday/half-day
   aware via `market.mjs`), and auto-closes it on recovery — so a stalled run never goes unnoticed. It

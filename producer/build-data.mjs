@@ -31,6 +31,7 @@ import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
+import { mergeOrderPages } from './order-pages.mjs';
 import { compactHist, histBytes, mergeHist } from './histbars.mjs';
 import { gradeAll, gradingUniverse } from './pickgrade.mjs';
 
@@ -731,12 +732,20 @@ const data = {
     const priorLog = (prior && prior.main && prior.main.decisions && Array.isArray(prior.main.decisions.decisions))
       ? prior.main.decisions.decisions : [];
     const ordersFile = filesMatching(/^main-orders\.json$/)[0];
+    const orderPages = filesMatching(/^main-orders-page-\d+\.json$/).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+    let ordersPayload = null;
+    try {
+      if (orderPages.length) ordersPayload = mergeOrderPages(orderPages.map(readJSON), shiftDay(asOfDay, -FETCH_DAYS));
+      else if (ordersFile) ordersPayload = readJSON(ordersFile);
+    } catch (error) {
+      console.warn(`self-directed decisions: invalid order pages; preserving prior history. ${error.message}`);
+    }
     // Owner annotation (optional, committed): the manual half of "same process" — it can give a
     // derived day a real rationale, never invent a day the broker has no orders for.
     let owned = [];
     try { const of = join(__dirname, 'main-decisions.json'); if (existsSync(of)) { const j = readJSON(of); if (Array.isArray(j.decisions)) owned = j.decisions; } } catch { owned = []; }
     let ledger;
-    if (ordersFile) {
+    if (ordersPayload) {
       const spyCloses = spyClosesFrom((hist.day && hist.day.SPY) || []);
       // deriveLog owns the pagination rule: get_equity_orders caps its page, so the sweep window is
       // taken from what the payload actually covers — a fixed one would delete real history whenever
@@ -744,14 +753,22 @@ const data = {
       // `prior` arms deriveLog's short-payload guard: an untruncated page cannot prove it reached
       // back to sinceDay, so the prior log is what reveals a narrowed fetch (by the history the
       // sweep would orphan) before it is deleted rather than after.
-      const r = deriveLog(readJSON(ordersFile), { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS), prior: priorLog });
+      const r = deriveLog(ordersPayload, { spyCloses, sinceDay: shiftDay(asOfDay, -FETCH_DAYS), prior: priorLog });
       if (r.warning) console.warn(`⚠️  self-directed decisions: ${r.warning}`);
+      const orderStatus = r.warning || r.truncated || !r.coveredFrom ? 'partial' : 'fetched';
+      if (orderStatus === 'partial') console.warn('REFRESH_PARTIAL: order-history coverage is incomplete; prior uncovered history is preserved.');
+      data.main.orderHistoryRefresh = { status: orderStatus,
+        attemptedAt: data.generatedAt, pages: orderPages.length || 1, orders: r.orders,
+        coveredFrom: r.coveredFrom, warning: r.warning || null };
       ledger = mergeDecisions(r.decisions, priorLog, { windowFrom: r.windowFrom, committed: owned, asOf: asOfDay });
       const noSpy = ledger.filter((d) => d.spyAt == null).length;
       console.log(`self-directed decisions: ${r.decisions.length} trading day(s) derived from ${r.orders} filled order(s)${r.truncated ? ` · page truncated, sweeping only from ${r.windowFrom}` : ''} · ${ledger.length} in the log${noSpy ? ` · ${noSpy} without a SPY close (graded on absolute return)` : ''}`);
     } else {
       // No fetch this run ⇒ derive NOTHING and sweep nothing, or a missing file would erase the log.
       ledger = mergeDecisions([], priorLog, { committed: owned, asOf: asOfDay });
+      data.main.orderHistoryRefresh = { status: 'carried-forward', attemptedAt: data.generatedAt,
+        pages: 0, orders: null, coveredFrom: prior?.main?.orderHistoryRefresh?.coveredFrom || null };
+      console.warn('REFRESH_PARTIAL: self-directed order history was not refreshed; portfolio updates can still publish.');
       if (priorLog.length) console.log(`self-directed decisions: no main-orders.json this run — carrying ${ledger.length} record(s) forward`);
       else console.warn('self-directed decisions: no main-orders.json and nothing carried — the Rebalance Log will render empty (PRODUCER.md step 2).');
     }

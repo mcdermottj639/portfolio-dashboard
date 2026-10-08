@@ -1,5 +1,16 @@
 # Scheduling the producer (Claude Code on the web)
 
+## Refresh reliability repair — 2026-10-07
+
+The command remains `node producer/run.mjs "<label>"`. Publication now uses an detached Git
+worktree, requires validation and authenticated encryption, preserves the working branch, and
+rejects stale builds if remote snapshot data changed. No host permission rules are changed.
+Smaller order pages are supported when the connector exposes pagination controls; see PRODUCER.md.
+Do not shorten the 120-day window or reroute a denied protected-file read.
+Repository updates do not edit the server-side Routine prompt. Its saved prompt must use the
+current partial-result handling below; permission failures must include the exact denial reason.
+End-to-end unattended approval must be checked inside the actual Claude Routine.
+
 > **v149 follow-up:** Account estimates now consume existing recorded equity history automatically
 > (producer and browser share the same calculation), with matching-date coverage checks and explicit
 > inferred-flow / valuation-time limitations. The panel shows the existing account record even before
@@ -91,13 +102,15 @@ Use exactly this as the scheduled prompt:
 > agentic cash account, resolved via `get_accounts` → `agentic-portfolio.json`/`agentic-positions.json`),
 > plus quotes, VIX, options — and skip historicals, fundamentals,
 > the Alpha Vantage refresh and the picks rebuild. `Write` each raw result into `producer/raw/` —
-> never use `cp`/`mv`/shell variables. If any Robinhood call fails, stop without building. Then run
+> never use `cp`/`mv` for protected result files. If core portfolio/positions fetching fails, stop
+> without building. Unavailable optional order history carries forward with partial status. Then run
 > **`node producer/run.mjs "<label>"`** (label = current time like `Jun 23 2026, 12:30 PM ET`),
 > which handles the build, encryption, validation and the commit + push to `main`. Don't run those
 > steps by hand. **If `run.mjs` exits non-zero (e.g. a build error or a push 403), STOP — do NOT
-> attempt any manual git recovery, alternate push methods, branch surgery, or file searches. A
-> failed push is almost always a transient proxy/egress blip; the next scheduled run republishes.
-> End the session.** Finally, if (and only if) `run.mjs` succeeded **and** the FETCH_ALL sidecars
+> attempt any manual git recovery, alternate push methods, branch surgery, or file searches.
+> Record the exact error and distinguish permission, validation, stale-source and network failures.
+> A later run is not a guaranteed repair. End the session.** Verify `PUBLISHED <sha>` and separately
+> report any `REFRESH_PARTIAL` warning. Finally, if (and only if) `run.mjs` succeeded **and** the FETCH_ALL sidecars
 > exist, do the two best-effort Robinhood **watchlist syncs** (per `PRODUCER.md` steps 5–6): (a) if
 > `producer/raw/picks-watchlist.json` exists, sync the **"Dashboard Top 10 Picks"** equity list — read
 > it (`get_watchlist_items`), run `node producer/sync-watchlist.mjs`, execute the `ADD`/`REMOVE`; (b)
@@ -244,9 +257,9 @@ First run `node producer/preflight.mjs` and obey its directive: if it prints SKI
 
 Options history (every run, light AND full): run `node producer/option-fetch-plan.mjs` and obey it. `OPTION_ORDERS FULL` → get_option_orders for the main account with no created_at_gte, following `next` until empty, and write ALL pages merged into producer/raw/options-orders.json as {"fullHistory": true, "data": {"orders": [...]}}. `OPTION_ORDERS SINCE <date>` → get_option_orders with created_at_gte <date> (follow `next` only if present) and write {"data": {"orders": [...]}} with no fullHistory key. Settlement evidence comes from main-trades.json (get_pnl_trade_history, span 3month) — if it returns a non-empty next_cursor, fetch the remaining pages and merge all trades into that one file. Never treat a disappeared option position as expired.
 
-Write each raw result into producer/raw/ with the Write tool; fetch historicals in batches of 3 symbols or fewer so each result comes back INLINE. Never use cp or mv to place a raw file. The hazard is not shell variables: when a tool result is too large to return inline the harness SPILLS it to a file under /root/.claude/projects/... and hands back only its path, and copying out of that directory is refused by the permission classifier — which on this unattended run means an approval card on the owner's phone and a STALLED run. So if a result arrives as a spilled file path instead of inline data, re-fetch it in a smaller batch; never copy the spill file. If you delegate a fetch to a subagent, that subagent must Write the raw file itself and return only a confirmation — a payload spilled inside a subagent is unreachable from here. IMPORTANT: the ••••3900 agentic fetch runs EVERY time (light AND full) — skipping it freezes the Agentic Portfolio card. If any Robinhood call fails, stop without building.
+Write each raw result into producer/raw/ with the Write tool; fetch historicals in batches of 3 symbols or fewer so each result comes back INLINE. Never use cp or mv to place a raw file. The hazard is not shell variables: when a tool result is too large to return inline the harness SPILLS it to a file under /root/.claude/projects/... and hands back only its path, and copying out of that directory is refused by the permission classifier — which on this unattended run means an approval card on the owner's phone and a STALLED run. So if a result arrives as a spilled file path instead of inline data, re-fetch it in a smaller batch; never copy the spill file. If you delegate a fetch to a subagent, that subagent must Write the raw file itself and return only a confirmation — a payload spilled inside a subagent is unreachable from here. IMPORTANT: the ••••3900 agentic fetch runs EVERY time (light AND full) — skipping it freezes the Agentic Portfolio card. If a core portfolio/positions call fails, stop without building. Optional order history that is blocked carries forward and must be reported as REFRESH_PARTIAL; retain the full 120-day window and follow PRODUCER.md for supported smaller pages.
 
-Then run `node producer/run.mjs "<label>"` (label = current ET time, e.g. "Jul 28 2026, 1:30 PM ET"), which does the build, encryption, validation, and commit + push to main. Do not run those steps by hand. If run.mjs exits non-zero, STOP — do NOT attempt manual git recovery, alternate push, or branch surgery; the next scheduled run republishes. End the session.
+Then run `node producer/run.mjs "<label>"` (label = current ET time, e.g. "Jul 28 2026, 1:30 PM ET"), which does the build, encryption, validation, and commit + push to main. Do not run those steps by hand. If run.mjs exits non-zero, STOP — do NOT attempt manual git recovery, alternate push, or branch surgery; capture the exact failure reason. A later run is not a guaranteed repair. End the session.
 ```
 
 **Not yet pasted as of 2026-09-30** — the live prompt is still the 2026-07-28 text (verified with
