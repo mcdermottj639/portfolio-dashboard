@@ -1,7 +1,7 @@
 {
-  "id": "2026-10-08-gflogj",
-  "created": "2026-10-08",
-  "targetId": "e6d36f0f1e335c1094d6",
+  "id": "2026-10-14-qakw3a",
+  "created": "2026-10-14",
+  "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
   "riskVersion": "hard-caps-v3",
@@ -16,135 +16,92 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 1283.56,
-  "book": 7364.08,
-  "planHash": "s[AVGO:454]b[META:105,MSFT:131,NVDA:184,SPY:53,VTI:357]t[]",
+  "turnover": 412.39,
+  "book": 7072.62,
+  "planHash": "s[JNJ:412]b[]t[]",
   "legs": {
     "sells": [
       {
-        "sym": "AVGO",
+        "sym": "JNJ",
         "kind": "exit",
-        "dollars": 453.82,
-        "shares": 1.230323,
-        "price": 368.8601,
-        "pl": 25.52,
+        "dollars": 415.08,
+        "shares": 1.649545,
+        "price": 251.6501,
+        "pl": -31.95,
         "note": "not in the current target — exit funds the underweight names"
       }
     ],
-    "buysNow": [
-      {
-        "sym": "NVDA",
-        "kind": "buy",
-        "dollars": 183.69,
-        "shares": 0.7835,
-        "price": 234.46,
-        "pl": null,
-        "note": "9.9% → 12.35% target"
-      },
-      {
-        "sym": "MSFT",
-        "kind": "buy",
-        "dollars": 130.88,
-        "shares": 0.2455,
-        "price": 533.07,
-        "pl": null,
-        "note": "8.1% → 9.87% target"
-      },
-      {
-        "sym": "META",
-        "kind": "buy",
-        "dollars": 105.17,
-        "shares": 0.1457,
-        "price": 721.835,
-        "pl": null,
-        "note": "6.0% → 7.44% target"
-      },
-      {
-        "sym": "SPY",
-        "kind": "buy",
-        "dollars": 53.41,
-        "shares": 0.0689,
-        "price": 774.66,
-        "pl": null,
-        "note": "7.4% → 8.17% target"
-      },
-      {
-        "sym": "VTI",
-        "kind": "park",
-        "dollars": 356.59,
-        "shares": 0.9389,
-        "price": 379.78,
-        "pl": null,
-        "note": "waiting ground — holds $356.59 of deferred weight (LLY, NEM, BKNG) in VTI instead of cash; released when they clear"
-      }
-    ],
+    "buysNow": [],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 25.52,
-    "realizedLoss": 0,
-    "net": 25.52,
+    "realizedGain": 0,
+    "realizedLoss": -34.64,
+    "net": -34.64,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
-      "sym": "AAPL",
-      "reason": "above-entry",
+      "sym": "NVDA",
+      "reason": "drawdown",
+      "until": null
+    },
+    {
+      "sym": "GOOGL",
+      "reason": "drawdown",
+      "until": null
+    },
+    {
+      "sym": "MA",
+      "reason": "drawdown",
       "until": null
     },
     {
       "sym": "LLY",
-      "reason": "wash-sale",
-      "until": "2026-11-06"
-    },
-    {
-      "sym": "NEM",
-      "reason": "wash-sale",
-      "until": "2026-11-06"
-    },
-    {
-      "sym": "XOM",
-      "reason": "above-entry",
+      "reason": "drawdown",
       "until": null
     },
     {
-      "sym": "BKNG",
-      "reason": "wash-sale",
-      "until": "2026-10-14"
+      "sym": "CAT",
+      "reason": "drawdown",
+      "until": null
+    },
+    {
+      "sym": "UNP",
+      "reason": "drawdown",
+      "until": null
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "5 name(s) deferred (AAPL, LLY, NEM, XOM, BKNG) — ~$760.54 of intended weight held pending earnings/re-verify/wash-sale",
-    "fresh cash $751.83 arrived 1d ago — deploying a 50% tranche ($375.92) today and the rest one tranche per day over the next 2d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in",
-    "$356.59 of deferred weight parked in VTI rather than left in cash (LLY, NEM, BKNG) — released when those names clear; unparking is a taxable ST sale"
+    "6 name(s) deferred (NVDA, GOOGL, MA, LLY, CAT, UNP) — ~$1,627.34 of intended weight held pending earnings/re-verify/wash-sale"
   ],
   "history": [
     {
-      "at": "2026-10-08",
+      "at": "2026-10-14",
       "to": "proposed"
     },
     {
-      "at": "2026-10-08",
+      "at": "2026-10-14",
       "to": "confirmed"
     },
     {
-      "at": "2026-10-08",
+      "at": "2026-10-14",
       "to": "sells-placed"
     },
     {
-      "at": "2026-10-08",
+      "at": "2026-10-14",
       "to": "buys-placed"
     },
     {
-      "at": "2026-10-08",
+      "at": "2026-10-14",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-10-08",
-  "sells-placedAt": "2026-10-08",
-  "buys-placedAt": "2026-10-08",
-  "doneAt": "2026-10-08",
-  "completedAt": "2026-10-08T14:27:48.057Z"
+  "confirmedAt": "2026-10-14",
+  "sells-placedAt": "2026-10-14",
+  "buys-placedAt": "2026-10-14",
+  "completedAt": "2026-10-14T14:23:50.575Z",
+  "doneAt": "2026-10-14"
 }
