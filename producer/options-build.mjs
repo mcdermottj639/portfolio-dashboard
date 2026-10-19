@@ -16,6 +16,7 @@ import { analyzeLeg, buildIdeas, sharesLockedByShortCalls, positionPremium, orde
 import { decryptEnvelope } from './emit.mjs';
 import { optionHistory } from './option-history.mjs';
 import { buildIvBySym, VOL_WINDOW_BARS } from './optvol.mjs';
+import { guardrail, stockExtension, detectRolls, settleRolls, rollStats } from './option-guardrail.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
@@ -84,28 +85,31 @@ function enrichLive(a, optionId) {
   return a;
 }
 
-// 3rd-Friday monthly expiry ~`targetDays` out (mirrors options.mjs.monthlyExpiry, kept local
-// so the roll suggestion can name a concrete later expiry without importing internals).
-function rollExpiry(targetDays = 35, from = new Date()) {
-  const t = new Date(from.getTime() + targetDays * 86400000);
-  const d = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1));
-  const firstFri = 1 + ((5 - d.getUTCDay() + 7) % 7);
-  d.setUTCDate(firstFri + 14);
-  return d.toISOString().slice(0, 10);
+/* ROLL GUIDANCE comes from the Options Guardrail (option-guardrail.mjs) since 2026-10-19. The old
+   `rollAlert` said, for ANY in-the-money short call, "assignment risk — roll up/out", and on
+   2026-10-12 that is exactly what the owner did: a $0.50 NET-DEBIT roll of a deep-ITM PLTR call with
+   ~10% extrinsic left, four days before expiry, into a stock up ~9% in three sessions. The call would
+   have expired worthless. Assignment above cost basis is the plan WORKING, not a risk; a roll is only
+   ever for a net credit, with time value left in the leg you close, and never UP into a vertical move.
+   `rollAlert` is kept as the field name the consumer renders; its text is now the guardrail's. */
+const earningsBySym = {};
+if (existsSync(join(RAW, 'earnings.json'))) {
+  try {
+    const d = unwrap(readJSON(join(RAW, 'earnings.json')));
+    for (const e of (d.data?.earnings ?? d.earnings ?? d.results ?? [])) {
+      const sym = e.symbol || e.ticker; const dt = (e.report_date || e.date || e.reportDate || '').slice(0, 10);
+      if (sym && dt && (!earningsBySym[sym] || dt < earningsBySym[sym])) earningsBySym[sym] = dt;
+    }
+  } catch { /* optional input */ }
 }
-
-// Roll guidance for a short call. When it warrants action, also name a CONCRETE roll target —
-// a later monthly expiry and a strike nudged up out of the money — so the alert is actionable,
-// not just "consider rolling".
-function rollAlert(a) {
-  if (!a || a.side !== 'short' || a.type !== 'call') return null;
-  const px = a.underlyingPx;
-  const newExp = rollExpiry(35);
-  // Roll-up strike: ~5% OTM from spot (rounded to a clean $5 above price), never below current strike.
-  const rawUp = px != null ? Math.max(a.strike, Math.ceil((px * 1.05) / 5) * 5) : a.strike;
-  if (a.itm) return `In-the-money — assignment risk. Roll up/out: buy this back and sell the $${rawUp} call exp ${newExp} to defer assignment and collect more premium.`;
-  if (a.dte != null && a.dte <= 10) return `Expires in ${a.dte}d — if it holds below $${a.strike} you keep the premium; otherwise roll to the $${rawUp} call exp ${newExp} for more income.`;
-  return null;
+let histForExt = {}; // set once prevSnap is loaded (below); raw hist-day batches are merged in too
+function applyGuardrail(a) {
+  if (!a || a.side !== 'short' || a.type !== 'call') { if (a) a.rollAlert = null; return a; }
+  const bars = histForExt[a.underlying] || [];
+  const g = guardrail(a, { extension: stockExtension(bars, a.underlyingPx, { asOf: new Date().toISOString() }), earningsDate: earningsBySym[a.underlying] || null });
+  a.guardrail = g;
+  a.rollAlert = g ? `${g.tier.replace(/_/g, ' ')} — ${g.text}` : null;
+  return a;
 }
 
 function analyzeOrder(o) {
@@ -120,8 +124,7 @@ function analyzeOrder(o) {
   a.costBasis = costBySym[sym] != null ? +costBySym[sym] : null;
   a.limitPrice = num(o.price);
   enrichLive(a, leg.option_id);
-  a.rollAlert = rollAlert(a);
-  return a;
+  return a; // guardrail applied after the snapshot's bars are loaded
 }
 
 /* The prior COMMITTED snapshot, decrypted ONCE and shared by open-position metadata,
@@ -174,7 +177,6 @@ if (existsSync(join(RAW, 'options-positions.json'))) {
     a.optionId = p.option_id;
     a.costBasis = costBySym[p.chain_symbol] != null ? +costBySym[p.chain_symbol] : null;
     enrichLive(a, p.option_id);
-    a.rollAlert = rollAlert(a);
     return a;
   }).filter(Boolean);
 }
@@ -220,6 +222,26 @@ for (const f of readdirSync(RAW).filter((x) => /^hist-day.*\.json$/.test(x))) {
 }
 const snapSeries = (prevSnap && prevSnap.hist && (prevSnap.hist.day || prevSnap.hist.daily)) || {};
 const ivBySym = buildIvBySym([rawSeries, snapSeries]);
+/* Options Guardrail: extension needs the same bars the vol proxy uses (raw tails over the snapshot's
+   series), so it runs here, after both are loaded, and decorates every short call — open AND pending. */
+histForExt = {};
+for (const [sym, bars] of Object.entries(snapSeries)) histForExt[sym] = bars;
+for (const [sym, bars] of Object.entries(rawSeries)) histForExt[sym] = [...(histForExt[sym] || []), ...bars];
+for (const a of [...positions, ...pending]) applyGuardrail(a);
+{
+  const flagged = positions.filter((a) => a.guardrail && a.guardrail.tier !== 'HOLD');
+  if (flagged.length) console.log(`options guardrail: ${flagged.map((a) => `${a.underlying} $${a.strike} ${a.expiration} → ${a.guardrail.tier}`).join(' · ')}`);
+}
+/* Roll scorecard: every filled order with a buy-to-close AND a sell-to-open leg on one chain is a
+   roll. Records accumulate in the snapshot (raw/ is wiped) and settle against the do-nothing path
+   once the OLD leg's expiration close is in the daily bars. Entry #1 is the 2026-10-12 PLTR roll. */
+const openPremByOptId = {};
+for (const o of retainedOrders.values()) for (const l of (o.legs || []))
+  if (l.option_id && l.position_effect === 'open' && l.side === 'sell') { const e = (l.executions || [])[0]; if (e) openPremByOptId[l.option_id] = parseFloat(e.price); }
+const rolls = settleRolls(prevSnap?.options?.rolls || [], detectRolls([...retainedOrders.values()]), snapSeries, openPremByOptId,
+  (r) => stockExtension((snapSeries[r.symbol] || []).filter((b) => String(b.t || b.begins_at || '').slice(0, 10) <= r.date), null, { asOf: r.date }));
+const rollSummary = rollStats(rolls);
+if (rolls.length) console.log(`options rolls: ${rollSummary.rolls} recorded (${rollSummary.forCredit} credit / ${rollSummary.forDebit} debit) · ${rollSummary.settled} settled · ${rollSummary.vsDoNothing != null ? (rollSummary.vsDoNothing >= 0 ? '+' : '−') + '$' + Math.abs(rollSummary.vsDoNothing) : '—'} vs do-nothing`);
 console.log(`options: realized-vol IV proxy — ${Object.keys(ivBySym).length} symbols over a ${VOL_WINDOW_BARS}-bar window (raw batches ${Object.keys(rawSeries).length}, prior snapshot ${Object.keys(snapSeries).length})`);
 
 // live option quotes for the idea contracts (producer/raw/option-quotes.json), if fetched
@@ -310,6 +332,7 @@ const out = {
   asOf: new Date().toISOString(),
   pending, positions, ideas, exposure, ivObserved,
   incomeHistory, history, realized, realizedYTD, premiumYTD,
+  rolls, rollSummary,
 };
 writeFileSync(join(RAW, 'options.json'), JSON.stringify(out, null, 2));
 console.log(`options: ${pending.length} pending · ${positions.length} open · ${ideas.ideas.length} ideas (${liveCount} live, ${ideas.ideas.length - liveCount} est)` +

@@ -1,3 +1,38 @@
+## v164 — Options Guardrail and roll scorecard (2026-10-19)
+
+The 2026-10-12 PLTR roll is the regression this release pins: a $0.50 NET-DEBIT roll of a deep-ITM
+$195 covered call (~10% extrinsic left) four days before expiry, up-and-out to Nov 20 $210, into a
+stock up ~9% in three sessions. PLTR closed $186.03 on Oct 16; the original call would have expired
+worthless and kept the $397. `options-build.mjs`'s old `rollAlert` told the owner, for EVERY
+in-the-money short call, "assignment risk — roll up/out" — the advice that produced the loss.
+
+`producer/option-guardrail.mjs` (pure, 25 tests) replaces it. Per short call it computes intrinsic /
+extrinsic ($ and % of mark), moneyness, strike-vs-basis, if-assigned P&L per share and total, premium
+captured %, stock extension (3-session return and distance over the 20-day SMA from the same bars the
+vol proxy reads, stale-gated at 10 days) and earnings-inside-expiry (optional `raw/earnings.json`),
+and assigns ONE tier: STRIKE_UNDER_BASIS (red — assignment realizes a loss; decide it consciously) >
+EXTENDED_STOCK (red — do not roll up) > ASSIGNMENT_WIN (≤7 DTE, ITM: let it be assigned) >
+LET_IT_RIDE (≤7 DTE, OTM) > ROLL_WINDOW (14–21 DTE with ≥50% captured or within 3% of the strike;
+credit-only wording) > HOLD. Three gates grade any roll (`gradeRoll`): net credit, ≥15% extrinsic in
+the closed leg, not inside the final week, and not rolling UP into an extended stock — GREEN only when
+all pass; the Oct 12 roll grades red on every one. `detectRolls` reads any filled order with a
+buy-to-close and a sell-to-open leg on one chain; `settleRolls` accumulates them in the snapshot
+(`data.options.rolls`, `rollSummary`) and settles each against the do-nothing path at the OLD leg's
+expiration close — entry #1 is the PLTR roll, settled at −$0.50/sh vs letting it expire. The CLI
+(`--positions/--quotes/--equity/--prices/--orders`, or `--grade '{…}'`) exists so the Jarvis investing
+agent, which cannot decrypt data.json, runs the SAME code over raw Robinhood reads.
+
+Consumer: each short-call card carries a tier-colored guardrail note with the figures; a 📒 Roll
+Scorecard card sits under Options Income & History. `rollAlert` is kept as the field name (now the
+guardrail's text) so an older cached consumer still reads something true. Thresholds (15% extrinsic,
+8% three-day, 12% over SMA, 14–21 DTE, 50% captured) are starting points from the owner's cited roll
+guides, meant to be tuned by the scorecard. Covered calls only; short puts and long legs get no tier
+yet. No Routine prompt change needed: the producer prompt defers to PRODUCER.md and the fields derive
+from inputs already fetched every run. App/cache **v164 / pf-v164**. Verification: 48 producer
+suites green except `build-data.test.mjs`, which fails identically on clean origin/main (pre-existing,
+"Cannot read properties of undefined (reading 'kind')" in the paged-orders block — not touched here);
+every inline script parses. Self-audited; no live snapshot decrypted.
+
 ## 2026-10-08 — Small refresh inputs without erasing history
 
 The refresh now has an explicit `main-orders-incremental.json` request envelope and
@@ -657,7 +692,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v163** (`pf-v163`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v164** (`pf-v164`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
