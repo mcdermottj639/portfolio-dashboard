@@ -224,6 +224,10 @@ const snapSeries = (prevSnap && prevSnap.hist && (prevSnap.hist.day || prevSnap.
 const ivBySym = buildIvBySym([rawSeries, snapSeries]);
 /* Options Guardrail: extension needs the same bars the vol proxy uses (raw tails over the snapshot's
    series), so it runs here, after both are loaded, and decorates every short call — open AND pending. */
+/* Prior snapshot FIRST, this run's raw tail LAST: stockExtension dedupes by session date with the
+   last occurrence winning, so the fresher raw bar takes precedence over a stored one for the same
+   day (v165 — the tail overlaps the stored series by design, and without the dedupe the 3-session
+   lookback walked over repeated days). */
 histForExt = {};
 for (const [sym, bars] of Object.entries(snapSeries)) histForExt[sym] = bars;
 for (const [sym, bars] of Object.entries(rawSeries)) histForExt[sym] = [...(histForExt[sym] || []), ...bars];

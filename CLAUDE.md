@@ -1,3 +1,27 @@
+## v165 — Guardrail verify: unknown is never green (2026-10-19)
+
+ChatGPT's independent review of v164 (Portfolio Dashboard handoff, 16:08 ET) reproduced three real
+defects, all of the same shape — a confident output from incomplete input. Each is fixed and pinned.
+**(1) Missing data graded GREEN.** `gradeRoll({closeMark:1, openCredit:2})` returned green with the
+extrinsic gate silently skipped, and a late-ITM call with no live mark said "little extrinsic — a roll is
+a debit for nothing". Now: `gradeRoll` returns **`unknown`** (never green) whenever any gate cannot be
+checked — no intrinsic, no DTE, or no/stale price history — with one warning per unchecked gate; a real
+breach still reads red. `guardrail` returns a new **`INSUFFICIENT_DATA`** tier when the stock price,
+strike or DTE is absent (it used to fall through to a confident HOLD), flags **`NO_MARK`** when the mark
+is missing, and the ASSIGNMENT_WIN text then says the extrinsic is UNKNOWN rather than small.
+**(2) Duplicate bars changed the signal — and it was LIVE-REACHABLE.** `options-build` concatenates the
+prior snapshot's series with the run's fresh 7-bar tail, which overlaps it by design (`hist-plan.mjs`),
+and `stockExtension` only sorted. Four closes 100/103/106/109 read +9.0% once and **+2.8%** with each bar
+twice — so on every FETCH_ALL the "don't roll up into an extended stock" gate would have under-fired on
+exactly the PLTR setup. `stockExtension` now dedupes by session date, **last occurrence wins**, and
+`options-build` orders snapshot-then-raw so the fresher bar takes precedence (comment at the call site).
+**(3) The scorecard's "vs do-nothing" is an ESTIMATE.** The replacement leg is marked at intrinsic on the
+old expiry, omitting its remaining time value — a liability the roller still holds, so the proxy flatters
+the roll. `settle.basis='intrinsic-proxy'` / `estimated:true`, `rollSummary.estimated`, and the card says
+"est." everywhere it shows the figure and that it is not the basis for threshold tuning. Six regression
+tests added (31 total). App/cache **v165 / pf-v165**. Self-audited; the finder was ChatGPT, which is the
+Plan→Build→Verify split working through the Claudex handoff rather than inside one session.
+
 ## v164 — Options Guardrail and roll scorecard (2026-10-19)
 
 The 2026-10-12 PLTR roll is the regression this release pins: a $0.50 NET-DEBIT roll of a deep-ITM
@@ -692,7 +716,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v164** (`pf-v164`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v165** (`pf-v165`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

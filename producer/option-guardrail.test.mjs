@@ -118,6 +118,16 @@ t('no mark → null extrinsic/captured, HOLD, never a confident verdict (absent 
   const g = guardrail({ ...base, mark: null }, {});
   assert.equal(g.extrinsic, null); assert.equal(g.profitCaptured, null); assert.equal(g.tier, 'HOLD');
 });
+t('REGRESSION (ChatGPT 2026-10-19 #1): late ITM with no mark never claims "little extrinsic"', () => {
+  const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: null, costBasis: null, perShare: null, covered: true }, {});
+  assert.equal(g.tier, 'ASSIGNMENT_WIN'); assert.ok(g.flags.includes('NO_MARK'));
+  assert.ok(!/little extrinsic|debit for nothing/.test(g.text)); assert.ok(/UNKNOWN/.test(g.text));
+});
+t('no stock price / strike / DTE → INSUFFICIENT_DATA, never a confident HOLD', () => {
+  assert.equal(guardrail({ ...base, underlyingPx: null }, {}).tier, 'INSUFFICIENT_DATA');
+  assert.equal(guardrail({ ...base, dte: null }, {}).tier, 'INSUFFICIENT_DATA');
+  assert.ok(/missing expiry/.test(guardrail({ ...base, dte: null }, {}).text));
+});
 t('naked short call is prefixed as NAKED', () => {
   assert.ok(/^NAKED/.test(guardrail({ ...base, covered: false }, {}).text));
 });
@@ -135,9 +145,18 @@ t('credit but no extrinsic left is still RED (rule 2 alone)', () => {
   const g = gradeRoll({ closeMark: 10, closeIntrinsic: 9.5, openCredit: 11, dte: 18 });
   assert.equal(g.verdict, 'red'); assert.ok(g.reasons.some((r) => /rule 2/.test(r)));
 });
-t('a stale extension warns and never blocks', () => {
+t('a stale extension is UNKNOWN, not green — rule 3 cannot be checked (never red either)', () => {
   const g = gradeRoll({ closeMark: 1, closeIntrinsic: 0, openCredit: 2, dte: 18, extension: { ret3d: null, vsSma20: null, stale: true } });
-  assert.equal(g.verdict, 'green'); assert.equal(g.warnings.length, 1);
+  assert.equal(g.verdict, 'unknown'); assert.equal(g.warnings.length, 1); assert.ok(/not a green light/.test(g.reasons.join(' ')));
+});
+t('REGRESSION (ChatGPT 2026-10-19 #1): missing intrinsic, DTE and extension can never grade GREEN', () => {
+  const g = gradeRoll({ closeMark: 1, openCredit: 2 });
+  assert.equal(g.verdict, 'unknown'); assert.equal(g.extrinsicPct, null);
+  assert.equal(g.warnings.length, 3); assert.ok(g.warnings.every((w) => /unchecked/.test(w)));
+});
+t('a real rule breach still grades RED even when other gates are unknown', () => {
+  const g = gradeRoll({ closeMark: 10, closeIntrinsic: 9.5, openCredit: 11 });
+  assert.equal(g.verdict, 'red');
 });
 t('rolling DOWN into an extended stock is not penalized by rule 3', () => {
   const g = gradeRoll({ closeMark: 1, closeIntrinsic: 0, openCredit: 2, dte: 18, extension: ext, strikeUp: -5 });
@@ -152,6 +171,20 @@ t('stale bars (older than 10 days) report stale and no figures', () => {
 t('interpolated and live bars are ignored; both bar shapes read', () => {
   const e = stockExtension([{ begins_at: '2026-10-07', close_price: '100' }, { t: '2026-10-08', c: 101, interpolated: true }, { t: '2026-10-09', c: 102 }, { t: '2026-10-12', c: 103 }, { t: '2026-10-13', c: 120, live: true }], null, { asOf: '2026-10-13' });
   assert.equal(e.barsAsOf, '2026-10-12'); assert.equal(e.ret3d, null); // only 3 real bars → no 3-session base
+});
+t('REGRESSION (ChatGPT 2026-10-19 #2): duplicated bars (snapshot + overlapping tail) do not change the signal', () => {
+  const bars = [['2026-10-05', 100], ['2026-10-06', 103], ['2026-10-07', 106], ['2026-10-08', 109]].map(([t, c]) => ({ t, c }));
+  const once = stockExtension(bars, 109, { asOf: '2026-10-08' });
+  const twice = stockExtension(bars.concat(bars), 109, { asOf: '2026-10-08' });
+  assert.equal(once.ret3d, 0.09); assert.equal(twice.ret3d, 0.09);
+  // a corrected bar for the same date (fresher source appended LAST) wins
+  const corrected = stockExtension(bars.concat([{ begins_at: '2026-10-08', close_price: '118' }]), null, { asOf: '2026-10-08' });
+  assert.equal(corrected.ret3d, 0.18);
+});
+t('REGRESSION (ChatGPT 2026-10-19 #3): a settled roll is labeled an intrinsic-proxy ESTIMATE', () => {
+  const out = settleRolls([], detectRolls([ROLL_ORDER]), { PLTR: [{ t: '2026-10-16', c: 186.03 }] }, { 'old-195': 3.97 });
+  assert.equal(out[0].settle.basis, 'intrinsic-proxy'); assert.equal(out[0].settle.estimated, true);
+  const st = rollStats(out); assert.equal(st.estimated, true); assert.equal(st.vsDoNothingBasis, 'intrinsic-proxy');
 });
 t('too few bars → nulls, not zero', () => {
   const e = stockExtension([{ t: '2026-10-09', c: 1 }], 1);

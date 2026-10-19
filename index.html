@@ -696,8 +696,8 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=164">
-<link rel="stylesheet" href="ui/predictions.css?v=164">
+<link rel="stylesheet" href="ui/experience.css?v=165">
+<link rel="stylesheet" href="ui/predictions.css?v=165">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -750,7 +750,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=164"></script>
+<script src="ui/sd-rules.js?v=165"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -859,7 +859,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v164'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v165'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5893,7 +5893,8 @@ const OPT_KNOWLEDGE=[
    days out into a stock up 9% in three sessions — is the case these exist to catch; the old note said
    "roll up/out" for every ITM call. `rollAlert` (text only) is the pre-v164 fallback. */
 const OPT_TIER_STYLE={ASSIGNMENT_WIN:['#ecfdf5','#065f46','✅'],LET_IT_RIDE:['#ecfdf5','#065f46','🟢'],ROLL_WINDOW:['#fffbeb','#92400e','🔁'],
-  STRIKE_UNDER_BASIS:['#fef2f2','#991b1b','⚠️'],EXTENDED_STOCK:['#fef2f2','#991b1b','⛔'],HOLD:['var(--surface-2)','var(--text)','⏸']};
+  STRIKE_UNDER_BASIS:['#fef2f2','#991b1b','⚠️'],EXTENDED_STOCK:['#fef2f2','#991b1b','⛔'],HOLD:['var(--surface-2)','var(--text)','⏸'],
+  INSUFFICIENT_DATA:['var(--surface-2)','#6b7280','❔']};
 function optGuardrailNote(o){
   const g=o&&o.guardrail;
   if(!g){ return o&&o.rollAlert?'<div class="cross-note" style="background:#fff7ed;color:#92400e;margin:8px 0 0">🔁 '+o.rollAlert+'</div>':''; }
@@ -5904,6 +5905,7 @@ function optGuardrailNote(o){
   if(g.ifAssignedPerSh!=null)f.push('if assigned '+(g.ifAssignedPerSh>=0?'+':'−')+'$'+Math.abs(g.ifAssignedPerSh).toFixed(2)+'/sh'+(g.ifAssignedTotal!=null?' (<span data-priv="on">'+fmtD(g.ifAssignedTotal)+'</span>)':''));
   if(g.extension&&!g.extension.stale&&g.extension.ret3d!=null)f.push('3-day '+(g.extension.ret3d>=0?'+':'')+(g.extension.ret3d*100).toFixed(1)+'%');
   if(g.earningsInside)f.push('earnings before expiry');
+  if(g.flags&&g.flags.includes('NO_MARK'))f.push('no live mark — extrinsic unknown');
   return '<div class="cross-note" style="background:'+st[0]+';color:'+st[1]+';margin:8px 0 0">'+st[2]+' <b>'+g.tier.replace(/_/g,' ')+'</b> — '+g.text+
     (f.length?'<div style="font-size:10.5px;opacity:.85;margin-top:4px">'+f.join(' · ')+'</div>':'')+'</div>';
 }
@@ -5913,19 +5915,19 @@ function optGuardrailNote(o){
 function optRollScorecard(o){
   const rolls=(o&&o.rolls)||[]; if(!rolls.length)return '';
   const s=o.rollSummary||{};
-  const vs=s.vsDoNothing!=null?'<span style="color:'+(s.vsDoNothing>=0?'#059669':'#dc2626')+'">'+(s.vsDoNothing>=0?'+':'−')+'<span data-priv="on">'+fmtD(Math.abs(s.vsDoNothing))+'</span></span>':'—';
+  const vs=s.vsDoNothing!=null?'<span style="color:'+(s.vsDoNothing>=0?'#059669':'#dc2626')+'">'+(s.vsDoNothing>=0?'+':'−')+'<span data-priv="on">'+fmtD(Math.abs(s.vsDoNothing))+'</span></span>'+(s.estimated?' <span style="font-size:9.5px;color:#9ca3af">est.</span>':''):'—';
   let h='<div class="card"><div class="card-title"><span>📒 Roll Scorecard <span class="card-hint">'+rolls.length+' roll'+(rolls.length===1?'':'s')+' · '+(s.forCredit||0)+' credit / '+(s.forDebit||0)+' debit · '+(s.settled||0)+' settled</span></span></div>';
-  h+='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)"><div class="pk-m"><div class="pk-m-l">vs do-nothing</div><div class="pk-m-v">'+vs+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">settled rolls, at the old expiry</div></div>'+
+  h+='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)"><div class="pk-m"><div class="pk-m-l">vs do-nothing</div><div class="pk-m-v">'+vs+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">settled rolls, at the old expiry · estimate (new leg at intrinsic)</div></div>'+
     '<div class="pk-m"><div class="pk-m-l">Graded green</div><div class="pk-m-v">'+(s.green||0)+' / '+rolls.length+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">credit · extrinsic left · not extended</div></div>'+
     '<div class="pk-m"><div class="pk-m-l">For a debit</div><div class="pk-m-v" style="color:'+((s.forDebit||0)>0?'#dc2626':'inherit')+'">'+(s.forDebit||0)+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">rule 1 broken</div></div></div>';
   h+='<div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Roll</th><th>Net</th><th>DTE</th><th>Grade</th><th>vs do-nothing</th></tr></thead><tbody>';
   for(const r of rolls.slice(0,12)){
-    const grade=r.grade?(r.grade.verdict==='green'?'<span style="color:#059669">green</span>':'<span style="color:#dc2626">red</span>'):'—';
+    const grade=r.grade?(r.grade.verdict==='green'?'<span style="color:#059669">green</span>':r.grade.verdict==='unknown'?'<span style="color:#6b7280">unknown</span>':'<span style="color:#dc2626">red</span>'):'—';
     const why=r.grade&&r.grade.reasons?r.grade.reasons.join(' '):'';
-    const vsr=r.settle&&r.settle.rollVsDoNothingPerSh!=null?'<span style="color:'+(r.settle.rollVsDoNothingPerSh>=0?'#059669':'#dc2626')+'">'+(r.settle.rollVsDoNothingPerSh>=0?'+':'−')+'$'+Math.abs(r.settle.rollVsDoNothingPerSh).toFixed(2)+'/sh</span>'+(r.settle.oldExpiredWorthless?'<div style="font-size:9.5px;color:#9ca3af">old leg expired worthless</div>':''):'<span style="color:#9ca3af">pending · '+(r.old&&r.old.expiration?r.old.expiration:'')+'</span>';
+    const vsr=r.settle&&r.settle.rollVsDoNothingPerSh!=null?'<span style="color:'+(r.settle.rollVsDoNothingPerSh>=0?'#059669':'#dc2626')+'">'+(r.settle.rollVsDoNothingPerSh>=0?'+':'−')+'$'+Math.abs(r.settle.rollVsDoNothingPerSh).toFixed(2)+'/sh</span>'+(r.settle.oldExpiredWorthless?'<div style="font-size:9.5px;color:#9ca3af">old leg expired worthless</div>':'')+(r.settle.estimated?'<div style="font-size:9.5px;color:#9ca3af">est. — new leg at intrinsic</div>':''):'<span style="color:#9ca3af">pending · '+(r.old&&r.old.expiration?r.old.expiration:'')+'</span>';
     h+='<tr><td>'+(r.date||'')+'</td><td><b>'+r.symbol+'</b> $'+r.old.strike+' '+r.old.expiration+' → $'+r.new.strike+' '+r.new.expiration+' ×<span data-priv="val">'+(r.contracts||1)+'</span></td><td style="color:'+(r.netCredit!=null&&r.netCredit<0?'#dc2626':'#059669')+'">'+(r.netCredit!=null?(r.netCredit>=0?'+':'−')+'$'+Math.abs(r.netCredit).toFixed(2):'—')+'</td><td>'+(r.dteAtRoll!=null?r.dteAtRoll:'—')+'</td><td title="'+why.replace(/"/g,'&quot;')+'">'+grade+'</td><td>'+vsr+'</td></tr>';
   }
-  h+='</tbody></table></div><div style="font-size:10.5px;color:#9ca3af;margin-top:8px">A roll is green only when it is a net credit, the closed leg kept ≥15% extrinsic, it was not inside the final week, and the stock was not extended. "vs do-nothing" compares the roll to letting the old leg run to its expiry, measured at that expiry\'s close.</div></div>';
+  h+='</tbody></table></div><div style="font-size:10.5px;color:#9ca3af;margin-top:8px">A roll is green only when it is a net credit, the closed leg kept ≥15% extrinsic, it was not inside the final week, and the stock was not extended. "vs do-nothing" compares the roll to letting the old leg run to its expiry, measured at that expiry\'s close. The replacement leg is valued at INTRINSIC on that date, so these are estimates that flatter the roll (its remaining time value is a cost not shown) — not the basis for tuning thresholds. A grade of "unknown" means a gate could not be checked (no quote, no DTE or no price history): never a green light.</div></div>';
   return h;
 }
 /* ── options exposure strip — portfolio-level posture across open + pending ── */
@@ -8164,9 +8166,9 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=164"></script>
-<script src="ui/predictions-model.js?v=164"></script>
-<script src="ui/predictions.js?v=164"></script>
-<script src="ui/experience.js?v=164"></script>
+<script src="ui/experience-model.js?v=165"></script>
+<script src="ui/predictions-model.js?v=165"></script>
+<script src="ui/predictions.js?v=165"></script>
+<script src="ui/experience.js?v=165"></script>
 </body>
 </html>

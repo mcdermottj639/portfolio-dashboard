@@ -37,15 +37,24 @@ export const EXTENDED_SMA_PCT = 0.12;   // gate 3: price this far over the 20-da
 export const NEAR_STRIKE_PCT = 0.03;    // "stock within 3% of the strike" for the roll window
 export const SMA_WINDOW = 20, RET_WINDOW = 3;
 
-export const TIERS = ['LET_IT_RIDE', 'ASSIGNMENT_WIN', 'ROLL_WINDOW', 'STRIKE_UNDER_BASIS', 'EXTENDED_STOCK', 'HOLD'];
+export const TIERS = ['LET_IT_RIDE', 'ASSIGNMENT_WIN', 'ROLL_WINDOW', 'STRIKE_UNDER_BASIS', 'EXTENDED_STOCK', 'HOLD', 'INSUFFICIENT_DATA'];
 
 /* Stock extension from a daily close series (any of the repo's bar shapes). Returns nulls, never a
    guess, when the series is short or stale — a stale series stops at its own high and would read as
-   "extended" on exactly the names that rotated out of the fetch. */
+   "extended" on exactly the names that rotated out of the fetch.
+   Bars are DEDUPED BY SESSION DATE, last occurrence wins — the caller concatenates the prior
+   snapshot's series with this run's fresh tail, which overlaps it by design (hist-plan.mjs), so
+   without the dedupe the 3-session lookback walked back over repeated days: four closes
+   100/103/106/109 read +9.0% once and +2.8% when each bar appeared twice (ChatGPT review,
+   2026-10-19). Put the fresher source LAST. */
 export function stockExtension(bars = [], px = null, { asOf = null, maxAgeDays = 10 } = {}) {
-  const pts = (bars || []).filter((b) => b && !b.interpolated && !b.live)
-    .map((b) => ({ t: String(b.t || b.begins_at || '').slice(0, 10), c: num(b.c ?? b.close_price) }))
-    .filter((b) => b.t && b.c != null).sort((a, b) => a.t < b.t ? -1 : 1);
+  const byDate = new Map();
+  for (const b of (bars || [])) {
+    if (!b || b.interpolated || b.live) continue;
+    const t = String(b.t || b.begins_at || '').slice(0, 10), c = num(b.c ?? b.close_price);
+    if (t && c != null) byDate.set(t, { t, c });
+  }
+  const pts = [...byDate.values()].sort((a, b) => a.t < b.t ? -1 : 1);
   const out = { ret3d: null, vsSma20: null, barsAsOf: pts.length ? pts[pts.length - 1].t : null, stale: false };
   if (!pts.length) return out;
   if (asOf) {
@@ -94,8 +103,17 @@ export function guardrail(a, ctx = {}) {
   if (earningsInside) flags.push('EARNINGS_INSIDE');
   if (extrinsicPct != null && extrinsicPct < EXTRINSIC_MIN_PCT) flags.push('NO_EXTRINSIC');
   if (a.covered === false) flags.push('NAKED');
+  if (mark == null) flags.push('NO_MARK');
 
   let tier = 'HOLD', text = '';
+  /* Required inputs for ANY tier: a stock price, a strike and days to expiry. Without them every
+     branch below would fall through to a confident-sounding HOLD (ChatGPT review, 2026-10-19). */
+  if (px == null || strike == null || dte == null) {
+    const missing = [px == null && 'stock price', strike == null && 'strike', dte == null && 'expiry'].filter(Boolean).join(', ');
+    return { tier: 'INSUFFICIENT_DATA', flags, text: `Can't assess this call — missing ${missing}. No verdict until the next successful quote.`,
+      intrinsic, extrinsic, extrinsicPct, moneyness, itm, dte, strikeVsBasis, ifAssignedPerSh, ifAssignedTotal, profitCaptured,
+      extension: ext, extended, earningsInside, nearStrike };
+  }
   const ifA = ifAssignedPerSh != null ? ` (assignment = ${ifAssignedPerSh >= 0 ? '+' : '−'}$${Math.abs(ifAssignedPerSh).toFixed(2)}/sh vs your cost)` : '';
   if (strikeVsBasis != null && strikeVsBasis < 0) {
     tier = 'STRIKE_UNDER_BASIS';
@@ -105,7 +123,9 @@ export function guardrail(a, ctx = {}) {
     text = `Stock is extended (${ext.ret3d != null ? (ext.ret3d * 100).toFixed(1) + '% in 3 sessions' : ''}${ext.ret3d != null && ext.vsSma20 != null ? ', ' : ''}${ext.vsSma20 != null ? (ext.vsSma20 * 100).toFixed(1) + '% over the 20-day' : ''}). Do NOT roll up into this. Take assignment${ifA} or wait for a pullback.`;
   } else if (dte != null && dte <= LATE_DTE && itm === true) {
     tier = 'ASSIGNMENT_WIN';
-    text = `In the money with ${dte}d left and ${extrinsicPct != null ? Math.round(extrinsicPct * 100) + '%' : 'little'} extrinsic: a roll here is a debit for nothing. Let it be assigned${ifA} — you sold the right to sell at $${strike} and that is the plan working.`;
+    text = extrinsicPct != null
+      ? `In the money with ${dte}d left and ${Math.round(extrinsicPct * 100)}% extrinsic: a roll here is a debit for nothing. Let it be assigned${ifA} — you sold the right to sell at $${strike} and that is the plan working.`
+      : `In the money with ${dte}d left; no live mark, so the extrinsic left is UNKNOWN — confirm the quote before any roll. Assignment${ifA} is still the plan working: you sold the right to sell at $${strike}.`;
   } else if (dte != null && dte <= LATE_DTE && itm === false) {
     tier = 'LET_IT_RIDE';
     text = `${dte}d left, out of the money: nothing to do. Expires worthless if ${a.underlying || 'the stock'} stays under $${strike}; you keep the $${(perSh != null ? perSh * 100 * (num(a.contracts) || 1) : 0).toFixed(0)}.`;
@@ -139,9 +159,16 @@ export function gradeRoll({ closeMark, closeIntrinsic, openCredit, dte, extensio
   if (extrPct != null && extrPct < EXTRINSIC_MIN_PCT) reasons.push(`Only ${Math.round(extrPct * 100)}% extrinsic left in the leg being closed — rule 2: you are paying full intrinsic to close and buying no time.`);
   if (d != null && d < LATE_DTE) reasons.push(`${d} DTE — inside the final week; the roll window is ${ROLL_DTE_MIN}–${ROLL_DTE_MAX} DTE.`);
   if (isExtended(extension) && (strikeUp == null || strikeUp > 0)) reasons.push(`Stock is extended (${extension.ret3d != null ? (extension.ret3d * 100).toFixed(1) + '% in 3 sessions' : (extension.vsSma20 * 100).toFixed(1) + '% over the 20-day'}) — rule 3: rolling up here buys back the upside at the top.`);
-  if (extension && extension.stale) warnings.push('Extension unknown: price history is stale.');
-  if (net != null && net >= 0 && reasons.length === 0) reasons.push(`Net credit $${net.toFixed(2)}/sh with ${extrPct != null ? Math.round(extrPct * 100) + '% ' : ''}extrinsic in the closed leg${d != null ? ` at ${d} DTE` : ''}.`);
-  const verdict = reasons.some((r) => /rule \d|DTE —|unknown/.test(r)) ? 'red' : 'green';
+  /* GREEN needs every gate CHECKED and passed. A gate that cannot be checked (no intrinsic, no DTE, no
+     or stale price history) makes the verdict UNKNOWN, never green — gradeRoll({closeMark:1,openCredit:2})
+     used to grade green with the extrinsic gate silently skipped (ChatGPT review, 2026-10-19). */
+  if (extrPct == null) warnings.push('Extrinsic unknown: no intrinsic supplied for the leg being closed (rule 2 unchecked).');
+  if (d == null) warnings.push('DTE unknown (final-week rule unchecked).');
+  if (!extension || extension.stale || (extension.ret3d == null && extension.vsSma20 == null)) warnings.push(extension && extension.stale ? 'Extension unknown: price history is stale (rule 3 unchecked).' : 'Extension unknown: no price history supplied (rule 3 unchecked).');
+  const red = reasons.some((r) => /rule \d|DTE —|unknown/.test(r));
+  const verdict = red ? 'red' : warnings.length ? 'unknown' : 'green';
+  if (verdict === 'green') reasons.push(`Net credit $${net.toFixed(2)}/sh with ${Math.round(extrPct * 100)}% extrinsic in the closed leg at ${d} DTE; stock not extended.`);
+  else if (verdict === 'unknown') reasons.push(`Net credit $${net.toFixed(2)}/sh, but ${warnings.length} gate${warnings.length > 1 ? 's' : ''} could not be checked — not a green light.`);
   return { verdict, netCredit: net, extrinsicPct: extrPct, reasons, warnings };
 }
 
@@ -202,6 +229,11 @@ export function settleRolls(prior = [], fresh = [], histDay = {}, openPremiumByO
         const newIntr = Math.max(close - rec.new.strike, 0);
         const openPrem = num(rec.old.openPremium);
         rec.settle = {
+          /* ESTIMATE, not an observed outcome: the still-open replacement leg is marked at INTRINSIC
+             on the old expiry date, so any time value it still carries is omitted (it is a liability
+             the roller still holds, so this proxy FLATTERS the roll). Keep estimates out of threshold
+             tuning until a same-date option mark is retained (ChatGPT review, 2026-10-19). */
+          basis: 'intrinsic-proxy', estimated: true,
           expiryClose: close, oldExpiredWorthless: oldIntr === 0,
           doNothingPerSh: openPrem != null ? round(openPrem - oldIntr) : null,
           rollPerSh: openPrem != null && rec.netCredit != null ? round(openPrem + rec.netCredit - newIntr) : null,
@@ -221,7 +253,9 @@ export function rollStats(rolls = []) {
   const credit = rolls.filter((r) => r.netCredit != null && r.netCredit >= 0).length;
   const sum = settled.reduce((s, r) => s + r.settle.rollVsDoNothingPerSh * 100 * (r.contracts || 1), 0);
   return { rolls: rolls.length, forCredit: credit, forDebit: rolls.filter((r) => r.netCredit != null && r.netCredit < 0).length,
-    settled: settled.length, vsDoNothing: round(sum, 0), green: rolls.filter((r) => r.grade && r.grade.verdict === 'green').length };
+    settled: settled.length, vsDoNothing: round(sum, 0), vsDoNothingBasis: 'intrinsic-proxy', estimated: settled.length > 0,
+    green: rolls.filter((r) => r.grade && r.grade.verdict === 'green').length,
+    unknown: rolls.filter((r) => r.grade && r.grade.verdict === 'unknown').length };
 }
 
 /* CLI — for the Jarvis investing agent, which cannot decrypt data.json but CAN clone this repo and
