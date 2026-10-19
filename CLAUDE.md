@@ -1,3 +1,16 @@
+## 2026-10-19 — build-data.test.mjs: fixture dates were a time bomb (fixed, test-only)
+
+CI's "Producer tests" workflow went red on every push to `main` touching `producer/**` (four failure
+emails on 2026-10-19), with `Cannot read properties of undefined (reading 'kind')`. Nothing in the
+product: `build-data.test.mjs` hard-coded its self-directed orders on **2026-06-11/12**, and
+`maindecisions.mjs` only derives days inside `FETCH_DAYS` (120), so the fixture aged out of the window
+on 2026-10-10 and `sdBy['2026-06-12']` became undefined. Behind that crash a second one was waiting:
+the congressional-ledger fixture (`2026-06-20/25/28`) had likewise aged past polflow's 120-day
+retention. Both are now anchored to the run date (`D1`/`D2` = 41/40 days back, `barsAround` puts SPY's
+602 close on D2, pol events at 30/25/22 days back), the way `pageOrder` already was. The v164 entry's
+"pre-existing, not touched here" refers to this. **Any fixture that must sit INSIDE a retention or
+fetch window needs a relative date** — a fixed one is a test that fails on a schedule nobody set.
+
 ## 2026-10-19 — Options history reads a two-leg roll as a close plus an open
 
 The owner's phone listed the PLTR $195 call under **"Past contracts awaiting settlement records ·

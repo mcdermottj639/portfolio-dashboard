@@ -37,6 +37,16 @@ const dayBars = (n, from, base) => Array.from({ length: n }, (_, i) => {
   return { begins_at: `${d.toISOString().slice(0, 10)}T13:30:00Z`, close_price: String(base + i), interpolated: false };
 });
 
+// The self-directed Rebalance Log only DERIVES days inside the broker fetch window (FETCH_DAYS = 120
+// in maindecisions.mjs), so the two "in-window" fixture days must be anchored to the run date, not
+// hard-coded — the original 2026-06-11/12 dates aged past the window on 2026-10-10 and the test went
+// red on every push with nothing wrong in the product. D2 is the two-sided day, D1 the evening before.
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const relDay = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+const D1 = relDay(41), D2 = relDay(40);
+// A 5-bar daily series centred on D2 (D2 is index 2 → close base+2), so spyAt reads base+2 on D2.
+const barsAround = (base) => Array.from({ length: 5 }, (_, i) => ({ begins_at: `${relDay(42 - i)}T13:30:00Z`, close_price: String(base + i), interpolated: false }));
+
 const FIXTURES = {
   'prediction-account.json': {schemaVersion:1,source:'robinhood',asOf:'2026-09-01T12:00:00Z',
     historyStart:'2026-01-01',historyComplete:true,coverage:{balance:true,positions:true,transactions:true,fees:true},
@@ -95,15 +105,15 @@ const FIXTURES = {
   // dropped; a fill timestamped 02:00Z which is really the PREVIOUS evening in ET.
   'main-orders.json': { data: { orders: [
     { symbol: 'AAA', side: 'buy', state: 'filled', placed_agent: 'user', cumulative_quantity: '4', average_price: '100.00',
-      created_at: '2026-06-11T20:00:00Z', last_transaction_at: '2026-06-12T17:00:00Z' },
+      created_at: `${D1}T20:00:00Z`, last_transaction_at: `${D2}T17:00:00Z` },
     { symbol: 'BBB', side: 'sell', state: 'filled', placed_agent: 'user', cumulative_quantity: '3', average_price: '52.00',
-      created_at: '2026-06-12T14:00:00Z', last_transaction_at: '2026-06-12T18:00:00Z' },
+      created_at: `${D2}T14:00:00Z`, last_transaction_at: `${D2}T18:00:00Z` },
     { symbol: 'SPY', side: 'buy', state: 'filled', placed_agent: 'drip', cumulative_quantity: '0.1', average_price: '600.00',
-      last_transaction_at: '2026-06-12T18:00:00Z' },
+      last_transaction_at: `${D2}T18:00:00Z` },
     { symbol: 'AAA', side: 'sell', state: 'cancelled', placed_agent: 'user', cumulative_quantity: '0', average_price: null,
-      last_transaction_at: '2026-06-12T18:00:00Z' },
+      last_transaction_at: `${D2}T18:00:00Z` },
     { symbol: 'AAA', side: 'buy', state: 'filled', placed_agent: 'user', cumulative_quantity: '2', average_price: '96.00',
-      last_transaction_at: '2026-06-12T02:00:00Z' },
+      last_transaction_at: `${D2}T02:00:00Z` },
   ] } },
   'main-trades.json': { data: { trades: [
     { timestamp: new Date(Date.now() - 4 * 24 * 3600e3).toISOString(), symbol: 'MMM', side: 'sell', quantity: '35', price: '195.53', realized_gain: '-431.76' },
@@ -148,7 +158,9 @@ const prior = {
   generatedAt: new Date(Date.now() - 24 * 3600e3).toISOString(),
   generatedAtLabel: 'test prior',
   quotes: { AAA: q(100, 99), BBB: q(55, 54), SPY: q(660, 655) },
-  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: bars(5, 600), TTT: dayBars(150, '2026-01-02', 1000),
+  // SPY's bars straddle D2 (close 602 there) so the derived Rebalance Log can stamp spyAt; they still
+  // end >5 days before today, so the drawdown breaker's stale-bench check below is unchanged.
+  hist: { day: { AAA: bars(5, 95), BBB: bars(5, 50), SPY: barsAround(600), TTT: dayBars(150, '2026-01-02', 1000),
     GRD: pkBars(20, [100, 103, 106, 109, 112, 115, 118]), STL: pkBars(20, [50, 50.5, 51, 51.5]) },
     month: { AAA: bars(3, 80) } },
   // No `candidates` on purpose — the no-picks log guard above must still hold while the track
@@ -190,10 +202,10 @@ const prior = {
     equityHistory: [{ t: '2026-07-01', equity: 900, cumFlow: 0, optionsValue: -597, sleeveValue: 220.75 }],
     // The accumulated Rebalance Log. raw/ is wiped every run and the fetch only covers a window, so
     // the snapshot is the only place older records can live. The 2026-01 record is OUTSIDE the sweep
-    // window and must survive untouched; the 2026-06-11 one is INSIDE it and the fresh derivation
+    // window and must survive untouched; the D1 one is INSIDE it and the fresh derivation
     // must replace it wholesale rather than leaving a phantom day the broker no longer reports.
     decisions: { decisions: [
-      { id: '2026-06-11-sd', date: '2026-06-11', kind: 'deploy', source: 'orders', spyAt: 601,
+      { id: `${D1}-sd`, date: D1, kind: 'deploy', source: 'orders', spyAt: 601,
         trades: [{ sym: 'PHANTOM', side: 'BUY', dollars: 10, priceAt: 10 }] },
       { id: '2026-01-15-sd', date: '2026-01-15', kind: 'deploy', source: 'orders', spyAt: 580,
         trades: [{ sym: 'AAA', side: 'BUY', dollars: 500, priceAt: 90 }] },
@@ -213,8 +225,8 @@ const prior = {
   flow: { asOf: '2026-07-01', symbols: {
     BBB: { sym: 'BBB', asOf: '2026-07-01', flow: { score: 6.1, coverage: ['revision', 'insider'], components: { revision: 7, insider: 4.8 } } },
   }, polEvents: [
-    { filer: 'FILER A', sym: 'LMT', side: 'buy', txn: '2026-06-20', chamber: 'house', lag: 40 },
-    { filer: 'FILER B', sym: 'LMT', side: 'buy', txn: '2026-06-25', chamber: 'house', lag: 40 },
+    { filer: 'FILER A', sym: 'LMT', side: 'buy', txn: relDay(30), chamber: 'house', lag: 40 },
+    { filer: 'FILER B', sym: 'LMT', side: 'buy', txn: relDay(25), chamber: 'house', lag: 40 },
   ] },
 };
 
@@ -229,13 +241,13 @@ const FLOW_FIXTURE = {
   surprise: { score: 6.2, avgSurprisePct: 2.9, positives: 3, quarters: 4 },
 };
 
-// Congressional ledger: the poll re-serves one row the prior snapshot already holds (the rolling 25-row
+// Congressional ledger (dates relative to today — polflow retains 120 days, so fixed dates expire): the poll re-serves one row the prior snapshot already holds (the rolling 25-row
 // window does this constantly) plus one genuinely new filer. Dedup must keep the ledger at 3, and the
 // third distinct filer must tip LMT into a cluster.
 const pol = (filer, sym, side, txn) => ({ filer, sym, side, txn, chamber: 'house', lag: 40 });
 const POLFLOW_FIXTURE = { asOf: '2026-07-02', events: [
-  pol('FILER B', 'LMT', 'buy', '2026-06-25'),   // duplicate of one already in `prior`
-  pol('FILER C', 'LMT', 'buy', '2026-06-28'),   // new → third distinct filer → cluster
+  pol('FILER B', 'LMT', 'buy', relDay(25)),   // duplicate of one already in `prior`
+  pol('FILER C', 'LMT', 'buy', relDay(22)),   // new → third distinct filer → cluster
 ] };
 
 const hadData = existsSync(DATA);
@@ -407,18 +419,18 @@ try {
   // ── Self-directed Rebalance Log, derived from filled orders (v127) ──────────────────────────
   const sdLog = out.main.decisions.decisions;
   const sdBy = Object.fromEntries(sdLog.map((d) => [d.date, d]));
-  eq('a two-sided trading day becomes one rebalance record', [sdBy['2026-06-12'].kind, sdBy['2026-06-12'].trades.map((t) => t.sym).sort()],
+  eq('a two-sided trading day becomes one rebalance record', [sdBy[D2].kind, sdBy[D2].trades.map((t) => t.sym).sort()],
     ['rebalance', ['AAA', 'BBB']]);
   eq('a DRIP fill is not a decision', sdLog.some((d) => d.trades.some((t) => t.sym === 'SPY')), false);
-  eq('a cancelled order is not a decision', sdBy['2026-06-12'].trades.length, 2);
-  eq('a 02:00Z fill files under the previous ET day', sdBy['2026-06-11'].trades.map((t) => t.sym), ['AAA']);
-  eq("spyAt is stamped from that day's SPY close", sdBy['2026-06-12'].spyAt, 602);
+  eq('a cancelled order is not a decision', sdBy[D2].trades.length, 2);
+  eq('a 02:00Z fill files under the previous ET day', sdBy[D1].trades.map((t) => t.sym), ['AAA']);
+  eq("spyAt is stamped from that day's SPY close", sdBy[D2].spyAt, 602);
   eq('the log grades vs SPY through the SAME ledger as the agentic side',
-    [sdBy['2026-06-12'].grade.spyRet != null, sdBy['2026-06-12'].grade.alpha != null], [true, true]);
+    [sdBy[D2].grade.spyRet != null, sdBy[D2].grade.alpha != null], [true, true]);
   eq('a stale in-window record the broker no longer reports is swept',
     sdLog.some((d) => d.trades.some((t) => t.sym === 'PHANTOM')), false);
   eq('a record outside the sweep window carries forward', sdBy['2026-01-15'].trades[0].dollars, 500);
-  eq('log is newest-first', sdLog.map((d) => d.date), ['2026-06-12', '2026-06-11', '2026-01-15']);
+  eq('log is newest-first', sdLog.map((d) => d.date), [D2, D1, '2026-01-15']);
 
   // Realized P&L is now per account and broker-sourced — the stale owner figure must NOT win.
   eq('realized is broker-sourced when the fetch landed', out.realized.source, 'robinhood');
@@ -510,7 +522,7 @@ try {
   // Cursor-linked pages reach the real builder and ledger, not just the pure merger.
   const pageFile = join(RAW, 'main-orders-page-001.json');
   fixturePaths.push(pageFile);
-  const recentDay = new Date().toISOString().slice(0, 10);
+  const recentDay = todayISO();
   const pageOrder = { id: 'synthetic-page-order', symbol: 'AAA', side: 'buy', state: 'filled',
     cumulative_quantity: '2', average_price: '101', last_transaction_at: recentDay + 'T16:00:00Z' };
   const page = { requestCursor: null, createdAtGte: '2020-01-01', payload: { data: { orders: [pageOrder], next: null } } };
