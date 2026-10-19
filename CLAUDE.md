@@ -1,3 +1,12 @@
+## v166 — Roll Scorecard settles against fresh bars; stacked rows on the phone (2026-10-19)
+
+The owner's phone showed the PLTR roll **"pending · 2026-10-16"** three days after that expiry: `options-build`
+handed `settleRolls` the PRIOR snapshot's series only, and the old leg's expiry close first arrives in THIS
+run's fresh tail. It now settles and grades against `histForExt` (snapshot + raw, deduped by date in
+`stockExtension`). Consumer: the six-column roll table wrapped its ROLL cell to nine lines at 390px; it is
+now one stacked row per roll (symbol · date · grade pill / old → new leg / net + DTE / vs-do-nothing with
+"est." / a collapsed "why"). Rendered and checked at 390px. App/cache **v166 / pf-v166**.
+
 ## v165 — Guardrail verify: unknown is never green (2026-10-19)
 
 ChatGPT's independent review of v164 (Portfolio Dashboard handoff, 16:08 ET) reproduced three real
@@ -716,7 +725,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v165** (`pf-v165`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v166** (`pf-v166`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

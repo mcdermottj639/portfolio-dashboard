@@ -242,8 +242,11 @@ for (const a of [...positions, ...pending]) applyGuardrail(a);
 const openPremByOptId = {};
 for (const o of retainedOrders.values()) for (const l of (o.legs || []))
   if (l.option_id && l.position_effect === 'open' && l.side === 'sell') { const e = (l.executions || [])[0]; if (e) openPremByOptId[l.option_id] = parseFloat(e.price); }
-const rolls = settleRolls(prevSnap?.options?.rolls || [], detectRolls([...retainedOrders.values()]), snapSeries, openPremByOptId,
-  (r) => stockExtension((snapSeries[r.symbol] || []).filter((b) => String(b.t || b.begins_at || '').slice(0, 10) <= r.date), null, { asOf: r.date }));
+/* v166: settle and grade against histForExt (prior snapshot + THIS run's fresh bars), not the prior
+   snapshot alone — the old leg's expiry close first arrives in the fresh tail, so the PLTR roll sat
+   "pending" on the phone three days after its Oct 16 expiry. stockExtension dedupes the overlap. */
+const rolls = settleRolls(prevSnap?.options?.rolls || [], detectRolls([...retainedOrders.values()]), histForExt, openPremByOptId,
+  (r) => stockExtension((histForExt[r.symbol] || []).filter((b) => String(b.t || b.begins_at || '').slice(0, 10) <= r.date), null, { asOf: r.date }));
 const rollSummary = rollStats(rolls);
 if (rolls.length) console.log(`options rolls: ${rollSummary.rolls} recorded (${rollSummary.forCredit} credit / ${rollSummary.forDebit} debit) · ${rollSummary.settled} settled · ${rollSummary.vsDoNothing != null ? (rollSummary.vsDoNothing >= 0 ? '+' : '−') + '$' + Math.abs(rollSummary.vsDoNothing) : '—'} vs do-nothing`);
 console.log(`options: realized-vol IV proxy — ${Object.keys(ivBySym).length} symbols over a ${VOL_WINDOW_BARS}-bar window (raw batches ${Object.keys(rawSeries).length}, prior snapshot ${Object.keys(snapSeries).length})`);
