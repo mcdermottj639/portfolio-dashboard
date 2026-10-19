@@ -1,3 +1,17 @@
+## 2026-10-19 — Options history reads a two-leg roll as a close plus an open
+
+The owner's phone listed the PLTR $195 call under **"Past contracts awaiting settlement records ·
+Settlement record missing"** three days after he had bought it back in the Oct 12 roll. `option-history.mjs`
+accepted single-leg orders only, so the two-leg roll order went to `unresolved`, its contracts were
+`blocked`, and the retired lot read as an unexplained expiry. The normalizer now keeps each leg's fill
+price (`legs[].price`, from `executions[0].price`, carried in the retained ledger so it survives the
+rolling fetch window), and a filled two-leg order with one buy-to-close and one sell-to-open of the same
+option type expands into `<id>:close` and `<id>:open` entries, each with its OWN cash
+(`price × 100 × qty` — `processed_premium` on a roll is the NET and must not be used per leg). The close
+leg matches the old lot FIFO like any close (`status: 'Closed by roll'`); the open leg starts the new lot.
+Spreads, two opens, and partial fills still require broker reconciliation. Pinned by a verbatim-shape
+PLTR test in `option-history.test.mjs`. Producer-only; no app/cache bump.
+
 ## v166 — Roll Scorecard settles against fresh bars; stacked rows on the phone (2026-10-19)
 
 The owner's phone showed the PLTR roll **"pending · 2026-10-16"** three days after that expiry: `options-build`

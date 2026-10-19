@@ -25,7 +25,9 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
     if (!o.id) continue;
     const legs = (o.legs || []).map(l => ({option_id:l.option_id, option_type:l.option_type,
       strike_price:l.strike_price, expiration_date:l.expiration_date, side:l.side,
-      position_effect:l.position_effect}));
+      position_effect:l.position_effect,
+      // per-leg fill price (per share) — what lets a two-leg ROLL be read as a close + an open (v167)
+      price:number(l.executions?.[0]?.price) ?? saved.get(o.id)?.legs?.find(x => x.option_id === l.option_id)?.price ?? null}));
     saved.set(o.id, {id:o.id, state:o.state, symbol:o.chain_symbol, quantity:o.quantity,
       premium:o.processed_premium, direction:o.direction, created:o.created_at || saved.get(o.id)?.created, opening:o.opening_strategy,
       closing:o.closing_strategy, date:o.last_transaction_at || o.updated_at || o.created_at, legs});
@@ -40,9 +42,26 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
     .map(t => ({symbol:t.symbol, day:etDay(t.timestamp), price:number(t.price)}));
   const pnlRows = pnlExpiryCandidates(opts.pnlTrades).filter(r => !settlements.has(r.id));
   const source = [...saved.values()].sort((a,b) => String(a.date).localeCompare(String(b.date)) || a.id.localeCompare(b.id));
+  // v167: a filled two-leg ROLL (one buy-to-close + one sell-to-open, same option type, both legs with a
+  // fill price) is two exact-contract cash flows, not an unknowable multi-leg: the close leg retires the
+  // old lot and the open leg starts the new one. processed_premium is the NET, so each leg's cash comes
+  // from its own execution price × 100 × quantity. The 2026-10-12 PLTR roll sat "Settlement record
+  // missing" for a call the owner had bought back, which is what this fixes. Other multi-leg orders
+  // (spreads, partial fills) still require broker reconciliation.
+  const expanded = [];
+  for (const o of source) {
+    const legs = o.legs || [];
+    const close = legs.find(l => l.position_effect === 'close' && l.side === 'buy'), open = legs.find(l => l.position_effect === 'open' && l.side === 'sell');
+    const qty = number(o.quantity);
+    if (o.state === 'filled' && legs.length === 2 && close && open && close.option_type === open.option_type &&
+        close.price !== null && open.price !== null && qty > 0) {
+      expanded.push({...o, id:o.id + ':close', roll:o.id, legs:[close], premium:cents(close.price * 100 * qty), opening:null, closing:'roll'});
+      expanded.push({...o, id:o.id + ':open', roll:o.id, legs:[open], premium:cents(open.price * 100 * qty), opening:'roll', closing:null});
+    } else expanded.push(o);
+  }
   const lots = new Map(), trades = [], unresolved = [], blocked = new Set();
   let premiumYTD = 0, openingCount = 0;
-  const timeline = [...source, ...[...settlements.values()].map(e => ({...e, settlement:true})), ...pnlRows.map(r => ({...r, settlement:true}))]
+  const timeline = [...expanded, ...[...settlements.values()].map(e => ({...e, settlement:true})), ...pnlRows.map(r => ({...r, settlement:true}))]
     .sort((a,b) => String(a.date).slice(0,10).localeCompare(String(b.date).slice(0,10)) ||
       Number(!!a.settlement)-Number(!!b.settlement) || String(a.date).localeCompare(String(b.date)) || a.id.localeCompare(b.id));
   for (const o of timeline) {
@@ -119,7 +138,7 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
     trades.push({id:o.id, symbol:o.symbol, type:l.option_type, strike:number(l.strike_price), expiration:l.expiration_date,
       quantity:qty, opened:opened?.slice(0,10) || null, date:o.date.slice(0,10),
       opening:remaining ? null : cents(opening), closing:cents(cash * direction),
-      net:remaining ? null : cents(opening + cash * direction), status:remaining ? 'Missing opening fills' : 'Closed', matched});
+      net:remaining ? null : cents(opening + cash * direction), status:remaining ? 'Missing opening fills' : o.roll ? 'Closed by roll' : 'Closed', matched, roll:o.roll || undefined});
   }
   const pendingResolution = [...lots.values()].flat().filter(l => l.qty > 0).length;
   // Show the historical contracts we DO have even if their settlement feed is missing.
@@ -131,5 +150,5 @@ export function optionHistory(orders = [], prior = null, asOf = new Date().toISO
   return {version:2, asOf, fullHistoryAt, orders:source, events:[...settlements.values()], awaitingSettlement,
     trades:trades.sort((a,b)=>b.date.localeCompare(a.date)), unresolved:unresolved.length,
     pendingResolution, premiumYTD:openingCount ? cents(premiumYTD) : null,
-    coverage:'Exact-contract filled orders and confirmed zero-cash expirations (broker events, or reconciled broker P&L expiry rows); before fees. Assignments/exercises, missing settlements, multi-leg and partial fills require broker reconciliation.'};
+    coverage:'Exact-contract filled orders and confirmed zero-cash expirations (broker events, or reconciled broker P&L expiry rows); before fees. Assignments/exercises, missing settlements, two-leg rolls are read as a close plus an open; other multi-leg and partial fills require broker reconciliation.'};
 }

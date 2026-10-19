@@ -88,3 +88,23 @@ console.log('Expiration, assignment, missing settlements and retention tests pas
   assert.equal(h.fullHistoryAt,null);
 }
 console.log('Broker P&L expiry evidence tests passed');
+// v167: a two-leg ROLL is a close plus an open — the 2026-10-12 PLTR roll, verbatim shape (ids shortened).
+{
+  const open=order('sto','old-195','open','sell',1,397,'2026-09-15'); open.legs[0].strike_price='195'; open.legs[0].expiration_date='2026-10-16';
+  const roll={id:'6acce411',state:'filled',chain_symbol:'PLTR',quantity:'1.00000',processed_premium:'50.00',direction:'debit',last_transaction_at:'2026-10-12T13:44:00Z',
+    opening_strategy:'short_call',closing_strategy:'short_call',legs:[
+      {option_id:'new-210',side:'sell',position_effect:'open',expiration_date:'2026-11-20',strike_price:'210.0000',option_type:'call',executions:[{price:'16.14000000'}]},
+      {option_id:'old-195',side:'buy',position_effect:'close',expiration_date:'2026-10-16',strike_price:'195.0000',option_type:'call',executions:[{price:'16.64000000'}]}]};
+  const h=optionHistory([open,roll],null,'2026-10-19T20:00:00Z');
+  const closed=h.trades.find(t=>t.id==='6acce411:close');
+  assert.ok(closed,'the roll\'s close leg retires the old lot');
+  assert.equal(closed.status,'Closed by roll'); assert.equal(closed.opening,397); assert.equal(closed.closing,-1664); assert.equal(closed.net,-1267);
+  assert.equal(h.awaitingSettlement.length,0,'a contract bought back in a roll is NOT awaiting settlement');
+  assert.equal(h.unresolved,0);
+  const again=optionHistory([],h,'2026-10-19T20:00:00Z');
+  assert.equal(again.trades.find(t=>t.id==='6acce411:close').net,-1267,'leg prices survive in the retained ledger');
+  // a two-leg order that is NOT a roll (two opens) still requires reconciliation
+  const spread={...roll,id:'sp',legs:roll.legs.map(l=>({...l,position_effect:'open',side:'sell'}))};
+  assert.equal(optionHistory([spread],null,asOf).unresolved,1);
+  console.log('Roll-as-close-plus-open tests passed');
+}
