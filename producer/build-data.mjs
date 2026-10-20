@@ -29,6 +29,7 @@ import { deriveIncrementalOrders } from './order-incremental.mjs';
 import { deriveLog, mergeDecisions, spyClosesFrom, shiftDay, FETCH_DAYS } from './maindecisions.mjs';
 import { bookDrawdown } from './drawdown.mjs';
 import { appendEquityPoint, derivativesRealized, brokerageEquity } from './equityseries.mjs';
+import { applyRepairs } from './cumflow-repair.mjs';
 import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
@@ -112,6 +113,8 @@ async function loadPrior() {
   } catch { return null; }
 }
 const prior = await loadPrior();
+// One-time cumFlow repairs (cumflow-repair.mjs) — before anything reads the equity series.
+for (const r of applyRepairs(prior)) console.warn(`${r.account}: repaired recorded cumFlow — ${r.flow} transfer on ${r.from} the noise floor had missed (one time only)`);
 const refreshInputStatus = await checkRaw(RAWDIR, prior, needsResearchRefresh(prior));
 refreshInputStatus.fullAttempts = (prior?.generatedAt && etDate(new Date(prior.generatedAt)) === etDate(new Date()) ? prior?.refreshInputs?.fullAttempts || 0 : 0) + (refreshInputStatus.full ? 1 : 0);
 for (const issue of refreshInputStatus.missing) console.warn('REFRESH_PARTIAL: ' + issue);

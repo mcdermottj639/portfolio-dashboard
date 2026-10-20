@@ -1,3 +1,21 @@
+## 2026-10-20 — A sub-floor withdrawal read as a loss and tripped the drawdown breaker
+
+The owner withdrew **$375** from ••••3900 on 2026-10-09 (cash 379.24 → 4.24, every position unchanged —
+committed snapshots `e36618a` → `6c9dde0`). `appendEquityPoint` holds every inferred transfer to
+`flowThreshold` (8% of equity, ~$587 here), so the cash-based inference's exact −$375 was zeroed and the
+deposit-immune return read a **−4.2% day while SPY rose**. That one phantom loss was the entire −5.4pp
+relative drawdown: the breaker went SOFT and held $1,119 of deposited cash out of the market. Corrected,
+the book is −1.7% vs SPY −1.3% (−0.4pp) — breaker open. **The 8% floor exists for price noise in the
+legacy quote-priced formula; the cash path has no price term.** `cashFlowThreshold` now uses the $40
+floor when cash is exact — no option exposure, no derivatives sleeve and no margin loan on either side —
+and the scaled floor otherwise, so the self-directed margin book is unchanged. `cumflow-repair.mjs`
+re-books the missed −$375 once (keyed on the exact bad anchor, self-disabling; delete it and its
+build-data call after it has published). Pinned in `equityseries.test.mjs` / `cumflow-repair.test.mjs`.
+**Open, not fixed here:** on the self-directed book, selling calls lands premium in cash with no stock
+trade, and `inferCashFlow` does not net it — a large credit can read as a deposit. Producer-only; no
+app/cache bump. `build-data.test.mjs` still fails 3 checks identically on clean `main` (pre-existing),
+and its cleanup deletes live `raw/` inputs — don't run it between a fetch and `run.mjs`.
+
 ## 2026-10-19 — The snapshot label comes from the clock, not the caller
 
 `generatedAtLabel`, the in-app freshness text and the `data: snapshot …` commit subject all used the

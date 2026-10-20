@@ -447,4 +447,47 @@ t('REGRESSION: the real 08-30 settlement still nets to no transfer under the new
   assert.equal(r.cumFlow, 0);
 });
 
+
+console.log('cashFlowThreshold — the exact cash path is not held to the price-noise floor (2026-10-20)');
+{
+  const { cashFlowThreshold } = await import('./equityseries.mjs');
+  t('a cash-positive, option-free book uses the $40 floor', () => {
+    assert.equal(cashFlowThreshold({ priorEquity: 7344, priorCash: 379.24, cash: 4.24 }), 40);
+  });
+  t('a margin loan on either side keeps the scaled floor (interest posts to cash)', () => {
+    assert.equal(cashFlowThreshold({ priorEquity: 14000, priorCash: -27000, cash: -27100 }), 750);
+    assert.equal(cashFlowThreshold({ priorEquity: 5000, priorCash: 10, cash: -5 }), 400);
+  });
+  t('option exposure keeps the scaled floor (premium is a cash move the formula does not net)', () => {
+    assert.equal(cashFlowThreshold({ priorEquity: 5000, priorCash: 100, cash: 900, optionsValue: -800, priorOptionsValue: 0 }), 400);
+  });
+  t('a derivatives sleeve keeps the scaled floor', () => {
+    assert.equal(cashFlowThreshold({ priorEquity: 5000, priorCash: 100, cash: 300, priorSleeveValue: 200 }), 400);
+  });
+  t('missing cash keeps the scaled floor', () => {
+    assert.equal(cashFlowThreshold({ priorEquity: 5000 }), 400);
+  });
+  t('REGRESSION: the real 2026-10-09 $375 withdrawal from ••••3900 is booked, not read as a −4.2% day', () => {
+    const P = pos({ SPY: [0.7765, 780], NVDA: [3.871, 230] });
+    const r = appendEquityPoint({
+      prev: [{ t: '2026-10-08', equity: 7344.12, cumFlow: 3788.17 }],
+      day: '2026-10-09', equity: 7036.41, positions: P, priorPositions: P,
+      priorEquity: 7344.12, cash: 4.24, priorCash: 379.24 });
+    assert.equal(r.flow, -375);
+    assert.equal(r.cumFlow, 3413.17);
+  });
+  t('a few dollars of dividend on the same book stays below the floor', () => {
+    const P = pos({ SPY: [1, 700] });
+    const r = appendEquityPoint({ prev: [{ t: '2026-10-08', equity: 7000, cumFlow: 0 }],
+      day: '2026-10-09', equity: 7012, positions: P, priorPositions: P, priorEquity: 7000, cash: 312, priorCash: 300 });
+    assert.equal(r.flow, 0);
+  });
+  t('the self-directed margin book is unchanged: a sub-$750 cash move is still ignored', () => {
+    const P = pos({ IREN: [700, 27] });
+    const r = appendEquityPoint({ prev: [{ t: '2026-10-08', equity: 14000, cumFlow: 0 }],
+      day: '2026-10-09', equity: 13850, positions: P, priorPositions: P, priorEquity: 14000,
+      cash: -27850, priorCash: -27700, optionsValue: -2400, priorOptionsValue: -2400 });
+    assert.equal(r.flow, 0);
+  });
+}
 console.log(`\n✅ equityseries: ${n} assertions passed`);

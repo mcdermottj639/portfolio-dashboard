@@ -64,6 +64,26 @@ export function flowThreshold(priorEquity) {
   return Math.max(FLOW_FLOOR_ABS, Math.min(pct, FLOW_FLOOR_CAP));
 }
 
+/* THE CASH PATH DOES NOT NEED THE PRICE-NOISE FLOOR (2026-10-20). `flowThreshold` was sized for the
+   legacy quote-priced inference, where ordinary P&L leaks into the flow term. `inferCashFlow` has no
+   P&L term at all — prices enter only through traded quantity — so on a cash-positive, option-free
+   book the residual is a transfer to the cent. Holding it to 8% of equity zeroed a real $375
+   withdrawal from ••••3900 on 2026-10-09 (cash 379.24 → 4.24, every position unchanged), which the
+   deposit-immune return then read as a −4.2% day while SPY rose — and that one phantom loss was the
+   whole of the −5.4pp relative drawdown that paused deployment. The low floor applies only where
+   cash really is exact: no option exposure on either side (premium is a cash move the formula does
+   not net), no derivatives sleeve on either side (buying or settling an event contract moves cash
+   across the perimeter with no position to explain it), and no margin loan on either side (interest
+   posts to cash). Everything else keeps the scaled floor, so the self-directed book's behaviour is
+   unchanged. */
+export function cashFlowThreshold({ priorEquity, priorCash, cash, optionsValue, priorOptionsValue,
+                                    sleeveValue, priorSleeveValue } = {}) {
+  const opt = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) > 0.005;
+  const exact = !opt(optionsValue) && !opt(priorOptionsValue) && !opt(sleeveValue) && !opt(priorSleeveValue)
+    && typeof cash === 'number' && cash >= 0 && typeof priorCash === 'number' && priorCash >= 0;
+  return exact ? FLOW_FLOOR_ABS : flowThreshold(priorEquity);
+}
+
 /* THE MEASURED PERIMETER (2026-09-10). Sleeves that are not part of the brokerage account —
    prediction markets, futures, crypto — are held by separate legal entities, and the whole
    `derivativesRealized` treatment below depends on them sitting OUTSIDE the equity we record.
@@ -289,7 +309,9 @@ export function appendEquityPoint({ prev, day, equity, positions, priorEquity, p
   const byCash = (typeof priorEquity === 'number')
     ? inferCashFlow({ priorCash, cash, priorPositions, positions, extraPnl }) : null;
   if (byCash != null) {
-    flow = Math.abs(byCash) >= flowThreshold(priorEquity) ? +byCash.toFixed(2) : 0;
+    flow = Math.abs(byCash) >= cashFlowThreshold({ priorEquity, priorCash, cash, optionsValue, priorOptionsValue,
+                                         sleeveValue, priorSleeveValue: last ? last.sleeveValue : undefined })
+      ? +byCash.toFixed(2) : 0;
   } else {
     flow = inferFlow(priorEquity, priorPositions, eq, positions, optionsValue, priorOptionsValue, extraPnl);
   }
