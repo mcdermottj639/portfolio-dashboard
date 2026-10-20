@@ -7,7 +7,7 @@
     "book": 5277.13,
     "equityAtDecision": 5277.12,
     "spyAt": 771.28,
-    "rationale": "Owner-confirmed deploy of the weekly research refresh (7-name target: JPM 16% / SPY 18% / NVDA 15% / V 15% / AAPL 15% / GOOGL 10% / UNH 11%). Account cash-constrained ($10.35 available) — only the gaps under the new target with room in cash were funded: V, AAPL, UNH. GOOGL/JPM/SPY already at/above target, no buy needed. NVDA deferred (wash-sale — loss booked 2026-08-03, rebuy blocked to 2026-09-03). Orders placed market-closed (~1:16 AM ET) as fractional dollar-market buys, queued for the 9:30 AM ET regular-session open — priceAt below is the order-time reference quote, not a confirmed fill.",
+    "rationale": "Owner-confirmed deploy of the weekly research refresh (7-name target: JPM 16% / SPY 18% / NVDA 15% / V 15% / AAPL 15% / GOOGL 10% / UNH 11%). Account cash-constrained ($10.35 available) \u2014 only the gaps under the new target with room in cash were funded: V, AAPL, UNH. GOOGL/JPM/SPY already at/above target, no buy needed. NVDA deferred (wash-sale \u2014 loss booked 2026-08-03, rebuy blocked to 2026-09-03). Orders placed market-closed (~1:16 AM ET) as fractional dollar-market buys, queued for the 9:30 AM ET regular-session open \u2014 priceAt below is the order-time reference quote, not a confirmed fill.",
     "trades": [
       {
         "sym": "V",
@@ -40,7 +40,7 @@
     "book": 4955,
     "equityAtDecision": 4955,
     "spyAt": 739.41,
-    "rationale": "Deployed the added cash after a fresh research refresh (adversarial verify passed only LLY/JPM/NVDA as buys). Earnings-blackout deferred MSFT (7/29) and V (7/28); AMZN dropped from the target; GOOGL held near target. LLY/GE/SPY/NVDA filled at the 9:30 open (actual fills below). JPM (14% target) still PENDING: the owner's manual $285 order mis-filled as IBM; IBM was sold same-day (~+$2, avg 201.17) and JPM will be bought 2026-07-24 once the IBM proceeds settle (T+1, cash account) — append it to this decision then.",
+    "rationale": "Deployed the added cash after a fresh research refresh (adversarial verify passed only LLY/JPM/NVDA as buys). Earnings-blackout deferred MSFT (7/29) and V (7/28); AMZN dropped from the target; GOOGL held near target. LLY/GE/SPY/NVDA filled at the 9:30 open (actual fills below). JPM (14% target) still PENDING: the owner's manual $285 order mis-filled as IBM; IBM was sold same-day (~+$2, avg 201.17) and JPM will be bought 2026-07-24 once the IBM proceeds settle (T+1, cash account) \u2014 append it to this decision then.",
     "trades": [
       {
         "sym": "LLY",
@@ -80,7 +80,7 @@
     "book": 3490,
     "equityAtDecision": 3490,
     "spyAt": null,
-    "rationale": "Initial deployment of the agentic cash account into the first research target — 8-name sector-diversified basket (SPY ballast + megacap quality). Seed record: entries are the account's actual average cost basis; SPY benchmark not recorded at seed time (absolute-return grading only).",
+    "rationale": "Initial deployment of the agentic cash account into the first research target \u2014 8-name sector-diversified basket (SPY ballast + megacap quality). Seed record: entries are the account's actual average cost basis; SPY benchmark not recorded at seed time (absolute-return grading only).",
     "trades": [
       {
         "sym": "SPY",
@@ -148,7 +148,7 @@
     "book": 5331.51,
     "equityAtDecision": 5331.51,
     "spyAt": 773.09,
-    "rationale": "Owner-confirmed ticket 2026-08-10-61kjns (turnover $3,744.55, above the $500 auto tier). Leg 1 placed 2026-08-10: full exits of four off-target names (GE, LLY, AMZN, MSFT — losses-first ordering, all four were short-term gains) raising $2158.2 of proceeds; est. short-term realized gain $231.22, no harvestable losses so no cross-account wash check was required. Leg 2 (T+1, funded by settling proceeds) is JPM $162.93 / AAPL $795.43 / UNH $583.22 / SPY $42.85, to be placed next session after an earnings re-check. NVDA (wash-sale hold to 2026-09-02), V and GOOGL (gapped below planned entry) deferred — ~$576.71 of intended weight held back. Leg 2 placed 2026-08-11 (proceeds settled, $2,159.22 buying power): AAPL $795.43 @ $306.05, UNH $583.22 @ $404.81, JPM $162.93 @ $359.45, SPY $42.85 @ $773.51 — $1,584.43 deployed, all four filled. Earnings re-check over Aug 11-18 returned no report for any buy name, so none were dropped; all four traded inside their planned entry zones. Ticket closed (done).",
+    "rationale": "Owner-confirmed ticket 2026-08-10-61kjns (turnover $3,744.55, above the $500 auto tier). Leg 1 placed 2026-08-10: full exits of four off-target names (GE, LLY, AMZN, MSFT \u2014 losses-first ordering, all four were short-term gains) raising $2158.2 of proceeds; est. short-term realized gain $231.22, no harvestable losses so no cross-account wash check was required. Leg 2 (T+1, funded by settling proceeds) is JPM $162.93 / AAPL $795.43 / UNH $583.22 / SPY $42.85, to be placed next session after an earnings re-check. NVDA (wash-sale hold to 2026-09-02), V and GOOGL (gapped below planned entry) deferred \u2014 ~$576.71 of intended weight held back. Leg 2 placed 2026-08-11 (proceeds settled, $2,159.22 buying power): AAPL $795.43 @ $306.05, UNH $583.22 @ $404.81, JPM $162.93 @ $359.45, SPY $42.85 @ $773.51 \u2014 $1,584.43 deployed, all four filled. Earnings re-check over Aug 11-18 returned no report for any buy name, so none were dropped; all four traded inside their planned entry zones. Ticket closed (done).",
     "trades": [
       {
         "sym": "GE",
@@ -232,7 +232,7 @@
     "book": 5315.77,
     "equityAtDecision": 5315.77,
     "spyAt": 773.45,
-    "rationale": "Owner-confirmed ticket 2026-08-11-iy7ywv — deploy the cash left over from the 08-10 rebalance. No sells, $0 tax. Live pre-checks: book -0.41% vs plan basis; next reports NVDA 2026-08-26, V 2026-10-27, UNH 2026-10-27, so no earnings blackout. NVDA was buyable because the wash-sale ledger now rebuilds from real closing trades (lossSource=trades, empty) — the phantom loss behind the 09-02 block is gone. PLACED: NVDA $86.49 @ $216.67, UNH $1.80 @ $403.52. HELD BACK: V $436.92 — it had slipped to $362.96, below its planned $364-372 entry, which is the planner's own below-entry deferral rule (it was $364.32 when the plan was built); re-proposes when it trades back in the zone. GOOGL still deferred below entry.",
+    "rationale": "Owner-confirmed ticket 2026-08-11-iy7ywv \u2014 deploy the cash left over from the 08-10 rebalance. No sells, $0 tax. Live pre-checks: book -0.41% vs plan basis; next reports NVDA 2026-08-26, V 2026-10-27, UNH 2026-10-27, so no earnings blackout. NVDA was buyable because the wash-sale ledger now rebuilds from real closing trades (lossSource=trades, empty) \u2014 the phantom loss behind the 09-02 block is gone. PLACED: NVDA $86.49 @ $216.67, UNH $1.80 @ $403.52. HELD BACK: V $436.92 \u2014 it had slipped to $362.96, below its planned $364-372 entry, which is the planner's own below-entry deferral rule (it was $364.32 when the plan was built); re-proposes when it trades back in the zone. GOOGL still deferred below entry.",
     "trades": [
       {
         "sym": "NVDA",
@@ -262,7 +262,7 @@
     "book": 10338.63,
     "equityAtDecision": 10338.63,
     "spyAt": 772.4,
-    "rationale": "Pre-authorized post-deposit deployment (ticket 2026-08-12-1aqszr, owner 2026-08-11: research builds the model -> legitimizer -> trade -> excess parks in VTI). Sold the three names the split-verdict target dropped (AAPL -9.07, UNH -1.02, V +12.57 — net ST +2.48), then deployed 7223.71 across the 9-name target. NVDA deferred by the v105 cross-account wash guard (margin-book NVDA loss 2026-07-29, blocked to 2026-08-28) — its 320.53 PARKED in VTI, first live use of the waiting ground; released to fund NVDA when the window clears. Pre-checks: book +0.10% vs basis; all buy names report late Oct; no margin AAPL buy in 30d (loss-sale wash-clean); no same-day orders (PDT clear). Proceeds ran 6.89 under plan; the park leg absorbed the shave — never exceeded the ticket.",
+    "rationale": "Pre-authorized post-deposit deployment (ticket 2026-08-12-1aqszr, owner 2026-08-11: research builds the model -> legitimizer -> trade -> excess parks in VTI). Sold the three names the split-verdict target dropped (AAPL -9.07, UNH -1.02, V +12.57 \u2014 net ST +2.48), then deployed 7223.71 across the 9-name target. NVDA deferred by the v105 cross-account wash guard (margin-book NVDA loss 2026-07-29, blocked to 2026-08-28) \u2014 its 320.53 PARKED in VTI, first live use of the waiting ground; released to fund NVDA when the window clears. Pre-checks: book +0.10% vs basis; all buy names report late Oct; no margin AAPL buy in 30d (loss-sale wash-clean); no same-day orders (PDT clear). Proceeds ran 6.89 under plan; the park leg absorbed the shave \u2014 never exceeded the ticket.",
     "trades": [
       {
         "sym": "SPY",
@@ -382,7 +382,7 @@
     "book": 11611.23,
     "equityAtDecision": 11611.23,
     "spyAt": 764.74,
-    "rationale": "Owner-confirmed ticket 2026-08-25-2m67b0 — deploy 1380.37 of settled cash into the 08-25 target. No sells, 0 tax. Pre-checks: book -0.11% vs plan basis; JNJ reports 10-13 and KO 10-20 (no blackout); no loss-sales so no cross-account wash check; no same-day orders (PDT clear). Deferred and NOT bought: MA + BKNG (above their entry bands) and V (14d re-entry cooldown, clears 08-26) — 1821.56 of intended weight held, no parking leg emitted this pass. JPM/GE phase-out exits stayed blocked by the 14d min-hold (churn governor).",
+    "rationale": "Owner-confirmed ticket 2026-08-25-2m67b0 \u2014 deploy 1380.37 of settled cash into the 08-25 target. No sells, 0 tax. Pre-checks: book -0.11% vs plan basis; JNJ reports 10-13 and KO 10-20 (no blackout); no loss-sales so no cross-account wash check; no same-day orders (PDT clear). Deferred and NOT bought: MA + BKNG (above their entry bands) and V (14d re-entry cooldown, clears 08-26) \u2014 1821.56 of intended weight held, no parking leg emitted this pass. JPM/GE phase-out exits stayed blocked by the 14d min-hold (churn governor).",
     "trades": [
       {
         "sym": "JNJ",
@@ -455,7 +455,7 @@
     "book": 11585.45,
     "equityAtDecision": 11585.45,
     "spyAt": 764.94,
-    "rationale": "Two-strike phase-out completes: JPM and GE exit after failing to return from adversarial verify a second consecutive cycle — the exits the 08-25 ticket computed but could not place, held one day short of the 14d min-hold (both bought 08-12). Proceeds fund the defensive floor (JNJ 7.13%, KO 6.65%) and the gold diversifier sleeve (GLDM 5.0%), with AMZN topped to target. $1,028.66 of deferred weight for MA, V and BKNG (all above-entry) parks in VTI rather than sitting in cash. Realized ST: +$2.68 JPM gain, -$24.06 GE loss, net -$21.38.",
+    "rationale": "Two-strike phase-out completes: JPM and GE exit after failing to return from adversarial verify a second consecutive cycle \u2014 the exits the 08-25 ticket computed but could not place, held one day short of the 14d min-hold (both bought 08-12). Proceeds fund the defensive floor (JNJ 7.13%, KO 6.65%) and the gold diversifier sleeve (GLDM 5.0%), with AMZN topped to target. $1,028.66 of deferred weight for MA, V and BKNG (all above-entry) parks in VTI rather than sitting in cash. Realized ST: +$2.68 JPM gain, -$24.06 GE loss, net -$21.38.",
     "trades": [
       {
         "sym": "VTI",
@@ -549,7 +549,7 @@
     "book": 11596.3,
     "equityAtDecision": 11596.3,
     "spyAt": 769.24,
-    "rationale": "Waiting-ground release: BKNG traded back into its entry band (spot $205.94 vs a $203.76 ceiling + 2% premium), so $543.61 of the VTI placeholder parked on 08-26 was sold to fund the position at its full 4.75% target weight. Realized +$1.78 ST on the release. MA and V stay above-entry and keep $485.99 parked. The VTI trim the target also called for ($6.30) is held by the 14d min-hold to 2026-09-09 — dust either way.",
+    "rationale": "Waiting-ground release: BKNG traded back into its entry band (spot $205.94 vs a $203.76 ceiling + 2% premium), so $543.61 of the VTI placeholder parked on 08-26 was sold to fund the position at its full 4.75% target weight. Realized +$1.78 ST on the release. MA and V stay above-entry and keep $485.99 parked. The VTI trim the target also called for ($6.30) is held by the 14d min-hold to 2026-09-09 \u2014 dust either way.",
     "trades": [
       {
         "sym": "BKNG",
@@ -585,7 +585,7 @@
     "book": 11547.88,
     "equityAtDecision": 11547.88,
     "spyAt": null,
-    "rationale": "Waiting-ground release funds MA and V, the last two names parked above-entry since 08-26. Released 1.209649 VTI @ 377.035 = $456.05 (-$1.00 ST). CAVEAT: both names gapped up overnight and filled OUTSIDE their entry bands (MA $588.82 vs a $584.33 ceiling+tolerance, V $378.30 vs $372.50) — they cleared only because the target is 9 days stale and the zones went advisory past ENTRY_ZONE_STALE_DAYS. Overshoot ~$2-4 on $455. The weekly research has not refreshed since 08-25; its Routine exits in ~2 minutes without producing a target.",
+    "rationale": "Waiting-ground release funds MA and V, the last two names parked above-entry since 08-26. Released 1.209649 VTI @ 377.035 = $456.05 (-$1.00 ST). CAVEAT: both names gapped up overnight and filled OUTSIDE their entry bands (MA $588.82 vs a $584.33 ceiling+tolerance, V $378.30 vs $372.50) \u2014 they cleared only because the target is 9 days stale and the zones went advisory past ENTRY_ZONE_STALE_DAYS. Overshoot ~$2-4 on $455. The weekly research has not refreshed since 08-25; its Routine exits in ~2 minutes without producing a target.",
     "trades": [
       {
         "sym": "MA",
@@ -635,7 +635,7 @@
     "book": 13312.49,
     "equityAtDecision": 13312.49,
     "spyAt": 767.13,
-    "rationale": "Deployed the account’s full $1,817.29 idle cash across ten underweight target names, largest gap first. No sells: nothing was off-target, over weight, or harvestable, so turnover is entirely new money. MA and V were the two largest gaps (1.7%/1.6% against 5% targets) after the 09-02 partial funding; SPY, JNJ, KO, VTI and GLDM top up the ballast/defensive/gold sleeves. Gate printed EXEC_AUTO at $1,817.29 turnover, well inside the $10,000 auto tier. Pre-checks clean: book $13,290.31 vs $13,312.49 plan basis (-0.17%), buying power exactly $1,817.29, every name’s next earnings >7d out, no cross-account wash exposure (the margin book’s last 30 days is PLTR/CIFR/TSM only), no intraday buys so PDT is untouched. The plan’s single warning is expected and correct: the buys were re-sized $1,849.47 → $1,817.29 because the $32.18 shortfall was under the $100 parking floor, so the waiting ground was left alone rather than forced into a dust sale.",
+    "rationale": "Deployed the account\u2019s full $1,817.29 idle cash across ten underweight target names, largest gap first. No sells: nothing was off-target, over weight, or harvestable, so turnover is entirely new money. MA and V were the two largest gaps (1.7%/1.6% against 5% targets) after the 09-02 partial funding; SPY, JNJ, KO, VTI and GLDM top up the ballast/defensive/gold sleeves. Gate printed EXEC_AUTO at $1,817.29 turnover, well inside the $10,000 auto tier. Pre-checks clean: book $13,290.31 vs $13,312.49 plan basis (-0.17%), buying power exactly $1,817.29, every name\u2019s next earnings >7d out, no cross-account wash exposure (the margin book\u2019s last 30 days is PLTR/CIFR/TSM only), no intraday buys so PDT is untouched. The plan\u2019s single warning is expected and correct: the buys were re-sized $1,849.47 \u2192 $1,817.29 because the $32.18 shortfall was under the $100 parking floor, so the waiting ground was left alone rather than forced into a dust sale.",
     "trades": [
       {
         "sym": "SPY",
@@ -768,7 +768,7 @@
     "book": 13186.8,
     "equityAtDecision": 13186.8,
     "spyAt": 763.03,
-    "rationale": "First MANDATE A rebalance (target asOf 2026-09-09, 18 names). Funded entirely by trimming SPY from 17.2% to its 4.5% residual weight — the mandate retires structural index ballast, so $1,675.27 of the core was rotated into single names the research picked. Buys: JPM $546.28 (new, 0 → 7.96%), UNP $347.26 (new, 0 → 5.06%), AAPL $322.55 (new, 0 → 4.70%), V $292.19 (4.4% → 8.62%), NVDA $154.49 (7.2% → 9.41%). Turnover $3,338.04, inside the $10,000 auto tier; est. short-term tax net +$0.51 on the SPY trim (essentially flat — the lot was days old). Pre-checks clean: live book $13,186.80 vs $13,160.28 plan basis (+0.20%), buying power $1,675.16 after the sell filled versus $1,662.77 of buys, no buy name reporting earnings within 7 days, no ••••3900 orders earlier today so PDT is untouched, and the margin book's last 30 days of realized losses are CIFR/TSM only — no cross-account wash exposure on any buy name. META ($618.53 of intended weight) was deferred above-entry: $651.70 is 3.3% over the $600-$630 research zone, so the dollars wait in CASH rather than the VTI waiting ground (an undated deferral clears on a price move, and a short round trip costs more in spread than a few days of beta). Buys were re-sized $1,694.72 → $1,662.77 because the $19.45 shortfall sat under the $100 parking floor, so the waiting ground was left alone rather than forced into a dust sale; $12.50 left uninvested. Book drawdown -3.6% from its 08-10 peak against SPY -0.4%, i.e. -3.2pp relative — inside the -5pp soft tier, deployment normal.",
+    "rationale": "First MANDATE A rebalance (target asOf 2026-09-09, 18 names). Funded entirely by trimming SPY from 17.2% to its 4.5% residual weight \u2014 the mandate retires structural index ballast, so $1,675.27 of the core was rotated into single names the research picked. Buys: JPM $546.28 (new, 0 \u2192 7.96%), UNP $347.26 (new, 0 \u2192 5.06%), AAPL $322.55 (new, 0 \u2192 4.70%), V $292.19 (4.4% \u2192 8.62%), NVDA $154.49 (7.2% \u2192 9.41%). Turnover $3,338.04, inside the $10,000 auto tier; est. short-term tax net +$0.51 on the SPY trim (essentially flat \u2014 the lot was days old). Pre-checks clean: live book $13,186.80 vs $13,160.28 plan basis (+0.20%), buying power $1,675.16 after the sell filled versus $1,662.77 of buys, no buy name reporting earnings within 7 days, no \u2022\u2022\u2022\u20223900 orders earlier today so PDT is untouched, and the margin book's last 30 days of realized losses are CIFR/TSM only \u2014 no cross-account wash exposure on any buy name. META ($618.53 of intended weight) was deferred above-entry: $651.70 is 3.3% over the $600-$630 research zone, so the dollars wait in CASH rather than the VTI waiting ground (an undated deferral clears on a price move, and a short round trip costs more in spread than a few days of beta). Buys were re-sized $1,694.72 \u2192 $1,662.77 because the $19.45 shortfall sat under the $100 parking floor, so the waiting ground was left alone rather than forced into a dust sale; $12.50 left uninvested. Book drawdown -3.6% from its 08-10 peak against SPY -0.4%, i.e. -3.2pp relative \u2014 inside the -5pp soft tier, deployment normal.",
     "trades": [
       {
         "sym": "NVDA",
@@ -857,7 +857,7 @@
     "book": 13240.5,
     "equityAtDecision": 13240.5,
     "spyAt": 759.26,
-    "rationale": "First execution of the 2026-09-14 Mandate A target (research refreshed this morning). Two-sided: exited the three names the new target dropped — KO, GLDM and BKNG, all phase-out flagged and all existing only to fill a structural slot Mandate A deleted (KO the retired 15% defensive floor, GLDM the retired 5% gold sleeve, BKNG an unverified consumer-cyclical) — and redeployed the proceeds into eight underweight target names, opening NEM as the only new position. KO and GLDM are PARTIAL exits: 1.710215 KO and 1.061195 GLDM shares bought 2026-09-08 sit inside the 14d per-lot min-hold and unlock 2026-09-22; only the older lots were sold. BKNG exited in full. Gate printed EXEC_AUTO at $3,834.90 turnover, inside the $10,000 auto tier. Pre-checks clean: book $13,240.50 vs the $13,255.19 plan basis (-0.11%); no ••••3900 fills today so the PDT day-trade guard is untouched; none of the eight buy names reports earnings within 7 days; and the margin book ••••0741 has no realized loss in 30 days on any buy name (its only losses are TSM and CIFR), so no cross-account wash block. Buys were re-sized $1,923.91 → $1,899.96 against actual buying power of $1,906.22 — BKNG filled at $176.44 against the plan’s $180.575 basis, so proceeds came in ~$17 light. Every leg was shaved pro-rata (factor 0.9876) and capped at the remaining pool, honouring the spend ≤ cash + proceeds invariant rather than shipping an unfundable last leg. SPY’s $354.24 top-up stays deferred on the 14d re-entry cooldown (sold 5d ago, clears 2026-09-23) and waits in CASH, not VTI. The $32.19 waiting ground was left untouched: the shortfall was under the $100 parking floor, so no release fired and no dust sale of the vehicle was forced. Est. short-term tax: $0 gains − $119.99 losses = net −$119.99.",
+    "rationale": "First execution of the 2026-09-14 Mandate A target (research refreshed this morning). Two-sided: exited the three names the new target dropped \u2014 KO, GLDM and BKNG, all phase-out flagged and all existing only to fill a structural slot Mandate A deleted (KO the retired 15% defensive floor, GLDM the retired 5% gold sleeve, BKNG an unverified consumer-cyclical) \u2014 and redeployed the proceeds into eight underweight target names, opening NEM as the only new position. KO and GLDM are PARTIAL exits: 1.710215 KO and 1.061195 GLDM shares bought 2026-09-08 sit inside the 14d per-lot min-hold and unlock 2026-09-22; only the older lots were sold. BKNG exited in full. Gate printed EXEC_AUTO at $3,834.90 turnover, inside the $10,000 auto tier. Pre-checks clean: book $13,240.50 vs the $13,255.19 plan basis (-0.11%); no \u2022\u2022\u2022\u20223900 fills today so the PDT day-trade guard is untouched; none of the eight buy names reports earnings within 7 days; and the margin book \u2022\u2022\u2022\u20220741 has no realized loss in 30 days on any buy name (its only losses are TSM and CIFR), so no cross-account wash block. Buys were re-sized $1,923.91 \u2192 $1,899.96 against actual buying power of $1,906.22 \u2014 BKNG filled at $176.44 against the plan\u2019s $180.575 basis, so proceeds came in ~$17 light. Every leg was shaved pro-rata (factor 0.9876) and capped at the remaining pool, honouring the spend \u2264 cash + proceeds invariant rather than shipping an unfundable last leg. SPY\u2019s $354.24 top-up stays deferred on the 14d re-entry cooldown (sold 5d ago, clears 2026-09-23) and waits in CASH, not VTI. The $32.19 waiting ground was left untouched: the shortfall was under the $100 parking floor, so no release fired and no dust sale of the vehicle was forced. Est. short-term tax: $0 gains \u2212 $119.99 losses = net \u2212$119.99.",
     "trades": [
       {
         "sym": "NEM",
@@ -1012,7 +1012,7 @@
     "book": 13336.85,
     "equityAtDecision": 13336.85,
     "spyAt": 768.56,
-    "rationale": "EXEC_AUTO ticket 2026-09-23-fohkat: five underweight target names topped up with idle cash ($254.30 turnover, no sells). NVDA and LLY deferred above their entry bands ($92.09 of intended weight held). Entry zones 9d old — below-entry advisory, above-entry still binding. Drawdown ok (-2.3pp relative), regime calm (VIX 14.2).",
+    "rationale": "EXEC_AUTO ticket 2026-09-23-fohkat: five underweight target names topped up with idle cash ($254.30 turnover, no sells). NVDA and LLY deferred above their entry bands ($92.09 of intended weight held). Entry zones 9d old \u2014 below-entry advisory, above-entry still binding. Drawdown ok (-2.3pp relative), regime calm (VIX 14.2).",
     "trades": [
       {
         "sym": "MA",
@@ -1103,7 +1103,7 @@
     "book": 13255.62,
     "equityAtDecision": 13255.62,
     "spyAt": 766.05,
-    "rationale": "EXEC_AUTO ticket 2026-09-24-wrmfp4: exited JPM (-$29.45, not in current target) and SHEL (+$70.80, not in current target); proceeds + cash funded underweight LLY/NEM/SPY/AVGO toward target. KO deferred to re-entry cooldown (until 2026-09-28, $1,157.63 held in cash — sub-floor top-up left in VTI). Drawdown ok (-3.2pp relative to SPY), regime calm (VIX 15.7). Turnover $3,248.48.",
+    "rationale": "EXEC_AUTO ticket 2026-09-24-wrmfp4: exited JPM (-$29.45, not in current target) and SHEL (+$70.80, not in current target); proceeds + cash funded underweight LLY/NEM/SPY/AVGO toward target. KO deferred to re-entry cooldown (until 2026-09-28, $1,157.63 held in cash \u2014 sub-floor top-up left in VTI). Drawdown ok (-3.2pp relative to SPY), regime calm (VIX 15.7). Turnover $3,248.48.",
     "trades": [
       {
         "sym": "LLY",
@@ -1359,7 +1359,7 @@
     "book": 7364.08,
     "equityAtDecision": 7364.08,
     "spyAt": 776.0999,
-    "rationale": "EXEC_AUTO ticket 2026-10-08-gflogj: AVGO exit (14d min-hold cleared today) funded underweight NVDA/MSFT/META/SPY toward target plus the VTI waiting ground. AAPL and XOM deferred above-entry; LLY and NEM deferred to the wash-sale clear date 2026-11-06 (margin-book losses booked 2026-10-07, -$26.40 and -$84.64); BKNG deferred to its existing 2026-10-14 wash-sale clear. Deferred weight ($356.59, LLY/NEM/BKNG) parked in VTI rather than left in cash. Live pre-checks clean: book $7,359.06 vs $7,364.08 plan basis (-0.07%); no ••3900 orders earlier today (PDT untouched); none of the four real buy names (NVDA, MSFT, META, SPY) reports earnings within 7 days; margin-book realized losses in the last 30 days are AMZN (-$58.11), NEM (-$84.64) and LLY (-$26.40) — NEM and LLY already deferred above, AMZN is not a target name so no cross-account wash block on any buy; margin-book realized gains on NVDA (+$136.45, +$20.78) and MSFT (+$67.30, +$17.22) carry no wash exposure. Est. short-term tax: +$25.52 gain (AVGO) = net +$25.52. Turnover $1,283.56, inside the $10,000 auto tier. Drawdown ok (-2.3% from 08-10 peak vs SPY +0.8%, i.e. -3.1pp relative); regime calm (VIX 15.37).",
+    "rationale": "EXEC_AUTO ticket 2026-10-08-gflogj: AVGO exit (14d min-hold cleared today) funded underweight NVDA/MSFT/META/SPY toward target plus the VTI waiting ground. AAPL and XOM deferred above-entry; LLY and NEM deferred to the wash-sale clear date 2026-11-06 (margin-book losses booked 2026-10-07, -$26.40 and -$84.64); BKNG deferred to its existing 2026-10-14 wash-sale clear. Deferred weight ($356.59, LLY/NEM/BKNG) parked in VTI rather than left in cash. Live pre-checks clean: book $7,359.06 vs $7,364.08 plan basis (-0.07%); no \u2022\u20223900 orders earlier today (PDT untouched); none of the four real buy names (NVDA, MSFT, META, SPY) reports earnings within 7 days; margin-book realized losses in the last 30 days are AMZN (-$58.11), NEM (-$84.64) and LLY (-$26.40) \u2014 NEM and LLY already deferred above, AMZN is not a target name so no cross-account wash block on any buy; margin-book realized gains on NVDA (+$136.45, +$20.78) and MSFT (+$67.30, +$17.22) carry no wash exposure. Est. short-term tax: +$25.52 gain (AVGO) = net +$25.52. Turnover $1,283.56, inside the $10,000 auto tier. Drawdown ok (-2.3% from 08-10 peak vs SPY +0.8%, i.e. -3.1pp relative); regime calm (VIX 15.37).",
     "trades": [
       {
         "sym": "NVDA",
@@ -1454,7 +1454,7 @@
     "book": 7072.62,
     "equityAtDecision": 7055.055819435,
     "spyAt": 772.88,
-    "rationale": "EXEC_AUTO ticket 2026-10-14-qakw3a: exited JNJ (-$31.95 realized, not in current target). Proceeds + remaining cash held entirely in cash — no buys this pass, since drawdown breaker is SOFT (book -6.8pp behind SPY since 2026-08-10 peak: book -6.2% vs market +0.7%) and new deployment is paused for every underweight name (NVDA, GOOGL, MA, LLY, CAT, UNP, ~$1,627.34) until the book recovers above -3.0pp relative. Deferred weight is NOT parked (placeholder is equity beta, which is exactly what the breaker is pausing on). Live pre-checks clean: book $7,055.06 vs $7,072.62 plan basis (-0.25%); no ••3900 orders earlier today (PDT untouched); no buy names to earnings/wash-sale check this pass. Est. short-term tax: $0 gain - $31.95 loss = net -$31.95. Regime calm (VIX 15.72). Turnover $412.39.",
+    "rationale": "EXEC_AUTO ticket 2026-10-14-qakw3a: exited JNJ (-$31.95 realized, not in current target). Proceeds + remaining cash held entirely in cash \u2014 no buys this pass, since drawdown breaker is SOFT (book -6.8pp behind SPY since 2026-08-10 peak: book -6.2% vs market +0.7%) and new deployment is paused for every underweight name (NVDA, GOOGL, MA, LLY, CAT, UNP, ~$1,627.34) until the book recovers above -3.0pp relative. Deferred weight is NOT parked (placeholder is equity beta, which is exactly what the breaker is pausing on). Live pre-checks clean: book $7,055.06 vs $7,072.62 plan basis (-0.25%); no \u2022\u20223900 orders earlier today (PDT untouched); no buy names to earnings/wash-sale check this pass. Est. short-term tax: $0 gain - $31.95 loss = net -$31.95. Regime calm (VIX 15.72). Turnover $412.39.",
     "trades": [
       {
         "sym": "JNJ",
@@ -1489,7 +1489,7 @@
     "book": 7726.44,
     "equityAtDecision": 7772.36,
     "spyAt": 770.76,
-    "rationale": "EXEC_AUTO ticket 2026-10-20-nh63d6: released $361.95 from the VTI waiting ground (-$3.96 ST) to fund underweight NVDA/GOOGL/MA/CAT toward target. UNP dropped live (earnings 2026-10-22, inside 7d blackout — the gate's plan had no earnings map for it); its $176.22 of intended weight is now deferred to 2026-10-22, untouched. LLY remains deferred (cross-account wash-sale, to 2026-11-06, $89.85 held). Cash idle 6d (>=5d deadline) triggered a 34% tranche ($380.58) alongside the release. Live pre-checks clean: book $7,769.52 vs $7,726.44 plan basis (+0.56%); no ••3900 orders earlier today (PDT untouched, VTI not bought today); margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 — none on NVDA/GOOGL/MA/CAT, so no cross-account wash block on any buy; no margin-book VTI orders since 2026-09-20, so no wash concern on the VTI release itself. Est. ST tax: $0 gain - $3.96 loss = net -$3.96. Drawdown ok (-1.8% from 2026-08-10 peak vs SPY -1.3%, -0.5pp relative). Regime calm (VIX 18.53). Turnover $928.26.",
+    "rationale": "EXEC_AUTO ticket 2026-10-20-nh63d6: released $361.95 from the VTI waiting ground (-$3.96 ST) to fund underweight NVDA/GOOGL/MA/CAT toward target. UNP dropped live (earnings 2026-10-22, inside 7d blackout \u2014 the gate's plan had no earnings map for it); its $176.22 of intended weight is now deferred to 2026-10-22, untouched. LLY remains deferred (cross-account wash-sale, to 2026-11-06, $89.85 held). Cash idle 6d (>=5d deadline) triggered a 34% tranche ($380.58) alongside the release. Live pre-checks clean: book $7,769.52 vs $7,726.44 plan basis (+0.56%); no \u2022\u20223900 orders earlier today (PDT untouched, VTI not bought today); margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 \u2014 none on NVDA/GOOGL/MA/CAT, so no cross-account wash block on any buy; no margin-book VTI orders since 2026-09-20, so no wash concern on the VTI release itself. Est. ST tax: $0 gain - $3.96 loss = net -$3.96. Drawdown ok (-1.8% from 2026-08-10 peak vs SPY -1.3%, -0.5pp relative). Regime calm (VIX 18.53). Turnover $928.26.",
     "trades": [
       {
         "sym": "NVDA",
@@ -1576,7 +1576,7 @@
     "book": 7769.4,
     "equityAtDecision": 7750.41,
     "spyAt": 769.23,
-    "rationale": "EXEC_AUTO ticket 2026-10-20-qr261k: second same-day pass — idle-cash tranche continuing to deploy toward target (NVDA/GOOGL/MA/CAT). UNP dropped live (earnings 2026-10-22, inside 7d blackout — the gate's plan had no earnings map for it); its $101.18 of intended weight is now deferred to 2026-10-22. LLY remains deferred (cross-account wash-sale, to 2026-11-06). No sells this pass (parking untouched, release:null). Live pre-checks clean: book 7769.4 vs plan basis (live total_value 7750.41, +0.24% move, within 5% abort); no earnings within 7d for NVDA/GOOGL/MA/CAT; margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 — none on NVDA/GOOGL/MA/CAT, so no cross-account wash block; today's ••3900 fills (this pass + the earlier same-day ticket ) are all buys, no PDT exposure. Drawdown ok (book -1.2% from its peak (2026-08-10) vs benchmark -1.3% over the same window — 0.1pp relative; deployment normal). Regime calm (VIX 17.71). Turnover $194.61.",
+    "rationale": "EXEC_AUTO ticket 2026-10-20-qr261k: second same-day pass \u2014 idle-cash tranche continuing to deploy toward target (NVDA/GOOGL/MA/CAT). UNP dropped live (earnings 2026-10-22, inside 7d blackout \u2014 the gate's plan had no earnings map for it); its $101.18 of intended weight is now deferred to 2026-10-22. LLY remains deferred (cross-account wash-sale, to 2026-11-06). No sells this pass (parking untouched, release:null). Live pre-checks clean: book 7769.4 vs plan basis (live total_value 7750.41, +0.24% move, within 5% abort); no earnings within 7d for NVDA/GOOGL/MA/CAT; margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 \u2014 none on NVDA/GOOGL/MA/CAT, so no cross-account wash block; today's \u2022\u20223900 fills (this pass + the earlier same-day ticket ) are all buys, no PDT exposure. Drawdown ok (book -1.2% from its peak (2026-08-10) vs benchmark -1.3% over the same window \u2014 0.1pp relative; deployment normal). Regime calm (VIX 17.71). Turnover $194.61.",
     "trades": [
       {
         "sym": "NVDA",
@@ -1654,7 +1654,7 @@
     "book": 7751.34,
     "equityAtDecision": 7745.6717763118,
     "spyAt": 768.7,
-    "rationale": "EXEC_AUTO ticket 2026-10-20-h7cx09: third same-day pass — idle-cash tranche continuing to deploy toward target (NVDA/GOOGL/MA/CAT). UNP dropped live (earnings 2026-10-22, 2 days out, inside 7d blackout — the gate's plan has no earnings map for it); its $92.42 of intended weight is now deferred to 2026-10-22. LLY remains deferred (cross-account wash-sale, to 2026-11-06, $87.23 held). No sells this pass (parking untouched). Live pre-checks clean: book $7,751.34 plan basis vs live total_value $7,745.67 (-0.07%, within 5% abort); buying power $720.36 covers the $138.22 spend; no earnings within 7d for NVDA/GOOGL/MA/CAT (UNP excluded above); margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 — none on NVDA/GOOGL/MA/CAT, so no cross-account wash block; today's ••3900 fills (this pass + two earlier same-day passes) are all buys/one VTI trim, no PDT exposure on today's buys. Drawdown ok (book -1.46% from its 2026-08-10 peak vs benchmark -1.3% over the same window — -0.2pp relative; deployment normal). Regime calm (VIX 17.96). Turnover $138.22.",
+    "rationale": "EXEC_AUTO ticket 2026-10-20-h7cx09: third same-day pass \u2014 idle-cash tranche continuing to deploy toward target (NVDA/GOOGL/MA/CAT). UNP dropped live (earnings 2026-10-22, 2 days out, inside 7d blackout \u2014 the gate's plan has no earnings map for it); its $92.42 of intended weight is now deferred to 2026-10-22. LLY remains deferred (cross-account wash-sale, to 2026-11-06, $87.23 held). No sells this pass (parking untouched). Live pre-checks clean: book $7,751.34 plan basis vs live total_value $7,745.67 (-0.07%, within 5% abort); buying power $720.36 covers the $138.22 spend; no earnings within 7d for NVDA/GOOGL/MA/CAT (UNP excluded above); margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 \u2014 none on NVDA/GOOGL/MA/CAT, so no cross-account wash block; today's \u2022\u20223900 fills (this pass + two earlier same-day passes) are all buys/one VTI trim, no PDT exposure on today's buys. Drawdown ok (book -1.46% from its 2026-08-10 peak vs benchmark -1.3% over the same window \u2014 -0.2pp relative; deployment normal). Regime calm (VIX 17.96). Turnover $138.22.",
     "trades": [
       {
         "sym": "NVDA",
@@ -1702,6 +1702,58 @@
         "shares": 0.055711,
         "priceAt": 724.6199,
         "weightBefore": 2.83,
+        "weightAfter": 5.35,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      }
+    ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-20-rebalance-4",
+    "date": "2026-10-20",
+    "kind": "rebalance",
+    "targetAsOf": "2026-10-14",
+    "book": 7756.45,
+    "equityAtDecision": 7756.4472450807,
+    "spyAt": 769.42,
+    "rationale": "EXEC_AUTO ticket 2026-10-20-8xr5ut: fourth same-day pass \u2014 idle-cash tranche continued deploying settled cash toward MA/CAT (3.36% -> 5.35% target each, $33.36/$33.22). UNP ($96.39 planned) was dropped live: get_earnings_calendar shows UNP reports 2026-10-22 (2 days out), inside the 7d earnings blackout the gate's plan has no earnings map for. LLY remains wash-sale deferred to 2026-11-06 (margin-book loss). No sells; no parking change this pass (parked $26.83 in VTI for LLY unchanged). Cash after: $515.56.",
+    "trades": [
+      {
+        "sym": "MA",
+        "side": "BUY",
+        "dollars": 33.36,
+        "shares": 0.053634,
+        "priceAt": 621.99,
+        "weightBefore": 3.36,
+        "weightAfter": 5.35,
+        "drivers": [
+          "quality",
+          "growth"
+        ]
+      },
+      {
+        "sym": "CAT",
+        "side": "BUY",
+        "dollars": 33.22,
+        "shares": 0.04588,
+        "priceAt": 724.0599,
+        "weightBefore": 3.36,
         "weightAfter": 5.35,
         "drivers": [
           "growth",
