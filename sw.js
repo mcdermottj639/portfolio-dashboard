@@ -6,17 +6,17 @@
      - data.json: network-first with cache fallback (freshest snapshot; offline → last snapshot)
      - other shell assets (manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
    Bump CACHE_VERSION when the shell changes. */
-const CACHE_VERSION = 'pf-v166';
+const CACHE_VERSION = 'pf-v167';
 const SHELL = [
   './',
   './index.html',
-  './ui/experience.css?v=166',
-  './ui/sd-rules.js?v=166',
-  './ui/experience-model.js?v=166',
-  './ui/experience.js?v=166',
-  './ui/predictions.css?v=166',
-  './ui/predictions-model.js?v=166',
-  './ui/predictions.js?v=166',
+  './ui/experience.css?v=167',
+  './ui/sd-rules.js?v=167',
+  './ui/experience-model.js?v=167',
+  './ui/experience.js?v=167',
+  './ui/predictions.css?v=167',
+  './ui/predictions-model.js?v=167',
+  './ui/predictions.js?v=167',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

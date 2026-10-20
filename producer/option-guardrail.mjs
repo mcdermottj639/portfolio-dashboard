@@ -37,7 +37,7 @@ export const EXTENDED_SMA_PCT = 0.12;   // gate 3: price this far over the 20-da
 export const NEAR_STRIKE_PCT = 0.03;    // "stock within 3% of the strike" for the roll window
 export const SMA_WINDOW = 20, RET_WINDOW = 3;
 
-export const TIERS = ['LET_IT_RIDE', 'ASSIGNMENT_WIN', 'ROLL_WINDOW', 'STRIKE_UNDER_BASIS', 'EXTENDED_STOCK', 'HOLD', 'INSUFFICIENT_DATA'];
+export const TIERS = ['LET_IT_RIDE', 'ASSIGNMENT_WIN', 'ASSIGNMENT_LIKELY', 'ROLL_WINDOW', 'STRIKE_UNDER_BASIS', 'EXTENDED_STOCK', 'HOLD', 'INSUFFICIENT_DATA'];
 
 /* Stock extension from a daily close series (any of the repo's bar shapes). Returns nulls, never a
    guess, when the series is short or stale — a stale series stops at its own high and would read as
@@ -104,6 +104,7 @@ export function guardrail(a, ctx = {}) {
   if (extrinsicPct != null && extrinsicPct < EXTRINSIC_MIN_PCT) flags.push('NO_EXTRINSIC');
   if (a.covered === false) flags.push('NAKED');
   if (mark == null) flags.push('NO_MARK');
+  if (basis == null) flags.push('NO_BASIS');
 
   let tier = 'HOLD', text = '';
   /* Required inputs for ANY tier: a stock price, a strike and days to expiry. Without them every
@@ -122,10 +123,26 @@ export function guardrail(a, ctx = {}) {
     tier = 'EXTENDED_STOCK';
     text = `Stock is extended (${ext.ret3d != null ? (ext.ret3d * 100).toFixed(1) + '% in 3 sessions' : ''}${ext.ret3d != null && ext.vsSma20 != null ? ', ' : ''}${ext.vsSma20 != null ? (ext.vsSma20 * 100).toFixed(1) + '% over the 20-day' : ''}). Do NOT roll up into this. Take assignment${ifA} or wait for a pullback.`;
   } else if (dte != null && dte <= LATE_DTE && itm === true) {
-    tier = 'ASSIGNMENT_WIN';
-    text = extrinsicPct != null
-      ? `In the money with ${dte}d left and ${Math.round(extrinsicPct * 100)}% extrinsic: a roll here is a debit for nothing. Let it be assigned${ifA} — you sold the right to sell at $${strike} and that is the plan working.`
-      : `In the money with ${dte}d left; no live mark, so the extrinsic left is UNKNOWN — confirm the quote before any roll. Assignment${ifA} is still the plan working: you sold the right to sell at $${strike}.`;
+    /* Assignment ELIGIBILITY (late + ITM) is not the same claim as assignment being a WIN. The win
+       label needs the evidence for it: a known cost basis with the strike at or above it, and shares
+       actually covering the call. Without either, STRIKE_UNDER_BASIS above could not fire, so a call
+       struck under an unknown basis used to land on a green "plan working" card (ChatGPT review,
+       2026-10-19 19:39). Premium is not required: collected premium only adds to a strike ≥ basis. */
+    const winVerified = strikeVsBasis != null && strikeVsBasis >= 0 && a.covered === true;
+    const extrinsicLine = extrinsicPct != null
+      ? `${Math.round(extrinsicPct * 100)}% extrinsic left: a roll here is a debit for nothing.`
+      : `No live mark, so the extrinsic left is UNKNOWN — confirm the quote before any roll.`;
+    if (winVerified) {
+      tier = 'ASSIGNMENT_WIN';
+      text = extrinsicPct != null
+        ? `In the money with ${dte}d left and ${extrinsicLine} Let it be assigned${ifA} — you sold the right to sell at $${strike} and that is the plan working.`
+        : `In the money with ${dte}d left. ${extrinsicLine} Assignment${ifA} is still the plan working: you sold the right to sell at $${strike}.`;
+    } else {
+      tier = 'ASSIGNMENT_LIKELY';
+      const why = [strikeVsBasis == null && 'your cost basis is unknown',
+        a.covered === false ? 'no shares cover this call' : a.covered !== true && 'share coverage is unknown'].filter(Boolean).join(' and ');
+      text = `In the money with ${dte}d left — likely to be assigned at $${strike}. ${extrinsicLine} ${why.charAt(0).toUpperCase() + why.slice(1)}, so whether assignment is a gain can't be stated — check it before deciding.`;
+    }
   } else if (dte != null && dte <= LATE_DTE && itm === false) {
     tier = 'LET_IT_RIDE';
     text = `${dte}d left, out of the money: nothing to do. Expires worthless if ${a.underlying || 'the stock'} stays under $${strike}; you keep the $${(perSh != null ? perSh * 100 * (num(a.contracts) || 1) : 0).toFixed(0)}.`;

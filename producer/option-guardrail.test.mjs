@@ -120,8 +120,31 @@ t('no mark → null extrinsic/captured, HOLD, never a confident verdict (absent 
 });
 t('REGRESSION (ChatGPT 2026-10-19 #1): late ITM with no mark never claims "little extrinsic"', () => {
   const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: null, costBasis: null, perShare: null, covered: true }, {});
-  assert.equal(g.tier, 'ASSIGNMENT_WIN'); assert.ok(g.flags.includes('NO_MARK'));
+  assert.equal(g.tier, 'ASSIGNMENT_LIKELY'); assert.ok(g.flags.includes('NO_MARK')); assert.ok(g.flags.includes('NO_BASIS'));
   assert.ok(!/little extrinsic|debit for nothing/.test(g.text)); assert.ok(/UNKNOWN/.test(g.text));
+});
+t('REGRESSION (ChatGPT 2026-10-19 19:39): missing basis/mark/premium on a late ITM call is never ASSIGNMENT_WIN', () => {
+  const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: null, costBasis: null, perShare: null, covered: true }, {});
+  assert.notEqual(g.tier, 'ASSIGNMENT_WIN');
+  assert.equal(g.tier, 'ASSIGNMENT_LIKELY');
+  assert.equal(g.strikeVsBasis, null); assert.equal(g.ifAssignedPerSh, null);
+  assert.ok(!/plan working/.test(g.text), 'no win claim'); assert.ok(/cost basis/i.test(g.text) && /can't be stated/.test(g.text));
+});
+t('missing basis WITH a live mark is still neutral, and keeps the extrinsic read', () => {
+  const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: 5.2, costBasis: null, perShare: 2, covered: true }, {});
+  assert.equal(g.tier, 'ASSIGNMENT_LIKELY'); assert.ok(/debit for nothing/.test(g.text)); assert.ok(!/plan working/.test(g.text));
+});
+t('known basis ≥ strike-cost but NOT covered (naked) is never ASSIGNMENT_WIN', () => {
+  const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: 5.2, costBasis: 80, perShare: 2, covered: false }, {});
+  assert.equal(g.tier, 'ASSIGNMENT_LIKELY'); assert.ok(/^NAKED/.test(g.text)); assert.ok(/no shares cover this call/i.test(g.text)); assert.ok(!/cost basis/.test(g.text));
+});
+t('known basis, strike ≥ basis, covered, no mark → ASSIGNMENT_WIN with extrinsic UNKNOWN (premium not needed)', () => {
+  const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: null, costBasis: 90, perShare: null, covered: true }, {});
+  assert.equal(g.tier, 'ASSIGNMENT_WIN'); assert.ok(/UNKNOWN/.test(g.text)); assert.ok(/plan working/.test(g.text));
+});
+t('strike under a KNOWN basis still outranks everything (red, not neutral)', () => {
+  const g = guardrail({ side: 'short', type: 'call', strike: 100, underlyingPx: 105, dte: 4, mark: 5.2, costBasis: 110, perShare: 2, covered: true }, {});
+  assert.equal(g.tier, 'STRIKE_UNDER_BASIS');
 });
 t('no stock price / strike / DTE → INSUFFICIENT_DATA, never a confident HOLD', () => {
   assert.equal(guardrail({ ...base, underlyingPx: null }, {}).tier, 'INSUFFICIENT_DATA');

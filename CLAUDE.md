@@ -1,3 +1,20 @@
+## v167 — Assignment eligibility is not a verified win (2026-10-20)
+
+ChatGPT's 2026-10-19 19:39 ET review (Portfolio handoff) found the last confident-from-missing-input
+case left after v165: a late in-the-money short call with **no cost basis** (and no mark or premium)
+still got **ASSIGNMENT_WIN** — a green ✅ "the plan working" card — while `strikeVsBasis` and
+`ifAssignedPerSh` were null. Because STRIKE_UNDER_BASIS can only fire with a known basis, a call struck
+*below* an unknown cost could read as a win. It was live-reachable: `options-build` sets `costBasis` to
+null whenever the stock leg is missing from its cost lookup. The v165 regression test had pinned the
+wrong tier (it asserted ASSIGNMENT_WIN and only checked the wording).
+`guardrail` now separates **eligibility** (≤7 DTE and ITM) from the **win** claim. ASSIGNMENT_WIN requires
+a known basis with strike ≥ basis AND `covered === true`; premium is not required (collected premium only
+adds). Otherwise the new neutral tier **ASSIGNMENT_LIKELY** (blue 📌) says the call is likely to be assigned,
+names what is missing (cost basis unknown, coverage unknown, or no shares covering a naked call), and makes no gain claim. New flag
+**NO_BASIS**, shown in the card as "cost basis unknown". Tier order unchanged otherwise:
+STRIKE_UNDER_BASIS > EXTENDED_STOCK > ASSIGNMENT_WIN / ASSIGNMENT_LIKELY > LET_IT_RIDE > ROLL_WINDOW > HOLD.
+Five tests added, the v165 test corrected to assert the tier. App/cache **v167 / pf-v167**.
+
 ## 2026-10-20 — A sub-floor withdrawal read as a loss and tripped the drawdown breaker
 
 The owner withdrew **$375** from ••••3900 on 2026-10-09 (cash 379.24 → 4.24, every position unchanged —
@@ -106,7 +123,8 @@ extrinsic ($ and % of mark), moneyness, strike-vs-basis, if-assigned P&L per sha
 captured %, stock extension (3-session return and distance over the 20-day SMA from the same bars the
 vol proxy reads, stale-gated at 10 days) and earnings-inside-expiry (optional `raw/earnings.json`),
 and assigns ONE tier: STRIKE_UNDER_BASIS (red — assignment realizes a loss; decide it consciously) >
-EXTENDED_STOCK (red — do not roll up) > ASSIGNMENT_WIN (≤7 DTE, ITM: let it be assigned) >
+EXTENDED_STOCK (red — do not roll up) > ASSIGNMENT_WIN (≤7 DTE, ITM: let it be assigned; v167: only
+with a known basis ≥ strike-cost and covered shares, else neutral ASSIGNMENT_LIKELY) >
 LET_IT_RIDE (≤7 DTE, OTM) > ROLL_WINDOW (14–21 DTE with ≥50% captured or within 3% of the strike;
 credit-only wording) > HOLD. Three gates grade any roll (`gradeRoll`): net credit, ≥15% extrinsic in
 the closed leg, not inside the final week, and not rolling UP into an extended stock — GREEN only when
