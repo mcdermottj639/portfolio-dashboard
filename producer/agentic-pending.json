@@ -1,5 +1,5 @@
 {
-  "id": "2026-10-20-nh63d6",
+  "id": "2026-10-20-qr261k",
   "created": "2026-10-20",
   "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
@@ -16,65 +16,55 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 928.26,
-  "book": 7726.44,
-  "planHash": "s[VTI:362]b[CAT:164,GOOGL:111,MA:164,NVDA:128]t[]",
+  "turnover": 194.61,
+  "book": 7769.4,
+  "planHash": "s[]b[CAT:57,GOOGL:39,MA:57,NVDA:42]t[]",
   "legs": {
-    "sells": [
-      {
-        "sym": "VTI",
-        "kind": "park-release",
-        "dollars": 361.95,
-        "shares": 0.964853,
-        "price": 375.135,
-        "pl": -3.96,
-        "note": "release parked placeholder — funds NVDA/GOOGL/MA/CAT/UNP"
-      }
-    ],
+    "sells": [],
     "buysNow": [
       {
         "sym": "NVDA",
         "kind": "buy",
-        "dollars": 128.08,
-        "shares": 0.5995,
-        "price": 213.6385,
+        "dollars": 42.2,
+        "shares": 0.194,
+        "price": 217.55,
         "pl": null,
-        "note": "10.7% → 14.89% target"
+        "note": "12.5% → 14.89% target"
       },
       {
         "sym": "GOOGL",
         "kind": "buy",
-        "dollars": 110.87,
-        "shares": 0.3244,
-        "price": 341.73,
+        "dollars": 38.54,
+        "shares": 0.1121,
+        "price": 343.8,
         "pl": null,
-        "note": "5.0% → 8.64% target"
+        "note": "6.5% → 8.64% target"
       },
       {
         "sym": "MA",
         "kind": "buy",
-        "dollars": 163.68,
-        "shares": 0.2635,
-        "price": 621.12,
+        "dollars": 57.02,
+        "shares": 0.0918,
+        "price": 621.44,
         "pl": null,
-        "note": "0.0% → 5.35% target"
+        "note": "2.1% → 5.35% target"
       },
       {
         "sym": "CAT",
         "kind": "buy",
-        "dollars": 163.68,
-        "shares": 0.2293,
-        "price": 713.76,
+        "dollars": 56.85,
+        "shares": 0.0778,
+        "price": 730.36,
         "pl": null,
-        "note": "0.0% → 5.35% target"
+        "note": "2.1% → 5.35% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": -3.96,
-    "net": -3.96,
+    "realizedLoss": 0,
+    "net": 0,
     "term": "short",
     "note": null
   },
@@ -92,9 +82,10 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (LLY) — ~$89.85 of intended weight held pending earnings/re-verify/wash-sale",
-    "cash idle 6d (≥5d deadline) — entry bands waived and a 34% tranche ($380.58) deployed this pass; waiting indefinitely is a decision too",
-    "released $361.95 from the VTI waiting ground to fund cleared names — realizes $-3.96 ST",
+    "buys re-sized $321.28 → $295.79: the $10.19 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
+    "1 name(s) deferred (LLY) — ~$88.48 of intended weight held pending earnings/re-verify/wash-sale",
+    "$15.3 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "cash idle 6d (≥5d deadline) — entry bands waived and a 34% tranche ($311.09) deployed this pass; waiting indefinitely is a decision too",
     "UNP dropped from buys: live get_earnings_calendar shows a report on 2026-10-22 (2 days out), inside the 7d earnings blackout the gate's plan has no earnings map for"
   ],
   "history": [
@@ -108,10 +99,6 @@
     },
     {
       "at": "2026-10-20",
-      "to": "sells-placed"
-    },
-    {
-      "at": "2026-10-20",
       "to": "buys-placed"
     },
     {
@@ -120,8 +107,7 @@
     }
   ],
   "confirmedAt": "2026-10-20",
-  "sells-placedAt": "2026-10-20",
   "buys-placedAt": "2026-10-20",
   "doneAt": "2026-10-20",
-  "completedAt": "2026-10-20T14:24:56.752Z"
+  "completedAt": "2026-10-20T15:29:42.061Z"
 }

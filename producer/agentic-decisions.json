@@ -1553,5 +1553,83 @@
         "weightAfter": null
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-20-rebalance-2",
+    "date": "2026-10-20",
+    "kind": "rebalance",
+    "targetAsOf": "2026-10-14",
+    "book": 7769.4,
+    "equityAtDecision": 7750.41,
+    "spyAt": 769.23,
+    "rationale": "EXEC_AUTO ticket 2026-10-20-qr261k: second same-day pass — idle-cash tranche continuing to deploy toward target (NVDA/GOOGL/MA/CAT). UNP dropped live (earnings 2026-10-22, inside 7d blackout — the gate's plan had no earnings map for it); its $101.18 of intended weight is now deferred to 2026-10-22. LLY remains deferred (cross-account wash-sale, to 2026-11-06). No sells this pass (parking untouched, release:null). Live pre-checks clean: book 7769.4 vs plan basis (live total_value 7750.41, +0.24% move, within 5% abort); no earnings within 7d for NVDA/GOOGL/MA/CAT; margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 — none on NVDA/GOOGL/MA/CAT, so no cross-account wash block; today's ••3900 fills (this pass + the earlier same-day ticket ) are all buys, no PDT exposure. Drawdown ok (book -1.2% from its peak (2026-08-10) vs benchmark -1.3% over the same window — 0.1pp relative; deployment normal). Regime calm (VIX 17.71). Turnover $194.61.",
+    "trades": [
+      {
+        "sym": "NVDA",
+        "side": "BUY",
+        "dollars": 42.2,
+        "shares": 0.194694,
+        "priceAt": 216.7499,
+        "weightBefore": 12.49,
+        "weightAfter": 14.89,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      },
+      {
+        "sym": "GOOGL",
+        "side": "BUY",
+        "dollars": 38.54,
+        "shares": 0.112676,
+        "priceAt": 342.0399,
+        "weightBefore": 6.45,
+        "weightAfter": 8.64,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      },
+      {
+        "sym": "MA",
+        "side": "BUY",
+        "dollars": 57.02,
+        "shares": 0.091676,
+        "priceAt": 621.9699,
+        "weightBefore": 2.1,
+        "weightAfter": 5.35,
+        "drivers": [
+          "quality",
+          "growth"
+        ]
+      },
+      {
+        "sym": "CAT",
+        "side": "BUY",
+        "dollars": 56.85,
+        "shares": 0.078289,
+        "priceAt": 726.1505,
+        "weightBefore": 2.11,
+        "weightAfter": 5.35,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      }
+    ]
   }
 ]
