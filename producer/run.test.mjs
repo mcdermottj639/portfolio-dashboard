@@ -20,7 +20,7 @@ async function scenario({ pass = passphrase, valid = true } = {}) {
   try {
     const producer = join(root, 'producer'), remote = join(root, 'remote.git');
     mkdirSync(join(producer, 'raw'), { recursive: true });
-    for (const file of ['run.mjs', 'snapshot-publish.mjs', 'market.mjs', 'emit.mjs', 'validate.mjs', 'key.mjs']) copyFileSync(join(source, file), join(producer, file));
+    for (const file of ['run.mjs', 'snapshot-publish.mjs', 'snapshot-label.mjs', 'market.mjs', 'emit.mjs', 'validate.mjs', 'key.mjs']) copyFileSync(join(source, file), join(producer, file));
     for (const file of ['portfolio.json', 'positions.json']) writeFileSync(join(producer, 'raw', file), '{}');
     writeFileSync(join(root, '.gitignore'), 'remote.git/\nproducer/raw/\n');
     writeFileSync(join(producer, 'build-data.mjs'), `import { emit } from './emit.mjs'; await emit(${JSON.stringify(valid ? replay : { recorded: {} })});`);

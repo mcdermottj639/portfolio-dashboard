@@ -21,15 +21,21 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { isMarketOpen } from './market.mjs';
 import { assertEncryptedSnapshot, publishSnapshot } from './snapshot-publish.mjs';
+import { resolveLabel } from './snapshot-label.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const RAW = join(__dirname, 'raw');
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--')));
-const label = args.find((a) => !a.startsWith('--')) || new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+// The label is derived from the clock in America/New_York (snapshot-label.mjs). A supplied
+// argument is still accepted for compatibility but only compared and logged — see 2026-10-19 fix.
+const labelInfo = resolveLabel(args.find((a) => !a.startsWith('--')));
+const label = labelInfo.label;
 
 const log = (...m) => console.log('[run]', ...m);
+if (labelInfo.warning) log(`⚠️  ${labelInfo.warning}`);
+else if (labelInfo.supplied) log(`supplied label "${labelInfo.supplied}" (drift ${labelInfo.driftMin} min) → "${label}"`);
 function node(script, extra = []) {
   execFileSync(process.execPath, [join(__dirname, script), ...extra], { stdio: 'inherit', cwd: ROOT });
 }
