@@ -1,5 +1,5 @@
 {
-  "id": "2026-10-20-8xr5ut",
+  "id": "2026-10-20-c13eum",
   "created": "2026-10-20",
   "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
@@ -16,29 +16,20 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 66.58,
-  "book": 7755.44,
-  "planHash": "s[]b[CAT:33,MA:33]t[]",
+  "turnover": 25.09,
+  "book": 7757.1,
+  "planHash": "s[]b[CAT:25]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
-        "sym": "MA",
-        "kind": "buy",
-        "dollars": 33.36,
-        "shares": 0.053634,
-        "price": 621.99,
-        "pl": null,
-        "note": "3.36% → 5.35% target"
-      },
-      {
         "sym": "CAT",
         "kind": "buy",
-        "dollars": 33.22,
-        "shares": 0.04588,
-        "price": 724.0599,
+        "dollars": 25.09,
+        "shares": 0.0346,
+        "price": 724.995,
         "pl": null,
-        "note": "3.36% → 5.35% target"
+        "note": "3.8% → 5.35% target"
       }
     ],
     "buysT1": []
@@ -55,19 +46,13 @@
       "sym": "LLY",
       "reason": "wash-sale",
       "until": "2026-11-06"
-    },
-    {
-      "sym": "UNP",
-      "reason": "earnings",
-      "until": "2026-10-22"
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (LLY) — ~$89.44 of intended weight held pending earnings/re-verify/wash-sale",
-    "$34.96 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "cash idle 6d (≥5d deadline) — entry bands waived and a 34% tranche ($197.93) deployed this pass; waiting indefinitely is a decision too",
-    "UNP dropped from buys: live get_earnings_calendar shows a report on 2026-10-22 (2 days out), inside the 7d earnings blackout the gate's plan has no earnings map for"
+    "1 name(s) deferred (LLY) — ~$88.7 of intended weight held pending earnings/re-verify/wash-sale",
+    "$58 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "cash idle 6d (≥5d deadline) — entry bands waived and a 34% tranche ($175.29) deployed this pass; waiting indefinitely is a decision too"
   ],
   "history": [
     {
@@ -90,5 +75,5 @@
   "confirmedAt": "2026-10-20",
   "buys-placedAt": "2026-10-20",
   "doneAt": "2026-10-20",
-  "completedAt": "2026-10-20T17:24:48.841Z"
+  "completedAt": "2026-10-20T18:22:43.954Z"
 }
