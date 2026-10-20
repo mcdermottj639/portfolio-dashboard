@@ -1,11 +1,9 @@
 {
   "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 388.78,
+  "dollars": 26.83,
   "forNames": [
-    "LLY",
-    "NEM",
-    "BKNG"
+    "LLY"
   ],
   "since": "2026-10-08",
   "history": [
@@ -65,6 +63,18 @@
         "BKNG"
       ],
       "note": "LLY and NEM wash-blocked to 2026-11-06 (margin-book losses booked 2026-10-07, -$26.40/-$84.64); BKNG wash-blocked to 2026-10-14 (existing). Deferred weight parked in VTI at 380.3699/sh (0.937482 sh), ticket 2026-10-08-gflogj. Pool now $388.78 ($32.19 previously unattached + $356.59 new)."
+    },
+    {
+      "date": "2026-10-20",
+      "action": "release",
+      "dollars": -361.95,
+      "forNames": [
+        "NVDA",
+        "GOOGL",
+        "MA",
+        "CAT"
+      ],
+      "note": "Released 0.964853 VTI @ 375.135 = $361.95 (-3.96 ST) to fund NVDA/GOOGL/MA/CAT clearing their entry bands (idle-cash tranche pass). UNP was also cleared by the plan but dropped live for its 2026-10-22 earnings report (7d blackout) — its $176.22 share was not released and stays attributed to LLY's remaining wash-sale hold per the gate's forNames. Ticket 2026-10-20-nh63d6."
     }
   ]
 }

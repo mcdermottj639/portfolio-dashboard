@@ -1466,5 +1466,92 @@
         "weightAfter": null
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-20-rebalance",
+    "date": "2026-10-20",
+    "kind": "rebalance",
+    "targetAsOf": "2026-10-14",
+    "book": 7726.44,
+    "equityAtDecision": 7772.36,
+    "spyAt": 770.76,
+    "rationale": "EXEC_AUTO ticket 2026-10-20-nh63d6: released $361.95 from the VTI waiting ground (-$3.96 ST) to fund underweight NVDA/GOOGL/MA/CAT toward target. UNP dropped live (earnings 2026-10-22, inside 7d blackout — the gate's plan had no earnings map for it); its $176.22 of intended weight is now deferred to 2026-10-22, untouched. LLY remains deferred (cross-account wash-sale, to 2026-11-06, $89.85 held). Cash idle 6d (>=5d deadline) triggered a 34% tranche ($380.58) alongside the release. Live pre-checks clean: book $7,769.52 vs $7,726.44 plan basis (+0.56%); no ••3900 orders earlier today (PDT untouched, VTI not bought today); margin-book (...0741) 30d realized losses are AMZN -$58.11, NEM -$84.64, LLY -$26.40, RKLB -$1,379, PLTR -$1,267 — none on NVDA/GOOGL/MA/CAT, so no cross-account wash block on any buy; no margin-book VTI orders since 2026-09-20, so no wash concern on the VTI release itself. Est. ST tax: $0 gain - $3.96 loss = net -$3.96. Drawdown ok (-1.8% from 2026-08-10 peak vs SPY -1.3%, -0.5pp relative). Regime calm (VIX 18.53). Turnover $928.26.",
+    "trades": [
+      {
+        "sym": "NVDA",
+        "side": "BUY",
+        "dollars": 128.08,
+        "shares": 0.5995,
+        "priceAt": 213.6385,
+        "weightBefore": 10.7,
+        "weightAfter": 14.89,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      },
+      {
+        "sym": "GOOGL",
+        "side": "BUY",
+        "dollars": 110.87,
+        "shares": 0.3244,
+        "priceAt": 341.73,
+        "weightBefore": 5.02,
+        "weightAfter": 8.64,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      },
+      {
+        "sym": "MA",
+        "side": "BUY",
+        "dollars": 163.68,
+        "shares": 0.2635,
+        "priceAt": 621.12,
+        "weightBefore": 0,
+        "weightAfter": 5.35,
+        "drivers": [
+          "quality",
+          "growth"
+        ]
+      },
+      {
+        "sym": "CAT",
+        "side": "BUY",
+        "dollars": 163.68,
+        "shares": 0.2293,
+        "priceAt": 713.76,
+        "weightBefore": 0,
+        "weightAfter": 5.35,
+        "drivers": [
+          "growth",
+          "quality"
+        ]
+      },
+      {
+        "sym": "VTI",
+        "side": "TRIM",
+        "dollars": 361.95,
+        "shares": 0.95791,
+        "priceAt": 377.8332,
+        "weightBefore": null,
+        "weightAfter": null
+      }
+    ]
   }
 ]
