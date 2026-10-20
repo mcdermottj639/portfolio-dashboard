@@ -1,5 +1,5 @@
 {
-  "id": "2026-10-20-qr261k",
+  "id": "2026-10-20-h7cx09",
   "created": "2026-10-20",
   "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
@@ -16,47 +16,47 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 194.61,
-  "book": 7769.4,
-  "planHash": "s[]b[CAT:57,GOOGL:39,MA:57,NVDA:42]t[]",
+  "turnover": 138.22,
+  "book": 7751.34,
+  "planHash": "s[]b[CAT:40,GOOGL:28,MA:40,NVDA:30]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
         "sym": "NVDA",
         "kind": "buy",
-        "dollars": 42.2,
-        "shares": 0.194,
-        "price": 217.55,
+        "dollars": 30.15,
+        "shares": 0.139059,
+        "price": 216.8143,
         "pl": null,
-        "note": "12.5% → 14.89% target"
+        "note": "13.0% → 14.89% target"
       },
       {
         "sym": "GOOGL",
         "kind": "buy",
-        "dollars": 38.54,
-        "shares": 0.1121,
-        "price": 343.8,
+        "dollars": 27.62,
+        "shares": 0.0808,
+        "price": 341.8281,
         "pl": null,
-        "note": "6.5% → 8.64% target"
+        "note": "6.9% → 8.64% target"
       },
       {
         "sym": "MA",
         "kind": "buy",
-        "dollars": 57.02,
-        "shares": 0.0918,
-        "price": 621.44,
+        "dollars": 40.08,
+        "shares": 0.064473,
+        "price": 621.6487,
         "pl": null,
-        "note": "2.1% → 5.35% target"
+        "note": "2.9% → 5.35% target"
       },
       {
         "sym": "CAT",
         "kind": "buy",
-        "dollars": 56.85,
-        "shares": 0.0778,
-        "price": 730.36,
+        "dollars": 40.37,
+        "shares": 0.055711,
+        "price": 724.6199,
         "pl": null,
-        "note": "2.1% → 5.35% target"
+        "note": "2.8% → 5.35% target"
       }
     ],
     "buysT1": []
@@ -82,10 +82,10 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "buys re-sized $321.28 → $295.79: the $10.19 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
-    "1 name(s) deferred (LLY) — ~$88.48 of intended weight held pending earnings/re-verify/wash-sale",
-    "$15.3 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "cash idle 6d (≥5d deadline) — entry bands waived and a 34% tranche ($311.09) deployed this pass; waiting indefinitely is a decision too",
+    "buys re-sized $255.9 → $230.64: the $10.98 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
+    "1 name(s) deferred (LLY) — ~$87.23 of intended weight held pending earnings/re-verify/wash-sale",
+    "$14.28 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "cash idle 6d (≥5d deadline) — entry bands waived and a 34% tranche ($244.92) deployed this pass; waiting indefinitely is a decision too",
     "UNP dropped from buys: live get_earnings_calendar shows a report on 2026-10-22 (2 days out), inside the 7d earnings blackout the gate's plan has no earnings map for"
   ],
   "history": [
@@ -109,5 +109,5 @@
   "confirmedAt": "2026-10-20",
   "buys-placedAt": "2026-10-20",
   "doneAt": "2026-10-20",
-  "completedAt": "2026-10-20T15:29:42.061Z"
+  "completedAt": "2026-10-20T16:22:28.448Z"
 }
