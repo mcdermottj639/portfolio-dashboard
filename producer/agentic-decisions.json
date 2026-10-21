@@ -1800,5 +1800,44 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-21-rebalance",
+    "date": "2026-10-21",
+    "kind": "rebalance",
+    "targetAsOf": "2026-10-14",
+    "book": 7765.93,
+    "equityAtDecision": 7765.93,
+    "spyAt": 772.13,
+    "rationale": "EXEC_AUTO ticket 2026-10-21-coqzxw: deployed settled cash toward MA (3.78% -> 5.35% target, $25.04, 0.040322 sh @ $620.9999 fill). UNP ($92.03 planned) dropped live: get_earnings_results confirms UNP reports 2026-10-22 am (1 day out), inside the 7d earnings blackout the gate plan has no earnings map for. LLY remains wash-sale deferred to 2026-11-06 (margin-book loss $26.40 booked 2026-10-07, $103.14 held). No sells this pass; parking ledger unchanged ($26.83 in VTI for LLY, before==after). Live pre-checks clean: book $7,765.93 vs plan basis $7,788.61 (-0.29%, within 5% abort); buying power $490.47 covers the $25.04 spend; margin-book (...0741) 30-day realized P&L has no MA trade (no cross-account wash block); no ••••3900 fills earlier today, so no PDT exposure. Drawdown ok (book -0.99% from its 2026-08-10 peak vs benchmark -0.8% over the same window -- -0.1pp relative; deployment normal). Regime calm (VIX 16.69). Turnover $25.04. Cash left ~$465.43.",
+    "trades": [
+      {
+        "sym": "MA",
+        "side": "BUY",
+        "dollars": 25.04,
+        "shares": 0.040322,
+        "priceAt": 620.9999,
+        "weightBefore": 3.78,
+        "weightAfter": 5.35,
+        "drivers": [
+          "quality",
+          "growth"
+        ]
+      }
+    ]
   }
 ]
