@@ -1,5 +1,5 @@
 {
-  "id": "2026-10-22-j8g64l",
+  "id": "2026-10-22-iera33",
   "created": "2026-10-22",
   "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
@@ -16,20 +16,20 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 49.6,
-  "book": 7667.45,
-  "planHash": "s[]b[UNP:50]t[]",
+  "turnover": 37.96,
+  "book": 7643.95,
+  "planHash": "s[]b[UNP:38]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
         "sym": "UNP",
         "kind": "buy",
-        "dollars": 49.6,
-        "shares": 0.167313,
-        "price": 296.4499,
+        "dollars": 37.96,
+        "shares": 0.1284,
+        "price": 295.555,
         "pl": null,
-        "note": "2.0% → 5.76% target"
+        "note": "2.6% → 5.76% target"
       }
     ],
     "buysT1": []
@@ -50,10 +50,10 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (LLY) — ~$72.44 of intended weight held pending earnings/re-verify/wash-sale",
-    "$56.4 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "1 name(s) deferred (LLY) — ~$71.58 of intended weight held pending earnings/re-verify/wash-sale",
+    "$51.17 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
     "entry zones are 8d old (target asOf 2026-10-14) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
-    "cash idle 8d (≥5d deadline) — entry bands waived and a 34% tranche ($106) deployed this pass; waiting indefinitely is a decision too"
+    "cash idle 8d (≥5d deadline) — entry bands waived and a 34% tranche ($89.13) deployed this pass; waiting indefinitely is a decision too"
   ],
   "history": [
     {
@@ -76,5 +76,5 @@
   "confirmedAt": "2026-10-22",
   "buys-placedAt": "2026-10-22",
   "doneAt": "2026-10-22",
-  "completedAt": "2026-10-22T17:22:52Z"
+  "completedAt": "2026-10-22T19:26:00.476Z"
 }

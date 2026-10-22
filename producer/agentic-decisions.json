@@ -1953,5 +1953,43 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-22-rebalance-4",
+    "date": "2026-10-22",
+    "kind": "rebalance-4",
+    "targetAsOf": "2026-10-14",
+    "book": 7643.95,
+    "equityAtDecision": 7651.019442175,
+    "spyAt": 762.61,
+    "rationale": "EXEC_AUTO ticket 2026-10-22-iera33: fourth same-day pass — idle-cash tranche continued deploying settled cash toward UNP (2.65% -> 5.76% target, $37.96, 0.127703 sh @ $297.2499 fill). LLY remains wash-sale deferred to 2026-11-06 (margin-book loss booked 2026-10-07; $71.58 held, parked $26.83 in VTI, unchanged this pass). No sells this pass. Live pre-checks clean: book $7,643.95 (plan basis, from committed snapshot + live-matching quotes) vs live total_value $7,651.02 pre-trade (+0.09%, within 5% abort); buying power $262.15 covered the $37.96 spend; UNP's Q3 earnings already printed this morning (actual 3.53 vs est 3.47, verified via get_earnings_calendar) so the pre-report blackout no longer applies, next report well outside 7d; today's four ••••3900 passes (incl. this one) are all UNP buys, no sells, so no PDT exposure; no margin-book (...0741) order today for UNP, so no cross-account wash concern. Drawdown ok (-2.83% from 2026-08-10 peak vs benchmark -0.5pp over the same window -- -2.3pp relative). Regime calm (VIX 19.85). Turnover $37.96. Cash left ~$224.19 post-fill.",
+    "trades": [
+      {
+        "sym": "UNP",
+        "side": "BUY",
+        "dollars": 37.96,
+        "shares": 0.127703,
+        "priceAt": 297.2499,
+        "weightBefore": 2.65,
+        "weightAfter": 5.76,
+        "drivers": [
+          "quality"
+        ]
+      }
+    ]
   }
 ]
