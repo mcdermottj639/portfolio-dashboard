@@ -1,6 +1,6 @@
 {
-  "id": "2026-10-21-coqzxw",
-  "created": "2026-10-21",
+  "id": "2026-10-22-ksj6nf",
+  "created": "2026-10-22",
   "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,20 +16,20 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 25.04,
-  "book": 7788.61,
-  "planHash": "s[]b[MA:25]t[]",
+  "turnover": 88.52,
+  "book": 7652.12,
+  "planHash": "s[]b[UNP:89]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
-        "sym": "MA",
+        "sym": "UNP",
         "kind": "buy",
-        "dollars": 25.04,
-        "shares": 0.0402,
-        "price": 623.1054,
+        "dollars": 88.52,
+        "shares": 0.3022,
+        "price": 292.895,
         "pl": null,
-        "note": "3.8% → 5.35% target"
+        "note": "0.0% → 5.76% target"
       }
     ],
     "buysT1": []
@@ -46,40 +46,35 @@
       "sym": "LLY",
       "reason": "wash-sale",
       "until": "2026-11-06"
-    },
-    {
-      "sym": "UNP",
-      "reason": "earnings",
-      "until": "2026-10-22"
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (LLY) — ~$103.14 of intended weight held pending earnings/re-verify/wash-sale",
-    "$49.69 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "cash idle 7d (≥5d deadline) — entry bands waived and a 34% tranche ($166.76) deployed this pass; waiting indefinitely is a decision too",
-    "UNP ($92.03) dropped live: reports 2026-10-22 (≤7d) — inside earnings blackout, gate plan carries no earnings map"
+    "1 name(s) deferred (LLY) — ~$73.58 of intended weight held pending earnings/re-verify/wash-sale",
+    "$69.73 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "entry zones are 8d old (target asOf 2026-10-14) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
+    "cash idle 8d (≥5d deadline) — entry bands waived and a 34% tranche ($158.25) deployed this pass; waiting indefinitely is a decision too"
   ],
   "history": [
     {
-      "at": "2026-10-21",
+      "at": "2026-10-22",
       "to": "proposed"
     },
     {
-      "at": "2026-10-21",
+      "at": "2026-10-22",
       "to": "confirmed"
     },
     {
-      "at": "2026-10-21",
+      "at": "2026-10-22",
       "to": "buys-placed"
     },
     {
-      "at": "2026-10-21",
+      "at": "2026-10-22",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-10-21",
-  "buys-placedAt": "2026-10-21",
-  "doneAt": "2026-10-21",
-  "completedAt": "2026-10-21T19:24:05.300Z"
+  "confirmedAt": "2026-10-22",
+  "buys-placedAt": "2026-10-22",
+  "doneAt": "2026-10-22",
+  "completedAt": "2026-10-22T15:24:00Z"
 }

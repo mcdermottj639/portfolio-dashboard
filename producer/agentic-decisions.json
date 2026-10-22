@@ -1839,5 +1839,43 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-22-rebalance",
+    "date": "2026-10-22",
+    "kind": "rebalance",
+    "targetAsOf": "2026-10-14",
+    "book": 7679.74,
+    "equityAtDecision": 7679.74,
+    "spyAt": 764.63,
+    "rationale": "EXEC_AUTO ticket 2026-10-22-ksj6nf: deployed settled cash toward UNP (0.00% -> 5.76% target, $88.52, 0.298368 sh @ $296.6799 fill). UNP cleared the earnings blackout today (Q3 2026 EPS beat, 3.53 vs 3.47 est, reported 2026-10-22 am, confirmed via get_earnings_calendar) -- deferred by yesterday's ticket to this exact date. LLY remains wash-sale deferred to 2026-11-06 (margin-book loss booked 2026-10-07; $73.58 held). No sells this pass; parking ledger unchanged ($26.83 in VTI for LLY, before==after -- plan carried no park/release leg). Live pre-checks clean: book $7,652.12 (plan basis) vs live total_value $7,675.86 pre-trade (+0.31%, within 5% abort); buying power $465.43 covered the $88.52 spend; margin-book (...0741) 30-day realized P&L has no UNP trade (no cross-account wash block); no ••••3900 fills earlier today before this order (no PDT exposure). Drawdown ok (book -2.73% from its 2026-08-10 peak vs benchmark -0.5% over the same window -- -2.2pp relative; deployment normal). Regime calm (VIX 19.34). Turnover $88.52. Cash left ~$376.91.",
+    "trades": [
+      {
+        "sym": "UNP",
+        "side": "BUY",
+        "dollars": 88.52,
+        "shares": 0.298368,
+        "priceAt": 296.6799,
+        "weightBefore": 0,
+        "weightAfter": 5.76,
+        "drivers": [
+          "quality"
+        ]
+      }
+    ]
   }
 ]
