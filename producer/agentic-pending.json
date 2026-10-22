@@ -1,5 +1,5 @@
 {
-  "id": "2026-10-22-ksj6nf",
+  "id": "2026-10-22-js8rhl",
   "created": "2026-10-22",
   "targetId": "661bc161122f68e210df",
   "modelVersion": "mandate-a-ai-evidence-v1",
@@ -16,20 +16,20 @@
   "universeVersion": "8b9596cf04553997db2f",
   "status": "done",
   "autoEligible": true,
-  "turnover": 88.52,
-  "book": 7652.12,
-  "planHash": "s[]b[UNP:89]t[]",
+  "turnover": 65.16,
+  "book": 7665.03,
+  "planHash": "s[]b[UNP:65]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
         "sym": "UNP",
         "kind": "buy",
-        "dollars": 88.52,
-        "shares": 0.3022,
-        "price": 292.895,
+        "dollars": 65.16,
+        "shares": 0.221,
+        "price": 294.875,
         "pl": null,
-        "note": "0.0% → 5.76% target"
+        "note": "1.1% → 5.76% target"
       }
     ],
     "buysT1": []
@@ -50,10 +50,10 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (LLY) — ~$73.58 of intended weight held pending earnings/re-verify/wash-sale",
-    "$69.73 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "1 name(s) deferred (LLY) — ~$69.8 of intended weight held pending earnings/re-verify/wash-sale",
+    "$62.99 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
     "entry zones are 8d old (target asOf 2026-10-14) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
-    "cash idle 8d (≥5d deadline) — entry bands waived and a 34% tranche ($158.25) deployed this pass; waiting indefinitely is a decision too"
+    "cash idle 8d (≥5d deadline) — entry bands waived and a 34% tranche ($128.15) deployed this pass; waiting indefinitely is a decision too"
   ],
   "history": [
     {
@@ -76,5 +76,5 @@
   "confirmedAt": "2026-10-22",
   "buys-placedAt": "2026-10-22",
   "doneAt": "2026-10-22",
-  "completedAt": "2026-10-22T15:24:00Z"
+  "completedAt": "2026-10-22T16:23:59Z"
 }

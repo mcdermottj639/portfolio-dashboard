@@ -1877,5 +1877,43 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "661bc161122f68e210df",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "8b9596cf04553997db2f",
+    "evidenceCoverage": 0.7377049180327869,
+    "id": "2026-10-22-rebalance-2",
+    "date": "2026-10-22",
+    "kind": "rebalance-2",
+    "targetAsOf": "2026-10-14",
+    "book": 7665.03,
+    "equityAtDecision": 7684.585282002,
+    "spyAt": 765.34,
+    "rationale": "EXEC_AUTO ticket 2026-10-22-js8rhl: second same-day pass — idle-cash tranche continued deploying settled cash toward UNP (1.15% -> 5.76% target, $65.16, 0.220187 sh @ $295.9299 fill). LLY remains wash-sale deferred to 2026-11-06 (margin-book loss booked 2026-10-07; $69.80 held). No sells this pass; parking ledger unchanged ($26.83 in VTI for LLY, before==after -- plan carried no park/release leg). Live pre-checks clean: book $7,665.03 (plan basis) vs live total_value $7,684.59 pre-trade (+0.26%, within 5% abort); buying power $376.91 covered the $65.16 spend; UNP cleared its earnings print this morning (Q3 2026 EPS beat 3.53 vs 3.47 est, verified) and its next report (2027-01-26) is well outside the 7d blackout; margin-book (...0741) 30-day realized P&L has no UNP trade (no cross-account wash block); today's ••••3900 fills (this pass plus one earlier same-day pass, both UNP buys) show no PDT exposure (no sells). Drawdown ok (book -2.56% from its 2026-08-10 peak vs benchmark -0.5% over the same window -- -2.0pp relative; deployment normal). Regime calm (VIX 18.87). Turnover $65.16. Cash left ~$311.75.",
+    "trades": [
+      {
+        "sym": "UNP",
+        "side": "BUY",
+        "dollars": 65.16,
+        "shares": 0.220187,
+        "priceAt": 295.9299,
+        "weightBefore": 1.15,
+        "weightAfter": 5.76,
+        "drivers": [
+          "quality"
+        ]
+      }
+    ]
   }
 ]
