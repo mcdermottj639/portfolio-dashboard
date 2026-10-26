@@ -84,8 +84,8 @@ console.log('sd-rules');
   const equity = 20000, expTarget = 20000;
   const a = R.allocate({
     cands: [
-      { sym: 'SMCI', px: 50, vol: 80, score: 8.2, tier: 'sat', fromHi20: -8, theme: 'ai-infra' },
-      { sym: 'NBIS', px: 40, vol: 90, score: 8.0, tier: 'sat', fromHi20: -9, theme: 'ai-infra' },
+      { sym: 'SMCI', px: 50, vol: 80, score: 8.2, tier: 'sat', fromHi20: -8, theme: 'ai-infra', range20: 20 },
+      { sym: 'NBIS', px: 40, vol: 90, score: 8.0, tier: 'sat', fromHi20: -9, theme: 'ai-infra', range20: 16 },
     ],
     bucket: 12000,
     after: { NVDA: 5000 },          // already 25% of the book in ai-infra
@@ -93,6 +93,7 @@ console.log('sd-rules');
     equity, expTarget, lev: 1.0,
   });
   const bought = a.picks.filter((p) => p.d > 0);
+  ok('cluster test actually funds an eligible candidate', bought.length > 0);
   const cl = (a.clusterAfter['ai-infra'] || 0);
   ok('ai-infra new money does not push the cluster through 30%', cl <= 0.30 * expTarget + 1);
   ok('a name that would breach the cluster is skipped rather than sold', a.skipped.some((s) => s.why === 'cluster-full') || bought.length <= 1);
@@ -145,17 +146,55 @@ console.log('sd-rules');
   ok('avg HV >40% on a >1.3× book refuses incremental borrow', leveredHotVol.allowBorrow === false && leveredHotVol.reasons.indexOf('hot-book-leverage') >= 0);
 }
 
-// --- 9. Targets: take the tighter of app / street / 1.5× measured; RR ≥ 2 ------
+// --- 9. Upside must be independent of the stop; the 2:1 gate is reachable ----
 {
   const m = { px: 248 };
   const stop = 248 * 0.88;                 // 12% core-cap stop
   const hotApp = R.targetOf(m, 197, 270); // $248 → $400 app vs $270 street, 20% stop
   ok('app 3R is hotter than street, so the target is the street number', hotApp.tgt === 270);
   ok('…and it is labelled speculative when app > 1.4× street', hotApp.spec === true);
-  const tight = R.targetOf(m, stop, 400);
-  ok('when street is the hot one, the 1.5× measured move can still bind', tight.tgt <= tight.measured + 1e-9);
+  const tight = R.targetOf({ ...m, range20: 45 }, stop, 400);
+  near('observed closing range supplies the range estimate', tight.measured, 248 + 1.5 * 45);
+  ok('an independently supported estimate can pass 2:1', tight.rr >= 2);
   const badRr = R.targetOf({ px: 100 }, 92, 101);
   ok('a 1-point target against an 8-point stop fails the 2:1 test', badRr.rr != null && badRr.rr < 2);
+}
+
+// Regression: this funded candidate used to be rejected because every target
+// was capped at 1.5R. Test an actual positive allocation, not just classification.
+{
+  const m = {sym:'MSFT',px:100,score:8,tier:'core',fromHi20:-10,vol:20,atr:2,s50:90,range20:12};
+  const args = {cands:[m],bucket:1000,after:{},clusterAfter:{},equity:10000,expTarget:10000,lev:1,cashLeft:1000};
+  const a = R.allocate(args);
+  ok('funded eligible candidate receives ten shares', a.deployed === 1000 && a.picks[0].sh === 10);
+  near('stop stays at 94', a.picks[0].stop, 94);
+  near('supported target is 118, not the former impossible 109', a.picks[0].tgt.tgt, 118);
+  near('minimum remains 2:1', R.C.SD_MIN_RR, 2);
+  const low = R.allocate({...args,cands:[{...m,range20:4}]});
+  ok('insufficient upside is still rejected', low.deployed === 0 && low.picks[0].skip === 'rr');
+  const unknown = R.allocate({...args,cands:[{...m,range20:undefined}]});
+  ok('missing independent target cannot fall back to invented 3R', unknown.deployed === 0 && unknown.picks[0].skip === 'no-target');
+  const street = R.allocate({...args,cands:[{...m,range20:undefined,street:115}]});
+  ok('analyst target can support a buy without a range', street.deployed > 0 && street.picks[0].tgt.tgt === 115);
+  const extended = R.allocate({...args,cands:[{...m,score:9.5,fromHi20:0,tier:'asym'}]});
+  ok('extended pullback cannot become an immediate buy after the fix', extended.deployed === 0 && extended.picks[0].skip === 'entry');
+  const weak = R.allocate({...args,cands:[{...m,score:4.9,tier:'asym'}]});
+  ok('pullback sleeve still requires its 5.0 floor', weak.deployed === 0 && weak.picks[0].skip === 'below-floor');
+  ok('zero funding creates no order', R.allocate({...args,bucket:0,cashLeft:0}).picks.length === 0);
+  const idea = R.ideaOf(m,{funded:false});
+  ok('qualifying research remains visible as funding-needed', idea.qualifies && idea.status === 'funding');
+  ok('funding does not erase the target', idea.target.tgt === 118);
+  ok('tax hold remains explicit', R.ideaOf(m,{funded:true,washUntil:'2030-01-31'}).status === 'wash');
+  ok('broken trend remains explicit', R.ideaOf(m,{funded:true,broken:true}).status === 'trend');
+  ok('concentration limit remains explicit', R.ideaOf(m,{funded:true,nameFull:true}).status === 'name-cap');
+  const watch = R.ideaOf({...m,score:9.5,fromHi20:0},{funded:true});
+  ok('extended leader has an actual pullback trigger', watch.status === 'entry' && watch.entryLimit === 97);
+  ok('unknown entry data is not a qualified buy', R.setupOf({...m,fromHi20:null},130).reason === 'entry-data');
+  near('range uses the latest twenty closes', R.closeRange([999,...Array.from({length:20},(_,i)=>100+i)]),19);
+  ok('short/invalid histories have no range estimate', R.closeRange([1,2]) == null && R.closeRange([...Array(19).fill(100),NaN]) == null);
+  near('flat prices provide no measured upside', R.targetOf({...m,range20:0},94,130).rr,0);
+  ok('null or infinite range does not count as evidence', R.targetOf({...m,range20:null},94,null).tgt == null && R.targetOf({...m,range20:Infinity},94,null).tgt == null);
+  near('range estimate is independent of the stop', R.targetOf(m,92,130).measured,R.targetOf(m,94,130).measured);
 }
 
 // --- 10. Trim is advisory: 25% of equity or +25% from cost, no forced sell ------

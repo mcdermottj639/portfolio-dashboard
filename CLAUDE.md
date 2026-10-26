@@ -1,3 +1,41 @@
+## v168 — Reachable buy allocations and visible research (2026-10-26)
+
+The self-directed allocator capped every target at `price + 1.5 * (price - stop)`
+then required reward/risk >= 2.0, so every otherwise valid candidate reaching that
+check failed. `targetOf` now uses the independently observed **20-session closing-price
+range**, supplied by `sdMomentum.range20`, or analyst consensus when available. The
+estimate is the lower available target, still capped at the existing 3R ceiling;
+**the 2:1 minimum is unchanged**. This is a range-based estimate, not a chart-pattern
+measurement or empirically validated return forecast. Missing both independent inputs
+is explicitly `no-target`; 3R alone cannot create a buy. A flat range yields no upside.
+
+`setupOf` is shared by the research cards and allocator. Entry, momentum and target
+checks also run at the final allocation boundary: an extended >=9 momentum name cannot
+become an immediate buy through the pullback sleeve, and that sleeve enforces its 5.0
+floor. The sleeve's actual tier and cash-only funding are used in the research status.
+This preserves the intended delayed-entry behavior while removing the universal reject.
+
+Research / Self-directed now shows up to six **Stock ideas** independently of the funded
+pool: qualifying setups first, then momentum-ranked watch candidates, with price, estimated
+target, stop, reward/risk and the next condition. Funding, tax, trend, entry and concentration
+holds stay explicit. No order quantities are invented for unfunded research. Symbols open
+Analyze; the long rejection lists and target methodology are expandable. Near-high UI help
+now matches the code: even >=9 names wait for a pullback. Narrow Research grids and chart
+bounds fit 320px. App/cache and all versioned shell assets move together to **v168**.
+
+Scope: `ui/sd-rules.js`, `index.html`, `producer/sd-rules.test.mjs`,
+`tests/sd-plan-browser.mjs`, `sw.js`, this note and `UI-PRESERVATION.md`.
+Routines touched: **none**. Existing snapshot closes already supply the range; no schema,
+producer input, schedule, brokerage write, account-data or encryption change is needed.
+No trading thresholds were loosened. The preceding v156 target/near-high descriptions
+are historical and are superseded by this implementation.
+
+Validation: 76 focused assertions, all 50 producer suites, all dashboard model suites,
+and synthetic browser checks of real range propagation, a positive funded buy, zero-funded
+visible research, wash/floor/entry/missing-target rejection, 320/390/768/1440px layouts,
+privacy round-trip, Midnight and Analyze navigation. Browser visuals inspected at phone
+width. Self-audited; Fable was unavailable. Decrypted live account output was not accessed.
+
 ## v167 — Assignment eligibility is not a verified win (2026-10-20)
 
 ChatGPT's 2026-10-19 19:39 ET review (Portfolio handoff) found the last confident-from-missing-input

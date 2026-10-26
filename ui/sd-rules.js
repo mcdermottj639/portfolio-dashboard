@@ -27,7 +27,7 @@
   const C = {
     SD_FLOOR: { core: 7.0, sat: 7.5, asym: 5.0 },
     SD_ENTRY_EXTEND: 3.0,     // % off 20-day high — inside this is "at the high"
-    SD_ENTRY_CHASE: 9.0,      // exception: momentum ≥ 9 may still buy, at half size
+    SD_ENTRY_CHASE: 9.0,      // strong extended names remain pullback candidates, never immediate buys
     SD_CLUSTER_CAP_NEW: 0.30, // max 30% of ending book into one theme (new money)
     SD_SINGLE_MAX_EQ: 0.20,   // 20% of EQUITY, not of the levered line
     SD_SINGLE_MAX_X: 0.60,    // backstop vs exposure (rarely binds once equity cap is on)
@@ -134,23 +134,72 @@
     return { mul, why };
   }
 
-  // Target = min(app 3R, 12-month consensus, 1.5× measured move). Speculative
-  // if the app number is >1.4× street. Reward/risk uses the TIGHTER target.
+  // A measured range must come from prices, independently of the stop. The old
+  // 1.5 * (price - stop) capped every reward/risk at 1.5, below the required 2.
+  function closeRange(closes, n) {
+    n = n || 20;
+    if (!closes || closes.length < n) return null;
+    const tail = closes.slice(-n);
+    if (tail.some((p) => !Number.isFinite(p) || p <= 0)) return null;
+    return Math.max.apply(null, tail) - Math.min.apply(null, tail);
+  }
+
+  // Target estimate = min(3R ceiling, consensus if present, price + 1.5 * the
+  // observed 20-session closing-price range if present). The range is a proxy,
+  // not a measured chart pattern or return forecast. 3R alone is not evidence.
   function targetOf(m, stop, street) {
     const px = m && m.px;
-    if (!(px > 0) || !(stop > 0) || !(px > stop)) {
-      return { tgt: null, app: null, street: street > 0 ? street : null, measured: null, spec: false, rr: null };
+    const st = Number.isFinite(street) && street > 0 ? street : null;
+    if (!Number.isFinite(px) || !Number.isFinite(stop) || !(px > stop) || !(stop > 0)) {
+      return { tgt: null, app: null, street: st, measured: null, spec: false, rr: null };
     }
     const risk = px - stop;
     const app = px + 3 * risk;
-    const measured = px + 1.5 * risk;
-    const st = street > 0 ? street : null;
-    const cands = [app, measured];
+    const range = m && m.range20;
+    const measured = Number.isFinite(range) && range >= 0 ? px + 1.5 * range : null;
+    const cands = [];
+    if (measured != null) cands.push(measured);
     if (st != null) cands.push(st);
+    if (!cands.length) return { tgt: null, app, street: st, measured: null, spec: false, rr: null };
+    cands.push(app);
     const tgt = Math.min.apply(null, cands);
     const spec = st != null && app > st * C.SD_SPEC_RATIO;
     const rr = risk > 0 ? (tgt - px) / risk : null;
     return { tgt, app, street: st, measured, spec, rr };
+  }
+
+  // Shared by idea cards and the final allocator: fixing targets must not let
+  // delayed pullbacks slip through as immediately marketable tickets.
+  function setupOf(m, street) {
+    const entry = entryGate(m);
+    const floor = floorOf(m && m.tier);
+    const stop = stopPrice(m);
+    const target = targetOf(m, stop, street);
+    let reason = null;
+    if (!m || !Number.isFinite(m.score) || !(m.px > 0)) reason = 'data';
+    else if (m.score < floor) reason = 'below-floor';
+    else if (entry.off == null) reason = 'entry-data';
+    else if (!entry.ok) reason = 'entry';
+    else if (target.rr == null || !Number.isFinite(target.rr)) reason = 'no-target';
+    else if (target.rr + 1e-9 < C.SD_MIN_RR) reason = 'rr';
+    return { qualifies: reason == null, reason, entry, floor, stop, target };
+  }
+
+  function ideaOf(m, ctx) {
+    ctx = ctx || {};
+    const setup = setupOf(m, ctx.street);
+    let status = setup.reason || 'ready';
+    if (ctx.selling) status = 'selling';
+    else if (ctx.washUntil) status = 'wash';
+    else if (ctx.broken) status = 'trend';
+    else if (setup.qualifies && ctx.nameFull) status = 'name-cap';
+    else if (setup.qualifies && ctx.themeFull) status = 'cluster-full';
+    else if (setup.qualifies && !ctx.funded) status = 'funding';
+    const off = setup.entry.off;
+    const entryLimit = off != null && off < C.SD_ENTRY_EXTEND && off < 100
+      ? m.px / (1 - off / 100) * (1 - C.SD_ENTRY_EXTEND / 100) : null;
+    return { ...setup, status, entryLimit, washUntil: ctx.washUntil || null,
+      priority: status === 'ready' || status === 'funding' ? 0 : 1 };
   }
 
   function median(arr) {
@@ -248,15 +297,15 @@
         picks.push({ m, sh: 0, d: 0, noRoom: true, atMax: true, skip: 'name-cap' });
         return;
       }
-      const sp = stopPct(m);
-      const stop = stopPrice(m);
       const street = streetOf ? streetOf(m.sym) : (m.street || null);
-      const tgt = targetOf(m, stop, street);
-      if (tgt.rr != null && tgt.rr < C.SD_MIN_RR) {
-        skipped.push({ m, why: 'rr<' + C.SD_MIN_RR });
-        picks.push({ m, sh: 0, d: 0, noRoom: true, atMax: false, skip: 'rr', tgt, stop });
+      const setup = setupOf(m, street);
+      const stop = setup.stop, tgt = setup.target;
+      if (!setup.qualifies) {
+        skipped.push({ m, why: setup.reason === 'rr' ? 'rr<' + C.SD_MIN_RR : setup.reason });
+        picks.push({ m, sh: 0, d: 0, noRoom: true, atMax: false, skip: setup.reason, tgt, stop });
         return;
       }
+      const sp = stopPct(m);
       const sm = sizeMul(m, { lev, stopInfo: sp, speculative: tgt.spec });
       let d = bucket * (inv[i] / sInv) * sm.mul;
       d = Math.min(d, roomName, roomCl);
@@ -310,7 +359,7 @@
   return {
     C,
     themeOf, floorOf, off20, entryGate, atrFromCloses, stopPct, stopPrice,
-    sizeMul, targetOf, heatOf, nameCapDollars, clusterCapDollars,
+    sizeMul, closeRange, targetOf, setupOf, ideaOf, heatOf, nameCapDollars, clusterCapDollars,
     isPullback, classifyName, allocate, clusterAfterFrom, trimAdvice, median,
   };
 });

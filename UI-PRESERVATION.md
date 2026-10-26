@@ -88,3 +88,14 @@ Self-audited; authenticated Predict access and the first production schedule rem
 with a two-per-topic limit (CPI/core CPI combined). No portfolio/account or trading changes.
 Validation: full producer suites, dashboard model tests, collector election-horizon fixtures,
 public live collection, Predict responsive/browser checks. Self-audited; Fable unavailable.
+
+## v168 — Self-directed recommendations
+
+The existing Action Center, funding/collateral/tax protections, accounts and Analyze destination
+remain. New Stock ideas are research rows, separate from funded buy quantities; rejection details
+and estimated-target methodology can be expanded. The allocator uses an observed closing-price
+range or consensus target with the existing 2:1 minimum, and checks entry/floors at allocation time.
+`tests/sd-plan-browser.mjs` covers positive funded allocation, zero-funded visibility, missing targets,
+tax/entry/momentum blocks, true consumer range propagation, 320–1440px layouts, privacy round-trip,
+Midnight and Analyze links. All 50 producer suites and dashboard model tests pass. Browser fixtures
+are synthetic; no decrypted account or production trade action was used. Self-audited.
