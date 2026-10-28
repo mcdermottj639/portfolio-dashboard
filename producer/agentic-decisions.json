@@ -1991,5 +1991,57 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "6bc79c22c4c0884c037f",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "f7e7b537f95cfdcdb9d3",
+    "evidenceCoverage": 0.6885245901639344,
+    "id": "2026-10-28-rebalance",
+    "date": "2026-10-28",
+    "kind": "rebalance",
+    "targetAsOf": "2026-10-28",
+    "book": 7445.85,
+    "equityAtDecision": 7440.38,
+    "spyAt": 770.98,
+    "rationale": "EXEC_AUTO ticket 2026-10-28-w4bblg: sold XOM in full (not in the current target; exit funds the underweight names) for $405.81 (2.232179 sh @ $181.80, realized +$38.71 ST) and bought META ($38.91, 0.063296 sh @ $614.723; 6.3% -> 7.21% target) and KO ($309.82, 3.375316 sh @ $91.7899; 0.0% -> 7.21% target). MA's planned $60.05 buy (4.21% -> 5.61% target) was dropped live: MA reports 2026-10-29 am, inside the 7d earnings blackout — the gate's deterministic plan has no live earnings map, so this is caught by the executor's own pre-trade check per AGENTIC.md step 3b; the $60.05 rejoins cash for the next pass. AMZN ($358.15, 0.0% -> 4.81% target) remains wash-sale deferred to 2026-11-06 (margin-book loss booked 2026-10-07 in the self-directed account; cross-account wash). Live pre-checks clean: book $7,445.85 (plan basis) vs live total_value $7,440.38 pre-trade (-0.07%, within the 5% abort); cash $24.19 + XOM proceeds $405.81 covered the $348.73 spend; margin-book (...0741) 30-day realized P&L has no META or KO trade (no cross-account wash block on the buys); ••••3900 had no fills earlier today (no PDT exposure); parking ledger unchanged ($26.83 in VTI for LLY — this plan carried no park/release leg, before==after). Drawdown ok (book -2.79% from its 2026-08-10 peak vs benchmark -1.0% over the same window -- -1.8pp relative; deployment normal). Regime calm (VIX 17.55). Turnover $754.54. Cash left after this pass: ~$81.27.",
+    "trades": [
+      {
+        "sym": "META",
+        "side": "BUY",
+        "dollars": 38.91,
+        "shares": 0.063296,
+        "priceAt": 614.723,
+        "weightBefore": 6.3,
+        "weightAfter": 7.21,
+        "drivers": [
+          "quality",
+          "growth",
+          "catalyst"
+        ]
+      },
+      {
+        "sym": "KO",
+        "side": "BUY",
+        "dollars": 309.82,
+        "shares": 3.375316,
+        "priceAt": 91.7899,
+        "weightBefore": 0,
+        "weightAfter": 7.21,
+        "drivers": [
+          "quality"
+        ]
+      }
+    ]
   }
 ]

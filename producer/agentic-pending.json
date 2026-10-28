@@ -1,7 +1,7 @@
 {
-  "id": "2026-10-22-iera33",
-  "created": "2026-10-22",
-  "targetId": "661bc161122f68e210df",
+  "id": "2026-10-28-w4bblg",
+  "created": "2026-10-28",
+  "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
   "riskVersion": "hard-caps-v3",
@@ -13,68 +13,97 @@
     "valuation": 0.18,
     "flow": 0
   },
-  "universeVersion": "8b9596cf04553997db2f",
+  "universeVersion": "f7e7b537f95cfdcdb9d3",
   "status": "done",
   "autoEligible": true,
-  "turnover": 37.96,
-  "book": 7643.95,
-  "planHash": "s[]b[UNP:38]t[]",
+  "turnover": 754.54,
+  "book": 7445.85,
+  "planHash": "s[XOM:406]b[KO:310,META:39]t[]",
   "legs": {
-    "sells": [],
+    "sells": [
+      {
+        "sym": "XOM",
+        "kind": "exit",
+        "dollars": 405.81,
+        "shares": 2.232179,
+        "price": 181.8,
+        "pl": 38.71,
+        "note": "not in the current target — exit funds the underweight names"
+      }
+    ],
     "buysNow": [
       {
-        "sym": "UNP",
+        "sym": "META",
         "kind": "buy",
-        "dollars": 37.96,
-        "shares": 0.1284,
-        "price": 295.555,
+        "dollars": 38.91,
+        "shares": 0.063296,
+        "price": 614.723,
         "pl": null,
-        "note": "2.6% → 5.76% target"
+        "note": "6.3% → 7.21% target"
+      },
+      {
+        "sym": "KO",
+        "kind": "buy",
+        "dollars": 309.82,
+        "shares": 3.375316,
+        "price": 91.7899,
+        "pl": null,
+        "note": "0.0% → 7.21% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0,
+    "realizedGain": 38.71,
     "realizedLoss": 0,
-    "net": 0,
+    "net": 38.71,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
-      "sym": "LLY",
+      "sym": "AMZN",
       "reason": "wash-sale",
       "until": "2026-11-06"
+    },
+    {
+      "sym": "MA",
+      "reason": "earnings",
+      "until": "2026-10-29"
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "1 name(s) deferred (LLY) — ~$71.58 of intended weight held pending earnings/re-verify/wash-sale",
-    "$51.17 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "entry zones are 8d old (target asOf 2026-10-14) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
-    "cash idle 8d (≥5d deadline) — entry bands waived and a 34% tranche ($89.13) deployed this pass; waiting indefinitely is a decision too"
+    "buys re-sized $434.44 → $408.78: the $6.75 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
+    "1 name(s) deferred (AMZN) — ~$358.15 of intended weight held pending earnings/re-verify/wash-sale",
+    "$18.91 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "MA buy ($60.05) dropped live for its 2026-10-29 am earnings report (7d blackout) — not caught by the gate's plan; $60.05 rejoins cash for the next pass"
   ],
   "history": [
     {
-      "at": "2026-10-22",
+      "at": "2026-10-28",
       "to": "proposed"
     },
     {
-      "at": "2026-10-22",
+      "at": "2026-10-28",
       "to": "confirmed"
     },
     {
-      "at": "2026-10-22",
+      "at": "2026-10-28",
+      "to": "sells-placed"
+    },
+    {
+      "at": "2026-10-28",
       "to": "buys-placed"
     },
     {
-      "at": "2026-10-22",
+      "at": "2026-10-28",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-10-22",
-  "buys-placedAt": "2026-10-22",
-  "doneAt": "2026-10-22",
-  "completedAt": "2026-10-22T19:26:00.476Z"
+  "confirmedAt": "2026-10-28",
+  "sells-placedAt": "2026-10-28",
+  "buys-placedAt": "2026-10-28",
+  "doneAt": "2026-10-28",
+  "completedAt": "2026-10-28T14:35:42.621Z"
 }
