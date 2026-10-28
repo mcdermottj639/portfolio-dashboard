@@ -2043,5 +2043,43 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "6bc79c22c4c0884c037f",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "f7e7b537f95cfdcdb9d3",
+    "evidenceCoverage": 0.6885245901639344,
+    "id": "2026-10-28-topup",
+    "date": "2026-10-28",
+    "kind": "topup",
+    "targetAsOf": "2026-10-28",
+    "book": 7435.17,
+    "equityAtDecision": 7441.37,
+    "spyAt": 770.995,
+    "rationale": "EXEC_AUTO ticket 2026-10-28-jczt2a: bought KO $62.88 (0.682001 sh @ $92.1992; 4.17% -> 7.21% target top-up) with the remaining cash from the earlier 14:33 UTC rebalance. MA ($102.41, above-entry: $613.23 vs ceiling $600.70) and AMZN ($357.63, wash-sale deferred to 2026-11-06) stayed deferred; the $2.37 shortfall from re-sizing stayed in VTI (sub-floor, no release). Live pre-checks clean: book $7,426 (plan basis) vs live total_value $7,443.61 pre-trade (+0.24%, within the 5% abort); buying power $81.27 covered the $62.88 spend; KO reported earnings 2026-10-27 (not inside a forward 7d blackout); no ...0741 realized loss on KO in the trailing month (no cross-account wash); no same-day sell of a name bought today on ...3900 (no PDT exposure); parking ledger unchanged ($26.83 in VTI for AMZN — this plan carried no park/release leg, before==after). Drawdown ok (book -2.93% from its 2026-08-10 peak vs benchmark -1.0% over the same window — -1.9pp relative; deployment normal). Regime calm (VIX 17.38). Turnover $62.88. Cash left after this pass: $18.39.",
+    "trades": [
+      {
+        "sym": "KO",
+        "side": "BUY",
+        "dollars": 62.88,
+        "shares": 0.682001,
+        "priceAt": 92.1992,
+        "weightBefore": 4.17,
+        "weightAfter": 7.21,
+        "drivers": [
+          "quality"
+        ]
+      }
+    ]
   }
 ]

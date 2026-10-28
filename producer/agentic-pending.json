@@ -1,5 +1,5 @@
 {
-  "id": "2026-10-28-w4bblg",
+  "id": "2026-10-28-jczt2a",
   "created": "2026-10-28",
   "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
@@ -16,68 +16,49 @@
   "universeVersion": "f7e7b537f95cfdcdb9d3",
   "status": "done",
   "autoEligible": true,
-  "turnover": 754.54,
-  "book": 7445.85,
-  "planHash": "s[XOM:406]b[KO:310,META:39]t[]",
+  "turnover": 62.88,
+  "book": 7435.17,
+  "planHash": "s[]b[KO:63]t[]",
   "legs": {
-    "sells": [
-      {
-        "sym": "XOM",
-        "kind": "exit",
-        "dollars": 405.81,
-        "shares": 2.232179,
-        "price": 181.8,
-        "pl": 38.71,
-        "note": "not in the current target — exit funds the underweight names"
-      }
-    ],
+    "sells": [],
     "buysNow": [
-      {
-        "sym": "META",
-        "kind": "buy",
-        "dollars": 38.91,
-        "shares": 0.063296,
-        "price": 614.723,
-        "pl": null,
-        "note": "6.3% → 7.21% target"
-      },
       {
         "sym": "KO",
         "kind": "buy",
-        "dollars": 309.82,
-        "shares": 3.375316,
-        "price": 91.7899,
+        "dollars": 62.88,
+        "shares": 0.6841,
+        "price": 91.915,
         "pl": null,
-        "note": "0.0% → 7.21% target"
+        "note": "4.2% → 7.21% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 38.71,
+    "realizedGain": 0,
     "realizedLoss": 0,
-    "net": 38.71,
+    "net": 0,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
+      "sym": "MA",
+      "reason": "above-entry",
+      "until": null
+    },
+    {
       "sym": "AMZN",
       "reason": "wash-sale",
       "until": "2026-11-06"
-    },
-    {
-      "sym": "MA",
-      "reason": "earnings",
-      "until": "2026-10-29"
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "buys re-sized $434.44 → $408.78: the $6.75 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
-    "1 name(s) deferred (AMZN) — ~$358.15 of intended weight held pending earnings/re-verify/wash-sale",
-    "$18.91 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "MA buy ($60.05) dropped live for its 2026-10-29 am earnings report (7d blackout) — not caught by the gate's plan; $60.05 rejoins cash for the next pass"
+    "buys re-sized $83.64 → $62.88: the $2.37 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
+    "$102.41 of deferred weight (MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "2 name(s) deferred (MA, AMZN) — ~$460.04 of intended weight held pending earnings/re-verify/wash-sale",
+    "$18.39 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
   ],
   "history": [
     {
@@ -90,10 +71,6 @@
     },
     {
       "at": "2026-10-28",
-      "to": "sells-placed"
-    },
-    {
-      "at": "2026-10-28",
       "to": "buys-placed"
     },
     {
@@ -102,8 +79,7 @@
     }
   ],
   "confirmedAt": "2026-10-28",
-  "sells-placedAt": "2026-10-28",
   "buys-placedAt": "2026-10-28",
   "doneAt": "2026-10-28",
-  "completedAt": "2026-10-28T14:35:42.621Z"
+  "completedAt": "2026-10-28T15:32:23.593Z"
 }
