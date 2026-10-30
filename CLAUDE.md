@@ -1,3 +1,18 @@
+## v170 — Market tape renders sharp on iOS (2026-10-30)
+
+On the owner's iPhone the v169 tape read blurred under a light-grey haze. Two causes, both iOS-specific
+and invisible in desktop Chromium. (1) **iOS 26 tints the status-bar area from a fixed top bar's
+`background-color`**; the tape's background was a gradient IMAGE, which gives it no colour to read, so it
+fell back to the page's ivory `theme-color` and laid its scroll-edge haze/blur across the top of the tape.
+The tape is now a solid `#0a120f`, and the `theme-color` meta follows it while the tape is mounted
+(`window.PF_TAPE_BG`; `themeColor()` returns it, so a theme toggle no longer flips the status bar back to
+ivory). (2) **A CSS mask on an animated layer is rendered offscreen at reduced resolution on iOS**, which
+softens moving text; the scrolling view's mask is gone, replaced by a plain right-edge overlay, and the
+track animates with `translate3d` (no `will-change`). **Rule for any future fixed top bar here: solid
+background-color matching `theme-color`, never a gradient, never a mask over moving text.** Not verified on
+a physical iPhone from this session — desktop Chromium cannot reproduce either effect. App/cache
+**v170 / pf-v170**; scope `ui/ticker.css`, `ui/ticker.js`, `index.html`, `sw.js`, this file.
+
 ## v169 — Market tape and options-history contract cards (2026-10-30)
 
 **Market tape** (`ui/ticker.js` + `ui/ticker.css`, owner request: "a live ticker like the other apps,

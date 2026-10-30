@@ -10,6 +10,7 @@
   'use strict';
   var M = function () { return window.PFExperienceModel; };
   var LIVE_MAX_MIN = 75, SPEED = 42; // px per second
+  var TAPE_BG = '#0a120f'; window.PF_TAPE_BG = TAPE_BG;
   var MARKETS = ['SPY', 'QQQ', 'DIA', 'IWM', 'IBIT', 'GLD', 'TLT'];
   var TIER = { ASSIGNMENT_WIN: ['g', 'Let assign'], LET_IT_RIDE: ['g', 'Let ride'], ASSIGNMENT_LIKELY: ['b', 'Likely assigned'],
     ROLL_WINDOW: ['a', 'Roll window'], STRIKE_UNDER_BASIS: ['r', 'Under basis'], EXTENDED_STOCK: ['r', "Don't roll up"],
@@ -125,6 +126,10 @@
     el.innerHTML = '<div class="tk-stat" role="button" tabindex="0" title="Tap to pause / play"><span class="tk-dot"></span><span class="tk-stat-txt">Tape</span></div><div class="tk-view"><div class="tk-track"></div></div>';
     document.body.insertBefore(el, document.body.firstChild);
     document.documentElement.classList.add('pf-has-tape');
+    // v170: the status bar must take the tape's colour, not the page's ivory — otherwise iOS paints a
+    // light haze (and its scroll-edge blur) over the top of the tape. themeColor() in index.html returns
+    // TAPE_BG while the tape is mounted, so a theme toggle keeps it.
+    try { var m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', TAPE_BG); } catch (e) {}
     track = el.querySelector('.tk-track'); view = el.querySelector('.tk-view'); stat = el.querySelector('.tk-stat');
     var hold = function () { el.classList.add('tk-hold'); }, go = function () { if (!el.classList.contains('tk-paused')) el.classList.remove('tk-hold'); };
     view.addEventListener('pointerdown', hold); view.addEventListener('pointerup', go); view.addEventListener('pointercancel', go); view.addEventListener('pointerleave', go);
