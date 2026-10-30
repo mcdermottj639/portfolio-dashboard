@@ -2116,5 +2116,68 @@
         "weightAfter": null
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "6bc79c22c4c0884c037f",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "f7e7b537f95cfdcdb9d3",
+    "evidenceCoverage": 0.6885245901639344,
+    "id": "2026-10-30-owner-restore",
+    "date": "2026-10-30",
+    "kind": "owner-restore",
+    "targetAsOf": "2026-10-28",
+    "book": 7278.3,
+    "equityAtDecision": 7279.11,
+    "spyAt": 751.24,
+    "rationale": "OWNER OVERRIDE, REVERSED (Jack's chat, explicit yes 2026-10-30 2:54 PM ET). At 1:32-1:33 PM ET Jack sold ALL V (2.532973 sh @ $416.062) and ALL LLY (0.498284 sh @ $1,423.51) by hand in the Robinhood app for cash (+$228.90 realized), then decided he did not need it. The 2:21 PM executor pass (ticket 2026-10-30-m44mmm) read the $1,763.53 as a fresh deposit and parked 50% in VTI. Jack asked to restore V and LLY now: sold 2.384875 VTI @ $369.11 (FIFO: 0.764731 sh of the 2026-10-08 lot + 1.620144 sh of today's lot; small loss, wash-sale with today's remaining VTI lot), bought V $1,051.00 (2.532408 sh @ $415.0199) and LLY $709.00 (0.499866 sh @ $1,418.38). Owner-accepted deviations from the executor's own rules: V bought above its $390-404 entry band; LLY bought inside its cross-account wash window (Jack's ••0741 LLY loss of 2026-10-07, -$26.40, may be deferred); VTI sold the same day it was bought (1 day trade). Parking ledger returned to its pre-today state ($26.83 for AMZN). Cash after: $2.03. Placed by Claude in Jack's chat, not by the executor.",
+    "trades": [
+      {
+        "sym": "V",
+        "side": "BUY",
+        "dollars": 1051,
+        "shares": 2.532408,
+        "priceAt": 415.0199,
+        "weightBefore": null,
+        "weightAfter": null,
+        "drivers": [
+          "quality",
+          "momentum",
+          "growth"
+        ]
+      },
+      {
+        "sym": "LLY",
+        "side": "BUY",
+        "dollars": 709,
+        "shares": 0.499866,
+        "priceAt": 1418.38,
+        "weightBefore": null,
+        "weightAfter": null,
+        "drivers": [
+          "quality",
+          "growth",
+          "momentum"
+        ]
+      },
+      {
+        "sym": "VTI",
+        "side": "TRIM",
+        "dollars": 880.28,
+        "shares": 2.384875,
+        "priceAt": 369.11,
+        "weightBefore": null,
+        "weightAfter": null
+      }
+    ]
   }
 ]
