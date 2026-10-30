@@ -1,3 +1,40 @@
+## v169 — Market tape and options-history contract cards (2026-10-30)
+
+**Market tape** (`ui/ticker.js` + `ui/ticker.css`, owner request: "a live ticker like the other apps,
+fixed to top"). A dark full-bleed strip `position:fixed` at the very top of every screen (status bar to
+edge on iPhone; 32px phone / 34px desktop, set as `--tk-h` only once `html.pf-has-tape` is on). Everything
+below is pushed by `--tk-h`: body padding-top, the sticky freshness strip's `top`, the desktop sidebar's
+`top`, and `_syncStickyTop` adds `--tk-h` to `--stickytop-h` so the account switcher sticks below both.
+`__pfTopOffset()` needs no change — it already reads the strip's computed sticky `top`. z-index 170
+(above #pf-fresh 150 / switcher 90, below overlays). Sections: YOUR BOOK (combined day $/% , per-account
+equity + day %, breadth), MARKETS (SPY/QQQ/DIA/IWM/IBIT/GLD/TLT + VIX regime pill), HOLDINGS (every quoted
+position, both accounts, value-ordered, value not shown), OPTIONS (open contracts, days left, guardrail
+tier pill), EARNINGS (≤14 days), AGENTIC (breaker level vs SPY, open ticket), HEADS UP (the Today radar's
+warn items). **It is built from `PFExperienceModel.dailyBrief`** — the same model as Today — so the tape
+cannot disagree with the brief. It makes no network/broker call: it is exactly as live as the published
+snapshot, and the status pill says so — **LIVE** only while the market is open AND the snapshot is
+≤75 min old, otherwise "As of"/"Close" + the snapshot time. Taps: symbol → Analyze (`switchTab` +
+`runAnalysis`), option → Options, everything else via experience.js's `data-ex-route` router. Hold or
+hover pauses; tapping the pill toggles pause; reduced motion → static, swipeable. **Privacy:** the tape
+lives OUTSIDE every `data-priv` region, so it masks its own dollar figures (•••) and re-renders on the
+body-class change; percentages, prices and strikes stay. Re-render is signature-gated so the scroll
+animation does not restart every minute.
+
+**Options Income & History rows** (owner: the four-line text rows looked "elementary"). Each contract is
+now a card: underlying badge, outcome chip (Expired / Closed / Closed by roll / Assigned), P/L with the
+share of premium kept (`net / |opening|`; "+x% return" for a debit open), a life bar opened → close
+marker → expiration with "held N of Md", and the two cash legs in words (Premium in / Paid to close /
+"expired worthless"). A scoreboard above the year's rows: win-rate ring, W-L record, best and worst
+contract. Same ledger fields as before; nothing new is computed from data the ledger does not carry.
+Styles in `ui/experience.css` (`.oh-*`).
+
+Scope: `ui/ticker.js`, `ui/ticker.css` (new), `index.html`, `ui/experience.css`, `sw.js`, this file,
+`UI-PRESERVATION.md`. App/cache **v169 / pf-v169**. Routines touched: **none**; no producer, schema,
+broker or encryption change. Validation: dashboard model suites (3), brief/sd-plan/predictions browser
+suites, privacy audit (clean round-trip), plus synthetic Playwright checks at 390 and 1280px: tape pinned
+at y=0 after scrolling, freshness strip directly below it, no horizontal overflow, no page errors,
+symbol tap opens Analyze, tape dollars masked in private mode. Physical iPhone not verified. Self-audited.
+
 ## v168 — Reachable buy allocations and visible research (2026-10-26)
 
 The self-directed allocator capped every target at `price + 1.5 * (price - stop)`

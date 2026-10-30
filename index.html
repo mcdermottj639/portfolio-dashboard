@@ -706,8 +706,9 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=168">
-<link rel="stylesheet" href="ui/predictions.css?v=168">
+<link rel="stylesheet" href="ui/experience.css?v=169">
+<link rel="stylesheet" href="ui/predictions.css?v=169">
+<link rel="stylesheet" href="ui/ticker.css?v=169">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -760,7 +761,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=168"></script>
+<script src="ui/sd-rules.js?v=169"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -869,7 +870,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v168'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v169'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2852,7 +2853,10 @@ window.__pfTopOffset=__pfTopOffset;
    it is now the freshness strip's, which is just as variable — the strip's text wraps to two lines
    whenever a staleness or update nudge is showing, and a stale offset would overlap the switcher. */
 function _syncStickyTop(){ const fb=document.getElementById('pf-fresh');
-  const h=(fb&&fb.offsetHeight>0)?fb.offsetHeight:0;
+  // v169: the fixed market tape sits above the strip, so the switcher sticks below BOTH.
+  const tp=document.getElementById('pf-tape'); const tk=(tp&&tp.offsetHeight>0)?tp.getBoundingClientRect().height:0;
+  let safe=0; try{ safe=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tk-h'))||0; }catch(e){}
+  const h=((fb&&fb.offsetHeight>0)?fb.offsetHeight:0)+(tk?safe:0);
   document.documentElement.style.setProperty('--stickytop-h',h+'px'); }
 window._syncStickyTop=_syncStickyTop;
 window.addEventListener('resize',_syncStickyTop);
@@ -6080,11 +6084,40 @@ function optIncomeHistory(o,realized){
   if(total==null||difference!==0||ledger.unresolved||pending.length||ledger.version!==2){
     h+='<div class="opt-income-status"><b>History is not fully reconciled.</b><p>'+(total==null?'No matched '+esc(year)+' results are available to explain the broker total.':difference!=null?'Broker total minus matched '+esc(year)+' results: <b>'+money(difference)+'</b>. This is a reconciliation difference, not additional earnings.':'The broker total is unavailable for comparison.')+' Missing settlements, fees and other incomplete records still need checking.</p></div>';
   }
-  const renderRows=items=>items.map(r=>'<div style="border-top:1px solid var(--border);padding:13px 0"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+esc(r.symbol)+' '+esc(r.strike==null?'':('$'+r.strike))+' '+esc(r.type||'option')+'</b><b class="'+(num(r.net)==null?'':r.net<0?'neg':'pos')+'">'+(num(r.net)==null?'Unreconciled':money(r.net))+'</b></div><div style="font-size:12px;margin-top:5px">'+esc(r.quantity)+' contract(s) · Exp '+esc(r.expiration)+' · '+esc(r.status)+'</div><div style="font-size:12px;margin-top:5px">Opened '+esc(r.opened)+' · Event '+esc(r.date)+'</div><div style="font-size:12px;margin-top:5px">Opening cash '+money(r.opening)+' · Closing cash '+money(r.closing)+'</div></div>').join('');
+  /* v169 — each contract is a card: underlying badge, outcome chip, P/L with what share of the premium was
+     kept, a life bar (opened → closed/expired → expiration, so an early close reads at a glance) and the two
+     cash legs in plain words. Same fields as before; nothing is computed that the ledger doesn't carry. */
+  const dShort=v=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));if(!m)return '—';const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1];return mo+' '+(+m[3])+(m[1]!==String(new Date().getFullYear())?' ’'+m[1].slice(2):'');};
+  const dNum=v=>{const t=Date.parse(String(v||'').slice(0,10)+'T12:00:00Z');return Number.isFinite(t)?t:null;};
+  const chipOf=st=>{const k=String(st||'').toLowerCase();return k.includes('roll')?'roll':k.includes('assign')||k.includes('exercis')?'assign':k.includes('expir')?'exp':k.includes('clos')?'closed':'other';};
+  const renderRow=r=>{
+    const net=num(r.net), op=num(r.opening), cl=num(r.closing);
+    const tone=net==null?'open':net>0?'win':net<0?'loss':'flat';
+    const typ=String(r.type||'option'); const typL=typ.charAt(0).toUpperCase()+typ.slice(1);
+    let kept='';
+    if(net!=null&&op!=null&&op!==0){const pct=Math.round(net/Math.abs(op)*100);kept=op>0?(pct>=0?pct+'% of premium kept':Math.abs(pct)+'% of premium lost'):(pct>=0?'+':'−')+Math.abs(pct)+'% return';}
+    const o=dNum(r.opened), e=dNum(r.date), x=dNum(r.expiration);
+    let life='';
+    if(o!=null&&x!=null&&x>o){
+      const end=e!=null?Math.min(Math.max(e,o),x):x, frac=Math.max(.04,Math.min(1,(end-o)/(x-o))), held=Math.max(0,Math.round((end-o)/864e5)), span=Math.round((x-o)/864e5);
+      const early=e!=null&&e<x-864e5;
+      life='<div class="oh-life"><div class="oh-bar"><span style="width:'+(frac*100).toFixed(1)+'%"></span>'+(early?'<i style="left:'+(frac*100).toFixed(1)+'%"></i>':'')+'</div><div class="oh-ends"><span>Opened '+esc(dShort(r.opened))+'</span><span class="oh-mid">'+(early?esc(String(r.status||'Closed'))+' '+esc(dShort(r.date))+' · ':'')+'held '+held+' of '+span+'d</span><span>Exp '+esc(dShort(r.expiration))+'</span></div></div>';
+    }
+    const inL=op==null?'Opening cash':op>=0?'Premium in':'Paid to open', outL=cl==null?'Closing cash':cl<0?'Paid to close':cl>0?'Received at close':'Closed at';
+    const outV=cl===0&&chipOf(r.status)==='exp'?'<b>$0</b> <em>expired worthless</em>':'<b>'+money(cl==null?null:Math.abs(cl))+'</b>';
+    return '<div class="oh-row oh-'+tone+'"><div class="oh-top"><div class="oh-id"><span class="oh-badge">'+esc(r.symbol)+'</span><div class="oh-name"><div class="oh-title">'+esc(r.strike==null?'':('$'+r.strike))+' '+esc(typL)+' <span class="oh-chip oh-c-'+chipOf(r.status)+'">'+esc(r.status||'—')+'</span></div><div class="oh-sub">'+esc(r.quantity)+' contract'+(num(r.quantity)===1?'':'s')+'</div></div></div><div class="oh-pl"><div class="oh-amt">'+(net==null?'Unreconciled':(net>0?'+':'')+money(net))+'</div>'+(kept?'<div class="oh-kept">'+kept+'</div>':'')+'</div></div>'+life+'<div class="oh-cash"><span>'+inL+' <b>'+money(op==null?null:Math.abs(op))+'</b></span><span>'+outL+' '+outV+'</span></div></div>';
+  };
+  const renderRows=items=>'<div class="oh-list">'+items.map(renderRow).join('')+'</div>';
+  const scoreboard=items=>{
+    const v=items.filter(r=>num(r.net)!=null); if(!v.length)return '';
+    const w=v.filter(r=>r.net>0), l=v.filter(r=>r.net<0), best=v.reduce((a,b)=>b.net>a.net?b:a), worst=v.reduce((a,b)=>b.net<a.net?b:a);
+    const rate=Math.round(w.length/v.length*100);
+    return '<div class="oh-score"><div class="oh-ring" style="--p:'+rate+'"><b>'+rate+'%</b><span>win rate</span></div><div class="oh-stats"><div><span>Record</span><b><em class="pos">'+w.length+'W</em> · <em class="neg">'+l.length+'L</em></b></div><div><span>Best</span><b class="'+(best.net<0?'neg':'pos')+'">'+(best.net>0?'+':'')+money(best.net)+'</b><small>'+esc(best.symbol)+' '+esc(best.strike==null?'':'$'+best.strike)+'</small></div><div><span>Worst</span><b class="'+(worst.net<0?'neg':'pos')+'">'+(worst.net>0?'+':'')+money(worst.net)+'</b><small>'+esc(worst.symbol)+' '+esc(worst.strike==null?'':'$'+worst.strike)+'</small></div></div></div>';
+  };
   const months={};valid.forEach(r=>{const m=r.date.slice(0,7);months[m]=(months[m]||0)+r.net;});
   const monthKeys=Object.keys(months).sort().reverse();
   if(monthKeys.length)h+='<details style="margin:14px 0"><summary>'+esc(year)+' monthly matched results · before fees</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+monthKeys.map(m=>'<div style="padding:10px;background:var(--surface-2);border-radius:10px">'+esc(m)+'<br><b>'+money(months[m])+'</b></div>').join('')+'</div></details>';
-  h+=renderRows(rows);
+  h+=scoreboard(rows)+renderRows(rows);
   if(pending.length)h+='<details open class="opt-income-details"><summary>Past contracts awaiting settlement records ('+pending.length+')</summary><p>Opening cash is known. Profit stays uncalculated until the broker supplies the outcome.</p>'+renderRows(pending)+'</details>';
   if(older.length)h+='<details class="opt-income-details"><summary>Other years · '+older.length+' historical result(s)</summary><p>Excluded from '+esc(year)+' totals.</p>'+renderRows(older)+'</details>';
   h+='<details class="opt-income-details"><summary>Data coverage &amp; calculation details</summary><p>History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+'</p><p>'+esc(ledger.unresolved)+' record(s) need more detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Gross premiums are not realized profit. Assignment/exercise stock proceeds are never counted as option earnings. Matching totals alone does not establish complete coverage.</p></details></div>';
@@ -8238,9 +8271,10 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=168"></script>
-<script src="ui/predictions-model.js?v=168"></script>
-<script src="ui/predictions.js?v=168"></script>
-<script src="ui/experience.js?v=168"></script>
+<script src="ui/experience-model.js?v=169"></script>
+<script src="ui/predictions-model.js?v=169"></script>
+<script src="ui/predictions.js?v=169"></script>
+<script src="ui/experience.js?v=169"></script>
+<script src="ui/ticker.js?v=169"></script>
 </body>
 </html>

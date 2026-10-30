@@ -1,0 +1,99 @@
+/* v169 — Market tape. A dark, full-bleed strip fixed to the top of every screen (status bar to
+   edge on iPhone). Everything below is pushed down by --tk-h so nothing sits under it:
+   body padding, the sticky freshness strip (#pf-fresh) and, on desktop, the Today/Portfolio sidebar.
+   z-index 170: above the freshness strip (150) and the account switcher (90), below the
+   classic-return pill (220) and the full-screen overlays (99998+). */
+:root { --tk-h: 0px; }
+html.pf-has-tape { --tk-h: 34px; }
+@media (max-width: 650px) { html.pf-has-tape { --tk-h: 32px; } }
+
+html.pf-has-tape body { padding-top: calc(env(safe-area-inset-top) + var(--tk-h) + 8px) !important; }
+html.pf-has-tape #pf-fresh { top: calc(env(safe-area-inset-top) + var(--tk-h)) !important; }
+@media (min-width: 901px) { html.pf-has-tape .ex-main { top: var(--tk-h); } }
+
+.pf-tape {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 170;
+  height: calc(env(safe-area-inset-top) + var(--tk-h));
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  display: flex; align-items: stretch;
+  background: linear-gradient(180deg, #0c1512 0%, #08100d 100%);
+  color: #e8efe9; border-bottom: 1px solid rgba(52, 211, 153, .28);
+  box-shadow: 0 6px 18px -10px rgba(0, 0, 0, .55);
+  font: 600 12.5px/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums; letter-spacing: .1px;
+  -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased;
+}
+.pf-tape * { box-sizing: border-box; }
+
+/* Status pill — pinned left, never scrolls: what the tape is reading and how fresh it is. */
+.pf-tape .tk-stat {
+  flex: none; display: flex; align-items: center; gap: 7px; padding: 0 12px 0 10px;
+  background: #0c1512; position: relative; z-index: 2; cursor: pointer;
+  border-right: 1px solid rgba(255, 255, 255, .08);
+  font-size: 10.5px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: #9fb3a8;
+}
+.pf-tape .tk-stat::after { /* soft fade where the scrolling track slides under the pill */
+  content: ""; position: absolute; top: 0; bottom: 0; right: -22px; width: 22px; pointer-events: none;
+  background: linear-gradient(90deg, #0c1512, rgba(12, 21, 18, 0));
+}
+.pf-tape .tk-dot { width: 7px; height: 7px; border-radius: 50%; background: #64748b; flex: none; }
+.pf-tape .tk-stat.is-live { color: #6ee7b7; }
+.pf-tape .tk-stat.is-live .tk-dot { background: #34d399; box-shadow: 0 0 0 0 rgba(52, 211, 153, .7); animation: tk-pulse 1.8s ease-out infinite; }
+.pf-tape .tk-stat.is-stale { color: #fbbf24; }
+.pf-tape .tk-stat.is-stale .tk-dot { background: #f59e0b; }
+.pf-tape .tk-stat b { color: #e8efe9; font-weight: 700; letter-spacing: .3px; text-transform: none; font-size: 11.5px; }
+@keyframes tk-pulse { 0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, .65); } 70% { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); } }
+
+.pf-tape .tk-view { flex: 1 1 auto; min-width: 0; overflow: hidden; position: relative; touch-action: pan-y;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), transparent 100%); }
+.pf-tape .tk-track { display: flex; width: max-content; height: 100%; will-change: transform;
+  animation: tk-scroll var(--tk-dur, 80s) linear infinite; }
+.pf-tape.tk-hold .tk-track { animation-play-state: paused; }
+@keyframes tk-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.pf-tape.tk-static .tk-track { animation: none; }
+.pf-tape.tk-static .tk-view { overflow-x: auto; scrollbar-width: none; -webkit-mask-image: none; mask-image: none; }
+.pf-tape.tk-static .tk-view::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pf-tape .tk-track { animation: none; }
+  .pf-tape .tk-view { overflow-x: auto; scrollbar-width: none; }
+  .pf-tape .tk-stat.is-live .tk-dot { animation: none; }
+}
+
+.pf-tape .tk-half { display: flex; align-items: center; height: 100%; flex: none; padding-left: 14px; }
+.pf-tape .tk-sec { display: inline-flex; align-items: center; height: 18px; margin: 0 10px 0 6px; padding: 0 7px;
+  border-radius: 4px; font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
+  color: #0b1410; background: #6ee7b7; flex: none; }
+.pf-tape .tk-sec.s-book { background: #e8efe9; }
+.pf-tape .tk-sec.s-hold { background: #a7f3d0; }
+.pf-tape .tk-sec.s-opt { background: #c4b5fd; }
+.pf-tape .tk-sec.s-earn { background: #fcd34d; }
+.pf-tape .tk-sec.s-alert { background: #fca5a5; }
+.pf-tape .tk-sec.s-agent { background: #93c5fd; }
+
+.pf-tape .tk-it { display: inline-flex; align-items: center; gap: 6px; height: 100%; padding: 0 13px; flex: none;
+  white-space: nowrap; cursor: pointer; position: relative; color: #e8efe9; }
+.pf-tape .tk-it + .tk-it::before { content: ""; position: absolute; left: 0; top: 50%; width: 3px; height: 3px;
+  margin-top: -1.5px; border-radius: 50%; background: rgba(232, 239, 233, .25); }
+.pf-tape .tk-it:active { background: rgba(255, 255, 255, .06); }
+.pf-tape .tk-sym { font-weight: 800; letter-spacing: .4px; }
+.pf-tape .tk-px { color: #b6c4bc; font-weight: 600; }
+.pf-tape .tk-chg { font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.pf-tape .tk-chg.up { color: #34d399; }
+.pf-tape .tk-chg.dn { color: #f87171; }
+.pf-tape .tk-chg.flat, .pf-tape .tk-muted { color: #8a9a91; }
+.pf-tape .tk-tri { font-size: 8px; line-height: 1; }
+.pf-tape .tk-pill { font-size: 9.5px; font-weight: 800; letter-spacing: .6px; padding: 3px 6px; border-radius: 4px;
+  text-transform: uppercase; background: rgba(255, 255, 255, .09); color: #d7e0db; }
+.pf-tape .tk-pill.g { background: rgba(52, 211, 153, .16); color: #6ee7b7; }
+.pf-tape .tk-pill.a { background: rgba(251, 191, 36, .16); color: #fcd34d; }
+.pf-tape .tk-pill.r { background: rgba(248, 113, 113, .17); color: #fca5a5; }
+.pf-tape .tk-pill.b { background: rgba(96, 165, 250, .16); color: #93c5fd; }
+.pf-tape .tk-big { font-size: 13px; font-weight: 800; }
+
+@media (max-width: 650px) {
+  .pf-tape { font-size: 12px; }
+  .pf-tape .tk-stat { padding: 0 9px 0 9px; letter-spacing: .8px; font-size: 10px; }
+  .pf-tape .tk-it { padding: 0 11px; }
+}
+@media print { .pf-tape { display: none; } html.pf-has-tape body { padding-top: 0 !important; } }

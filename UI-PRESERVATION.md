@@ -99,3 +99,11 @@ range or consensus target with the existing 2:1 minimum, and checks entry/floors
 tax/entry/momentum blocks, true consumer range propagation, 320–1440px layouts, privacy round-trip,
 Midnight and Analyze links. All 50 producer suites and dashboard model tests pass. Browser fixtures
 are synthetic; no decrypted account or production trade action was used. Self-audited.
+
+## v169 — Market tape and contract cards
+
+Added: a fixed-top market tape (`ui/ticker.js`/`.css`) on every screen, read-only over the published
+snapshot, privacy-aware. Changed presentation only: Options Income & History contract rows are cards with
+a scoreboard; every field shown before (contracts, expiration, status, opened, event date, opening and
+closing cash, net) is still shown. The freshness strip, Find, privacy, theme, ↻ and the account switcher
+keep their behavior; their sticky offsets now include the tape height.
