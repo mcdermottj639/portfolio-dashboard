@@ -1,6 +1,6 @@
 {
-  "id": "2026-10-28-jczt2a",
-  "created": "2026-10-28",
+  "id": "2026-10-30-m44mmm",
+  "created": "2026-10-30",
   "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,20 +16,20 @@
   "universeVersion": "f7e7b537f95cfdcdb9d3",
   "status": "done",
   "autoEligible": true,
-  "turnover": 62.88,
-  "book": 7435.17,
-  "planHash": "s[]b[KO:63]t[]",
+  "turnover": 881.76,
+  "book": 7310.83,
+  "planHash": "s[]b[VTI:882]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
-        "sym": "KO",
-        "kind": "buy",
-        "dollars": 62.88,
-        "shares": 0.6841,
-        "price": 91.915,
+        "sym": "VTI",
+        "kind": "park",
+        "dollars": 881.76,
+        "shares": 2.3773,
+        "price": 370.91,
         "pl": null,
-        "note": "4.2% → 7.21% target"
+        "note": "waiting ground — holds $881.76 of deferred weight (LLY, AMZN) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
@@ -43,6 +43,26 @@
   },
   "deferred": [
     {
+      "sym": "NVDA",
+      "reason": "below-entry",
+      "until": null
+    },
+    {
+      "sym": "V",
+      "reason": "above-entry",
+      "until": null
+    },
+    {
+      "sym": "LLY",
+      "reason": "wash-sale",
+      "until": "2026-11-06"
+    },
+    {
+      "sym": "KO",
+      "reason": "above-entry",
+      "until": null
+    },
+    {
       "sym": "MA",
       "reason": "above-entry",
       "until": null
@@ -55,31 +75,31 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "buys re-sized $83.64 → $62.88: the $2.37 shortfall was under the $100 parking floor, so no release fired and those dollars are still in VTI — a sub-floor top-up waits rather than forcing a dust sale of the waiting ground",
-    "$102.41 of deferred weight (MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "2 name(s) deferred (MA, AMZN) — ~$460.04 of intended weight held pending earnings/re-verify/wash-sale",
-    "$18.39 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
+    "$1,075.5 of deferred weight (NVDA, V, KO, MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "6 name(s) deferred (NVDA, V, LLY, KO, MA, AMZN) — ~$1,983.5 of intended weight held pending earnings/re-verify/wash-sale",
+    "fresh cash $1,763.53 arrived 0d ago — deploying a 50% tranche ($881.76) today and the rest one tranche per day over the next 3d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in",
+    "$881.76 of deferred weight parked in VTI rather than left in cash (LLY, AMZN) — released when those names clear; unparking is a taxable ST sale"
   ],
   "history": [
     {
-      "at": "2026-10-28",
+      "at": "2026-10-30",
       "to": "proposed"
     },
     {
-      "at": "2026-10-28",
+      "at": "2026-10-30",
       "to": "confirmed"
     },
     {
-      "at": "2026-10-28",
+      "at": "2026-10-30",
       "to": "buys-placed"
     },
     {
-      "at": "2026-10-28",
+      "at": "2026-10-30",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-10-28",
-  "buys-placedAt": "2026-10-28",
-  "doneAt": "2026-10-28",
-  "completedAt": "2026-10-28T15:32:23.593Z"
+  "confirmedAt": "2026-10-30",
+  "buys-placedAt": "2026-10-30",
+  "doneAt": "2026-10-30",
+  "completedAt": "2026-10-30T18:24:03.958Z"
 }

@@ -2081,5 +2081,40 @@
         ]
       }
     ]
+  },
+  {
+    "modelVersion": "mandate-a-ai-evidence-v1",
+    "mandateVersion": "A-2026-09-08",
+    "riskVersion": "hard-caps-v3",
+    "targetId": "6bc79c22c4c0884c037f",
+    "factorWeights": {
+      "momentum": 0.22,
+      "quality": 0.24,
+      "growth": 0.22,
+      "catalyst": 0.14,
+      "valuation": 0.18,
+      "flow": 0
+    },
+    "universeVersion": "f7e7b537f95cfdcdb9d3",
+    "evidenceCoverage": 0.6885245901639344,
+    "id": "2026-10-30-park",
+    "date": "2026-10-30",
+    "kind": "park",
+    "targetAsOf": "2026-10-28",
+    "book": 7310.83,
+    "equityAtDecision": 7292.94,
+    "spyAt": 752.36,
+    "rationale": "EXEC_AUTO ticket 2026-10-30-m44mmm: parked $881.76 (2.384875 VTI sh @ $369.73) in the waiting ground for LLY ($556.35, wash-sale deferred to 2026-11-06) and AMZN ($351.65, wash-sale deferred to 2026-11-06) — the first 50% tranche of a $1,763.53 cash deposit that arrived this run (idle-cash tranching, not a one-day lump); the remainder tranches in over the next 3 days or on the 5-day idle deadline. NVDA deferred $88.37 (4.3% below entry 212-220, re-verify post-earnings) and V $761.79 / KO $143.21 / MA $82.13 deferred above-entry — all held in CASH, not parked, per the no-known-clear-date rule. Live pre-checks clean: plan basis book $7,426 vs live total_value $7,292.94 pre-trade (-1.79%, within the 5% abort); buying power $1,763.53 covered the $881.76 spend; VTI is an index ETF with no earnings blackout; no sells in this ticket so no PDT/cross-account-wash check applied; parking ledger updated to $908.59 in VTI (LLY, AMZN). Drawdown ok (book -4.2% from its 2026-08-10 peak vs benchmark -0.1% over the same window — -4.2pp relative; deployment normal). Turnover $881.76. Cash left after this pass: $0.",
+    "trades": [
+      {
+        "sym": "VTI",
+        "side": "BUY",
+        "dollars": 881.76,
+        "shares": 2.3773,
+        "priceAt": 370.91,
+        "weightBefore": null,
+        "weightAfter": null
+      }
+    ]
   }
 ]
