@@ -1,3 +1,25 @@
+## v171 — Snapshot survives a failed download; status bar stops blurring the tape (2026-10-30)
+
+**(1) The app went blank on the owner's phone** — "Couldn't load data (FetchEvent.respondWith received an
+error: TypeError: Load failed)", after minutes stuck on "Snapshot not loaded". The ~6.6 MB `data.json`
+download failed, and the service worker's offline fallback had nothing, because the snapshot was cached in the
+VERSIONED cache: every app update (`pf-v169` → `pf-v170` that afternoon) deleted the only offline copy, so
+the first failed fetch after an update returned `undefined`. `sw.js` now keeps data.json in its own
+version-independent `pf-data` cache (never deleted on activate), times the network out at 20s, falls back to
+that copy (then any cache), and when there is none returns a real JSON 503 the page shows as "offline — no
+saved snapshot on this device yet" instead of a broken response. Navigations are unchanged. `loadData` also
+retries the fetch once after 2.5s. Verified in Chromium: load → offline → reload serves the saved snapshot;
+a device with no saved copy gets the clean message.
+
+**(2) The v170 tape fix did not work on the phone** — the haze persisted. Root cause found by comparing with
+Sports Hub, whose fixed ticker is sharp: that app never draws UNDER the iPhone status bar (no
+`black-translucent`), while this one did, and iOS blurs whatever sits beneath the status bar. Status-bar
+style is now **`default`** (opaque; the page starts below it) and the static `theme-color` is the tape's
+`#0a120f`, so the bar reads as part of the tape. The v170 solid-background/no-mask changes stay — they are
+still correct. **iOS reads the status-bar style at launch, so it takes effect after the PWA is fully closed
+and reopened** (worst case: remove and re-add the Home Screen icon). Not verified on a physical iPhone.
+App/cache **v171 / pf-v171**; scope `sw.js`, `index.html`, this file. No producer/schema/routine change.
+
 ## v170 — Market tape renders sharp on iOS (2026-10-30)
 
 On the owner's iPhone the v169 tape read blurred under a light-grey haze. Two causes, both iOS-specific
