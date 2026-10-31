@@ -1,3 +1,17 @@
+## v172 — Tape text moved below iOS's status-bar blur (2026-10-30)
+
+v171 loaded the snapshot again, but the tape was still hazy: an already-installed Home Screen app kept its
+original translucent status bar, so the v171 meta change did not apply. Measured off the owner's screenshots,
+iOS blurs everything under a translucent status bar AND ~20pt below it (this morning's v168 snapshot strip
+showed its first line faded the same way). `ui/ticker.css` now adds `--tk-pad: min(env(safe-area-inset-top), 24px)`
+between the status bar and the tape's text row — a blank band of tape colour, so the haze over it is invisible —
+and every dependent offset (body padding, `#pf-fresh` top, `.acct-seg-wrap` top, desktop sidebar) includes it.
+`_syncStickyTop` is back to the strip height alone; the tape's share of the switcher offset lives in the CSS
+override. The `min()` makes the buffer 0 wherever there is no top inset (desktop, or iOS honouring the opaque
+status bar after a re-install), so it costs nothing there. Verified in Chromium with the buffer forced to 24px:
+tape 56px, text at 24px, strip and switcher stacked flush below, no overflow. Not verified on a physical iPhone.
+App/cache **v172 / pf-v172**; scope `ui/ticker.css`, `index.html`, `sw.js`, this file.
+
 ## v171 — Snapshot survives a failed download; status bar stops blurring the tape (2026-10-30)
 
 **(1) The app went blank on the owner's phone** — "Couldn't load data (FetchEvent.respondWith received an

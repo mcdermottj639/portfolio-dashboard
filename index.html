@@ -709,9 +709,9 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=171">
-<link rel="stylesheet" href="ui/predictions.css?v=171">
-<link rel="stylesheet" href="ui/ticker.css?v=171">
+<link rel="stylesheet" href="ui/experience.css?v=172">
+<link rel="stylesheet" href="ui/predictions.css?v=172">
+<link rel="stylesheet" href="ui/ticker.css?v=172">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -764,7 +764,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=171"></script>
+<script src="ui/sd-rules.js?v=172"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -878,7 +878,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v171'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v172'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2861,10 +2861,9 @@ window.__pfTopOffset=__pfTopOffset;
    it is now the freshness strip's, which is just as variable — the strip's text wraps to two lines
    whenever a staleness or update nudge is showing, and a stale offset would overlap the switcher. */
 function _syncStickyTop(){ const fb=document.getElementById('pf-fresh');
-  // v169: the fixed market tape sits above the strip, so the switcher sticks below BOTH.
-  const tp=document.getElementById('pf-tape'); const tk=(tp&&tp.offsetHeight>0)?tp.getBoundingClientRect().height:0;
-  let safe=0; try{ safe=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tk-h'))||0; }catch(e){}
-  const h=((fb&&fb.offsetHeight>0)?fb.offsetHeight:0)+(tk?safe:0);
+  // v172: strip height only — the tape's own offset (incl. its iOS blur buffer) is added in ui/ticker.css,
+  // which overrides .acct-seg-wrap's top while the tape is mounted.
+  const h=(fb&&fb.offsetHeight>0)?fb.offsetHeight:0;
   document.documentElement.style.setProperty('--stickytop-h',h+'px'); }
 window._syncStickyTop=_syncStickyTop;
 window.addEventListener('resize',_syncStickyTop);
@@ -8279,10 +8278,10 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=171"></script>
-<script src="ui/predictions-model.js?v=171"></script>
-<script src="ui/predictions.js?v=171"></script>
-<script src="ui/experience.js?v=171"></script>
-<script src="ui/ticker.js?v=171"></script>
+<script src="ui/experience-model.js?v=172"></script>
+<script src="ui/predictions-model.js?v=172"></script>
+<script src="ui/predictions.js?v=172"></script>
+<script src="ui/experience.js?v=172"></script>
+<script src="ui/ticker.js?v=172"></script>
 </body>
 </html>

@@ -3,18 +3,25 @@
    body padding, the sticky freshness strip (#pf-fresh) and, on desktop, the Today/Portfolio sidebar.
    z-index 170: above the freshness strip (150) and the account switcher (90), below the
    classic-return pill (220) and the full-screen overlays (99998+). */
-:root { --tk-h: 0px; }
-html.pf-has-tape { --tk-h: 34px; }
+:root { --tk-h: 0px; --tk-pad: 0px; }
+/* v172: --tk-pad pushes the tape's TEXT below iOS's status-bar blur. On a translucent status bar iOS blurs
+   everything under the bar AND ~20pt below it (measured off the owner's screenshots: the v168 snapshot strip's
+   first line, ~16pt under the bar, was faded too). A solid colour and an opaque-status-bar meta (v170/v171)
+   did not stop it on an already-installed Home Screen app, so the content simply moves out of the zone; the
+   buffer band is blank tape colour, so the haze over it is invisible. min(): it collapses to 0 wherever
+   there is no top inset (desktop, or iOS honouring the opaque status bar), costing nothing there. */
+html.pf-has-tape { --tk-h: 34px; --tk-pad: min(env(safe-area-inset-top, 0px), 24px); }
 @media (max-width: 650px) { html.pf-has-tape { --tk-h: 32px; } }
 
-html.pf-has-tape body { padding-top: calc(env(safe-area-inset-top) + var(--tk-h) + 8px) !important; }
-html.pf-has-tape #pf-fresh { top: calc(env(safe-area-inset-top) + var(--tk-h)) !important; }
-@media (min-width: 901px) { html.pf-has-tape .ex-main { top: var(--tk-h); } }
+html.pf-has-tape body { padding-top: calc(env(safe-area-inset-top) + var(--tk-pad) + var(--tk-h) + 8px) !important; }
+html.pf-has-tape #pf-fresh { top: calc(env(safe-area-inset-top) + var(--tk-pad) + var(--tk-h)) !important; }
+html.pf-has-tape .acct-seg-wrap { top: calc(env(safe-area-inset-top) + var(--tk-pad) + var(--tk-h) + var(--stickytop-h, 40px)) !important; }
+@media (min-width: 901px) { html.pf-has-tape .ex-main { top: calc(var(--tk-pad) + var(--tk-h)); } }
 
 .pf-tape {
   position: fixed; top: 0; left: 0; right: 0; z-index: 170;
-  height: calc(env(safe-area-inset-top) + var(--tk-h));
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  height: calc(env(safe-area-inset-top) + var(--tk-pad) + var(--tk-h));
+  padding: calc(env(safe-area-inset-top) + var(--tk-pad)) env(safe-area-inset-right) 0 env(safe-area-inset-left);
   display: flex; align-items: stretch;
   /* v170: a SOLID colour, never a gradient image — iOS 26 reads a fixed top bar's background-color to
      tint the status bar; a gradient gives it nothing to read, so it laid its own ivory scroll-edge
