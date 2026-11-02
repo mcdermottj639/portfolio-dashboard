@@ -674,6 +674,48 @@ ok('…its weight does not park', po.parking.parked === null);
 near('…while the live names still deploy to target', po.spent, 500, 1);
 ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 && REENTRY_COOLDOWN_DAYS === 14);
 
+// STOP-BROKEN PHASE-OUT EXIT (2026-11-02, owner "A + B"): a phase-out name at/below its stop exits now;
+// an ACTIVE name at/below its stop is held (the stop only blocks its buys; triggers re-research instead).
+{
+  const sbT = { asOf: '2026-10-28', driftTriggerPp: 5, names: [
+    { ticker: 'GOOGL', weightPct: 7,  entry: '345-358', stop: 322, phaseOut: true },
+    { ticker: 'CAT',   weightPct: 4,  entry: '755-790', stop: 695, phaseOut: true },
+    { ticker: 'AAPL',  weightPct: 6,  entry: '320-335', stop: 306, phaseOut: true },
+    { ticker: 'NVDA',  weightPct: 40, entry: '200-215', stop: 190 },
+    { ticker: 'SPY',   weightPct: 43, entry: '680-700', stop: 640 }] };
+  const sbPos = [
+    { symbol: 'GOOGL', qty: 1.650189, avgCost: 341.57 },
+    { symbol: 'CAT',   qty: 0.440328, avgCost: 726.57 },
+    { symbol: 'AAPL',  qty: 1.042121, avgCost: 333.25 },
+    { symbol: 'NVDA',  qty: 14, avgCost: 195 },  // loss $140 < TLH floor, so only the stop is in play
+    { symbol: 'SPY',   qty: 4.4, avgCost: 690 }];
+  const sbQ = { GOOGL: 281.87, CAT: 628, AAPL: 330, NVDA: 185, SPY: 694, VTI: 330 };
+  const sb = planDeployment({ target: sbT, positions: sbPos, cash: 50, quotes: sbQ, opts: { asOf: '2026-11-02' } });
+  const gx = find(sb.exits, 'GOOGL'), cx = find(sb.exits, 'CAT');
+  ok('phase-out GOOGL below its $322 stop exits whole', gx && gx.reason === 'phase-out-below-stop' && Math.abs(gx.shares - 1.650189) < 1e-6);
+  ok('phase-out CAT below its $695 stop exits whole', cx && cx.reason === 'phase-out-below-stop');
+  near('…sized at the live price', gx.dollars, 465.14, 0.02);
+  ok('phase-out AAPL ABOVE its stop is held (no exit)', !find(sb.exits, 'AAPL') && !find(sb.sells, 'AAPL'));
+  ok('ACTIVE NVDA below its stop is NOT sold by price alone', !find(sb.sells, 'NVDA'));
+  ok('…and gets no new money (below-stop buy guard unchanged)', !find(sb.buys, 'NVDA'));
+  ok('stop exits are not also harvested (one sell leg per name)', !find(sb.harvests, 'GOOGL') && !find(sb.harvests, 'CAT'));
+  ok('the exited names are not rebought on the same ticket', !find(sb.buys, 'GOOGL') && !find(sb.buys, 'CAT'));
+  // Guards still apply: a phase-out name bought TODAY is never sold today (PDT), stop break or not.
+  const pdt = planDeployment({ target: sbT, positions: sbPos, cash: 50, quotes: sbQ,
+    accountActivity: { CAT: { lastBuyDate: '2026-11-02' } }, opts: { asOf: '2026-11-02' } });
+  ok('PDT guard still blocks a same-day stop exit', !find(pdt.exits, 'CAT') && !!find(pdt.exits, 'GOOGL'));
+  // Min-hold: a recent buy down less than 10% waits for its unlock; a ≥10% loss overrides (risk first).
+  const mhT = { ...sbT, names: [{ ticker: 'XYZ', weightPct: 50, entry: '100-105', stop: 99, phaseOut: true },
+    { ticker: 'SPY', weightPct: 50, entry: '680-700', stop: 640 }] };
+  const mh = planDeployment({ target: mhT, positions: [{ symbol: 'XYZ', qty: 10, avgCost: 104 }, { symbol: 'SPY', qty: 1.5, avgCost: 690 }],
+    cash: 0, quotes: { XYZ: 98, SPY: 694 }, accountActivity: { XYZ: { lastBuyDate: '2026-10-28' } }, opts: { asOf: '2026-11-02' } });
+  ok('min-hold still holds a recent buy down <10% (reported in blockedSells)', !find(mh.exits, 'XYZ') && !!find(mh.blockedSells, 'XYZ'));
+  // No stop on file ⇒ nothing to break.
+  const ns = planDeployment({ target: { ...sbT, names: sbT.names.map((n) => n.ticker === 'GOOGL' ? { ...n, stop: null } : n) },
+    positions: sbPos, cash: 50, quotes: sbQ, opts: { asOf: '2026-11-02' } });
+  ok('a phase-out name with no stop is held', !find(ns.exits, 'GOOGL'));
+}
+
 
 // ---- BOOK-LEVEL DRAWDOWN BREAKER (v121) -------------------------------------
 {

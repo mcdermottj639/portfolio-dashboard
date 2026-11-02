@@ -10,7 +10,7 @@
 // here, for the reasons above — anchored to a fixed epoch Monday so "which fortnight" is a pure
 // function of the date rather than of when the last target happened to land.
 import assert from 'node:assert/strict';
-import { researchDue, weekStart, fortnightStart, FORTNIGHT_EPOCH, REFRESH_DAYS } from './agentic-due.mjs';
+import { researchDue, weekStart, fortnightStart, FORTNIGHT_EPOCH, REFRESH_DAYS, applyTriggers } from './agentic-due.mjs';
 
 let n = 0;
 const t = (name, fn) => { fn(); n++; console.log('  ✓', name); };
@@ -110,6 +110,19 @@ t('a missed fortnight self-heals rather than compounding', () => {
   const r = researchDue('2026-08-31', '2026-09-28');
   assert.equal(r.due, true);
   assert.equal(r.ageDays, 28);
+});
+
+t('event triggers written TODAY force an off-cycle run (stop break, deposit, gap)', () => {
+  const notDue = { due: false, asOf: '2026-10-28', ageDays: 5, reason: 'already refreshed' };
+  const trig = { asOf: '2026-11-02T15:41:00.000Z', refreshResearch: true, refreshReasons: ['NVDA $185 at/below its research stop $190'] };
+  const r = applyTriggers(notDue, trig, '2026-11-02');
+  assert.equal(r.due, true);
+  assert.match(r.reason, /stop/);
+  assert.equal(applyTriggers(notDue, { ...trig, asOf: '2026-11-01T20:00:00Z' }, '2026-11-02').due, false, 'a stale triggers file never forces a run');
+  assert.equal(applyTriggers(notDue, { ...trig, refreshResearch: false }, '2026-11-02').due, false);
+  assert.equal(applyTriggers(notDue, null, '2026-11-02').due, false);
+  const due = { due: true, asOf: null, reason: 'no committed target' };
+  assert.equal(applyTriggers(due, trig, '2026-11-02'), due, 'an already-due result is untouched');
 });
 
 console.log(`agentic-due: ${n} tests passed`);

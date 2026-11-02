@@ -98,6 +98,20 @@ export function researchDue(asOf, today) {
   return { due: false, asOf, ageDays, reason: `already refreshed this fortnight (from ${fs_}), ${ageDays}d ago` };
 }
 
+/* Event override (2026-11-02). build-data writes producer/raw/agentic-triggers.json every build; when its
+   `refreshResearch` is set (a deposit landed, a held name gapped ≥6%, or — since 2026-11-02 — a held
+   ACTIVE target name broke its research stop), the research is DUE even off-cycle. PRODUCER.md step 7
+   already told the agent to honour that flag, but only in prose, so a Routine prompt that says just "if it
+   prints AGENTIC_DUE" silently ignored it. The gate now honours it in CODE. Only a triggers file written
+   TODAY counts (raw/ is wiped every scheduled run, but a stale local file must never force a run). Pure. */
+export function applyTriggers(r, trig, today) {
+  if (!r || r.due || !trig || !trig.refreshResearch) return r;
+  const at = String(trig.asOf || '').slice(0, 10);
+  if (!at || !today || at !== today) return r;
+  const why = Array.isArray(trig.refreshReasons) && trig.refreshReasons.length ? trig.refreshReasons.join(' · ') : 'event trigger';
+  return { ...r, due: true, reason: `event trigger this build — ${why}` };
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const tf = join(__dirname, 'agentic-target.json');
   let r = { due: true, asOf: null, ageDays: null, reason: 'no committed target' };
@@ -107,6 +121,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       r = researchDue((t && t.asOf) || null, etDate());
     }
   } catch { r = { due: true, asOf: null, ageDays: null, reason: 'target unreadable — failing open' }; }
+  try {
+    const tr = join(__dirname, 'raw', 'agentic-triggers.json');
+    if (existsSync(tr)) r = applyTriggers(r, JSON.parse(readFileSync(tr, 'utf8')), new Date().toISOString().slice(0, 10));
+  } catch { /* unreadable triggers file: the calendar decision stands */ }
 
   console.log(r.due
     ? `AGENTIC_DUE (target asOf ${r.asOf || 'none'}${r.ageDays != null ? `, ${r.ageDays}d old` : ''} — ${r.reason} → refresh the research target)`
