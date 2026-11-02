@@ -1,6 +1,6 @@
 {
-  "id": "2026-10-30-m44mmm",
-  "created": "2026-10-30",
+  "id": "2026-11-02-jnuw39",
+  "created": "2026-11-02",
   "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -14,30 +14,58 @@
     "flow": 0
   },
   "universeVersion": "f7e7b537f95cfdcdb9d3",
-  "status": "done",
+  "status": "sells-placed",
   "autoEligible": true,
-  "turnover": 881.76,
-  "book": 7310.83,
-  "planHash": "s[]b[VTI:882]t[]",
+  "turnover": 1124.34,
+  "book": 7391.98,
+  "planHash": "s[CAT:273,GOOGL:467]b[META:29,VTI:356]t[]",
   "legs": {
-    "sells": [],
+    "sells": [
+      {
+        "sym": "GOOGL",
+        "kind": "exit",
+        "dollars": 467.41,
+        "shares": 1.650189,
+        "price": 282.3401,
+        "pl": -97.74,
+        "note": "phase-out name at/below its research stop ($283.24 ≤ $322) — already dropped once by the research, so the stop break is the second strike; exit now — filled"
+      },
+      {
+        "sym": "CAT",
+        "kind": "exit",
+        "dollars": 272.52,
+        "shares": 0.440328,
+        "price": 618.9101,
+        "pl": -47.41,
+        "note": "phase-out name at/below its research stop ($618.91 ≤ $695) — already dropped once by the research, so the stop break is the second strike; exit now — filled"
+      }
+    ],
     "buysNow": [
+      {
+        "sym": "META",
+        "kind": "buy",
+        "dollars": 28.86,
+        "shares": 0.0471,
+        "price": 613.043,
+        "pl": null,
+        "note": "6.8% → 7.21% target"
+      },
       {
         "sym": "VTI",
         "kind": "park",
-        "dollars": 881.76,
-        "shares": 2.3773,
-        "price": 370.91,
+        "dollars": 355.55,
+        "shares": 0.9509,
+        "price": 373.895,
         "pl": null,
-        "note": "waiting ground — holds $881.76 of deferred weight (LLY, AMZN) in VTI instead of cash; released when they clear"
+        "note": "waiting ground — holds $355.55 of deferred weight (AMZN) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": 0,
-    "net": 0,
+    "realizedLoss": -143.66,
+    "net": -143.66,
     "term": "short",
     "note": null
   },
@@ -46,16 +74,6 @@
       "sym": "NVDA",
       "reason": "below-entry",
       "until": null
-    },
-    {
-      "sym": "V",
-      "reason": "above-entry",
-      "until": null
-    },
-    {
-      "sym": "LLY",
-      "reason": "wash-sale",
-      "until": "2026-11-06"
     },
     {
       "sym": "KO",
@@ -75,31 +93,26 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "$1,075.5 of deferred weight (NVDA, V, KO, MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "6 name(s) deferred (NVDA, V, LLY, KO, MA, AMZN) — ~$1,983.5 of intended weight held pending earnings/re-verify/wash-sale",
-    "fresh cash $1,763.53 arrived 0d ago — deploying a 50% tranche ($881.76) today and the rest one tranche per day over the next 3d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in",
-    "$881.76 of deferred weight parked in VTI rather than left in cash (LLY, AMZN) — released when those names clear; unparking is a taxable ST sale"
+    "buys (META $28.86, VTI park $355.55) BLOCKED this pass by a session-level permission control (\"Real-World Transactions\" classifier denial on place_equity_order), not a broker rejection — sells filled fine. Next pass will retry the buy leg (nextAction=place-buys).",
+    "$305.33 of deferred weight (NVDA, KO, MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "4 name(s) deferred (NVDA, KO, MA, AMZN) — ~$660.88 of intended weight held pending earnings/re-verify/wash-sale",
+    "$357.8 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "$355.55 of deferred weight parked in VTI rather than left in cash (AMZN) — released when those names clear; unparking is a taxable ST sale"
   ],
   "history": [
     {
-      "at": "2026-10-30",
+      "at": "2026-11-02",
       "to": "proposed"
     },
     {
-      "at": "2026-10-30",
+      "at": "2026-11-02",
       "to": "confirmed"
     },
     {
-      "at": "2026-10-30",
-      "to": "buys-placed"
-    },
-    {
-      "at": "2026-10-30",
-      "to": "done"
+      "at": "2026-11-02",
+      "to": "sells-placed"
     }
   ],
-  "confirmedAt": "2026-10-30",
-  "buys-placedAt": "2026-10-30",
-  "doneAt": "2026-10-30",
-  "completedAt": "2026-10-30T18:24:03.958Z"
+  "confirmedAt": "2026-11-02",
+  "sells-placedAt": "2026-11-02"
 }
