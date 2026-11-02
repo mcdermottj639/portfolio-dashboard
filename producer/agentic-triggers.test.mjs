@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-triggers.mjs — no network, no I/O. Run: node producer/agentic-triggers.test.mjs
-import { computeAgenticTriggers, CASH_DEPLOY_PCT, DEPOSIT_FLOOR, GAP_REFRESH_PCT } from './agentic-triggers.mjs';
+import { computeAgenticTriggers, stopBreaks, CASH_DEPLOY_PCT, DEPOSIT_FLOOR, GAP_REFRESH_PCT } from './agentic-triggers.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -42,6 +42,32 @@ ok('a >6% held-name gap flags a research refresh', gap2.refreshResearch && gap2.
 const first = computeAgenticTriggers(null, fresh);
 ok('first run (no prior) does not crash', Array.isArray(first.triggers));
 ok('first run infers no deposit', first.depositFlow === 0);
+
+// STOP BREAK → re-research (2026-11-02, owner "A + B"). Active held target name at/below its stop, broken
+// AFTER the research that set the stop. Phase-out names are excluded (the executor exits those itself).
+{
+  const tgt = { asOf: '2026-10-28', names: [
+    { ticker: 'NVDA', stop: 190 }, { ticker: 'GOOGL', stop: 322, phaseOut: true }, { ticker: 'MSFT', stop: 400 }, { ticker: 'META', stop: 600 }] };
+  const pos = [{ symbol: 'NVDA', qty: 5 }, { symbol: 'GOOGL', qty: 1.65 }, { symbol: 'MSFT', qty: 2 }];
+  const qs = { NVDA: q(185), GOOGL: q(281.87), MSFT: q(450), META: q(500) };
+  const hist = { NVDA: [{ t: '2026-10-28', c: 205 }, { t: '2026-10-30', c: 195 }, { t: '2026-10-31', c: 188 }] };
+  const b = stopBreaks({ target: tgt, positions: pos, quotes: qs, hist, today: '2026-11-02' });
+  ok('active held name broken after the research → listed', b.length === 1 && b[0].sym === 'NVDA' && b[0].stop === 190);
+  ok('phase-out name is excluded (executor exits it)', !b.some((x) => x.sym === 'GOOGL'));
+  ok('name above its stop is not listed', !b.some((x) => x.sym === 'MSFT'));
+  ok('a target name NOT held is not listed', !b.some((x) => x.sym === 'META'));
+  // Research already saw it: every close since asOf was at/below the stop ⇒ no re-fire (no loop).
+  const seen = stopBreaks({ target: { ...tgt, asOf: '2026-10-31' }, positions: pos, quotes: qs,
+    hist: { NVDA: [{ t: '2026-10-31', c: 188 }] }, today: '2026-11-02' });
+  ok('research dated after the break does not re-fire', !seen.some((x) => x.sym === 'NVDA'));
+  ok('research dated today never re-fires the same day', stopBreaks({ target: { ...tgt, asOf: '2026-11-02' }, positions: pos, quotes: qs, hist, today: '2026-11-02' }).length === 0);
+  ok('no bars since the research ⇒ assume a new break (err toward re-checking)',
+    stopBreaks({ target: tgt, positions: pos, quotes: qs, hist: {}, today: '2026-11-02' }).some((x) => x.sym === 'NVDA'));
+  const fr = { generatedAt: '2026-11-02T15:41:00Z', quotes: qs, hist: { day: hist }, agentic: { cash: 10, equity: 2000, positions: pos.map((p) => ({ ...p, px: 1 })), target: tgt } };
+  const tr = computeAgenticTriggers(fr, fr);
+  ok('computeAgenticTriggers sets refreshResearch on a stop break', tr.refreshResearch && tr.refreshReasons.some((r) => r.includes('NVDA') && r.includes('stop')));
+  ok('…and carries the break list', Array.isArray(tr.stopBreaks) && tr.stopBreaks[0].sym === 'NVDA');
+}
 
 console.log(`\nagentic-triggers.test: ${pass} passed, ${fail} failed  (band=${CASH_DEPLOY_PCT}% deposit≥$${DEPOSIT_FLOOR})`);
 process.exit(fail ? 1 : 0);

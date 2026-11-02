@@ -1,3 +1,24 @@
+## 2026-11-02 — ••3900 stop breaks: phase-out names exit, active names re-research (owner "A + B")
+
+The executor never acted on a research stop: in `agentic-deploy.mjs` the stop only deferred BUYS
+(`below-stop`), and nothing re-checked a thesis when price reached it. Live case: phase-out GOOGL $281.87
+under its $322 stop and CAT $628 under $695 sat held for days while Jarvis's rulebook wrongly said the
+executor sold at stops. Jack chose A + B (not a blanket hard stop, which is market timing under Mandate A
+and, via the 30-day wash block after a loss sale, the Sep 8 "de-facto −5% hard stop" again).
+**(B)** `agentic-deploy.mjs` step 1b-2: a held `phaseOut` name at/below its stop exits whole on the next
+pass (`reason:'phase-out-below-stop'`) — the research already dropped it once, so the stop break is the
+second strike. Same guards as any exit (PDT; min-hold unless down ≥10%); it supersedes a drift trim and a
+TLH harvest of the same name; no rebuy (phase-out names never take new money). Auto tier unchanged, so
+with turnover ≤ $10k it executes unattended. **(A)** `agentic-triggers.mjs` `stopBreaks`: a held ACTIVE
+target name at/below its stop, broken after the research that set it (some close since `target.asOf`
+above the stop; research dated today never re-fires), sets `refreshResearch`. **`agentic-due.mjs`
+`applyTriggers` now honours `raw/agentic-triggers.json` in CODE** (only a file written today) — PRODUCER.md
+step 7 had said so in prose only, and the producer prompt checks just the gate's output. Targets
+(take-profit) still never sell; winners are trimmed by the 5pp drift band. Tests: new cases in
+`agentic-deploy`, `agentic-triggers`, `agentic-due`; all 50 producer suites green. Not verified: a live
+exec-gate pass (no `PF_PASSPHRASE` in this session) — the planner was replayed on the Nov 2 book
+($7,341.66) and exits GOOGL + CAT. Producer-only; no app/cache bump; no Routine prompt change needed.
+
 ## v172 — Tape text moved below iOS's status-bar blur (2026-10-30)
 
 v171 loaded the snapshot again, but the tape was still hazy: an already-installed Home Screen app kept its

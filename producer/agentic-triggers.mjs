@@ -79,5 +79,51 @@ export function computeAgenticTriggers(prior, fresh) {
     }
   }
 
+  // 4. STOP BREAK on a held ACTIVE target name → refresh research early (2026-11-02, owner "A + B").
+  //    The research stop is a thesis-review level; until now nothing re-checked the thesis when price
+  //    reached it. The executor does NOT sell an active name on a stop break (Mandate A forbids price-
+  //    timing exits) — it asks the research instead, and the research keeps or drops the name.
+  //    Phase-out names are excluded: the executor exits those itself (agentic-deploy 1b-2).
+  const today = String((fresh && fresh.generatedAt) || '').slice(0, 10) || null;
+  const breaks = stopBreaks({ target: A.target, positions: A.positions, quotes: fq, hist: fresh && fresh.hist && fresh.hist.day, today });
+  if (breaks.length) {
+    out.refreshResearch = true;
+    out.stopBreaks = breaks;
+    for (const b of breaks) out.refreshReasons.push(`${b.sym} ${money(b.px)} at/below its research stop ${money(b.stop)} — re-check the thesis (keep or drop)`);
+  }
+
+  return out;
+}
+
+/* Held ACTIVE target names at/below their research stop whose break happened AFTER the research that set
+   the stop (target.asOf). "After" = some close dated on/after asOf was still ABOVE the stop. That rule is
+   what stops a loop: once the research re-runs (asOf = today) it has seen the break, so the same break
+   does not force research again — only a fresh break against the NEW stop does. Research dated today
+   (asOf ≥ today) never re-fires the same day. No closes since asOf ⇒ the break is assumed new (err
+   toward re-checking). `today` is a UTC date (generatedAt); a few hours of ET/UTC skew only shifts a
+   re-check by a run. Pure. */
+export function stopBreaks({ target, positions, quotes, hist, today } = {}) {
+  const names = (target && Array.isArray(target.names)) ? target.names : [];
+  const asOf = String((target && target.asOf) || '').slice(0, 10);
+  const heldSyms = new Set((positions || []).filter((p) => p && num(p.qty ?? p.quantity) > 0).map((p) => String(p.symbol || '').toUpperCase()));
+  const out = [];
+  if (asOf && today && asOf >= today) return out;     // the research already ran today
+  for (const n of names) {
+    if (!n || n.phaseOut) continue;
+    const sym = String(n.ticker || '').toUpperCase();
+    if (!heldSyms.has(sym)) continue;
+    const stop = num(n.stop), p = px((quotes || {})[sym]);
+    if (!(stop > 0) || !(p > 0) || p > stop) continue;
+    const bars = (hist && hist[sym]) || [];
+    const closes = [];
+    for (const b of Array.isArray(bars) ? bars : []) {
+      if (!b || b.interpolated || b.live) continue;
+      const t = String(b.t || b.begins_at || '').slice(0, 10), c = num(b.c ?? b.close_price);
+      if (t && c > 0) closes.push({ t, c });
+    }
+    const since = closes.filter((c) => !asOf || c.t >= asOf);
+    if (since.length && !since.some((c) => c.c > stop)) continue;   // never closed above the stop since the research: it already saw this
+    out.push({ sym, px: +p.toFixed(2), stop, asOf: asOf || null });
+  }
   return out;
 }

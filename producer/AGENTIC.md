@@ -84,6 +84,13 @@ weeks of a ~$13k book cannot distinguish skill from noise. Judge it on the **buy
   that a same-day reversal waits a session, which the 5pp drift band already tolerates.
 - Fractional + dollar-based market orders fill **regular hours only**; **fractional positions can't carry
   resting GTC stop orders** — stops/targets in the target are **monitor-and-alert**, not resting orders.
+  **Stop breaks (2026-11-02, owner "A + B"):** a held **phase-out** name at/below its stop EXITS on the next
+  executor pass (`agentic-deploy.mjs` 1b-2 — the research already dropped it once, so the stop break is its
+  second strike). A held **active** name at/below its stop is NOT sold: `agentic-triggers.mjs` sets
+  `refreshResearch` (`stopBreaks`), `agentic-due.mjs` now honours that flag in code (`applyTriggers`), and
+  the next FETCH_ALL research run keeps or drops the name. No blanket price stop — under Mandate A that is
+  market timing, and the 30-day wash block after a loss sale would keep the book out of a name that dipped.
+  Targets (take-profit levels) still never sell; an overweight winner is trimmed by the 5pp drift band.
 
 ## The target is research-driven (`producer/agentic-target.json`)
 The recommended portfolio for this account is **not** the cheap oversold-picks heuristic — it's the output
@@ -648,7 +655,8 @@ disagreeing at the margin. The research is memoryless and the planner executed t
 priced the cost of changing its mind. Four rules now stand between a target refresh and the trades:
 
 - **Two-strike phase-out** (`finalize-target.mjs`): a held name dropped by ONE refresh is retained at its
-  prior weight (`phaseOut:true` — zero trades; the planner holds it but never adds). Dropped by TWO
+  prior weight (`phaseOut:true` — zero trades; the planner holds it but never adds). **Exception (2026-11-02):** a
+  phase-out name at/below its target stop exits now — the stop break counts as the second strike. Dropped by TWO
   consecutive refreshes → a real off-target exit. An explicit `businessOk:false`/`avoid` verdict skips the
   grace period (`target.dropped`, reason `business-broken`).
 - **Min-hold** (`agentic-deploy.mjs`, 14d): a name bought inside the window is not exited or trimmed.

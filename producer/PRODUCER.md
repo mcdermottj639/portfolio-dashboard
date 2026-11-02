@@ -613,8 +613,10 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    ~weekly. After the watchlist syncs:
    1. `node producer/agentic-due.mjs` → `AGENTIC_DUE` (exit 0) or `AGENTIC_NOT_DUE` (exit 20). **Also read
       `producer/raw/agentic-triggers.json`** (written this build by `agentic-triggers.mjs`): if its
-      `refreshResearch` is true (a deposit landed or a held name gapped ≥6% — earnings/news), treat the step
-      as DUE even on NOT_DUE. If NOT_DUE **and** `refreshResearch` is false, **skip the rest** (~zero cost).
+      `refreshResearch` is true (a deposit landed, a held name gapped ≥6% — earnings/news — or, since
+      2026-11-02, a held ACTIVE target name broke its research stop), treat the step as DUE even on NOT_DUE.
+      **Since 2026-11-02 `agentic-due.mjs` reads that file itself and prints `AGENTIC_DUE` ("event trigger
+      this build")**, so a prompt that only checks the gate's output still honours it. If NOT_DUE **and** `refreshResearch` is false, **skip the rest** (~zero cost).
       Separately, if the file has a **`deploy-cash`** trigger, `PushNotification` its `msg` (idle/new cash
       ready to deploy) — that push is independent of whether research re-runs.
    2. If DUE: assemble a fresh candidate **universe**. **Start from the research bench, NOT `leaders.mjs`:**

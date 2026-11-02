@@ -589,6 +589,38 @@ export function planDeployment(input = {}) {
     if (!sellBlocked(exit)) exits.push(exit);
   }
 
+  // 1b-2. STOP-BROKEN PHASE-OUT EXIT (2026-11-02, owner decision "A + B"). A phase-out name is one the
+  //     research ALREADY dropped once; the two-strike rule holds it at its prior weight for one more
+  //     cycle so a single noisy refresh can't flip the book. When that lame duck is ALSO at/below its
+  //     research stop (the thesis-review level), both signals agree, so the stop break counts as the
+  //     second strike and the name exits now instead of waiting up to a fortnight for the next refresh.
+  //     Deliberately NOT applied to active target names: a stop break there forces a research re-check
+  //     (agentic-triggers.mjs `stop-break`), it does not sell — a blanket price stop on names the research
+  //     still wants is market timing under Mandate A, and the 30-day wash block after a loss sale would
+  //     keep the book out of a name that simply dipped (the Sep 8 "de-facto −5% hard stop" lesson).
+  //     Same sell guards as any exit (PDT, min-hold — which a ≥10% loss overrides). No rebuy follows:
+  //     the planner never adds to a phaseOut name, and its weight is not parked.
+  const stopExited = new Set();
+  for (const n of names) {
+    if (!n.phaseOut) continue;
+    const sym = n.ticker, h = held[sym];
+    if (!h || !(h.qty > 0) || h.value < (opts.minExit ?? MIN_EXIT)) continue;
+    if (exits.some((e) => e.sym === sym)) continue;
+    const stop = num(n.stop);
+    const px = pxOf(sym) ?? num(h.px);
+    if (!(stop > 0) || !(px > 0) || px > stop) continue;
+    const pl = h.avgCost != null ? +((px - h.avgCost) * h.qty).toFixed(2) : null;
+    const washRisk = pl != null && pl < 0 && crossRecent(sym);
+    const exit = { sym, kind: 'exit', reason: 'phase-out-below-stop', dollars: +(h.qty * px).toFixed(2),
+      shares: +h.qty.toFixed(6), price: px, pl,
+      plPct: h.avgCost > 0 ? +((px / h.avgCost - 1) * 100).toFixed(2) : null, term: 'short',
+      ...(washRisk ? { washRisk: true } : {}),
+      note: `phase-out name at/below its research stop (${money(px)} ≤ ${money(stop)}) — already dropped once by the research, so the stop break is the second strike; exit now${washRisk ? ' (⚠️ loss may be wash-disallowed: margin account bought this within 30d)' : ''}` };
+    if (!sellBlocked(exit)) { exits.push(exit); stopExited.add(sym); }
+  }
+  // An exit supersedes any drift trim of the same name (one sell leg per name).
+  for (let i = trims.length - 1; i >= 0; i--) if (stopExited.has(trims[i].sym)) trims.splice(i, 1);
+
   // 1c. OPPORTUNISTIC TLH — a held TARGET name underwater ≥ max($, % of cost) is harvested whole
   //     (position-level; the MCP can't select lots), then wash-blocked from the buy legs — its target
   //     weight sits underweight until the window clears. Skipped when the margin book bought the name
@@ -598,6 +630,7 @@ export function planDeployment(input = {}) {
     const minLoss = opts.tlhMinLoss ?? TLH_MIN_LOSS, minPct = opts.tlhMinLossPct ?? TLH_MIN_LOSS_PCT;
     for (const n of names) {
       const sym = n.ticker, h = held[sym];
+      if (stopExited.has(sym)) continue;                             // already exiting whole (1b-2)
       if (!h || !(h.qty > 0) || h.avgCost == null || !(h.px > 0)) continue;
       const cost = h.avgCost * h.qty, pl = (h.px - h.avgCost) * h.qty;
       if (!(cost > 0) || pl >= 0) continue;
