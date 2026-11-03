@@ -1,4 +1,5 @@
 import { normalizePredictionAccount } from './prediction-account.mjs';
+import { buildSettlementLedger } from './prediction-settlements.mjs';
 import { observeTargets, riskDiagnostics } from './agentic-observatory.mjs';
 // Assembles ../data.json from raw MCP tool outputs the producer agent drops in producer/raw/.
 // Tolerant of the common response shapes (structuredContent / content[].text / plain).
@@ -1247,6 +1248,23 @@ if (data.agentic) {
   }
   if (fresh) data.predictions = fresh;
   else if (prior?.predictions?.source === 'robinhood') data.predictions = prior.predictions;
+}
+
+// Private Predict SETTLED ledger from Robinhood payout emails (PRODUCER.md step 2e). Encrypted
+// snapshot only. Append-only by Gmail message id; no mailbox read this run => carried forward as is.
+{
+  let search = null; const messages = [];
+  const sf = join(RAWDIR, 'predict-mail-search.json');
+  if (existsSync(sf)) { try { search = unwrap(readJSON(sf)); } catch { console.warn('Predict mail: unreadable search result; mailbox not marked as read.'); } }
+  for (const f of existsSync(RAWDIR) ? readdirSync(RAWDIR) : []) {
+    if (!/^predict-mail-.+\.json$/.test(f) || f === 'predict-mail-search.json') continue;
+    try { messages.push(unwrap(readJSON(join(RAWDIR, f)))); } catch { console.warn('Predict mail: unreadable ' + f + ' skipped.'); }
+  }
+  data.predictionSettlements = buildSettlementLedger({ prior: prior?.predictionSettlements || null, messages,
+    search: search && typeof search === 'object' ? search : null, account: data.predictions || null, now: data.generatedAt });
+  const s = data.predictionSettlements;
+  console.log('Predict settled ledger:', s.records.length, 'records ·', s.summary.payouts, 'counted ·', s.summary.needsReview,
+    'need review · mailbox', s.mailbox.status + (s.mailbox.status === 'read' ? ' (+' + s.mailbox.added + ' new, ' + s.mailbox.rejected + ' rejected)' : ''));
 }
 
 await emit(data);

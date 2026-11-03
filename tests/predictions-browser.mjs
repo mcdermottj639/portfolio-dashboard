@@ -75,11 +75,30 @@ try{
   await page.evaluate(()=>window.PFPredictions.mount(document.getElementById('predictions-app')));
   assert.doesNotMatch(await page.locator('.pred-stats').innerText(),/123\.45/);
   await page.evaluate(()=>setPrivacy(false));assert.match(await page.locator('.pred-stats').innerText(),/123\.45/);
-  await page.locator('#pred-tab-positions').press('End');assert.equal(await page.locator('#pred-tab-results').getAttribute('aria-selected'),'true');assert.match(await page.locator('#pred-content').innerText(),/Hypothetical/);
+  await page.locator('#pred-tab-positions').press('End');await page.locator('#pred-tab-settled').press('ArrowLeft');assert.equal(await page.locator('#pred-tab-results').getAttribute('aria-selected'),'true');assert.match(await page.locator('#pred-content').innerText(),/Hypothetical/);
+  // Private Settled view (synthetic ledger): gross is never labelled profit, a combo is one row, privacy masks it.
+  await page.locator('#pred-tab-results').press('End');assert.equal(await page.locator('#pred-tab-settled').getAttribute('aria-selected'),'true');
+  assert.match(await page.locator('#pred-content').innerText(),/No settled payouts recorded yet/);
+  await page.evaluate(()=>{const leg=(l)=>({side:'yes',label:l});window.__DATA.predictionSettlements={schemaVersion:1,source:'robinhood-payout-email',asOf:new Date().toISOString(),
+    mailbox:{status:'read',checkedAt:new Date().toISOString(),emailsInWindow:3,added:3,rejected:0},
+    summary:{grossReceived:42.5,payouts:2,combos:1,netKnown:0,verifiedNet:null,needsReview:1,duplicatesIgnored:0,from:'2026-10-18T12:00:00Z',to:'2026-11-02T04:41:10Z'},
+    records:[{key:'gmail:s1',sourceId:'s1',status:'counted',reconciliation:'no-entry-source',receivedAt:'2026-11-02T04:41:10Z',title:'Yes Synthetic A, Yes Synthetic B, Yes Synthetic C',side:'yes',quantity:30,combo:true,legs:[leg('Synthetic A'),leg('Synthetic B'),leg('Synthetic C')],grossPayout:30.5,net:null,flags:[],link:'https://mail.google.com/mail/#all/s1'},
+      {key:'gmail:s2',sourceId:'s2',status:'counted',reconciliation:'no-entry-source',receivedAt:'2026-10-18T12:00:00Z',title:'Will a synthetic team win by more than 6.5 points in a long synthetic test game title that wraps on phones?',side:'no',quantity:12,combo:false,legs:[{side:'no',label:'x'}],grossPayout:12,net:null,flags:[],link:null},
+      {key:'gmail:s3',sourceId:'s3',status:'review',reconciliation:'review',receivedAt:'2026-10-10T12:00:00Z',title:'Will a title-only payout match?',side:'yes',quantity:5,combo:false,legs:[{side:'yes',label:'x'}],grossPayout:5,net:null,flags:[],link:null}],issues:[]};
+    window.PFPredictions.mount(document.getElementById('predictions-app'));});
+  const settledText=await page.locator('#pred-content').innerText();
+  assert.match(settledText,/Gross received/);assert.match(settledText,/\$42\.50/);assert.match(settledText,/Net unknown/);assert.doesNotMatch(settledText,/profit:|Profit\b/);
+  assert.equal(await page.locator('.pred-settled').count(),3);assert.equal(await page.locator('.pred-legs li').count(),3);
+  assert.match(settledText,/NO side/);assert.match(settledText,/Review/);
+  await page.evaluate(()=>window.setPrivacy?.(true));assert.doesNotMatch(await page.locator('#pred-content').innerText(),/\$42\.50|\$30\.50/);
+  assert.equal(await page.locator('.pred-private-chart').evaluate(e=>getComputedStyle(e).visibility),'hidden');
+  await page.evaluate(()=>window.setPrivacy?.(false));assert.match(await page.locator('#pred-content').innerText(),/\$42\.50/);
+  for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'settled no overflow at '+width);await page.screenshot({path:(process.env.PF_SHOTS||'/tmp')+'/settled-'+width+'.png',fullPage:true});}
+  await page.locator('#pred-tab-positions').click();
   await page.locator('[data-ex-area="today"]').click();assert.equal(await page.locator('#page-predictions').isVisible(),false);
   await page.locator('[data-ex-area="predictions"]').click();assert.equal(await page.locator('#page-predictions').isVisible(),true);
   await page.evaluate(()=>document.documentElement.setAttribute('data-theme','gold'));
-  for(const section of ['positions','ideas','watchlist','results']){
+  for(const section of ['positions','ideas','watchlist','results','settled']){
     await page.locator('#pred-tab-'+section).click();
     for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:960});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,section+' no overflow at '+width);}
   }

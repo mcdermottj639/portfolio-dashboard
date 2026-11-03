@@ -11,13 +11,14 @@
   const age=v=>{const n=(Date.now()-Date.parse(v||''))/60000;return !Number.isFinite(n)?'Not collected':n<1?'Just collected':n<60?Math.floor(n)+'m ago':n<1440?Math.floor(n/60)+'h ago':Math.floor(n/1440)+'d ago';};
   const compact=n=>M.number(n)===null?'—':new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1}).format(n);
   const tone=n=>n>0?'pred-up':n<0?'pred-down':'';
-  const labels={positions:'Positions',ideas:'Ideas',watchlist:'Watchlist',results:'Results'};
+  const labels={positions:'Positions',ideas:'Ideas',watchlist:'Watchlist',results:'Results',settled:'Settled'};
   let root,snapshot=null,busy=false,lastFetch=0,error='',notice='',tab=read('pf_predict_tab','ideas'),category='All',query='',sort='activity',rhOnly=false;
   if(!labels[tab])tab='ideas';
   function readWatches(){try{return M.cleanWatchlist(read('pf_prediction_watchlist_v1',[]));}catch{return [];}}
   let watches=readWatches();
   const drafts=new Map(),sideDrafts=new Map();
   const account=()=>{const a=window.__DATA?.predictions;return a?.schemaVersion===1&&a.source==='robinhood'&&a.coverage&&Array.isArray(a.positions)&&Array.isArray(a.transactions)?a:null;};
+  const ledger=()=>{const l=window.__DATA?.predictionSettlements;return l?.schemaVersion===1&&Array.isArray(l.records)&&l.summary?l:null;};
   const find=id=>snapshot?.markets?.find(m=>m.id===id)||watches.find(w=>w.id===id)?.market||null;
   const watched=id=>watches.some(w=>w.id===id);
   const button=(action,text,id='',cls='')=>'<button type="button" class="pred-button '+cls+'" data-pred-action="'+action+'"'+(id?' data-id="'+esc(id)+'"':'')+'>'+text+'</button>';
@@ -77,6 +78,39 @@
     const a=account();if(a?.coverage.transactions)html+='<details class="pred-browse" data-detail="actual"><summary>Your actual account results</summary><div data-priv="on"><p>Net realized '+money(a.realizedNet)+(a.historyStart?' since '+esc(date(a.historyStart)):'')+'</p>'+a.transactions.filter(t=>t.type!=='buy').map(t=>'<p>'+esc(t.name)+' · '+esc(date(t.at))+' · '+money(t.realizedNet)+'</p>').join('')+'</div></details>';
     return html;
   }
+  // Private Settled view: Robinhood payout emails parsed by the producer (prediction-settlements.mjs).
+  // Gross payout is never shown as profit; a combo is one row with its legs; review rows stay out of totals.
+  function settledChart(rows){
+    const weeks=new Map();for(const r of rows){const d=new Date(r.receivedAt);if(isNaN(d))continue;const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()-((d.getDay()+6)%7));const k=m.toISOString().slice(0,10);weeks.set(k,(weeks.get(k)||0)+r.grossPayout);}
+    const pts=[...weeks.entries()].sort((a,b)=>a[0]<b[0]?-1:1).slice(-12);if(pts.length<2)return '';
+    const max=Math.max(...pts.map(p=>p[1]))||1,w=100/pts.length;
+    const bars=pts.map((p,i)=>{const h=Math.max(2,p[1]/max*86);return '<rect x="'+(i*w+w*.18).toFixed(2)+'" y="'+(92-h).toFixed(2)+'" width="'+(w*.64).toFixed(2)+'" height="'+h.toFixed(2)+'" rx="1.2"></rect>';}).join('');
+    const lbl=s=>new Date(s+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return '<figure class="pred-chart pred-settled-chart" data-priv="on"><figcaption><span>Gross payouts by week</span><span>Largest week '+money(max)+'</span></figcaption><svg class="pred-private-chart" viewBox="0 0 100 94" preserveAspectRatio="none" role="img" aria-label="Weekly gross payouts">'+bars+'</svg><div><span>'+esc(lbl(pts[0][0]))+'</span><span>'+esc(lbl(pts[pts.length-1][0]))+'</span></div></figure>';
+  }
+  function settled(){
+    const L=ledger();
+    const head='<div class="pred-section-head"><div><h2>Settled payouts</h2><p>From Robinhood payout emails. Private, inside your encrypted snapshot.</p></div>'+badge('Gross · not profit')+'</div>';
+    if(!L)return head+empty('No settled payouts recorded yet','The dashboard refresh adds each Robinhood payout email here once it has read your mailbox. Research Results stay separate.');
+    const s=L.summary,mb=L.mailbox||{},rows=L.records.filter(r=>r.status!=='duplicate');
+    const counted=rows.filter(r=>r.status==='counted');
+    let html=head+'<div class="pred-stats" data-priv="on">'+
+      stat('Gross received',money(s.grossReceived),'Payouts only · cost and fees unknown')+
+      stat('Payouts',String(s.payouts),s.combos?s.combos+' combo'+(s.combos>1?'s':'')+', each counted once':'Each counted once')+
+      stat('Verified net','—',s.payouts?s.netKnown+' of '+s.payouts+' have cost and fees':'Needs cost and fees')+
+      stat('Needs review',String(s.needsReview),s.needsReview?'Kept out of the totals':'Nothing to review',s.needsReview?'pred-down':'')+'</div>';
+    html+='<p class="pred-settled-meta">'+(mb.status==='read'?'Mailbox read '+esc(age(mb.checkedAt))+(Number.isFinite(mb.emailsInWindow)?' · '+mb.emailsInWindow+' payout emails in the window':''):'Mailbox not read by the refresh yet')+(s.from?' · '+esc(new Date(s.from).toLocaleDateString('en-US',{month:'short',day:'numeric'}))+' – '+esc(new Date(s.to).toLocaleDateString('en-US',{month:'short',day:'numeric'})):'')+'</p>';
+    html+=settledChart(counted);
+    if(!rows.length)return html+empty('No payouts in the record yet','Only explicit payout emails are recorded. A missing email is never treated as a loss.');
+    const chip=(t,c='')=>'<span class="pred-chip '+c+'">'+esc(t)+'</span>';
+    const rec={'no-entry-source':'Entry not linked','unmatched':'Not in account feed','entry-found':'Entry found','matched-broker':'In broker feed','review':'Review'};
+    html+='<div class="pred-settled-list" data-priv="on">'+rows.map(r=>{
+      const st=r.status==='conflict'?chip('Conflicting emails','pred-chip-warn'):r.status==='review'?chip('Review','pred-chip-warn'):chip('Paid','pred-chip-ok');
+      const legs=r.combo?'<ul class="pred-legs">'+r.legs.map(l=>'<li><b>'+esc(l.side.toUpperCase())+'</b> '+esc(l.label)+'</li>').join('')+'</ul>':'';
+      return '<article class="pred-settled"><div class="pred-settled-main"><div class="pred-settled-top">'+st+chip(r.combo?'Combo · '+r.legs.length+' legs':(r.side||'').toUpperCase()+' side')+(r.reconciliation&&r.reconciliation!=='review'?chip(rec[r.reconciliation]||r.reconciliation):'')+'</div><h3>'+esc(r.combo?'Combo':r.title)+'</h3>'+legs+'<p><span data-priv="val">'+esc(r.quantity)+'</span> '+esc((r.side||'').toUpperCase())+' contracts · received '+esc(date(r.receivedAt))+(r.flags?.length?' · '+esc(r.flags.join(', ').replace(/-/g,' ')):'')+'</p></div><div class="pred-settled-num"><span>Gross payout</span><strong>'+money(r.grossPayout)+'</strong><small>Net unknown</small>'+(r.link?openLink(r.link,'Email'):'')+'</div></article>';}).join('')+'</div>';
+    html+='<details class="pred-browse" data-detail="settled-method"><summary>How this is counted</summary><p>Each Robinhood payout email adds one row, keyed to that email, so a retried or forwarded email is not counted twice. A combo is one settlement; its legs are listed, not counted as separate wins. A "No" payout is a payout on the No side.</p><p>The email shows the payout, not what you paid or the fees, so net stays unknown. Gross received is not profit and there is no win rate here. Rows that conflict or lack a contract ID are kept but left out of the totals.</p>'+(s.duplicatesIgnored?'<p>'+s.duplicatesIgnored+' repeat email(s) ignored.</p>':'')+(L.issues?.length?'<p>'+L.issues.length+' email(s) could not be read as payouts and were not imported.</p>':'')+'</details>';
+    return html;
+  }
   function render(){
     if(!root)return;
     const opened=[...root.querySelectorAll('details[open]')].map(d=>d.dataset.detail),focus=document.activeElement;
@@ -87,7 +121,7 @@
       '<div class="pred-tabs" role="tablist" aria-label="Prediction sections">'+Object.entries(labels).map(([k,v])=>'<button type="button" role="tab" id="pred-tab-'+k+'" aria-controls="pred-content" aria-selected="'+(tab===k)+'" tabindex="'+(tab===k?'0':'-1')+'" data-pred-tab="'+k+'">'+v+(k==='watchlist'&&watches.length?' <span>'+watches.length+'</span>':'')+'</button>').join('')+'</div>'+
       (notice?'<p class="pred-notice" role="status">'+esc(notice)+'</p>':'')+
       (error||failed||snapshot&&!fresh?'<div class="pred-feed-note">'+esc(error||(!fresh?'This snapshot is older than 45 minutes. Targets are paused until fresh prices arrive.':failed+' source checks failed. Each market retains its own collection time.'))+'</div>':'')+
-      '<div id="pred-content" role="tabpanel" aria-labelledby="pred-tab-'+tab+'">'+(tab==='ideas'?ideas():tab==='watchlist'?watchlist():tab==='positions'?positions():results())+'</div>'+
+      '<div id="pred-content" role="tabpanel" aria-labelledby="pred-tab-'+tab+'">'+(tab==='ideas'?ideas():tab==='watchlist'?watchlist():tab==='positions'?positions():tab==='settled'?settled():results())+'</div>'+
       '<footer class="pred-footer"><span>'+esc(active===undefined?'Market snapshot not loaded':active+' active contracts in the published feed')+'</span><span>Kalshi quotes · refresh target 15 min · fees excluded</span><details data-detail="method"><summary>Sources &amp; coverage</summary><p>'+esc(snapshot?.method?.description||'Market data is collected independently of your account snapshot.')+'</p><p>Robinhood links are matched by exact exchange symbol from public pages. A matching link does not verify your eligibility or the price in your account. Unmatched contracts remain available for research.</p><p>The scheduled collector runs evenings and weekends. Refresh reloads the latest published file; it does not force the background job to run. Failed sources retain their original timestamp.</p><p>'+esc((snapshot?.coverage||[]).map(c=>c.label||c.series).join(' · '))+'</p></details></footer>';
     root.querySelectorAll('details').forEach(d=>{d.open=opened.includes(d.dataset.detail);});
     if(focusId&&root.querySelector('#'+CSS.escape(focusId))){const el=root.querySelector('#'+CSS.escape(focusId));el.focus({preventScroll:true});try{el.setSelectionRange(selection,selection);}catch{}}
@@ -133,7 +167,7 @@
       }
       if(action==='import')root.querySelector('#pred-import')?.click();
     });
-    root.addEventListener('keydown',e=>{const t=e.target.closest('[data-pred-tab]');if(!t||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const keys=Object.keys(labels),i=keys.indexOf(tab),n=e.key==='Home'?0:e.key==='End'?3:(i+(e.key==='ArrowRight'?1:3))%4;setTab(keys[n]);root.querySelector('#pred-tab-'+keys[n]).focus();});
+    root.addEventListener('keydown',e=>{const t=e.target.closest('[data-pred-tab]');if(!t||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const keys=Object.keys(labels),i=keys.indexOf(tab),L=keys.length,n=e.key==='Home'?0:e.key==='End'?L-1:(i+(e.key==='ArrowRight'?1:L-1))%L;setTab(keys[n]);root.querySelector('#pred-tab-'+keys[n]).focus();});
     root.addEventListener('input',e=>{
       if(e.target.id==='pred-search'){query=e.target.value;render();}
       if(e.target.dataset.targetInput)drafts.set(e.target.dataset.targetInput,e.target.value);

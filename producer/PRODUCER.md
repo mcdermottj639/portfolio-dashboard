@@ -367,6 +367,21 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    data (synthesized `COMPANY_OVERVIEW`) so **Allocation-by-Sector and Income/Dividends work
    without Alpha Vantage** — AV (when not capped) still overrides with richer growth metrics.
 
+2e. **Predict settled payouts — EVERY-RUN, best-effort, never gates the run (2026-11-03).**
+   Only if a **Gmail** connector tool is available in this session (`Gmail · search_threads`,
+   `Gmail · get_message`); if not, skip this step silently — the encrypted ledger carries forward
+   and the app shows when the mailbox was last read.
+   1. `node producer/predict-mail-plan.mjs` → prints `PREDICT_MAIL QUERY <query>` and
+      `PREDICT_MAIL KNOWN <ids>`.
+   2. `Gmail · search_threads { query: "<QUERY>", pageSize: 50, view: "THREAD_VIEW_METADATA_ONLY" }`
+      → `Write` the whole result verbatim to `producer/raw/predict-mail-search.json`.
+   3. For each message `id` in that result that is **not** in `KNOWN`:
+      `Gmail · get_message { messageId: "<id>", messageFormat: "PLAIN_TEXT" }` → `Write` verbatim to
+      `producer/raw/predict-mail-<id>.json`. Do not edit, summarise or re-type the message.
+   `build-data.mjs` parses them with `prediction-settlements.mjs` (sender must be
+   `noreply@robinhood.com`, subject a payout notice) into `data.predictionSettlements` — encrypted
+   only, append-only by Gmail message id. Read only; never label, archive, forward or reply.
+
 3. **Alpha Vantage — ONCE PER DAY only** (powers Macro Signals + Fundamentals + Earnings).
 
    > **Prefer the automatic path.** If `ALPHAVANTAGE_KEY` is set in the environment **and**

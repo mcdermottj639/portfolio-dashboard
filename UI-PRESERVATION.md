@@ -22,7 +22,7 @@ Classic view is available from the header. The original feature search and saved
 
 ## New views and their limits
 
-- Predict adds Positions, Ideas, Watchlist and Results without replacing any account, plan or
+- Predict adds Positions, Ideas, Watchlist, Results and (v173) a private Settled tab without replacing any account, plan or
   research page. It is a separate account/data scope and hides the stock-account picker.
   Ideas are public liquidity-based research candidates; outcomes are hypothetical and before fees.
   Private account values remain unavailable until authenticated event-contract coverage is verified.
