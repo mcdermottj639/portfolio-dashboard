@@ -383,6 +383,8 @@ const data = {
       const ev = (filer, chamber, sym, side, t, lag, amount) => ({ sym, side, txn: d(t), disc: d(t - lag), filer, chamber, amount, lag });
       return [
         ev('SAMPLE MEMBER A', 'house', 'NVDA', 'buy', 26, 21, '$15,001 - $50,000'),
+        ev('SAMPLE MEMBER A', 'house', 'NVDA', 'buy', 31, 26, '$1,001 - $15,000'),
+        ev('SAMPLE MEMBER A', 'house', 'NVDA', 'buy', 32, 27, '$1,001 - $15,000'),
         ev('SAMPLE MEMBER A', 'house', 'GOOGL', 'buy', 40, 18, '$1,001 - $15,000'),
         ev('SAMPLE MEMBER A', 'house', 'MSFT', 'sell', 44, 19, '$1,001 - $15,000'),
         ev('SAMPLE MEMBER B', 'senate', 'LLY', 'buy', 60, 45, '$50,001 - $100,000'),

@@ -1,3 +1,25 @@
+## v176 — Smart $ feed: grouped compact rows instead of one card per trade (2026-11-03)
+
+Jack: "This is just a long scroll to get this info" (three identical ~470px cards for one member buying MU
+three times). Approved mockup, then "Good build it and merge".
+- **Grouping** (`groupItems` in `ui/smartmoney-model.js`): one row per person+ticker+side (default) or per
+  ticker+side ("Group by Stock" toggle). The trades fold underneath behind an "N trades" button. Size is the
+  SUM of reported ranges only when every trade in the group has one — otherwise "Size n/a", never a partial
+  total. Politician rows show the filing-lag range ("Filed 32–39d late"); vs-S&P is the average of the scored
+  trades, labelled "(k of n)" when only some are scored.
+- **Feed chrome:** compact header, two summary tiles (new filings in 7d with how many are on your names; most
+  bought in 30d), filter chips All / You hold / Following / Buys / Sells replacing the checkbox (an old
+  `mineOnly:true` preference migrates to "You hold"), the "New on your names" chip row moved off the Feed, and
+  ONE "tracking starts at the next daily price check" banner instead of a line on every card. Person and ticker
+  pages use the same rows.
+- **Global freshness strip:** the left label no longer wraps (nowrap + ellipsis), drops the current year, and
+  hides the word "Snapshot:" under 430px, so the strip stays one line on a phone.
+- Files: `ui/smartmoney{,-model}.js`, `ui/smartmoney.css`, `tests/smartmoney.test.cjs` (+4: grouping, no partial
+  totals, by-stock, chips/summary), `producer/make-sample-data.mjs` (one member buys NVDA 3×), `index.html`,
+  `sw.js`. App/cache **v176 / pf-v176**. No producer, schema or Routine change.
+- Verified: model suites green; synthetic Playwright 320/390/1280, Ivory + Midnight — no horizontal overflow,
+  no page errors, expand/collapse, by-stock and chip filters. Physical iPhone not verified.
+
 ## v175 — Smart Money scorecard: who's actually good (2026-11-03)
 
 Jack: "track performance of each individual or entity so we can see who's good". New pure module

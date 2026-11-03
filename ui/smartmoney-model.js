@@ -23,6 +23,14 @@
     if(n>=1e3)return '$'+Math.round(n/1e3)+'K';
     return '$'+Math.round(n);
   }
+  // Numeric [lo,hi] for a reported range, so grouped rows can sum sizes honestly. null when unparseable.
+  function bucketRange(v){
+    if(v===null||v===undefined)return null;
+    const nums=(String(v).match(/\$?\s*[\d,]+(?:\.\d+)?/g)||[]).map(x=>Number(x.replace(/[$,\s]/g,''))).filter(Number.isFinite);
+    if(nums.length>=2)return [nums[0]>=1000&&nums[0]%1000===1?nums[0]-1:nums[0],nums[1]];
+    if(nums.length===1&&!/over|\+|more/i.test(String(v)))return [nums[0],nums[0]];
+    return null;
+  }
   function bucketLabel(v){
     if(v===null||v===undefined)return null;
     const s=String(v).trim();if(!s)return null;
@@ -53,7 +61,7 @@
       out.push({id:'pol|'+String(e.filer).toUpperCase()+'|'+s+'|'+e.side+'|'+txn,kind:'politician',
         who:titleCase(e.filer),whoKey:'pol|'+String(e.filer).toUpperCase(),role:chamber?chamber+' member':'Member of Congress',
         sym:s,side:e.side,txn,seen:disc||txn,disclosed:disc,lag:Number.isFinite(lag)?lag:null,
-        amount:bucketLabel(e.amount),value:null,shares:null,source:'STOCK Act report',mine:mineOf(s,held)});
+        amount:bucketLabel(e.amount),range:bucketRange(e.amount),value:null,shares:null,source:'STOCK Act report',mine:mineOf(s,held)});
     }
     return out;
   }
@@ -69,7 +77,7 @@
         out.push({id:'ins|'+s+'|'+String(r.name).toUpperCase()+'|'+r.side+'|'+txn,kind:'insider',
           who:titleCase(r.name),whoKey:'ins|'+String(r.name).toUpperCase()+'|'+s,role:'Insider at '+s,
           sym:s,side:r.side,txn,seen:filed||txn,disclosed:filed,lag:filed?daysBetween(filed,txn):null,
-          amount:value!=null?compactMoney(value):null,value,shares,price:num(r.price),source:'SEC Form 4 · open market',mine:mineOf(s,held)});
+          amount:value!=null?compactMoney(value):null,range:value!=null?[value,value]:null,value,shares,price:num(r.price),source:'SEC Form 4 · open market',mine:mineOf(s,held)});
       }
     }
     return out;
@@ -79,8 +87,46 @@
     return [...politicianItems(flow,held),...insiderItems(flow,held)].filter(i=>!seen.has(i.id)&&seen.add(i.id))
       .sort((a,b)=>b.seen.localeCompare(a.seen)||b.txn.localeCompare(a.txn)||a.id.localeCompare(b.id));
   }
-  function feed(items,{kind='all',mineOnly=false,follow=null}={}){
-    return items.filter(i=>(kind==='all'||i.kind===kind)&&(!mineOnly||i.mine||(follow&&follow.has(i.whoKey))));
+  // filter: 'all' | 'mine' (names you hold or target) | 'following' | 'buy' | 'sell' (v176 chips).
+  function feed(items,{kind='all',mineOnly=false,follow=null,filter='all'}={}){
+    const f=i=>filter==='mine'?!!i.mine:filter==='following'?!!(follow&&follow.has(i.whoKey)):filter==='buy'||filter==='sell'?i.side===filter:true;
+    return items.filter(i=>(kind==='all'||i.kind===kind)&&(!mineOnly||i.mine||(follow&&follow.has(i.whoKey)))&&f(i));
+  }
+  // ---- Grouped rows (v176) --------------------------------------------------------------------
+  // The same person buying the same stock three times was three full cards. One row per
+  // person+ticker+side (by:'person') or per ticker+side (by:'stock'); the trades stay inside it.
+  // Size is a SUM of reported ranges only when every trade has one, else null (never a partial sum
+  // presented as the total).
+  function groupItems(items,{by='person'}={}){
+    const map=new Map();
+    for(const i of items){
+      const k=(by==='stock'?'':i.whoKey+'|')+i.sym+'|'+i.side;
+      let g=map.get(k);
+      if(!g){g={key:'g|'+by+'|'+k,by,sym:i.sym,side:i.side,kind:i.kind,who:i.who,whoKey:i.whoKey,role:i.role,mine:i.mine,items:[]};map.set(k,g);}
+      g.items.push(i);
+    }
+    const out=[];
+    for(const g of map.values()){
+      const L=g.items;const txns=L.map(i=>i.txn).sort();const lags=L.map(i=>i.lag).filter(Number.isFinite).sort((a,b)=>a-b);
+      const full=L.every(i=>Array.isArray(i.range));
+      const lo=full?L.reduce((a,i)=>a+i.range[0],0):null,hi=full?L.reduce((a,i)=>a+i.range[1],0):null;
+      const people=[...new Set(L.map(i=>i.whoKey))];
+      out.push({...g,count:L.length,first:txns[0],last:txns[txns.length-1],seen:L.map(i=>i.seen).sort().pop(),
+        lagMin:lags.length?lags[0]:null,lagMax:lags.length?lags[lags.length-1]:null,
+        amount:full?(lo===hi?compactMoney(lo):compactMoney(lo)+'–'+compactMoney(hi)):(L.length===1?L[0].amount:null),
+        people:people.length,names:[...new Set(L.map(i=>i.who))],mixedKinds:new Set(L.map(i=>i.kind)).size>1});
+    }
+    return out.sort((a,b)=>b.seen.localeCompare(a.seen)||b.last.localeCompare(a.last)||a.key.localeCompare(b.key));
+  }
+  function dayRange(a,b){return a===b?shortDay(a):shortDay(a)+'–'+(a.slice(0,7)===b.slice(0,7)?String(+b.slice(8,10)):shortDay(b));}
+  function lagRange(g){return g.lagMin==null?null:g.lagMin===g.lagMax?g.lagMin+'d late':g.lagMin+'–'+g.lagMax+'d late';}
+  // Summary tiles: filings first seen in the last `days` days, and the most-bought name over 30 days.
+  function summary(items,asOf,days=7){
+    const age=i=>daysBetween(asOf,i.seen);
+    const fresh=items.filter(i=>age(i)>=0&&age(i)<=days);
+    const c=new Map();for(const i of items){const a=age(i);if(i.side!=='buy'||a<0||a>30)continue;c.set(i.sym,(c.get(i.sym)||0)+1);}
+    const top=[...c.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0]||null;
+    return {fresh:fresh.length,freshMine:fresh.filter(i=>i.mine).length,days,topBuy:top?{sym:top[0],count:top[1]}:null};
   }
   // Your names with a move reported in the last `days` days, most active first.
   function yourNames(items,asOf,days=30){
@@ -204,5 +250,5 @@
     L.push('','Verify these disclosures against the source filings, check the chart, news and earnings date, and tell me whether this changes anything for my holdings. Facts with sources only.');
     return L.join('\n');
   }
-  return {perfIndex,whoLabel,board,personRecord,pct,shortDay,titleCase,bucketLabel,compactMoney,mineOf,mineLabel,politicianItems,insiderItems,allItems,feed,yourNames,person,ticker,readOf,flags,isOpen,cleanState,researchPrompt,daysBetween};
+  return {bucketRange,groupItems,dayRange,lagRange,summary,perfIndex,whoLabel,board,personRecord,pct,shortDay,titleCase,bucketLabel,compactMoney,mineOf,mineLabel,politicianItems,insiderItems,allItems,feed,yourNames,person,ticker,readOf,flags,isOpen,cleanState,researchPrompt,daysBetween};
 });

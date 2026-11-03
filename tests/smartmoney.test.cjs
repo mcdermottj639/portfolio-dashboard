@@ -145,3 +145,41 @@ test('shell: smart money assets are versioned with the app and precached',()=>{
   assert.match(html,/smartmoney:'page-smartmoney'/);
   assert.match(html,/id="tab-smartmoney"/);
 });
+
+// ---- v176 compact grouped feed ----
+test('grouping: same person + ticker + side folds into one row with summed ranges',()=>{
+  const ev=d=>({sym:'MU',side:'buy',txn:d,disc:'2026-11-02',filer:'JOHN MCGUIRE',chamber:'house',amount:'$1,001 - $15,000'});
+  const f={asOf,polEvents:[ev('2026-10-01'),ev('2026-09-25'),ev('2026-09-24'),{...ev('2026-10-02'),side:'sell'}]};
+  const items=M.allItems(f,{main:new Set(['MU'])});
+  const g=M.groupItems(items,{by:'person'});
+  assert.equal(g.length,2);
+  const buy=g.find(x=>x.side==='buy');
+  assert.equal(buy.count,3);
+  assert.equal(buy.amount,'$3K–$45K');
+  assert.equal(M.dayRange(buy.first,buy.last),'Sep 24–Oct 1');
+  assert.equal(M.lagRange(buy),'32–39d late');
+  assert.ok(buy.mine&&buy.mine.main);
+});
+test('grouping: a missing size never becomes a partial total',()=>{
+  const f={asOf,polEvents:[
+    {sym:'MU',side:'buy',txn:'2026-10-01',disc:'2026-11-02',filer:'A B',amount:'$1,001 - $15,000'},
+    {sym:'MU',side:'buy',txn:'2026-10-02',disc:'2026-11-02',filer:'A B',amount:null}]};
+  const g=M.groupItems(M.allItems(f,{}),{by:'person'});
+  assert.equal(g.length,1);assert.equal(g[0].count,2);assert.equal(g[0].amount,null);
+});
+test('grouping by stock merges people, keeps sides apart',()=>{
+  const g=M.groupItems(M.allItems(flow,held),{by:'stock'});
+  const lly=g.find(x=>x.sym==='LLY'&&x.side==='buy');
+  assert.equal(lly.people,2);assert.equal(lly.count,2);assert.equal(lly.amount,'$1.2M');
+  assert.ok(g.some(x=>x.sym==='NVDA'&&x.side==='buy')&&g.some(x=>x.sym==='NVDA'&&x.side==='sell'));
+});
+test('filter chips and summary tiles',()=>{
+  const items=M.allItems(flow,held);
+  assert.ok(M.feed(items,{filter:'buy'}).every(i=>i.side==='buy'));
+  assert.ok(M.feed(items,{filter:'sell'}).every(i=>i.side==='sell'));
+  assert.ok(M.feed(items,{filter:'mine'}).every(i=>i.mine));
+  assert.equal(M.feed(items,{filter:'following',follow:new Set()}).length,0);
+  const s=M.summary(items,asOf,7);
+  assert.equal(s.fresh,4); // LLY x2 (10-29, 10-30), NVDA sell 10-27, PLTR 10-30 (deduped)
+  assert.equal(s.topBuy.sym,'LLY');
+});

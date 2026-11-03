@@ -112,3 +112,48 @@ html[data-theme="gold"] .sm-side{color:#101510}
 .sm-score b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
 .sm-score small{font-size:11px;color:var(--sm-muted)}
 @media(max-width:430px){.sm-views{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Compact grouped feed (v176): one row per person+ticker+side, trades fold underneath. */
+.sm-head{align-items:center;padding-top:2px}
+.sm-head h1{font-size:21px}
+.sm-rows{background:var(--sm-panel);border:1px solid var(--sm-rule);border-radius:14px;overflow:hidden}
+.sm-row{padding:10px 12px;display:flex;flex-direction:column;gap:3px;min-width:0;border-top:1px solid var(--sm-rule)}
+.sm-row:first-child{border-top:0}
+.sm-r1,.sm-r2{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.sm-r1 .sm-who{flex-direction:row;align-items:baseline;gap:6px;flex-wrap:wrap}
+.sm-r1 .sm-who small{font-size:11.5px}
+.sm-r1 .sm-linkbtn{font-size:14.5px;font-weight:800;text-decoration:none;min-height:22px}
+.sm-r2{font-size:13px;color:var(--sm-muted)}
+.sm-r2>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sm-r2 .sm-linkbtn{font-size:13px;min-height:20px}
+.sm-r2 .sm-sym{font-weight:800;color:var(--sl-ink,#20271f);text-decoration:none}
+.sm-r2 b{flex:none;font-size:13.5px;color:var(--sl-ink,#20271f);font-variant-numeric:tabular-nums}
+.sm-r3{display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;font-size:11.5px;color:var(--sm-muted)}
+.sm-late{color:#a3621b;font-weight:700}
+html[data-theme="gold"] .sm-late{color:#e8a466}
+.sm-pf b{color:var(--sl-ink,#20271f);font-variant-numeric:tabular-nums}
+.sm-pf b.sm-good,.sm-sub b.sm-good{color:var(--sm-buy)}.sm-pf b.sm-bad,.sm-sub b.sm-bad{color:var(--sm-sell)}
+.sm-badge{flex:none;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.sm-badge.sm-buy{background:var(--sl-accent-soft,#e7f0e6);color:var(--sm-buy)}
+.sm-badge.sm-sell{background:#f7e9dc;color:#9a531a}
+html[data-theme="gold"] .sm-badge.sm-sell{background:#3a2a1b;color:#e8a466}
+html[data-theme="gold"] .sm-badge.sm-buy{background:#1d2b20;color:#8fd19e}
+.sm-more{margin-left:auto;display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 8px;border:1px solid var(--sm-rule);border-radius:999px;background:transparent;font-size:11.5px;font-weight:700;color:var(--sm-muted)}
+.sm-more[aria-expanded="true"] svg{transform:rotate(180deg)}
+.sm-sub{list-style:none;margin:5px 0 0;padding:6px 0 0;border-top:1px dashed var(--sm-rule);display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sm-muted);font-variant-numeric:tabular-nums}
+.sm-sub .sm-linkbtn{font-size:12px;min-height:20px}
+.sm-sum .sm-tile{padding:8px 10px}
+.sm-sum .sm-tile strong{font-size:19px}
+.sm-chips{display:flex;flex-wrap:wrap;gap:6px}
+.sm-fchip{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--sm-rule);background:var(--sm-panel);font-size:12.5px;font-weight:700;color:var(--sm-muted)}
+.sm-fchip[aria-pressed="true"]{background:var(--sl-ink,#20271f);border-color:var(--sl-ink,#20271f);color:var(--sm-panel)}
+.sm-banner{margin:0;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--sm-muted);background:var(--sl-panel-muted,#f3f5ef);border:1px solid var(--sm-rule);border-radius:10px;padding:7px 10px}
+.sm-banner svg{flex:none}
+.sm-by{margin:0;text-align:center;font-size:12px;color:var(--sm-muted)}
+.sm-by button{border:0;background:none;padding:6px 4px;min-height:32px;font-size:12px;font-weight:650;color:var(--sm-muted)}
+.sm-by button[aria-pressed="true"]{color:var(--sl-ink,#20271f);font-weight:800;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:430px){
+  .sm-views{grid-auto-flow:column;grid-template-columns:none}
+  .sm-views button{font-size:12px;min-height:36px}
+  .sm-seg button{min-height:36px;font-size:12.5px}
+  .pf-fl-word{display:none}
+}
