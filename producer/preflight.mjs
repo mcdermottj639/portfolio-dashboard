@@ -18,7 +18,19 @@ import { decryptEnvelope } from './emit.mjs';
 import { isMarketOpen, isWeekday, isHoliday, closeMinutes, etDate, etMinutes } from './market.mjs';
 
 const DATA = join(dirname(fileURLToPath(import.meta.url)), '..', 'data.json');
-function decide(mode, code, msg) { console.log(`PREFLIGHT ${mode}`); console.log(`[preflight] ${msg}`); process.exit(code); }
+// Step 2e (Predict payout emails) is EVERY-RUN, but the producer Routine's prompt (http_api — not
+// editable from a session) lists only the Robinhood fetches for FETCH_LIGHT, and Gmail's tools can be
+// DEFERRED in a scheduled session, so "only if Gmail is available" read as "skip". The first
+// Gmail-attached run (2026-11-03 07:35 ET) skipped it. The prompt says to obey this directive, so the
+// instruction lives here, in code.
+export const MAIL_DIRECTIVE = 'PREFLIGHT ALSO: run PRODUCER.md step 2e (Predict payout emails) on THIS run — FETCH_LIGHT included. ' +
+  'Gmail tools may be deferred: run ToolSearch "gmail search_threads get_message" first, and skip step 2e only if no Gmail tool is found. ' +
+  'Best-effort: a Gmail failure never stops the run.';
+function decide(mode, code, msg) {
+  console.log(`PREFLIGHT ${mode}`); console.log(`[preflight] ${msg}`);
+  if (mode !== 'SKIP') console.log(MAIL_DIRECTIVE);
+  process.exit(code);
+}
 
 // Decrypt the prior snapshot (null on first-ever run, missing passphrase, or any decrypt failure).
 let prior = null;

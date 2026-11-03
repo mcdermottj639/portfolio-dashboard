@@ -368,9 +368,11 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    without Alpha Vantage** — AV (when not capped) still overrides with richer growth metrics.
 
 2e. **Predict settled payouts — EVERY-RUN, best-effort, never gates the run (2026-11-03).**
-   Only if a **Gmail** connector tool is available in this session (`Gmail · search_threads`,
-   `Gmail · get_message`); if not, skip this step silently — the encrypted ledger carries forward
-   and the app shows when the mailbox was last read.
+   Runs on **FETCH_LIGHT too** — preflight prints a `PREFLIGHT ALSO:` line saying so (2026-11-03,
+   after the first Gmail-attached run skipped it). Gmail tools are often **deferred** in a scheduled
+   session: run ToolSearch `gmail search_threads get_message` before deciding they are missing. Only
+   if no **Gmail** tool (`search_threads`, `get_message`) is found, skip this step silently — the
+   encrypted ledger carries forward and the app shows when the mailbox was last read.
    1. `node producer/predict-mail-plan.mjs` → prints `PREDICT_MAIL QUERY <query>` and
       `PREDICT_MAIL KNOWN <ids>`.
    2. `Gmail · search_threads { query: "<QUERY>", pageSize: 50, view: "THREAD_VIEW_METADATA_ONLY" }`
