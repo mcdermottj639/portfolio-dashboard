@@ -18,6 +18,11 @@ import { analyzeLeg, buildIdeas } from './options.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // --- a tiny sample book (4 positions) ---
+// Smart Money sample (v174): [name, side, daysAgo, shares, price] → the insiderTrades row shape.
+const sampleInsiders = (list) => list.map(([name, side, t, shares, price]) => {
+  const d = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  return { name, side, shares, price, value: Math.round(shares * price), txn: d(t), filed: d(Math.max(0, t - 2)) };
+});
 const POS = [
   { symbol: 'NVDA', quantity: '40',  average_buy_price: '95.00',  px: 168.4, prev: 165.1 },
   { symbol: 'MSFT', quantity: '18',  average_buy_price: '410.00', px: 498.2, prev: 495.0 },
@@ -361,16 +366,32 @@ const data = {
   flow: {
     asOf: now.toISOString().slice(0, 10),
     symbols: {
-      NVDA: { sym: 'NVDA', flow: { score: 6.8 }, revision: { score: 6.4, delta: 0.05 }, insider: { score: 3.2, cluster: 'sell', buyers: 1, sellers: 6 }, surprise: { score: 7.5 } },
+      NVDA: { sym: 'NVDA', flow: { score: 6.8 }, revision: { score: 6.4, delta: 0.05 }, insider: { score: 3.2, cluster: 'sell', buyers: 1, sellers: 6 }, surprise: { score: 7.5 }, insiderTrades: sampleInsiders([['SAMPLE INSIDER CFO', 'sell', 9, 12000, 171.2], ['SAMPLE INSIDER DIRECTOR', 'sell', 15, 4000, 166.8], ['SAMPLE INSIDER EVP', 'buy', 22, 1500, 158.4]]) },
       SPY:  { sym: 'SPY',  flow: null, revision: null, insider: null, surprise: null },
       AAPL: { sym: 'AAPL', flow: { score: 5.4 }, revision: { score: 5.9, delta: 0 }, insider: { score: 4.8, cluster: null, buyers: 2, sellers: 3 }, surprise: { score: 6.1 } },
       MSFT: { sym: 'MSFT', flow: { score: 6.2 }, revision: { score: 6.6, delta: 0.04 }, insider: { score: 4.1, cluster: 'sell', buyers: 0, sellers: 4 }, surprise: { score: 7.0 } },
       GLD:  { sym: 'GLD',  flow: null, revision: null, insider: null, surprise: null },
       V:    { sym: 'V',    flow: { score: 6.9 }, revision: { score: 6.8, delta: 0.06 }, insider: { score: 5.2, cluster: null, buyers: 2, sellers: 2 }, surprise: { score: 7.4 } },
-      GOOGL:{ sym: 'GOOGL',flow: { score: 7.5 }, revision: { score: 7.3, delta: 0.14 }, insider: { score: 6.0, cluster: 'buy', buyers: 3, sellers: 1 }, surprise: { score: 8.1 } },
+      GOOGL:{ sym: 'GOOGL',flow: { score: 7.5 }, revision: { score: 7.3, delta: 0.14 }, insider: { score: 6.0, cluster: 'buy', buyers: 3, sellers: 1 }, surprise: { score: 8.1 }, insiderTrades: sampleInsiders([['SAMPLE INSIDER CEO', 'buy', 4, 8000, 251.3], ['SAMPLE INSIDER CTO', 'buy', 6, 3000, 248.9], ['SAMPLE INSIDER DIRECTOR B', 'buy', 8, 2000, 247.1]]) },
       LLY:  { sym: 'LLY',  flow: { score: 7.2 }, revision: { score: 7.0, delta: 0.11 }, insider: { score: 6.5, cluster: 'buy', buyers: 4, sellers: 1 }, surprise: { score: 7.8 }, award: { score: 4.0 } },
     },
-    polEvents: [{ filer: 'Sample Member', sym: 'NVDA', side: 'buy', date: '2026-07-20' }],
+    // Smart Money tab (v174): congressional ledger rows in the real normalizeDisclosure shape, and
+    // insider trade rows in the insiderTrades shape. All names are synthetic placeholders.
+    polEvents: (() => {
+      const d = (n) => new Date(now.getTime() - n * 86400000).toISOString().slice(0, 10);
+      const ev = (filer, chamber, sym, side, t, lag, amount) => ({ sym, side, txn: d(t), disc: d(t - lag), filer, chamber, amount, lag });
+      return [
+        ev('SAMPLE MEMBER A', 'house', 'NVDA', 'buy', 26, 21, '$15,001 - $50,000'),
+        ev('SAMPLE MEMBER A', 'house', 'GOOGL', 'buy', 40, 18, '$1,001 - $15,000'),
+        ev('SAMPLE MEMBER A', 'house', 'MSFT', 'sell', 44, 19, '$1,001 - $15,000'),
+        ev('SAMPLE MEMBER B', 'senate', 'LLY', 'buy', 60, 45, '$50,001 - $100,000'),
+        ev('SAMPLE MEMBER C', 'house', 'LLY', 'buy', 52, 30, '$1,001 - $15,000'),
+        ev('SAMPLE MEMBER D', 'house', 'LLY', 'buy', 48, 28, '$15,001 - $50,000'),
+        ev('SAMPLE MEMBER B', 'senate', 'XOM', 'sell', 70, 40, '$15,001 - $50,000'),
+        ev('SAMPLE MEMBER E', 'house', 'AMAT', 'buy', 33, 25, '$1,001 - $15,000'),
+      ].sort((a, b) => b.txn.localeCompare(a.txn));
+    })(),
+    polClusters: {},
   },
   // Sample agentic account so the Agentic Portfolio card renders populated in local preview
   // (real runs emit this from agentic-portfolio.json/agentic-positions.json in build-data.mjs).

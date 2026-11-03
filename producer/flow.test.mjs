@@ -1,5 +1,5 @@
 // Offline unit checks for flow.mjs — no network. Run: node producer/flow.test.mjs
-import { revisionScore, insiderScore, surpriseScore, flowScore, scoreSymbol, FLOW_WEIGHTS } from './flow.mjs';
+import { revisionScore, insiderScore, surpriseScore, flowScore, scoreSymbol, FLOW_WEIGHTS, insiderTrades } from './flow.mjs';
 
 let pass = 0, fail = 0;
 const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -278,6 +278,31 @@ ok('sparse name still exposes what it does have', sparse.surprise && sparse.surp
 
 // Empty input is safe.
 eq('scoreSymbol on empty input → null composite', scoreSymbol({}, { asOf: ASOF }).flow, null);
+
+// ---- insiderTrades (Smart Money feed, display-only) -------------------------
+{
+  const feed = { data: [
+    { name: 'Jane Doe', change: -1000, transactionCode: 'S', transactionDate: '2026-08-10', filingDate: '2026-08-12', transactionPrice: 50 },
+    { name: 'Jane Doe', change: -500, transactionCode: 'S', transactionDate: '2026-08-10', filingDate: '2026-08-12', transactionPrice: 52 },
+    { name: 'Bob Roe', change: 2000, transactionCode: 'P', transactionDate: '2026-08-14', filingDate: '2026-08-15', transactionPrice: 49.5 },
+    { name: 'Grant Gal', change: 9000, transactionCode: 'A', transactionDate: '2026-08-14', transactionPrice: 0 },
+    { name: 'Exer Ex', change: 3000, transactionCode: 'M', transactionDate: '2026-08-13', transactionPrice: 10 },
+    { name: 'Deriv D', change: 400, transactionCode: 'P', transactionDate: '2026-08-13', transactionPrice: 49, isDerivative: true },
+    { name: 'Old Timer', change: 100, transactionCode: 'P', transactionDate: '2026-01-02', transactionPrice: 40 },
+    { name: 'Future F', change: 100, transactionCode: 'P', transactionDate: '2027-01-02', transactionPrice: 40 },
+    { name: '', change: 100, transactionCode: 'P', transactionDate: '2026-08-11', transactionPrice: 40 },
+  ] };
+  const t = insiderTrades(feed, { asOf: '2026-08-20' });
+  eq('insiderTrades keeps open-market P/S only, newest first', t.map((r) => r.name + ':' + r.side), ['Bob Roe:buy', 'Jane Doe:sell']);
+  eq('same person/side/day lots merge into one row', [t[1].shares, t[1].value], [1500, 76000]);
+  eq('merged price is the value-weighted average', t[1].price, 50.67);
+  eq('buy row carries filed date and value', [t[0].filed, t[0].value, t[0].price], ['2026-08-15', 99000, 49.5]);
+  eq('limit caps the list', insiderTrades(feed, { asOf: '2026-08-20', limit: 1 }).length, 1);
+  eq('nothing usable → null', insiderTrades({ data: [{ name: 'A', change: 1, transactionCode: 'G', transactionDate: '2026-08-01' }] }, { asOf: ASOF }), null);
+  eq('empty input → null', insiderTrades(null, { asOf: ASOF }), null);
+  const sym = scoreSymbol({ insiderTx: feed }, { asOf: '2026-08-20' });
+  ok('scoreSymbol exposes insiderTrades without changing the composite rule', Array.isArray(sym.insiderTrades) && sym.flow === null);
+}
 
 console.log(`\nflow.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1,3 +1,36 @@
+## v174 — Smart Money tab: politician + insider trades on your names, read-only (2026-11-03)
+
+Jack can't use Robinhood Social because of his job, so this rebuilds the public-data half of it inside
+the dashboard. New area **Smart $** (6th item in the new nav; legacy tab bar too): a feed of
+congressional STOCK Act trades (`data.flow.polEvents`, already accumulated by build-data) and
+open-market insider Form 4 trades, pinned to names held in either book or in the agentic target.
+Views: Feed (All / Politicians / Insiders / Funds, "only my names" toggle), a person page (Follow,
+trades by month, typical report delay, overlap), a ticker page ("Who's moving X": buys vs sells per
+group + a conservative read), and Flags (insider cluster buy, an insider buying a held name, Congress
+cluster on a held name, new trade by someone you follow) with Research-in-Claude / Snooze 7 days /
+Dismiss. Follows and flag choices live in `localStorage.pf_smartmoney_v1` on the device only.
+- **Producer (display-only):** `flow.mjs` gains `insiderTrades()` — the individual open-market P/S
+  rows behind the insider read (same filter as `insiderScore`, 120-day window, lots merged per
+  person/side/day, max 10 per symbol). `scoreSymbol` returns it as `insiderTrades`; it never enters
+  any score. It appears in a symbol's sidecar on its next daily flow-fetch, so the Insiders feed fills
+  in over the next full run; until then only politician rows show.
+- **Not built (no source):** fund 13F holdings. Finnhub fund-ownership / FMP institutional-ownership
+  are restricted on our keys, and AV INSTITUTIONAL_HOLDINGS is session-only and enormous. The Funds
+  filter says "Not connected" rather than showing anything made up. Robinhood Social's verified
+  retail traders are Robinhood-only data and cannot be replicated.
+- **Honest limits on screen:** politician rows are weeks–months late and come from a rolling
+  window of the newest reports (not a census); amounts are ranges; the read never calls politician
+  flow a reason to buy (it keeps its zero weight, PROPOSAL-flow-signals.md).
+- Nothing is posted, shared or traded. No balances, share counts of Jack's or account numbers render,
+  so the page sits outside the privacy mask (`data-priv="off"`) like Predict.
+- Files: `ui/smartmoney-model.js` (pure), `ui/smartmoney.js`, `ui/smartmoney.css`,
+  `tests/smartmoney.test.cjs`, `ui/experience.js` (area + route), `index.html` (page, tab, switchTab,
+  assets), `sw.js`, `producer/flow.mjs` + test, `producer/make-sample-data.mjs` (real-shaped sample
+  rows). The phone bottom nav now shares width evenly across six areas (CSS in smartmoney.css).
+- Verified: tests/*.cjs and all producer suites green; synthetic Playwright at 320/390/1280 in Ivory
+  and Midnight — no horizontal overflow, no page errors; privacy audit clean. Live decrypted data and
+  the physical iPhone not verified here.
+
 ## 2026-11-03 — Preflight tells the producer to read the payout mailbox every run
 
 Gmail was attached to the producer task at 07:27 ET, but the 07:35 run still left the Settled tab at

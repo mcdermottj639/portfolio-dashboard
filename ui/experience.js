@@ -12,11 +12,12 @@
   const date = value => { if(typeof value==='string' && /^\d{4}-\d{2}-\d{2}$/.test(value))return value; const d = value ? new Date(value) : null; return d && Number.isFinite(d.getTime()) ? d.toLocaleString() : 'Not recorded'; };
   const ageText = iso => { const n = M.age(iso); return n === null ? 'Age unavailable' : n < 60 ? Math.floor(n)+' min old' : n < 1440 ? (n/60).toFixed(1)+' hours old' : Math.floor(n/1440)+' days old'; };
   const icon = name => {
-    const paths={today:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',portfolio:'M12 3v9h9M9 3.5A9 9 0 1 0 20.5 15H9Z',research:'M5 3h10l4 4v14H5ZM9 11h6M9 15h6',predictions:'M12 3 3 8l9 5 9-5-9-5ZM3 12l9 5 9-5M3 16l9 5 9-5',activity:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2'};
+    const paths={today:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',portfolio:'M12 3v9h9M9 3.5A9 9 0 1 0 20.5 15H9Z',research:'M5 3h10l4 4v14H5ZM9 11h6M9 15h6',predictions:'M12 3 3 8l9 5 9-5-9-5ZM3 12l9 5 9-5M3 16l9 5 9-5',activity:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2',smartmoney:'M3 21h18M5 21v-9M9.5 21v-9M14.5 21v-9M19 21v-9M2.5 9 12 3.5 21.5 9Z'};
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+paths[name]+'"/></svg>';
   };
   const routes = {
     predictions: {area:'predictions', label:'Prediction markets', tab:'predictions'},
+    smartmoney: {area:'smartmoney', label:'Smart Money', tab:'smartmoney'},
     today: {area:'today', label:'Daily brief', custom:'today'},
     accounts: {area:'portfolio', label:'Accounts overview', tab:'portfolio'},
     holdings: {area:'portfolio', label:'All positions', tab:'portfolio', section:'holdings'},
@@ -36,8 +37,8 @@
     activity: {area:'activity', label:'Snapshot & routine status', custom:'activity'},
     log: {area:'activity', label:'Rebalance log', tab:'portfolio', section:'rebalance-log'}
   };
-  const defaults = {today:'today',portfolio:'accounts',research:'plan',predictions:'predictions',activity:'activity'};
-  const legacyTabs = ['portfolio','markets','picks','options','analyze','predictions'];
+  const defaults = {today:'today',portfolio:'accounts',research:'plan',predictions:'predictions',smartmoney:'smartmoney',activity:'activity'};
+  const legacyTabs = ['portfolio','markets','picks','options','analyze','predictions','smartmoney'];
   const nativeSwitch = window.switchTab;
   const nativeAccount = window.setAccount;
   const nativePlanAccount = window.setPlanAccount;
@@ -64,7 +65,7 @@
   const top = document.createElement('header'); top.className='ex-top'; top.id='ex-top';
   top.innerHTML='<div><div class="ex-brand">Portfolio <span>/</span></div><div class="ex-caption" id="ex-context">Your accounts, research, and activity</div></div><div class="ex-tools"><span id="ex-all-accounts" class="ex-badge" hidden>Both accounts</span><label id="ex-account-label">Account <select id="ex-account" aria-label="Account"><option value="main">Self-directed</option><option value="agentic">Agentic</option></select></label><button type="button" id="ex-find">Find a feature</button><button type="button" id="ex-classic" title="Return to the classic tab layout">Classic view</button></div>';
   const main = document.createElement('nav'); main.className='ex-main'; main.setAttribute('aria-label','Main navigation');
-  main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+icon(a)+'<span>'+(a==='predictions'?'Predict':a[0].toUpperCase()+a.slice(1))+'</span></button>').join('');
+  main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+icon(a)+'<span>'+(a==='predictions'?'Predict':a==='smartmoney'?'Smart $':a[0].toUpperCase()+a.slice(1))+'</span></button>').join('');
   const sub = document.createElement('nav'); sub.id='ex-subnav'; sub.className='ex-subnav'; sub.setAttribute('aria-label','Section navigation');
   const first = $('tabbar'); first.before(top,main,sub);
   ['today','activity','decisions','scenario'].forEach(name=>{
@@ -73,11 +74,11 @@
   document.documentElement.classList.add('experience-on');
   function header() {
     const r=routes[routeKey]; $('ex-account').value=account();
-    $('ex-account-label').hidden=['today','predictions'].includes(routeKey); $('ex-all-accounts').hidden=routeKey!=='today';
+    $('ex-account-label').hidden=['today','predictions','smartmoney'].includes(routeKey); $('ex-all-accounts').hidden=routeKey!=='today';
     main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===r.area?'page':'false'));
-    sub.hidden=routeKey==='predictions';
+    sub.hidden=routeKey==='predictions'||routeKey==='smartmoney';
     sub.innerHTML=Object.entries(routes).filter(([,v])=>v.area===r.area).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
-    $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
+    $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }
   function historyChart(points=M.valueHistory(window.__DATA,account()),combined=false) {
@@ -200,6 +201,7 @@
     const r=routes[routeKey]; if(r.custom==='today')renderToday();if(r.custom==='activity')renderActivity();if(r.custom==='decisions')renderDecisions();if(r.custom==='scenario')renderScenario();
     if(routeKey==='today')$('page-ex-today').querySelectorAll('details').forEach(el=>{el.open=openDetails.includes(el.querySelector('summary')?.textContent);});
     if(r.tab==='predictions')window.PFPredictions?.mount($('predictions-app'));
+    if(r.tab==='smartmoney')window.PFSmartMoney?.mount($('smartmoney-app'));
     protect();
   }
   function queueRefresh() { clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{header();renderCustom();},60); }
@@ -228,7 +230,7 @@
   // Existing Find, heatmap drill-downs, pins, and Plan links continue through the same entry point.
   window.switchTab=function(tab){
     if(navigating)return nativeSwitch(tab);
-    const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',predictions:'predictions'}[tab];
+    const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',predictions:'predictions',smartmoney:'smartmoney'}[tab];
     return key?navigate(key):nativeSwitch(tab);
   };
   window.setAccount=function(...args){const value=nativeAccount.apply(this,args);queueRefresh();return value;};
