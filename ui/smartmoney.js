@@ -12,7 +12,7 @@
   const ui={view:'feed',kind:'all',mineOnly:false,who:null,sym:null,showHandled:false};
   try{const v=JSON.parse(localStorage.getItem(KEY+'_ui'));if(v&&['all','politician','insider','fund'].includes(v.kind))ui.kind=v.kind;if(v&&typeof v.mineOnly==='boolean')ui.mineOnly=v.mineOnly;}catch{}
   const saveUi=()=>{try{localStorage.setItem(KEY+'_ui',JSON.stringify({kind:ui.kind,mineOnly:ui.mineOnly}));}catch{}};
-  let root=null,bound=false;
+  let root=null,bound=false,PERF=new Map();
   const toast=m=>{try{window.toast?window.toast(m):null;}catch{}};
   const asOf=()=>{const g=window.__DATA&&window.__DATA.generatedAt;return (typeof g==='string'&&g.slice(0,10))||new Date().toISOString().slice(0,10);};
   const fmtDay=d=>{if(!d)return '—';const t=new Date(d+'T12:00:00Z');return t.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});};
@@ -29,6 +29,7 @@
     const flow=(window.__DATA&&window.__DATA.flow)||null;
     const items=M.allItems(flow,held());
     const follow=new Set(state.follow);
+    PERF=M.perfIndex(flow);
     return {flow,items,follow,asOf:asOf()};
   }
   const ico={
@@ -47,8 +48,16 @@
         '<span class="sm-who"><button type="button" class="sm-linkbtn" data-sm-who="'+esc(i.whoKey)+'">'+esc(i.who)+'</button><small>'+esc(i.role)+'</small></span>'+side(i.side)+'</div>'+
       '<div class="sm-card-mid"><button type="button" class="sm-linkbtn sm-action" data-sm-sym="'+esc(i.sym)+'">'+(i.side==='buy'?'Bought ':'Sold ')+esc(i.sym)+'</button><strong>'+esc(i.amount||'Size not reported')+'</strong></div>'+
       '<div class="sm-card-foot"><span>'+esc(meta)+'</span>'+(i.mine?'<span class="sm-mine">'+esc(M.mineLabel(i.mine))+'</span>':'')+'</div>'+
+      perfLine(i)+
     '</article>';
   }
+  // "Since report" result for one trade (scorecard v175): stock move and side-signed excess vs S&P.
+  function perfLine(i){
+    const r=PERF.get(i.id);
+    if(!r||r.excess==null)return r&&r.sinceTrade!=null?'<div class="sm-perf"><span>Since their trade price</span><b class="'+tone(r.sinceTrade)+'">'+M.pct(r.sinceTrade)+'</b></div>':'<div class="sm-perf sm-perf-wait"><span>Tracking starts at the next daily price check</span></div>';
+    return '<div class="sm-perf"><span>Since report'+(r.heldDays!=null?' · '+r.heldDays+'d':'')+'</span><span>Stock <b>'+M.pct(r.ret)+'</b></span><span>vs S&amp;P <b class="'+tone(r.excess)+'">'+M.pct(r.excess)+'</b></span>'+(r.sinceTrade!=null?'<span>Since trade <b class="'+tone(r.sinceTrade)+'">'+M.pct(r.sinceTrade)+'</b></span>':'')+'</div>';
+  }
+  const tone=v=>v>0?'sm-good':v<0?'sm-bad':'';
   const empty=(t,p)=>'<div class="sm-empty"><h3>'+esc(t)+'</h3><p>'+esc(p)+'</p></div>';
   function head(m,openFlags){
     const names=M.yourNames(m.items,m.asOf,30);
@@ -57,6 +66,7 @@
       '<div class="sm-views" role="tablist" aria-label="Smart Money views">'+
         '<button type="button" role="tab" aria-selected="'+(ui.view==='feed')+'" data-sm-view="feed">Feed</button>'+
         '<button type="button" role="tab" aria-selected="'+(ui.view==='flags')+'" data-sm-view="flags">Flags'+(openFlags?' <b>'+openFlags+'</b>':'')+'</button>'+
+        '<button type="button" role="tab" aria-selected="'+(ui.view==='board')+'" data-sm-view="board">Who\'s good</button>'+
         '<button type="button" role="tab" aria-selected="'+(ui.view==='following')+'" data-sm-view="following">Following'+(state.follow.length?' <b>'+state.follow.length+'</b>':'')+'</button>'+
       '</div>'+
       (names.length?'<div class="sm-names"><span>New on your names</span>'+names.slice(0,8).map(n=>'<button type="button" class="sm-chip" data-sm-sym="'+esc(n.sym)+'">'+esc(n.sym)+' · '+n.count+'</button>').join('')+'</div>':'');
@@ -97,10 +107,48 @@
         tile('Overlap with you',p.overlap.length?p.overlap.length+(p.overlap.length===1?' name':' names'):'None',p.overlap.slice(0,4).join(', ')||'No shared names')+
         tile('Names traded',String(p.symbols.length),p.symbols.slice(0,4).join(', '))+
       '</div>'+
+      recordPanel(m,p)+
       '<section class="sm-panel"><div class="sm-panel-h"><h3>Trades by month</h3>'+legend()+'</div><div class="sm-bars" role="img" aria-label="Buys and sells per month">'+
         p.bars.map(b=>'<div class="sm-bar"><div class="sm-bar-pair"><i class="sm-b-buy" style="height:'+Math.round(b.buys/max*72)+'px"></i><i class="sm-b-sell" style="height:'+Math.round(b.sells/max*72)+'px"></i></div><span>'+esc(b.label)+'</span></div>').join('')+
       '</div></section>'+
       '<h2 class="sm-h2">Recent trades</h2><div class="sm-list">'+p.items.slice(0,30).map(card).join('')+'</div>';
+  }
+  function recordPanel(m,p){
+    const r=M.personRecord(m.flow,p.key);
+    const head='<div class="sm-panel-h"><h3>Track record</h3><span class="sm-muted sm-small">vs S&amp;P 500, from the day each trade was reported</span></div>';
+    if(!r)return '<section class="sm-panel">'+head+'<p class="sm-note">Scoring starts at the next daily price check. Each trade is marked from the day it was first reported here.</p></section>';
+    const tiles='<div class="sm-tiles">'+
+      tile('Beat the S&P',r.hitRate!=null?Math.round(r.hitRate*100)+'%':'—',r.scored+' of '+r.tracked+' trades scored')+
+      tile('Average vs S&P',M.pct(r.avgExcess),'Median '+M.pct(r.medianExcess))+
+      tile('Best call',r.best?M.pct(r.best.excess):'—',r.best?(r.best.side==='buy'?'Bought ':'Sold ')+r.best.sym:'')+
+      tile('Worst call',r.worst?M.pct(r.worst.excess):'—',r.worst?(r.worst.side==='buy'?'Bought ':'Sold ')+r.worst.sym:'')+
+      (r.sinceTradeN?tile('Since their trade price',M.pct(r.avgSinceTrade),'Average of '+r.sinceTradeN+' Form 4 trades'):'')+
+    '</div>';
+    return '<section class="sm-panel">'+head+(r.enough?'':'<p class="sm-note">Not enough history yet: '+r.scored+' of 5 trades needed are at least 5 days old. Read these numbers as early.</p>')+tiles+'</section>';
+  }
+  function boardView(m){
+    const kinds=[['all','All'],['politician','Politicians'],['insider','Insiders']];
+    const k=ui.boardKind||'all';
+    let h='<div class="sm-seg" role="group" aria-label="Who">'+kinds.map(([v,l])=>'<button type="button" aria-pressed="'+(k===v)+'" data-sm-bkind="'+v+'">'+l+'</button>').join('')+'</div>';
+    const rows=M.board(m.flow,{kind:k});
+    if(!rows.length)return h+empty('Scores start building today','Every tracked trade is priced from the day it was reported, then marked daily against the S&P 500. A person is ranked once 5 of their trades are at least 5 days old.')+boardNotes();
+    const ranked=rows.filter(r=>r.enough),early=rows.filter(r=>!r.enough);
+    const row=(r,n)=>'<article class="sm-card sm-rank"><div class="sm-card-top">'+(n?'<span class="sm-rank-n">'+n+'</span>':'<span class="sm-av" aria-hidden="true">'+initials(r.name)+'</span>')+
+      '<span class="sm-who"><button type="button" class="sm-linkbtn" data-sm-who="'+esc(r.key)+'">'+esc(r.name)+'</button><small>'+esc(r.role)+'</small></span>'+
+      '<span class="sm-score"><b class="'+tone(r.avgExcess)+'">'+M.pct(r.avgExcess)+'</b><small>vs S&amp;P</small></span></div>'+
+      '<div class="sm-card-foot"><span>'+(r.hitRate!=null?'Beat the S&amp;P on '+Math.round(r.hitRate*100)+'% · ':'')+r.scored+' scored of '+r.tracked+'</span>'+(r.best?'<span>Best: '+esc((r.best.side==='buy'?'bought ':'sold ')+r.best.sym)+' '+M.pct(r.best.excess)+'</span>':'')+'</div></article>';
+    if(ranked.length)h+='<h2 class="sm-h2">Ranked · 5+ scored trades</h2><div class="sm-list">'+ranked.slice(0,50).map((r,i)=>row(r,i+1)).join('')+'</div>';
+    else h+='<p class="sm-note">No one has 5 scored trades yet, so nobody is ranked. Early results are below.</p>';
+    if(early.length)h+='<details class="sm-notes"'+(ranked.length?'':' open')+'><summary>Too early to judge ('+early.length+')</summary><div class="sm-list">'+early.slice(0,80).map(r=>row(r,0)).join('')+'</div></details>';
+    return h+boardNotes();
+  }
+  function boardNotes(){
+    return '<details class="sm-notes"><summary>How the scores work</summary><ul>'+
+      '<li>Each trade is priced on the first day it shows up in this dashboard. That is the earliest price you could have copied it at.</li>'+
+      '<li>It is then marked every day against the S&amp;P 500 (SPY). A buy scores the stock\'s move minus SPY\'s. A sell scores the reverse, so selling before a stock lags the market counts as a good call.</li>'+
+      '<li>Insider Form 4s also report the trade price, so insiders get a second number: the move since their own trade.</li>'+
+      '<li>Only trades marked for at least 5 days count, and a person needs 5 of them to be ranked. Past results are not a promise of future ones.</li>'+
+      '<li>History starts on Nov 3, 2026. Trades before then are not back-filled, because the data feeds have no historical prices.</li></ul></details>';
   }
   const tile=(l,v,s)=>'<div class="sm-tile"><span>'+esc(l)+'</span><strong>'+esc(v)+'</strong><small>'+esc(s)+'</small></div>';
   const legend=()=>'<span class="sm-legend"><span><i class="sm-b-buy"></i>Buys</span><span><i class="sm-b-sell"></i>Sells</span></span>';
@@ -156,7 +204,7 @@
     let body;
     if(ui.who)body=personView(m);
     else if(ui.sym)body=tickerView(m);
-    else body=ui.view==='flags'?flagsView(m,all):ui.view==='following'?followingView(m):feedView(m);
+    else body=ui.view==='flags'?flagsView(m,all):ui.view==='following'?followingView(m):ui.view==='board'?boardView(m):feedView(m);
     const y=window.scrollY;
     root.innerHTML='<div class="sm-wrap">'+((ui.who||ui.sym)?'':head(m,openCount))+body+'</div>';
     if(root.dataset.keepScroll==='1'){window.scrollTo(0,y);root.dataset.keepScroll='';}
@@ -164,8 +212,9 @@
   function bind(){
     if(bound)return;bound=true;
     root.addEventListener('click',e=>{
-      const t=e.target.closest('[data-sm-view],[data-sm-kind],[data-sm-who],[data-sm-sym],[data-sm-back],[data-sm-follow],[data-sm-decide],[data-sm-undo],[data-sm-analyze]');
+      const t=e.target.closest('[data-sm-bkind],[data-sm-view],[data-sm-kind],[data-sm-who],[data-sm-sym],[data-sm-back],[data-sm-follow],[data-sm-decide],[data-sm-undo],[data-sm-analyze]');
       if(!t||!root.contains(t))return;
+      if(t.dataset.smBkind){ui.boardKind=t.dataset.smBkind;root.dataset.keepScroll='1';render();return;}
       if(t.dataset.smView){ui.view=t.dataset.smView;ui.who=ui.sym=null;render();return;}
       if(t.dataset.smKind){ui.kind=t.dataset.smKind;saveUi();root.dataset.keepScroll='1';render();return;}
       if(t.dataset.smWho){ui.who=t.dataset.smWho;ui.sym=null;render();window.scrollTo(0,0);return;}

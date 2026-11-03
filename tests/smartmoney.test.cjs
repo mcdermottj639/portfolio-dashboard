@@ -121,6 +121,19 @@ test('research prompt is read-only and carries the evidence',()=>{
   assert.match(p,/read-only, nothing to trade/);assert.match(p,/LLY/);assert.match(p,/Facts with sources only/);
 });
 
+test('scorecard: board rows keep the person key and a readable name; per-trade results index by id',()=>{
+  const f={perf:{trades:[{id:'pol|JANE Q MEMBER|PLTR|buy|2026-10-09',res:{ret:0.1,spy:0.02,excess:0.08,sinceTrade:null,heldDays:15}}]},
+    scoreboard:[{who:'pol|JANE Q MEMBER',kind:'politician',tracked:2,scored:1,hitRate:1,avgExcess:0.08,enough:false},{who:'ins|SAM EXEC|NVDA',kind:'insider',tracked:1,scored:0,enough:false}]};
+  const b=M.board(f);
+  assert.equal(b[0].key,'pol|JANE Q MEMBER');assert.equal(b[0].name,'Jane Q Member');assert.equal(b[1].role,'Insider at NVDA');
+  assert.equal(M.board(f,{kind:'insider'}).length,1);
+  assert.equal(M.personRecord(f,'pol|JANE Q MEMBER').avgExcess,0.08);assert.equal(M.personRecord(f,'nobody'),null);
+  assert.equal(M.perfIndex(f).get('pol|JANE Q MEMBER|PLTR|buy|2026-10-09').excess,0.08);
+  assert.equal(M.perfIndex(null).size,0);assert.deepEqual(M.board(null),[]);
+  assert.equal(M.pct(0.048),'+4.8%');assert.equal(M.pct(-0.07),'−7%');assert.equal(M.pct(null),'—');
+  const items=M.allItems(flow,held);assert.ok(items.some(i=>i.id==='pol|JANE Q MEMBER|PLTR|buy|2026-10-09'),'UI ids match the producer scorecard ids');
+});
+
 test('shell: smart money assets are versioned with the app and precached',()=>{
   const root=path.resolve(__dirname,'..');
   const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');

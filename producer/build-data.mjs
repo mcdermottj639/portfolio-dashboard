@@ -33,6 +33,7 @@ import { appendEquityPoint, derivativesRealized, brokerageEquity } from './equit
 import { applyRepairs } from './cumflow-repair.mjs';
 import { accountsLookSwapped } from './snapshotsanity.mjs';
 import { mergeEvents, detectClusters } from './polflow.mjs';
+import { updatePerf, tradeResult, scoreboard } from './smartmoney-perf.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
 import { mergeOrderPages } from './order-pages.mjs';
@@ -897,6 +898,20 @@ const data = {
   if (Object.keys(symbols).length || polEvents.length) {
     data.flow = { asOf: fresh ? flowDay : ((prior && prior.flow && prior.flow.asOf) || flowDay), symbols };
     if (polEvents.length) { data.flow.polEvents = polEvents; data.flow.polClusters = polClusters; }
+    // Smart Money scorecard (v175): carried-forward trade marks + per-person board. Marks only move on
+    // a run that has today's _marks.json; otherwise the prior ledger carries forward unchanged.
+    try {
+      const priorPerf = (prior && prior.flow && prior.flow.perf) || null;
+      const marksFile = join(flowDir, '_marks.json');
+      const marks = existsSync(marksFile) ? readJSON(marksFile) : null;
+      let perf = priorPerf;
+      if (marks && marks.quotes) perf = updatePerf(priorPerf, data.flow, marks.quotes, { asOf: marks.asOf || flowDay });
+      if (perf && Array.isArray(perf.trades) && perf.trades.length) {
+        data.flow.perf = { ...perf, trades: perf.trades.map((t) => ({ ...t, res: tradeResult(t) })) };
+        data.flow.scoreboard = scoreboard(perf);
+        if (marks && marks.quotes) console.log(`smart-money scorecard: ${perf.trades.length} trades tracked · ${perf.trades.filter((t) => t.entry != null).length} marked · ${data.flow.scoreboard.filter((b) => b.enough).length} people with enough history`);
+      }
+    } catch (e) { console.warn(`smart-money scorecard skipped: ${e.message}`); }
     const scored = Object.values(symbols).filter((s) => s && s.flow).length;
     const clusters = Object.values(symbols).filter((s) => s && s.insider && s.insider.cluster).length;
     console.log(`flow signals: ${Object.keys(symbols).length} symbols (${fresh} fresh this run) · ${scored} with a composite · ${clusters} insider cluster(s)`);
