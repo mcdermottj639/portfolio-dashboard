@@ -108,7 +108,7 @@ list to mean "not available." A complete empty list means a verified zero. Posit
 `assetClass: "event_contract"`, `contractId`, `name`, `side` (yes/no), `quantity`; optional values
 are `averagePrice`, `marketValue`, `costBasis`, `feesPaid`. Transactions require `assetClass`, a
 stable broker `id`, `contractId`, `at`, `type` (buy/sell/settlement/void), `quantity`; optional fields
-are `name`, `price`, `fees`, `realizedNet`. Prices use dollars per contract. Unknowns must be null.
+are `name`, `side` (yes/no), `price`, `fees`, `realizedNet`. Prices use dollars per contract. Unknowns must be null.
 `realizedNet` must be broker-reported net realized P&L, not a gross payout or a locally inferred
 profit. Exact duplicate transaction IDs are deduplicated; conflicting IDs block complete results.
 Fees, full historical coverage and explicit net amounts are required before showing net P&L.
@@ -132,7 +132,9 @@ complete history, or that each combo leg won separately. So `costBasis`, `fees`,
 `settledAt` stay null; `summary.verifiedNet` stays null; there is no ROI or win rate; a missing email
 never becomes a loss. A combo is one record with nested `legs[]`. A "No" payout is a payout on the
 No side. Records are append-only, keyed `gmail:<message id>` (a source/idempotency key, not a broker
-transaction ID). A second email with the same contract, side, quantity and amount is kept as
+transaction ID). A payout email links to a broker `settlement` row only when contract, side and
+quantity all match exactly one row; an opposite side, a different quantity, a row missing either,
+or several matching rows is `review` (payout kept, out of the totals) (2026-11-03). A second email with the same contract, side, quantity and amount is kept as
 `duplicate` and not counted; a different amount or quantity for the same contract and side marks
 both `conflict` and keeps them out of the totals. No contract ID, or a quantity above a verified
 position, is `review`. When the authenticated account feed above exists, a settlement already in it

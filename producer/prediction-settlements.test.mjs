@@ -65,9 +65,41 @@ t('excess quantity against a verified position is review-required', () => {
   assert.equal(L.records[0].status, 'review'); assert.equal(L.records[0].reconciliation, 'review');
 });
 t('a settlement already in the broker feed is linked, not double counted', () => {
-  const account = { positions: [], transactions: [{ id: 'tx1', contractId: CID2, type: 'settlement' }] };
+  const account = { positions: [], transactions: [{ id: 'tx1', contractId: CID2, type: 'settlement', side: 'no', quantity: 12 }] };
   const L = buildSettlementLedger({ messages: [single], search: { threads: [] }, account });
   assert.equal(L.records[0].reconciliation, 'matched-broker'); assert.equal(L.records[0].brokerTxId, 'tx1'); assert.equal(L.summary.payouts, 1);
+});
+// Broker match must agree on side AND quantity (dot, 2026-11-03). Each case keeps the email record,
+// never links a broker ID, and lands in review out of the totals.
+const brokerCase = (name, transactions, note) => t(name, () => {
+  const L = buildSettlementLedger({ messages: [single], search: { threads: [] }, account: { positions: [], transactions } });
+  const r = L.records[0];
+  assert.equal(r.reconciliation, 'review', name); assert.equal(r.status, 'review'); assert.equal(r.brokerTxId, undefined);
+  assert.equal(r.grossPayout, 12, 'payout evidence preserved'); assert.equal(L.summary.payouts, 0); assert.equal(L.summary.needsReview, 1);
+  assert.match(r.reconcileNote, note);
+});
+brokerCase('opposite-side settlement on the same contract is not a match', [{ id: 'yes-side', contractId: CID2, type: 'settlement', side: 'yes', quantity: 12 }], /differs/);
+brokerCase('smaller broker quantity is not a match', [{ id: 'small', contractId: CID2, type: 'settlement', side: 'no', quantity: 2 }], /differs/);
+brokerCase('larger broker quantity is not a match', [{ id: 'big', contractId: CID2, type: 'settlement', side: 'no', quantity: 50 }], /differs/);
+brokerCase('settlement missing side or quantity is missing evidence, not a match', [{ id: 'bare', contractId: CID2, type: 'settlement' }], /lacks/);
+brokerCase('two settlements that each match are ambiguous, not a match', [
+  { id: 'a', contractId: CID2, type: 'settlement', side: 'no', quantity: 12 },
+  { id: 'b', contractId: CID2, type: 'settlement', side: 'no', quantity: 12 }], /More than one/);
+brokerCase('partial close: two smaller same-side settlements are not silently summed', [
+  { id: 'p1', contractId: CID2, type: 'settlement', side: 'no', quantity: 7 },
+  { id: 'p2', contractId: CID2, type: 'settlement', side: 'no', quantity: 5 }], /differs/);
+t('dot\'s exact reproduction: Yes x10 email vs a No x2 settlement stays in review', () => {
+  const yes10 = msg('aaaaaa09', '2026-10-01T00:00:00Z', html('10.00', 'Will X happen?', '10', 'Yes', CID1));
+  const account = { positions: [], transactions: [{ id: 'other-side', contractId: CID1, type: 'settlement', side: 'no', quantity: 2 }] };
+  const L = buildSettlementLedger({ messages: [yes10], search: { threads: [] }, account });
+  assert.equal(L.records[0].reconciliation, 'review'); assert.equal(L.records[0].brokerTxId, undefined); assert.equal(L.summary.needsReview, 1);
+});
+t('an exact match among non-matching rows on the same contract still links the exact one', () => {
+  const account = { positions: [], transactions: [
+    { id: 'other', contractId: CID2, type: 'settlement', side: 'yes', quantity: 3 },
+    { id: 'exact', contractId: CID2, type: 'settlement', side: 'no', quantity: 12 }] };
+  const L = buildSettlementLedger({ messages: [single], search: { threads: [] }, account });
+  assert.equal(L.records[0].reconciliation, 'matched-broker'); assert.equal(L.records[0].brokerTxId, 'exact'); assert.equal(L.summary.payouts, 1);
 });
 t('wrong sender, non-payout subject and unparseable bodies are rejected and logged, never imported', () => {
   const spoof = msg('aaaaaa06', '2026-10-01T00:00:00Z', combo.plaintextBody, { sender: 'noreply@robinhood.com.evil.io' });

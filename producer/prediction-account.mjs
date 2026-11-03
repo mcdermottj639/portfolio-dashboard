@@ -21,7 +21,7 @@ export function normalizePredictionAccount(raw){
       issues.push('A transaction lacked a broker ID or explicit event-contract identity.');continue;
     }
     if(!nonnegative(t.quantity)||t.price!=null&&!unit(t.price)||t.fees!=null&&!nonnegative(t.fees)){issues.push('Invalid transaction values.');continue;}
-    const row={id:String(t.id),contractId:String(t.contractId),name:String(t.name||t.contractId),at:t.at,type:t.type,quantity:n(t.quantity),price:n(t.price),fees:n(t.fees),realizedNet:n(t.realizedNet)};
+    const row={id:String(t.id),contractId:String(t.contractId),name:String(t.name||t.contractId),at:t.at,type:t.type,side:['yes','no'].includes(t.side)?t.side:null,quantity:n(t.quantity),price:n(t.price),fees:n(t.fees),realizedNet:n(t.realizedNet)};
     if(seen.has(row.id)){
       if(JSON.stringify(seen.get(row.id))!==JSON.stringify(row))issues.push('Conflicting rows for one broker transaction ID.');
       continue;
