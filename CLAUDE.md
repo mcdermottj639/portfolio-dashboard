@@ -1,3 +1,25 @@
+## v175 — Smart Money scorecard: who's actually good (2026-11-03)
+
+Jack: "track performance of each individual or entity so we can see who's good". New pure module
+`producer/smartmoney-perf.mjs` (+ test) and a **Who's good** view in Smart $.
+- **Method (read before changing):** every tracked trade (politician ledger + insider Form 4 rows) is
+  priced on the FIRST DAY IT APPEARS in the snapshot — the earliest price a follower could actually get —
+  then marked daily against SPY. Score = side-signed excess: buy → stock − SPY; sell → SPY − stock.
+  Insider rows also get "since their trade price" (stock only). Entry needs BOTH the stock and SPY quoted
+  the same day, else it waits (never mixes windows). Forward-only: nothing back-filled — no historical
+  candles on our keys — so history starts 2026-11-03.
+- **Ranking:** a mark counts once ≥5 days old (`MIN_AGE_DAYS`); a person is ranked at ≥5 scored trades
+  (`MIN_SCORED`), by average excess, median as tie-break. Everyone else is shown as "Too early to judge".
+- **Data:** flow-fetch.mjs now spends one Finnhub `/quote` per tracked symbol + SPY once a day (cap 150,
+  ~1.1 s apart, ≈3 min) and writes `raw/flow/_marks.json`; build-data folds it into
+  `data.flow.perf` (`trades[]` with `res`, 400-day retention, max 900) and `data.flow.scoreboard`.
+  The prior ledger carries forward on runs without marks. Display-only — no score, target, order or alert.
+- **UI:** feed cards show "Since report · Nd · Stock · vs S&P · Since trade"; the person page gains a
+  Track record panel (beat-S&P rate, average/median vs S&P, best/worst call); Who's good ranks people,
+  filterable by Politicians / Insiders, with "How the scores work" folded into a note.
+- Verified: new perf suite 23/23, UI suite 10 tests, all producer suites; synthetic Playwright
+  320/390/1280 Ivory + Midnight, no overflow. Live marks unverified until the next full producer run.
+
 ## v174 — Smart Money tab: politician + insider trades on your names, read-only (2026-11-03)
 
 Jack can't use Robinhood Social because of his job, so this rebuilds the public-data half of it inside

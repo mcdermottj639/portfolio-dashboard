@@ -26,7 +26,8 @@ import { coverFromRaw } from './av.mjs';
 import { avSym } from './extfund.mjs';
 import { scoreSymbol } from './flow.mjs';
 import { normalizeDisclosure } from './polflow.mjs';
-import { alreadyFetchedToday } from './fetchgate.mjs';
+import { alreadyFetchedToday, readSnapshot } from './fetchgate.mjs';
+import { symbolsToQuote } from './smartmoney-perf.mjs';
 import { etDate } from './market.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -74,6 +75,8 @@ const sentFrom = (() => { const d = new Date(`${todayET}T00:00:00Z`); d.setUTCMo
 const twoYearsAgo = (() => { const d = new Date(`${todayET}T00:00:00Z`); d.setUTCFullYear(d.getUTCFullYear() - 2); return d.toISOString().slice(0, 10); })();
 
 let wrote = 0, skipped = 0, firstErr = null;
+const freshReads = {};   // this run's scored sidecars, for the Smart Money scorecard's symbol list
+let polFresh = [];
 // Cover BOTH books, not just the margin account: the consumer's Flow card sits on the Accounts
 // page and reads for the agentic side too, and flow context matters most exactly where the
 // executor may act — the agentic holdings and the weekly target's names. Margin cover first
@@ -125,6 +128,7 @@ for (const sym of symbols) {
     console.warn(`[flow] ${sym}: no usable data${firstErr ? ` (${firstErr})` : ''} — keeping prior`);
   } else {
     writeFileSync(join(FLOWDIR, `${sym}.json`), JSON.stringify({ sym, asOf: todayET, ...read }));
+    freshReads[sym] = { sym, ...read };
     wrote++;
   }
   await sleep(5000); // ~55 Finnhub calls/min at 6 calls per symbol
@@ -145,12 +149,42 @@ if (FMP_KEY) {
     if (!Array.isArray(res)) { console.log(`[flow] ${chamber} disclosures unavailable${res && res._err ? ` (${res._err})` : ''}`); continue; }
     for (const row of res) { const e = normalizeDisclosure(row, chamber); if (e) fresh.push(e); }
   }
+  polFresh = fresh;
   if (fresh.length) {
     writeFileSync(join(FLOWDIR, '_polflow.json'), JSON.stringify({ asOf: todayET, events: fresh }));
     const lags = fresh.map((e) => e.lag).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
     console.log(`[flow] congressional: ${fresh.length} tradeable rows of 50 polled (rest are bonds/funds/no-symbol)${lags.length ? ` · median disclosure lag ${lags[Math.floor(lags.length / 2)]}d` : ''}`);
   } else {
     console.log('[flow] congressional: no tradeable rows this poll — keeping the accumulated ledger');
+  }
+}
+
+// Smart Money scorecard marks (v175) — one Finnhub /quote per tracked symbol (every politician and
+// insider trade still in the ledger, plus SPY as the benchmark), once a day. build-data.mjs folds these
+// into data.flow.perf via smartmoney-perf.mjs: entry = the first day a trade is seen with both prices,
+// then marked daily. Display-only. Paced ~1.1 s/call to stay under Finnhub's 60/min; capped at 150.
+{
+  let prior = null;
+  try { prior = await readSnapshot(); } catch { prior = null; }
+  const pf = (prior && prior.flow) || {};
+  const flowNow = {
+    polEvents: [...(Array.isArray(pf.polEvents) ? pf.polEvents : []), ...polFresh],
+    symbols: { ...(pf.symbols || {}), ...freshReads },
+  };
+  const want = symbolsToQuote({ priorPerf: pf.perf || null, flow: flowNow, cap: 150 });
+  const quotes = {};
+  let qErr = null;
+  for (const sym of want) {
+    const r = await getJSON(`${FH}/quote?symbol=${encodeURIComponent(avSym(sym))}&token=${tok}`);
+    const c = r && !r._err ? parseFloat(r.c) : NaN;
+    if (Number.isFinite(c) && c > 0) quotes[sym] = c; else if (!qErr && r && r._err) qErr = r._err;
+    await sleep(1100);
+  }
+  if (quotes.SPY && Object.keys(quotes).length > 1) {
+    writeFileSync(join(FLOWDIR, '_marks.json'), JSON.stringify({ asOf: todayET, quotes }));
+    console.log(`[flow] smart-money marks: ${Object.keys(quotes).length}/${want.length} quoted (SPY ${quotes.SPY})`);
+  } else {
+    console.log(`[flow] smart-money marks unavailable${qErr ? ` (${qErr})` : ''} — scorecard keeps its prior marks`);
   }
 }
 

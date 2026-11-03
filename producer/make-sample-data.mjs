@@ -11,6 +11,7 @@ import { emit } from './emit.mjs';
 import { MARKET_SYMBOLS } from './markets.mjs';
 import { LEADERS } from './leaders.mjs';
 import { avKey } from './av.mjs';
+import { updatePerf, tradeResult, scoreboard } from './smartmoney-perf.mjs';
 import { buildPicks } from './picks.mjs';
 import { gradeAll, gradingUniverse } from './pickgrade.mjs';
 import { analyzeLeg, buildIdeas } from './options.mjs';
@@ -598,6 +599,18 @@ const data = {
   })(),
 };
 
+// Smart Money scorecard sample (v175): two synthetic mark days so the "Who's good" board, person track
+// record and per-trade lines render in preview. Prices are invented for layout only.
+{
+  const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const syms = ['SPY', 'NVDA', 'GOOGL', 'MSFT', 'LLY', 'XOM', 'AMAT'];
+  const p0 = { SPY: 600, NVDA: 160, GOOGL: 240, MSFT: 500, LLY: 780, XOM: 115, AMAT: 190 };
+  const p1 = { SPY: 612, NVDA: 171, GOOGL: 262, MSFT: 489, LLY: 830, XOM: 109, AMAT: 186 };
+  let perf = updatePerf(null, data.flow, p0, { asOf: day(12) });
+  perf = updatePerf(perf, data.flow, Object.fromEntries(syms.map((s) => [s, p1[s]])), { asOf: day(0) });
+  data.flow.perf = { ...perf, trades: perf.trades.map((t) => ({ ...t, res: tradeResult(t) })) };
+  data.flow.scoreboard = scoreboard(perf, { minScored: 2 });
+}
 await emit(data);
 console.log('  sample:', Object.keys(recorded).length, 'recorded (incl. AV macro/fundamentals/earnings) ·',
   Object.keys(quotes).length, 'quotes ·', Object.keys(hist.day).length, 'daily ·', Object.keys(hist.month).length, 'monthly histories ·',

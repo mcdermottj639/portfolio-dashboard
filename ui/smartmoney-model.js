@@ -125,6 +125,25 @@
     if(!pol.buys&&!pol.sells&&!ins.buys&&!ins.sells)return {tone:'none',title:'No reported moves',text:'Nothing disclosed on this name in the window covered by the snapshot.'};
     return {tone:'flat',title:'Mixed or light activity',text:'Not enough one-sided activity to read anything into it.'};
   }
+  // ---- Scorecard (v175) ---------------------------------------------------------------------
+  // The producer marks every tracked trade from the day it was first seen, against SPY (smartmoney-perf.mjs).
+  function perfIndex(flow){
+    const m=new Map();
+    for(const t of (flow&&flow.perf&&Array.isArray(flow.perf.trades)?flow.perf.trades:[])){if(t&&t.id&&t.res)m.set(t.id,{...t.res,entryDay:t.entryDay||null,lastDay:t.lastDay||null});}
+    return m;
+  }
+  function whoLabel(key){
+    const parts=String(key||'').split('|');
+    if(parts[0]==='pol')return {who:titleCase(parts[1]),role:'Member of Congress',kind:'politician'};
+    if(parts[0]==='ins')return {who:titleCase(parts[1]),role:'Insider at '+(parts[2]||''),kind:'insider'};
+    return {who:titleCase(parts[1]||key),role:'',kind:null};
+  }
+  function board(flow,{kind='all'}={}){
+    const rows=(flow&&Array.isArray(flow.scoreboard)?flow.scoreboard:[]).filter(r=>r&&r.who&&(kind==='all'||r.kind===kind));
+    return rows.map(r=>{const l=whoLabel(r.who);return {...r,key:r.who,name:l.who,role:l.role,kind:r.kind||l.kind};});
+  }
+  function personRecord(flow,key){return board(flow).find(r=>r.key===key)||null;}
+  const pct=v=>v===null||v===undefined||!Number.isFinite(v)?'—':(v>0?'+':v<0?'−':'')+(Math.abs(v)*100).toFixed(1).replace(/\.0$/,'')+'%';
   // ---- Flags (Jarvis-style decisions) ---------------------------------------------------------
   function flags(items,flow,{asOf,follow=null,days=30}={}){
     const out=[];const symbols=(flow&&flow.symbols)||{};
@@ -185,5 +204,5 @@
     L.push('','Verify these disclosures against the source filings, check the chart, news and earnings date, and tell me whether this changes anything for my holdings. Facts with sources only.');
     return L.join('\n');
   }
-  return {shortDay,titleCase,bucketLabel,compactMoney,mineOf,mineLabel,politicianItems,insiderItems,allItems,feed,yourNames,person,ticker,readOf,flags,isOpen,cleanState,researchPrompt,daysBetween};
+  return {perfIndex,whoLabel,board,personRecord,pct,shortDay,titleCase,bucketLabel,compactMoney,mineOf,mineLabel,politicianItems,insiderItems,allItems,feed,yourNames,person,ticker,readOf,flags,isOpen,cleanState,researchPrompt,daysBetween};
 });

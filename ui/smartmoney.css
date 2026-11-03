@@ -100,3 +100,15 @@ html[data-theme="gold"] .sm-side{color:#101510}
 /* Six areas in the phone bottom bar (v174): share the width evenly instead of a 64px minimum each,
    which would overflow a 320–390px screen once Smart $ joined the five original areas. */
 @media(max-width:900px){html.experience-on .ex-main button{min-width:0;flex:1 1 0;padding:6px 2px}html.experience-on .ex-main button span{white-space:nowrap}}
+/* Scorecard (v175) */
+.sm-perf{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--sm-muted);border-top:1px dashed var(--sm-rule);padding-top:7px}
+.sm-perf b{color:var(--sl-ink,#20271f);font-variant-numeric:tabular-nums}
+.sm-perf-wait{font-style:italic}
+.sm-perf b.sm-good,.sm-score b.sm-good,.sm-tile strong.sm-good{color:var(--sm-buy)}
+.sm-perf b.sm-bad,.sm-score b.sm-bad{color:var(--sm-sell)}
+.sm-small{font-size:11px;text-align:right}
+.sm-rank-n{flex:none;width:36px;height:36px;border-radius:50%;background:var(--sl-accent-soft,#e7f0e6);color:var(--sl-ink,#20271f);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.sm-score{flex:none;display:flex;flex-direction:column;align-items:flex-end}
+.sm-score b{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
+.sm-score small{font-size:11px;color:var(--sm-muted)}
+@media(max-width:430px){.sm-views{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}}
