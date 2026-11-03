@@ -1,3 +1,13 @@
+## 2026-11-03 — Preflight tells the producer to read the payout mailbox every run
+
+Gmail was attached to the producer task at 07:27 ET, but the 07:35 run still left the Settled tab at
+"Mailbox not read". build-data reads `raw/predict-mail-*.json` correctly, so the agent skipped step 2e:
+the task prompt (http_api, not editable from a session) lists only Robinhood fetches for FETCH_LIGHT,
+and Gmail's tools can be deferred in a scheduled session, so "only if Gmail is available" read as no.
+The prompt says to obey preflight's directive, so `preflight.mjs` now prints a `PREFLIGHT ALSO:` line on
+every non-SKIP run naming step 2e and the ToolSearch to load Gmail. PRODUCER.md step 2e says the same.
+Not verified until a run shows the mailbox as read. Producer-only; no app/cache bump.
+
 ## 2026-11-03 — Predict Settled: a broker settlement links only on contract + side + quantity
 
 dot's independent review of v173 (Portfolio handoff, 11/3 06:51 ET) reproduced that `reconcile()`
