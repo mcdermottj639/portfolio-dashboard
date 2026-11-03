@@ -1,3 +1,29 @@
+## v173 — Predict Settled tab from Robinhood payout emails (2026-11-03)
+
+dot (ChatGPT) relayed Jack's request on 11/2: settled prediction-market emails are the best outcome
+source, so track them in Predict. Jack chose **option A** (email-only, private) and **route 1** (the
+producer reads the mailbox). `producer/prediction-settlements.mjs` parses Robinhood's "Your $X payout
+is available" emails (sender `noreply@robinhood.com`; Amount / Contract / Quantity + the contract ID in
+the "View payout" link) into the encrypted **`data.predictionSettlements`** — never the public
+`data/predictions.json`, and hypothetical Results are unchanged. Rules, all pinned in
+`prediction-settlements.test.mjs` (17, synthetic emails only): gross payout is never profit — cost,
+fees, net and settlement time stay null and there is no ROI or win rate; a combo is ONE record with
+nested legs; a "No" payout is a payout on the No side; no loss is ever inferred from a missing email;
+records are append-only keyed by Gmail message id (an identical retry adds nothing, a forwarded copy
+is kept as `duplicate`, a different amount/quantity for the same contract marks both `conflict`, no
+contract ID or excess quantity is `review` — all outside the totals); a settlement already in the
+future broker feed is linked and counted once. **PRODUCER.md step 2e** (EVERY-RUN, best-effort) runs
+`predict-mail-plan.mjs` and saves `search_threads` + new `get_message` results verbatim into `raw/`;
+**it only runs if the producer's scheduled task has the Gmail connector**, which is set in the claude.ai
+UI, not here (that task is `http_api`; its prompt already defers to PRODUCER.md, so no prompt edit).
+Without Gmail the ledger carries forward and the tab says the mailbox has not been read. UI:
+`ui/predictions.js` adds a fifth **Settled** tab (tiles, weekly bars hidden in privacy mode, one card
+per payout with legs and the source email link, a collapsed method note); the tab keyboard handler
+no longer hard-codes four tabs. App/cache **v173 / pf-v173**. Tests: 51 producer suites,
+`build-data.test.mjs` 106/106 incl. a payout email through the real builder, 3 model suites,
+`predictions-browser.mjs` (Settled at 320/390, privacy masking, End/ArrowLeft) and `brief-browser.mjs`.
+The real ledger (7–9 payouts since July) appears only after the first producer run with Gmail access.
+
 ## 2026-11-02 — ••3900 stop breaks: phase-out names exit, active names re-research (owner "A + B")
 
 The executor never acted on a research stop: in `agentic-deploy.mjs` the stop only deferred BUYS

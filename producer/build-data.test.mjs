@@ -48,6 +48,12 @@ const D1 = relDay(41), D2 = relDay(40);
 const barsAround = (base) => Array.from({ length: 5 }, (_, i) => ({ begins_at: `${relDay(42 - i)}T13:30:00Z`, close_price: String(base + i), interpolated: false }));
 
 const FIXTURES = {
+  // Synthetic Robinhood payout email (PRODUCER.md step 2e) — reaches the encrypted Settled ledger.
+  'predict-mail-search.json': { threads: [{ id: 'synthmail01' }] },
+  'predict-mail-synthmail01.json': { id: 'synthmail01', date: '2026-10-25T20:12:54Z', sender: 'noreply@robinhood.com',
+    subject: 'Your $30.00 payout is available', viewUrl: 'https://mail.google.com/mail/#all/synthmail01',
+    plaintextBody: '<div><b>Amount</b>: $30.00<br><b>Contract</b>: Yes Team A, Yes Team B<br><b>Quantity</b>: 30 Yes</div>' +
+      '<a href="https://applink.robinhood.com/event_contract_payout?contract_id=11111111-2222-4333-8444-555555555555">View payout</a>' },
   'prediction-account.json': {schemaVersion:1,source:'robinhood',asOf:'2026-09-01T12:00:00Z',
     historyStart:'2026-01-01',historyComplete:true,coverage:{balance:true,positions:true,transactions:true,fees:true},
     balance:{value:21,availableCash:21},positions:[],transactions:[]},
@@ -319,6 +325,9 @@ try {
   const out = JSON.parse(readFileSync(DATA, 'utf8'));
   eq('explicit Predict account is normalized into the account snapshot', out.predictions.balance.value, 21);
   eq('Predict capture timestamp is not the build timestamp', out.predictions.asOf, '2026-09-01T12:00:00Z');
+  eq('payout email reaches the encrypted Settled ledger as one combo, gross only',
+    [out.predictionSettlements.summary.payouts, out.predictionSettlements.summary.grossReceived, out.predictionSettlements.records[0].legs.length,
+     out.predictionSettlements.records[0].net, out.predictionSettlements.mailbox.status], [1, 30, 2, null, 'read']);
   eq('empty fresh bars do NOT wipe carried hist', out.hist.day.AAA.length, 5);
   // Bars are compacted at build time (histbars.mjs) — hist was 91% of the snapshot and the
   // snapshot is an encrypted blob committed ~13x/day to a public repo. This assertion keeps
@@ -511,11 +520,14 @@ try {
   // Derivation, snapshot carry-forward and grading must all retain the saved history.
   const savedDecisions = out.main.decisions.decisions;
   unlinkSync(join(RAW, 'prediction-account.json'));
+  unlinkSync(join(RAW, 'predict-mail-search.json')); unlinkSync(join(RAW, 'predict-mail-synthmail01.json'));
   writeFileSync(join(RAW, 'main-orders.json'), JSON.stringify({ data: { orders: [], next: null } }));
   execFileSync(process.execPath, [join(__dirname, 'build-data.mjs'), 'empty orders regression'],
     { env: { ...process.env, PF_PASSPHRASE: '' }, cwd: ROOT, encoding: 'utf8', stderr: 'pipe' });
   const refreshed = JSON.parse(readFileSync(DATA, 'utf8'));
   eq('missing fresh Predict input carries forward the original account capture unchanged', refreshed.predictions, out.predictions);
+  eq('no mailbox read: the Settled ledger and its last read time carry forward unchanged',
+    [refreshed.predictionSettlements.records, refreshed.predictionSettlements.mailbox], [out.predictionSettlements.records, out.predictionSettlements.mailbox]);
   const history = (rows) => rows.map(({ id, date, trades, source }) => ({ id, date, trades, source }));
   eq('empty orders refresh preserves saved decision IDs, dates, sources and trades',
     history(refreshed.main.decisions.decisions), history(savedDecisions));

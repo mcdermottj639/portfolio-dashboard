@@ -118,10 +118,31 @@ open contracts, fully paginated transactions, all charges and settlement records
 small sample with the broker. If any capability is missing, leave its coverage false. No trade
 submission or account-setting change is needed.
 
+## Settled payouts from Robinhood emails (private, 2026-11-03)
+
+Owner choice (Nov 3, "option A"): Robinhood's "Your $X payout is available" emails are the
+outcome source for a private **Settled** tab. PRODUCER.md step 2e saves the matching Gmail
+messages into `raw/`; `prediction-settlements.mjs` parses them into the encrypted
+`data.predictionSettlements` (`schemaVersion 1`, `source "robinhood-payout-email"`). The public
+collector and `data/predictions.json` never see it, and hypothetical Results are unchanged.
+
+What an email proves: gross payout, contract text, quantity, Yes/No side, receipt time and (from
+the "View payout" link) the broker contract ID. What it does not: cost, fees, net, settlement time,
+complete history, or that each combo leg won separately. So `costBasis`, `fees`, `net` and
+`settledAt` stay null; `summary.verifiedNet` stays null; there is no ROI or win rate; a missing email
+never becomes a loss. A combo is one record with nested `legs[]`. A "No" payout is a payout on the
+No side. Records are append-only, keyed `gmail:<message id>` (a source/idempotency key, not a broker
+transaction ID). A second email with the same contract, side, quantity and amount is kept as
+`duplicate` and not counted; a different amount or quantity for the same contract and side marks
+both `conflict` and keeps them out of the totals. No contract ID, or a quantity above a verified
+position, is `review`. When the authenticated account feed above exists, a settlement already in it
+is linked (`matched-broker`) and counted once. Per-contract payout ≠ $1 is flagged, not hidden.
+
 ## Validation
 
 - `node --test tests/*.test.cjs`
 - `node producer/prediction-account.test.mjs`
+- `node producer/prediction-settlements.test.mjs` (synthetic payout emails: combo, No side, retries, duplicates, conflicts, rejects)
 - `node producer/predictions-fetch.test.mjs` (mock transport; pagination, historical settlement,
   exact link matching, partial and total outages; does not touch the production snapshot)
 - `node producer/build-data.test.mjs` (synthetic integration; restores committed account data)
