@@ -1,3 +1,17 @@
+## v177 — Options history: one-line rows by close month (2026-11-03)
+
+Jack: the v169 contract cards (~280px each) "take too much room as we go on". Approved: closed contracts
+render as one-line rows (ticker pill · strike/type ×qty · status + close date · P/L · % kept) inside
+**month groups** whose header carries W·L and the month's matched total; only the newest month starts open.
+Tapping a row opens the v169 card body (life bar + cash legs; its duplicate header is hidden). Filter chips
+All / Wins / Losses / each ticker (`ohFilter`, horizontally scrolling inside the card) — a filter opens the
+matching months and hides empty ones. The scoreboard stays. The old "monthly matched results" `<details>`
+is gone — the month headers replace it. Pending/other-year lists use the same compact rows (no grouping).
+Same ledger fields; nothing new computed. Files: `index.html` (`optIncomeHistory`), `ui/experience.css`
+(`.oh-*` v177 block), `sw.js`. App/cache and all `?v=` assets **v177 / pf-v177**. Verified: model suites green;
+synthetic Playwright 320/390/1280, Ivory + Midnight — no horizontal overflow, no page errors, expand +
+filters work; a closed row is ~51px vs ~280px. Physical iPhone not verified.
+
 ## v176 — Smart $ feed: grouped compact rows instead of one card per trade (2026-11-03)
 
 Jack: "This is just a long scroll to get this info" (three identical ~470px cards for one member buying MU

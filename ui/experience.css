@@ -145,3 +145,42 @@ html[data-theme="gold"] .oh-row{background:rgba(255,255,255,.03)}
 html[data-theme="gold"] .oh-win .oh-amt,html[data-theme="gold"] .oh-stats .pos{color:#34d399}html[data-theme="gold"] .oh-loss .oh-amt,html[data-theme="gold"] .oh-stats .neg{color:#f87171}
 html[data-theme="gold"] .oh-chip{color:#cbd5e1}html[data-theme="gold"] .oh-c-exp{color:#6ee7b7}html[data-theme="gold"] .oh-c-roll{color:#fcd34d}html[data-theme="gold"] .oh-c-assign{color:#c4b5fd}html[data-theme="gold"] .oh-c-closed{color:#93c5fd}
 @media(max-width:420px){.oh-score{gap:12px;padding:12px}.oh-ring{width:66px;height:66px}.oh-ring b{font-size:16px}.oh-stats b{font-size:14.5px}.oh-stats span{width:52px}.oh-badge{min-width:40px;height:40px;font-size:11.5px;border-radius:10px}.oh-title{font-size:15px}.oh-amt{font-size:18px}.oh-ends{flex-wrap:wrap}.oh-ends .oh-mid{order:3;flex-basis:100%;text-align:left;margin-top:2px;font-weight:600}}
+/* v177 — compact options history: one-line rows by close month, card opens on tap */
+.oh-hist{margin:12px 0 4px}
+.oh-filters{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 0 8px;max-width:100%}
+.oh-filters::-webkit-scrollbar{display:none}
+.oh-fchip{flex:none;font:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;border:1px solid var(--border,#e5e7eb);background:var(--surface,#fff);color:var(--text);cursor:pointer}
+.oh-fchip.on{background:#0f3d2e;border-color:#0f3d2e;color:#fff}
+.oh-months{display:flex;flex-direction:column;gap:8px}
+.oh-month{border:1px solid var(--border,#e5e7eb);border-radius:14px;background:var(--surface-2);overflow:hidden}
+.oh-month>summary,.oh-sum{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;min-width:0}
+.oh-month>summary::-webkit-details-marker,.oh-sum::-webkit-details-marker{display:none}
+.oh-month>summary{padding:11px 14px;font-size:14px}
+.oh-ml{font-weight:800;color:var(--text)}
+.oh-mr{margin-left:auto;display:flex;align-items:baseline;gap:10px;font-size:12.5px;white-space:nowrap;color:var(--text)}
+.oh-mr em{font-style:normal;font-weight:700}.oh-mr b{font-size:15px}
+.oh-mr .pos,.oh-sr .pos{color:#059669}.oh-mr .neg{color:#dc2626}
+.oh-chev{flex:none;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);opacity:.45;margin:-4px 2px 0 2px;transition:transform .15s;color:var(--text)}
+details[open]>summary>.oh-chev{transform:rotate(225deg);margin-top:4px}
+.oh-month .oh-list{gap:0;margin:0;padding:0 8px 8px}
+.oh-item{border-top:1px solid var(--border,#e5e7eb)}
+.oh-item:first-child{border-top:0}
+.oh-sum{padding:9px 6px 9px 8px;position:relative}
+.oh-sum::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:#94a3b8}
+.oh-win>.oh-sum::before{background:#10b981}.oh-loss>.oh-sum::before{background:#ef4444}.oh-open>.oh-sum::before{background:#f59e0b}
+.oh-tk{flex:none;min-width:48px;font-size:12px;font-weight:800;letter-spacing:.3px;padding:4px 7px;border-radius:8px;text-align:center;color:#fff;background:#0f3d2e}
+.oh-loss .oh-tk{background:#7f1d1d}.oh-open .oh-tk{background:#78350f}
+.oh-sl,.oh-sr{display:flex;flex-direction:column;min-width:0;color:var(--text)}
+.oh-sl b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oh-sl small,.oh-sr small{font-size:11.5px;opacity:.68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oh-sr{margin-left:auto;text-align:right;flex:none}
+.oh-sr b{font-size:15px;font-weight:800}
+.oh-win .oh-sr b{color:#059669}.oh-loss .oh-sr b{color:#dc2626}.oh-open .oh-sr b{color:#b45309;font-size:13px}
+.oh-item>.oh-row{margin:2px 0 10px}
+.oh-none{padding:14px;text-align:center;font-size:13px;opacity:.7}
+.oh-foot{font-size:11px;opacity:.6;margin-top:8px;color:var(--text)}
+html[data-theme="gold"] .oh-fchip{background:rgba(255,255,255,.04)}html[data-theme="gold"] .oh-fchip.on{background:#34d399;border-color:#34d399;color:#0a120f}
+html[data-theme="gold"] .oh-win .oh-sr b,html[data-theme="gold"] .oh-mr .pos{color:#34d399}html[data-theme="gold"] .oh-loss .oh-sr b,html[data-theme="gold"] .oh-mr .neg{color:#f87171}
+.oh-ml{white-space:nowrap}
+.oh-item>.oh-row>.oh-top{display:none}.oh-item>.oh-row .oh-life{margin-top:0}
+@media(max-width:360px){.oh-month>summary{padding:10px 10px;gap:6px}.oh-mr{gap:6px;font-size:11.5px}.oh-mr b{font-size:13.5px}.oh-sum{gap:7px;padding:8px 2px 8px 7px}.oh-tk{min-width:40px;font-size:11px;padding:4px 5px}.oh-sl b{font-size:13px}.oh-sr b{font-size:13.5px}.oh-sum>.oh-chev,.oh-month>summary>.oh-chev{display:none}.oh-month .oh-list{padding:0 4px 6px}}

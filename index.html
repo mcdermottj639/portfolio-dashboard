@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=176">
-<link rel="stylesheet" href="ui/predictions.css?v=176">
-<link rel="stylesheet" href="ui/smartmoney.css?v=176">
-<link rel="stylesheet" href="ui/ticker.css?v=176">
+<link rel="stylesheet" href="ui/experience.css?v=177">
+<link rel="stylesheet" href="ui/predictions.css?v=177">
+<link rel="stylesheet" href="ui/smartmoney.css?v=177">
+<link rel="stylesheet" href="ui/ticker.css?v=177">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=176"></script>
+<script src="ui/sd-rules.js?v=177"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v176'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v177'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -6120,23 +6120,53 @@ function optIncomeHistory(o,realized){
     }
     const inL=op==null?'Opening cash':op>=0?'Premium in':'Paid to open', outL=cl==null?'Closing cash':cl<0?'Paid to close':cl>0?'Received at close':'Closed at';
     const outV=cl===0&&chipOf(r.status)==='exp'?'<b>$0</b> <em>expired worthless</em>':'<b>'+money(cl==null?null:Math.abs(cl))+'</b>';
-    return '<div class="oh-row oh-'+tone+'"><div class="oh-top"><div class="oh-id"><span class="oh-badge">'+esc(r.symbol)+'</span><div class="oh-name"><div class="oh-title">'+esc(r.strike==null?'':('$'+r.strike))+' '+esc(typL)+' <span class="oh-chip oh-c-'+chipOf(r.status)+'">'+esc(r.status||'—')+'</span></div><div class="oh-sub">'+esc(r.quantity)+' contract'+(num(r.quantity)===1?'':'s')+'</div></div></div><div class="oh-pl"><div class="oh-amt">'+(net==null?'Unreconciled':(net>0?'+':'')+money(net))+'</div>'+(kept?'<div class="oh-kept">'+kept+'</div>':'')+'</div></div>'+life+'<div class="oh-cash"><span>'+inL+' <b>'+money(op==null?null:Math.abs(op))+'</b></span><span>'+outL+' '+outV+'</span></div></div>';
+    const compact='<summary class="oh-sum"><span class="oh-tk">'+esc(r.symbol)+'</span><span class="oh-sl"><b>'+esc(r.strike==null?'':('$'+r.strike))+' '+esc(typL)+(num(r.quantity)>1?' ×'+esc(r.quantity):'')+'</b><small>'+esc(r.status||'—')+' '+esc(dShort(r.date))+'</small></span><span class="oh-sr"><b>'+(net==null?'Unreconciled':(net>0?'+':'')+money(net))+'</b>'+(kept?'<small>'+kept.replace(' of premium',' ')+'</small>':'')+'</span><span class="oh-chev" aria-hidden="true"></span></summary>';
+    return '<details class="oh-item oh-'+tone+'" data-sym="'+esc(r.symbol)+'">'+compact+'<div class="oh-row oh-'+tone+'"><div class="oh-top"><div class="oh-id"><span class="oh-badge">'+esc(r.symbol)+'</span><div class="oh-name"><div class="oh-title">'+esc(r.strike==null?'':('$'+r.strike))+' '+esc(typL)+' <span class="oh-chip oh-c-'+chipOf(r.status)+'">'+esc(r.status||'—')+'</span></div><div class="oh-sub">'+esc(r.quantity)+' contract'+(num(r.quantity)===1?'':'s')+'</div></div></div><div class="oh-pl"><div class="oh-amt">'+(net==null?'Unreconciled':(net>0?'+':'')+money(net))+'</div>'+(kept?'<div class="oh-kept">'+kept+'</div>':'')+'</div></div>'+life+'<div class="oh-cash"><span>'+inL+' <b>'+money(op==null?null:Math.abs(op))+'</b></span><span>'+outL+' '+outV+'</span></div></div></details>';
   };
   const renderRows=items=>'<div class="oh-list">'+items.map(renderRow).join('')+'</div>';
+  /* v177 — closed contracts read as one-line rows grouped by close month; the v169 card opens on tap.
+     Only the newest month starts open, so the list stays about one screen as the year fills up. */
+  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const renderMonths=items=>{
+    const by={};items.forEach(r=>{const k=String(r.date||'').slice(0,7)||'—';(by[k]=by[k]||[]).push(r);});
+    return Object.keys(by).sort().reverse().map((k,i)=>{
+      const g=by[k], v=g.filter(r=>num(r.net)!=null), sum=v.length?v.reduce((s,r)=>s+r.net,0):null;
+      const w=v.filter(r=>r.net>0).length, l=v.filter(r=>r.net<0).length;
+      const m=/^(\d{4})-(\d{2})$/.exec(k), lbl=m?MON[+m[2]-1]+' '+m[1]:k;
+      return '<details class="oh-month"'+(i===0?' open':'')+'><summary><span class="oh-ml">'+esc(lbl)+'</span><span class="oh-mr"><em class="pos">'+w+'W</em> · <em class="neg">'+l+'L</em><b class="'+(sum!=null&&sum<0?'neg':'pos')+'">'+(sum==null?'—':(sum>0?'+':'')+money(sum))+'</b></span><span class="oh-chev" aria-hidden="true"></span></summary>'+renderRows(g)+'</details>';
+    }).join('');
+  };
+  const chips=items=>{
+    const syms=[...new Set(items.map(r=>r.symbol).filter(Boolean))].sort();
+    const c=(f,label,on)=>'<button type="button" class="oh-fchip'+(on?' on':'')+'" data-f="'+esc(f)+'" onclick="ohFilter(this)">'+esc(label)+'</button>';
+    return '<div class="oh-filters" role="group" aria-label="Filter contracts">'+c('all','All',1)+c('win','Wins')+c('loss','Losses')+syms.map(s=>c('sym:'+s,s)).join('')+'</div>';
+  };
   const scoreboard=items=>{
     const v=items.filter(r=>num(r.net)!=null); if(!v.length)return '';
     const w=v.filter(r=>r.net>0), l=v.filter(r=>r.net<0), best=v.reduce((a,b)=>b.net>a.net?b:a), worst=v.reduce((a,b)=>b.net<a.net?b:a);
     const rate=Math.round(w.length/v.length*100);
     return '<div class="oh-score"><div class="oh-ring" style="--p:'+rate+'"><b>'+rate+'%</b><span>win rate</span></div><div class="oh-stats"><div><span>Record</span><b><em class="pos">'+w.length+'W</em> · <em class="neg">'+l.length+'L</em></b></div><div><span>Best</span><b class="'+(best.net<0?'neg':'pos')+'">'+(best.net>0?'+':'')+money(best.net)+'</b><small>'+esc(best.symbol)+' '+esc(best.strike==null?'':'$'+best.strike)+'</small></div><div><span>Worst</span><b class="'+(worst.net<0?'neg':'pos')+'">'+(worst.net>0?'+':'')+money(worst.net)+'</b><small>'+esc(worst.symbol)+' '+esc(worst.strike==null?'':'$'+worst.strike)+'</small></div></div></div>';
   };
-  const months={};valid.forEach(r=>{const m=r.date.slice(0,7);months[m]=(months[m]||0)+r.net;});
-  const monthKeys=Object.keys(months).sort().reverse();
-  if(monthKeys.length)h+='<details style="margin:14px 0"><summary>'+esc(year)+' monthly matched results · before fees</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+monthKeys.map(m=>'<div style="padding:10px;background:var(--surface-2);border-radius:10px">'+esc(m)+'<br><b>'+money(months[m])+'</b></div>').join('')+'</div></details>';
-  h+=scoreboard(rows)+renderRows(rows);
+  h+=scoreboard(rows);
+  if(rows.length)h+='<div class="oh-hist">'+chips(rows)+'<div class="oh-months">'+renderMonths(rows)+'</div><div class="oh-none" hidden>No contracts match this filter.</div><div class="oh-foot">'+esc(year)+' matched results by close month · before fees</div></div>';
   if(pending.length)h+='<details open class="opt-income-details"><summary>Past contracts awaiting settlement records ('+pending.length+')</summary><p>Opening cash is known. Profit stays uncalculated until the broker supplies the outcome.</p>'+renderRows(pending)+'</details>';
   if(older.length)h+='<details class="opt-income-details"><summary>Other years · '+older.length+' historical result(s)</summary><p>Excluded from '+esc(year)+' totals.</p>'+renderRows(older)+'</details>';
   h+='<details class="opt-income-details"><summary>Data coverage &amp; calculation details</summary><p>History as of '+esc(ledger.asOf&&ledger.asOf.slice(0,10))+'. '+esc(ledger.coverage)+'</p><p>'+esc(ledger.unresolved)+' record(s) need more detail. Open or unresolved lots: '+esc(ledger.pendingResolution)+'. Gross premiums are not realized profit. Assignment/exercise stock proceeds are never counted as option earnings. Matching totals alone does not establish complete coverage.</p></details></div>';
   return h;
+}
+function ohFilter(btn){
+  const box=btn.closest('.oh-hist'); if(!box)return; const f=btn.getAttribute('data-f');
+  box.querySelectorAll('.oh-fchip').forEach(b=>b.classList.toggle('on',b===btn));
+  let any=0;
+  box.querySelectorAll('.oh-month').forEach(mo=>{
+    let n=0;
+    mo.querySelectorAll('.oh-item').forEach(it=>{
+      const ok=f==='all'||(f==='win'&&it.classList.contains('oh-win'))||(f==='loss'&&it.classList.contains('oh-loss'))||(f.indexOf('sym:')===0&&it.getAttribute('data-sym')===f.slice(4));
+      it.hidden=!ok; if(ok)n++;
+    });
+    mo.hidden=!n; if(n){any++; if(f!=='all')mo.open=true;}
+  });
+  const none=box.querySelector('.oh-none'); if(none)none.hidden=!!any;
 }
 function renderOptions(app,o,realized){
   _optCharts=[];
@@ -8286,12 +8316,12 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=176"></script>
-<script src="ui/predictions-model.js?v=176"></script>
-<script src="ui/predictions.js?v=176"></script>
-<script src="ui/smartmoney-model.js?v=176"></script>
-<script src="ui/smartmoney.js?v=176"></script>
-<script src="ui/experience.js?v=176"></script>
-<script src="ui/ticker.js?v=176"></script>
+<script src="ui/experience-model.js?v=177"></script>
+<script src="ui/predictions-model.js?v=177"></script>
+<script src="ui/predictions.js?v=177"></script>
+<script src="ui/smartmoney-model.js?v=177"></script>
+<script src="ui/smartmoney.js?v=177"></script>
+<script src="ui/experience.js?v=177"></script>
+<script src="ui/ticker.js?v=177"></script>
 </body>
 </html>
