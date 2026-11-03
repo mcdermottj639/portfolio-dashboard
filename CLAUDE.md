@@ -1,3 +1,18 @@
+## 2026-11-03 — Predict Settled: a broker settlement links only on contract + side + quantity
+
+dot's independent review of v173 (Portfolio handoff, 11/3 06:51 ET) reproduced that `reconcile()`
+linked a payout email to ANY broker `settlement` row with the same contract ID — so a Yes ×10 email
+and a No ×2 settlement read `matched-broker` with nothing in review. It now links only when side AND
+quantity also agree and exactly one row does; an opposite side, a different quantity, a row missing
+either, several matching rows, or two partial rows that merely sum to the email are `review` (payout
+evidence kept, out of the totals, no `brokerTxId`). `prediction-account.mjs` now keeps a transaction's
+`side` (yes/no, else null) — it was dropped, which would have made every strict match impossible.
+No live impact known: the account feed carries no settlement rows yet. Tests: 8 new cases in
+`prediction-settlements.test.mjs` (25 total), all 51 producer suites green. Producer-only; no
+app/cache bump. **Mailbox ingestion is a separate gap:** the "Portfolio dashboard refresh" task
+(`trig_01PtRiUPvg3DL6LWounfmPo7`) has only Robinhood + Alpha Vantage attached, so step 2e skips until
+Gmail is attached to that task in the claude.ai UI (connectors cannot be set from a session).
+
 ## v173 — Predict Settled tab from Robinhood payout emails (2026-11-03)
 
 dot (ChatGPT) relayed Jack's request on 11/2: settled prediction-market emails are the best outcome

@@ -84,8 +84,17 @@ export function parsePayoutEmail(msg) {
 function reconcile(rec, account) {
   if (!rec.contractId) return { status: 'review', note: 'No contract ID in the email; title-only matches are not trusted.' };
   if (!account) return { status: 'no-entry-source', note: 'No verified entry record to match yet; cost and fees unknown.' };
-  const tx = (account.transactions || []).find(t => t.contractId === rec.contractId && t.type === 'settlement');
-  if (tx) return { status: 'matched-broker', brokerTxId: tx.id, note: 'Same settlement appears in the broker account feed; counted once.' };
+  // A broker settlement is linked only when contract, side AND quantity all agree, and exactly one
+  // row does. Contract ID alone is not enough (dot, 2026-11-03): an opposite-side or different-size
+  // settlement on the same contract is a different fill, and missing side/quantity is missing
+  // evidence, never a match. Any disagreement keeps the email's payout evidence but moves it to review.
+  const settles = (account.transactions || []).filter(t => t.contractId === rec.contractId && t.type === 'settlement');
+  if (settles.length) {
+    const exact = settles.filter(t => t.side === rec.side && t.quantity !== null && t.quantity !== undefined && Number(t.quantity) === rec.quantity);
+    if (exact.length === 1) return { status: 'matched-broker', brokerTxId: exact[0].id, note: 'Same settlement (contract, side and quantity) appears in the broker account feed; counted once.' };
+    if (exact.length > 1) return { status: 'review', note: 'More than one broker settlement matches this payout; not linked until reviewed.' };
+    return { status: 'review', note: 'A broker settlement on this contract differs in side or quantity (or lacks them); payout evidence kept, not linked until reviewed.' };
+  }
   const pos = (account.positions || []).find(p => p.contractId === rec.contractId && p.side === rec.side);
   if (!pos) return { status: 'unmatched', note: 'Contract not found in the account feed.' };
   if (pos.quantity !== null && pos.quantity < rec.quantity) return { status: 'review', note: 'Email quantity exceeds the recorded position.' };
