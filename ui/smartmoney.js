@@ -1,4 +1,4 @@
-/* Smart Money tab (v174) — read-only. Politician (STOCK Act) and insider (Form 4) trades from the
+/* Smart Money tab (v174; compact grouped feed v176) — read-only. Politician (STOCK Act) and insider (Form 4) trades from the
    snapshot, pinned to your names. Follows, flag decisions and filters stay on this device only.
    Nothing is posted, shared or traded from here. */
 (function(){
@@ -9,9 +9,13 @@
   const load=()=>{try{return M.cleanState(JSON.parse(localStorage.getItem(KEY)));}catch{return M.cleanState(null);}};
   let state=load();
   const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch{toast('Device storage is unavailable, so this choice will not be kept.');}};
-  const ui={view:'feed',kind:'all',mineOnly:false,who:null,sym:null,showHandled:false};
-  try{const v=JSON.parse(localStorage.getItem(KEY+'_ui'));if(v&&['all','politician','insider','fund'].includes(v.kind))ui.kind=v.kind;if(v&&typeof v.mineOnly==='boolean')ui.mineOnly=v.mineOnly;}catch{}
-  const saveUi=()=>{try{localStorage.setItem(KEY+'_ui',JSON.stringify({kind:ui.kind,mineOnly:ui.mineOnly}));}catch{}};
+  const FILTERS=[['all','All'],['mine','You hold'],['following','Following'],['buy','Buys'],['sell','Sells']];
+  const ui={view:'feed',kind:'all',filter:'all',by:'person',who:null,sym:null,showHandled:false,open:new Set()};
+  try{const v=JSON.parse(localStorage.getItem(KEY+'_ui'));
+    if(v&&['all','politician','insider','fund'].includes(v.kind))ui.kind=v.kind;
+    if(v&&FILTERS.some(f=>f[0]===v.filter))ui.filter=v.filter;else if(v&&v.mineOnly===true)ui.filter='mine';
+    if(v&&(v.by==='person'||v.by==='stock'))ui.by=v.by;}catch{}
+  const saveUi=()=>{try{localStorage.setItem(KEY+'_ui',JSON.stringify({kind:ui.kind,filter:ui.filter,by:ui.by}));}catch{}};
   let root=null,bound=false,PERF=new Map();
   const toast=m=>{try{window.toast?window.toast(m):null;}catch{}};
   const asOf=()=>{const g=window.__DATA&&window.__DATA.generatedAt;return (typeof g==='string'&&g.slice(0,10))||new Date().toISOString().slice(0,10);};
@@ -34,34 +38,67 @@
   }
   const ico={
     back:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    info:'<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
     lock:'<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
   };
   const pl=(n,w)=>n+' '+w+(n===1?'':'s');
   const side=s=>'<span class="sm-side sm-'+s+'">'+(s==='buy'?'BUY':'SELL')+'</span>';
   const initials=n=>esc(String(n||'').split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?');
-  function card(i){
-    const meta=i.kind==='politician'
-      ?'Traded '+fmtDay(i.txn)+' · reported '+fmtDay(i.disclosed)+(i.lag!=null?' · '+i.lag+'d late':'')
-      :'Traded '+fmtDay(i.txn)+(i.disclosed?' · filed '+fmtDay(i.disclosed):'')+(i.shares?' · '+i.shares.toLocaleString('en-US')+' sh':'');
-    return '<article class="sm-card">'+
-      '<div class="sm-card-top"><span class="sm-av" aria-hidden="true">'+initials(i.who)+'</span>'+
-        '<span class="sm-who"><button type="button" class="sm-linkbtn" data-sm-who="'+esc(i.whoKey)+'">'+esc(i.who)+'</button><small>'+esc(i.role)+'</small></span>'+side(i.side)+'</div>'+
-      '<div class="sm-card-mid"><button type="button" class="sm-linkbtn sm-action" data-sm-sym="'+esc(i.sym)+'">'+(i.side==='buy'?'Bought ':'Sold ')+esc(i.sym)+'</button><strong>'+esc(i.amount||'Size not reported')+'</strong></div>'+
-      '<div class="sm-card-foot"><span>'+esc(meta)+'</span>'+(i.mine?'<span class="sm-mine">'+esc(M.mineLabel(i.mine))+'</span>':'')+'</div>'+
-      perfLine(i)+
+  // Compact grouped row (v176). One row per person+ticker+side (or ticker+side when grouped by
+  // stock); the individual trades fold underneath and open with the "N trades" button.
+  function groupPerf(g){
+    const rs=g.items.map(i=>PERF.get(i.id)).filter(Boolean);
+    const ex=rs.map(r=>r.excess).filter(Number.isFinite),st=rs.map(r=>r.sinceTrade).filter(Number.isFinite);
+    const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+    if(ex.length)return '<span class="sm-pf">vs S&amp;P <b class="'+tone(avg(ex))+'">'+M.pct(avg(ex))+'</b>'+(ex.length<g.count?' <small>('+ex.length+' of '+g.count+')</small>':'')+'</span>';
+    if(st.length)return '<span class="sm-pf">Since trade <b class="'+tone(avg(st))+'">'+M.pct(avg(st))+'</b></span>';
+    return '';
+  }
+  function subLine(i,showWho){
+    const r=PERF.get(i.id);
+    const bits=[fmtDay(i.txn),esc(i.amount||'size n/a')];
+    if(i.kind==='politician'&&i.lag!=null)bits.push(i.lag+'d late');
+    if(i.kind==='insider'&&i.shares)bits.push(i.shares.toLocaleString('en-US')+' sh');
+    return '<li>'+(showWho?'<button type="button" class="sm-linkbtn" data-sm-who="'+esc(i.whoKey)+'">'+esc(i.who)+'</button> · ':'')+bits.join(' · ')+
+      (r&&Number.isFinite(r.excess)?' · vs S&amp;P <b class="'+tone(r.excess)+'">'+M.pct(r.excess)+'</b>':'')+'</li>';
+  }
+  function row(g,opt){
+    opt=opt||{};const byStock=g.by==='stock';const open=ui.open.has(g.key);
+    const badge='<span class="sm-badge sm-'+g.side+'">'+(g.side==='buy'?'Buy':'Sell')+(g.count>1?' ×'+g.count:'')+'</span>';
+    const symBtn='<button type="button" class="sm-linkbtn sm-sym" data-sm-sym="'+esc(g.sym)+'">'+esc(g.sym)+'</button>';
+    const whoBtn='<button type="button" class="sm-linkbtn" data-sm-who="'+esc(g.whoKey)+'">'+esc(g.who)+'</button>';
+    let r1,r2lead;
+    if(byStock){
+      r1='<span class="sm-who">'+symBtn+(g.people>1?'<small>'+g.people+' people</small>':'')+'</span>'+badge;
+      r2lead=g.people===1?whoBtn+' <small class="sm-muted">'+esc(g.role)+'</small>':esc(g.names.slice(0,2).join(', '))+(g.names.length>2?' +'+(g.names.length-2):'');
+      r2lead+=' · '+M.dayRange(g.first,g.last);
+    }else if(opt.hideWho){
+      r1='<span class="sm-who">'+symBtn+'</span>'+badge;r2lead=M.dayRange(g.first,g.last);
+    }else{
+      r1='<span class="sm-who">'+whoBtn+'<small>'+esc(g.role.replace(' member',''))+'</small></span>'+badge;
+      r2lead=symBtn+' · '+M.dayRange(g.first,g.last);
+    }
+    const lag=g.kind==='politician'&&!g.mixedKinds?M.lagRange(g):null;
+    const meta=[g.mine?'<span class="sm-mine">'+esc(M.mineLabel(g.mine))+'</span>':'',lag?'<span class="sm-late">Filed '+esc(lag)+'</span>':'',groupPerf(g)].filter(Boolean).join('');
+    const more=g.count>1?'<button type="button" class="sm-more" data-sm-open="'+esc(g.key)+'" aria-expanded="'+open+'">'+g.count+' trades<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>':'';
+    return '<article class="sm-row">'+
+      '<div class="sm-r1">'+r1+'</div>'+
+      '<div class="sm-r2"><span>'+r2lead+'</span><b>'+esc(g.amount||'Size n/a')+'</b></div>'+
+      ((meta||more)?'<div class="sm-r3">'+meta+more+'</div>':'')+
+      (g.count>1&&open?'<ul class="sm-sub">'+g.items.map(i=>subLine(i,byStock||g.mixedKinds)).join('')+'</ul>':'')+
     '</article>';
   }
-  // "Since report" result for one trade (scorecard v175): stock move and side-signed excess vs S&P.
-  function perfLine(i){
-    const r=PERF.get(i.id);
-    if(!r||r.excess==null)return r&&r.sinceTrade!=null?'<div class="sm-perf"><span>Since their trade price</span><b class="'+tone(r.sinceTrade)+'">'+M.pct(r.sinceTrade)+'</b></div>':'<div class="sm-perf sm-perf-wait"><span>Tracking starts at the next daily price check</span></div>';
-    return '<div class="sm-perf"><span>Since report'+(r.heldDays!=null?' · '+r.heldDays+'d':'')+'</span><span>Stock <b>'+M.pct(r.ret)+'</b></span><span>vs S&amp;P <b class="'+tone(r.excess)+'">'+M.pct(r.excess)+'</b></span>'+(r.sinceTrade!=null?'<span>Since trade <b class="'+tone(r.sinceTrade)+'">'+M.pct(r.sinceTrade)+'</b></span>':'')+'</div>';
+  function rows(items,by,opt){return M.groupItems(items,{by}).map(g=>row(g,opt));}
+  // One banner instead of "Tracking starts…" on every card (v176).
+  function trackBanner(items){
+    const n=items.filter(i=>{const r=PERF.get(i.id);return !r||!Number.isFinite(r.excess);}).length;
+    return n?'<p class="sm-banner">'+ico.info+'<span>vs S&amp;P tracking for '+pl(n,'trade')+' starts at the next daily price check.</span></p>':'';
   }
   const tone=v=>v>0?'sm-good':v<0?'sm-bad':'';
   const empty=(t,p)=>'<div class="sm-empty"><h3>'+esc(t)+'</h3><p>'+esc(p)+'</p></div>';
   function head(m,openFlags){
     const names=M.yourNames(m.items,m.asOf,30);
-    return '<header class="sm-head"><div><h1>Smart Money</h1><p>Politicians · Insiders · Funds</p></div>'+
+    return '<header class="sm-head"><h1>Smart Money</h1>'+
       '<span class="sm-ro">'+ico.lock+'Read-only</span></header>'+
       '<div class="sm-views" role="tablist" aria-label="Smart Money views">'+
         '<button type="button" role="tab" aria-selected="'+(ui.view==='feed')+'" data-sm-view="feed">Feed</button>'+
@@ -69,19 +106,28 @@
         '<button type="button" role="tab" aria-selected="'+(ui.view==='board')+'" data-sm-view="board">Who\'s good</button>'+
         '<button type="button" role="tab" aria-selected="'+(ui.view==='following')+'" data-sm-view="following">Following'+(state.follow.length?' <b>'+state.follow.length+'</b>':'')+'</button>'+
       '</div>'+
-      (names.length?'<div class="sm-names"><span>New on your names</span>'+names.slice(0,8).map(n=>'<button type="button" class="sm-chip" data-sm-sym="'+esc(n.sym)+'">'+esc(n.sym)+' · '+n.count+'</button>').join('')+'</div>':'');
+      (names.length&&ui.view!=='feed'?'<div class="sm-names"><span>New on your names</span>'+names.slice(0,8).map(n=>'<button type="button" class="sm-chip" data-sm-sym="'+esc(n.sym)+'">'+esc(n.sym)+' · '+n.count+'</button>').join('')+'</div>':'');
   }
   function feedView(m){
     const kinds=[['all','All'],['politician','Politicians'],['insider','Insiders'],['fund','Funds']];
-    let h='<div class="sm-seg" role="group" aria-label="Who">'+kinds.map(([k,l])=>'<button type="button" aria-pressed="'+(ui.kind===k)+'" data-sm-kind="'+k+'">'+l+'</button>').join('')+'</div>'+
-      '<label class="sm-toggle"><input type="checkbox" data-sm-mine'+(ui.mineOnly?' checked':'')+'> Only my names and people I follow</label>';
+    let h='<div class="sm-seg" role="group" aria-label="Who">'+kinds.map(([k,l])=>'<button type="button" aria-pressed="'+(ui.kind===k)+'" data-sm-kind="'+k+'">'+l+'</button>').join('')+'</div>';
     if(ui.kind==='fund')return h+empty('Fund holdings are not connected yet','Hedge fund 13F filings are not in this dashboard\'s current data feeds. They are also quarterly and up to 45 days old, so they would show positions, not live trades.');
-    const rows=M.feed(m.items,{kind:ui.kind,mineOnly:ui.mineOnly,follow:m.follow});
     if(!m.flow)return h+empty('No flow data in this snapshot yet','It lands on the next full producer run.');
-    if(!rows.length)return h+empty('Nothing to show here','No reported trades match this filter in the current snapshot.');
-    const mine=rows.filter(i=>i.mine||m.follow.has(i.whoKey)),rest=rows.filter(i=>!(i.mine||m.follow.has(i.whoKey)));
-    if(mine.length)h+='<h2 class="sm-h2">Your names &amp; people you follow</h2><div class="sm-list">'+mine.slice(0,40).map(card).join('')+'</div>';
-    if(rest.length&&!ui.mineOnly)h+='<h2 class="sm-h2">Everything else</h2><div class="sm-list">'+rest.slice(0,60).map(card).join('')+'</div>'+(rest.length>60?'<p class="sm-note">Showing the newest 60 of '+rest.length+'.</p>':'');
+    const base=M.feed(m.items,{kind:ui.kind});
+    const sum=M.summary(base,m.asOf,7);
+    h+='<div class="sm-tiles sm-sum">'+
+      tile('New filings · 7d',String(sum.fresh),sum.freshMine?sum.freshMine+' on your names':'None on your names')+
+      tile('Most bought · 30d',sum.topBuy?sum.topBuy.sym:'—',sum.topBuy?pl(sum.topBuy.count,'buy'):'No buys reported')+'</div>';
+    h+='<div class="sm-chips" role="group" aria-label="Filter">'+FILTERS.map(([k,l])=>'<button type="button" class="sm-fchip" aria-pressed="'+(ui.filter===k)+'" data-sm-filter="'+k+'">'+l+'</button>').join('')+'</div>';
+    const list=M.feed(base,{filter:ui.filter,follow:m.follow});
+    if(!list.length)return h+empty('Nothing to show here','No reported trades match this filter in the current snapshot.')+coverage(m);
+    h+=trackBanner(list);
+    const pinned=ui.filter==='all';
+    const mine=pinned?list.filter(i=>i.mine||m.follow.has(i.whoKey)):[],rest=pinned?list.filter(i=>!(i.mine||m.follow.has(i.whoKey))):list;
+    const block=(title,items,cap)=>{const g=rows(items,ui.by);return '<h2 class="sm-h2">'+title+'</h2><div class="sm-rows">'+g.slice(0,cap).join('')+'</div>'+(g.length>cap?'<p class="sm-note">Showing the newest '+cap+' of '+g.length+' groups.</p>':'');};
+    if(mine.length)h+=block('Your names &amp; people you follow',mine,40);
+    if(rest.length)h+=block(pinned?'Everything else':'Trades',rest,60);
+    h+='<p class="sm-by">Group by <button type="button" aria-pressed="'+(ui.by==='person')+'" data-sm-by="person">Person</button> · <button type="button" aria-pressed="'+(ui.by==='stock')+'" data-sm-by="stock">Stock</button></p>';
     return h+coverage(m);
   }
   function coverage(m){
@@ -111,7 +157,7 @@
       '<section class="sm-panel"><div class="sm-panel-h"><h3>Trades by month</h3>'+legend()+'</div><div class="sm-bars" role="img" aria-label="Buys and sells per month">'+
         p.bars.map(b=>'<div class="sm-bar"><div class="sm-bar-pair"><i class="sm-b-buy" style="height:'+Math.round(b.buys/max*72)+'px"></i><i class="sm-b-sell" style="height:'+Math.round(b.sells/max*72)+'px"></i></div><span>'+esc(b.label)+'</span></div>').join('')+
       '</div></section>'+
-      '<h2 class="sm-h2">Recent trades</h2><div class="sm-list">'+p.items.slice(0,30).map(card).join('')+'</div>';
+      '<h2 class="sm-h2">Recent trades</h2>'+trackBanner(p.items)+'<div class="sm-rows">'+rows(p.items,'person',{hideWho:true}).slice(0,30).join('')+'</div>';
   }
   function recordPanel(m,p){
     const r=M.personRecord(m.flow,p.key);
@@ -168,7 +214,7 @@
       '<section class="sm-read sm-read-'+esc(t.read.tone)+'"><h3>'+esc(t.read.title)+'</h3><p>'+esc(t.read.text)+'</p></section>'+
       '<div class="sm-two"><a class="sm-btn" href="https://claude.ai/new?q='+encodeURIComponent(M.researchPrompt('ticker',t))+'" target="_blank" rel="noopener">Discuss in Claude</a>'+
         '<button type="button" class="sm-btn sm-btn-primary" data-sm-analyze="'+esc(t.sym)+'">Open in Analyze</button></div>'+
-      (t.items.length?'<h2 class="sm-h2">The trades</h2><div class="sm-list">'+t.items.slice(0,30).map(card).join('')+'</div>':'');
+      (t.items.length?'<h2 class="sm-h2">The trades</h2>'+trackBanner(t.items)+'<div class="sm-rows">'+rows(t.items,'person').slice(0,30).join('')+'</div>':'');
   }
   function flagCard(f,handled){
     const d=state.decisions[f.id];
@@ -212,8 +258,11 @@
   function bind(){
     if(bound)return;bound=true;
     root.addEventListener('click',e=>{
-      const t=e.target.closest('[data-sm-bkind],[data-sm-view],[data-sm-kind],[data-sm-who],[data-sm-sym],[data-sm-back],[data-sm-follow],[data-sm-decide],[data-sm-undo],[data-sm-analyze]');
+      const t=e.target.closest('[data-sm-open],[data-sm-filter],[data-sm-by],[data-sm-bkind],[data-sm-view],[data-sm-kind],[data-sm-who],[data-sm-sym],[data-sm-back],[data-sm-follow],[data-sm-decide],[data-sm-undo],[data-sm-analyze]');
       if(!t||!root.contains(t))return;
+      if(t.dataset.smOpen){const k=t.dataset.smOpen;ui.open.has(k)?ui.open.delete(k):ui.open.add(k);root.dataset.keepScroll='1';render();return;}
+      if(t.dataset.smFilter){ui.filter=t.dataset.smFilter;saveUi();root.dataset.keepScroll='1';render();return;}
+      if(t.dataset.smBy){ui.by=t.dataset.smBy;ui.open.clear();saveUi();root.dataset.keepScroll='1';render();return;}
       if(t.dataset.smBkind){ui.boardKind=t.dataset.smBkind;root.dataset.keepScroll='1';render();return;}
       if(t.dataset.smView){ui.view=t.dataset.smView;ui.who=ui.sym=null;render();return;}
       if(t.dataset.smKind){ui.kind=t.dataset.smKind;saveUi();root.dataset.keepScroll='1';render();return;}
@@ -229,7 +278,6 @@
         if(choice==='research'){try{navigator.clipboard&&navigator.clipboard.writeText(decodeURIComponent(t.getAttribute('href').split('q=')[1]||''));}catch{}toast('Prompt copied too, in case Claude opens in the browser');}
         root.dataset.keepScroll='1';setTimeout(render,choice==='research'?400:0);return;}
     });
-    root.addEventListener('change',e=>{if(e.target.matches('[data-sm-mine]')){ui.mineOnly=e.target.checked;saveUi();root.dataset.keepScroll='1';render();}});
     root.addEventListener('toggle',e=>{if(e.target.matches&&e.target.matches('[data-sm-handled]'))ui.showHandled=e.target.open;},true);
     window.addEventListener('storage',e=>{if(e.key===KEY){state=load();render();}});
   }
