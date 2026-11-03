@@ -367,6 +367,50 @@ export function flowScore(parts = {}, weights = FLOW_WEIGHTS) {
   };
 }
 
+// ---- Smart Money feed (display-only, v174) --------------------------------
+// The individual open-market Form 4 trades behind the insider read, kept so the Smart Money tab can
+// show WHO traded, not just the cluster count. Same open-market filter as insiderScore (P/S only,
+// non-derivative, non-zero size, not future-dated), newest first, capped. Never enters any score.
+// Finnhub row: { name, share, change, filingDate, transactionDate, transactionCode, transactionPrice }.
+export const INSIDER_TRADES_WINDOW_DAYS = 120;
+export const INSIDER_TRADES_LIMIT = 10;
+export function insiderTrades(transactions, { asOf, windowDays = INSIDER_TRADES_WINDOW_DAYS, limit = INSIDER_TRADES_LIMIT } = {}) {
+  const today = asOf || new Date().toISOString().slice(0, 10);
+  const out = [];
+  for (const t of rows(transactions)) {
+    if (!t || t.isDerivative) continue;
+    const code = String(t.transactionCode || '').toUpperCase();
+    if (code !== 'P' && code !== 'S') continue;
+    const txn = String(t.transactionDate || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(txn)) continue;
+    const age = daysBetween(today, txn);
+    if (!(age >= 0 && age <= windowDays)) continue;
+    const ch = num(t.change);
+    if (ch == null || ch === 0) continue;
+    const name = String(t.name || '').trim();
+    if (!name) continue;
+    const price = num(t.transactionPrice);
+    const filed = String(t.filingDate || '').slice(0, 10);
+    out.push({
+      name, side: code === 'P' ? 'buy' : 'sell', shares: Math.abs(Math.round(ch)),
+      price: price != null && price > 0 ? r2(price) : null,
+      value: price != null && price > 0 ? Math.round(Math.abs(ch) * price) : null,
+      txn, filed: /^\d{4}-\d{2}-\d{2}$/.test(filed) ? filed : null,
+    });
+  }
+  out.sort((a, b) => (b.txn.localeCompare(a.txn)) || ((b.value || 0) - (a.value || 0)));
+  // One row per (person, side, day): Finnhub splits a single day's sale into several lots.
+  const merged = [];
+  for (const r of out) {
+    const m = merged.find((x) => x.name === r.name && x.side === r.side && x.txn === r.txn);
+    if (!m) { merged.push({ ...r }); continue; }
+    m.shares += r.shares;
+    m.value = (m.value != null && r.value != null) ? m.value + r.value : null;
+    m.price = m.value != null && m.shares ? r2(m.value / m.shares) : m.price;
+  }
+  return merged.length ? merged.slice(0, limit) : null;
+}
+
 // Convenience: raw provider payloads for one symbol → the full flow read. Used by build-data.mjs and by
 // the research workflow's sleeve agent so both compute the score identically.
 export function scoreSymbol({ recommendation, insiderTx, insiderSentiment, earnings, usaSpending, lobbying } = {}, opts = {}) {
@@ -376,5 +420,6 @@ export function scoreSymbol({ recommendation, insiderTx, insiderSentiment, earni
   const award = awardScore(usaSpending, opts);
   const lobby = lobbyingFlag(lobbying, opts);   // context only — never enters the composite
   const flow = flowScore({ revision, insider, surprise, award });
-  return { flow, revision, insider, surprise, award, lobby };
+  const trades = insiderTrades(insiderTx, opts);   // display-only (Smart Money tab), never scored
+  return { flow, revision, insider, surprise, award, lobby, insiderTrades: trades };
 }

@@ -29,6 +29,11 @@ Classic view is available from the header. The original feature search and saved
   The old Income & Tax derivatives row is now explicitly unverified, with its recorded values kept.
   See `producer/PREDICTIONS.md` for source, refresh, import/export and connection details.
 
+- Smart $ (v174) is a new read-only area: politician (STOCK Act) and insider (Form 4) trades from
+  `data.flow`, pinned to held/target names, with person, ticker and flag views. Follows and flag
+  choices stay in this device's storage. Fund 13F data is not connected and says so. It replaces
+  nothing; the Flow & Positioning card and Analyze flow chip are unchanged.
+
 - Today is one combined Daily Brief for Self-directed + Agentic. Its header has no account toggle;
   the detailed pages keep theirs. Totals require both recorded account values. Shared tickers aggregate
   across accounts; positive cash and margin debt stay separate. Stock contributions do not represent
