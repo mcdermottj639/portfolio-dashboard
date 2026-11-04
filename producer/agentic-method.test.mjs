@@ -83,7 +83,7 @@ const bare = (s) => String(s).replace(/[\s|]/g, '');
   ok('correctness panel explains absent forward/account data',empty.includes('Not connected:') && empty.includes('successful producer refresh is needed'));
   const unsafe=render({target:{research:{evidence:{AAA:{quality:{status:'observed',evidence:[{source:'<script>bad</script>',asOf:'2026-09-01',claim:'<img src=x>'}]}}}}}});
   ok('evidence cannot inject markup', !unsafe.includes('<script>bad') && unsafe.includes('&lt;script&gt;'));
-  ok('risk diagnostics remain accessible in native details',empty.includes('<summary>Realized volatility and strongest correlations</summary>'));
+  ok('risk diagnostics remain accessible in native details',empty.includes('<summary>Volatility &amp; correlations</summary>'));
 }
 
 // ── segmentation ──────────────────────────────────────────────────────────────────────────────
