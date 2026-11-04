@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=178">
-<link rel="stylesheet" href="ui/predictions.css?v=178">
-<link rel="stylesheet" href="ui/smartmoney.css?v=178">
-<link rel="stylesheet" href="ui/ticker.css?v=178">
+<link rel="stylesheet" href="ui/experience.css?v=179">
+<link rel="stylesheet" href="ui/predictions.css?v=179">
+<link rel="stylesheet" href="ui/smartmoney.css?v=179">
+<link rel="stylesheet" href="ui/ticker.css?v=179">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=178"></script>
+<script src="ui/sd-rules.js?v=179"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v178'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v179'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2382,7 +2382,6 @@ function sdIdeasHtml(ideas){
     'entry-data':'Entry data missing','no-target':'Target unavailable',data:'Data incomplete',rr:'Reward/risk too low'};
   return `<section id="sd-stock-ideas" class="sd-ideas" aria-label="Ranked stock ideas">
     <div class="col-title">Stock ideas <span class="card-hint">· research first</span></div>
-    <p class="sd-idea-reason">Qualifying setups first, then the strongest momentum candidates to watch. These ideas stay visible when funding is unavailable. Quantities appear only in a funded plan.</p>
     ${ideas.length?ideas.map(({m,idea})=>{
       const sym=String(m.sym).replace(/[^A-Z0-9.\-]/g,'');
       const reason={ready:'Entry and estimated reward/risk qualify. Funding, position limits and whole-share sizing still apply.',
@@ -2397,13 +2396,15 @@ function sdIdeasHtml(ideas){
         'no-target':'No usable price-range or analyst target is available. A stop alone cannot establish upside.',
         data:'Refresh the missing inputs before treating this as a setup.',
         rr:'Estimated upside is below the required 2:1 reward/risk. Wait for a better setup.'}[idea.status];
-      return `<article class="sd-idea" data-symbol="${safe(sym)}" data-status="${safe(idea.status)}">
-        <div class="sd-idea-head"><button type="button" class="sd-idea-link" onclick="switchTab('analyze');runAnalysis('${safe(sym)}')" aria-label="Analyze ${safe(sym)}">${safe(sym)}</button><span>${fmt(m.score,1)}/10 momentum</span><span class="sd-idea-status">${safe(labels[idea.status]||'Watch')}</span></div>
+      const tone={ready:'go',funding:'go',wash:'hold',entry:'hold',trend:'hold',selling:'hold'}[idea.status]||'idle';
+      const sc=m.score!=null?Math.max(0,Math.min(10,m.score)):0;
+      return `<details class="sd-idea sd-t-${tone}" data-symbol="${safe(sym)}" data-status="${safe(idea.status)}"><summary>
+        <div class="sd-idea-head"><button type="button" class="sd-idea-link" onclick="event.preventDefault();switchTab('analyze');runAnalysis('${safe(sym)}')" aria-label="Analyze ${safe(sym)}">${safe(sym)}</button><span class="sd-mom" title="${fmt(m.score,1)}/10 momentum"><i style="width:${sc*10}%"></i></span><span class="sd-mom-n">${fmt(m.score,1)}</span><span class="sd-idea-status">${safe(labels[idea.status]||'Watch')}</span><span class="sd-rr">${idea.target.rr!=null?fmt(idea.target.rr,1)+':1':'—'}<small>R/R</small></span></div>
+        <div class="sd-idea-metrics"><span><b>${price(m.px)}</b> → <b>${price(idea.target.tgt)}</b></span><span>stop <b>${price(idea.stop)}</b></span><i class="oh-chev"></i></div></summary>
         <div class="sd-idea-reason">${safe(reason)}${m.stale?' History is aging; refresh before acting.':''}</div>
-        <div class="sd-idea-metrics"><span>Price <b>${price(m.px)}</b></span><span>Est. target <b>${price(idea.target.tgt)}</b></span><span>Stop <b>${price(idea.stop)}</b></span><span>Reward/risk <b>${idea.target.rr!=null?fmt(idea.target.rr,1)+':1':'Unavailable'}</b></span></div>
-      </article>`;
+      </details>`;
     }).join(''):'<p class="sd-idea-reason">No candidates have enough current data to rank. Refresh the research inputs.</p>'}
-    <details class="cov-note"><summary style="cursor:pointer">How these targets are estimated</summary><p>Targets use 1.5× the observed 20-session closing-price range and analyst consensus where available, taking the lower estimate and capping it at 3× stop risk. They are not return forecasts. Recheck prices before placing an order.</p></details>
+    <details class="cov-note"><summary style="cursor:pointer">How ideas are ranked &amp; targets estimated</summary><p>Qualifying setups first, then the strongest momentum candidates to watch. These ideas stay visible when funding is unavailable; quantities appear only in a funded plan. Targets use 1.5× the observed 20-session closing-price range and analyst consensus where available, taking the lower estimate and capping it at 3× stop risk. They are not return forecasts. Recheck prices before placing an order.</p></details>
   </section>`;
 }
 function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap, earningsMap, smaMap){
@@ -2698,11 +2699,26 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
 
   const washStrip=Object.keys(wash).length?`<div class="fund-note" style="margin-top:8px">🚫 <b>Wash-sale hold</b> — ${Object.entries(wash).map(([s,w])=>`<b>${s}</b> (loss ${fmtD(w.realized)} in ${[...w.accts].join(' + ')}, clear ${w.clear})`).join(' · ')}. Blocked from every buy ticket below until the window closes. The window is per <i>taxpayer</i>, so a loss in either account blocks a rebuy in both. Not tax advice — check your lots.</div>`:'';
 
+  const cruiseP=SD_UTIL_CRUISE*100, maxP=SD_UTIL_MAX*100;
+  const mgHtml=(utilKnown&&M.debt>0)?`<div class="mg">
+      <div class="mg-bar"><i style="width:${Math.min(100,Math.max(0,utilPct))}%;background:${utilCol}"></i><em style="left:${cruiseP}%"></em><em style="left:${maxP}%"></em></div>
+      <div class="mg-scale"><span style="left:0">0%</span><span style="left:${cruiseP}%">cruise ${fmt(cruiseP,0)}</span><span style="left:${maxP}%">max ${fmt(maxP,0)}</span></div>
+      <div class="cr-tiles"><div class="cr-tile"><span>Line used</span><b style="color:${utilCol}">${fmt(utilPct,1)}%</b><small>${fmtD(M.debt)} of ${fmtD(M.line)}</small></div><div class="cr-tile"><span>Headroom</span><b>${fmtD(headroom)}</b><small>to the ${fmt(maxP,0)}% ceiling</small></div><div class="cr-tile"><span>Margin call</span><b>${M.callDrop!=null?'−'+fmt(M.callDrop*100,0)+'%':'—'}</b><small>uniform drop · est.</small></div></div>
+      <div class="sd-verdict ${utilPct>maxP?'bad':'ok'}">${utilPct>maxP?'⚠️ Over your ceiling — step 1 raises cash':utilPct>cruiseP?'✓ Inside your band — no forced selling':'✓ Under cruise — the plan can deploy'}</div>
+      <details class="sd-more"><summary>How margin is measured</summary><p>Your loan is ${fmtD(M.debt)} = ${fmt(utilPct,1)}% of your ${fmtD(M.line)} line (cruise ${fmt(cruiseP,0)} / max ${fmt(maxP,0)}). Only the ${fmt(maxP,0)}% ceiling forces a sell. ${M.callDrop!=null?`Margin-call distance assumes 25% maintenance — Robinhood's real requirement runs higher on volatile names, so treat it as the optimistic end.`:''}</p></details>
+    </div>`:'';
+  const cBar=(lbl,pct,sub)=>`<div class="cb-row"><div class="cb-top"><b>${lbl}</b><span class="cb-pct ${pct>100?'neg':''}">${fmt(pct,0)}%<small> of equity</small></span></div><div class="cb-bar"><i style="width:${Math.min(100,pct)}%"></i><em style="left:20%" title="new-money cap"></em></div>${sub?`<div class="cb-sub">${sub}</div>`:''}</div>`;
+  const concHtml=`<div class="cb">
+      ${concRows.map(c=>cBar(c.r.p.symbol,c.pctEq,`<span data-priv="val">${fmtD(c.r.p.val)}</span> · −20% day ≈ <b class="neg">−${fmt(c.hit,1)}%</b> of acct${c.stop?` · stop ${P(c.stop)} (${fmt((1-c.stop/c.r.m.px)*100,0)}%)`:''}${c.score!=null?` · mom ${fmt(c.score,1)}`:''}`)).join('')}
+      ${aiVal>0?cBar('AI / compute complex',equity>0?aiVal/equity*100:0,`${fmtD(aiVal)} · ${fmt(exposure>0?aiVal/exposure*100:0,0)}% of exposure · one macro bet, by design`):''}
+      ${trimAdv.length?`<div class="sd-chips sd-chips-row">${trimAdv.map(({r,t})=>`<span class="warn">✂️ ${r.p.symbol} peel ≈ ${fmtD(t.peel)} → ${fmt(SD_SINGLE_MAX_EQ?SD_SINGLE_MAX_EQ*100:20,0)}%</span>`).join('')}<span>advisory · not an order</span></div>`:''}
+      <details class="sd-more"><summary>Why size alone never sells</summary><p>No sell is generated from size alone — that was the 2026-08-25 lesson. New money is a different question: a name already past 20% of equity will not be added to (the tick on each bar), and a name past 25% of equity or +25% from cost is flagged as a peel-back to target weight, not as an exit.${trimAdv.length?' '+trimAdv.map(({r,t})=>`${r.p.symbol}: ${t.why}.`).join(' '):''}</p></details>
+    </div>`;
   el.innerHTML=`
-    <div class="box-info" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px">
+    <details class="box-info sd-fold" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px"><summary><b>🎯 Mandate: aggressive growth</b><span class="sd-chips"><span>cut broken, not red</span><span>margin ${fmt(SD_UTIL_CRUISE*100,0)}/${fmt(SD_UTIL_MAX*100,0)}</span>${beta!=null?`<span>β ${fmt(beta,2)}</span>`:''}</span><i class="oh-chev"></i></summary><div class="sd-fold-body">
       <b>Mandate: aggressive growth.</b> This book runs concentrated and high-beta on purpose — ballast, bonds and diversification are the <span class="dp-link" onclick="switchTab('portfolio')">agentic account's</span> job, not this one's. So the plan <b>cuts what's broken, not what's red</b>, and redeploys into momentum leadership rather than into the oversold screen.
       <b>Margin is a tool here, not a sin</b>: it is measured as utilisation of your credit line, in two bands — cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% (deploy freely) and a hard ceiling at ${fmt(SD_UTIL_MAX*100,0)}%. The only sells this plan generates are <b>broken theses</b> and, above ${fmt(SD_UTIL_MAX*100,0)}%, a paydown. <b>Winners are not sold for size</b> — but new money now needs an <b>entry</b> as well as a score: within 3% of the 20-day high is a warning label, not a buy. ${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% SPY drop ≈ ${fmtP(-10*beta)}. This sleeve is not 1.0× SPY; that is the index case, not the book case.`:''}
-    </div>
+    </div></details>
 
     <div class="snap-grid" style="margin-bottom:12px">
       <div class="snap"><div class="snap-lbl">Exposure</div><div class="snap-val">${fmtD(exposure)}</div><div class="snap-sub">what the book controls</div></div>
@@ -2714,29 +2730,24 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
     ${exits.length
-      ? `<div class="xr-list">${exits.map(r=>`<details class="xr-row"><summary><span class="xr-tk">${r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span> @ ${P(r.p.px)}</b><small>${fmtD(r.sellVal)}${r.lock?` · 🔒 <span data-priv="val">${fmt(r.lock.shares,0)}</span> held`:''}</small></span><span class="xr-pl ${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span><i class="oh-chev"></i></summary><p>${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</p></details>`).join('')}${exits.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(exitProceeds)} proceeds</span><b class="${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</b></div>`:''}</div>`
+      ? `<div class="xr-list">${exits.map(r=>`<details class="xr-row"><summary><span class="xr-tk">${r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span> sh</b><small>@ ${P(r.p.px)} · ${fmtD(r.sellVal)}${r.lock?` · 🔒 <span data-priv="val">${fmt(r.lock.shares,0)}</span> held`:''}</small></span><span class="xr-pl ${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span><i class="oh-chev"></i></summary><p>${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</p></details>`).join('')}${exits.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(exitProceeds)} proceeds</span><b class="${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</b></div>`:''}</div>`
       : (lockedExits.length
         /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
            reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
         ? `<div class="tech-empty">${lockedExits.map(r=>r.p.symbol).join(', ')} ${lockedExits.length===1?'reads':'read'} broken, but every share is collateral for your covered calls — see below for how to unwind it. Nothing else here is broken.</div>`
-        : `<div class="tech-empty">Nothing is broken. ${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div>`)}
+        : `<div class="sd-verdict ok">✓ Nothing is broken${rows.length?` — ${rows.length} holding${rows.length===1?'':'s'} checked`:''}</div><details class="sd-more"><summary>What counts as broken</summary><div class="fund-note">${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div></details>`)}
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Margin posture — bands on your credit line</div>
     ${payRows.length
-      ? `<table><thead><tr><th>Raise cash</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L</th></tr></thead><tbody>${payRows.map(t=>`<tr><td><span class="sym">${t.r.p.symbol}</span> <span style="color:#9ca3af">weakest momentum${t.r.m&&t.r.m.score!=null?` ${fmt(t.r.m.score,1)}/10`:''}</span></td><td class="tr"><span data-priv="val">${t.sh}</span>${t.capped?`<div style="color:#b45309;font-size:10px">capped — collateral</div>`:''}</td><td class="tr">${P(t.r.p.px)}</td><td class="tr">${fmtD(t.proceeds)}</td><td class="tr"><span class="${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(payProceeds)}</td><td class="tr ${payPl>=0?'pos':'neg'}">${fmtD(payPl)}</td></tr></tbody></table>
-        <div class="fund-note">${utilKnown?`Your loan is ${fmtD(M.debt)} — <b>${fmt(utilPct,1)}%</b> of your ${fmtD(M.line)} line, over the ${fmt(SD_UTIL_MAX*100,0)}% ceiling by ≈ <b>${fmtD(payNeed)}</b>.`:`No buying-power figure in this snapshot, so the line can't be derived — this falls back to the ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×), which is a cruder test.`} Sourced from the weakest-momentum names you can actually deliver. <b>Indicative</b>: selling stock also shrinks the collateral behind the line, so the line moves with it.${payShort>0?` ${fmtD(payShort)} of the raise can't be reached from freely sellable shares — see below.`:''}</div>`
-      : `<div class="tech-empty">${M.debt>0
+      ? `${mgHtml}<div class="xr-list">${payRows.map(t=>`<details class="xr-row"><summary><span class="xr-tk">${t.r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${t.sh}</span> sh${t.capped?' 🔒':''}</b><small>@ ${P(t.r.p.px)} · ${fmtD(t.proceeds)}</small></span><span class="xr-pl ${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span><i class="oh-chev"></i></summary><p>Weakest momentum${t.r.m&&t.r.m.score!=null?` (${fmt(t.r.m.score,1)}/10)`:''} among names you can actually deliver.${t.capped?' Capped — the rest is covered-call collateral.':''}</p></details>`).join('')}${payRows.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(payProceeds)} raised</span><b class="${payPl>=0?'pos':'neg'}">${fmtD(payPl)}</b></div>`:''}</div>
+        <details class="sd-more"><summary>Why these sells</summary><div class="fund-note">${utilKnown?`Your loan is ${fmtD(M.debt)} — <b>${fmt(utilPct,1)}%</b> of your ${fmtD(M.line)} line, over the ${fmt(SD_UTIL_MAX*100,0)}% ceiling by ≈ <b>${fmtD(payNeed)}</b>.`:`No buying-power figure in this snapshot, so the line can't be derived — this falls back to the ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×), which is a cruder test.`} Sourced from the weakest-momentum names you can actually deliver. <b>Indicative</b>: selling stock also shrinks the collateral behind the line, so the line moves with it.${payShort>0?` ${fmtD(payShort)} of the raise can't be reached from freely sellable shares — see below.`:''}</div></details>`
+      : mgHtml ? mgHtml : `<div class="tech-empty">${M.debt>0
           ? (utilKnown
             ? `Your loan is <b>${fmtD(M.debt)}</b> = <b>${fmt(utilPct,1)}%</b> of your ${fmtD(M.line)} line — inside your band (cruise ${fmt(SD_UTIL_CRUISE*100,0)} / max ${fmt(SD_UTIL_MAX*100,0)}). <b>No forced selling.</b> ${fmtD(headroom)} of headroom to the ceiling.${M.callDrop!=null?` Est. margin-call distance ≈ a <b>${fmt(M.callDrop*100,0)}%</b> uniform drop from here (25% maintenance — Robinhood's real requirement runs higher on volatile names).`:''}`
             : `You're carrying ${fmtD(M.debt)}, but this snapshot has no buying-power figure so your credit line can't be derived. Falling back to the ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling: now ${fmt(lev,2)}× — inside it, no forced selling.`)
           : `No margin drawn. Nothing to pay down.`}</div>`}
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Concentration — reported, not policed</div>
     ${concRows.length||aiVal>0
-      ? `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
-        ${concRows.map(c=>`<div style="padding:5px 0;border-top:1px dashed var(--surface-2)"><b>${c.r.p.symbol}</b> is <b>${fmt(c.pctEq,0)}%</b> of equity <span style="color:#9ca3af">(${fmtD(c.r.p.val)})</span> — a −20% ${c.r.p.symbol} day ≈ <b class="neg">−${fmt(c.hit,1)}%</b> of the account at ${fmt(lev,2)}× leverage.${c.stop?` <span style="color:#9ca3af">The protection is the level, not a trim: vol-scaled stop ≈ ${P(c.stop)} (${fmt((1-c.stop/c.r.m.px)*100,0)}% below).</span>`:''}${c.score!=null?` <span style="color:#9ca3af">Momentum ${fmt(c.score,1)}/10.</span>`:''}</div>`).join('')}
-        ${aiVal>0?`<div style="padding:5px 0;border-top:1px dashed var(--surface-2)"><b>AI / compute complex</b> ${fmtD(aiVal)} — <b>${fmt(equity>0?aiVal/equity*100:0,0)}%</b> of equity, ${fmt(exposure>0?aiVal/exposure*100:0,0)}% of exposure. One macro bet, by design.</div>`:''}
-        <div class="fund-note">No sell is generated from size alone — that was the 2026-08-25 lesson. New money is a different question: a name already past 20% of equity will not be added to, and a name past 25% of equity or +25% from cost is flagged below as a peel-back to target weight, not as an exit.</div>
-        ${trimAdv.length?`<div style="padding:6px 0 0;border-top:1px dashed var(--surface-2)">${trimAdv.map(({r,t})=>`<div style="padding:3px 0"><b>${r.p.symbol}</b> — peel ≈ ${fmtD(t.peel)} (${t.why}) so the name sits at ${fmt(SD_SINGLE_MAX_EQ?SD_SINGLE_MAX_EQ*100:20,0)}% of equity. Advisory; not an order.</div>`).join('')}</div>`:''}
-      </div>`
+      ? concHtml
       : `<div class="tech-empty">No holding is above ${fmt(SD_CONC_FLAG*100,0)}% of equity.${t1?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}%.`:''}</div>`}
     ${(lockedExits.length||payShort>0)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
       <b>🔒 Held back by your own covered calls.</b>
@@ -2791,20 +2802,27 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
 
     ${(washStrip||blocked.length||belowBar.length||extendedBar.length||abstained.length)?'</details>':''}
 
-    <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(what keeps an aggressive book alive)</span></div>
-    <div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.55">
-      <div style="padding:4px 0">▸ <b>Margin runs in bands on the line</b> — cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% (the plan deploys there on its own), hard ceiling ${fmt(SD_UTIL_MAX*100,0)}% (the only level that forces a sell). ${utilKnown?`<span style="color:#9ca3af">Now ${fmt(utilPct,1)}% of a ${fmtD(M.line)} line${utilPct>SD_UTIL_MAX*100?' — over, step 1 brings it back':(utilPct>SD_UTIL_CRUISE*100?' — inside the band, nothing to do':'')}.</span>`:(M.debt>0?`<span style="color:#9ca3af">No buying-power figure this snapshot, so the line can't be derived — falling back to a ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×).</span>`:'<span style="color:#9ca3af">No margin drawn.</span>')}${M.callDrop!=null?` <span style="color:#9ca3af">Est. margin-call distance ≈ ${fmt(M.callDrop*100,0)}% (25% maintenance).</span>`:''}</div>
-      <div style="padding:4px 0">▸ <b>Never sell covered-call collateral.</b> Shares backing a short call are what make it covered; sell them and the call goes naked, with open-ended risk above the strike. Buy the call back or roll it first, then sell the stock${Object.keys(locked).length?` <span style="color:#9ca3af">(now ${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')} pledged)</span>`:''}.</div>
-      <div style="padding:4px 0">▸ <b>Existing concentration is measured, not sold.</b> A leader that is 90% of equity and still leading is this mandate working; nothing here sells a name for being large — only a broken thesis or the ${fmt(SD_UTIL_MAX*100,0)}% margin ceiling does. New money is the other half: it will not add past 20% of equity or 30% of a theme.${t1?` <span style="color:#9ca3af">Largest now ${t1.symbol} ${fmt(t1.val/equity*100,1)}% of equity${aiVal>0?` · AI/compute complex ${fmt(equity>0?aiVal/equity*100:0,0)}%`:''}.</span>`:''}</div>
-      <div style="padding:4px 0">▸ <b>Entry is not momentum.</b> Names within 3% of the 20-session high stay on the pullback watchlist, including those with momentum ≥ 9. Leadership can still rank 10.0 at the print — that is a warning label on a levered line, not a fill.</div>
-      <div style="padding:4px 0">▸ <b>New money is capped by theme and by equity.</b> 20% of equity per name, 30% of the ending book per cluster (crypto-beta, ai-infra, cyber, megacap-software). A full cluster skips the next name; it does not sell the winner. Satellite floor 7.5 — a 5-handle miner does not print as a buy.</div>
-      <div style="padding:4px 0">▸ Every satellite carries a <b>vol-and-ATR stop</b>, capped at 12% core / 20% high-beta. If the cap is tighter than the vol budget, size is cut instead of the stop widened. Concentrated and stopless is the combination that doesn't recover.</div>
-      <div style="padding:4px 0">▸ <b>Do not chase the print.</b> Reprice at order time; if last > limit + 0.5×ATR, cancel — do not walk the limit up. A hours-old snapshot plus a 6% IBIT day is how a stale limit becomes a market order.</div>
-      <div style="padding:4px 0">▸ <b>No incremental borrow</b> when the median proposed fill is <5% off the 20-day high, when more than half the fills are <3% off, or when the book is already >1.3× with average HV >40%. Press room then stays dry powder or a pullback limit, never a second share of the same extended name.</div>
-      <div style="padding:4px 0">▸ <b>House money</b> — once a name doubles, sell the original cost basis and let the rest run free. ${houseMoney.length?`<span style="color:#9ca3af">${houseMoney[0].symbol} is at ${fmt(houseMoney[0].px/houseMoney[0].avg,1)}× cost — eligible now.</span>`:'<span style="color:#9ca3af">Nothing at 2× cost yet.</span>'}</div>
-      <div style="padding:4px 0">▸ <b>Never add to a broken trend.</b> Down is not the same as cheap — averaging into a rolled-over name is how a satellite becomes the whole book.</div>
-      <div style="padding:4px 0">▸ ${earnSoon.length?`<b>${earnSoon[0].p.symbol}</b> reports in ${earnSoon[0].e.daysAway}d (${earnSoon[0].e.reportDate||'soon'}) — high-beta names gap hard; size for it or wait for the print.`:'Around earnings on a high-beta name: size for the gap or wait for the print.'}</div>
-    </div>`;
+    <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(tap a rule for the why)</span></div>
+    ${sdGuardrails([
+      {ic:'📏',t:'Margin bands',chip:utilKnown?fmt(utilPct,1)+'% used':(M.debt>0?fmt(lev,2)+'× fallback':'no margin'),tone:utilKnown?(utilPct>SD_UTIL_MAX*100?'bad':utilPct>SD_UTIL_CRUISE*100?'warn':'ok'):'ok',
+       b:`Cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% (the plan deploys there on its own), hard ceiling ${fmt(SD_UTIL_MAX*100,0)}% (the only level that forces a sell). ${utilKnown?`Now ${fmt(utilPct,1)}% of a ${fmtD(M.line)} line${utilPct>SD_UTIL_MAX*100?' — over, step 1 brings it back':(utilPct>SD_UTIL_CRUISE*100?' — inside the band, nothing to do':'')}.`:(M.debt>0?`No buying-power figure this snapshot, so the line can't be derived — falling back to a ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity ceiling (now ${fmt(lev,2)}×).`:'No margin drawn.')}${M.callDrop!=null?` Est. margin-call distance ≈ ${fmt(M.callDrop*100,0)}% (25% maintenance).`:''}`},
+      {ic:'🔒',t:'Keep call collateral',chip:Object.keys(locked).length?Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · '):'none pledged',tone:Object.keys(locked).length?'warn':'ok',
+       b:`Shares backing a short call are what make it covered; sell them and the call goes naked, with open-ended risk above the strike. Buy the call back or roll it first, then sell the stock.`},
+      {ic:'⚖️',t:'Size alone never sells',chip:t1?`${t1.symbol} ${fmt(t1.val/equity*100,0)}%`:'—',tone:t1&&t1.val/equity>SD_CONC_FLAG?'warn':'ok',
+       b:`A leader that is 90% of equity and still leading is this mandate working; nothing here sells a name for being large — only a broken thesis or the ${fmt(SD_UTIL_MAX*100,0)}% margin ceiling does. New money will not add past 20% of equity or 30% of a theme.${t1?` Largest now ${t1.symbol} ${fmt(t1.val/equity*100,1)}% of equity${aiVal>0?` · AI/compute complex ${fmt(equity>0?aiVal/equity*100:0,0)}%`:''}.`:''}`},
+      {ic:'🎯',t:'Entry ≠ momentum',chip:'3% gate',tone:'ok',b:`Names within 3% of the 20-session high stay on the pullback watchlist, including those with momentum ≥ 9. Leadership can still rank 10.0 at the print — that is a warning label on a levered line, not a fill.`},
+      {ic:'🧺',t:'Name & theme caps',chip:'20% / 30%',tone:'ok',b:`20% of equity per name, 30% of the ending book per cluster (crypto-beta, ai-infra, cyber, megacap-software). A full cluster skips the next name; it does not sell the winner. Satellite floor 7.5 — a 5-handle miner does not print as a buy.`},
+      {ic:'🛑',t:'Every satellite has a stop',chip:'12% / 20%',tone:'ok',b:`Vol-and-ATR stop, capped at 12% core / 20% high-beta. If the cap is tighter than the vol budget, size is cut instead of the stop widened. Concentrated and stopless is the combination that doesn't recover.`},
+      {ic:'🏃',t:"Don't chase the print",chip:'+0.5×ATR',tone:'ok',b:`Reprice at order time; if last > limit + 0.5×ATR, cancel — do not walk the limit up. An hours-old snapshot plus a 6% IBIT day is how a stale limit becomes a market order.`},
+      {ic:'🚫',t:'No borrow into heat',chip:pressClosed?'paused':'open',tone:pressClosed?'warn':'ok',b:`No incremental borrow when the median proposed fill is <5% off the 20-day high, when more than half the fills are <3% off, or when the book is already >1.3× with average HV >40%. Press room then stays dry powder or a pullback limit.`},
+      {ic:'🏠',t:'House money at 2× cost',chip:houseMoney.length?`${houseMoney[0].symbol} eligible`:'none yet',tone:houseMoney.length?'go':'ok',b:`Once a name doubles, sell the original cost basis and let the rest run free. ${houseMoney.length?`${houseMoney[0].symbol} is at ${fmt(houseMoney[0].px/houseMoney[0].avg,1)}× cost — eligible now.`:'Nothing at 2× cost yet.'}`},
+      {ic:'📉',t:'No adds to broken trends',chip:'rule',tone:'ok',b:`Down is not the same as cheap — averaging into a rolled-over name is how a satellite becomes the whole book.`},
+      {ic:'📅',t:'Earnings gaps',chip:earnSoon.length?`${earnSoon[0].p.symbol} in ${earnSoon[0].e.daysAway}d`:'none ≤14d',tone:earnSoon.length?'warn':'ok',b:earnSoon.length?`${earnSoon[0].p.symbol} reports in ${earnSoon[0].e.daysAway}d (${earnSoon[0].e.reportDate||'soon'}) — high-beta names gap hard; size for it or wait for the print.`:'Around earnings on a high-beta name: size for the gap or wait for the print.'}
+    ])}`;
+}
+/* v179 — a rulebook as one-line rows: icon · rule · live status chip; the why opens on tap. */
+function sdGuardrails(rules){
+  return `<div class="gr-list">${rules.map(r=>`<details class="gr-row"><summary><span class="gr-ic">${r.ic}</span><b>${r.t}</b><span class="gr-chip gr-${r.tone||'ok'}">${r.chip}</span><i class="oh-chev"></i></summary><p>${r.b}</p></details>`).join('')}</div>`;
 }
 
 /* ═══ Agentic Portfolio (the recommended portfolio for the ••••3900 agentic account) ═══
@@ -3901,7 +3919,7 @@ function renderAgenticPlan(){
   })();
   const statusCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-status" onclick="toggleSection('b-agp-status')"><span>🤖 Where the plan stands <span class="card-hint">(ticket · cash · next action)</span></span><span class="chevron">▼</span></div><div id="b-agp-status">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">This account runs itself between your confirmations: research sets the destination, a deterministic planner turns drift into a ticket, and an hourly executor places what falls inside the auto tier. Everything below is state the producer and executor own — this page reads it, it never places an order.</div>
+      <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">This account runs itself between your confirmations: research sets the destination, a deterministic planner turns drift into a ticket, and an hourly executor places what falls inside the auto tier. Everything below is state the producer and executor own — this page reads it, it never places an order.</div></details>
       ${pendLine}
       <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr);margin-top:10px">
         <div class="pk-m"><div class="pk-m-l">Book</div><div class="pk-m-v">${book>0?fmtD(book):'—'}</div></div>
@@ -3909,7 +3927,7 @@ function renderAgenticPlan(){
         <div class="pk-m"><div class="pk-m-l">On target</div><div class="pk-m-v">${rows.filter(x=>x.held).length}/${rows.length} <span style="font-size:11px;color:#9ca3af">names held</span></div></div>
         <div class="pk-m"><div class="pk-m-l">Last rebalance</div><div class="pk-m-v">${lastDec?dLbl(lastDec.date):'—'}</div></div>
       </div>
-      ${idleDays!=null?`<div class="fund-note" style="margin:10px 0 0;${idleDays>=AG_IDLE_DEPLOY_D?'background:#fffbeb;border-color:#fde68a':''}"><b>⏱ Idle-cash clock:</b> cash has been sitting since <b>${dLbl(A.cashIdleSince)}</b> (${idleDays}d of ${AG_IDLE_DEPLOY_D}). ${idleDays>=AG_IDLE_DEPLOY_D?`The deadline has passed — entry bands are <b>waived</b> and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches (swept whole below ${fmtD(AG_IDLE_SWEEP_FLOOR)}).`:`At ${AG_IDLE_DEPLOY_D}d the entry bands are waived and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches — "wait for a pullback" is not allowed to run forever.`}</div>`:''}
+      ${idleDays!=null?`<div class="fund-note" style="margin:10px 0 0;${idleDays>=AG_IDLE_DEPLOY_D?'background:#fffbeb;border-color:#fde68a':''}"><b>⏱ Idle cash ${idleDays}d of ${AG_IDLE_DEPLOY_D}</b> <span class="ag-clock"><i style="width:${Math.min(100,idleDays/AG_IDLE_DEPLOY_D*100)}%"></i></span> <span style="opacity:.75">since ${dLbl(A.cashIdleSince)}.</span> <details class="sd-more" style="margin-top:4px"><summary>What happens at the deadline</summary>${idleDays>=AG_IDLE_DEPLOY_D?`The deadline has passed — entry bands are <b>waived</b> and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches (swept whole below ${fmtD(AG_IDLE_SWEEP_FLOOR)}).`:`At ${AG_IDLE_DEPLOY_D}d the entry bands are waived and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches — "wait for a pullback" is not allowed to run forever.`}</details></div>`:''}
       ${orphans.length?`<div class="fund-note" style="margin:10px 0 0"><b>Off-target holdings:</b> ${orphans.map(p=>`<b>${p.symbol}</b> (${fmtD(p.value)})`).join(' · ')} — held but not in the current target. The planner exits ${orphans.length>1?'these':'this'} to fund the underweight names, subject to the ${AG_MIN_HOLD_D}-day min-hold below (per lot — only shares bought inside the window wait).</div>`:''}
       <div style="text-align:center;margin-top:12px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 See the actual book — holdings · drift · performance · rebalance log →</span></div>
     </div></div>`;
@@ -3925,24 +3943,17 @@ function renderAgenticPlan(){
   };
   const tRows=rows.slice().sort((a,b)=>b.tgt-a.tgt).map(x=>{
     const s=statusOf(x);
-    // Sector only in the name cell. A real target carries 3-5 sleeve drivers per name, which wrapped
-    // rows to five lines and pushed Status — the column this table exists for — off a phone screen;
-    // the drivers live in the thesis expander below instead.
-    return `<tr><td><span class="sym">${x.sym}</span>${x.phaseOut?' <span style="color:#6b7280;font-size:9px">phase-out</span>':''}<br><span style="color:#9ca3af;font-size:10.5px">${x.sector}</span></td>`+
-      `<td class="tr"><b>${fmt(x.tgt,0)}%</b><br><span style="color:#9ca3af;font-size:11px">${book>0?fmtD(x.tgt/100*book):'—'}</span></td>`+
-      // Status sits next to Target on purpose: "is this on track or blocked" is the question this
-      // table exists to answer, and the levels columns are wide enough to push it off a phone screen.
-      `<td class="tr"><span class="badge" style="background:${s.b};color:${s.c};white-space:nowrap">${s.t}</span></td>`+
-      `<td class="tr" style="font-size:11px">${x._entry?String(x._entry).replace(/\s*\(.*\)$/,''):'—'}<br><span style="color:#9ca3af">now ${x.px>0?P(x.px):'—'}</span></td>`+
-      `<td class="tr" style="font-size:11px"><span style="color:#991b1b">${x._stop>0?P(x._stop):'—'}</span> · <span style="color:#065f46">${x._tp>0?P(x._tp):'—'}</span></td></tr>`;
+    /* v179 — one row per name: target bar with the held weight ticked on it; levels open on tap. */
+    return `<details class="tg-row"><summary><span class="xr-tk tg-tk">${x.sym}</span><span class="tg-m"><b>${fmt(x.tgt,0)}%<small> target${x.held?` · ${fmt(x.cur,1)}% held`:''}</small></b><span class="tg-bar"><i style="width:${Math.min(100,x.tgt*2)}%"></i>${x.held?`<em style="left:${Math.min(100,x.cur*2)}%"></em>`:''}</span></span><span class="badge tg-st" style="background:${s.b};color:${s.c}">${s.t}</span><i class="oh-chev"></i></summary>
+      <div class="tg-lv"><span>${x.sector}${x.phaseOut?' · phase-out':''}</span><span>Target $ <b>${book>0?fmtD(x.tgt/100*book):'—'}</b></span><span>Now <b>${x.px>0?P(x.px):'—'}</b></span><span>Entry <b>${x._entry?String(x._entry).replace(/\s*\(.*\)$/,''):'—'}</b></span><span>Stop <b style="color:#991b1b">${x._stop>0?P(x._stop):'—'}</b></span><span>TP <b style="color:#065f46">${x._tp>0?P(x._tp):'—'}</b></span></div></details>`;
   }).join('');
   // `drivers` are the sleeves that scored this name ≥7 — attributed deterministically by
   // finalize-target from the sleeve scores, not taken on the model's word.
   const theses=rows.filter(x=>x.thesis||x.drivers.length).map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.sym}</b> <span style="color:#9ca3af">${fmt(x.tgt,0)}%</span>${x.drivers.length?` <span style="color:#9ca3af;font-size:10.5px">· ${x.drivers.join(' · ')}</span>`:''}${x.thesis?`<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-top:2px;line-height:1.45">${x.thesis}</div>`:''}</span></div>`).join('');
   const targetCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-target" onclick="toggleSection('b-agp-target')"><span>🎯 The target — and why these names <span class="card-hint">${rows.length} names · as of ${T.asOf||'—'}</span></span><span class="chevron">▼</span></div><div id="b-agp-target">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">The destination, not the book. Weekly deep multi-factor research (momentum · quality · growth · catalyst → adversarial verify → synthesis) proposes an allocation; <b>finalize-target</b> then re-enforces the correlation-cluster and vol-scaled caps deterministically, so the caps hold no matter what the research says. Business quality decides <b>inclusion</b>; today's price decides <b>size</b> — a stretched entry shrinks a position instead of vetoing it.</div>
-      <div style="overflow-x:auto" class="sticky-first"><table><thead><tr><th>Name</th><th class="tr">Target</th><th class="tr">Status</th><th class="tr">Entry · now</th><th class="tr">Stop · TP</th></tr></thead><tbody>${tRows}</tbody></table></div>
+      <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">The destination, not the book. Weekly deep multi-factor research (momentum · quality · growth · catalyst → adversarial verify → synthesis) proposes an allocation; <b>finalize-target</b> then re-enforces the correlation-cluster and vol-scaled caps deterministically, so the caps hold no matter what the research says. Business quality decides <b>inclusion</b>; today's price decides <b>size</b> — a stretched entry shrinks a position instead of vetoing it.</div></details>
+      <div class="xr-list tg-list">${tRows}</div><div class="tg-key">bar = target weight · tick = held now · tap a name for levels</div>
       ${T.method?`<details class="trk-detail" style="margin-top:10px"><summary>How this target was built <span style="color:#9ca3af;font-weight:400">— sizing, caps, and why names left</span></summary><div class="ag-method">${agMethodHtml(T)}</div></details>`:''}
       ${theses?`<details class="trk-detail" style="margin-top:6px"><summary>View the per-name thesis &amp; drivers</summary><div style="margin-top:6px">${theses}</div></details>`:''}
     </div></div>`;
@@ -3994,7 +4005,7 @@ function renderAgenticPlan(){
       ? `Its <b>${what}</b> (${amt}) was bought earlier the same session. Selling it now would book a day trade, and this account sits under the $25k PDT threshold — so it waits for the next session.`
       : `Its <b>${what}</b> (${amt}) was held back: ${b.note||'blocked by an execution guard'}.`;
     const clears=b.until?`unlocks ${dLbl(b.until)}`:'unlocks next session';
-    return `<div class="act-item" style="background:#dbeafe55;border-color:#bfdbfe"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:#1e40af;color:#fff">${b.blocked==='day-trade'?'PDT guard':(b.blocked||'held')}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${why} <span style="color:#9ca3af">— ${clears}.</span></div></div></div>`;
+    return `<details class="xr-row bk-row"><summary><span class="xr-tk" style="background:#1e40af">${b.sym}</span><span class="xr-m"><b>${b.blocked==='day-trade'?'PDT guard':(b.blocked||'held')} · ${what} ${amt}</b><small>${clears}</small></span><i class="oh-chev"></i></summary><p>${why}</p></details>`;
   }).join('');
   const nBuy=blockList.length, nSell=sellBlocks.length;
   const blockHint=(nBuy||nSell)
@@ -4002,36 +4013,38 @@ function renderAgenticPlan(){
     : 'nothing deferred';
   const blockedCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blockHint}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do. Only names it is actually trying to <b>buy</b> can appear: a name already held at its target weight has no buy to defer, so its entry zone is moot and the levels that matter are its <b>stop and take-profit</b> on the target card above.</div>
+      <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do. Only names it is actually trying to <b>buy</b> can appear: a name already held at its target weight has no buy to defer, so its entry zone is moot and the levels that matter are its <b>stop and take-profit</b> on the target card above.</div></details>
       ${agDrawdownBanner()}${agRegimeBanner()}
       ${(blockList.length||sellBlockHtml)?'':`<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
-      ${blockList.length?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:0 0 6px">🛒 Buys deferred</div>`+blockList.map(b=>`<div class="act-item" style="background:${b.bg}55;border-color:${b.bg}"><div class="act-body"><div class="act-title" style="color:var(--text)"><b>${b.sym}</b> <span class="act-tag" style="background:${b.col};color:#fff">${b.tag}</span></div><div class="act-detail" style="color:var(--text);opacity:.85">${b.why} <span style="color:#9ca3af">— ${b.clears}.</span></div></div></div>`).join(''):''}
-      ${sellBlockHtml?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:${blockList.length?'12px':'0'} 0 6px">💸 Sells held back <span style="color:#9ca3af;font-weight:400">· from the ${blkSrc&&blkSrc.created?dLbl(blkSrc.created):'latest'} ticket${blkSrc&&(blkSrc.status==='done'||blkSrc.status==='aborted')?' ('+blkSrc.status+')':''}</span></div>`+sellBlockHtml
-        +`<div class="fund-note" style="margin:8px 0 0">These are sells the planner <b>wanted</b> to make and a guard stopped — not failures. The weight is unchanged; the trade re-plans on the first pass after the date above. The min-hold is <b>per lot</b>: only the shares bought inside the window wait, so a recent top-up no longer freezes a position you have held for months. De-risking is never blocked this way either: a business-broken verdict or a loss past −10% overrides the min-hold, and the drawdown breaker never blocks a sell at all.</div>`:''}
+      ${blockList.length?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:0 0 6px">🛒 Buys deferred</div>`+`<div class="xr-list">${blockList.map(b=>`<details class="xr-row bk-row"><summary><span class="xr-tk" style="background:${b.col}">${b.sym}</span><span class="xr-m"><b>${b.tag}</b><small>${b.clears}</small></span><i class="oh-chev"></i></summary><p>${b.why}</p></details>`).join('')}</div>`:''}
+      ${sellBlockHtml?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:${blockList.length?'12px':'0'} 0 6px">💸 Sells held back <span style="color:#9ca3af;font-weight:400">· from the ${blkSrc&&blkSrc.created?dLbl(blkSrc.created):'latest'} ticket${blkSrc&&(blkSrc.status==='done'||blkSrc.status==='aborted')?' ('+blkSrc.status+')':''}</span></div>`+'<div class="xr-list">'+sellBlockHtml+'</div>'
+        +`<details class="sd-more"><summary>Why sells get held</summary><div class="fund-note" style="margin:8px 0 0">These are sells the planner <b>wanted</b> to make and a guard stopped — not failures. The weight is unchanged; the trade re-plans on the first pass after the date above. The min-hold is <b>per lot</b>: only the shares bought inside the window wait, so a recent top-up no longer freezes a position you have held for months. De-risking is never blocked this way either: a business-broken verdict or a loss past −10% overrides the min-hold, and the drawdown breaker never blocks a sell at all.</div></details>`:''}
       ${zonesStale?`<div class="fund-note" style="margin:10px 0 0;background:#fffbeb;border-color:#fde68a"><b>⚠️ Entry zones are advisory:</b> this target is <b>${zoneAge}d</b> old (over the ${AG_ENTRY_STALE_D}-day limit), so the entry-band checks are <b>off</b>. When a whole target reads out-of-band at once, the guard is measuring its own staleness rather than the companies. <b>Below-stop</b> still binds — that one is the real thesis-broken signal.</div>`:
-        `<div class="fund-note" style="margin:10px 0 0">Entry checks are <b>live</b> (target is ${zoneAge==null?'—':zoneAge+'d'} old, limit ${AG_ENTRY_STALE_D}d): a name more than <b>${AG_ENTRY_TOL_PCT}%</b> below its entry floor defers for a re-verify, more than <b>${AG_ENTRY_PREM_PCT}%</b> above its ceiling waits for a pullback. Small misses are tolerated on purpose — a 0.2% miss parking a position is how cash gets stranded.</div>`}
+        `<details class="sd-more"><summary>✓ Entry checks live — how they work</summary><div class="fund-note" style="margin:6px 0 0">Entry checks are <b>live</b> (target is ${zoneAge==null?'—':zoneAge+'d'} old, limit ${AG_ENTRY_STALE_D}d): a name more than <b>${AG_ENTRY_TOL_PCT}%</b> below its entry floor defers for a re-verify, more than <b>${AG_ENTRY_PREM_PCT}%</b> above its ceiling waits for a pullback. Small misses are tolerated on purpose — a 0.2% miss parking a position is how cash gets stranded.</div></details>`}
     </div></div>`;
 
   // ── 4. the waiting ground ────────────────────────────────────────────────────────────────────
   const parkVal=(()=>{ const h=heldPos.find(p=>p.symbol===AG_PARK_VEHICLE); return h?Math.max(0,+h.value||0):0; })();
   const parkCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-park" onclick="toggleSection('b-agp-park')"><span>🅿️ The waiting ground <span class="card-hint">${parked?fmtD(parked.dollars)+' parked in '+(parked.vehicle||AG_PARK_VEHICLE):'nothing parked'}</span></span><span class="chevron">▼</span></div><div id="b-agp-park">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Only a <b>wash-sale</b> deferral waits here now (owner decision, 2026-09-03, after switching idle cash to a <b>high-yield sweep</b>): its dollars go into <b>${AG_PARK_VEHICLE}</b>, a broad-market placeholder, and are released to fund the name once the 30-day window clears. Every OTHER deferral — entry band, earnings, policy, re-entry, below-stop, regime, drawdown — now waits in <b>cash</b>. A round trip through the vehicle pays a full spread (~0.21%) to rent a few days of equity beta; measured on this book it earned <b>+$0.78 on ~$1,000 of turnover</b>, less than the spread, while ${AG_PARK_VEHICLE} itself fell 0.22%. A 30-day wash wait is the one case long enough to be worth it. <b>${AG_PARK_VEHICLE}, not SPY</b>: SPY is the target's own ballast, so parking there would bury the placeholder inside a real position — and the two track different indexes, so they're never "substantially identical" for wash-sale purposes. Not QQQ either, since half of it is the megacap-tech cluster the ${AG_CLUSTER_CAP}% cap exists to contain.</div>
+      <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">Only a <b>wash-sale</b> deferral waits here now (owner decision, 2026-09-03, after switching idle cash to a <b>high-yield sweep</b>): its dollars go into <b>${AG_PARK_VEHICLE}</b>, a broad-market placeholder, and are released to fund the name once the 30-day window clears. Every OTHER deferral — entry band, earnings, policy, re-entry, below-stop, regime, drawdown — now waits in <b>cash</b>. A round trip through the vehicle pays a full spread (~0.21%) to rent a few days of equity beta; measured on this book it earned <b>+$0.78 on ~$1,000 of turnover</b>, less than the spread, while ${AG_PARK_VEHICLE} itself fell 0.22%. A 30-day wash wait is the one case long enough to be worth it. <b>${AG_PARK_VEHICLE}, not SPY</b>: SPY is the target's own ballast, so parking there would bury the placeholder inside a real position — and the two track different indexes, so they're never "substantially identical" for wash-sale purposes. Not QQQ either, since half of it is the megacap-tech cluster the ${AG_CLUSTER_CAP}% cap exists to contain.</div></details>
       ${parked?`
         <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr)">
           <div class="pk-m"><div class="pk-m-l">Parked (cost)</div><div class="pk-m-v">${fmtD(parked.dollars)}</div></div>
           <div class="pk-m"><div class="pk-m-l">${parked.vehicle||AG_PARK_VEHICLE} held now</div><div class="pk-m-v">${parkVal>0?fmtD(parkVal):'—'}</div></div>
         </div>
-        <div class="fund-note" style="margin:10px 0 0">Waiting on behalf of <b>${(parked.forNames||[]).join(', ')||'—'}</b>, parked since <b>${dLbl(parked.since)}</b>. Each release is a real short-term taxable sale, so it's floored at ${fmtD(AG_PARK_MIN)}, sized to the actual shortfall, and runs through the same losses-first ordering and day-trade guard as any other sell.</div>
-        <div class="fund-note" style="margin:8px 0 0">${AG_PARK_VEHICLE} is deliberately <b>exempt from the off-target exit rule</b> — treating it as an orphan would liquidate it on every pass while parking rebuilt it, an infinite taxable churn loop.</div>`:
+        <div class="sd-chips sd-chips-row"><span>for ${(parked.forNames||[]).join(', ')||'—'}</span><span>since ${dLbl(parked.since)}</span></div>
+        <details class="sd-more"><summary>How parking works</summary><div class="fund-note" style="margin:6px 0 0">Waiting on behalf of <b>${(parked.forNames||[]).join(', ')||'—'}</b>, parked since <b>${dLbl(parked.since)}</b>. Each release is a real short-term taxable sale, so it's floored at ${fmtD(AG_PARK_MIN)}, sized to the actual shortfall, and runs through the same losses-first ordering and day-trade guard as any other sell.</div>
+        <div class="fund-note" style="margin:8px 0 0">${AG_PARK_VEHICLE} is deliberately <b>exempt from the off-target exit rule</b> — treating it as an orphan would liquidate it on every pass while parking rebuilt it, an infinite taxable churn loop.</div></details>`:
         `<div class="tech-empty">Nothing parked — no target name is currently deferred with money waiting behind it.</div>`}
     </div></div>`;
 
   // ── 5. the rulebook ──────────────────────────────────────────────────────────────────────────
-  const rule=(icon,name,val,why)=>`<div class="harv-line"><span style="flex:1"><b>${icon} ${name}</b> <span style="color:#9ca3af">${val}</span><div style="font-size:11.5px;color:var(--text);opacity:.8;margin-top:2px;line-height:1.45">${why}</div></span></div>`;
+  const rule=(icon,name,val,why)=>`<details class="gr-row"><summary><span class="gr-ic">${icon}</span><b>${name}</b>${(()=>{const c=String(val).replace(/<[^>]+>/g,'');return c.length<=16?`<span class="gr-chip">${c}</span>`:'';})()}<i class="oh-chev"></i></summary><p><b>${val}</b> — ${why}</p></details>`;
   const rulesCard=`
     <div class="card" data-priv="off"><div class="card-title collapsible" data-toggle="b-agp-rules" onclick="toggleSection('b-agp-rules')"><span>📏 Guardrails <span class="card-hint">the standing rules the executor can't cross</span></span><span class="chevron">▼</span></div><div id="b-agp-rules">
-      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div>
+      <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div></details>
+      <div class="gr-list">
       ${rule('🧬','Correlation-cluster cap',AG_CLUSTER_CAP+'% megacap-tech','A "sector-diversified" label hid the fact that NVDA/MSFT/GOOGL/AMZN/META/AAPL all trade as one bet. Payments cap 20%, staples 25%; index is uncapped.')}
       ${rule('📉','Vol-scaled single-name cap','wider 52wk range → smaller max','10% in a high-range biotech is not 10% in SPY. Conviction sets the weight; realized range caps it.')}
       ${rule('🎯','Mandate','Beat SPY (rolling 12mo)','Owner-set 2026-09-08. This account exists to OUTPERFORM the S&P 500 over rolling twelve-month windows — not to preserve capital. It accepts tracking error and drawdowns as deep as, or deeper than, SPY\'s. That is why there is no defensive floor, no forced gold sleeve and only a small residual index position: anything held purely to track the benchmark is weight that cannot beat it. Downside is controlled by the correlation caps below and by a breaker that measures the book against SPY rather than against its own peak. The other account (••••0741, self-directed) runs the opposite rulebook — concentrated and levered — and neither should ever be made to look like the other.')}
@@ -4051,13 +4064,14 @@ function renderAgenticPlan(){
       ${rule('🌡️','Regime pacing','VIX '+AG_VIX_ELEVATED+' / '+AG_VIX_STRESSED,'The idle-cash deadline used to fire identically at VIX 12 and VIX 35. Elevated stretches it ×1.5, stressed ×2 and halves the tranche. It paces deployment only — it never picks names, sizes positions, or blocks a sell.')}
       ${rule('🧮','Cluster caps see through the index','SPY/'+AG_PARK_VEHICLE+'/QQQ composition counts','A book could hold 44.8% megacap-tech directly, add 20% SPY on top, and still report itself inside the '+AG_CLUSTER_CAP+'% cap while really carrying ~54%. Caps now count what is inside the index sleeves — and a breach trims the DIRECT names, never the index ballast, since that is the diversifier.')}
       ${rule('🔓','No leverage','unlevered 1×','Limited margin grants instant settlement only. The account cannot borrow, so the book is its own equity.')}
+      </div>
     </div></div>`;
 
   // ── 6. how the loop runs ─────────────────────────────────────────────────────────────────────
-  const step=(n,title,body)=>`<div class="act-item" style="background:rgba(99,102,241,0.10);border-color:#6366f1"><div class="act-icon">${n}</div><div class="act-body"><div class="act-title" style="color:var(--text)">${title}</div><div class="act-detail" style="color:var(--text);opacity:.82">${body}</div></div></div>`;
+  const step=(n,title,body)=>`<details class="gr-row"><summary><span class="gr-ic lp-n">${n}</span><b>${title}</b><i class="oh-chev"></i></summary><p>${body}</p></details>`;
   const loopCard=`
     <div class="card" data-priv="off"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
-      <div class="act-list">
+      <div class="gr-list">
         ${step('1','Research — weekly, or early','A multi-sleeve deep research run (momentum · quality · growth · catalyst, with an adversarial verify pass) proposes names and weights. It also runs early when a deposit lands or a held name gaps ≥6% — the system reacts to events, not just the calendar.')}
         ${step('2','Finalize — caps re-enforced','<code>finalize-target.mjs</code> re-applies the cluster and vol-scaled caps to whatever the research returned, and a held name the research dropped is retained one cycle as a <b>phase-out</b> (zero trades) unless the verdict was explicitly business-broken. A target refresh expresses intent; it is not an execution order.')}
         ${step('3','Plan — drift becomes a ticket','The deploy planner compares the target to the real book and writes a ticket: exits first, then harvests, then buys — losses sold first for tax, with every guardrail above applied. Wash-sale-deferred weight parks in '+AG_PARK_VEHICLE+'; every other deferral waits in cash.')}
@@ -8337,12 +8351,12 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=178"></script>
-<script src="ui/predictions-model.js?v=178"></script>
-<script src="ui/predictions.js?v=178"></script>
-<script src="ui/smartmoney-model.js?v=178"></script>
-<script src="ui/smartmoney.js?v=178"></script>
-<script src="ui/experience.js?v=178"></script>
-<script src="ui/ticker.js?v=178"></script>
+<script src="ui/experience-model.js?v=179"></script>
+<script src="ui/predictions-model.js?v=179"></script>
+<script src="ui/predictions.js?v=179"></script>
+<script src="ui/smartmoney-model.js?v=179"></script>
+<script src="ui/smartmoney.js?v=179"></script>
+<script src="ui/experience.js?v=179"></script>
+<script src="ui/ticker.js?v=179"></script>
 </body>
 </html>

@@ -1,3 +1,24 @@
+## v179 — Both plan pages: visual rows, collapsed explanations (2026-11-03)
+
+Jack: "word blocks → more visually appealing views and collapsed info", on ALL plan pages.
+**Self-directed plan** (`renderActionPlan`): mandate box folds to a chip summary; "Nothing is broken" is a
+verdict pill; margin posture is a gauge (fill = line used, ticks at cruise/max) + 3 tiles (line used ·
+headroom · margin call) + verdict, method folded; paydown sells use the v178 `xr-row`s; concentration is
+one bar per name (% of equity, tick at the 20% new-money cap) with peel-backs as chips; Stock ideas are
+tap-to-expand rows (ticker · momentum bar · status chip · R/R; price → target · stop visible, reason on
+tap); Guardrails render through `sdGuardrails()` — icon · short rule · LIVE status chip, the why on tap.
+**Agentic plan** (`renderAgenticPlan`): every card intro folds under "About this card"; idle-cash clock is
+a progress bar; the 5-column target table is one row per name (target-weight bar with a held-weight
+tick, status chip; sector/levels on tap); buy deferrals and held sells are rows (ticker · reason ·
+unlock date; detail on tap); park/entry/held-sell footnotes fold; the 19 rules and the 5 loop steps are
+`gr-row`s (rule chip only when the value is ≤16 chars). Same fields, nothing new computed; all
+`sd-plan-browser.mjs` assertions unchanged (ideas keep `.sd-idea[data-status]`, `.sd-idea-link`, the
+target price stays in the visible summary). Agentic plan page at 390px: 7,171px → ~3,620px tall.
+Files: `index.html`, `ui/experience.css` (v179 blocks), `sw.js`. App/cache **v179 / pf-v179**.
+Verified: sd-plan-browser PASS (320–1440, privacy, Midnight), model + agentic suites green, synthetic
+Playwright 320/390 on both pages — no overflow, no page errors, no readable $ in private mode.
+Physical iPhone not verified.
+
 ## v178 — Compact "Model correctness" card + broken-thesis exit rows (2026-11-03)
 
 Jack (phone screenshots): both read as walls of text. **Agentic › Model correctness & forward record**
