@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=180">
-<link rel="stylesheet" href="ui/predictions.css?v=180">
-<link rel="stylesheet" href="ui/smartmoney.css?v=180">
-<link rel="stylesheet" href="ui/ticker.css?v=180">
+<link rel="stylesheet" href="ui/experience.css?v=181">
+<link rel="stylesheet" href="ui/predictions.css?v=181">
+<link rel="stylesheet" href="ui/smartmoney.css?v=181">
+<link rel="stylesheet" href="ui/ticker.css?v=181">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=180"></script>
+<script src="ui/sd-rules.js?v=181"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v180'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v181'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2475,13 +2475,18 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
      producer/riskweights.mjs `LOOKTHROUGH_ENFORCE=false`: measure and disclose, don't bind. On this
      side the concentration IS the mandate; what the reader needs is the size of the bet stated
      plainly plus the level that protects it, not a cap that liquidates a winner. */
-  const concRows=keep.filter(r=>equity>0&&r.p.val>equity*SD_CONC_FLAG)
-    .sort((a,b)=>b.p.val-a.p.val)
-    .map(r=>({ r, pctEq:r.p.val/equity*100, hit:(r.p.val/equity*100)*0.2,
-               stop:(r.m&&r.m.px>0)?sdStop(r.m):null,
+  /* v181 — measured on the book AFTER the planned sells, not on `keep`. `keep` drops a broken name
+     entirely, but an exit can leave shares behind (covered-call collateral, or a fully pledged
+     lockedExit), and those still move with the cluster. Live 2026-11-03: IREN (900 sh, 300 pledged)
+     vanished from the AI/compute complex, which then read 107% of equity instead of ~150%. */
+  const afterVal=r=>Math.max(0,r.p.val-(exitSet.has(r.p.symbol)?(r.sellVal||0):0)-(soldVal[r.p.symbol]||0));
+  const concRows=rows.filter(r=>equity>0&&afterVal(r)>equity*SD_CONC_FLAG)
+    .sort((a,b)=>afterVal(b)-afterVal(a))
+    .map(r=>({ r, val:afterVal(r), pctEq:afterVal(r)/equity*100, hit:(afterVal(r)/equity*100)*0.2,
+               stop:(r.m&&r.m.px>0)?sdStop(r.m):null, part:exitSet.has(r.p.symbol)||!!soldVal[r.p.symbol],
                score:(r.m&&r.m.score!=null)?r.m.score:null }));
-  const aiVal=keep.filter(r=>SD_AI_CLUSTERS.indexOf((typeof clusterFor==='function')?clusterFor(r.p.symbol):null)>=0)
-                  .reduce((s,r)=>s+r.p.val,0);
+  const aiVal=rows.filter(r=>SD_AI_CLUSTERS.indexOf((typeof clusterFor==='function')?clusterFor(r.p.symbol):null)>=0)
+                  .reduce((s,r)=>s+afterVal(r),0);
 
   const freed=exitProceeds+payProceeds;          // ONE pass — no shares counted twice
   const netTaxable=exitPl+payPl;
@@ -2707,10 +2712,12 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       <div class="sd-verdict ${utilPct>maxP?'bad':'ok'}">${utilPct>maxP?'⚠️ Over your ceiling — step 1 raises cash':utilPct>cruiseP?'✓ Inside your band — no forced selling':'✓ Under cruise — the plan can deploy'}</div>
       <details class="sd-more"><summary>How margin is measured</summary><p>Your loan is ${fmtD(M.debt)} = ${fmt(utilPct,1)}% of your ${fmtD(M.line)} line (cruise ${fmt(cruiseP,0)} / max ${fmt(maxP,0)}). Only the ${fmt(maxP,0)}% ceiling forces a sell. ${M.callDrop!=null?`Margin-call distance assumes 25% maintenance — Robinhood's real requirement runs higher on volatile names, so treat it as the optimistic end.`:''}</p></details>
     </div>`:'';
-  const cBar=(lbl,pct,sub)=>`<div class="cb-row"><div class="cb-top"><b>${lbl}</b><span class="cb-pct ${pct>100?'neg':''}">${fmt(pct,0)}%<small> of equity</small></span></div><div class="cb-bar"><i style="width:${Math.min(100,pct)}%"></i><em style="left:20%" title="new-money cap"></em></div>${sub?`<div class="cb-sub">${sub}</div>`:''}</div>`;
+  const cScale=Math.max(100,Math.ceil(Math.max(0,...concRows.map(c=>c.pctEq),equity>0?aiVal/equity*100:0)/50)*50);
+  const cBar=(lbl,pct,sub)=>`<div class="cb-row"><div class="cb-top"><b>${lbl}</b><span class="cb-pct ${pct>100?'neg':''}">${fmt(pct,0)}%<small> of equity${pct>100?` · ${fmt(pct/100,1)}× what you own`:''}</small></span></div><div class="cb-bar"><i style="width:${Math.min(100,pct/cScale*100)}%;background:${pct>100?'#ef4444':pct>50?'#f59e0b':'#10b981'}"></i><em style="left:${20/cScale*100}%"></em>${cScale>100?`<em class="cb-eq" style="left:${100/cScale*100}%"></em>`:''}</div>${sub?`<div class="cb-sub">${sub}</div>`:''}</div>`;
   const concHtml=`<div class="cb">
-      ${concRows.map(c=>cBar(c.r.p.symbol,c.pctEq,`<span data-priv="val">${fmtD(c.r.p.val)}</span> · −20% day ≈ <b class="neg">−${fmt(c.hit,1)}%</b> of acct${c.stop?` · stop ${P(c.stop)} (${fmt((1-c.stop/c.r.m.px)*100,0)}%)`:''}${c.score!=null?` · mom ${fmt(c.score,1)}`:''}`)).join('')}
-      ${aiVal>0?cBar('AI / compute complex',equity>0?aiVal/equity*100:0,`${fmtD(aiVal)} · ${fmt(exposure>0?aiVal/exposure*100:0,0)}% of exposure · one macro bet, by design`):''}
+      ${concRows.map(c=>cBar(c.r.p.symbol+(c.part?' <small style="font-weight:500;opacity:.6">after sell</small>':''),c.pctEq,`<span data-priv="val">${fmtD(c.val)}</span> · −20% day ≈ <b class="neg">−${fmt(c.hit,1)}%</b> of acct${c.stop?` · stop ${P(c.stop)} (${fmt((1-c.stop/c.r.m.px)*100,0)}%)`:''}${c.score!=null?` · mom ${fmt(c.score,1)}`:''}`)).join('')}
+      ${aiVal>0?cBar('AI / compute complex',equity>0?aiVal/equity*100:0,`${fmtD(aiVal)} · ${fmt(exposure>0?aiVal/exposure*100:0,0)}% of exposure after planned sells · one macro bet, by design`):''}
+      <div class="cb-key"><span><em></em> 20% new-money cap</span>${cScale>100?'<span><em class="cb-eq"></em> 100% = your equity</span>':''}<span>measured after the planned sells</span></div>
       ${trimAdv.length?`<div class="sd-chips sd-chips-row">${trimAdv.map(({r,t})=>`<span class="warn">✂️ ${r.p.symbol} peel ≈ ${fmtD(t.peel)} → ${fmt(SD_SINGLE_MAX_EQ?SD_SINGLE_MAX_EQ*100:20,0)}%</span>`).join('')}<span>advisory · not an order</span></div>`:''}
       <details class="sd-more"><summary>Why size alone never sells</summary><p>No sell is generated from size alone — that was the 2026-08-25 lesson. New money is a different question: a name already past 20% of equity will not be added to (the tick on each bar), and a name past 25% of equity or +25% from cost is flagged as a peel-back to target weight, not as an exit.${trimAdv.length?' '+trimAdv.map(({r,t})=>`${r.p.symbol}: ${t.why}.`).join(' '):''}</p></details>
     </div>`;
@@ -8356,13 +8363,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=180"></script>
-<script src="ui/predictions-model.js?v=180"></script>
-<script src="ui/predictions.js?v=180"></script>
-<script src="ui/smartmoney-model.js?v=180"></script>
-<script src="ui/smartmoney.js?v=180"></script>
-<script src="ui/experience.js?v=180"></script>
-<script src="ui/ticker.js?v=180"></script>
-<script src="ui/compact.js?v=180"></script>
+<script src="ui/experience-model.js?v=181"></script>
+<script src="ui/predictions-model.js?v=181"></script>
+<script src="ui/predictions.js?v=181"></script>
+<script src="ui/smartmoney-model.js?v=181"></script>
+<script src="ui/smartmoney.js?v=181"></script>
+<script src="ui/experience.js?v=181"></script>
+<script src="ui/ticker.js?v=181"></script>
+<script src="ui/compact.js?v=181"></script>
 </body>
 </html>

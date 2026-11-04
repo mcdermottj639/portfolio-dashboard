@@ -345,3 +345,8 @@ html[data-theme="gold"] .lp-n{color:#a5b4fc}html[data-theme="gold"] .ag-clock{ba
   table.pf-stack td:empty{display:none}
 }
 }
+/* v181 — concentration bars on a 0..max scale: solid severity fill, 20% cap tick, 100%-of-equity tick */
+.cb-bar>em.cb-eq{background:#ef4444;opacity:.8;width:2px}
+.cb-key{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10.5px;opacity:.6;margin:6px 0 2px}
+.cb-key em{display:inline-block;width:2px;height:10px;background:var(--text);vertical-align:-1px;margin-right:3px}
+.cb-key em.cb-eq{background:#ef4444}

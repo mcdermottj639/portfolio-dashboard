@@ -1,3 +1,19 @@
+## v181 — Concentration readout counts what stays after the planned sells (2026-11-03)
+
+Jack spotted it on v179's bars: "AI / compute complex 107% of equity" next to PLTR at 106%. The readout
+was built from `keep` (holdings minus every broken name), so a name on the exit list vanished WHOLE —
+including shares the exit leaves behind (covered-call collateral, a fully pledged lockedExit). Live:
+IREN 900 sh with 300 pledged dropped out of the AI/compute complex, which really sits at ~151% of
+equity after the sell (PLTR $17.5k + 300 IREN × $24.50), not 107%. Now `afterVal(r)` = value minus the
+planned exit sale minus any paydown sale (`soldVal`); `concRows` and `aiVal` both use it, a partially
+sold name is labelled "after sell", and the copy says "measured after the planned sells". The bars also
+changed: the scale runs 0..max(100%, largest reading rounded up to 50) with a 20% new-money-cap tick and
+a red 100%-of-equity tick, the fill is solid by severity, and >100% reads "1.5× what you own" — the
+v179 gradient filled to the edge at any value ≥100% and made the 20% tick look like the reading.
+Advisory display only; no order, size or guard changed. Files: `index.html`, `ui/experience.css`,
+`sw.js`. App/cache **v181 / pf-v181**. Verified: Jack's book replayed synthetically (PLTR 100 sh,
+IREN 900.07 sh / 3 short calls, equity $16,471) → PLTR 106%, AI/compute 151%; sd-plan-browser PASS.
+
 ## v180 — Portfolio tab (both accounts) + Options: folded notes, one-line table rows (2026-11-03)
 
 Jack: "same thing for the portfolio tabs". Rather than hand-editing ~15 cards, a new reading layer
