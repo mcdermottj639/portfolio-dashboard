@@ -32,9 +32,42 @@ export const WATCHLIST_DESC = "Auto-synced daily from the portfolio dashboard's 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 
+// Unwrap a saved MCP tool result into its JSON payload. The scheduled agent saves run_scan output in
+// whatever shape its tool layer hands back: the bare payload, {structuredContent}, {content:[{text}]},
+// or the raw content ARRAY [{type:'text', text:'{...}'}]. scanRows used to read only the bare payload, so
+// any wrapped save parsed to ZERO rows — no finalists, empty picks, and nothing for the Track Record to
+// archive (the silent cause of the Oct 8–22 and Oct 27+ gaps). Tolerant of every shape; idempotent.
+export function unwrapMcp(r) {
+  for (let i = 0; i < 4 && r != null; i++) {
+    if (typeof r === 'string') { try { r = JSON.parse(r); continue; } catch { return r; } }
+    if (Array.isArray(r)) {
+      const t = r.find((x) => x && typeof x === 'object' && typeof x.text === 'string');
+      if (t) { r = t.text; continue; }
+      return r;
+    }
+    if (typeof r === 'object') {
+      if (r.structuredContent && typeof r.structuredContent === 'object') { r = r.structuredContent; continue; }
+      if (Array.isArray(r.content)) { r = r.content; continue; }
+      if (r.result && Array.isArray(r.result.content)) { r = r.result.content; continue; }
+    }
+    return r;
+  }
+  return r;
+}
+
+// Count of rows the scanner says it returned (before our own parsing) — lets callers tell
+// "the market had no oversold large-caps" apart from "we failed to read the file".
+export function scanReportedCount(scanRaw) {
+  const u = unwrapMcp(scanRaw);
+  const r = u?.data?.result ?? u?.result ?? u;
+  const rows = Array.isArray(r?.results) ? r.results.length : 0;
+  return Math.max(rows, Number(r?.total_items) || 0);
+}
+
 // Pull the per-row columns out of a run_scan result into flat objects.
 export function scanRows(scanRaw) {
-  const r = scanRaw?.data?.result ?? scanRaw?.result ?? scanRaw;
+  const u = unwrapMcp(scanRaw);
+  const r = u?.data?.result ?? u?.result ?? u;
   const rows = r?.results ?? [];
   return rows.map((x) => {
     const c = x.columns || {};

@@ -147,6 +147,20 @@ Dismiss. Follows and flag choices live in `localStorage.pf_smartmoney_v1` on the
   and Midnight — no horizontal overflow, no page errors; privacy audit clean. Live decrypted data and
   the physical iPhone not verified here.
 
+## 2026-11-03 — A wrapped scan.json silently emptied the Daily Picks (Track Record gaps)
+
+Owner saw the Track Record jump Oct 7 → Oct 23 → Oct 26 and nothing after. Cause: `scanRows` read only the
+bare run_scan payload. When the scheduled agent saved the tool result in its MCP envelope (`[{type,text}]`
+or `{content:[…]}`), it parsed to **0 rows** → 0 finalists → `picks.json` with empty `picks` → the day's
+picks replaced by nothing, and `build-data` archives only a non-empty outgoing set, so every such day
+vanished from the history. Reproduced on main with tonight's live scan saved wrapped: 237 matches (200 rows returned) →
+0 candidates; after the fix the same file gives 10 candidates / 3 picks. Fix: `unwrapMcp()` in
+`picks.mjs` (bare, structuredContent, content array, `{content}`, `{result:{content}}`, JSON string) used by
+`scanRows`/`scanReportedCount`; `picks-select`/`picks-build` exit 2 with `PICKS_SCAN_UNREADABLE` when the
+scanner reported rows but none parsed, so an unreadable scan carries the prior picks forward (run.mjs
+treats it as non-fatal) instead of publishing an empty set. Days already lost are not back-filled — the
+archived set is the outgoing picks, and those days had none. No prompt, schedule, UI or data change.
+
 ## 2026-11-03 — Preflight tells the producer to read the payout mailbox every run
 
 Gmail was attached to the producer task at 07:27 ET, but the 07:35 run still left the Settled tab at

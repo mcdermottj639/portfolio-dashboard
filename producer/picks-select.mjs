@@ -6,7 +6,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { selectFinalists, scanRows, N_FINALISTS } from './picks.mjs';
+import { selectFinalists, scanRows, scanReportedCount, N_FINALISTS } from './picks.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const scanFile = join(__dirname, 'raw', 'scan.json');
@@ -16,6 +16,10 @@ const raw = JSON.parse(readFileSync(scanFile, 'utf8'));
 const finalists = selectFinalists(raw, N_FINALISTS);
 const total = scanRows(raw).length;
 
+if (!total && scanReportedCount(raw) > 0) {
+  console.error(`PICKS_SCAN_UNREADABLE: the scanner returned ${scanReportedCount(raw)} rows but none could be parsed from producer/raw/scan.json — save the run_scan payload, then re-run. Picks are NOT rebuilt from an unreadable scan.`);
+  process.exit(2);
+}
 console.log(`Scan matched ${total} oversold large-caps. Top ${finalists.length} most-oversold finalists:\n`);
 console.log('  ' + finalists.join(' '));
 console.log('\nNext:');

@@ -23,6 +23,8 @@ const RAW = join(__dirname, 'raw');
 const readJSON = (f) => JSON.parse(readFileSync(f, 'utf8'));
 function unwrap(r) {
   if (r == null) return r;
+  // bare MCP content array [{type:'text', text}] (see picks.mjs unwrapMcp, 2026-11-03)
+  if (Array.isArray(r) && r.length && r.every((x) => x && x.type === 'text' && typeof x.text === 'string')) r = { content: r };
   if (r.structuredContent) return r.structuredContent;
   if (r.content && r.content[0] && typeof r.content[0].text === 'string') {
     try { return JSON.parse(r.content[0].text); } catch { return r.content[0].text; }

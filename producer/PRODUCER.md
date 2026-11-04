@@ -450,7 +450,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
 3b. **Daily Picks — ONCE PER DAY** (the Picks tab). Like AV, only on the day's first run
    (gate on the same `.fetched` date, or a separate `producer/raw/picks-built` marker). Fully
    Robinhood-driven; AV is optional enrichment for the finalists only.
-   1. Run the saved scanner and save the result:
+   1. Run the saved scanner and save the result (any shape is fine — bare payload or the MCP
+      envelope; `picks.mjs` unwraps it. If `picks-select` prints `PICKS_SCAN_UNREADABLE`, the
+      file is not a scan result: re-save it and re-run, never continue with 0 finalists):
       `Robinhood · run_scan { scan_id: "17e8f5a7-395f-4f22-bba8-f287d39b6e57" }`
       → `producer/raw/scan.json`. (The scan = RSI(14) < 45 AND market cap > $10B — oversold
       large-caps across all sectors, with RSI already a column. Re-create with `create_scan` if
