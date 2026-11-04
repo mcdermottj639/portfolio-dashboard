@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=179">
-<link rel="stylesheet" href="ui/predictions.css?v=179">
-<link rel="stylesheet" href="ui/smartmoney.css?v=179">
-<link rel="stylesheet" href="ui/ticker.css?v=179">
+<link rel="stylesheet" href="ui/experience.css?v=180">
+<link rel="stylesheet" href="ui/predictions.css?v=180">
+<link rel="stylesheet" href="ui/smartmoney.css?v=180">
+<link rel="stylesheet" href="ui/ticker.css?v=180">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=179"></script>
+<script src="ui/sd-rules.js?v=180"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v179'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v180'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5945,7 +5945,11 @@ function optCard(o,cid){
   const spec={type:o.type,side:o.side,strike:o.strike,prem:o.perShare,contracts:o.contracts,covered:o.covered,costBasis:o.costBasis,px:o.underlyingPx};
   if(o.strike!=null&&o.perShare!=null)_optCharts.push([cid,spec]);
   return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr">'+o.underlying+' <span style="font-size:13px;color:#9ca3af">×'+(o.contracts||1)+'</span></div><div class="pk-meta">'+optSideBadge(o)+' '+cov+' '+dteB+' '+itmB+' '+ivRankBadge(o.ivRank)+' '+st+'</div></div></div>'+
-  '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+m.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
+  (function(){ const G=/^(Delta|Theta|Vega|Gamma|IV|Assign odds|ITM odds)$/; const cell=function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';};
+    const main=m.filter(function(x){return !G.test(x[0]);}), gk=m.filter(function(x){return G.test(x[0]);});
+    const odds=gk.find(function(x){return /odds$/.test(x[0]);});
+    return '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+main.map(cell).join('')+'</div>'+
+      (gk.length?'<details class="sd-more"><summary>Greeks'+(odds?' · '+odds[0].toLowerCase()+' '+odds[1]:'')+'</summary><div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin-top:6px">'+gk.map(cell).join('')+'</div></details>':''); })()+
   (o.summary?'<div class="cross-note" style="background:var(--surface-2);color:var(--text);margin-top:10px;margin-bottom:0">'+o.summary+'</div>':'')+fill+
   optGuardrailNote(o)+
   (o.strike!=null&&o.perShare!=null?'<div style="font-size:10px;color:#9ca3af;margin:10px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:130px"><canvas id="'+cid+'"></canvas></div>':'')+'</div>';
@@ -5954,7 +5958,7 @@ function ideaCard(i,cid){
   const dirC=i.direction==='Bullish'?'#10b981':i.direction==='Income'?'#0ea5e9':i.direction==='Hedge'?'#8b5cf6':'#ef4444';
   const live=!!i.live; const prem=live?i.premium:i.estPremium;
   const multi=Array.isArray(i.legs)&&i.legs.length>1;
-  let rows;
+  let rows; const gkRows=[];
   if(i.strategy==='Call debit spread'){
     rows=[['Long','$'+i.longStrike],['Short','$'+i.shortStrike],['Net debit','~$'+(prem!=null?(+prem).toFixed(2):'—')],
       ['Max loss','$'+i.maxLoss],['Max profit','$'+i.maxProfit],['Breakeven','$'+i.breakeven]];
@@ -5968,7 +5972,7 @@ function ideaCard(i,cid){
     if(i.income!=null)rows.push(['Income','~$'+i.income]);
     if(i.cashSecured!=null)rows.push(['Cash req','$'+i.cashSecured]);
     if(i.annYield!=null)rows.push(['Ann. yield',i.annYield+'%']);
-    if(live){ if(i.delta!=null)rows.push(['Delta',i.delta]); if(i.theta!=null)rows.push(['Theta',i.theta]); if(i.vega!=null)rows.push(['Vega',i.vega]); if(i.iv!=null)rows.push(['IV',i.iv+'%']); if(i.openInterest!=null)rows.push(['Open int',i.openInterest]); if(i.pop!=null)rows.push(['POP',i.pop+'%']); }
+    if(live){ if(i.delta!=null)gkRows.push(['Delta',i.delta]); if(i.theta!=null)gkRows.push(['Theta',i.theta]); if(i.vega!=null)gkRows.push(['Vega',i.vega]); if(i.iv!=null)gkRows.push(['IV',i.iv+'%']); if(i.openInterest!=null)gkRows.push(['Open int',i.openInterest]); if(i.pop!=null)gkRows.push(['POP',i.pop+'%']); }
   }
   const tag='<span class="badge" style="background:'+(live?'#d1fae5':'var(--surface-2)')+';color:'+(live?'#065f46':'#9ca3af')+'">'+(live?'● LIVE':'EST')+'</span>';
   // Payoff spec — multi-leg structures carry their own legs[]/stock; single-leg derives a ref price.
@@ -5981,7 +5985,8 @@ function ideaCard(i,cid){
   const sigCls=(i.direction==='Bullish')?'buy':'cautious';
   return '<div class="card" style="padding:16px 18px"><div class="pk-head" style="margin-bottom:10px"><div><div class="pk-tkr az-link" onclick="azConfirm(\''+i.underlying+'\')">'+i.underlying+'</div><div class="pk-meta"><span class="badge" style="background:'+dirC+'22;color:'+dirC+'">'+i.direction.toUpperCase()+'</span> <span style="color:#9ca3af">'+i.strategy+'</span> '+tag+' '+ivRankBadge(i.ivRank)+'</div></div><div class="pk-sig '+sigCls+'">'+(i.confidence||'')+'%</div></div>'+
   '<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div>'+
-  '<ul class="thesis2" style="margin-top:10px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>'+
+  (gkRows.length?'<details class="sd-more"><summary>Greeks'+(i.pop!=null?' · POP '+i.pop+'%':'')+'</summary><div class="pk-metrics" style="grid-template-columns:repeat(3,1fr);margin-top:6px">'+gkRows.map(function(x){return '<div class="pk-m"><div class="pk-m-l">'+x[0]+'</div><div class="pk-m-v">'+x[1]+'</div></div>';}).join('')+'</div></details>':'')+
+  ((i.thesis||[]).length?'<details class="sd-more"><summary>Why this trade</summary><ul class="thesis2" style="margin-top:6px">'+(i.thesis||[]).map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul></details>':'')+
   ((prem!=null||multi)?'<div style="font-size:10px;color:#9ca3af;margin:6px 0 2px">Payoff at expiration</div><div class="chart-wrap" style="height:120px"><canvas id="'+cid+'"></canvas></div>':'')+
   chatBtn('opt-'+cid,optTradePrompt({underlying:i.underlying,strategy:i.strategy,optType:i.optType||'call',side:i.optSide,strike:i.strike,expiration:i.expiration,dte:i.dte,premium:prem,breakeven:i.breakeven,contracts:1,legs:i.legs}))+
   rhBtn(i.underlying,'📲 Open '+i.underlying+' in Robinhood → Options')+'</div>';
@@ -6232,8 +6237,8 @@ function renderOptions(app,o,realized){
   const csps=ideas.filter(function(i){return i.strategy==='Cash-secured put';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
   if(csps.length){ h+='<div class="card" data-priv="market"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
   // Knowledge
-  h+='<div class="card" data-priv="off"><div class="card-title"><span>📚 Options Knowledge</span></div><div style="display:flex;flex-direction:column;gap:10px">'+
-     OPT_KNOWLEDGE.map(function(k){return '<div style="padding:11px 13px;background:var(--surface-2);border-radius:10px"><div style="font-size:13px;font-weight:700;margin-bottom:4px">'+k[0]+'</div><div style="font-size:12px;color:var(--text);opacity:0.82;line-height:1.5">'+k[1]+'</div></div>';}).join('')+'</div></div>';
+  h+='<div class="card" data-priv="off"><div class="card-title"><span>📚 Options Knowledge</span></div><div class="gr-list">'+
+     OPT_KNOWLEDGE.map(function(k){return '<details class="gr-row"><summary><b>'+k[0]+'</b><i class="oh-chev"></i></summary><p style="padding-left:12px">'+k[1]+'</p></details>';}).join('')+'</div></div>';
   h+='<div class="disclaimer">Options involve substantial risk and are not suitable for all investors. This page is research/education from your Robinhood data — not financial advice. You trade in the Robinhood app.</div>';
   app.innerHTML=h;
   // draw payoff charts after the DOM is in place
@@ -8351,12 +8356,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=179"></script>
-<script src="ui/predictions-model.js?v=179"></script>
-<script src="ui/predictions.js?v=179"></script>
-<script src="ui/smartmoney-model.js?v=179"></script>
-<script src="ui/smartmoney.js?v=179"></script>
-<script src="ui/experience.js?v=179"></script>
-<script src="ui/ticker.js?v=179"></script>
+<script src="ui/experience-model.js?v=180"></script>
+<script src="ui/predictions-model.js?v=180"></script>
+<script src="ui/predictions.js?v=180"></script>
+<script src="ui/smartmoney-model.js?v=180"></script>
+<script src="ui/smartmoney.js?v=180"></script>
+<script src="ui/experience.js?v=180"></script>
+<script src="ui/ticker.js?v=180"></script>
+<script src="ui/compact.js?v=180"></script>
 </body>
 </html>

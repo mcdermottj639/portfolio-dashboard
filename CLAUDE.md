@@ -1,3 +1,25 @@
+## v180 — Portfolio tab (both accounts) + Options: folded notes, one-line table rows (2026-11-03)
+
+Jack: "same thing for the portfolio tabs". Rather than hand-editing ~15 cards, a new reading layer
+**`ui/compact.js`** re-shapes what the Portfolio (`#page-portfolio`) and Options (`#page-options`) cards
+already render, so it covers both accounts and future cards. Nothing is computed or removed:
+1. **Quiet notes fold.** A `div`/`p` inside a `.card` that is a `fund-note`/`cov-note` or styled faded/gray
+   (`opacity:.7/.75/.8`, `#9ca3af`), has only inline children and ≥170 chars becomes
+   `<details class="sd-more pf-fold">`; a note opening with a bold lead keeps it as the summary
+   ("💰 Money you added"), else "ⓘ How to read this". Opt out with `.no-compact` on an ancestor.
+2. **Wide tables stack on phones.** Any card table with ≥5 header columns gets `pf-stack` + per-cell
+   `data-l`; at ≤520px a row is one line — first cell + 3 key columns (priority list `KEY` in compact.js:
+   Value, P&L %, Day %, Signal, Flow, …) — and the rest opens on a row tap (`pf-open`). Header cells stay
+   `<th>` chips, so click-to-sort still works. Opt out with `.no-stack`.
+It runs synchronously in a MutationObserver (before paint), marks touched nodes `data-pfc`, and is
+idempotent, so re-renders and the privacy masker converge. **Options** also changed in source: contract
+cards keep strike/price/credit/P&L visible and fold the Greeks ("Greeks · assign odds 35%"), live trade
+ideas fold Greeks/POP, idea bullets fold under "Why this trade", and Options Knowledge is tap rows.
+Files: `ui/compact.js` (new, in `sw.js` precache), `ui/experience.css` (v180 block), `index.html`,
+`sw.js`. App/cache **v180 / pf-v180**. Verified: sd-plan / brief / predictions browser suites PASS,
+`privacy-audit.mjs` 0 leaked across all surfaces + clean round-trip, model suites green; synthetic
+Playwright 390px — no overflow, no page errors; Options page 8,760 → 7,006px. Physical iPhone not verified.
+
 ## v179 — Both plan pages: visual rows, collapsed explanations (2026-11-03)
 
 Jack: "word blocks → more visually appealing views and collapsed info", on ALL plan pages.
