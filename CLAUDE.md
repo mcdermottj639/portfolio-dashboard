@@ -1,3 +1,18 @@
+## v178 — Compact "Model correctness" card + broken-thesis exit rows (2026-11-03)
+
+Jack (phone screenshots): both read as walls of text. **Agentic › Model correctness & forward record**
+(`agCorrectnessCard`): a status chip (green tracking / amber waiting / red needs attention) + "Updated …
+ET", three tiles (vs SPY pp on the current vintage · research coverage · recorded account return), and the
+shadow vintages as one-line rows (date · Model · SPY · excess-pp pill; tap shows model version, start,
+basis, status). Account estimate / verified comparison, evidence, vol & correlations and the method note
+fold into `<details>`. Vintage dates are formatted in UTC so an ET phone no longer shows the day before.
+**Self-directed › Cut what's broken**: the 5-column exits table (the reason text wrapped to one word per
+line at 390px) is now one row per exit — ticker pill · "Sell N @ limit" · proceeds (+ 🔒 shares held for
+covered calls) · realized P/L; the reason and the full collateral sentence open on tap; Total row below.
+Same fields, nothing new computed. Files: `index.html`, `ui/experience.css` (`.cr-*`, `.xr-*`), `sw.js`.
+App/cache **v178 / pf-v178**. Verified: synthetic Playwright 320/390/1280 — cards don't overflow, no page
+errors; vintage row ~47px. Physical iPhone not verified.
+
 ## v177 — Options history: one-line rows by close month (2026-11-03)
 
 Jack: the v169 contract cards (~280px each) "take too much room as we go on". Approved: closed contracts

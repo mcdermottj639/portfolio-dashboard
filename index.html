@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=177">
-<link rel="stylesheet" href="ui/predictions.css?v=177">
-<link rel="stylesheet" href="ui/smartmoney.css?v=177">
-<link rel="stylesheet" href="ui/ticker.css?v=177">
+<link rel="stylesheet" href="ui/experience.css?v=178">
+<link rel="stylesheet" href="ui/predictions.css?v=178">
+<link rel="stylesheet" href="ui/smartmoney.css?v=178">
+<link rel="stylesheet" href="ui/ticker.css?v=178">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=177"></script>
+<script src="ui/sd-rules.js?v=178"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v177'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v178'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2714,7 +2714,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
     ${exits.length
-      ? `<table><thead><tr><th>Sell all</th><th class="tr">Shares</th><th class="tr">Limit</th><th class="tr">Proceeds</th><th class="tr">P&amp;L realized</th></tr></thead><tbody>${exits.map(r=>`<tr><td><span class="sym">${r.p.symbol}</span><div style="color:#9ca3af;font-size:11px;line-height:1.35;margin-top:2px">${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</div></td><td class="tr"><span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span>${r.lock?`<div style="color:#9ca3af;font-size:10px">of ${fmt(r.p.qty,2)}</div>`:''}</td><td class="tr">${P(r.p.px)}</td><td class="tr">${fmtD(r.sellVal)}</td><td class="tr"><span class="${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span></td></tr>`).join('')}<tr style="background:var(--surface-2);font-weight:700"><td>Total</td><td class="tr"></td><td class="tr"></td><td class="tr">${fmtD(exitProceeds)}</td><td class="tr ${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</td></tr></tbody></table>`
+      ? `<div class="xr-list">${exits.map(r=>`<details class="xr-row"><summary><span class="xr-tk">${r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span> @ ${P(r.p.px)}</b><small>${fmtD(r.sellVal)}${r.lock?` · 🔒 <span data-priv="val">${fmt(r.lock.shares,0)}</span> held`:''}</small></span><span class="xr-pl ${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span><i class="oh-chev"></i></summary><p>${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</p></details>`).join('')}${exits.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(exitProceeds)} proceeds</span><b class="${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</b></div>`:''}</div>`
       : (lockedExits.length
         /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
            reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
@@ -3777,11 +3777,15 @@ function recordedAccountReturn(history, start, end) {
 
 function agCorrectnessCard(A){
   if(!A)return '';
+  /* v178 — compact card: status chip, three verdict tiles, one-line vintage rows; method and evidence fold away.
+     Same fields as v148/v149 — nothing new is computed. */
   const C=A.correctness||{}, T=A.target||{}, S=C.shadow||{}, R=C.risk||{};
   const tracks=S.tracks||[], current=tracks.find(t=>t.targetId===S.currentTargetId), last=current&&current.latest;
   const num=(v,suffix)=>v==null?'—':fmt(v,2)+(suffix||'');
-  const rows=tracks.slice().reverse().slice(0,12).map(t=>`<tr><td>${agEsc(t.observedDay)}<br><small>${agEsc(t.modelVersion)}</small></td><td>${agEsc(t.startDay||'Pending')}</td><td class="tr">${num(t.latest?t.latest.model-100:null,'%')}</td><td class="tr">${num(t.latest?t.latest.spy-100:null,'%')}</td><td class="tr">${num(t.latest?t.latest.excessPp:null,'pp')}</td><td>${agEsc(t.basis||'Pending')} · ${agEsc(t.status)}</td></tr>`).join('');
-  const vol=(R.vol||[]).map(v=>`<tr><td>${agEsc(v.ticker)}</td><td class="tr">${num(v.annualizedPct,'%')}</td><td class="tr">${v.n}</td><td>${agEsc(v.last||'Missing')}${v.stale?' · stale':''}</td></tr>`).join('');
+  const sgn=(v,suffix)=>v==null?'—':(v>0?'+':'')+fmt(v,2)+(suffix||'');
+  const tone=v=>v==null?'':v>0?'pos':v<0?'neg':'';
+  const dl=s=>{if(!s)return '—';const d=new Date(String(s).slice(0,10)+'T12:00:00Z');return isNaN(d)?agEsc(s):d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});};
+  const vols=(R.vol||[]).map(v=>`<tr><td>${agEsc(v.ticker)}</td><td class="tr">${num(v.annualizedPct,'%')}</td><td class="tr">${v.n}</td><td>${agEsc(v.last||'Missing')}${v.stale?' · stale':''}</td></tr>`).join('');
   const pairs=(R.pairs||[]).slice(0,5).map(p=>`${agEsc(p.a)} / ${agEsc(p.b)}: <b>${num(p.correlation)}</b> (${p.n} matched intervals)`).join('<br>');
   const research=T.research||{};
   const missing=(research.rows||[]).filter(r=>!r.eligible).map(r=>`${agEsc(r.ticker)}: ${r.reasons.map(agEsc).join('; ')}`).join('<br>');
@@ -3789,19 +3793,36 @@ function agCorrectnessCard(A){
   const summary=recordedAccountReturn(A.equityHistory);
   const accountEstimate=current?.startDay&&last?recordedAccountReturn(A.equityHistory,current.startDay,last.day):null;
   const stamp=S.asOf||A.asOf||'';
-  const trackingStatus=!C.shadow?'This snapshot predates the tracking update. A successful producer refresh is needed; reloading the app alone cannot create new data.':!current?'No valid target is being tracked. The producer needs attention.':!last?'Target recorded '+agEsc(current.observedDay)+'. Waiting for a completed trading close after that date.':current.status==='stale-coverage'?'Price coverage is stale. The producer must refresh all names in this target.':'Tracking through '+agEsc(last.day)+'.';
-  return `<div class="card" style="margin-bottom:14px;overflow-wrap:anywhere"><div class="card-title">Model correctness &amp; forward record</div><div>
-    <p class="fund-note"><b>Tracking status</b><br>${trackingStatus}${stamp?'<br>Last data observation: '+agEsc(stamp):''}</p>
-    <p><b>${T.modelVersion&&T.modelVersion!=='legacy-unversioned'?agEsc(T.modelVersion):'Existing target · created before evidence tracking'}</b><br>${research.coverage==null?'This historical target has no source-coverage record. The next successful research run will record it.':'Research coverage: <b>'+fmt(research.coverage*100,0)+'%</b> of screened names meet the evidence checks.'}</p>
-    <p><b>Recorded account return · estimate</b><br>${summary.status==='estimated'?num(summary.returnPct,'%')+' from '+agEsc(summary.start)+' to '+agEsc(summary.end)+' ('+summary.observations+' recorded dates).':agEsc(summary.reason)}<br><small>Uses your recorded account history and inferred cash flows. This is your existing account record, not a backfilled model result.</small></p>
-    <details><summary>Research coverage and evidence</summary><p>${missing||(research.coverage==null?'Evidence has not been collected for this historical target.':'No recorded coverage failures.')}</p>${Object.entries(research.evidence||{}).map(([ticker,sleeves])=>`<details><summary>${agEsc(ticker)}</summary>${Object.entries(sleeves||{}).map(([s,x])=>`<p><b>${agEsc(s)}</b>: ${agEsc(x?.status||'missing')} · ${(x?.evidence||[]).map(e=>`${agEsc(e.asOf)} — ${agEsc(e.claim)} (${agEsc(e.source)})`).join('<br>')}</p>`).join('')}</details>`).join('')}</details>
-    <p><b>Forward shadow comparison</b><br>${last?'Latest common close '+agEsc(last.day):'Waiting for completed closes after this target was first observed.'} Each row holds that target at fixed initial weights, with no simulated rebalancing or hindsight.</p>
-    ${rows?`<div style="overflow-x:auto"><table><caption>Returns since each vintage’s first common close</caption><thead><tr><th>Observed / model</th><th>Start</th><th>Target</th><th>SPY</th><th>Difference</th><th>Coverage / basis</th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
-    <p><b>Account estimate on the shadow’s dates</b><br>${accountEstimate?.status==='estimated'?num(accountEstimate.returnPct,'%')+' from '+agEsc(accountEstimate.start)+' to '+agEsc(accountEstimate.end):agEsc(accountEstimate?.reason||'Available after the shadow has two completed dates and matching account observations.')}<br><small>Valuation times and dividend treatment can differ. This estimate is not an execution-quality score.</small></p>
-    <details><summary>Verified comparison · ${actual?.status==='aligned'?'available':'additional data required'}</summary><p>${actual?.status==='aligned'?num(actual.returnPct,'%')+' · actual minus shadow '+num(actual.implementationGapPp,'pp'):'Not connected: requires dividend-reinvested price series plus independently verified account closing values and timed external flows. Waiting or refreshing alone cannot supply this feed.'}</p></details>
-    <p class="fund-note">Shadow returns use the stated basis; price returns exclude dividends. No fees or slippage are modeled. Account estimates update automatically from the existing producer; no additional account connection is needed for estimates.</p>
-    <details><summary>Realized volatility and strongest correlations</summary><p>${agEsc(R.note||'Diagnostics will appear after the next data refresh.')}</p>${vol?`<div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Annualized volatility</th><th>Returns</th><th>Latest close</th></tr></thead><tbody>${vol}</tbody></table></div>`:''}<p>${pairs||'Not enough matching daily returns to measure correlations.'}</p></details>
-  </div></div>`;
+  const stampLbl=stamp?(()=>{const d=new Date(stamp);return isNaN(d)?agEsc(stamp):d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/New_York'})+' ET';})():'';
+  const st=!C.shadow?{k:'warn',t:'Needs a producer refresh',d:'This snapshot predates the tracking update. A successful producer refresh is needed; reloading the app alone cannot create new data.'}
+    :!current?{k:'warn',t:'No target tracked',d:'No valid target is being tracked. The producer needs attention.'}
+    :!last?{k:'wait',t:'Waiting for first close',d:'Target recorded '+agEsc(current.observedDay)+'. Waiting for a completed trading close after that date.'}
+    :current.status==='stale-coverage'?{k:'warn',t:'Price coverage stale',d:'The producer must refresh all names in this target.'}
+    :{k:'ok',t:'Tracking through '+dl(last.day),d:''};
+  const ex=last?last.excessPp:null;
+  const cov=research.coverage==null?null:research.coverage*100;
+  const acct=summary.status==='estimated'?summary:null;
+  const tiles=`<div class="cr-tiles">
+    <div class="cr-tile"><span>vs SPY</span><b class="${tone(ex)}">${sgn(ex,'pp')}</b><small>${last?'model '+sgn(last.model-100,'%')+' · SPY '+sgn(last.spy-100,'%'):'no close yet'}</small></div>
+    <div class="cr-tile"><span>Coverage</span><b>${cov==null?'—':fmt(cov,0)+'%'}</b><small>${cov==null?'not recorded':'names pass evidence'}</small></div>
+    <div class="cr-tile"><span>Account</span><b class="${tone(acct&&acct.returnPct)}">${acct?sgn(acct.returnPct,'%'):'—'}</b><small>${acct?acct.observations+' recorded dates':'needs more data'}</small></div>
+  </div>`;
+  const rows=tracks.slice().reverse().slice(0,12).map(t=>{const L=t.latest,e=L?L.excessPp:null;
+    return `<details class="cr-row ${e==null?'':e>=0?'cr-win':'cr-loss'}"><summary><span class="cr-d"><b>${dl(t.observedDay)}</b><small>${t.startDay?'from '+dl(t.startDay):'pending'}</small></span><span class="cr-v"><small>Model</small>${L?sgn(L.model-100,'%'):'—'}</span><span class="cr-v"><small>SPY</small>${L?sgn(L.spy-100,'%'):'—'}</span><span class="cr-pill ${tone(e)}">${sgn(e,'pp')}</span></summary><p>${agEsc(t.modelVersion||'—')} · observed ${agEsc(t.observedDay)} · start ${agEsc(t.startDay||'pending')}<br>${agEsc(t.basis||'Pending')} · ${agEsc(t.status)}</p></details>`;}).join('');
+  return `<div class="card cr-card" style="margin-bottom:14px"><div class="card-title">Model correctness &amp; forward record</div>
+    <div class="cr-status cr-${st.k}"><i></i><span><b>${st.t}</b></span></div>
+    ${st.d||stampLbl?`<p class="cr-sub">${st.d}${st.d&&stampLbl?' ':''}${stampLbl?'Updated '+stampLbl+'.':''}</p>`:''}
+    ${tiles}
+    <div class="cr-head"><span>Forward shadow vs SPY</span><small>${agEsc(T.modelVersion&&T.modelVersion!=='legacy-unversioned'?T.modelVersion:'legacy target')}</small></div>
+    ${rows?`<div class="cr-list">${rows}</div>`:`<p class="cr-sub">Waiting for completed closes after this target was first observed.</p>`}
+    <details class="cr-more"><summary>Account estimate &amp; verified comparison</summary>
+      <p><b>Recorded account return</b> · ${acct?sgn(acct.returnPct,'%')+' from '+agEsc(acct.start)+' to '+agEsc(acct.end):agEsc(summary.reason)}. Uses your recorded account history and inferred cash flows — not a backfilled model result.</p>
+      <p><b>On the shadow's dates</b> · ${accountEstimate?.status==='estimated'?sgn(accountEstimate.returnPct,'%')+' from '+agEsc(accountEstimate.start)+' to '+agEsc(accountEstimate.end):agEsc(accountEstimate?.reason||'Available after the shadow has two completed dates and matching account observations.')}. Not an execution-quality score.</p>
+      <p><b>Verified comparison</b> · ${actual?.status==='aligned'?num(actual.returnPct,'%')+' · actual minus shadow '+num(actual.implementationGapPp,'pp'):'Not connected: needs dividend-reinvested prices plus verified account closes and timed flows.'}</p></details>
+    <details class="cr-more"><summary>Research coverage &amp; evidence</summary><p>${missing||(research.coverage==null?'Evidence has not been collected for this historical target.':'No recorded coverage failures.')}</p>${Object.entries(research.evidence||{}).map(([ticker,sleeves])=>`<details><summary>${agEsc(ticker)}</summary>${Object.entries(sleeves||{}).map(([s,x])=>`<p><b>${agEsc(s)}</b>: ${agEsc(x?.status||'missing')} · ${(x?.evidence||[]).map(e=>`${agEsc(e.asOf)} — ${agEsc(e.claim)} (${agEsc(e.source)})`).join('<br>')}</p>`).join('')}</details>`).join('')}</details>
+    <details class="cr-more"><summary>Volatility &amp; correlations</summary><p>${agEsc(R.note||'Diagnostics will appear after the next data refresh.')}</p>${vols?`<div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Ann. vol</th><th>Returns</th><th>Latest close</th></tr></thead><tbody>${vols}</tbody></table></div>`:''}<p>${pairs||'Not enough matching daily returns to measure correlations.'}</p></details>
+    <details class="cr-more"><summary>How this is measured</summary><p>Each row holds that target at fixed initial weights from its first common close — no simulated rebalancing or hindsight. Shadow returns use the stated basis; price returns exclude dividends. No fees or slippage. Account estimates update automatically from the existing producer.</p></details>
+  </div>`;
 }
 
 function renderAgenticPlan(){
@@ -8316,12 +8337,12 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=177"></script>
-<script src="ui/predictions-model.js?v=177"></script>
-<script src="ui/predictions.js?v=177"></script>
-<script src="ui/smartmoney-model.js?v=177"></script>
-<script src="ui/smartmoney.js?v=177"></script>
-<script src="ui/experience.js?v=177"></script>
-<script src="ui/ticker.js?v=177"></script>
+<script src="ui/experience-model.js?v=178"></script>
+<script src="ui/predictions-model.js?v=178"></script>
+<script src="ui/predictions.js?v=178"></script>
+<script src="ui/smartmoney-model.js?v=178"></script>
+<script src="ui/smartmoney.js?v=178"></script>
+<script src="ui/experience.js?v=178"></script>
+<script src="ui/ticker.js?v=178"></script>
 </body>
 </html>
