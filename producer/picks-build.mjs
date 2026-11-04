@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { scanRows, selectFinalists, buildPicks, recentStopCooldown, N_FINALISTS, WATCHLIST_ID, WATCHLIST_NAME } from './picks.mjs';
+import { scanRows, scanReportedCount, unwrapMcp, selectFinalists, buildPicks, recentStopCooldown, N_FINALISTS, WATCHLIST_ID, WATCHLIST_NAME } from './picks.mjs';
 import { fetchSocialPages, shapeSocial } from './social.mjs';
 import { decryptEnvelope } from './emit.mjs';
 
@@ -18,6 +18,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAW = join(__dirname, 'raw');
 const readJSON = (f) => JSON.parse(readFileSync(f, 'utf8'));
 function unwrap(r) {
+  if (Array.isArray(r) || typeof r === 'string') return unwrapMcp(r);
   if (r == null) return r;
   if (r.structuredContent) return r.structuredContent;
   if (r.content && r.content[0] && typeof r.content[0].text === 'string') {
@@ -33,6 +34,13 @@ const scanRaw = readJSON(scanFile);
 // finalist rows (with price/rsi/name/mcap) in the same order picks-select printed
 const rowsByTicker = Object.fromEntries(scanRows(scanRaw).map((r) => [r.ticker, r]));
 const finalists = selectFinalists(scanRaw, N_FINALISTS).map((t) => rowsByTicker[t]).filter(Boolean);
+// An unreadable scan must FAIL, not publish an empty picks set: an empty set replaces the day's picks
+// and gives the Track Record nothing to archive tomorrow. run.mjs treats this as non-fatal, so the
+// snapshot still ships with the prior picks carried forward and the failure is in the build log.
+if (!finalists.length && scanReportedCount(scanRaw) > 0) {
+  console.error(`PICKS_SCAN_UNREADABLE: scanner returned ${scanReportedCount(scanRaw)} rows, 0 parsed — picks not rebuilt.`);
+  process.exit(2);
+}
 
 // RH fundamentals by symbol
 const fundBySym = {};

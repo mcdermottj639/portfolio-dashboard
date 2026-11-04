@@ -1,6 +1,6 @@
 // Offline unit checks for the picks scoring engine + the pure social shaper — no network.
 // Run: node producer/picks.test.mjs
-import { scanRows, selectFinalists, buildPicks, trendGate, DOWNTREND_PENALTY, gradePickClose, recentStopCooldown, COOLDOWN_PENALTY } from './picks.mjs';
+import { scanRows, scanReportedCount, unwrapMcp, selectFinalists, buildPicks, trendGate, DOWNTREND_PENALTY, gradePickClose, recentStopCooldown, COOLDOWN_PENALTY } from './picks.mjs';
 import { shapeSocial } from './social.mjs';
 
 let pass = 0, fail = 0;
@@ -18,6 +18,25 @@ const scanFix = { data: { result: { results: [
 eq('scanRows keeps valid rows only', scanRows(scanFix).map((r) => r.ticker), ['AAA', 'BBB', 'CCC']);
 eq('scanRows parses numbers', scanRows(scanFix)[0].price, 50);
 eq('selectFinalists = lowest RSI first', selectFinalists(scanFix, 2), ['BBB', 'CCC']);
+
+// --- MCP envelopes (2026-11-03 regression: a wrapped scan.json parsed to ZERO rows → empty picks →
+// nothing archived for the Track Record). Every shape the scheduled agent may save must parse the same.
+const scanText = JSON.stringify(scanFix);
+const shapes = {
+  'content array':      [{ type: 'text', text: scanText }],
+  '{content:[...]}':    { content: [{ type: 'text', text: scanText }] },
+  '{structuredContent}':{ structuredContent: scanFix },
+  'JSON string':        scanText,
+  '{result:{content}}': { result: { content: [{ type: 'text', text: scanText }] } },
+};
+for (const [name, raw] of Object.entries(shapes)) {
+  eq(`scanRows reads ${name}`, scanRows(raw).map((r) => r.ticker), ['AAA', 'BBB', 'CCC']);
+  eq(`selectFinalists reads ${name}`, selectFinalists(raw, 2), ['BBB', 'CCC']);
+  eq(`scanReportedCount reads ${name}`, scanReportedCount(raw), 5);
+}
+eq('unwrapMcp is idempotent on a bare payload', unwrapMcp(scanFix), scanFix);
+eq('unwrapMcp leaves non-JSON text alone', unwrapMcp([{ type: 'text', text: 'not json' }]), 'not json');
+eq('scanReportedCount of an empty scan is 0', scanReportedCount({ data: { result: { results: [], total_items: 0 } } }), 0);
 
 // --- buildPicks component + composite math (hand-computed expectations) ---
 // tech: rsiPart=(52-30)/2.7=8.148; pos=(100-90)/(150-90)=0.167 → rangePart=8.333; blend→round(8.204)=8
