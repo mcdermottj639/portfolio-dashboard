@@ -362,3 +362,7 @@ html[data-theme="gold"] .lp-n{color:#a5b4fc}html[data-theme="gold"] .ag-clock{ba
 .sk-mark b{position:absolute;bottom:22px;left:50%;font-size:11px;white-space:nowrap;padding:1px 6px;border-radius:6px;background:var(--surface-2)}
 .sk-scale{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.4px;text-transform:uppercase;opacity:.6;margin:0 4px 12px}
 .sk-card .pos{color:#059669}.sk-card .neg{color:#dc2626}
+/* v183 — the skill-meter status chip wraps on phones instead of truncating the reason ("the edge is inside…") */
+.sk-card .cr-status{border-radius:14px;align-items:flex-start;width:auto}
+.sk-card .cr-status span{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+.sk-card .cr-status i{margin-top:5px}
