@@ -1,3 +1,30 @@
+## v182 — Skill-vs-luck meter + Fed/CPI blackout on new ••3900 money (2026-11-04)
+
+Jack reviewed an outside "AI trading desk" prompt and approved the two pieces worth taking ("Yes").
+**(1) Skill vs luck** — `skillStats` in `producer/agentic-ledger.mjs` (on `gradeDecisions`' return as
+`skill`, so `data.agentic.decisions.skill`): a one-sample t-statistic on the per-decision BUY excess vs SPY
+(`grade.alpha`, resolved decisions only). Verdicts: `too-early` (n < `SKILL_MIN_N` 12) · `luck` (|t| < 2) ·
+`skill` (t ≥ 2) · `lagging` (t ≤ −2); `needN` = decisions for t to reach 2 if mean/spread hold. Decisions
+overlap in time and share names, so the t is OPTIMISTIC — the card says so. Rendered by `agSkillMeter` at
+the top of the agentic Rebalance Log: status chip, a gauge (lagging | luck zone | skill, marker at t, clamped
+±3), three `cr-tile`s (graded · avg excess ± spread · to know). `agSkillOf` recomputes the same rule in the
+browser for a snapshot that predates the field — `AG_SKILL_MIN_N`/`AG_SKILL_T` mirror the producer, keep in step.
+**(2) Macro blackout** — new `producer/macro.mjs` + committed, sourced `producer/macro.json`. Book-wide, NEW
+buys only: an FOMC decision day (statement 2 PM ET, mid-session) and the trading day BEFORE a CPI print
+(8:30 AM ET, before the first executor pass) defer every buy with reason `macro` for that one session.
+Sells/exits/trims/TLH/drawdown raises are never blocked; the deferral is not in `PARK_DATED_REASONS`, so the
+dollars wait in cash and clear next pass. The exec gate loads the file (`readMacro`; unreadable ⇒ null ⇒
+no-op, logged). **Absent ≠ zero:** `macroCoverage` makes the planner WARN once either series ends within
+`MACRO_MIN_COVER_DAYS` (30) — the shipped calendar runs to CPI 2027-03-10 / FOMC 2027-04-28 (2027 FOMC dates
+are the Fed's tentative schedule), so it starts warning ~Feb 8 2027: extend it then. No mandate dial changed;
+a one-session pacing pause around a scheduled binary event is what the earnings blackout already does per name.
+Files: `producer/macro.{mjs,json,test.mjs}`, `agentic-deploy.mjs` (+test), `agentic-exec-gate.mjs`,
+`agentic-ledger.mjs` (+test), `index.html`, `ui/experience.css` (`.sk-*`), `sw.js`, `producer/AGENTIC.md`.
+App/cache **v182 / pf-v182**. No Routine prompt change: the planner/gate pick both up in code. Verified:
+macro 24/24, agentic-deploy 272/272, agentic-ledger 113/113, full producer suite; synthetic Playwright 320/390
+— all four verdicts render, gauge label stays inside the card. **Pre-existing, not from this change:** the
+agentic Portfolio page drifts 3px sideways at 390px on main too (`scrollWidth` 393, no unclipped culprit found).
+
 ## v181 — Concentration readout counts what stays after the planned sells (2026-11-03)
 
 Jack spotted it on v179's bars: "AI / compute complex 107% of equity" next to PLTR at 106%. The readout

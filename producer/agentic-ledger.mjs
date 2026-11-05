@@ -289,6 +289,34 @@ export function buyStats(graded = []) {
 }
 export const BUY_MIN_N = 8;
 
+// SKILL VS LUCK (v182, owner-approved 2026-11-04). The ledger says HOW MUCH the buys beat SPY; nothing
+// said whether that number is distinguishable from chance. With a few dozen decisions an average of
+// +1pp can come from a coin. This is a plain one-sample t-statistic on the per-decision buy excess
+// (grade.alpha, resolved decisions only) — the honest minimum, with its limits stated:
+//   • decisions overlap in time and share names, so they are NOT independent — the t-stat OVERSTATES
+//     confidence. The verdict therefore needs t ≥ SKILL_T (2) AND n ≥ SKILL_MIN_N before it says
+//     anything but "not yet distinguishable from luck", and the card says the read is optimistic;
+//   • it is a statement about THIS model's record, not a forecast;
+//   • `needN` = decisions needed for t to reach 2 if the mean and spread held — "how long until we know",
+//     not a promise (null when the mean is ≤ 0 or the spread is 0).
+// Verdicts: 'too-early' (n < SKILL_MIN_N) · 'luck' (|t| < SKILL_T) · 'skill' (t ≥ SKILL_T) ·
+// 'lagging' (t ≤ −SKILL_T). Never a verdict from a missing alpha: those decisions are simply not counted.
+export const SKILL_MIN_N = 12;
+export const SKILL_T = 2;
+export function skillStats(graded = []) {
+  const xs = graded.filter((d) => d.grade && ['ahead', 'behind'].includes(d.grade.verdict) && Number.isFinite(d.grade.alpha))
+    .map((d) => d.grade.alpha);
+  const n = xs.length;
+  const mean = n ? xs.reduce((a, b) => a + b, 0) / n : null;
+  const sd = n > 1 ? Math.sqrt(xs.reduce((a, x) => a + (x - mean) ** 2, 0) / (n - 1)) : null;
+  const se = sd != null && n > 0 ? sd / Math.sqrt(n) : null;
+  const t = se > 0 ? mean / se : null;
+  const needN = mean > 0 && sd > 0 ? Math.ceil((SKILL_T * sd / mean) ** 2) : null;
+  const verdict = n < SKILL_MIN_N || t == null ? 'too-early' : t >= SKILL_T ? 'skill' : t <= -SKILL_T ? 'lagging' : 'luck';
+  const r2 = (v) => (v == null ? null : +v.toFixed(2));
+  return { n, meanPct: r2(mean), sdPct: r2(sd), sePct: r2(se), t: r2(t), needN, minN: SKILL_MIN_N, tBar: SKILL_T, verdict };
+}
+
 export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const graded = decisions.map((d) => gradeDecision(d, quotesNow, asOf))
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // newest first
@@ -300,7 +328,7 @@ export function gradeDecisions(decisions = [], quotesNow = {}, asOf) {
   const versions = {};
   for (const d of graded) { const key = d.modelVersion || 'legacy-unversioned'; (versions[key] ||= []).push(d); }
   const byModelVersion = Object.fromEntries(Object.entries(versions).map(([key, rows]) => [key, { decisions: rows.length, buys: buyStats(rows), sleeves: sleeveStats(rows) }]));
-  return { gradingVersion: GRADING_VERSION, byModelVersion, decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves, buys: buyStats(graded) };
+  return { gradingVersion: GRADING_VERSION, byModelVersion, decisions: graded, stats: { total: graded.length, resolved: resolved.length, ahead, behind: resolved.length - ahead, avgAlpha }, sleeves, buys: buyStats(graded), skill: skillStats(graded) };
 }
 
 // Build a new decision record from a deployment/rebalance plan (agent calls this on confirm, then appends).

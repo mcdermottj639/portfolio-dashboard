@@ -6,7 +6,7 @@
      - data.json: network-first with cache fallback (freshest snapshot; offline → last snapshot)
      - other shell assets (manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
    Bump CACHE_VERSION when the shell changes. */
-const CACHE_VERSION = 'pf-v181';
+const CACHE_VERSION = 'pf-v182';
 /* v171: the snapshot lives in its OWN cache that survives version bumps. It used to sit in the
    versioned cache, so every app update deleted the only offline copy — and the first fetch after
    an update failing (a flaky network, a stalled 6 MB download) left the app with NOTHING: the
@@ -17,19 +17,19 @@ const DATA_TIMEOUT_MS = 20000;
 const SHELL = [
   './',
   './index.html',
-  './ui/experience.css?v=181',
-  './ui/sd-rules.js?v=181',
-  './ui/experience-model.js?v=181',
-  './ui/experience.js?v=181',
-  './ui/ticker.js?v=181',
-  './ui/compact.js?v=181',
-  './ui/ticker.css?v=181',
-  './ui/predictions.css?v=181',
-  './ui/predictions-model.js?v=181',
-  './ui/predictions.js?v=181',
-  './ui/smartmoney.css?v=181',
-  './ui/smartmoney-model.js?v=181',
-  './ui/smartmoney.js?v=181',
+  './ui/experience.css?v=182',
+  './ui/sd-rules.js?v=182',
+  './ui/experience-model.js?v=182',
+  './ui/experience.js?v=182',
+  './ui/ticker.js?v=182',
+  './ui/compact.js?v=182',
+  './ui/ticker.css?v=182',
+  './ui/predictions.css?v=182',
+  './ui/predictions-model.js?v=182',
+  './ui/predictions.js?v=182',
+  './ui/smartmoney.css?v=182',
+  './ui/smartmoney-model.js?v=182',
+  './ui/smartmoney.js?v=182',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

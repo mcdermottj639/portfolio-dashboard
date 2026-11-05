@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=181">
-<link rel="stylesheet" href="ui/predictions.css?v=181">
-<link rel="stylesheet" href="ui/smartmoney.css?v=181">
-<link rel="stylesheet" href="ui/ticker.css?v=181">
+<link rel="stylesheet" href="ui/experience.css?v=182">
+<link rel="stylesheet" href="ui/predictions.css?v=182">
+<link rel="stylesheet" href="ui/smartmoney.css?v=182">
+<link rel="stylesheet" href="ui/ticker.css?v=182">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=181"></script>
+<script src="ui/sd-rules.js?v=182"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v181'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v182'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -4140,6 +4140,46 @@ function decMarkStrip(D,label){
    graded ledger build-data maintains from producer/agentic-decisions.json): every owner-confirmed
    deploy/rebalance, graded vs what happened next + vs SPY. Mirror of the picks Track Record, for the
    account's allocation calls instead of the daily picks. ═══ */
+/* v182 — Skill vs luck. Is the buy excess vs SPY distinguishable from chance yet? Reads data.agentic.decisions.skill
+   (producer/agentic-ledger.mjs skillStats); an older snapshot without it is computed here with the SAME rule —
+   AG_SKILL_MIN_N / AG_SKILL_T mirror SKILL_MIN_N / SKILL_T there, keep the two in step. */
+const AG_SKILL_MIN_N=12, AG_SKILL_T=2;
+function agSkillOf(D){
+  if(D&&D.skill&&D.skill.verdict) return D.skill;
+  const xs=((D&&D.decisions)||[]).filter(d=>d.grade&&['ahead','behind'].includes(d.grade.verdict)&&Number.isFinite(d.grade.alpha)).map(d=>d.grade.alpha);
+  const n=xs.length, mean=n?xs.reduce((a,b)=>a+b,0)/n:null;
+  const sd=n>1?Math.sqrt(xs.reduce((a,x)=>a+(x-mean)**2,0)/(n-1)):null, se=sd!=null&&n?sd/Math.sqrt(n):null;
+  const t=se>0?mean/se:null, needN=mean>0&&sd>0?Math.ceil((AG_SKILL_T*sd/mean)**2):null;
+  const verdict=n<AG_SKILL_MIN_N||t==null?'too-early':t>=AG_SKILL_T?'skill':t<=-AG_SKILL_T?'lagging':'luck';
+  return {n,meanPct:mean,sdPct:sd,t,needN,minN:AG_SKILL_MIN_N,tBar:AG_SKILL_T,verdict};
+}
+function agSkillMeter(D){
+  if(D?.gradingVersion!==2) return '';
+  const k=agSkillOf(D), minN=k.minN||AG_SKILL_MIN_N, bar=k.tBar||AG_SKILL_T;
+  const V={'too-early':['cr-wait','Too early to judge',`${k.n} of ${minN} graded decisions needed`],
+    'luck':['cr-wait',"Can't tell from luck yet",'the edge is inside the noise'],
+    'skill':['','Edge looks real','beyond luck — read is optimistic'],
+    'lagging':['cr-warn','Lagging SPY beyond luck','the shortfall is not just noise']}[k.verdict]||['cr-wait','—',''];
+  const T=3, tv=k.t==null?null:Math.max(-T,Math.min(T,k.t)), pos=v=>((v+T)/(2*T)*100).toFixed(1);
+  const sg=v=>v==null?'—':(v>0?'+':'')+fmt(v,2);
+  const need=k.verdict==='skill'?'reached':k.needN==null?'—':'~'+k.needN;
+  const needSub=k.verdict==='skill'?'t ≥ '+bar:k.needN==null?(k.meanPct!=null&&k.meanPct<=0?'no edge to confirm':'needs more data'):`to clear t=${bar}`;
+  return `<div class="sk-card">
+    <div class="cr-head"><span>🎯 Skill vs luck</span><small>buy excess vs SPY</small></div>
+    <div class="cr-status ${V[0]}"><i></i><span><b>${V[1]}</b> · ${V[2]}</span></div>
+    <div class="sk-gauge" role="img" aria-label="t-statistic ${k.t==null?'not available':fmt(k.t,2)} on a scale from minus 3 to plus 3; luck zone between minus ${bar} and plus ${bar}">
+      <div class="sk-zone sk-lag" style="width:${pos(-bar)}%"></div><div class="sk-zone sk-luck" style="left:${pos(-bar)}%;width:${(pos(bar)-pos(-bar)).toFixed(1)}%"></div><div class="sk-zone sk-skill" style="left:${pos(bar)}%;right:0"></div>
+      ${tv==null?'':`<div class="sk-mark" style="left:${pos(tv)}%"><b style="transform:translateX(${tv>2?-88:tv<-2?-12:-50}%)">t ${sg(k.t)}</b></div>`}
+    </div>
+    <div class="sk-scale"><span>Lagging</span><span>Luck zone</span><span>Skill</span></div>
+    <div class="cr-tiles">
+      <div class="cr-tile"><span>Graded</span><b>${k.n}</b><small>${k.n>=minN?'enough to judge':'of '+minN+' to judge'}</small></div>
+      <div class="cr-tile"><span>Avg excess</span><b class="${k.meanPct==null?'':k.meanPct>=0?'pos':'neg'}">${k.meanPct==null?'—':sg(k.meanPct)+'pp'}</b><small>${k.sdPct==null?'per decision':'± '+fmt(k.sdPct,1)+'pp spread'}</small></div>
+      <div class="cr-tile"><span>To know</span><b>${need}</b><small>${needSub}</small></div>
+    </div>
+    <details class="sd-more"><summary>ⓘ How this works</summary><div class="fund-note" style="margin:6px 0 0">Each graded rebalance gives one number: how its buys did vs SPY over the same window. <b>t</b> = average ÷ (spread ÷ √count). Inside ±${bar} the record can't be told apart from coin-flips; it needs ${minN}+ decisions before any verdict. Decisions overlap in time and share names, so they aren't independent — this read is <b>optimistic</b>, and a real edge should hold well past the line. "To know" assumes today's average and spread hold. A record, not a forecast.</div></details>
+  </div>`;
+}
 function renderAgenticLog(){
   const el=document.getElementById('agentic-log-content'); if(!el)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
@@ -4164,7 +4204,7 @@ function renderAgenticLog(){
     <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg buy excess <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
   const versionRows=Object.entries(D.byModelVersion||{}).map(([v,r])=>`<tr><td>${agEsc(v)}</td><td>${r.decisions}</td><td>${r.buys.comparableN}</td><td>${r.buys.avgAlphaPct==null?'—':fmt(r.buys.avgAlphaPct,2)+'pp'}</td></tr>`).join('');
   const versionTable=versionRows?`<details><summary>Compare recorded model versions</summary><p>Different periods and overlapping buys; descriptive results, not a controlled experiment.</p><table><thead><tr><th>Model</th><th>Decisions</th><th>Comparable buys</th><th>Buy excess</th></tr></thead><tbody>${versionRows}</tbody></table></details>`:'';
-  el.innerHTML=(D.gradingVersion===2?'':'<p>Corrected grading will appear after the next producer refresh. Previous mixed buy/sell scores are hidden.</p>')+hdr+versionTable+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Buy return</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  el.innerHTML=(D.gradingVersion===2?'':'<p>Corrected grading will appear after the next producer refresh. Previous mixed buy/sell scores are hidden.</p>')+hdr+agSkillMeter(D)+versionTable+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Buy return</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* Sleeve attribution (v121) — which research sleeve is actually earning its keep. Every target name
    carries `drivers` (the sleeves that scored ≥7) and the ledger stamps them onto each BUY leg AT
@@ -8363,13 +8403,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=181"></script>
-<script src="ui/predictions-model.js?v=181"></script>
-<script src="ui/predictions.js?v=181"></script>
-<script src="ui/smartmoney-model.js?v=181"></script>
-<script src="ui/smartmoney.js?v=181"></script>
-<script src="ui/experience.js?v=181"></script>
-<script src="ui/ticker.js?v=181"></script>
-<script src="ui/compact.js?v=181"></script>
+<script src="ui/experience-model.js?v=182"></script>
+<script src="ui/predictions-model.js?v=182"></script>
+<script src="ui/predictions.js?v=182"></script>
+<script src="ui/smartmoney-model.js?v=182"></script>
+<script src="ui/smartmoney.js?v=182"></script>
+<script src="ui/experience.js?v=182"></script>
+<script src="ui/ticker.js?v=182"></script>
+<script src="ui/compact.js?v=182"></script>
 </body>
 </html>
