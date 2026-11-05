@@ -21,7 +21,7 @@
     smartmoney: {area:'signals', label:'Smart Money', tab:'smartmoney'},
     predictions: {area:'signals', label:'Prediction markets', tab:'predictions'},
     today: {area:'today', label:'Daily brief', custom:'today'},
-    accounts: {area:'portfolio', label:'Accounts overview', tab:'portfolio'},
+    accounts: {area:'portfolio', label:'Accounts', tab:'portfolio'},
     holdings: {area:'portfolio', label:'All positions', tab:'portfolio', section:'holdings'},
     performance: {area:'portfolio', label:'Performance', tab:'portfolio', section:'performance'},
     heatmap: {area:'portfolio', label:'Heatmap', tab:'portfolio', section:'heatmap'},
@@ -78,10 +78,17 @@
   document.documentElement.classList.add('experience-on');
   function header() {
     const r=routes[routeKey]; $('ex-account').value=account();
-    $('ex-account-label').hidden=['today','predictions','smartmoney'].includes(routeKey); $('ex-all-accounts').hidden=routeKey!=='today';
+    // Accounts and Plan carry their own Self-directed/Agentic switch, and Options is self-directed only,
+    // so the header dropdown there was a second control for the same choice (v185).
+    $('ex-account-label').hidden=['today','predictions','smartmoney'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab); $('ex-all-accounts').hidden=routeKey!=='today';
     main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===r.area?'page':'false'));
     sub.hidden=false;
-    sub.innerHTML=Object.entries(routes).filter(([,v])=>v.area===r.area).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
+    // v185 (Jack, 2026-11-04: "nav widgets split between the buttons and the scroll bar"): this row
+    // lists PAGES only. In-page sections (holdings, heatmap, risk…) are the card rail's job — it is
+    // built from the cards actually on screen, so it covers every card and never drifts. The section
+    // routes stay in the table for deep links (Today's "Review" buttons, the tape) but get no chip.
+    // Exception: a section route in ANOTHER area (Activity › Rebalance log) is a cross-page link.
+    sub.innerHTML=Object.entries(routes).filter(([,v])=>v.area===r.area&&!(v.section&&v.area==='portfolio')).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
     $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }

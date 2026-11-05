@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=184">
-<link rel="stylesheet" href="ui/predictions.css?v=184">
-<link rel="stylesheet" href="ui/smartmoney.css?v=184">
-<link rel="stylesheet" href="ui/ticker.css?v=184">
+<link rel="stylesheet" href="ui/experience.css?v=185">
+<link rel="stylesheet" href="ui/predictions.css?v=185">
+<link rel="stylesheet" href="ui/smartmoney.css?v=185">
+<link rel="stylesheet" href="ui/ticker.css?v=185">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=184"></script>
+<script src="ui/sd-rules.js?v=185"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +885,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v184'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v185'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -4885,7 +4885,9 @@ window.switchTab=switchTab;
     pageEl.__navCards=cards;
     var nav=pageEl.querySelector(':scope > .card-nav');
     if(cards.length<2){ if(nav)nav.remove(); return; } // not worth a nav for 0–1 cards
-    if(!nav){ nav=document.createElement('div'); nav.className='card-nav'; pageEl.insertBefore(nav,pageEl.firstChild); }
+    // v185: the rail goes UNDER a page's account switcher — pick the account, then jump within it.
+    // It stays a direct child of the page (every `:scope > .card-nav` lookup depends on that).
+    if(!nav){ nav=document.createElement('div'); nav.className='card-nav'; var sw=pageEl.querySelector(':scope > .acct-seg-wrap'); if(sw)sw.after(nav); else pageEl.insertBefore(nav,pageEl.firstChild); }
     var html='<button class="cn-all" type="button" onclick="__navAll(\''+pageEl.id+'\')">Collapse all</button>';
     for(i=0;i<cards.length;i++){ var c=cards[i]; c.card.id='navc-'+(++NAVSEQ); // fresh unique id every build
       html+='<button class="card-nav-chip" type="button" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
@@ -8403,13 +8405,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=184"></script>
-<script src="ui/predictions-model.js?v=184"></script>
-<script src="ui/predictions.js?v=184"></script>
-<script src="ui/smartmoney-model.js?v=184"></script>
-<script src="ui/smartmoney.js?v=184"></script>
-<script src="ui/experience.js?v=184"></script>
-<script src="ui/ticker.js?v=184"></script>
-<script src="ui/compact.js?v=184"></script>
+<script src="ui/experience-model.js?v=185"></script>
+<script src="ui/predictions-model.js?v=185"></script>
+<script src="ui/predictions.js?v=185"></script>
+<script src="ui/smartmoney-model.js?v=185"></script>
+<script src="ui/smartmoney.js?v=185"></script>
+<script src="ui/experience.js?v=185"></script>
+<script src="ui/ticker.js?v=185"></script>
+<script src="ui/compact.js?v=185"></script>
 </body>
 </html>

@@ -1,3 +1,23 @@
+## v185 — One navigation system: pages row + section rail (2026-11-04)
+
+Jack (phone screenshot): "nav widgets are split between the buttons and the scroll bar. Disjointed and not all
+sections have one." Two systems overlapped: the v150 `#ex-subnav` listed eight Portfolio SECTION routes as
+wrapping buttons (4 rows at 390px), and the v131 card rail listed every card again as chips — with the cards the
+buttons forgot (Agentic Portfolio, Account Performance, Rebalance Log) only on the rail. Now: **`#ex-subnav` =
+pages only** (Accounts · Options; Plan · Markets · Analyze · Decision evidence · What if?; …), one underlined tab
+row that scrolls sideways and never wraps; **the card rail = every section**, restyled to the shell's chips and
+placed UNDER the page's Self-directed/Agentic switcher (still a direct child of the page — every
+`:scope > .card-nav` lookup depends on that). Section routes stay in `routes` for deep links (Today's Review
+buttons, the tape); Activity › Rebalance log keeps its chip because it crosses areas. The header **Account
+dropdown is hidden on Accounts, Plan and Options** — the first two have their own switcher, Options is
+self-directed only — so the account is chosen in one place. "Accounts overview" → "Accounts". Also
+`html.experience-on{overflow-x:clip}`: Accounts/Plan/Options/Markets drifted 3–65px sideways at 320–390px on
+main (measured); now 0 on all six checked pages, sticky intact. Files: `ui/experience.{js,css}`, `index.html`
+(rail insertion point, versions), `sw.js`, `tests/brief-browser.mjs` (asserts the dropdown is hidden and uses
+the in-page switcher). App/cache **v185 / pf-v185**. Verified: Playwright 320/390 on six pages, scrollX 0
+after a forced sideways scroll; brief-browser, sd-plan-browser, tests/*.cjs PASS; predictions-browser fails at
+line 43 identically on main (pre-existing). Physical iPhone not verified.
+
 ## 2026-11-04 — Rebalance Log froze at Oct 8; a refused buy leg idled $740 for two days
 
 **(1) Log froze.** The 2026-10-14 executor commit (`1126c59`) rewrote `producer/agentic-decisions.json` as a BARE
