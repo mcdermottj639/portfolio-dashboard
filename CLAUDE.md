@@ -1,3 +1,14 @@
+## v184 — Smart $ and Predict combined into one "Signals" tab (2026-11-04)
+
+Jack: "Combine smart money and predict into one tab". The bottom nav goes from six areas to five — Today ·
+Portfolio · Research · **Signals** · Activity. `routes.smartmoney` / `routes.predictions` keep their KEYS (the
+tape, deep links and the saved `pf_experience_route` all use them) and now share `area:'signals'`, so the
+existing sub-nav renders them as two sub-tabs (Smart Money first). Tapping Signals reopens the last-used
+sub-tab (`pf_signals_last`, via `areaDefault`). Both pages, their state and the classic tab bar are unchanged.
+Files: `ui/experience.js`, `tests/predictions-browser.mjs` (area selector), `index.html`, `sw.js`.
+App/cache **v184 / pf-v184**. Verified: synthetic Playwright 320/390 — 5 nav items, both sub-tabs render,
+last-used memory, no overflow, no page errors; tests/*.cjs, brief-browser, sd-plan-browser PASS.
+
 ## v183 — Skill-meter status chip wraps on phones (2026-11-04)
 
 Jack's phone screenshot: the v182 chip read "Can't tell from luck yet · the edge is inside…" — the shared
