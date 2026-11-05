@@ -26,15 +26,16 @@ try {
   const choose=scope=>page.locator('#page-ex-today [data-ex-route="plan"][data-ex-account="'+scope+'"]').first().click();
   await choose('main');
   await page.waitForFunction(()=>document.querySelector('#ex-account')?.value==='main'&&getComputedStyle(document.querySelector('#picks-app')).display!=='none');
-  assert.equal(await page.locator('#ex-account').isVisible(),true);
+  // v185: Plan/Accounts carry their own account switcher, so the header dropdown is hidden there.
+  assert.equal(await page.locator('#ex-account').isVisible(),false);assert.equal(await page.locator('#plan-tg-main').isVisible(),true);
   await today();assert.equal(await page.locator('#ex-combined-equity').innerText(),initial);
   await choose('agentic');
   await page.waitForFunction(()=>document.querySelector('#ex-account')?.value==='agentic'&&getComputedStyle(document.querySelector('#plan-agentic-app')).display!=='none');
   await today();assert.equal(await page.locator('#ex-combined-equity').innerText(),initial);
   await page.locator('[data-brief-account="main"] [data-ex-route="accounts"]').click();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#app')).display!=='none'&&localStorage.getItem('pf_acct')==='main');
-  assert.equal(await page.locator('#ex-account').isVisible(),true);
-  await page.selectOption('#ex-account','agentic');
+  assert.equal(await page.locator('#ex-account').isVisible(),false);
+  await page.locator('#acct-tg-agentic').click();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#agentic-app')).display!=='none');
   await today();assert.equal(await page.locator('#ex-combined-equity').innerText(),initial);
   await page.locator('#page-ex-today [data-ex-route="options"]').last().click();
