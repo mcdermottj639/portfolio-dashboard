@@ -1,3 +1,17 @@
+## 2026-11-04 — Rebalance Log froze at Oct 8; a refused buy leg idled $740 for two days
+
+**(1) Log froze.** The 2026-10-14 executor commit (`1126c59`) rewrote `producer/agentic-decisions.json` as a BARE
+ARRAY. `build-data.mjs` only read `{decisions:[…]}`, so every run since silently carried the Oct 14 graded log
+forward: the agentic Rebalance Log stopped at Oct 8 while ~40 trades (Oct 14 → Nov 2) went unlisted. The file is
+restored to `{_comment, decisions}` and build-data now accepts both shapes with a warning. **Writers: keep the
+wrapper.** (2) **Stuck ticket.** Ticket `2026-11-02-jnuw39` filled its sells (GOOGL, CAT) but its `buysNow`
+(META $28.86, VTI park $355.55) were refused by a session permission check; `nextAction('sells-placed')` only
+looked at `buysT1`, returned `none`, and every pass idled. It now treats unplaced `buysNow` as a carried leg
+(`place-buys`), and re-plans (`stale`) past `TICKET_STALE_DAYS`; AGENTIC.md step 4 says to push the owner at
+once when a buy is refused. The two buys were placed from Jack's chat on 11-04 (queued for the 11-05 open), the
+ticket closed `done`, the decision appended and the VTI park recorded in `agentic-parked.json`. Producer-only;
+no app/cache bump. Tests: agentic-pending 32/32 (+2), agentic-ledger 113, agentic-deploy 272, build-data 107.
+
 ## v184 — Smart $ and Predict combined into one "Signals" tab (2026-11-04)
 
 Jack: "Combine smart money and predict into one tab". The bottom nav goes from six areas to five — Today ·

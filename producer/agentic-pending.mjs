@@ -122,7 +122,14 @@ export function nextAction(ticket, todayET) {
       // so a fresh ticket leaves this state via buys-placed in the same pass. The day-gate that used
       // to hold this leg until T+1 is gone — under limited margin the proceeds are spendable as soon
       // as the sells fill, so a carried leg is placeable immediately (same session or any later one).
-      if (!(ticket.legs && ticket.legs.buysT1 && ticket.legs.buysT1.length)) return { action: 'none', reason: 'no carried buy leg' };
+      // 2026-11-04: a pass whose sells filled but whose `buysNow` were refused (a session permission
+      // denial on 2026-11-02) left the ticket here with only buysNow. This used to return 'none', so
+      // every later pass idled on "no carried buy leg" and never re-planned — $740 sat in cash for two
+      // days while the ticket's own warning said "next pass will retry". Unplaced buysNow ARE a carried
+      // leg: retry them, and once the leg is older than TICKET_STALE_DAYS re-plan instead (prices moved).
+      const carried = [...((ticket.legs && ticket.legs.buysT1) || []), ...((ticket.legs && ticket.legs.buysNow) || [])];
+      if (!carried.length) return { action: 'none', reason: 'no carried buy leg' };
+      if (ageDays(ticket['sells-placedAt'] || ticket.created) > TICKET_STALE_DAYS) return { action: 'stale', reason: `sells placed ${ageDays(ticket['sells-placedAt'] || ticket.created)}d ago, buys never placed — re-plan` };
       return { action: 'place-buys', reason: 'sells placed — proceeds available (instant settlement), place the carried buys' };
     }
     default:

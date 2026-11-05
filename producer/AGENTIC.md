@@ -639,7 +639,12 @@ claude.ai Routine UI, enables it, and disables the persistent one — the API ca
       placeholder nothing knows about. Set `dollars`, `forNames` (the deferred names it stands in for),
       and `since` (first park date); append a `{date, action, dollars, forNames}` row to `history`.
 4. **`EXEC_BUYS`** — a carried buy leg (a ticket whose sells were placed on an earlier pass, or one written
-   under the pre-v98 two-leg model): verify buying power actually covers it, place the orders, advance to
+   under the pre-v98 two-leg model, **or — since 2026-11-04 — a ticket left at `sells-placed` with
+   unplaced `buysNow` because a pass's buys were refused**; place `buysT1` + `buysNow`, checking
+   `get_equity_orders` first so nothing already queued is placed twice). If a buy is refused by a
+   session permission check (not a broker reject), push the owner AT ONCE: "Buys blocked — reply
+   'place the buys' in Claude to place META $x / VTI $y", and leave the ticket at `sells-placed`; the
+   next pass retries, and after TICKET_STALE_DAYS it re-plans instead. Never let a refused leg sit silently: verify buying power actually covers it, place the orders, advance to
    `buys-placed` → `done`, append/extend the ledger record, commit + push, push the report.
 5. Never gate or touch the data producer's publish. On ANY placement error: stop, leave the ticket state
    as-is (idempotent — the next pass re-checks open orders via `get_equity_orders` before re-placing),

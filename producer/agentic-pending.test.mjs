@@ -76,7 +76,13 @@ ok('done is terminal', nextAction(done, '2026-08-09').action === 'none');
 const noT1 = advanceTicket(makeTicket({ ...plan, buysT1: [] }, { asOf: '2026-08-07' }), 'confirmed', { date: '2026-08-07' });
 ok('no-sell/no-T1 ticket can jump to buys-placed', advanceTicket(noT1, 'buys-placed', { date: '2026-08-07' }).status === 'buys-placed');
 const placedNoT1 = advanceTicket(noT1, 'sells-placed', { date: '2026-08-07' });
-ok('sells-placed with no carried leg → none', nextAction(placedNoT1, '2026-08-08').action === 'none');
+ok('sells-placed with no carried leg → none', nextAction({ ...placedNoT1, legs: { ...placedNoT1.legs, buysNow: [] } }, '2026-08-08').action === 'none');
+// 2026-11-04 regression: sells filled, buysNow refused (session permission denial) — the ticket sat at
+// sells-placed returning 'none' for two days with $740 idle. Unplaced buysNow must be retried…
+const stuck = { ...placedNoT1, legs: { ...placedNoT1.legs, buysT1: [], buysNow: [{ sym: 'META', dollars: 28.86 }] } };
+ok('sells-placed with unplaced buysNow → place-buys', nextAction(stuck, '2026-08-08').action === 'place-buys');
+// …and once the leg is older than TICKET_STALE_DAYS, re-planned rather than placed at stale sizes.
+ok('stuck buy leg past the stale window → stale (re-plan)', nextAction(stuck, '2026-08-20').action === 'stale');
 
 // ── illegal transitions throw (the executor can't corrupt state) ──
 let threw = false; try { advanceTicket(t, 'buys-placed'); } catch { threw = true; }
