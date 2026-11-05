@@ -14,7 +14,7 @@
     "flow": 0
   },
   "universeVersion": "f7e7b537f95cfdcdb9d3",
-  "status": "sells-placed",
+  "status": "done",
   "autoEligible": true,
   "turnover": 1124.34,
   "book": 7391.98,
@@ -28,7 +28,7 @@
         "shares": 1.650189,
         "price": 282.3401,
         "pl": -97.74,
-        "note": "phase-out name at/below its research stop ($283.24 ≤ $322) — already dropped once by the research, so the stop break is the second strike; exit now — filled"
+        "note": "phase-out name at/below its research stop ($283.24 \u2264 $322) \u2014 already dropped once by the research, so the stop break is the second strike; exit now \u2014 filled"
       },
       {
         "sym": "CAT",
@@ -37,7 +37,7 @@
         "shares": 0.440328,
         "price": 618.9101,
         "pl": -47.41,
-        "note": "phase-out name at/below its research stop ($618.91 ≤ $695) — already dropped once by the research, so the stop break is the second strike; exit now — filled"
+        "note": "phase-out name at/below its research stop ($618.91 \u2264 $695) \u2014 already dropped once by the research, so the stop break is the second strike; exit now \u2014 filled"
       }
     ],
     "buysNow": [
@@ -48,7 +48,7 @@
         "shares": 0.0471,
         "price": 613.043,
         "pl": null,
-        "note": "6.8% → 7.21% target"
+        "note": "6.8% \u2192 7.21% target"
       },
       {
         "sym": "VTI",
@@ -57,7 +57,7 @@
         "shares": 0.9509,
         "price": 373.895,
         "pl": null,
-        "note": "waiting ground — holds $355.55 of deferred weight (AMZN) in VTI instead of cash; released when they clear"
+        "note": "waiting ground \u2014 holds $355.55 of deferred weight (AMZN) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
@@ -93,11 +93,12 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "buys (META $28.86, VTI park $355.55) BLOCKED this pass by a session-level permission control (\"Real-World Transactions\" classifier denial on place_equity_order), not a broker rejection — sells filled fine. Next pass will retry the buy leg (nextAction=place-buys).",
-    "$305.33 of deferred weight (NVDA, KO, MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "4 name(s) deferred (NVDA, KO, MA, AMZN) — ~$660.88 of intended weight held pending earnings/re-verify/wash-sale",
+    "2026-11-04: buy leg placed from Jack's chat (META order 6aec0a0f\u2026, VTI order 6aec0a10\u2026, queued for the 11-05 open); ticket closed so the next executor pass does not re-place them.",
+    "buys (META $28.86, VTI park $355.55) BLOCKED this pass by a session-level permission control (\"Real-World Transactions\" classifier denial on place_equity_order), not a broker rejection \u2014 sells filled fine. Next pass will retry the buy leg (nextAction=place-buys).",
+    "$305.33 of deferred weight (NVDA, KO, MA) stays in CASH rather than VTI \u2014 those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "4 name(s) deferred (NVDA, KO, MA, AMZN) \u2014 ~$660.88 of intended weight held pending earnings/re-verify/wash-sale",
     "$357.8 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "$355.55 of deferred weight parked in VTI rather than left in cash (AMZN) — released when those names clear; unparking is a taxable ST sale"
+    "$355.55 of deferred weight parked in VTI rather than left in cash (AMZN) \u2014 released when those names clear; unparking is a taxable ST sale"
   ],
   "history": [
     {
@@ -111,8 +112,18 @@
     {
       "at": "2026-11-02",
       "to": "sells-placed"
+    },
+    {
+      "at": "2026-11-04",
+      "to": "buys-placed"
+    },
+    {
+      "at": "2026-11-04",
+      "to": "done"
     }
   ],
   "confirmedAt": "2026-11-02",
-  "sells-placedAt": "2026-11-02"
+  "sells-placedAt": "2026-11-02",
+  "buys-placedAt": "2026-11-04",
+  "doneAt": "2026-11-04"
 }

@@ -716,6 +716,11 @@ const data = {
   if (data.agentic) {
     let decisions = null;
     try { const df = join(__dirname, 'agentic-decisions.json'); if (existsSync(df)) decisions = readJSON(df); } catch { decisions = null; }
+    // 2026-11-04: an executor pass on 2026-10-14 rewrote this file as a BARE ARRAY instead of
+    // {decisions:[…]}. The check below then failed silently every run and the snapshot carried the
+    // Oct 14 log forward for three weeks — the Rebalance Log froze at Oct 8 while ~40 trades went
+    // unlisted. Accept both shapes; warn so a writer that drops the wrapper is visible in the run log.
+    if (Array.isArray(decisions)) { console.warn('⚠️  agentic-decisions.json is a bare array — expected {decisions:[…]}; reading it anyway'); decisions = { decisions }; }
     const asOfDay = new Date(data.generatedAt).toISOString().slice(0, 10);
     if (decisions && Array.isArray(decisions.decisions) && decisions.decisions.length) {
       const priorAgLog = (prior && prior.agentic && prior.agentic.decisions && prior.agentic.decisions.decisions) || [];
