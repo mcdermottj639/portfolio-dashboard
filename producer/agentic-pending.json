@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-02-jnuw39",
-  "created": "2026-11-02",
+  "id": "2026-11-05-cjuvh1",
+  "created": "2026-11-05",
   "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,65 +16,42 @@
   "universeVersion": "f7e7b537f95cfdcdb9d3",
   "status": "done",
   "autoEligible": true,
-  "turnover": 1124.34,
-  "book": 7391.98,
-  "planHash": "s[CAT:273,GOOGL:467]b[META:29,VTI:356]t[]",
+  "turnover": 1752.56,
+  "book": 6918.13,
+  "planHash": "s[NVDA:876]b[VTI:876]t[]",
   "legs": {
     "sells": [
       {
-        "sym": "GOOGL",
-        "kind": "exit",
-        "dollars": 467.41,
-        "shares": 1.650189,
-        "price": 282.3401,
-        "pl": -97.74,
-        "note": "phase-out name at/below its research stop ($283.24 \u2264 $322) \u2014 already dropped once by the research, so the stop break is the second strike; exit now \u2014 filled"
-      },
-      {
-        "sym": "CAT",
-        "kind": "exit",
-        "dollars": 272.52,
-        "shares": 0.440328,
-        "price": 618.9101,
-        "pl": -47.41,
-        "note": "phase-out name at/below its research stop ($618.91 \u2264 $695) \u2014 already dropped once by the research, so the stop break is the second strike; exit now \u2014 filled"
+        "sym": "NVDA",
+        "kind": "harvest",
+        "dollars": 876.13,
+        "shares": 4.793595,
+        "price": 182.77,
+        "pl": -245.19,
+        "note": "tax-loss harvest — realize $-245.19 ST loss; rebuy blocked 30d, target weight sits underweight until then"
       }
     ],
     "buysNow": [
       {
-        "sym": "META",
-        "kind": "buy",
-        "dollars": 28.86,
-        "shares": 0.0471,
-        "price": 613.043,
-        "pl": null,
-        "note": "6.8% \u2192 7.21% target"
-      },
-      {
         "sym": "VTI",
         "kind": "park",
-        "dollars": 355.55,
-        "shares": 0.9509,
-        "price": 373.895,
+        "dollars": 876.43,
+        "shares": 2.4222,
+        "price": 361.83,
         "pl": null,
-        "note": "waiting ground \u2014 holds $355.55 of deferred weight (AMZN) in VTI instead of cash; released when they clear"
+        "note": "waiting ground — holds $876.43 of deferred weight (AMZN, NVDA) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": -143.66,
-    "net": -143.66,
+    "realizedLoss": -245.19,
+    "net": -245.19,
     "term": "short",
     "note": null
   },
   "deferred": [
-    {
-      "sym": "NVDA",
-      "reason": "below-entry",
-      "until": null
-    },
     {
       "sym": "KO",
       "reason": "above-entry",
@@ -89,41 +66,60 @@
       "sym": "AMZN",
       "reason": "wash-sale",
       "until": "2026-11-06"
+    },
+    {
+      "sym": "NVDA",
+      "reason": "wash-sale",
+      "until": null
     }
   ],
-  "blockedSells": [],
+  "blockedSells": [
+    {
+      "sym": "V",
+      "kind": "trim",
+      "blocked": "min-hold",
+      "dollars": 360.44,
+      "shares": 0.8441,
+      "partial": false,
+      "pl": 10.1,
+      "plPct": 2.88,
+      "until": "2026-11-13",
+      "heldDays": 6,
+      "note": "all 2.5324 sh held were bought inside the 14d min-hold (2.5324 sh, latest 2026-10-30) — no older lot is free to sell yet; unlocks 2026-11-13"
+    }
+  ],
   "warnings": [
-    "2026-11-04: buy leg placed from Jack's chat (META order 6aec0a0f\u2026, VTI order 6aec0a10\u2026, queued for the 11-05 open); ticket closed so the next executor pass does not re-place them.",
-    "buys (META $28.86, VTI park $355.55) BLOCKED this pass by a session-level permission control (\"Real-World Transactions\" classifier denial on place_equity_order), not a broker rejection \u2014 sells filled fine. Next pass will retry the buy leg (nextAction=place-buys).",
-    "$305.33 of deferred weight (NVDA, KO, MA) stays in CASH rather than VTI \u2014 those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "4 name(s) deferred (NVDA, KO, MA, AMZN) \u2014 ~$660.88 of intended weight held pending earnings/re-verify/wash-sale",
-    "$357.8 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "$355.55 of deferred weight parked in VTI rather than left in cash (AMZN) \u2014 released when those names clear; unparking is a taxable ST sale"
+    "$160.17 of deferred weight (KO, MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "4 name(s) deferred (KO, MA, AMZN, NVDA) — ~$1,496.75 of intended weight held pending earnings/re-verify/wash-sale",
+    "1 sell(s) held by the 14d min-hold (V) — churn guard: only the SHARES bought inside the window are held; older lots trim/exit normally (“part” = the rest of that name already sold this ticket)",
+    "entry zones are 8d old (target asOf 2026-10-28) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
+    "$876.43 of deferred weight parked in VTI rather than left in cash (AMZN, NVDA) — released when those names clear; unparking is a taxable ST sale"
   ],
   "history": [
     {
-      "at": "2026-11-02",
+      "at": "2026-11-05",
       "to": "proposed"
     },
     {
-      "at": "2026-11-02",
+      "at": "2026-11-05",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-02",
+      "at": "2026-11-05",
       "to": "sells-placed"
     },
     {
-      "at": "2026-11-04",
+      "at": "2026-11-05",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-04",
+      "at": "2026-11-05",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-02",
-  "sells-placedAt": "2026-11-02",
-  "buys-placedAt": "2026-11-04",
-  "doneAt": "2026-11-04"
+  "confirmedAt": "2026-11-05",
+  "sells-placedAt": "2026-11-05",
+  "buys-placedAt": "2026-11-05",
+  "doneAt": "2026-11-05",
+  "completedAt": "2026-11-05T19:23:19Z"
 }

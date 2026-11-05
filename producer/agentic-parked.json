@@ -1,9 +1,10 @@
 {
-  "_comment": "Index-parking ledger for the agentic account (\u2022\u2022\u2022\u20223900) \u2014 the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
+  "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 382.38,
+  "dollars": 1258.81,
   "forNames": [
-    "AMZN"
+    "AMZN",
+    "NVDA"
   ],
   "since": "2026-10-08",
   "history": [
@@ -14,14 +15,14 @@
       "forNames": [
         "NVDA"
       ],
-      "note": "NVDA wash-blocked to 2026-08-28 (margin-book loss 07-29) \u2014 parked at 381.56/sh, ticket 2026-08-12-1aqszr"
+      "note": "NVDA wash-blocked to 2026-08-28 (margin-book loss 07-29) — parked at 381.56/sh, ticket 2026-08-12-1aqszr"
     },
     {
       "date": "2026-08-18",
       "action": "reclassify",
       "dollars": -320.53,
       "forNames": [],
-      "note": "2026-08-18 research adopted the held VTI as a TARGET name (3.82%, thesis: ballast/parking-vehicle stake held flat) \u2014 the placeholder shares are absorbed into the target allocation. Zero trades, zero tax. Executing the gate plan instead would have sold 0.84368 VTI and rebought $321.20 VTI same-day: a pointless round trip (PDT count +1) and a same-day wash sale on a -$1.38 loss. Executor declined and reconciled the ledger."
+      "note": "2026-08-18 research adopted the held VTI as a TARGET name (3.82%, thesis: ballast/parking-vehicle stake held flat) — the placeholder shares are absorbed into the target allocation. Zero trades, zero tax. Executing the gate plan instead would have sold 0.84368 VTI and rebought $321.20 VTI same-day: a pointless round trip (PDT count +1) and a same-day wash sale on a -$1.38 loss. Executor declined and reconciled the ledger."
     },
     {
       "date": "2026-08-26",
@@ -32,7 +33,7 @@
         "V",
         "BKNG"
       ],
-      "note": "MA, V and BKNG all deferred above-entry by the v102 band; deferred weight parked in VTI at 377.865/sh (2.72 sh of the 2.989268-sh fill; the other 0.2688 sh is the target top-up 3.88%\u21924.75%). Ticket 2026-08-26-l9rxr. Released to fund each name as it clears \u2014 unparking is a taxable ST sale."
+      "note": "MA, V and BKNG all deferred above-entry by the v102 band; deferred weight parked in VTI at 377.865/sh (2.72 sh of the 2.989268-sh fill; the other 0.2688 sh is the target top-up 3.88%→4.75%). Ticket 2026-08-26-l9rxr. Released to fund each name as it clears — unparking is a taxable ST sale."
     },
     {
       "date": "2026-08-27",
@@ -41,7 +42,7 @@
       "forNames": [
         "BKNG"
       ],
-      "note": "BKNG cleared its entry band; released 1.431148 VTI @ 379.8301 = $543.61 (realized +$1.78 ST) to fund the position at 4.75%. MA and V remain above-entry \u2014 $485.99 stays parked. Ticket 2026-08-27-x0zdxw."
+      "note": "BKNG cleared its entry band; released 1.431148 VTI @ 379.8301 = $543.61 (realized +$1.78 ST) to fund the position at 4.75%. MA and V remain above-entry — $485.99 stays parked. Ticket 2026-08-27-x0zdxw."
     },
     {
       "date": "2026-09-02",
@@ -51,7 +52,7 @@
         "MA",
         "V"
       ],
-      "note": "MA and V funded from the waiting ground; released 1.209649 VTI @ 377.035 = $456.05 (-$1.00 ST). Waiting ground now $32.19 with no names pending. NOTE: both filled outside their entry bands on an advisory (9d-stale) target \u2014 see the decision record."
+      "note": "MA and V funded from the waiting ground; released 1.209649 VTI @ 377.035 = $456.05 (-$1.00 ST). Waiting ground now $32.19 with no names pending. NOTE: both filled outside their entry bands on an advisory (9d-stale) target — see the decision record."
     },
     {
       "date": "2026-10-08",
@@ -74,7 +75,7 @@
         "MA",
         "CAT"
       ],
-      "note": "Released 0.964853 VTI @ 375.135 = $361.95 (-3.96 ST) to fund NVDA/GOOGL/MA/CAT clearing their entry bands (idle-cash tranche pass). UNP was also cleared by the plan but dropped live for its 2026-10-22 earnings report (7d blackout) \u2014 its $176.22 share was not released and stays attributed to LLY's remaining wash-sale hold per the gate's forNames. Ticket 2026-10-20-nh63d6."
+      "note": "Released 0.964853 VTI @ 375.135 = $361.95 (-3.96 ST) to fund NVDA/GOOGL/MA/CAT clearing their entry bands (idle-cash tranche pass). UNP was also cleared by the plan but dropped live for its 2026-10-22 earnings report (7d blackout) — its $176.22 share was not released and stays attributed to LLY's remaining wash-sale hold per the gate's forNames. Ticket 2026-10-20-nh63d6."
     },
     {
       "date": "2026-10-30",
@@ -84,7 +85,7 @@
         "LLY",
         "AMZN"
       ],
-      "note": "waiting ground \u2014 holds $881.76 of deferred weight (LLY, AMZN) in VTI instead of cash; released when they clear \u2014 ticket 2026-10-30-m44mmm; filled 2.384875 VTI @ $369.73."
+      "note": "waiting ground — holds $881.76 of deferred weight (LLY, AMZN) in VTI instead of cash; released when they clear — ticket 2026-10-30-m44mmm; filled 2.384875 VTI @ $369.73."
     },
     {
       "date": "2026-10-30",
@@ -103,7 +104,17 @@
       "forNames": [
         "AMZN"
       ],
-      "note": "Ticket 2026-11-02-jnuw39 park leg, placed from Jack's chat on 11-04 (dollar-based market order 6aec0a10\u2026, queued for the 11-05 open) after the executor's 11-02 buy was refused by a session permission check. AMZN wash-blocked to 2026-11-06."
+      "note": "Ticket 2026-11-02-jnuw39 park leg, placed from Jack's chat on 11-04 (dollar-based market order 6aec0a10…, queued for the 11-05 open) after the executor's 11-02 buy was refused by a session permission check. AMZN wash-blocked to 2026-11-06."
+    },
+    {
+      "date": "2026-11-05",
+      "action": "park",
+      "dollars": 876.43,
+      "forNames": [
+        "AMZN",
+        "NVDA"
+      ],
+      "note": "Ticket 2026-11-05-cjuvh1 park leg: holds $876.43 of deferred weight (AMZN, NVDA) in VTI instead of cash; filled 2.4222 VTI @ $362.0199. NVDA newly wash-blocked by today's TLH harvest; AMZN continues its 2026-11-06 wash-block."
     }
   ]
 }
