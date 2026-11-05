@@ -1,3 +1,10 @@
+## v183 — Skill-meter status chip wraps on phones (2026-11-04)
+
+Jack's phone screenshot: the v182 chip read "Can't tell from luck yet · the edge is inside…" — the shared
+`.cr-status` pill is `nowrap` + ellipsis by design (v178), which cut the reason off at 390px. Scoped override
+`.sk-card .cr-status` (rounded box, wraps, dot top-aligned); the v178 Model-correctness chip is untouched.
+Files: `ui/experience.css`, `index.html`, `sw.js`. App/cache **v183 / pf-v183**.
+
 ## v182 — Skill-vs-luck meter + Fed/CPI blackout on new ••3900 money (2026-11-04)
 
 Jack reviewed an outside "AI trading desk" prompt and approved the two pieces worth taking ("Yes").
