@@ -1,3 +1,12 @@
+## v187 — Apex card never spins forever (2026-11-05)
+
+Jack's phone at 1:10 AM ET, three minutes after v186 deployed: the Apex card stayed on "Reading the book…".
+`renderApexCard` returned silently when `Apex` was undefined (a stale cached build, or Pages not yet serving
+the new `ui/apex.js`) and swallowed any render error into console.warn — both left the spinner. Now every
+exit path paints a one-line reason into `#apex-content` (`fail()`), including the thrown message, so the
+next screenshot says what broke. Files: `index.html`, `sw.js`. App/cache **v187 / pf-v187**. Root cause of
+the 1:10 AM spinner not confirmed (likely the deploy race); if it recurs the card will say.
+
 ## v186 — Apex: the margin book's leverage loop (2026-11-05)
 
 Jack (00:15–00:38 ET, workshopped with ChatGPT): turn the self-directed margin account on for modelling with a
