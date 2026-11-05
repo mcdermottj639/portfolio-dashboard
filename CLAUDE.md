@@ -1,3 +1,29 @@
+## v186 — Apex: the margin book's leverage loop (2026-11-05)
+
+Jack (00:15–00:38 ET, workshopped with ChatGPT): turn the self-directed margin account on for modelling with a
+mandate DIFFERENT from ••3900 — concentrated growth, selective margin, Claude builds tickets, he taps approve.
+"Tracking and visuals and analysis should be in portfolio dashboard and approve tickets in Jarvis." New card
+**🪜 Apex** at the top of the Self-directed Plan page (`#apex-card`, before Action Center), rendered by
+`renderApexCard(S)` from the same snapshot the plan reads (equity = `st.totalVal`, debt = negative `cashVal`,
+positions = `S.enriched`). Pure rules in **`ui/apex.js`** (UMD, `Apex.*`), layered ON the v156 SD rules — never a
+second rulebook: trims reuse `SD_TRIM_GAIN` (25%), the per-name cap reuses `SD_SINGLE_MAX_EQ` (20% of equity),
+the stop is `sdBroken`'s 25%. What Apex adds: a **leverage band** (exposure ÷ equity: 1.35x cruise, 1.5x cap,
+1.2x reload line), **cushion to call** at 30% maintenance (Robinhood's figure on IREN, seen in the app
+2026-11-05; PLTR assumed — note `sdCallDrop` still uses 25%, untouched), a **risk guard** at 35% equity that sells
+the donor name (`cfg.donor`, PLTR per Jack) in 50-share tranches until 40%, a **de-lever ladder** that sells into
+strength (`cfg.ladder`: IREN 200 @ $30 GTC, newest lots first) and shows `armed` until the rung prints, winner
+(+25% → trim 25%, +50% again) / stop exits, Friday **drift** vs `cfg.targets` (IREN 20 · NVDA 20 · PLTR 15 ·
+RKLB 15 · CRWD 10, LEAPS kicker ≤ 15% from trims only), **reload** (lev < 1.2x and ≥ ⅔ of names above their
+50-day ⇒ add to the top-2 up to 1.35x), and an **earnings guard** (no adds ≤ 3 days before a print; trims wait).
+Each firing rule renders as a flag card with the ticket line and leverage/debt before → after; a two-slider
+**What if** (core + donor price, debt fixed) re-runs the rules live. `window.__APEX_CFG` overrides the defaults
+(no producer field yet). **Approvals are not in this app:** the card links to Jarvis, where the weekday
+7:12 AM ET "Apex morning scan · 0741" task writes the tickets into the decisions queue; Jack places orders in
+Robinhood. Files: `ui/apex.js` (new), `producer/apex.test.mjs` (new, 11), `index.html` (card, adapter, hook,
+script tag, versions), `sw.js` (precache + `pf-v186`). App/cache **v186 / pf-v186**. Verified: apex 11/11,
+sd-rules 76/76, full producer suite, tests/*.cjs 23/23; synthetic Playwright 390 — card renders, scrollWidth
+390 (no drift), slider updates leverage + fired rules. Physical iPhone not verified.
+
 ## v185 — One navigation system: pages row + section rail (2026-11-04)
 
 Jack (phone screenshot): "nav widgets are split between the buttons and the scroll bar. Disjointed and not all
