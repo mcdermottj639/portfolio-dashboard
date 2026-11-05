@@ -20,7 +20,7 @@ try{
   await page.goto(process.env.PF_PREVIEW_URL||'http://127.0.0.1:8767');
   await page.waitForSelector('#predictions-app .pred-market');
   assert.equal(await page.locator('#ex-account').isVisible(),false);
-  assert.equal(await page.locator('[data-ex-area="predictions"]').getAttribute('aria-current'),'page');
+  assert.equal(await page.locator('[data-ex-area="signals"]').getAttribute('aria-current'),'page');
   assert.equal(await page.locator('#page-ex-today').isVisible(),false);
   assert.equal(await page.locator('#predictions-app>.pred-head h1').innerText(),'Predictions');
   for(const width of [320,390,768,1440]){
@@ -96,7 +96,7 @@ try{
   for(const width of [320,390]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'settled no overflow at '+width);await page.screenshot({path:(process.env.PF_SHOTS||'/tmp')+'/settled-'+width+'.png',fullPage:true});}
   await page.locator('#pred-tab-positions').click();
   await page.locator('[data-ex-area="today"]').click();assert.equal(await page.locator('#page-predictions').isVisible(),false);
-  await page.locator('[data-ex-area="predictions"]').click();assert.equal(await page.locator('#page-predictions').isVisible(),true);
+  await page.locator('[data-ex-area="signals"]').click();await page.locator('[data-ex-route="predictions"]').click();assert.equal(await page.locator('#page-predictions').isVisible(),true);
   await page.evaluate(()=>document.documentElement.setAttribute('data-theme','gold'));
   for(const section of ['positions','ideas','watchlist','results','settled']){
     await page.locator('#pred-tab-'+section).click();
