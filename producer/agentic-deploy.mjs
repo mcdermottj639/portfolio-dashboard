@@ -75,6 +75,7 @@ import { provenance } from './agentic-model.mjs';
 // review_equity_order → confirm → place (auto ≤ cap, owner-confirmed above; see AGENTIC.md).
 
 import { policyBlackout, POLICY_BLACKOUT_DAYS } from './policy.mjs';
+import { macroBlackout, macroCoverage, MACRO_MIN_COVER_DAYS } from './macro.mjs';
 import { AG_DD_CASH_FLOOR, AG_DD_REL_RESUME } from './drawdown.mjs';
 
 export const EARNINGS_BLACKOUT_DAYS = 7;
@@ -263,7 +264,7 @@ function entryLow(entry) { return entryBounds(entry).lo; }
 export function planDeployment(input = {}) {
   const {
     target = {}, positions = [], cash = 0, quotes = {},
-    earnings = {}, washMap = {}, policy = null, crossActivity = {}, accountActivity = {},
+    earnings = {}, washMap = {}, policy = null, macro = null, crossActivity = {}, accountActivity = {},
     parked = null, drawdown = null, vix = null, opts = {},
   } = input;
   // Regime pacing (v121). Never touches WHICH names are bought — only how fast idle cash is forced in.
@@ -343,6 +344,13 @@ export function planDeployment(input = {}) {
   const book = opts.book != null ? opts.book : +(investedVal + (num(cash) || 0)).toFixed(2);
 
   const buys = [], trims = [], deferred = [], warnings = [], blockedSells = [];
+  // MACRO BLACKOUT (v182). Book-wide: FOMC decision day / the session before a CPI print holds NEW buys
+  // for one session (macro.mjs). `macro` = producer/macro.json, loaded by the exec gate; absent ⇒ no-op.
+  const macroEvent = macro ? macroBlackout(macro, { asOf: opts.asOf }) : null;
+  if (macro && opts.asOf) {
+    const cov = macroCoverage(macro, { asOf: opts.asOf });
+    if (cov.short) warnings.push(`macro calendar runs short (FOMC ${cov.fomc == null ? 'none' : cov.fomc + 'd'}, CPI ${cov.cpi == null ? 'none' : cov.cpi + 'd'} ahead, need ≥${MACRO_MIN_COVER_DAYS}d) — add dates to producer/macro.json or the Fed/CPI blackout goes inert`);
+  }
   // PDT guard (v98, limited margin): a name BOUGHT TODAY in this account can't be sold today without
   // booking a day trade. `accountActivity` = {SYM:{lastBuyDate,lastSellDate}} from ••••3900's own
   // recent fills (committed decisions ledger + the executor's live overlay).
@@ -518,6 +526,11 @@ export function planDeployment(input = {}) {
       }
       if (daysAway != null && daysAway >= 0 && daysAway <= blackout) {
         deferred.push({ sym, reason: 'earnings', detail: `reports ${ern.date || `in ${daysAway}d`} (≤${blackout}d) — wait for the print, then buy`, until: ern.date, dollars: gap });
+        continue;
+      }
+      if (macroEvent) {
+        deferred.push({ sym, reason: 'macro', dollars: gap, until: macroEvent.date,
+          detail: `${macroEvent.title} — ${macroEvent.kind === 'cpi' ? `prints ${macroEvent.date} 8:30 AM ET; no new money the session before` : `statement 2:00 PM ET ${macroEvent.date}; no new money on decision day`}. Buys resume next session; sells are never paused` });
         continue;
       }
       if (polEvent) {

@@ -977,5 +977,34 @@ ok('governor windows: min-hold and re-entry are both 14d', MIN_HOLD_DAYS === 14 
     withProceeds.deployable > withProceeds.entryPolicy.cashThisPass);
 }
 
+// ---- macro blackout (v182) — book-wide Fed/CPI pause on NEW buys, sells never blocked ----
+{
+  const MAC = { events: [
+    { date: '2026-11-10', kind: 'cpi', title: 'CPI (October 2026)', source: 'https://www.bls.gov/x' },
+    { date: '2026-12-09', kind: 'fomc', title: 'FOMC decision (Dec 8–9)', source: 'https://www.federalreserve.gov/x' },
+  ] };
+  const T2 = { names: [{ ticker: 'NVDA', weightPct: 50, entry: '205-215', stop: 190 }, { ticker: 'JPM', weightPct: 50, entry: '336-345', stop: 310 }] };
+  const args = { target: T2, positions: [], cash: 1000, quotes: { NVDA: 209, JPM: 340 }, macro: MAC };
+  const eve = planDeployment({ ...args, opts: { asOf: '2026-11-09' } });
+  ok('session before CPI: every new buy deferred with reason macro', eve.buys.length === 0 && eve.deferred.length === 2 && eve.deferred.every((d) => d.reason === 'macro'));
+  ok('macro deferral names the event and says buys resume', /CPI \(October 2026\)/.test(eve.deferred[0].detail) && /resume next session/.test(eve.deferred[0].detail));
+  ok('macro deferral carries the event date as until', eve.deferred[0].until === '2026-11-10');
+  const printDay = planDeployment({ ...args, opts: { asOf: '2026-11-10' } });
+  ok('CPI release day: buys go ahead', printDay.buys.length === 2 && !printDay.deferred.some((d) => d.reason === 'macro'));
+  const fomc = planDeployment({ ...args, opts: { asOf: '2026-12-09' } });
+  ok('FOMC decision day: buys deferred', fomc.buys.length === 0 && fomc.deferred.every((d) => d.reason === 'macro'));
+  const none = planDeployment({ ...args, macro: null, opts: { asOf: '2026-11-09' } });
+  ok('no macro calendar → normal buys (no-op)', none.buys.length === 2);
+  // sells are never paused: an over-drift trim still plans on a blackout day
+  const trimDay = planDeployment({ target: { driftTriggerPp: 5, names: [{ ticker: 'NVDA', weightPct: 20, entry: '205-215', stop: 190 }, { ticker: 'JPM', weightPct: 80, entry: '336-345', stop: 310 }] },
+    positions: [{ symbol: 'NVDA', quantity: 4, average_buy_price: 150 }, { symbol: 'JPM', quantity: 1, average_buy_price: 300 }], cash: 0,
+    quotes: { NVDA: 209, JPM: 340 }, macro: MAC, opts: { asOf: '2026-12-09' } });
+  ok('macro day does not block a drift trim', !!find(trimDay.trims, 'NVDA'));
+  // coverage warning when the calendar is about to run out
+  const late = planDeployment({ ...args, opts: { asOf: '2026-12-01' } });
+  ok('calendar running out → planner warning', late.warnings.some((w) => /macro calendar runs short/.test(w)));
+  ok('macro deferral stays in cash (not a dated park reason)', !(eve.parking && eve.parking.forNames || []).length && !(eve.parking && eve.parking.parked));
+}
+
 console.log(`\nagentic-deploy.test: ${pass} passed, ${fail} failed  (blackout=${EARNINGS_BLACKOUT_DAYS}d)`);
 process.exit(fail ? 1 : 0);

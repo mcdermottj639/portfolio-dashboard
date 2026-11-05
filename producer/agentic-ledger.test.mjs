@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-ledger.mjs — no network, no I/O. Run: node producer/agentic-ledger.test.mjs
-import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, buyStats, BUY_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars, snapshotHoldingsSanity, SANITY_MIN_EXPECTED } from './agentic-ledger.mjs';
+import { gradeDecision, gradeDecisions, makeDecision, activityFromDecisions, MIN_GRADE_DAYS, sleeveStats, SLEEVE_MIN_N, buyStats, BUY_MIN_N, applyMarks, markStats, MARK_HORIZONS, MARK_GRACE_DAYS, closeIndex, markFromBars, snapshotHoldingsSanity, SANITY_MIN_EXPECTED, skillStats, SKILL_MIN_N, SKILL_T } from './agentic-ledger.mjs';
 
 let pass = 0, fail = 0;
 const ok = (label, cond) => { if (cond) pass++; else { fail++; console.error(`✗ ${label}`); } };
@@ -344,6 +344,26 @@ ok('an all-cash book still trips the parking contradiction',
   ok('gradeDecisions emits a buys block', !!g.buys && g.buys.n === 1);
   ok('…while stats and sleeves are untouched (purely additive)',
     g.stats && g.stats.total === 1 && g.sleeves !== undefined);
+}
+
+// ---- skill vs luck (v182) ----
+{
+  const mk = (alpha, verdict = alpha >= 0 ? 'ahead' : 'behind') => ({ grade: { alpha, verdict } });
+  const early = skillStats([mk(3), mk(2), mk(4)]);
+  ok('under SKILL_MIN_N resolved decisions → too-early', early.verdict === 'too-early' && early.n === 3);
+  ok('open / unknown decisions are not counted', skillStats([mk(1), { grade: { alpha: 5, verdict: 'open' } }, { grade: { alpha: null, verdict: 'unknown' } }]).n === 1);
+  // a noisy record with a small positive mean is luck, and needN says how long until we would know
+  const noisy = skillStats(Array.from({ length: 20 }, (_, i) => mk(i % 2 ? 4 : -3.5)));
+  ok('mean +0.25pp with ±3.75 swings → luck', noisy.verdict === 'luck' && Math.abs(noisy.meanPct - 0.25) < 0.01);
+  ok('needN is far beyond the current n for a noisy record', noisy.needN > 200);
+  // a consistent edge clears the bar
+  const steady = skillStats(Array.from({ length: SKILL_MIN_N }, (_, i) => mk(1 + (i % 3) * 0.5)));
+  ok('consistent positive excess → skill', steady.verdict === 'skill' && steady.t >= SKILL_T);
+  const bad = skillStats(Array.from({ length: SKILL_MIN_N }, (_, i) => mk(-1 - (i % 3) * 0.5)));
+  ok('consistent negative excess → lagging, needN null', bad.verdict === 'lagging' && bad.needN === null);
+  ok('zero spread → no t, too-early (never divides by zero)', skillStats(Array.from({ length: 15 }, () => mk(1))).verdict === 'too-early');
+  ok('empty ledger → too-early with nulls', (() => { const e = skillStats([]); return e.verdict === 'too-early' && e.meanPct === null && e.t === null; })());
+  ok('gradeDecisions carries skill', !!gradeDecisions([], {}, '2026-11-04').skill);
 }
 
 console.log(`\nagentic-ledger.test: ${pass} passed, ${fail} failed`);

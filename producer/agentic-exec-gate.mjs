@@ -223,9 +223,15 @@ for (const e of A.recentLosses || []) {
 const drawdown = bookDrawdown(A.equityHistory || [], { bench: (data.hist && data.hist.day && data.hist.day.SPY) || [] });
 if (drawdown.level !== 'ok') console.error(`[exec-gate] drawdown ${drawdown.level.toUpperCase()}: ${drawdown.note}`);
 
+function readMacro() {
+  try { return JSON.parse(readFileSync(new URL('./macro.json', import.meta.url), 'utf8')); }
+  catch (e) { console.error(`[exec-gate] macro.json unreadable (${e.message}) — Fed/CPI blackout OFF this pass`); return null; }
+}
 const plan = planDeployment({
   target: A.target, positions: A.positions, cash: A.cash || 0, quotes: data.quotes || {},
   washMap, parked: readParked() || A.parked || null, drawdown, vix: data.vix || null,
+  // v182: book-wide Fed/CPI blackout calendar (committed, dated, sourced). Missing/broken file ⇒ null ⇒ no-op.
+  macro: readMacro(),
   // Churn governor: recent buys/sells from the committed decisions ledger drive the min-hold and
   // re-entry cooldown. The executor OVERLAYS today's live fills (get_equity_orders) on top — the
   // ledger can't see an order placed since its last append (AGENTIC.md executor step 3c).

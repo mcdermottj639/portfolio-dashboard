@@ -165,6 +165,9 @@ can't cleanly buy:
   Only `impact:"high"` events defer (a comment-period close is context, not a reason to sit out), and those
   require a source URL. The calendar ships **empty** and is maintained by the weekly research agent, so this
   is a no-op until events are added.
+- **Macro blackout (v182):** book-wide — no NEW money on an **FOMC decision day** or the **trading day before a CPI
+  release** (`producer/macro.json` via `macro.mjs`, loaded by the exec gate). One session, buys only; sells are never
+  paused and the dollars wait in cash. The planner warns when the calendar is within 30 days of running out.
 - **Wash-sale / settlement:** skip a rebuy inside the 30-day loss window; deploying new cash needs no sells,
   and any required trim is sequenced first so its proceeds fund the buys the same session (v98).
 Deferred names keep their **target weight** — only the buy waits. The consumer's Agentic card shows the same

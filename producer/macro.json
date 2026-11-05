@@ -1,0 +1,15 @@
+{
+  "updated": "2026-11-04",
+  "readme": "Book-wide macro events that pause NEW agentic (••3900) buys for one session — see producer/macro.mjs. FOMC blocks its decision day (statement 2:00 PM ET, mid-session); CPI blocks the trading day BEFORE its 8:30 AM ET release (the overnight hold into the print). Sells are never blocked. Every date is copied from the cited source; FOMC dates after Dec 2026 are the Fed's TENTATIVE schedule. Extend before the calendar runs out — the planner warns once either series ends within 30 days. Run validateMacro() after editing.",
+  "events": [
+    { "date": "2026-11-10", "kind": "cpi",  "title": "CPI (October 2026)",  "source": "https://www.bls.gov/schedule/news_release/cpi.htm" },
+    { "date": "2026-12-09", "kind": "fomc", "title": "FOMC decision (Dec 8–9)", "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm" },
+    { "date": "2026-12-10", "kind": "cpi",  "title": "CPI (November 2026)", "source": "https://www.bls.gov/schedule/news_release/cpi.htm" },
+    { "date": "2027-01-13", "kind": "cpi",  "title": "CPI (December 2026)", "source": "https://www.bls.gov/schedule/news_release/cpi.htm" },
+    { "date": "2027-01-27", "kind": "fomc", "title": "FOMC decision (Jan 26–27, tentative)", "tentative": true, "source": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250905a.htm" },
+    { "date": "2027-02-11", "kind": "cpi",  "title": "CPI (January 2027)",  "source": "https://www.bls.gov/schedule/news_release/cpi.htm" },
+    { "date": "2027-03-10", "kind": "cpi",  "title": "CPI (February 2027)", "source": "https://www.bls.gov/schedule/news_release/cpi.htm" },
+    { "date": "2027-03-17", "kind": "fomc", "title": "FOMC decision (Mar 16–17, tentative)", "tentative": true, "source": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250905a.htm" },
+    { "date": "2027-04-28", "kind": "fomc", "title": "FOMC decision (Apr 27–28, tentative)", "tentative": true, "source": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20250905a.htm" }
+  ]
+}
