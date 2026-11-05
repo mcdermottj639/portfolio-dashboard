@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=185">
-<link rel="stylesheet" href="ui/predictions.css?v=185">
-<link rel="stylesheet" href="ui/smartmoney.css?v=185">
-<link rel="stylesheet" href="ui/ticker.css?v=185">
+<link rel="stylesheet" href="ui/experience.css?v=186">
+<link rel="stylesheet" href="ui/predictions.css?v=186">
+<link rel="stylesheet" href="ui/smartmoney.css?v=186">
+<link rel="stylesheet" href="ui/ticker.css?v=186">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,7 +771,8 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=185"></script>
+<script src="ui/sd-rules.js?v=186"></script>
+<script src="ui/apex.js?v=186"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -885,7 +886,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v185'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v186'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1951,6 +1952,20 @@ function renderActionFeed(list){
    load() flow stashes each enrichment stage into __SNAP and calls this as the data lands, and the
    Picks page calls it when it renders — so the card populates whether the Picks tab is opened before
    or after the portfolio finished loading. No-ops cleanly until both the data and the DOM exist. */
+/* v186 — Apex leverage loop (ui/apex.js). Reads the same snapshot the plan reads: equity =
+   account value (st.totalVal), debt = negative cash, positions = enriched. Pure rules live in the
+   module; this is only the adapter. Approvals are NOT here — Jarvis holds the decisions queue. */
+function renderApexCard(S){
+  const el=document.getElementById('apex-content'); if(!el||typeof Apex==='undefined')return;
+  const st=(S&&S.stats)||{};
+  const positions=(S.enriched||[]).filter(p=>p.val>0&&p.px>0).map(p=>({symbol:p.symbol,qty:p.qty,px:p.px,avg:p.avg}));
+  const cfg=Object.assign({},window.__APEX_CFG||{});
+  const state=Apex.state({positions,cash:+st.cashVal||0,equity:(+st.totalVal>0)?+st.totalVal:undefined});
+  const d=new Date(); const friday=d.getDay()===5;
+  const sma={}; Object.keys(S.smaMap||{}).forEach(k=>{ const m=S.smaMap[k]; const v=(m&&typeof m==='object')?m.s50:m; if(v!=null&&!isNaN(+v))sma[k]={s50:+v}; });
+  const out=Apex.rules(state,{cfg,smaMap:sma,earningsMap:S.earn||{},friday});
+  Apex.render(el,state,out,cfg);
+}
 function paintActionCenter(){
   // The agentic cards live on the Accounts tab's Agentic side (rendered lazily on first visit), so
   // these no-op until that page exists — then they re-render here as ovMap/smaMap land to upgrade
@@ -1974,6 +1989,9 @@ function paintActionCenter(){
   }
   if(document.getElementById('plan-content')){
     try{ renderActionPlan(S.enriched,S.clusters,tv,S.betaInfo,S.rsiMap,S.ovMap,S.earn,S.smaMap); }catch(e){}
+  }
+  if(document.getElementById('apex-content')){
+    try{ renderApexCard(S); }catch(e){ try{console.warn('[render] apex',e&&e.message);}catch(_){} }
   }
 }
 window.paintActionCenter=paintActionCenter;
@@ -7610,6 +7628,9 @@ function renderPicksStatic(){
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
     <div class="card" style="text-align:center"><span class="dp-link" onclick="setPlanAccount('agentic')">🤖 Agentic account (••••3900) — its target, deferrals &amp; guardrails →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">The <b>Agentic</b> toggle above holds that account's <i>plan</i>. Its <b>holdings, drift, performance and rebalance log</b> live on the Accounts tab's Agentic side, along with 🏛️ Flow &amp; Positioning.</div></div>
+    <div class="card" id="apex-card"><div class="card-title collapsible" data-toggle="b-apex" onclick="toggleSection('b-apex')"><span>🪜 Apex <span class="card-hint">(leverage loop · margin book)</span></span><span class="chevron">▼</span></div><div id="b-apex">
+      <div id="apex-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Reading the book…</div></div>
+    </div></div>
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
@@ -8405,13 +8426,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=185"></script>
-<script src="ui/predictions-model.js?v=185"></script>
-<script src="ui/predictions.js?v=185"></script>
-<script src="ui/smartmoney-model.js?v=185"></script>
-<script src="ui/smartmoney.js?v=185"></script>
-<script src="ui/experience.js?v=185"></script>
-<script src="ui/ticker.js?v=185"></script>
-<script src="ui/compact.js?v=185"></script>
+<script src="ui/experience-model.js?v=186"></script>
+<script src="ui/predictions-model.js?v=186"></script>
+<script src="ui/predictions.js?v=186"></script>
+<script src="ui/smartmoney-model.js?v=186"></script>
+<script src="ui/smartmoney.js?v=186"></script>
+<script src="ui/experience.js?v=186"></script>
+<script src="ui/ticker.js?v=186"></script>
+<script src="ui/compact.js?v=186"></script>
 </body>
 </html>
