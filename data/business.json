@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "updated": "2026-11-06T06:15:00Z",
-  "about": "Business check — one frozen assessment per symbol: is the company doing what it promised? Read by ui/business.js for display ONLY. No stop, trim, weight, leverage or ticket logic reads this file. To change a verdict, add a NEW assessment (move the current one into history[] unchanged) — never edit a past one, so forward paper tests can grade what was known at the time.",
+  "about": "Business check — one frozen assessment per symbol: is the company doing what it promised? Read by ui/business.js for display ONLY, on both books (Apex card + Agentic plan). No stop, trim, weight, leverage, ticket or executor logic reads this file. Written weekly by the 'Business check writer' scheduled task (and by hand in Jack's chat). To change a verdict, add a NEW assessment and move the current one into history[] unchanged — never edit a past one, so forward paper tests can grade what was known at the time. Funds (SPY, VTI…) get no record.",
   "names": {
     "IREN": {
       "thesis": "AI cloud capacity gets built, accepted by customers and turned into recognized revenue, funded without heavy dilution.",
@@ -10,7 +10,11 @@
       "asOf": "2026-11-05",
       "frozenAt": "2026-11-06T06:15:00Z",
       "assessor": "Claude (Jack's chat), from LAB-009 + the Nov 5 issuer release",
-      "refClose": { "px": 18.03, "date": "2026-11-05", "source": "crypto.news, Nov 5 close" },
+      "refClose": {
+        "px": 18.03,
+        "date": "2026-11-05",
+        "source": "crypto.news, Nov 5 close"
+      },
       "milestones": [
         {
           "name": "Revenue conversion",
@@ -38,11 +42,26 @@
         "The $6B FY27 capex is funded mainly by new shares rather than contracted prepayments or GPU debt",
         "A major customer contract is cut or cancelled"
       ],
-      "nextReview": { "date": "2027-01-31", "trigger": "ARR target date — delivery / customer acceptance update; then the Q2 FY27 print" },
+      "nextReview": {
+        "date": "2027-01-31",
+        "trigger": "ARR target date — delivery / customer acceptance update; then the Q2 FY27 print"
+      },
       "sources": [
-        { "title": "IREN Q1 FY27 results (issuer release)", "url": "https://www.globenewswire.com/news-release/2026/11/05/3397020/0/en/iren-reports-q1-fy27-results.html", "date": "2026-11-05" },
-        { "title": "Blockspace: Q1 FY27 recap (net debt, $6B capex to finance)", "url": "https://blockspace.media/insight/iren-ai-cloud-revenue-growth/", "date": "2026-11-05" },
-        { "title": "Research Lab LAB-009 (ChatGPT) — Nov 5 earnings update", "url": "https://docs.google.com/document/d/1bQE67vEyivZDlKpbGsuD5R9-m5iy_4b02ND1hCIgCjg/edit", "date": "2026-11-05" }
+        {
+          "title": "IREN Q1 FY27 results (issuer release)",
+          "url": "https://www.globenewswire.com/news-release/2026/11/05/3397020/0/en/iren-reports-q1-fy27-results.html",
+          "date": "2026-11-05"
+        },
+        {
+          "title": "Blockspace: Q1 FY27 recap (net debt, $6B capex to finance)",
+          "url": "https://blockspace.media/insight/iren-ai-cloud-revenue-growth/",
+          "date": "2026-11-05"
+        },
+        {
+          "title": "Research Lab LAB-009 (ChatGPT) — Nov 5 earnings update",
+          "url": "https://docs.google.com/document/d/1bQE67vEyivZDlKpbGsuD5R9-m5iy_4b02ND1hCIgCjg/edit",
+          "date": "2026-11-05"
+        }
       ],
       "history": []
     }

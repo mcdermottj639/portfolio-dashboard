@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=191">
-<link rel="stylesheet" href="ui/predictions.css?v=191">
-<link rel="stylesheet" href="ui/smartmoney.css?v=191">
-<link rel="stylesheet" href="ui/ticker.css?v=191">
+<link rel="stylesheet" href="ui/experience.css?v=192">
+<link rel="stylesheet" href="ui/predictions.css?v=192">
+<link rel="stylesheet" href="ui/smartmoney.css?v=192">
+<link rel="stylesheet" href="ui/ticker.css?v=192">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,9 +771,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=191"></script>
-<script src="ui/apex.js?v=191"></script>
-<script src="ui/business.js?v=191"></script>
+<script src="ui/sd-rules.js?v=192"></script>
+<script src="ui/apex.js?v=192"></script>
+<script src="ui/business.js?v=192"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -887,7 +887,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v191'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v192'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1953,6 +1953,25 @@ function renderActionFeed(list){
    load() flow stashes each enrichment stage into __SNAP and calls this as the data lands, and the
    Picks page calls it when it renders — so the card populates whether the Picks tab is opened before
    or after the portfolio finished loading. No-ops cleanly until both the data and the DOM exist. */
+/* v192 — Business check, shared by both books (ui/business.js, data/business.json). DISPLAY ONLY.
+   bizLoad() fetches the file once into window.__BIZ and repaints both books when it lands;
+   bizPaint(slot, symbols, positions, core) fills a slot. Names with no record read Unverified. */
+function bizLoad(){
+  if(window.__BIZ!==undefined)return window.__BIZ;
+  window.__BIZ=null;
+  fetch('data/business.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.names&&typeof j.names==='object'){ window.__BIZ=j;
+    try{ if(document.getElementById('apex-content'))renderApexCard(window.__SNAP); }catch(_){}
+    try{ if(typeof _planAgInit!=='undefined'&&_planAgInit)renderAgenticPlan(); }catch(_){} } }).catch(()=>{});
+  return null;
+}
+function bizPaint(slot,symbols,positions,core){
+  if(!slot)return;
+  if(typeof Business==='undefined'){ slot.innerHTML='<div class="tech-empty">Business check didn\'t load (old cached build) — tap the version badge to update.</div>'; return; }
+  try{
+    const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+    Business.render(slot,Business.forSymbols(symbols,bizLoad(),{positions,core,today}));
+  }catch(e){ slot.innerHTML='<div class="tech-empty">Business check couldn\'t render: '+String(e&&e.message||e).replace(/</g,'&lt;')+'</div>'; }
+}
 /* v186 — Apex leverage loop (ui/apex.js). Reads the same snapshot the plan reads: equity =
    account value (st.totalVal), debt = negative cash, positions = enriched. Pure rules live in the
    module; this is only the adapter. Approvals are NOT here — Jarvis holds the decisions queue. */
@@ -1996,20 +2015,9 @@ function renderApexCard(S){
     }
   }catch(e){ research={rows:[],empty:'Research lens failed: '+(e&&e.message||e)}; }
   Apex.render(el,state,out,cfg,research);
-  /* v191 — Business check tiles (ui/business.js, data/business.json). DISPLAY ONLY: nothing above reads
-     it. One tile per held name, then each research target; a name with no frozen assessment shows
-     Unverified. Fetched once into window.__BIZ, then re-rendered. */
-  try{
-    const slot=el.querySelector('[data-apex-business]');
-    if(slot&&typeof Business!=='undefined'){
-      const B=window.__BIZ;
-      if(B===undefined){ window.__BIZ=null; fetch('data/business.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.names&&typeof j.names==='object'){ window.__BIZ=j; try{ renderApexCard(window.__SNAP||S); }catch(_){} } }).catch(()=>{}); }
-      const syms=[...positions.map(p=>p.symbol),...Object.keys(cfg.targets||{})];
-      const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
-      const bc=Object.assign({},Apex.DEFAULT_CFG||{},cfg); const coreHeld=positions.find(p=>p.symbol===bc.core);
-      Business.render(slot,Business.forSymbols(syms,B||null,{positions,core:(bc.coreMax>0&&coreHeld)?bc.core:null,today}));
-    }
-  }catch(e){ const slot=el.querySelector('[data-apex-business]'); if(slot)slot.innerHTML='<div class="tech-empty">Business check couldn\'t render: '+String(e&&e.message||e).replace(/</g,'&lt;')+'</div>'; }
+  /* v191 — Business check tiles (display only; nothing above reads it). Held names, then targets. */
+  { const bc=Object.assign({},Apex.DEFAULT_CFG||{},cfg); const coreHeld=positions.find(p=>p.symbol===bc.core);
+    bizPaint(el.querySelector('[data-apex-business]'),[...positions.map(p=>p.symbol),...Object.keys(cfg.targets||{})],positions,(bc.coreMax>0&&coreHeld)?bc.core:null); }
   }catch(e){ fail(e&&e.message||e); }
 }
 function paintActionCenter(){
@@ -4153,7 +4161,12 @@ function renderAgenticPlan(){
       <div class="disclaimer" style="margin-top:12px">⚠️ Not financial advice. This page reports what the automated system intends and why; it places nothing. Levels are monitor-only — fractional positions can't carry resting stops.</div>
     </div></div>`;
 
-  host.innerHTML=hero+statusCard+agCorrectnessCard(A)+targetCard+blockedCard+parkCard+rulesCard+loopCard;
+  /* v192 — Business check for the agentic book (display only: the executor, Mandate A and every
+     rule above never read it). Held names first, then the research target's names. */
+  const bizCard=`<div class="card"><div class="card-title collapsible" data-toggle="b-agp-biz" onclick="toggleSection('b-agp-biz')"><span>🧾 Business check <span class="card-hint">is each company doing what it promised?</span></span><span class="chevron">▼</span></div><div id="b-agp-biz"><div data-ag-business></div></div></div>`;
+  host.innerHTML=hero+statusCard+agCorrectnessCard(A)+targetCard+bizCard+blockedCard+parkCard+rulesCard+loopCard;
+  { const pos=heldPos.map(p=>({symbol:p.symbol,qty:+p.qty||0,px:+p.px||0,avg:+(p.avgCost??p.avg??p.average_buy_price)||0}));
+    bizPaint(host.querySelector('[data-ag-business]'),[...pos.map(p=>p.symbol),...names.map(n=>n.ticker)],pos,null); }
 }
 window.renderAgenticPlan=renderAgenticPlan;
 
@@ -8472,13 +8485,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=191"></script>
-<script src="ui/predictions-model.js?v=191"></script>
-<script src="ui/predictions.js?v=191"></script>
-<script src="ui/smartmoney-model.js?v=191"></script>
-<script src="ui/smartmoney.js?v=191"></script>
-<script src="ui/experience.js?v=191"></script>
-<script src="ui/ticker.js?v=191"></script>
-<script src="ui/compact.js?v=191"></script>
+<script src="ui/experience-model.js?v=192"></script>
+<script src="ui/predictions-model.js?v=192"></script>
+<script src="ui/predictions.js?v=192"></script>
+<script src="ui/smartmoney-model.js?v=192"></script>
+<script src="ui/smartmoney.js?v=192"></script>
+<script src="ui/experience.js?v=192"></script>
+<script src="ui/ticker.js?v=192"></script>
+<script src="ui/compact.js?v=192"></script>
 </body>
 </html>

@@ -1,3 +1,23 @@
+## v192 — Business check on both books + a weekly writer (2026-11-06)
+
+Jack (01:25 ET): "Wire both". The 🧾 Business check now also renders on the **Agentic plan page** (card
+`#b-agp-biz` after "The target", slot `[data-ag-business]`: ••3900 holdings first, then `agentic-target.json` names),
+beside the Apex card's slot. One loader for both: **`bizLoad()`** fetches `data/business.json` once into `window.__BIZ`
+and repaints whichever book is open; **`bizPaint(slot, symbols, positions, core)`** fills a slot (load/render errors
+paint a one-line reason). `ui/business.js` gains **funds**: `FUNDS` (SPY, VOO, VTI, QQQ, GLD, TLT, sector SPDRs…) or a
+record with `fund:true` are listed on one line ("Funds — no single business to check") instead of as Unverified.
+Records now come from the **"Business check writer"** scheduled task (Fridays 8:17 AM ET, after the 7:12 Apex scan):
+it assesses up to 6 names a run that have no record, an overdue review, or a new earnings report since their `asOf`
+(held names first, both books), writes NEW frozen assessments (old → `history[]` unchanged), runs
+`producer/business.test.mjs`, and lands the data on a `data/<date>-business` PR it squash-merges (data-only, like
+the eBay bookkeeper). The same run copies Jarvis `os/apex-targets` to `data/apex-targets.json` when it is newer
+(the 7:45 copier was a one-shot). **Still display only**: Mandate A, the executor, `ui/apex.js`, `ui/sd-rules.js` and
+every ticket path never read it (tests assert it). Files: `index.html`, `ui/business.js`, `data/business.json` (about
+text), `sw.js`, `producer/business.test.mjs` (16/16). App/cache **v192 / pf-v192**. Verified: business 16/16, apex
+18/18, full producer suite, tests/*.cjs 23/23, inline scripts parse; synthetic Playwright 390 and 320 — Apex slot
+(IREN Intact) and Agentic slot (Unverified row + funds line) render, scrollWidth = innerWidth, scrollX 0, no page
+errors. Physical iPhone not verified.
+
 ## v191 — Business check tiles on the Apex card (read-only) (2026-11-06)
 
 Jack (01:12 ET): "Ok yes good build" — step 1 of the Lynch review: the price rules only see price, so every Apex

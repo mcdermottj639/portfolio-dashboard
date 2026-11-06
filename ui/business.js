@@ -25,6 +25,10 @@
   const MAX_AGE_DAYS = 120;   // about one quarter plus a month: older evidence is not current
   const GRACE_DAYS = 7;       // a review date may slip a week before the tile goes Unverified
   const DAY = 864e5;
+  /* Funds hold many businesses, so there is no single promise to check. A record can also set
+     `fund: true` for anything not on this list. */
+  const FUNDS = new Set(['SPY', 'VOO', 'IVV', 'VTI', 'QQQ', 'QQQM', 'IWM', 'DIA', 'VXUS', 'VEA', 'VWO', 'BND', 'AGG', 'TLT', 'IEF', 'SHY', 'GLD', 'IAU', 'SLV', 'SCHD', 'VIG', 'VUG', 'VTV', 'SMH', 'SOXX', 'ARKK', 'XLK', 'XLF', 'XLE', 'XLV', 'XLI', 'XLY', 'XLP', 'XLU', 'XLB', 'XLRE', 'XLC', 'SGOV', 'BIL']);
+  const isFund = (sym, rec) => FUNDS.has(sym) || !!(rec && rec.fund);
 
   const isDate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s + 'T00:00:00Z'));
   const toDay = (s) => Date.parse(s + 'T00:00:00Z');
@@ -70,7 +74,7 @@
       const rec = names[sym] || null;
       const pos = (opts.positions || []).find((p) => p.symbol === sym) || null;
       const fromCost = pos && pos.avg > 0 && pos.px > 0 ? pos.px / pos.avg - 1 : null;
-      return { sym, rec, view: assess(rec, opts.today), held: !!pos, fromCost, core: !!(opts.core && opts.core === sym) };
+      return { sym, rec, view: assess(rec, opts.today), held: !!pos, fromCost, core: !!(opts.core && opts.core === sym), fund: isFund(sym, rec) };
     });
   }
 
@@ -108,15 +112,17 @@
     rows = rows || [];
     /* Assessed names get a full tile, listed first. Names with no record at all collapse into one
        compact row so a 20-name book stays one screen — each still marked Unverified. */
-    const full = rows.filter((r) => r.rec).sort((a, b) => (b.core - a.core) || (b.held - a.held));
-    const none = rows.filter((r) => !r.rec);
+    const funds = rows.filter((r) => r.fund);
+    const full = rows.filter((r) => r.rec && !r.fund).sort((a, b) => (b.core - a.core) || (b.held - a.held));
+    const none = rows.filter((r) => !r.rec && !r.fund);
     const chips = none.map((r) => `<span data-biz="${esc(r.sym)}" data-biz-status="unverified" style="display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;background:#f3f4f6;color:#4b5563;margin:2px 4px 2px 0;white-space:nowrap"><b>${esc(r.sym)}</b>${r.fromCost != null ? ` ${r.fromCost >= 0 ? '+' : ''}${(r.fromCost * 100).toFixed(0)}%` : r.held ? '' : ' · target'}</span>`).join('');
     const noneRow = none.length ? `<div class="flag-card" style="border-left-color:#9ca3af;min-width:0"><div style="display:flex;justify-content:space-between;gap:6px;align-items:center"><b style="font-size:12px">Not assessed yet</b><span class="act-tag" style="background:#f3f4f6;color:#4b5563;margin:0">Unverified</span></div><div style="margin-top:4px">${chips}</div><div class="flag-body" style="margin-top:2px">% = price from cost. No business evidence on file — not a health signal.</div></div>` : '';
-    const body = rows.length ? full.map((r) => tileHtml(r, esc)).join('') + noneRow : '<div class="tech-empty">No holdings or targets to check yet.</div>';
+    const fundRow = funds.length ? `<div style="font-size:11px;color:#6b7280;margin:2px 0 6px">Funds — no single business to check: ${funds.map((r) => `<span data-biz="${esc(r.sym)}" data-biz-status="fund"><b>${esc(r.sym)}</b></span>`).join(' · ')}</div>` : '';
+    const body = rows.length ? full.map((r) => tileHtml(r, esc)).join('') + noneRow + fundRow : '<div class="tech-empty">No holdings or targets to check yet.</div>';
     return `<div class="ac-tier">🧾 Business check <span class="card-hint">(is the company doing what it promised?)</span></div>${body}<div style="font-size:11px;color:#9ca3af;margin-top:4px">Informational only — no stop, trim, weight, leverage or ticket reads this. Missing or stale evidence shows Unverified, never healthy.</div>`;
   }
 
   function render(el, rows) { if (el) el.innerHTML = html(rows); }
 
-  return { STATUSES, MILESTONE_STATES, MAX_AGE_DAYS, GRACE_DAYS, problems, assess, forSymbols, html, render };
+  return { FUNDS, isFund, STATUSES, MILESTONE_STATES, MAX_AGE_DAYS, GRACE_DAYS, problems, assess, forSymbols, html, render };
 });
