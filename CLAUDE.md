@@ -1,3 +1,14 @@
+## v189 — Apex targets come from research, not a fixed list (2026-11-05)
+
+Jack (20:40 ET): "PICK FROM RESEARCH". The hand-typed NVDA 20 · PLTR 15 · RKLB 15 · CRWD 10 list is retired. The
+"Apex morning scan · 0741" task's Friday research picks the 4 non-core targets (gates, Jack's 40/35/25 scoring,
+max 2 per theme, top-6 incumbency, weights 20/15/15/10) and writes Jarvis `os/apex-targets`; that document is
+copied to **`data/apex-targets.json`** in this repo (`{asOf, targets, top5, gatedCount, universeCount}`), which
+`renderApexCard` fetches once (`window.__APEX_TGT`) and re-renders with. `cfg.targets = {IREN:20, ...targets}`;
+with no file the book is the IREN core alone and the build rule writes nothing — never the old list. Research
+tiles prefer the file's `top5` (composite · R/R · why · 🎯 target weight) over the momentum-lens preview.
+Files: `index.html`, `ui/apex.js`, `sw.js`, `producer/apex.test.mjs` (17/17). App/cache **v189 / pf-v189**.
+
 ## v188 — Apex builds the new book + weekly research on the card (2026-11-05)
 
 Jack (19:06–19:25 ET): "There's margin to play with so I expect a new portfolio tomorrow" → chose **Build on

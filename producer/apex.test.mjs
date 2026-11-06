@@ -151,4 +151,15 @@ ok('v188 render: research tiles show top names; empty state is explicit', () => 
   assert.ok(/No scored names yet/.test(el.innerHTML));
 });
 
+ok('v189 render: scan research rows (composite + why + target badge) render; IREN-only targets build nothing', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const st = A.state(nov5);
+  const out = A.rules(st, { cfg: { targets: { IREN: 20 } } });
+  assert.ok(!out.some((x) => x.kind === 'build'), 'no fixed list ⇒ no build rungs');
+  const res = { rows: [{ sym: 'VRT', score: 7.8, px: 150, target: 20, why: 'AI power leader, earnings beat', rr: 2.4, held: false }], asOf: '2026-11-06', source: 'Friday research' };
+  A.render(el, st, out, { targets: { IREN: 20, VRT: 20 } }, res);
+  assert.ok(/VRT 🎯 20%/.test(el.innerHTML) && /R\/R 2\.4/.test(el.innerHTML) && /AI power leader/.test(el.innerHTML));
+  assert.ok(!/undefined|NaN/.test(el.innerHTML));
+});
+
 console.log(`apex: ${n}/${n} passed`);
