@@ -92,6 +92,8 @@ ok('html: unverified tile says it is not a health signal; core chip does not cha
   assert.match(h, /data-biz="NVDA" data-biz-status="unverified"/);
   assert.match(h, /not a health signal/);
   assert.match(h, /Not assessed yet/);
+  assert.match(h, /<details class="biz-row" data-biz="IREN" data-biz-status="intact"/, 'assessed name is one collapsed row');
+  assert.match(h, /1 Intact/); assert.match(h, /1 Unverified/);
   assert.ok(h.indexOf('data-biz="IREN"') < h.indexOf('data-biz="NVDA"'), 'assessed tiles come first');
   assert.match(h, /data-biz="IREN" data-biz-status="intact"/);
   assert.match(h, /core · your rule/);
@@ -113,6 +115,14 @@ ok('index.html: both books paint through one loader; neither rule path reads it'
   assert.match(html, /data-apex-business/);
   assert.match(html, /data-ag-business/);
   assert.equal((html.match(/fetch\('data\/business\.json/g) || []).length, 1, 'one fetch site (bizLoad)');
+});
+
+ok('compact: worst verdict sorts first and rows start collapsed', () => {
+  const w = clone(iren); w.status = 'weakening';
+  const f = { names: { IREN: iren, ABC: w } };
+  const h = B.html(B.forSymbols(['IREN', 'ABC'], f, { today: '2026-11-06' }));
+  assert.ok(h.indexOf('data-biz="ABC"') < h.indexOf('data-biz="IREN"'));
+  assert.ok(!/<details class="biz-row"[^>]*\sopen/.test(h));
 });
 
 ok('html escapes record text', () => {
