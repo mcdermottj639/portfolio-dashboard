@@ -1,3 +1,17 @@
+## v190 — Apex research upgraded: momentum lens, vol sizing, news veto, graded record (2026-11-05)
+
+Jack (20:56 ET): "Upgrade it". The Friday research in the "Apex morning scan · 0741" task now scores MOMENTUM
+(the dashboard's `sdMomentum` rubric — 6m/3m RS vs SPY, 50/100-day trend, distance from the 6-month high)
+instead of RSI alone, applies a don't-chase ENTRY GATE (within 3% of the 20-day high ⇒ half size, or wait unless
+momentum ≥ 9), sizes the 4 targets by INVERSE 60-day realized vol (sum 60% of equity, clamp 8–20%), runs a NEWS
+VETO on the top 6 (2 WebSearch queries each; veto on guidance cut / dilution / investigation / exec departure /
+lawsuit inside 10 days — never a score input), and GRADES every Friday's picks at 5/30/90 trading days vs SPY
+into Jarvis `os/apex-picks-log` (marks stamped once, never recomputed — the v129 rule). `os/apex-targets` gains
+`vetoed[]`, `record{}`, and per-pick `vol`/`extended`; the 7:45 AM follow-up copies all of it to
+`data/apex-targets.json`. Card: the research block shows a "Record vs SPY" line (or "no graded picks yet"), a
+⛔ News veto line, and per-tile vol + ⏳ extended. Files: `ui/apex.js`, `index.html`, `sw.js`,
+`producer/apex.test.mjs` (18/18). App/cache **v190 / pf-v190**.
+
 ## v189 — Apex targets come from research, not a fixed list (2026-11-05)
 
 Jack (20:40 ET): "PICK FROM RESEARCH". The hand-typed NVDA 20 · PLTR 15 · RKLB 15 · CRWD 10 list is retired. The
