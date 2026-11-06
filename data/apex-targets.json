@@ -1,0 +1,43 @@
+{
+  "asOf": "2026-11-06T07:30:00-05:00",
+  "rulesVersion": "v2.1",
+  "universeCount": 55,
+  "gatedCount": 8,
+  "core": "IREN",
+  "targets": { "AMZN": 22.13, "PLTR": 14.03, "S": 11.53, "ZS": 12.31 },
+  "clusterCap": { "ai": { "cap": 45, "current": 95.9, "room": -50.9, "asShareOfStock": 46.9 } },
+  "blockedByCap": [],
+  "blockedByClusterLimit": [
+    { "sym": "PANW", "composite": 5.64, "why": "max 2 per cyber cluster (ZS, S rank higher)" },
+    { "sym": "CRWD", "composite": 5.53, "why": "max 2 per cyber cluster" }
+  ],
+  "vetoed": [
+    { "sym": "REGN", "why": "NOT APPROPRIATE: R/R 1.40 < 1.5 (TP1 $991.73 3-mo high, stop $839.28); composite 7.70 would have ranked #1", "source": "computed from get_equity_historicals", "date": "2026-11-05" },
+    { "sym": "VRTX", "why": "NOT APPROPRIATE: R/R 1.33 < 1.5 (TP1 $568.67, stop $522.81)", "source": "computed from get_equity_historicals", "date": "2026-11-05" },
+    { "sym": "ISRG", "why": "gate: SMA50 < SMA200 and next earnings Jan 21 2027 (>60 days), no named catalyst", "source": "get_equity_historicals, get_earnings_results", "date": "2026-11-05" },
+    { "sym": "META", "why": "skipped: held ≥$250 in ••3900 (0.868 sh ≈ $525)", "source": "get_equity_positions 694553900", "date": "2026-11-06" }
+  ],
+  "top5": [
+    { "sym": "AMZN", "cluster": "ai-software", "composite": 7.02, "momentum": 4.92, "rsi": 55, "fwdPE": null, "trailingPE": 21.03, "revGrowth": 12.1, "rr": 3.15, "vol": 0.313, "entryState": "normal", "extended": false, "multiplier": 1, "newsStatus": "noise", "entry": 260.21, "trigger": 274.6, "tp1": 280.14, "stop": 253.89, "earnings": "2027-02-04 (tentative)", "picked": true, "why": "Best R/R (3.2) + cheap P/E 21; AWS +39%. News: Q3 2026 8-K Oct 29 2026: net sales +12% to $201.9B, AWS +39% — no thesis change [2026-10-29] https://www.sec.gov/Archives/edgar/data/0001018724/000101872426000038/amzn-20261029.htm" },
+    { "sym": "ZS", "cluster": "cyber", "composite": 6.79, "momentum": 8.29, "rsi": 39.9, "fwdPE": null, "trailingPE": -515.76, "revGrowth": 24.9, "rr": 2.45, "vol": 0.702, "entryState": "pullback", "extended": false, "multiplier": 1, "newsStatus": "no-new-news", "entry": 203.88, "trigger": 229.22, "tp1": 267.87, "stop": 177.73, "earnings": "2026-12-02", "picked": true, "why": "Strong 6-mo trend, rev +25%, pulling back to SMA20. News: no new news since Sep 3 2026 Q4 FY26 8-K (FY27 guide below hopes; not a cut) [2026-09-03] https://www.sec.gov/Archives/edgar/data/0001713683/000171368326000156/zs-07312026_991.htm" },
+    { "sym": "S", "cluster": "cyber", "composite": 6.19, "momentum": 7.14, "rsi": 38.9, "fwdPE": null, "trailingPE": -21.21, "revGrowth": 20.6, "rr": 2.16, "vol": 0.683, "entryState": "pullback", "extended": false, "multiplier": 1, "newsStatus": "no-new-news", "entry": 21.42, "trigger": 23.62, "tp1": 26.5, "stop": 19.07, "earnings": "2026-12-03 (tentative)", "picked": true, "why": "Uptrend intact over SMA200, rev +21%, pullback setup. News: no new news since Aug 27 2026 Q2 FY27 report (Robinhood get_earnings_results) [2026-08-27]" },
+    { "sym": "PANW", "cluster": "cyber", "composite": 5.64, "momentum": 5.23, "rsi": 33, "fwdPE": null, "trailingPE": 866.2, "revGrowth": 34.4, "rr": 46.14, "vol": 0.647, "entryState": "normal", "extended": false, "multiplier": 1, "newsStatus": "no-new-news", "entry": 314.67, "trigger": 357.55, "tp1": 432.32, "stop": 312.12, "earnings": "2026-11-18", "picked": false, "why": "Rev +34%, tight 3-mo-low stop; blocked by 2-per-cluster cap. News: no new news since Sep 1 2026 report; next print Nov 18 [2026-09-01]" },
+    { "sym": "CRWD", "cluster": "cyber", "composite": 5.53, "momentum": 6.88, "rsi": 35.4, "fwdPE": null, "trailingPE": 6084, "revGrowth": 25.8, "rr": 2.45, "vol": 0.736, "entryState": "normal", "extended": false, "multiplier": 1, "newsStatus": "no-new-news", "entry": 217.2, "trigger": 244.61, "tp1": 286.99, "stop": 188.75, "earnings": "2026-12-01", "picked": false, "why": "Rev +26%, cyber leader; blocked by 2-per-cluster cap. News: no new news since Aug 26 2026 report; next print Dec 1 [2026-08-26]" },
+    { "sym": "PLTR", "cluster": "ai-software", "composite": 5.5, "momentum": 4.88, "rsi": 25.4, "fwdPE": null, "trailingPE": 120.34, "revGrowth": 95.9, "rr": 24.25, "vol": 0.499, "entryState": "normal", "extended": false, "multiplier": 1, "newsStatus": "noise", "entry": 154.99, "trigger": 181.02, "tp1": 212.94, "stop": 152.6, "earnings": "2027-02-01 (tentative)", "picked": true, "why": "Rev +96% YoY; tight stop at 3-mo low; P/E 120 caps F. News: Q3 beat Nov 2 2026; 2026 revenue outlook raised to ~$8.5B — no thesis change [2026-11-02] https://investinglive.com/stocks/palantir-beats-q3-estimates-lifts-2026-revenue-outlook-to-around-8-5-billion/" }
+  ],
+  "record": {
+    "rulesVersion": "v2.1",
+    "n5": 0, "hit5": null, "avgAlpha5": null,
+    "n30": 0, "hit30": null, "avgAlpha30": null,
+    "n90": 0, "hit90": null, "avgAlpha90": null,
+    "control": { "n5": 0, "hit5": null, "avgAlpha5": null, "n30": 0, "hit30": null, "avgAlpha30": null, "n90": 0, "hit90": null, "avgAlpha90": null },
+    "firstMarks": { "5": "2026-11-13", "30": "2026-12-21", "90": "2027-03-19" }
+  },
+  "notes": [
+    "thresholds are starting points pending the paper test",
+    "fwd P/E not available from Robinhood tools — F scored on YoY revenue growth and TRAILING P/E; fwd-P/E>100 veto not applied",
+    "gates: 8 of 55 passed; no ai-compute name is above its SMA200, so nothing was blocked by the 45% cap",
+    "AMZN sized 22.1% after one renormalization; build ticket capped at 20% of equity",
+    "margin rate 5.25% = estimate (Robinhood published rate <$50K); account rate unconfirmed"
+  ]
+}
