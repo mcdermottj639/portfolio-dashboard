@@ -162,4 +162,17 @@ ok('v189 render: scan research rows (composite + why + target badge) render; IRE
   assert.ok(!/undefined|NaN/.test(el.innerHTML));
 });
 
+ok('v190 render: record line, vetoed names, vol + extended badge', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const res = { rows: [{ sym: 'VRT', score: 7.8, px: 150, target: 14, why: 'AI power leader', rr: 2.4, vol: 62, extended: true }], asOf: '2026-11-06', source: 'Friday research',
+    record: { n5: 4, hit5: 0.75, avgAlpha5: 1.2, n30: 0, n90: 0 }, vetoed: [{ sym: 'SMCI', why: 'accounting probe' }] };
+  A.render(el, A.state(nov5), [], { targets: { IREN: 20, VRT: 14 } }, res);
+  assert.ok(/5d 75% beat · \+1\.2pp \(n=4\)/.test(el.innerHTML), 'record line');
+  assert.ok(/News veto: SMCI — accounting probe/.test(el.innerHTML));
+  assert.ok(/vol 62%/.test(el.innerHTML) && /⏳ extended/.test(el.innerHTML));
+  assert.ok(!/undefined|NaN/.test(el.innerHTML));
+  A.render(el, A.state(nov5), [], {}, { rows: res.rows, record: { n5: 0, n30: 0, n90: 0 } });
+  assert.ok(/no graded picks yet/.test(el.innerHTML));
+});
+
 console.log(`apex: ${n}/${n} passed`);
