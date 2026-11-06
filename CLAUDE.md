@@ -1,3 +1,14 @@
+## v193.1 — Business check tests no longer pin IREN's live grade (2026-11-06)
+
+ChatGPT's setup of the weekly "Business check writer" found that `producer/business.test.mjs` asserted the
+LIVE `data/business.json` IREN record was "intact", so an honest regrade (weakening/broken) would fail CI and
+block the data PR. Behavior tests now run on a frozen inline fixture (the Nov 6 2026 IREN record); the live file
+only gets structural checks: known verdict, asOf date, graded (non-unverified) records complete per `problems()`,
+refClose on/before asOf, history older than current. An `unverified` record may be partial (no sources yet) and
+still renders Unverified. Verified: business 18/18, apex 18/18, plus a simulated regrade (IREN → weakening with
+the old record in history[], and a partial unverified name) passing both. Test-only; no UI or data change, no
+version bump.
+
 ## v193 — Business check compact view (2026-11-06)
 
 Jack (01:34 ET): "it'll take up a lot of room when we have them all so build a condense view". `ui/business.js`
