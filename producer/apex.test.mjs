@@ -175,4 +175,73 @@ ok('v190 render: record line, vetoed names, vol + extended badge', () => {
   assert.ok(/no graded picks yet/.test(el.innerHTML));
 });
 
+/* v194 — Jack 2026-11-06 11:34 "always put the entry target prices" · 11:35 "make sure all can be bought on
+   Robinhood always". Levels are the live Nov 6 scan rows (data/apex-targets.json); book = Nov 6 7:40 AM. */
+const nov6 = { positions: [{ symbol: 'IREN', qty: 500.07, px: 21.25, avg: 44.84 }], cash: 445.91, equity: 11073.3 };
+const lv = {
+  AMZN: { trigger: 274.6, limit: 277.35, tp1: 280.14, stop: 253.89, name: 'Amazon', tradable: true },
+  PLTR: { trigger: 181.02, limit: 182.83, tp1: 212.94, stop: 152.6, name: 'Palantir', tradable: true },
+  S: { trigger: 23.62, limit: 23.86, tp1: 26.5, stop: 19.07, name: 'SentinelOne', tradable: true },
+  ZS: { trigger: 229.22, tp1: 267.87, stop: 177.73, name: 'Zscaler', tradable: true },
+};
+const nov6cfg = { targets: { IREN: 20, AMZN: 22.13, PLTR: 14.03, S: 11.53, ZS: 12.31 }, levels: lv };
+const nov6px = { AMZN: { px: 263.23 }, PLTR: { px: 162.03 }, S: { px: 21.93 }, ZS: { px: 204.18 } };
+
+ok('v194 levelsFor: limit defaults to trigger × 1.01; R/R is measured at the LIMIT, not the prior close', () => {
+  const z = A.levelsFor(nov6cfg, 'ZS');
+  assert.equal(z.limit, 231.51);
+  assert.ok(Math.abs(z.rr - (267.87 - 231.51) / (231.51 - 177.73)) < 1e-9);
+  const a = A.levelsFor(nov6cfg, 'AMZN');
+  assert.ok(Math.abs(a.rr - 0.119) < 0.001, `AMZN rr ${a.rr}`);   // $2.79 reward vs $23.46 risk
+  assert.equal(A.levelsFor(nov6cfg, 'NVDA'), null);
+});
+
+ok('v194 build: rungs carry entry/target/stop/R-R + name, sized at the limit like the Jarvis tickets', () => {
+  const b = A.rules(A.state(nov6), { cfg: nov6cfg, smaMap: nov6px }).filter((x) => x.kind === 'build');
+  assert.deepEqual(b.map((x) => x.levels.sym), ['AMZN', 'PLTR', 'S', 'ZS']);
+  const amzn = b[0];
+  assert.equal(amzn.levels.trigger, 274.6); assert.equal(amzn.levels.limit, 277.35);
+  assert.equal(amzn.levels.tp1, 280.14); assert.equal(amzn.levels.stop, 253.89);
+  assert.equal(amzn.levels.name, 'Amazon');
+  assert.ok(/at \$274\.60/.test(amzn.title), amzn.title);
+  const room = 1.35 * 11073.3 - 500.07 * 21.25, W = 22.13 + 14.03 + 11.53 + 12.31;
+  assert.equal(amzn.ticket.qty, Math.floor(Math.min(0.2 * 11073.3, room * 22.13 / W) / 277.35));
+  assert.ok(b.every((x) => x.lowRR), 'all four Nov 6 rungs sit under the 1.5 floor at their real entry');
+});
+
+ok('v194 build: a name the scan marked untradable on Robinhood never becomes a buy rung', () => {
+  const cfg = { ...nov6cfg, levels: { ...lv, S: { ...lv.S, tradable: false, tradableAt: '2026-11-06 11:35 ET' } } };
+  const r = A.rules(A.state(nov6), { cfg, smaMap: nov6px });
+  assert.ok(!r.some((x) => x.kind === 'build' && x.levels && x.levels.sym === 'S'));
+  const sk = r.find((x) => x.kind === 'skip');
+  assert.ok(sk && /S skipped — not buyable on Robinhood/.test(sk.title) && !sk.ticket);
+});
+
+ok('v194 render: 2×2 entry · target · stop · R/R grid, floor warning, name + Robinhood link', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const st = A.state(nov6);
+  A.render(el, st, A.rules(st, { cfg: nov6cfg, smaMap: nov6px }), nov6cfg, null);
+  const h = el.innerHTML;
+  assert.ok(/Entry/.test(h) && /\$274\.60/.test(h) && /limit \$277\.35/.test(h));
+  assert.ok(/\$280\.14/.test(h) && /\$253\.89/.test(h) && /R\/R at entry/.test(h) && /0\.12/.test(h));
+  assert.ok(/below R\/R floor/.test(h) && /Under your 1\.5 R\/R floor/.test(h));
+  assert.ok(/SentinelOne/.test(h) && /https:\/\/robinhood\.com\/stocks\/S"/.test(h) && /Open in Robinhood/.test(h));
+  assert.ok(!/undefined|NaN/.test(h), 'no undefined/NaN in markup');
+});
+
+ok('v194 drift: weekly review flag (Monday) — `friday` still accepted; copy says Monday', () => {
+  const big = A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 10, px: 100, avg: 100 }], cash: 0 });
+  const d1 = A.rules(big, { review: true }).filter((x) => x.kind === 'drift');
+  const d2 = A.rules(big, { friday: true }).filter((x) => x.kind === 'drift');
+  assert.ok(d1.length && d1.length === d2.length);
+  assert.ok(!A.rules(big, {}).some((x) => x.kind === 'drift'));
+  assert.ok(d1.every((x) => !/Friday/.test(x.why)));
+});
+
+ok('v194 build without levels keeps the v188 live-price sizing (old snapshots)', () => {
+  const s = A.state(nov5);
+  const b = A.rules(s, { smaMap: { NVDA: { px: 181.59 }, PLTR: { px: 154.85 }, RKLB: { px: 45.98 }, CRWD: { px: 217.2 } } }).filter((x) => x.kind === 'build');
+  assert.ok(b.every((x) => !x.levels));
+});
+
 console.log(`apex: ${n}/${n} passed`);

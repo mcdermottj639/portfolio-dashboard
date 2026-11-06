@@ -1,3 +1,27 @@
+## v194 — Apex tickets show entry · target · stop · R/R, name and a Robinhood link; untradable names never become rungs (2026-11-06)
+
+Jack (11:34 ET, phone screenshot of the build rungs): "What's S and ZS? And always put the entry target prices";
+(11:35) "ZS is available on Robinhood not seeing S. Make sure all can be bought on Robinhood always". Each armed
+build rung now shows a **2×2 grid — Entry (trigger, limit under it) · Target (+% from entry) · Stop (−% from entry) ·
+R/R at entry** — plus the company name, "Buy N SYM · armed in Jarvis" and an **Open in Robinhood ↗** link
+(`robinhood.com/stocks/<SYM>`). Levels come from `data/apex-targets.json` `top5` (`trigger`, optional `limit`, `tp1`,
+`stop`, new optional `name`, `tradable`, `tradableAt`) through `cfg.levels` (built in `renderApexCard`) and
+`Apex.levelsFor` — **limit defaults to trigger × 1.01** (the scan's convention) and **R/R is reward ÷ risk at the
+LIMIT**, the worst fill a buy-stop-limit can get. With levels the rung is **sized at the limit** (floor(budget ÷ limit)),
+so its share count matches the Jarvis ticket; without levels it keeps the v188 live-price sizing. A rung under
+`C.RR_MIN` (1.5, Jack's floor) is tagged **below R/R floor** and says so in red — display only, nothing is blocked.
+Live finding that prompted the R/R line: the Nov 6 scan scored R/R from Nov 5's close, but its buy-stops sit above
+it, so at their real entries AMZN 0.12, PLTR 1.00, S 0.55, ZS 0.68 — all four under the floor (scan fix is Jack's call;
+`ui/apex.js` rule logic for picks is unchanged). **Tradability:** a `top5` row with `tradable:false` becomes a
+`skip` row ("not buyable on Robinhood"), never a buy rung. Today's six rows were checked with
+`get_equity_tradability` on ••0741 at 11:35 ET (all tradable) and stamped in the data file. **Weekly review is
+Monday:** the adapter passes `review` (Monday) instead of `friday`, and drift copy says "Monday review" (`friday`
+still accepted by `Apex.rules`). Research tiles also show name and entry → target · stop. Files: `ui/apex.js`,
+`index.html`, `data/apex-targets.json` (additive fields), `producer/apex.test.mjs` (24/24), `sw.js`. App/cache
+**v194 / pf-v194**. Verified: apex 24/24, full producer suite, tests/*.cjs; synthetic Playwright 390 and 320 with the
+real targets file — 4 grids, floor warning, SentinelOne + Robinhood link, scrollWidth = innerWidth, no page errors.
+Physical iPhone not verified.
+
 ## v193.1 — Business check tests no longer pin IREN's live grade (2026-11-06)
 
 ChatGPT's setup of the weekly "Business check writer" found that `producer/business.test.mjs` asserted the

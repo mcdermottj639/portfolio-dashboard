@@ -31,6 +31,8 @@
     DRIFT_PTS: 5,
     EARN_DAYS: 3,
     TRANCHE: 50,
+    RR_MIN: 1.5,           // v194: Jack's reward/risk floor, measured at the ACTUAL entry (the limit), not yesterday's close
+    LIMIT_PAD: 0.01,       // v194: the scan's buy-stop-limit sits 1% over the trigger (274.60 → 277.35)
   };
 
   /* Default book config. Overridable from window.__APEX_CFG (set by the producer
@@ -89,7 +91,7 @@
     const cfg = Object.assign({}, DEFAULT_CFG, opt.cfg || {});
     const sma = opt.smaMap || {};        // sym → {s50}
     const earn = opt.earningsMap || {};  // sym → {daysAway}
-    const friday = opt.friday === true;
+    const review = opt.review === true || opt.friday === true;   // v194: weekly review day (Monday since Nov 6); `friday` kept for old callers
     const out = [];
     const byName = (s) => st.positions.find((p) => p.symbol === s);
     const nearEarn = (s) => earn[s] && earn[s].daysAway != null && earn[s].daysAway >= 0 && earn[s].daysAway <= C.EARN_DAYS;
@@ -141,12 +143,12 @@
     }
 
     // A5 Per-name cap (= SD_SINGLE_MAX_EQ) — advisory, weekly.
-    if (friday) {
+    if (review) {
       for (const p of st.positions) {
         const w = st.weights[p.symbol] || 0, tgt = (cfg.targets[p.symbol] || 0) / 100;
         if (p.symbol === cfg.core && w > tgt && p.qty <= cfg.coreMax) continue;   // v188: a core ≤ coreMax is never drift-trimmed
         if (tgt > 0 && Math.abs(w - tgt) * 100 >= C.DRIFT_PTS)
-          out.push(t('drift', `${p.symbol} ${pct(w)} vs ${pct(tgt)} target`, w > tgt ? 'Trim back to target at Friday review.' : 'Add back to target — only with leverage room.', null, st));
+          out.push(t('drift', `${p.symbol} ${pct(w)} vs ${pct(tgt)} target`, w > tgt ? 'Trim back to target at the Monday review.' : 'Add back to target — only with leverage room.', null, st));
       }
     }
 
@@ -169,9 +171,31 @@
           const cap = Math.max(0, C.SINGLE_MAX_EQ * st.equity - held);
           const alloc = Math.min(cap, room * cfg.targets[s] / W);
           const px = (sma[s] && sma[s].px) || (byName(s) || {}).px || 0;
-          const qty = px > 0 ? Math.floor(alloc / px) : 0;
-          out.push(t('build', `Armed: buy ${qty > 0 ? qty + ' ' : ''}${s} · $${k(alloc)}`, `${st.lev.toFixed(2)}x with $${k(room)} of room to ${C.LEV_NORMAL}x, but the trend filter is shut — buy-stop-limit fills only on a bounce through the prior high / 10-day EMA.`,
-            qty > 0 ? { side: 'buy', sym: s, qty, px: round(px), armed: true } : null, st));
+          const L = levelsFor(cfg, s);
+          /* v194 (Jack, 2026-11-06 11:35: "make sure all can be bought on Robinhood always"): a name the
+             scan marked untradable on ••0741 never becomes a buy rung. */
+          if (L && L.tradable === false) {
+            out.push(t('skip', `${s} skipped — not buyable on Robinhood`, `Robinhood reports ${L.name || s} as not tradable in this account${L.tradableAt ? ' (' + L.tradableAt + ')' : ''}. The scan drops it next run.`, null, st));
+            continue;
+          }
+          /* v194 (Jack, 11:34: "always put the entry target prices"): with the scan's levels the rung shows
+             trigger → limit, target, stop and reward/risk AT THAT ENTRY, and sizes at the limit exactly like
+             the Jarvis ticket (floor(budget ÷ limit)). Without levels it falls back to the v188 live-price sizing. */
+          const sizePx = L && L.limit > 0 ? L.limit : px;
+          const qty = sizePx > 0 ? Math.floor(alloc / sizePx) : 0;
+          if (L && L.trigger > 0) {
+            const away = px > 0 ? L.trigger / px - 1 : null;
+            const tk = { side: 'buy', sym: s, qty, px: round(px), armed: true, trigger: L.trigger, limit: L.limit, tp1: L.tp1, stop: L.stop, rr: L.rr, away, name: L.name || null, tradable: L.tradable };
+            const r = t('build', `Armed: buy ${qty > 0 ? qty + ' ' : ''}${s} at ${money(L.trigger)} · $${k(qty > 0 ? qty * L.limit : alloc)}`,
+              `Fills only if ${s} bounces through ${money(L.trigger)}${away != null ? ` (now ${money(px)}, ${away >= 0 ? '+' : ''}${(away * 100).toFixed(1)}% away)` : ''}. Room $${k(room)} to ${C.LEV_NORMAL}x.`,
+              qty > 0 ? tk : null, st);
+            r.levels = tk;
+            if (L.rr != null && L.rr < C.RR_MIN) r.lowRR = true;
+            out.push(r);
+          } else {
+            out.push(t('build', `Armed: buy ${qty > 0 ? qty + ' ' : ''}${s} · $${k(alloc)}`, `${st.lev.toFixed(2)}x with $${k(room)} of room to ${C.LEV_NORMAL}x, but the trend filter is shut — buy-stop-limit fills only on a bounce through the prior high / 10-day EMA.`,
+              qty > 0 ? { side: 'buy', sym: s, qty, px: round(px), armed: true } : null, st));
+          }
         }
       }
     }
@@ -180,8 +204,21 @@
     for (const p of st.positions) if (nearEarn(p.symbol) && !out.some((r) => r.kind === 'guard' && r.title.startsWith(p.symbol)))
       out.push(t('guard', `${p.symbol} reports in ${earn[p.symbol].daysAway}d`, 'No adds inside 3 trading days of a print.', null, st));
 
-    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, win: 4, core: 5, guard: 6, drift: 7, reload: 8, build: 9 };
+    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, win: 4, core: 5, guard: 6, drift: 7, reload: 8, build: 9, skip: 10 };
     return out.sort((a, b) => order[a.kind] - order[b.kind]);
+  }
+
+  /* v194 — the scan's levels for one name: cfg.levels[sym] = {trigger, limit?, tp1, stop, name?, tradable?}.
+     limit defaults to trigger × 1.01 (the scan's convention); rr is reward ÷ risk at the LIMIT — the worst
+     fill a buy-stop-limit can get — so it is never flattered by yesterday's lower close. */
+  function levelsFor(cfg, sym) {
+    const L = cfg && cfg.levels && cfg.levels[sym];
+    if (!L) return null;
+    const n = (v) => (v == null || v === '' || isNaN(+v) ? null : +v);
+    const trigger = n(L.trigger), tp1 = n(L.tp1), stop = n(L.stop);
+    const limit = n(L.limit) || (trigger ? round(trigger * (1 + C.LIMIT_PAD)) : null);
+    const rr = limit && tp1 && stop && limit > stop ? (tp1 - limit) / (limit - stop) : null;
+    return { trigger, limit, tp1, stop, rr, name: L.name || null, tradable: L.tradable === false ? false : (L.tradable === true ? true : null), tradableAt: L.tradableAt || null };
   }
 
   function t(kind, title, why, ticket, st, sym, qty, px) {
@@ -213,11 +250,11 @@
     const bandTxt = { over: 'over the cap — de-lever', high: 'above cruise — hold', normal: 'in band — build', room: 'room to reload' }[st.band];
     const tile = (l, v, c) => `<div class="snap-tile"><div class="snap-lbl">${l}</div><div class="snap-val" style="color:${c || 'var(--text)'}">${v}</div></div>`;
     const tw = tripwire(st, cfg.core);
-    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], lose: ['#fee2e2', '#991b1b', 'stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'] };
+    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], lose: ['#fee2e2', '#991b1b', 'stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'], skip: ['#f3f4f6', '#374151', 'not buyable'] };
     const rows = out.length ? out.map((r) => {
-      const tg = kindTag[r.kind] || kindTag.guard;
-      const tk = r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger in Jarvis</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
-      return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
+      const tg = r.lowRR ? ['#fee2e2', '#991b1b', 'below R/R floor'] : (kindTag[r.kind] || kindTag.guard);
+      const tk = r.levels ? levelsHtml(r.levels, esc) : r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger in Jarvis</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
+      return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0;white-space:nowrap">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
     }).join('') : '<div class="tech-empty">No rule fires. Hold.</div>';
     const mix = Object.keys(cfg.targets).map((s) => { const w = (st.weights[s] || 0) * 100, tg = cfg.targets[s]; return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>`; }).join('');
     el.innerHTML = `
@@ -236,6 +273,24 @@
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
   }
 
+  /* v194 — entry · target · stop · R/R as a 2×2 grid (fits 320px), then company name + a Robinhood link. */
+  function levelsHtml(L, esc) {
+    const sg = (a, b) => (a > 0 && b > 0 ? ((a / b - 1) * 100) : null);
+    const pc = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}% from entry`);
+    const cell = (l, v, sub, col) => `<div style="background:var(--card,#fff);border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:6px 8px;min-width:0"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em">${l}</div><div style="font-size:13.5px;font-weight:700;color:${col || 'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v}</div>${sub ? `<div style="font-size:10.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div>` : ''}</div>`;
+    const low = L.rr != null && L.rr < C.RR_MIN;
+    const grid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${
+      cell('Entry', L.trigger ? money(L.trigger) : '—', L.limit ? 'limit ' + money(L.limit) : '')}${
+      cell('Target', L.tp1 ? money(L.tp1) : '—', pc(sg(L.tp1, L.limit)))}${
+      cell('Stop', L.stop ? money(L.stop) : '—', pc(sg(L.stop, L.limit)))}${
+      cell('R/R at entry', L.rr != null ? L.rr.toFixed(2) : '—', `floor ${C.RR_MIN}`, low ? '#dc2626' : '#059669')}</div>`;
+    const qty = L.qty > 0 ? `Buy ${L.qty} ${esc(L.sym)} · ` : '';
+    const name = L.name ? `<b>${esc(L.name)}</b> · ` : '';
+    const link = `<a href="https://robinhood.com/stocks/${encodeURIComponent(L.sym)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">Open in Robinhood ↗</a>`;
+    const warn = low ? `<div style="font-size:11.5px;margin-top:6px;color:#b91c1c;font-weight:600">Under your ${C.RR_MIN} R/R floor at this entry.</div>` : '';
+    return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>armed</b> in Jarvis · ${link}</div>`;
+  }
+
   /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
      from the dashboard's SD momentum lens (sdMomentum over SD_BENCH, freshness-gated). A name only
      becomes a ticket via the Friday swap rule in the scan (beats the weakest holding by ≥ 1.5). */
@@ -244,7 +299,7 @@
     const tiles = R.rows.slice(0, 5).map((r, i) => {
       const col = r.score >= 7 ? '#10b981' : r.score >= 5.5 ? '#f59e0b' : '#9ca3af';
       const up = r.s50 && r.px ? (r.px / r.s50 - 1) * 100 : null;
-      if (r.why != null && r.rs3 == null) return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rr != null && isFinite(+r.rr) ? 'R/R ' + (+r.rr).toFixed(1) + ' · ' : ''}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${esc(r.why || '')}</div></div>`;
+      if (r.why != null && r.rs3 == null) return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${r.rr != null && isFinite(+r.rr) ? 'R/R ' + (+r.rr).toFixed(1) + ' · ' : ''}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${esc(r.why || '')}</div></div>`;
       return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
     }).join('');
     const rec = R.record || null;
@@ -277,5 +332,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, sellToLev, render };
+  return { C, DEFAULT_CFG, state, rules, tripwire, sellToLev, render, levelsFor };
 });
