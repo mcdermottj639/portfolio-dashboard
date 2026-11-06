@@ -1,3 +1,31 @@
+## v191 — Business check tiles on the Apex card (read-only) (2026-11-06)
+
+Jack (01:12 ET): "Ok yes good build" — step 1 of the Lynch review: the price rules only see price, so every Apex
+name gets a second card, **"is the company doing what it promised?"**. New **`data/business.json`** (schema 1,
+`names{SYM:{thesis, status, summary, asOf, frozenAt, assessor, refClose, milestones[3]{name,state,metric,asOf},
+changed, invalidators[], nextReview{date,trigger}, sources[]{title,url,date}, history[]}}`) and **`ui/business.js`**
+(UMD, pure + render: `problems`, `assess`, `forSymbols`, `html`, `render`). Verdicts: improving · intact · weakening ·
+broken · unverified; milestone states: met · on-track · late · open · missed · unverified. **Never defaults to
+healthy**: no record, unknown verdict, no dated https source, ≠3 milestones, no invalidator, evidence older than
+120 days, or `nextReview.date` passed by more than 7 days ⇒ the tile shows **Unverified** (with the stored verdict
+and reason). The owner-directed **core** is its own chip ("core · your rule") and never changes the verdict.
+`renderApexCard` fetches the file once (`window.__BIZ`) and fills the `[data-apex-business]` slot that
+`Apex.render` now reserves under "Rules firing now" — assessed names get full tiles (core, then held, first);
+names with no record collapse into one "Not assessed yet · Unverified" chip row (price % from cost) so a big book
+stays one screen. Details (what changed, every invalidator, dated sources, assessor, frozen reference close) are
+folded. **INFORMATIONAL ONLY — no stop, trim, weight, leverage or ticket logic reads it**; `producer/business.test.mjs`
+fails if `ui/apex.js` or `ui/sd-rules.js` ever references it. **Freeze rule (forward paper tests):** to change a
+verdict, write a NEW assessment and move the old one into `history[]` unchanged — never edit a past assessment;
+`refClose` records the last close before the assessment so later grading uses only what was known then. First
+record: **IREN = Intact** ("Demand up, delivery late, financing still open") from LAB-009 + the Nov 5 Q1 FY27 release
+— revenue conversion met ($200M AI Cloud, +182% q/q), delivery late (>$4B ARR moved to Jan 31 2027, may run to end
+Feb), financing open ($6B FY27 capex still to finance; net debt $4.4B); next review 2027-01-31. More names get
+records as research assesses them (LAB-009 / the Friday scan); until then they read Unverified. Files:
+`data/business.json`, `ui/business.js`, `ui/apex.js` (one empty slot div — no rule change), `index.html`, `sw.js`,
+`producer/business.test.mjs` (14/14). App/cache **v191 / pf-v191**. Verified: business 14/14, apex 18/18, full
+producer suite, tests/*.cjs 23/23; synthetic Playwright 390 and 320 — IREN tile Intact with core chip, unassessed
+names in one Unverified row, fold opens, scrollWidth = innerWidth, scrollX 0, no page errors. Physical iPhone not verified.
+
 ## v190 — Apex research upgraded: momentum lens, vol sizing, news veto, graded record (2026-11-05)
 
 Jack (20:56 ET): "Upgrade it". The Friday research in the "Apex morning scan · 0741" task now scores MOMENTUM
