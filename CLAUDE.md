@@ -1,3 +1,22 @@
+## v188 — Apex builds the new book + weekly research on the card (2026-11-05)
+
+Jack (19:06–19:25 ET): "There's margin to play with so I expect a new portfolio tomorrow" → chose **Build on
+confirmation**; then "we need the research"; Apex must stay different from ••3900. `ui/apex.js` now matches the
+rules the "Apex morning scan · 0741" task runs: (1) **IREN core** — `cfg.coreMax` 500: a core ≤ 500 sh is exempt from
+the 25% stop and from Friday drift trims (kind `core`, info only); shares above it still follow the stop / drift;
+never added to. (2) **Build on confirmation** (kind `build`) — when lev < 1.2x and reload is shut, the room to 1.35x is
+split across the non-core targets by drift weight (NVDA 20 · PLTR 15 · RKLB 15 · CRWD 10), capped at 20% of equity
+per name, skipping names in the earnings guard; shown as ARMED buys (the scan writes the exact buy-stop-limit
+trigger = max(prior high, 10-day EMA) × 1.005 in Jarvis). The adapter passes live quotes (`azQuote`) as `smaMap[sym].px`
+so whole-share qty can be sized. (3) **🔬 Research — top 5** tiles: `renderApexCard` ranks SD_BENCH + holdings with the
+existing freshness-gated `sdMomentum` lens (stale/aging names excluded) and passes `{rows, asOf, source}` as
+`Apex.render`'s 5th arg; empty state says why. The Friday scan adds fundamentals + reward/risk (Jack's
+stock-analysis method) and writes the full ranking to Jarvis `os/apex-targets` + any swap ticket. Files:
+`ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (+5, 16/16; the old drift test now expects the core NOT
+to be trimmed). App/cache **v188 / pf-v188**. Verified: apex 16/16, full producer suite, tests/*.cjs 23/23;
+synthetic Playwright 390 and 320 — card renders, research tiles render with fresh synthetic bars, scrollWidth =
+innerWidth, no page errors (one pre-existing preview-only SW 404 console line, same on main). Physical iPhone not verified.
+
 ## v187 — Apex card never spins forever (2026-11-05)
 
 Jack's phone at 1:10 AM ET, three minutes after v186 deployed: the Apex card stayed on "Reading the book…".

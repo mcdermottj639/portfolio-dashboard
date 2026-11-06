@@ -37,6 +37,7 @@
      later) or a test. Targets are % of EQUITY, must respect SINGLE_MAX_EQ. */
   const DEFAULT_CFG = {
     core: 'IREN',
+    coreMax: 500,                                    // v188 (Jack, 2026-11-05): keep an IREN core of up to 500 sh — exempt from the stop and drift trims; trims only into strength
     donor: 'PLTR',                                   // risk-guard tranche source (Jack, 2026-11-05)
     ladder: [{ sym: 'IREN', px: 30, qty: 200, note: 'newest lots first' }],
     targets: { IREN: 20, NVDA: 20, PLTR: 15, RKLB: 15, CRWD: 10 },
@@ -128,6 +129,11 @@
         const qty = Math.floor(p.qty * C.TRIM_FRAC);
         if (qty > 0) out.push(t('win', `${p.symbol} +${pct(g)} — trim ${Math.round(C.TRIM_FRAC * 100)}%`, `Bank it against debt; set a trailing stop 15% under the high in the app.`,
           { side: 'sell', sym: p.symbol, qty, px: round(p.px * 0.995) }, st, p.symbol, qty, p.px));
+      } else if (g <= -C.STOP && p.symbol === cfg.core && cfg.coreMax > 0) {
+        const extra = Math.max(0, Math.floor(p.qty - cfg.coreMax));
+        if (extra > 0) out.push(t('lose', `${p.symbol} ${pct(g)} — ${extra} sh above the core through the stop`, `Core of ${cfg.coreMax} is kept (your call); the shares above it follow the 25% stop. No averaging down.`,
+          { side: 'sell', sym: p.symbol, qty: extra, px: round(p.px * 0.995) }, st, p.symbol, extra, p.px));
+        else out.push(t('core', `${p.symbol} core held at ${pct(g)}`, `${Math.floor(p.qty)} sh ≤ the ${cfg.coreMax}-share core: exempt from the stop by your Nov 5 call. Never add to it on margin; trims only into strength (ladder).`, null, st));
       } else if (g <= -C.STOP) {
         out.push(t('lose', `${p.symbol} ${pct(g)} — through the 25% stop`, `Thesis rule (same as the plan's exit): sell, no averaging down on margin.`,
           { side: 'sell', sym: p.symbol, qty: p.qty, px: round(p.px * 0.995) }, st, p.symbol, p.qty, p.px));
@@ -138,6 +144,7 @@
     if (friday) {
       for (const p of st.positions) {
         const w = st.weights[p.symbol] || 0, tgt = (cfg.targets[p.symbol] || 0) / 100;
+        if (p.symbol === cfg.core && w > tgt && p.qty <= cfg.coreMax) continue;   // v188: a core ≤ coreMax is never drift-trimmed
         if (tgt > 0 && Math.abs(w - tgt) * 100 >= C.DRIFT_PTS)
           out.push(t('drift', `${p.symbol} ${pct(w)} vs ${pct(tgt)} target`, w > tgt ? 'Trim back to target at Friday review.' : 'Add back to target — only with leverage room.', null, st));
       }
@@ -148,13 +155,32 @@
     if (st.lev < C.LEV_RELOAD && st.positions.length >= 3 && above50 * 3 >= st.positions.length * 2) {
       const room = Math.max(0, C.LEV_NORMAL * st.equity - st.exposure);
       out.push(t('reload', 'Leverage reload open', `${above50}/${st.positions.length} names above their 50-day and ${st.lev.toFixed(2)}x < ${C.LEV_RELOAD}x: up to $${k(room)} may be added to the top-2 momentum names.`, null, st));
+    } else if (st.lev < C.LEV_RELOAD && st.lev <= C.LEV_CAP) {
+      /* v188 BUILD ON CONFIRMATION (Jack, 2026-11-05: "I expect a new portfolio"). Room exists but the
+         trend filter is shut, so the book is built with ARMED buy-stop-limits only — they fill only if
+         a name takes out max(prior high, 10-day EMA) × 1.005. The scan writes exact triggers in Jarvis;
+         this card shows the split. Core is never added to. */
+      const room = Math.max(0, C.LEV_NORMAL * st.equity - st.exposure);
+      const names = Object.keys(cfg.targets).filter((s) => s !== cfg.core && !nearEarn(s));
+      const W = names.reduce((a, s) => a + cfg.targets[s], 0);
+      if (room >= 100 && W > 0) {
+        for (const s of names) {
+          const held = (byName(s) || { val: 0 }).val;
+          const cap = Math.max(0, C.SINGLE_MAX_EQ * st.equity - held);
+          const alloc = Math.min(cap, room * cfg.targets[s] / W);
+          const px = (sma[s] && sma[s].px) || (byName(s) || {}).px || 0;
+          const qty = px > 0 ? Math.floor(alloc / px) : 0;
+          out.push(t('build', `Armed: buy ${qty > 0 ? qty + ' ' : ''}${s} · $${k(alloc)}`, `${st.lev.toFixed(2)}x with $${k(room)} of room to ${C.LEV_NORMAL}x, but the trend filter is shut — buy-stop-limit fills only on a bounce through the prior high / 10-day EMA.`,
+            qty > 0 ? { side: 'buy', sym: s, qty, px: round(px), armed: true } : null, st));
+        }
+      }
     }
 
     // A7 Earnings guard — informational for any add.
     for (const p of st.positions) if (nearEarn(p.symbol) && !out.some((r) => r.kind === 'guard' && r.title.startsWith(p.symbol)))
       out.push(t('guard', `${p.symbol} reports in ${earn[p.symbol].daysAway}d`, 'No adds inside 3 trading days of a print.', null, st));
 
-    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, win: 4, guard: 5, drift: 6, reload: 7 };
+    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, win: 4, core: 5, guard: 6, drift: 7, reload: 8, build: 9 };
     return out.sort((a, b) => order[a.kind] - order[b.kind]);
   }
 
@@ -177,7 +203,7 @@
   function round(x) { return Math.round(x * 100) / 100; }
 
   /* ── render ─────────────────────────────────────────────────────────────── */
-  function render(el, st, out, cfg) {
+  function render(el, st, out, cfg, research) {
     if (!el) return;
     cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -187,10 +213,10 @@
     const bandTxt = { over: 'over the cap — de-lever', high: 'above cruise — hold', normal: 'in band — build', room: 'room to reload' }[st.band];
     const tile = (l, v, c) => `<div class="snap-tile"><div class="snap-lbl">${l}</div><div class="snap-val" style="color:${c || 'var(--text)'}">${v}</div></div>`;
     const tw = tripwire(st, cfg.core);
-    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], lose: ['#fee2e2', '#991b1b', 'stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'] };
+    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], lose: ['#fee2e2', '#991b1b', 'stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'] };
     const rows = out.length ? out.map((r) => {
       const tg = kindTag[r.kind] || kindTag.guard;
-      const tk = r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
+      const tk = r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger in Jarvis</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
       return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
     }).join('') : '<div class="tech-empty">No rule fires. Hold.</div>';
     const mix = Object.keys(cfg.targets).map((s) => { const w = (st.weights[s] || 0) * 100, tg = cfg.targets[s]; return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>`; }).join('');
@@ -202,10 +228,24 @@
       ${tw ? `<div style="font-size:11.5px;color:#6b7280;margin-top:8px">Tripwire: ${esc(cfg.core)} at <b style="color:var(--text)">${money(tw)}</b> puts equity on the guard line (others flat) — the ${esc(cfg.donor)} tranche ticket is pre-built for that print.</div>` : ''}
       <div class="ac-tier">⚙️ Rules firing now</div>${rows}
       <div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · cap ${pct(C.SINGLE_MAX_EQ)} · LEAPS kicker ≤ ${cfg.kicker}%)</span></div>${mix}
+      ${researchBlock(research, esc)}
       <div class="ac-tier">🧪 What if</div>
       <div id="apex-whatif"></div>
       <div style="font-size:11px;color:#9ca3af;margin-top:10px">Tickets are proposals from these rules. Approve or decline them in <a href="${esc(cfg.jarvis)}" target="_blank" rel="noopener" style="color:#2563eb">Jarvis</a>; the morning scan (7:12 AM ET, weekdays) writes them there and logs fills the next day.</div>`;
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
+  }
+
+  /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
+     from the dashboard's SD momentum lens (sdMomentum over SD_BENCH, freshness-gated). A name only
+     becomes a ticket via the Friday swap rule in the scan (beats the weakest holding by ≥ 1.5). */
+  function researchBlock(R, esc) {
+    if (!R || !R.rows || !R.rows.length) return `<div class="ac-tier">🔬 Research — top 5</div><div class="tech-empty">${esc((R && R.empty) || 'No scored names yet (needs fresh daily bars).')}</div>`;
+    const tiles = R.rows.slice(0, 5).map((r, i) => {
+      const col = r.score >= 7 ? '#10b981' : r.score >= 5.5 ? '#f59e0b' : '#9ca3af';
+      const up = r.s50 && r.px ? (r.px / r.s50 - 1) * 100 : null;
+      return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
+    }).join('');
+    return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
   }
 
   /* Two sliders: the core name and the donor. Debt held fixed; shows band + which rules fire. */

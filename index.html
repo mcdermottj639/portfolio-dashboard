@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=187">
-<link rel="stylesheet" href="ui/predictions.css?v=187">
-<link rel="stylesheet" href="ui/smartmoney.css?v=187">
-<link rel="stylesheet" href="ui/ticker.css?v=187">
+<link rel="stylesheet" href="ui/experience.css?v=188">
+<link rel="stylesheet" href="ui/predictions.css?v=188">
+<link rel="stylesheet" href="ui/smartmoney.css?v=188">
+<link rel="stylesheet" href="ui/ticker.css?v=188">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,8 +771,8 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=187"></script>
-<script src="ui/apex.js?v=187"></script>
+<script src="ui/sd-rules.js?v=188"></script>
+<script src="ui/apex.js?v=188"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -886,7 +886,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v187'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v188'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1966,8 +1966,24 @@ function renderApexCard(S){
   const state=Apex.state({positions,cash:+st.cashVal||0,equity:(+st.totalVal>0)?+st.totalVal:undefined});
   const d=new Date(); const friday=d.getDay()===5;
   const sma={}; Object.keys(S.smaMap||{}).forEach(k=>{ const m=S.smaMap[k]; const v=(m&&typeof m==='object')?m.s50:m; if(v!=null&&!isNaN(+v))sma[k]={s50:+v}; });
+  /* v188: live prices for target names not held, so the build rule can size whole shares. */
+  try{ const tg=Object.assign({},Apex.DEFAULT_CFG.targets,(cfg&&cfg.targets)||{}); Object.keys(tg).forEach(k=>{ const q=(typeof azQuote==='function')?azQuote(k):null; const v=q?parseFloat(q.last_trade_price||q.last_extended_hours_trade_price||0):0; if(v>0){ sma[k]=Object.assign({},sma[k]||{},{px:v}); } }); }catch(_){}
   const out=Apex.rules(state,{cfg,smaMap:sma,earningsMap:S.earn||{},friday});
-  Apex.render(el,state,out,cfg);
+  /* v188 research tiles: the SD momentum lens (freshness-gated sdMomentum) over SD_BENCH + holdings. */
+  let research=null;
+  try{
+    if(typeof sdMomentum==='function'&&typeof SD_BENCH==='object'){
+      const held=new Set(positions.map(p=>p.symbol));
+      const uni=[...new Set([...Object.keys(SD_BENCH),...held])];
+      const rows=uni.map(s=>sdMomentum(s)).filter(m=>m&&m.score!=null&&!(m.stale)).sort((a,b)=>b.rank-a.rank).slice(0,5)
+        .map(m=>({sym:m.sym,score:m.score,px:m.px,rs3:m.rs3,fromHi:m.fromHi,s50:m.s50,held:held.has(m.sym)}));
+      const nScored=uni.filter(s=>{const m=sdMomentum(s);return m&&m.score!=null;}).length;
+      research={rows,asOf:(_snapETDate&&_snapETDate())||'',source:`momentum lens · ${nScored}/${uni.length} names scored`,
+        note:'Price-trend score (6m/3m strength vs SPY, 50/100-day trend, distance from high). The Friday 7:12 AM scan adds fundamentals + reward/risk and writes the full ranking and any swap ticket to Jarvis.',
+        empty:'No fresh scores yet — needs today\'s daily bars.'};
+    }
+  }catch(e){ research={rows:[],empty:'Research lens failed: '+(e&&e.message||e)}; }
+  Apex.render(el,state,out,cfg,research);
   }catch(e){ fail(e&&e.message||e); }
 }
 function paintActionCenter(){
@@ -8430,13 +8446,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=187"></script>
-<script src="ui/predictions-model.js?v=187"></script>
-<script src="ui/predictions.js?v=187"></script>
-<script src="ui/smartmoney-model.js?v=187"></script>
-<script src="ui/smartmoney.js?v=187"></script>
-<script src="ui/experience.js?v=187"></script>
-<script src="ui/ticker.js?v=187"></script>
-<script src="ui/compact.js?v=187"></script>
+<script src="ui/experience-model.js?v=188"></script>
+<script src="ui/predictions-model.js?v=188"></script>
+<script src="ui/predictions.js?v=188"></script>
+<script src="ui/smartmoney-model.js?v=188"></script>
+<script src="ui/smartmoney.js?v=188"></script>
+<script src="ui/experience.js?v=188"></script>
+<script src="ui/ticker.js?v=188"></script>
+<script src="ui/compact.js?v=188"></script>
 </body>
 </html>
