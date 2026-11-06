@@ -85,7 +85,9 @@ ok('rules: drift only on Fridays, 5-point band, targets are % of equity', () => 
   const s = A.state({ positions: [{ symbol: 'IREN', qty: 100, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 10, px: 100, avg: 100 }], cash: 0 });
   assert.ok(!A.rules(s).some((x) => x.kind === 'drift'));
   const fr = A.rules(s, { friday: true }).filter((x) => x.kind === 'drift');
-  assert.ok(fr.some((x) => x.title.startsWith('IREN')), 'IREN 91% vs 20%');
+  assert.ok(!fr.some((x) => x.title.startsWith('IREN')), 'v188: IREN core (100 ≤ 500 sh) is not drift-trimmed');
+  const big = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 10, px: 100, avg: 100 }], cash: 0 }), { friday: true });
+  assert.ok(big.some((x) => x.kind === 'drift' && x.title.startsWith('IREN')), 'above the core, drift applies again');
   assert.ok(fr.some((x) => x.title.startsWith('NVDA')), 'NVDA 9% vs 20%');
 });
 
@@ -102,6 +104,51 @@ ok('render: no DOM outside render; render writes tiles and rules into the elemen
   assert.ok(/Leverage/.test(el.innerHTML) && /Risk guard/.test(el.innerHTML) && /Jarvis/.test(el.innerHTML));
   assert.ok(!/undefined|NaN/.test(el.innerHTML), 'no undefined/NaN in markup');
   void calls;
+});
+
+/* v188 — tonight's real book (2026-11-05 19:06 ET): IREN 500 @ $18.02 (cost 44.84), no debt, equity $9,918. */
+const nov5 = { positions: [{ symbol: 'IREN', qty: 500.07, px: 18.015, avg: 44.84 }], cash: 445.91, equity: 9917.94 };
+
+ok('v188 core: IREN ≤ 500 sh below the 25% stop is HELD, not exited', () => {
+  const r = A.rules(A.state(nov5));
+  assert.ok(!r.some((x) => x.kind === 'lose'), 'no stop ticket on the core');
+  assert.ok(r.some((x) => x.kind === 'core'));
+});
+
+ok('v188 core: shares above the core still follow the stop', () => {
+  const r = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 700, px: 18, avg: 44.84 }], cash: 0 }));
+  const lose = r.find((x) => x.kind === 'lose');
+  assert.ok(lose && lose.ticket.qty === 200);
+});
+
+ok('v188 build: lev < 1.2x, trend shut → armed buys split 20/15/15/10 to 1.35x, never the core', () => {
+  const s = A.state(nov5);
+  const px = { NVDA: { px: 181.59 }, PLTR: { px: 154.85 }, RKLB: { px: 45.98 }, CRWD: { px: 217.2 } };
+  const r = A.rules(s, { smaMap: px });
+  const b = r.filter((x) => x.kind === 'build');
+  assert.deepEqual(b.map((x) => x.ticket && x.ticket.sym), ['NVDA', 'PLTR', 'RKLB', 'CRWD']);
+  assert.ok(b.every((x) => x.ticket.armed && x.ticket.side === 'buy'));
+  const room = 1.35 * 9917.94 - 500.07 * 18.015;
+  const spend = b.reduce((a, x) => a + x.ticket.qty * x.ticket.px, 0);
+  assert.ok(spend <= room + 0.01 && spend > room * 0.8, `spend ${spend} vs room ${room}`);
+  assert.equal(b[0].ticket.qty, Math.floor((room * 20 / 60) / 181.59));
+});
+
+ok('v188 build: does not fire when the reload rule is open', () => {
+  const pos = [{ symbol: 'NVDA', qty: 10, px: 200, avg: 150 }, { symbol: 'PLTR', qty: 10, px: 170, avg: 150 }, { symbol: 'CRWD', qty: 5, px: 250, avg: 230 }];
+  const sma = { NVDA: { s50: 190 }, PLTR: { s50: 160 }, CRWD: { s50: 240 } };
+  const r = A.rules(A.state({ positions: pos, cash: 2000 }), { smaMap: sma });
+  assert.ok(r.some((x) => x.kind === 'reload') && !r.some((x) => x.kind === 'build'));
+});
+
+ok('v188 render: research tiles show top names; empty state is explicit', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const res = { rows: [{ sym: 'AVGO', score: 7.4, px: 300, rs3: 12, fromHi: -6, s50: 290 }], asOf: '2026-11-05', source: 'momentum lens' };
+  A.render(el, A.state(nov5), A.rules(A.state(nov5)), {}, res);
+  assert.ok(/Research — top 5/.test(el.innerHTML) && /AVGO/.test(el.innerHTML) && /7\.4/.test(el.innerHTML));
+  assert.ok(!/undefined|NaN/.test(el.innerHTML));
+  A.render(el, A.state(nov5), [], {}, null);
+  assert.ok(/No scored names yet/.test(el.innerHTML));
 });
 
 console.log(`apex: ${n}/${n} passed`);
