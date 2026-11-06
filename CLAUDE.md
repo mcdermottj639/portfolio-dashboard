@@ -1,3 +1,17 @@
+## v193 — Business check compact view (2026-11-06)
+
+Jack (01:34 ET): "it'll take up a lot of room when we have them all so build a condense view". `ui/business.js`
+`html()` now renders a **tally strip** (one colored count per verdict) and every assessed name as ONE collapsed
+`<details class="biz-row">` row — ticker (+CORE tag) · the 3 milestone glyphs · % from cost · verdict chip —
+sorted worst first (broken, weakening, unverified, intact, improving; then core, then held). Tapping a row opens
+the full card (core note, summary, milestones, flunks-if, next check, nested sources fold). Unassessed names stay
+one chip line; funds one line; the legend + "informational only" note moved into a "How to read this" fold.
+Styles ship as one scoped `<style>` block (`.biz-row`, `.biz-tally`). The weekly "Business check writer" scheduled
+task's instructions are NOT kept in this public repo (they name full account numbers). Files: `ui/business.js`,
+`producer/business.test.mjs` (17/17), `index.html`, `sw.js`. App/cache **v193 / pf-v193**. Verified: synthetic
+Playwright 390/320 with 4 assessed rows — each collapsed row 38px, tap opens, scrollWidth = innerWidth, agentic
+page clean, no page errors. Physical iPhone not verified.
+
 ## v192 — Business check on both books + a weekly writer (2026-11-06)
 
 Jack (01:25 ET): "Wire both". The 🧾 Business check now also renders on the **Agentic plan page** (card
