@@ -99,6 +99,22 @@ ok('html: unverified tile says it is not a health signal; core chip does not cha
   assert.ok(!/<script/i.test(h));
 });
 
+ok('funds (SPY, VTI…) get no business check and are listed apart, not as Unverified', () => {
+  const rows = B.forSymbols(['SPY', 'IREN', 'VTI'], file, { today: '2026-11-06' });
+  assert.equal(rows[0].fund, true);
+  const h = B.html(rows);
+  assert.match(h, /data-biz="SPY" data-biz-status="fund"/);
+  assert.ok(!/data-biz="VTI" data-biz-status="unverified"/.test(h));
+  assert.match(h, /Funds — no single business/);
+});
+
+ok('index.html: both books paint through one loader; neither rule path reads it', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /data-apex-business/);
+  assert.match(html, /data-ag-business/);
+  assert.equal((html.match(/fetch\('data\/business\.json/g) || []).length, 1, 'one fetch site (bizLoad)');
+});
+
 ok('html escapes record text', () => {
   const r = clone(iren); r.summary = '<img onerror=x>';
   const h = B.html(B.forSymbols(['IREN'], { names: { IREN: r } }, { today: '2026-11-06' }));
