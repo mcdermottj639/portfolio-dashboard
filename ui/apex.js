@@ -227,6 +227,7 @@
       <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${C.GUARD_PCT * 100}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
       ${tw ? `<div style="font-size:11.5px;color:#6b7280;margin-top:8px">Tripwire: ${esc(cfg.core)} at <b style="color:var(--text)">${money(tw)}</b> puts equity on the guard line (others flat) — the ${esc(cfg.donor)} tranche ticket is pre-built for that print.</div>` : ''}
       <div class="ac-tier">⚙️ Rules firing now</div>${rows}
+      <div data-apex-business></div>
       <div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · cap ${pct(C.SINGLE_MAX_EQ)} · LEAPS kicker ≤ ${cfg.kicker}%)</span></div>${mix}
       ${researchBlock(research, esc)}
       <div class="ac-tier">🧪 What if</div>

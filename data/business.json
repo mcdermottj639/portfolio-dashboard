@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "updated": "2026-11-06T06:15:00Z",
+  "about": "Business check — one frozen assessment per symbol: is the company doing what it promised? Read by ui/business.js for display ONLY. No stop, trim, weight, leverage or ticket logic reads this file. To change a verdict, add a NEW assessment (move the current one into history[] unchanged) — never edit a past one, so forward paper tests can grade what was known at the time.",
+  "names": {
+    "IREN": {
+      "thesis": "AI cloud capacity gets built, accepted by customers and turned into recognized revenue, funded without heavy dilution.",
+      "status": "intact",
+      "summary": "Demand up, delivery late, financing still open.",
+      "asOf": "2026-11-05",
+      "frozenAt": "2026-11-06T06:15:00Z",
+      "assessor": "Claude (Jack's chat), from LAB-009 + the Nov 5 issuer release",
+      "refClose": { "px": 18.03, "date": "2026-11-05", "source": "crypto.news, Nov 5 close" },
+      "milestones": [
+        {
+          "name": "Revenue conversion",
+          "state": "met",
+          "metric": "AI Cloud revenue $200M in Q1 FY27, up 182% from $71M",
+          "asOf": "2026-11-05"
+        },
+        {
+          "name": "Delivery",
+          "state": "late",
+          "metric": ">$4B ARR target moved from year-end 2026 to Jan 31 2027, may extend to end of Feb",
+          "asOf": "2026-11-05"
+        },
+        {
+          "name": "Financing & dilution",
+          "state": "open",
+          "metric": "$4B ARR program stated fully funded; $6B of FY27 capex still to be financed; net debt $4.4B",
+          "asOf": "2026-11-05"
+        }
+      ],
+      "changed": "Nov 5 print: revenue beat and backlog up 22% to $20.3B, but the >$4B ARR date slipped 1–2 months (customer-requested design change + supplier timing). ARR is a run-rate target, not recognized revenue.",
+      "invalidators": [
+        ">$4B ARR not operating by Feb 28 2027, or customer acceptance fails",
+        "AI Cloud revenue falls quarter over quarter at the Q2 FY27 print",
+        "The $6B FY27 capex is funded mainly by new shares rather than contracted prepayments or GPU debt",
+        "A major customer contract is cut or cancelled"
+      ],
+      "nextReview": { "date": "2027-01-31", "trigger": "ARR target date — delivery / customer acceptance update; then the Q2 FY27 print" },
+      "sources": [
+        { "title": "IREN Q1 FY27 results (issuer release)", "url": "https://www.globenewswire.com/news-release/2026/11/05/3397020/0/en/iren-reports-q1-fy27-results.html", "date": "2026-11-05" },
+        { "title": "Blockspace: Q1 FY27 recap (net debt, $6B capex to finance)", "url": "https://blockspace.media/insight/iren-ai-cloud-revenue-growth/", "date": "2026-11-05" },
+        { "title": "Research Lab LAB-009 (ChatGPT) — Nov 5 earnings update", "url": "https://docs.google.com/document/d/1bQE67vEyivZDlKpbGsuD5R9-m5iy_4b02ND1hCIgCjg/edit", "date": "2026-11-05" }
+      ],
+      "history": []
+    }
+  }
+}
