@@ -394,4 +394,23 @@ ok('v196 the app adapter merges DEFAULT_CFG.maintBy under any __APEX_CFG.maintBy
   assert.match(html, /Object\.assign\(\{\},\(Apex\.DEFAULT_CFG&&Apex\.DEFAULT_CFG\.maintBy\)\|\|\{\},/);
 });
 
+ok('v197 research tiles: R/R at the shown entry, raw URLs become "source ↗" (Nov 6 live rows)', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const url = 'https://www.sec.gov/Archives/edgar/data/0001018724/000101872426000038/amzn-20261029.htm';
+  const rows = [
+    { sym: 'AMZN', score: 7.02, target: 22.13, held: true, trigger: 274.6, limit: 277.35, tp1: 280.14, stop: 253.89, rr: 3.15, why: 'News: Q3 8-K [2026-10-29] ' + url },
+    { sym: 'PANW', score: 5.64, trigger: 357.55, tp1: 432.32, stop: 312.12, rr: 46.14, why: 'Rev +34%; next print Nov 18' },
+  ];
+  A.render(el, A.state(nov5), [], {}, { rows, asOf: '2026-11-06' });
+  const h = el.innerHTML;
+  // AMZN (280.14 − 277.35) / (277.35 − 253.89) = 0.12 ; PANW limit 361.13 → (432.32 − 361.13) / (361.13 − 312.12) = 1.45
+  assert.ok(/R\/R <span[^>]*>0\.12<\/span> at entry · under 1\.5/.test(h), 'AMZN at entry');
+  assert.ok(/R\/R <span[^>]*>1\.45<\/span> at entry · under 1\.5/.test(h), 'PANW at entry, not 46.1');
+  assert.ok(/Scan R\/R 46\.1 was measured from the prior close/.test(h), 'scan figure kept in the fold');
+  assert.ok(/<summary[^>]*>📰 News · source<\/summary>/.test(h), 'news + link folded');
+  assert.ok(h.includes('href="' + url + '"') && /source ↗/.test(h), 'link kept');
+  assert.ok(!h.includes('>' + url) && !h.includes(url + '<'), 'URL not printed as text');
+  assert.ok(!/undefined|NaN/.test(h));
+});
+
 console.log(`apex: ${n}/${n} passed`);

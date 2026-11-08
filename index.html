@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=196">
-<link rel="stylesheet" href="ui/predictions.css?v=196">
-<link rel="stylesheet" href="ui/smartmoney.css?v=196">
-<link rel="stylesheet" href="ui/ticker.css?v=196">
+<link rel="stylesheet" href="ui/experience.css?v=197">
+<link rel="stylesheet" href="ui/predictions.css?v=197">
+<link rel="stylesheet" href="ui/smartmoney.css?v=197">
+<link rel="stylesheet" href="ui/ticker.css?v=197">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,9 +771,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=196"></script>
-<script src="ui/apex.js?v=196"></script>
-<script src="ui/business.js?v=196"></script>
+<script src="ui/sd-rules.js?v=197"></script>
+<script src="ui/apex.js?v=197"></script>
+<script src="ui/business.js?v=197"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -887,7 +887,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v196'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v197'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2009,7 +2009,7 @@ function renderApexCard(S){
   try{
     if(T&&Array.isArray(T.top5)&&T.top5.length){
       const held=new Set(positions.map(p=>p.symbol)), tg=T.targets||{};
-      research={rows:T.top5.slice(0,5).filter(r=>r&&r.sym&&isFinite(+r.composite)).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,tp1:+r.tp1||null,stop:+r.stop||null})),record:T.record||null,vetoed:T.vetoed||[]
+      research={rows:T.top5.slice(0,5).filter(r=>r&&r.sym&&isFinite(+r.composite)).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null})),record:T.record||null,vetoed:T.vetoed||[]
         ,asOf:T.asOf||'',source:`Weekly research · ${T.gatedCount||'?'}/${T.universeCount||'?'} passed the gates`,
         note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. ⏳ = near its 20-day high (half size). News is a veto only. Buy tickets are in Jarvis.'};
     } else if(typeof sdMomentum==='function'&&typeof SD_BENCH==='object'){
@@ -8494,13 +8494,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=196"></script>
-<script src="ui/predictions-model.js?v=196"></script>
-<script src="ui/predictions.js?v=196"></script>
-<script src="ui/smartmoney-model.js?v=196"></script>
-<script src="ui/smartmoney.js?v=196"></script>
-<script src="ui/experience.js?v=196"></script>
-<script src="ui/ticker.js?v=196"></script>
-<script src="ui/compact.js?v=196"></script>
+<script src="ui/experience-model.js?v=197"></script>
+<script src="ui/predictions-model.js?v=197"></script>
+<script src="ui/predictions.js?v=197"></script>
+<script src="ui/smartmoney-model.js?v=197"></script>
+<script src="ui/smartmoney.js?v=197"></script>
+<script src="ui/experience.js?v=197"></script>
+<script src="ui/ticker.js?v=197"></script>
+<script src="ui/compact.js?v=197"></script>
 </body>
 </html>
