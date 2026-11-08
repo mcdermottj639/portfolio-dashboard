@@ -49,6 +49,9 @@
     targets: { IREN: 20, NVDA: 20, PLTR: 15, RKLB: 15, CRWD: 10 },
     kicker: 15,                                      // LEAPS sleeve cap, funded from trims only
     jarvis: 'https://claude.ai/artifact/1rWeHSBKA2BJ1kiesa81sQ',
+    /* v196: Robinhood's per-stock maintenance (Margin buffer screen, Jack, 2026-11-08). Names not listed use
+       the 30% account default, which is the same or stricter than Robinhood's figure for them. */
+    maintBy: { IREN: 0.30, AMZN: 0.25, PLTR: 0.25 },
   };
 
   const num = (v) => (v == null || isNaN(+v) ? 0 : +v);

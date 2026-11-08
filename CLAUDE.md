@@ -1,3 +1,15 @@
+## v196 — Apex uses Robinhood's per-stock maintenance: IREN 30%, AMZN 25%, PLTR 25% (2026-11-08)
+
+Jack sent two screenshots of Robinhood's Margin buffer screen (2026-11-08 00:22 ET) showing the per-stock
+maintenance ratio: **IREN 30%, AMZN 25%, PLTR 25%**. `Apex.DEFAULT_CFG.maintBy` now carries those three; every other
+name (S, ZS and the rest, whose figures sit behind Robinhood's "View all") stays at the **30%** account default, which
+is the same or stricter than Robinhood's, so the guard can only fire early, never late. `renderApexCard` merges
+`DEFAULT_CFG.maintBy` under any `window.__APEX_CFG.maintBy` override. Per name: a 25% stock alone ⇒ guard 30% /
+recovery 35%; a 30% stock ⇒ 35% / 40%. The card's line is the value-weighted blend (v195), so it now sits a little
+under 35% / 40% while PLTR and AMZN are held. No balances or account numbers are stored; `maintReq` (the broker's
+dollar total) is still not set. Proposals only: no orders, alerts, Jarvis or Robinhood change. Files: `ui/apex.js`,
+`index.html`, `sw.js`, `producer/apex.test.mjs` (41/41). App/cache **v196 / pf-v196**.
+
 ## v195 — Apex risk guard follows the maintenance requirement (LAB-004-P1, 2026-11-07)
 
 ChatGPT's Market & Trading Lab (LAB-004-P1, claudex Portfolio handoff 2026-11-07 19:58 ET) showed `ui/apex.js`

@@ -350,4 +350,48 @@ ok('v195 render: the gauge and caption show the book\'s own guard, not a fixed 3
   assert.ok(!/undefined|NaN/.test(el.innerHTML));
 });
 
+/* v196 — Robinhood per-stock maintenance (Margin buffer screen, Jack 2026-11-08): IREN 30, AMZN 25, PLTR 25; rest 30. */
+const withMaintBy = (positions, by = A.DEFAULT_CFG.maintBy) => positions.map((p) => (by[p.symbol] != null ? { ...p, maint: by[p.symbol] } : p));
+
+ok('v196 DEFAULT_CFG.maintBy carries Robinhood\'s per-stock figures; S, ZS and the rest fall to 30%', () => {
+  assert.deepEqual(A.DEFAULT_CFG.maintBy, { IREN: 0.30, AMZN: 0.25, PLTR: 0.25 });
+  const s = A.state({ positions: withMaintBy([{ symbol: 'S', qty: 10, px: 20, avg: 20 }, { symbol: 'ZS', qty: 1, px: 300, avg: 300 }]), cash: 0 });
+  assert.deepEqual(s.positions.map((p) => p.maint), [0.30, 0.30]);
+});
+
+ok('v196 blended requirement: Σ maint × value, guard = blend + 5, recovery = blend + 10', () => {
+  const pos = withMaintBy([
+    { symbol: 'IREN', qty: 500, px: 20, avg: 20 },   // 10,000 × .30 = 3,000
+    { symbol: 'AMZN', qty: 8, px: 200, avg: 200 },   //  1,600 × .25 =   400
+    { symbol: 'PLTR', qty: 10, px: 100, avg: 100 },  //  1,000 × .25 =   250
+    { symbol: 'S', qty: 10, px: 20, avg: 20 },       //    200 × .30 =    60
+  ]);
+  const s = A.state({ positions: pos, cash: -3000 });
+  assert.ok(Math.abs(s.req - 3710) < 1e-9, `req ${s.req}`);
+  assert.ok(Math.abs(s.maint - 3710 / 12800) < 1e-12);
+  assert.ok(Math.abs(s.guardPct - (3710 / 12800 + 0.05)) < 1e-12);
+  assert.ok(Math.abs(s.guardTarget - (3710 / 12800 + 0.10)) < 1e-12);
+  assert.ok(s.maint > 0.25 && s.maint < 0.30, 'blend sits between the 25% names and the 30% names');
+  assert.equal(risk(s).length, 0, 'a 77% equity book trips nothing');
+});
+
+ok('v196 an all-IREN book is unchanged by maintBy (30% ⇒ guard 35% / 40%)', () => {
+  const s = A.state({ positions: withMaintBy([{ symbol: 'IREN', qty: 1000, px: 10, avg: 10 }]), cash: -6600 });   // eq 34%
+  assert.ok(Math.abs(s.guardPct - 0.35) < 1e-12 && Math.abs(s.guardTarget - 0.40) < 1e-12);
+  assert.ok(risk(s).length >= 1);
+});
+
+ok('v196 a 25% name alone: guard 30%, recovery 35%; 32% holds, 29% sells back to ≥ 35%', () => {
+  const hold = A.state({ positions: withMaintBy([{ symbol: 'PLTR', qty: 100, px: 10, avg: 10 }]), cash: -680 });
+  assert.ok(Math.abs(hold.guardPct - 0.30) < 1e-12); assert.equal(risk(hold).length, 0);
+  const trip = A.state({ positions: withMaintBy([{ symbol: 'PLTR', qty: 100, px: 10, avg: 10 }]), cash: -710 });
+  const c = lastCheck(risk(trip)); assert.ok(c.ok && c.eqPct >= 0.35 - 1e-9, `after ${c && c.eqPct}`);
+});
+
+ok('v196 the app adapter merges DEFAULT_CFG.maintBy under any __APEX_CFG.maintBy override', () => {
+  const fs = require('node:fs');
+  const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /Object\.assign\(\{\},\(Apex\.DEFAULT_CFG&&Apex\.DEFAULT_CFG\.maintBy\)\|\|\{\},/);
+});
+
 console.log(`apex: ${n}/${n} passed`);
