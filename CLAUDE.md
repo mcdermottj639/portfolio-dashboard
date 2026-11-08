@@ -1,3 +1,25 @@
+## v195 — Apex risk guard follows the maintenance requirement (LAB-004-P1, 2026-11-07)
+
+ChatGPT's Market & Trading Lab (LAB-004-P1, claudex Portfolio handoff 2026-11-07 19:58 ET) showed `ui/apex.js`
+accepted a maintenance override (`state.maint`) but kept the risk guard at a fixed **35%** and its recovery target at
+a fixed **40%**: at 50% maintenance a 100/40/60 book (already under its call) fired nothing, and 1000/340/660 sold
+only back to 40%. Reproduced from source, then fixed. **Guard = requirement + `GUARD_BUFFER` (5 pts); recovery =
+requirement + `GUARD_RECOVER` (10 pts), capped at 100% (no debt).** The requirement is **blended per name**:
+`req = Σ maint_i · value_i`, where a position's own `maint` overrides the account default (`input.maint`, else
+`C.MAINT` 0.30), and a broker total `input.maintReq` ($, covers options / anything not modeled) is used when higher.
+`state()` now returns `req`, `maint` (effective blend), `maintBase`, `guardPct`, `guardTarget`; `cushion = equity −
+req`. **`guardPlan(st, cfg)`** sizes the sale exactly, re-blending after each leg (selling a low-requirement donor
+lifts the blend): `cfg.donor` first (keeps the 50-share tranche), then other names largest first, then core shares
+above `coreMax`, then the core itself flagged `ticket.core` ("your call — a call would sell it anyway"); if even that
+cannot reach the target the last leg says how much cash to deposit. The last risk row carries `after.check`
+{eqPct, guardPct, guardTarget, maint, ok, short}. `tripwire()` with no pct is requirement-aware; an explicit pct keeps
+the old uniform formula. Render shows the book's own guard line. Adapter passes optional `window.__APEX_CFG`
+`maint`, `maintBy {SYM: 0–1}`, `maintReq`; **none are set today, so the live 30% book behaves exactly as v194**
+(35% / 40%, same PLTR 50-share tranche). Proposals only: no scan prompt, ticket, Jarvis or trade change; Robinhood's
+per-name requirements are not fetched (no source in the snapshot). Files: `ui/apex.js`, `producer/apex.test.mjs`
+(36/36: 25/30/50/100%, concentrated blend, insufficient donor, negative equity, broker total, tripwire, render),
+`index.html`, `sw.js`. App/cache **v195 / pf-v195**.
+
 ## v194 — Apex tickets show entry · target · stop · R/R, name and a Robinhood link; untradable names never become rungs (2026-11-06)
 
 Jack (11:34 ET, phone screenshot of the build rungs): "What's S and ZS? And always put the entry target prices";

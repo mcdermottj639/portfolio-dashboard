@@ -244,4 +244,110 @@ ok('v194 build without levels keeps the v188 live-price sizing (old snapshots)',
   assert.ok(b.every((x) => !x.levels));
 });
 
+/* v195 — LAB-004-P1: the risk guard follows the maintenance requirement (ChatGPT's 2026-11-07 finding:
+   with maint 0.50 the fixed 35% / 40% lines missed a book already under its call and sold only back to 40%).
+   Guard = requirement + 5 pts, recovery = requirement + 10 pts (capped at no debt); the default 30% book is unchanged. */
+const flat = (E, eq, maint, sym = 'X', px = 1) => ({ positions: [{ symbol: sym, qty: E / px, px, avg: px }], cash: -(E - eq), maint });
+const risk = (st, opt) => A.rules(st, opt).filter((x) => x.kind === 'risk');
+const lastCheck = (rs) => rs[rs.length - 1].after.check;
+
+ok('v195 default 30%: guard 35%, recovery 40%, the 3x book sells the same 50-share PLTR tranche as v194', () => {
+  const s = A.state(book);
+  assert.equal(s.maint, 0.30); assert.equal(s.guardPct, 0.35); assert.ok(Math.abs(s.guardTarget - 0.40) < 1e-12);
+  const r = risk(s);
+  assert.equal(r.length, 1); assert.equal(r[0].ticket.sym, 'PLTR'); assert.equal(r[0].ticket.qty, 50);
+  assert.ok(lastCheck(r).eqPct >= 0.40 && lastCheck(r).ok);
+  assert.equal(A.C.GUARD_PCT, A.C.MAINT + A.C.GUARD_BUFFER);
+});
+
+ok('v195 25% maintenance: guard moves down to 30% — a 32% book holds, a 28% book sells back to ≥ 35%', () => {
+  assert.equal(risk(A.state(flat(1000, 320, 0.25))).length, 0);
+  const s = A.state(flat(1000, 280, 0.25));
+  assert.ok(Math.abs(s.guardPct - 0.30) < 1e-12 && Math.abs(s.guardTarget - 0.35) < 1e-12);
+  const r = risk(s); assert.equal(r.length, 1);
+  const c = lastCheck(r); assert.ok(c.ok && c.eqPct >= 0.35 - 1e-9, `after ${c.eqPct}`);
+});
+
+ok('v195 30% maintenance: 34% fires, 36% holds', () => {
+  assert.equal(risk(A.state(flat(1000, 340, 0.30))).length, 1);
+  assert.equal(risk(A.state(flat(1000, 360, 0.30))).length, 0);
+});
+
+ok('v195 50% maintenance (ChatGPT case 1): 100/40/60 is under its call — the guard now fires', () => {
+  const s = A.state(flat(100, 40, 0.50));
+  assert.ok(s.cushion < 0, 'below maintenance');
+  assert.equal(s.guardPct, 0.55); assert.ok(Math.abs(s.guardTarget - 0.60) < 1e-12);
+  const r = risk(s); assert.equal(r.length, 1);
+  assert.ok(lastCheck(r).eqPct >= 0.60 - 1e-9);
+});
+
+ok('v195 50% maintenance (ChatGPT case 2): 1000/340/660 sells back above 60%, never stops at 40%', () => {
+  const s = A.state(flat(1000, 340, 0.50));
+  const r = risk(s); assert.equal(r.length, 1);
+  const c = lastCheck(r);
+  assert.ok(c.ok && c.eqPct >= 0.60 - 1e-9 && c.eqPct > 0.50, `after ${c.eqPct}`);
+  // exact sale: (500 + 100 − 340)/0.6 = 433.3 → 434 units (vs 150 under the old fixed 40% target)
+  assert.equal(r[0].ticket.qty, 434);
+});
+
+ok('v195 100% requirement (non-marginable name): any debt fires and the plan pays it all down', () => {
+  const s = A.state(flat(1000, 900, 1));
+  assert.equal(s.guardPct, 1); assert.equal(s.guardTarget, 1);
+  const r = risk(s); assert.equal(r.length, 1); assert.equal(r[0].after.debt, 0);
+});
+
+ok('v195 concentrated position: per-name 50% on IREN blends with 30% on PLTR; selling the low-requirement donor re-blends', () => {
+  const pos = [{ symbol: 'IREN', qty: 1000, px: 20, avg: 40, maint: 0.50 }, { symbol: 'PLTR', qty: 60, px: 100, avg: 100, maint: 0.30 }];
+  const s = A.state({ positions: pos, cash: -15000 });          // exposure 26,000 · equity 11,000 = 42.3%
+  assert.equal(s.req, 0.5 * 20000 + 0.3 * 6000);                  // 11,800 — already under the call
+  assert.ok(Math.abs(s.maint - 11800 / 26000) < 1e-12);
+  assert.equal(A.state({ positions: pos, cash: -15000, maint: 0.30 }).req, s.req, 'per-name maint wins over the account default');
+  assert.ok(s.eqPct > 0.40 && s.eqPct < s.guardPct, 'old fixed 35% line would have held this book');
+  const r = risk(s);
+  assert.equal(r[0].ticket.sym, 'PLTR');
+  assert.equal(r[0].ticket.qty, 60, 'the whole donor goes first');
+  assert.ok(r.slice(1).every((x) => x.ticket.sym === 'IREN' && !x.ticket.core), 'then IREN shares above the 500-share core, core kept');
+  const c = lastCheck(r);
+  assert.ok(c.eqPct >= c.guardTarget - 1e-9, `post-sale ${c.eqPct} vs re-blended target ${c.guardTarget}`);
+  assert.ok(c.maint > s.maint, 'selling the 30% name raises the blended requirement');
+});
+
+ok('v195 insufficient donor: next names, then core shares, core flagged; never stops short silently', () => {
+  const pos = [{ symbol: 'IREN', qty: 500, px: 20, avg: 40 }, { symbol: 'PLTR', qty: 5, px: 100, avg: 100 }, { symbol: 'AMZN', qty: 10, px: 200, avg: 200 }];
+  const s = A.state({ positions: pos, cash: -9000, maint: 0.50 });   // exposure 12,500 · equity 3,500
+  const r = risk(s);
+  assert.deepEqual(r.map((x) => x.ticket.sym), ['PLTR', 'AMZN', 'IREN']);
+  assert.equal(r[2].ticket.core, true); assert.match(r[2].title, /core IREN/);
+  const c = lastCheck(r); assert.ok(c.ok && c.eqPct >= 0.60 - 1e-9);
+  assert.ok(r[2].ticket.qty <= 500);
+});
+
+ok('v195 negative equity: selling everything is not enough — the last leg says how much to deposit', () => {
+  const s = A.state({ positions: [{ symbol: 'PLTR', qty: 10, px: 100, avg: 100 }], cash: -1200, maint: 0.30 });
+  const r = risk(s); const c = lastCheck(r);
+  assert.equal(c.ok, false); assert.ok(c.short > 0); assert.match(r[r.length - 1].why, /deposit/);
+});
+
+ok('v195 broker requirement (options, house calls) raises the line when higher than the per-name sum', () => {
+  const s = A.state({ ...flat(1000, 380, 0.30), maintReq: 400 });
+  assert.equal(s.maint, 0.40); assert.ok(Math.abs(s.guardPct - 0.45) < 1e-12);
+  assert.equal(risk(s).length, 1);
+  assert.equal(A.state({ ...flat(1000, 380, 0.30), maintReq: 100 }).maint, 0.30, 'a lower broker figure never loosens it');
+});
+
+ok('v195 tripwire follows the requirement: at 50% it lands exactly on the 55% guard', () => {
+  const s = A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 30, avg: 37.5 }, { symbol: 'PLTR', qty: 100, px: 168.78, avg: 169.75 }], cash: -15000, maint: 0.50 });
+  const x = A.tripwire(s, 'IREN');
+  const s2 = A.state({ positions: [{ symbol: 'IREN', qty: 900, px: x, avg: 37.5 }, { symbol: 'PLTR', qty: 100, px: 168.78, avg: 169.75 }], cash: -15000, maint: 0.50 });
+  assert.ok(Math.abs(s2.eqPct - 0.55) < 1e-9, `eq% at tripwire ${s2.eqPct}`);
+});
+
+ok('v195 render: the gauge and caption show the book\'s own guard, not a fixed 35%', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const s = A.state(flat(1000, 340, 0.50, 'PLTR', 10));
+  A.render(el, s, A.rules(s));
+  assert.ok(/guard 55%/.test(el.innerHTML) && /call 50%/.test(el.innerHTML));
+  assert.ok(!/undefined|NaN/.test(el.innerHTML));
+});
+
 console.log(`apex: ${n}/${n} passed`);

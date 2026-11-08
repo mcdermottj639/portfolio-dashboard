@@ -1,4 +1,4 @@
-/* v186 — Apex: the self-directed margin book's leverage loop (pure + render).
+/* v186 (guard v195) — Apex: the self-directed margin book's leverage loop (pure + render).
    Layered ON the v156 SD rules, never beside them: trims reuse SD_TRIM_GAIN, the
    per-name cap reuses SD_SINGLE_MAX_EQ, broken-thesis exits stay with sdBroken.
    What Apex adds is the thing the plan never said out loud: a LEVERAGE BAND
@@ -21,8 +21,12 @@
     LEV_CAP: 1.50,         // hard cap — above it: no new buys, ladder active
     LEV_RELOAD: 1.20,      // below it (and the book trending) new borrow is allowed
     MAINT: 0.30,           // Robinhood house maintenance seen on IREN (2026-11-05); PLTR assumed
-    GUARD_PCT: 0.35,       // equity ÷ exposure under this ⇒ risk guard (5 pts over maintenance)
-    GUARD_TARGET: 0.40,    // …and it sells until equity is back here
+    /* v195 (LAB-004-P1): the guard follows the maintenance REQUIREMENT, not a fixed line. Buffers are points
+       of exposure over the (blended, per-name) requirement; at the default 30% they give the old 35% / 40%. */
+    GUARD_BUFFER: 0.05,    // equity ÷ exposure under requirement + 5 pts ⇒ risk guard
+    GUARD_RECOVER: 0.10,   // …and it sells until equity is back at requirement + 10 pts (capped at 100% = no debt)
+    GUARD_PCT: 0.35,       // = MAINT + GUARD_BUFFER — the default-book line only; rules read st.guardPct
+    GUARD_TARGET: 0.40,    // = MAINT + GUARD_RECOVER — the default-book target only; rules read st.guardTarget
     TRIM_GAIN: 0.25,       // = SD_TRIM_GAIN
     TRIM_GAIN_2: 0.50,
     TRIM_FRAC: 0.25,
@@ -50,33 +54,91 @@
   const num = (v) => (v == null || isNaN(+v) ? 0 : +v);
 
   /* ── state ─────────────────────────────────────────────────────────────── */
+  /* Maintenance inputs (v195): input.maint = the account default (else C.MAINT); a position's own `maint`
+     (0–1, e.g. Robinhood's higher house figure on a volatile or concentrated name) overrides it for that name;
+     input.maintReq = the broker's total requirement in dollars (covers options / anything not modeled) and is
+     used when it is higher than the per-name sum. The requirement is blended: req = Σ maint_i · value_i. */
+  const clampM = (m) => Math.min(1, Math.max(0, m));
   function state(input) {
+    const base = clampM(input.maint != null && !isNaN(+input.maint) ? +input.maint : C.MAINT);
     const pos = (input.positions || []).filter((p) => num(p.qty) > 0 && num(p.px) > 0)
-      .map((p) => ({ symbol: String(p.symbol).toUpperCase(), qty: num(p.qty), px: num(p.px), avg: num(p.avg), val: num(p.qty) * num(p.px) }));
+      .map((p) => ({ symbol: String(p.symbol).toUpperCase(), qty: num(p.qty), px: num(p.px), avg: num(p.avg), val: num(p.qty) * num(p.px),
+        maint: p.maint != null && p.maint !== '' && !isNaN(+p.maint) ? clampM(+p.maint) : base }));
     const exposure = pos.reduce((s, p) => s + p.val, 0);
     const debt = Math.max(0, -num(input.cash));
     const equity = input.equity != null ? num(input.equity) : exposure - debt;
-    const maint = input.maint != null ? num(input.maint) : C.MAINT;
+    const reqNames = pos.reduce((s, p) => s + p.maint * p.val, 0);
+    const req = Math.max(reqNames, num(input.maintReq));
+    const maint = exposure > 0 ? Math.min(1, req / exposure) : base;   // effective (blended) requirement
+    const guardPct = Math.min(1, maint + C.GUARD_BUFFER);
+    const guardTarget = Math.max(guardPct, Math.min(1, maint + C.GUARD_RECOVER));
     const lev = equity > 0 ? exposure / equity : (exposure > 0 ? Infinity : 0);
     const eqPct = exposure > 0 ? equity / exposure : 1;
-    const cushion = equity - maint * exposure;             // dollars of market value you can lose before a call
-    const callDrop = exposure > 0 ? Math.max(0, cushion / ((1 - maint) * exposure)) : null;
+    const cushion = equity - req;                          // dollars of market value you can lose before a call
+    const callDrop = exposure > 0 && maint < 1 ? Math.max(0, cushion / ((1 - maint) * exposure)) : (exposure > 0 ? 0 : null);
     const band = lev > C.LEV_CAP ? 'over' : lev > C.LEV_NORMAL ? 'high' : lev < C.LEV_RELOAD ? 'room' : 'normal';
     const top = pos.slice().sort((a, b) => b.val - a.val);
     const w = {};
     pos.forEach((p) => { w[p.symbol] = equity > 0 ? p.val / equity : 0; });
-    return { positions: pos, exposure, debt, equity, maint, lev, eqPct, cushion, callDrop, band, top, weights: w };
+    return { positions: pos, exposure, debt, equity, maint, maintBase: base, req, guardPct, guardTarget, lev, eqPct, cushion, callDrop, band, top, weights: w };
   }
 
-  /* Price of `sym` at which equity ÷ exposure == pct, every other name held flat. */
+  /* Price of `sym` at which equity ÷ exposure == pct, every other name held flat. With no pct it is the
+     price that puts the book on ITS guard line (requirement + GUARD_BUFFER, per-name requirements kept). */
   function tripwire(st, sym, pct) {
     const p = st.positions.find((x) => x.symbol === sym);
     if (!p || p.qty <= 0) return null;
     const others = st.exposure - p.val;
-    const k = 1 - (pct == null ? C.GUARD_PCT : pct);
-    // (q·x + others)·k = debt  ⇒  x = (debt/k − others)/q
-    const x = (st.debt / k - others) / p.qty;
+    if (pct != null) {
+      const k = 1 - pct;
+      // (q·x + others)·k = debt  ⇒  x = (debt/k − others)/q
+      const x = (st.debt / k - others) / p.qty;
+      return x > 0 ? x : null;
+    }
+    // q·x + O − D = m·q·x + R_o + b·(q·x + O)  ⇒  x = (D + R_o − (1 − b)·O) / (q·(1 − m − b))
+    const b = C.GUARD_BUFFER, Ro = Math.max(0, st.req - p.maint * p.val), den = p.qty * (1 - p.maint - b);
+    if (!(den > 0)) return null;
+    const x = (st.debt + Ro - (1 - b) * others) / den;
     return x > 0 ? x : null;
+  }
+
+  /* v195 — risk-guard sale plan. Sells donors in order until equity ÷ exposure is back at the book's recovery
+     line (requirement + GUARD_RECOVER, capped at no debt), re-blending the requirement after every sale: a
+     donor carrying a LOW requirement lifts the blend as it goes, so it needs more selling than a flat line
+     says. Order: cfg.donor → other names (largest first) → core shares above coreMax → the core itself
+     (flagged; a call would force it anyway). Equity is unchanged by a sale; proceeds pay debt 1:1.
+     Returns {legs:[{p, qty, s}], after:{exposure, debt, req, eqPct, guardPct, guardTarget}, short$}. */
+  function guardPlan(st, cfg) {
+    const R = C.GUARD_RECOVER;
+    let E = st.exposure, D = st.debt, Q = st.req;
+    const eq = st.equity;
+    const done = () => D <= 1e-9 || eq >= Math.min(E, Q + R * E) - 1e-9;
+    const core = st.positions.find((x) => x.symbol === cfg.core);
+    const coreKeep = core && cfg.coreMax > 0 ? Math.min(core.qty, cfg.coreMax) : 0;
+    const order = [];
+    const donor = st.positions.find((x) => x.symbol === cfg.donor && x.symbol !== cfg.core);
+    if (donor) order.push({ p: donor, max: donor.qty });
+    st.top.filter((x) => x !== donor && x.symbol !== cfg.core).forEach((x) => order.push({ p: x, max: x.qty }));
+    if (core && core.qty - coreKeep > 0) order.push({ p: core, max: core.qty - coreKeep });
+    if (core && coreKeep > 0) order.push({ p: core, max: coreKeep, core: true });
+    const legs = [];
+    for (const o of order) {
+      if (done()) break;
+      const m = o.p.maint;
+      // smallest s with eq ≥ min(E − s, (Q − m·s) + R·(E − s))
+      const need = Math.max(0, Math.min(E - eq, (Q + R * E - eq) / (m + R)));
+      let qty = Math.ceil(need / o.p.px - 1e-9);
+      if (!legs.length && o.p === donor) qty = Math.max(C.TRANCHE, Math.ceil(qty / C.TRANCHE) * C.TRANCHE);   // first leg keeps the 50-share tranche
+      qty = Math.min(o.max, qty);
+      if (qty <= 0) continue;
+      const s = qty * o.p.px;
+      legs.push({ p: o.p, qty, s, core: !!o.core });
+      E -= s; Q = Math.max(0, Q - m * s); D = Math.max(0, D - s);
+    }
+    const mEff = E > 0 ? Math.min(1, Q / E) : st.maint;
+    const after = { exposure: E, debt: D, req: Q, eqPct: E > 0 ? eq / E : 1, guardPct: Math.min(1, mEff + C.GUARD_BUFFER), guardTarget: Math.max(Math.min(1, mEff + C.GUARD_BUFFER), Math.min(1, mEff + R)) };
+    const short = done() ? 0 : Math.max(0, Math.min(E, Q + R * E) - eq);   // cash to deposit (pays debt) if selling everything allowed is not enough
+    return { legs, after, short };
   }
 
   /* Dollars to sell so that exposure/equity == lev target (debt falls 1:1 with proceeds). */
@@ -96,15 +158,25 @@
     const byName = (s) => st.positions.find((p) => p.symbol === s);
     const nearEarn = (s) => earn[s] && earn[s].daysAway != null && earn[s].daysAway >= 0 && earn[s].daysAway <= C.EARN_DAYS;
 
-    // A1 Risk guard — first, always.
-    if (st.exposure > 0 && st.eqPct < C.GUARD_PCT) {
-      const d = byName(cfg.donor) || st.top[0];
-      if (d) {
-        const needSell = Math.max(0, (C.GUARD_TARGET * st.exposure - st.equity) / C.GUARD_TARGET);
-        const qty = Math.min(d.qty, Math.max(C.TRANCHE, Math.ceil(needSell / d.px / C.TRANCHE) * C.TRANCHE));
-        out.push(t('risk', 'Risk guard', `Equity is ${pct(st.eqPct)} of stock — ${pct(C.GUARD_PCT)} is the guard line (maintenance ${pct(st.maint)} + 5).`,
-          { side: 'sell', sym: d.symbol, qty, px: round(d.px * 0.995), tranche: true }, st, d.symbol, qty, d.px));
-      }
+    // A1 Risk guard — first, always. v195: the line and the target follow the maintenance requirement.
+    if (st.exposure > 0 && st.eqPct < st.guardPct) {
+      const plan = guardPlan(st, cfg);
+      const line = `Equity is ${pct(st.eqPct)} of stock — ${pct(st.guardPct)} is the guard line (maintenance ${pct(st.maint)} + 5); sells to ${pct(st.guardTarget)}.`;
+      let E = st.exposure, D = st.debt;
+      plan.legs.forEach((L, i) => {
+        const before = { lev: st.equity > 0 ? E / st.equity : Infinity, debt: D };
+        E -= L.s; D = Math.max(0, D - L.s);
+        const last = i === plan.legs.length - 1;
+        const title = L.core ? `Risk guard — core ${L.p.symbol} needed` : (i ? `Risk guard — ${L.p.symbol} too` : 'Risk guard');
+        const why = i === 0 ? line : L.core ? `The other names are not enough to reach ${pct(st.guardTarget)}. The core is your call — a margin call would sell it anyway.` : `${plan.legs[0].p.symbol} alone is not enough to reach ${pct(st.guardTarget)}.`;
+        const r = { kind: 'risk', title, why: last && plan.short > 0 ? why + ` Still $${k(plan.short)} short after every sale — deposit cash.` : why,
+          ticket: { side: 'sell', sym: L.p.symbol, qty: L.qty, px: round(L.p.px * 0.995), tranche: i === 0 && !L.core, core: L.core || undefined } };
+        r.before = before;
+        r.after = { lev: st.equity > 0 ? E / st.equity : 0, debt: D, proceeds: L.s };
+        if (last) r.after.check = { eqPct: plan.after.eqPct, guardPct: plan.after.guardPct, guardTarget: plan.after.guardTarget, maint: plan.after.exposure > 0 ? plan.after.req / plan.after.exposure : 0, ok: plan.short === 0, short: plan.short };
+        out.push(r);
+      });
+      if (!plan.legs.length) out.push(t('risk', 'Risk guard — nothing to sell', `${line} No holding can be sold for it — deposit $${k(plan.short)} to pay debt.`, null, st));
     }
 
     // A2 Leverage band / de-lever ladder.
@@ -260,8 +332,8 @@
     el.innerHTML = `
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>approvals live in Jarvis</b>; you place the order in Robinhood.</div>
       <div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
-      <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(C.GUARD_PCT)} · 1.5x = ${pct(1 / C.LEV_CAP)}</span></div>
-      <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${C.GUARD_PCT * 100}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
+      <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(st.guardPct)} · 1.5x = ${pct(1 / C.LEV_CAP)}</span></div>
+      <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${Math.min(99.5, st.guardPct * 100)}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
       ${tw ? `<div style="font-size:11.5px;color:#6b7280;margin-top:8px">Tripwire: ${esc(cfg.core)} at <b style="color:var(--text)">${money(tw)}</b> puts equity on the guard line (others flat) — the ${esc(cfg.donor)} tranche ticket is pre-built for that print.</div>` : ''}
       <div class="ac-tier">⚙️ Rules firing now</div>${rows}
       <div data-apex-business></div>
@@ -321,7 +393,7 @@
     const upd = () => {
       const pos = st.positions.map((p) => ({ ...p }));
       names.forEach((n, i) => { const v = +box.querySelector(`[data-apex-i="${i}"]`).value; const q = pos.find((x) => x.symbol === n.symbol); q.px = v; box.querySelector(`[data-apex-v="${i}"]`).textContent = money(v); });
-      const s2 = state({ positions: pos, cash: -st.debt, maint: st.maint });
+      const s2 = state({ positions: pos, cash: -st.debt, maint: st.maintBase });   // each position keeps its own maint
       const eqEl = box.querySelector('[data-apex-eq]'), lvEl = box.querySelector('[data-apex-lev]');
       eqEl.textContent = (s2.equity < 0 ? '-' : '') + '$' + k(Math.abs(s2.equity)); eqEl.style.color = s2.eqPct < st.maint ? '#ef4444' : 'var(--text)';
       lvEl.textContent = s2.lev === Infinity || s2.eqPct < s2.maint ? 'call' : s2.lev.toFixed(2) + 'x'; lvEl.style.color = s2.lev > C.LEV_CAP ? '#ef4444' : s2.lev > C.LEV_NORMAL ? '#f97316' : '#10b981';
@@ -332,5 +404,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, sellToLev, render, levelsFor };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor };
 });

@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=194">
-<link rel="stylesheet" href="ui/predictions.css?v=194">
-<link rel="stylesheet" href="ui/smartmoney.css?v=194">
-<link rel="stylesheet" href="ui/ticker.css?v=194">
+<link rel="stylesheet" href="ui/experience.css?v=195">
+<link rel="stylesheet" href="ui/predictions.css?v=195">
+<link rel="stylesheet" href="ui/smartmoney.css?v=195">
+<link rel="stylesheet" href="ui/ticker.css?v=195">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,9 +771,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=194"></script>
-<script src="ui/apex.js?v=194"></script>
-<script src="ui/business.js?v=194"></script>
+<script src="ui/sd-rules.js?v=195"></script>
+<script src="ui/apex.js?v=195"></script>
+<script src="ui/business.js?v=195"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -887,7 +887,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v194'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v195'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1993,7 +1993,11 @@ function renderApexCard(S){
      always"): the scan's per-name trigger / limit / TP1 / stop / company name / ••0741 tradability ride from
      data/apex-targets.json top5 into the build rungs, which then show entry · target · stop · R/R at entry. */
   cfg.levels={}; try{ (T&&Array.isArray(T.top5)?T.top5:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={trigger:r.trigger,limit:r.limit,tp1:r.tp1,stop:r.stop,name:r.name||null,tradable:r.tradable,tradableAt:r.tradableAt||null}; }); }catch(_){}
-  const state=Apex.state({positions,cash:+st.cashVal||0,equity:(+st.totalVal>0)?+st.totalVal:undefined});
+  /* v195 (LAB-004-P1): the risk guard follows the maintenance requirement. Optional broker inputs ride in
+     window.__APEX_CFG: maint (account default), maintBy {SYM: 0–1} (Robinhood's per-name house figure, e.g. a
+     concentrated name at 50%) and maintReq ($ total incl. options). None set ⇒ 30% default, guard 35% / 40%. */
+  const mBy=(cfg.maintBy&&typeof cfg.maintBy==='object')?cfg.maintBy:{};
+  const state=Apex.state({positions:positions.map(p=>mBy[p.symbol]!=null?Object.assign({},p,{maint:mBy[p.symbol]}):p),cash:+st.cashVal||0,equity:(+st.totalVal>0)?+st.totalVal:undefined,maint:cfg.maint,maintReq:cfg.maintReq});
   const d=new Date(); const review=d.getDay()===1;   // v194: the weekly Apex review is MONDAY (Jack, Nov 6 01:47 ET)
   const sma={}; Object.keys(S.smaMap||{}).forEach(k=>{ const m=S.smaMap[k]; const v=(m&&typeof m==='object')?m.s50:m; if(v!=null&&!isNaN(+v))sma[k]={s50:+v}; });
   /* v188: live prices for target names not held, so the build rule can size whole shares. */
@@ -8489,13 +8493,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=194"></script>
-<script src="ui/predictions-model.js?v=194"></script>
-<script src="ui/predictions.js?v=194"></script>
-<script src="ui/smartmoney-model.js?v=194"></script>
-<script src="ui/smartmoney.js?v=194"></script>
-<script src="ui/experience.js?v=194"></script>
-<script src="ui/ticker.js?v=194"></script>
-<script src="ui/compact.js?v=194"></script>
+<script src="ui/experience-model.js?v=195"></script>
+<script src="ui/predictions-model.js?v=195"></script>
+<script src="ui/predictions.js?v=195"></script>
+<script src="ui/smartmoney-model.js?v=195"></script>
+<script src="ui/smartmoney.js?v=195"></script>
+<script src="ui/experience.js?v=195"></script>
+<script src="ui/ticker.js?v=195"></script>
+<script src="ui/compact.js?v=195"></script>
 </body>
 </html>
