@@ -374,7 +374,25 @@
     const tiles = R.rows.slice(0, 5).map((r, i) => {
       const col = r.score >= 7 ? '#10b981' : r.score >= 5.5 ? '#f59e0b' : '#9ca3af';
       const up = r.s50 && r.px ? (r.px / r.s50 - 1) * 100 : null;
-      if (r.why != null && r.rs3 == null) return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${r.rr != null && isFinite(+r.rr) ? 'R/R ' + (+r.rr).toFixed(1) + ' · ' : ''}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${esc(r.why || '')}</div></div>`;
+      if (r.why != null && r.rs3 == null) {
+        /* v197 — R/R is measured at the entry this tile shows (limit, else trigger × 1.01), the same way as the
+           build rungs; the scan's figure from the prior close moves into the fold. Raw source URLs become a short
+           "source ↗" link so they can't run off a 390px screen. */
+        const lv = levelsFor({ levels: { [r.sym]: r } }, r.sym);
+        const rrE = lv && lv.rr != null && isFinite(lv.rr) ? lv.rr : null;
+        const lowE = rrE != null && rrE < C.RR_MIN;
+        const rrClose = r.rr != null && isFinite(+r.rr) ? +r.rr : null;
+        const urls = [];
+        const whyTxt = esc(String(r.why || '').replace(/https?:\/\/\S+/g, (u) => { urls.push(u.replace(/[)\].,;]+$/, '')); return ''; }).replace(/\s{2,}/g, ' ').trim());
+        const src = urls.filter((u) => /^https:\/\//.test(u)).map((u) => ` <a href="${esc(u)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">source ↗</a>`).join('');
+        const rrLine = rrE != null ? `<span style="color:${lowE ? '#dc2626' : '#059669'};font-weight:600">R/R <span style="white-space:nowrap">${rrE.toFixed(2)}</span> at entry${lowE ? ' · under ' + C.RR_MIN : ''}</span><br>` : (rrClose != null ? 'R/R ' + rrClose.toFixed(1) + ' (from close) · ' : '');
+        const cut = whyTxt.indexOf('News:');
+        const whyMain = cut > 0 ? whyTxt.slice(0, cut).replace(/[\s.;·—-]+$/, '') : whyTxt;
+        const news = cut >= 0 ? whyTxt.slice(cut) : '';
+        const closeNote = rrE != null && rrClose != null ? `<div>Scan R/R ${rrClose.toFixed(1)} was measured from the prior close, not this entry.</div>` : '';
+        const fold = news || src || closeNote ? `<details class="sd-more" style="margin-top:3px"><summary style="font-size:10.5px;color:#6b7280">${news ? '📰 News' : 'ⓘ Notes'}${src ? ' · source' : ''}</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${news ? news + src : src.trim()}${closeNote}</div></details>` : '';
+        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${whyMain}</div>${fold}</div>`;
+      }
       return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
     }).join('');
     const rec = R.record || null;

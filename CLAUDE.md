@@ -1,3 +1,18 @@
+## v197 — Research top-5 tiles: links stop running off the screen; R/R measured at the entry the tile shows (2026-11-08)
+
+Jack (Nov 8 00:20 ET, phone screenshot of Research — top 5, "Fix"): the raw SEC URLs in each tile's `why` didn't
+wrap, so they ran past 390px and printed over the next column. Now any `http(s)` URL in `why` is pulled out and shown
+as a short **source ↗** link, and the `News: …` part plus that link fold into a `📰 News · source` `<details>` under
+each tile (tiles also get `overflow-wrap:anywhere`). Second fix, found while checking the screenshot: the tile printed
+the scan's `rr` (measured from the prior close) beside the buy-stop entry, e.g. PANW "R/R 46.1" next to Entry $357.55 →
+$432.32 · stop $312.12. The tile now computes R/R at the entry it shows, exactly like the v194 build rungs
+(`levelsFor`: limit, else trigger × 1.01): AMZN 0.12, ZS 0.68, S 0.55, PANW 1.45, CRWD 0.68, red when under
+`C.RR_MIN` 1.5. The scan's close-based figure stays in the fold ("Scan R/R 46.1 was measured from the prior close").
+Display only: no rule, ticket, target, scan prompt or Jarvis change. Adapter passes `limit` from `top5`. Files:
+`ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (new test uses the live Nov 6 AMZN/PANW rows),
+`CLAUDE.md`. Verified: all producer suites, tests/*.test.cjs, Playwright 390 (Ivory) / 320 (Midnight) with the real
+data/apex-targets.json rows: scrollWidth = viewport, no tile overflow, no page errors. Physical iPhone not verified.
+App/cache **v197 / pf-v197**.
 ## v196 — Apex uses Robinhood's per-stock maintenance: IREN 30%, AMZN 25%, PLTR 25% (2026-11-08)
 
 Jack sent two screenshots of Robinhood's Margin buffer screen (2026-11-08 00:22 ET) showing the per-stock
