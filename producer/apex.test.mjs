@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const A = require('../ui/apex.js');
+// v201: IREN is owner-managed by default (no IREN sells). The mechanics stay tested under the old config.
+const LEGACY = { coreOwner: false, ladder: [{ sym: 'IREN', px: 30, qty: 200, note: 'newest lots first' }] };
 
 let n = 0; const ok = (name, fn) => { fn(); n++; console.log('  ✓', name); };
 
@@ -40,7 +42,7 @@ ok('tripwire: IREN price that puts equity on the 35% guard line', () => {
 
 ok('rules: 3x book → risk guard sells the donor in 50-share tranches and the ladder is armed', () => {
   const s = A.state(book);
-  const r = A.rules(s);
+  const r = A.rules(s, { cfg: LEGACY });
   assert.equal(r[0].kind, 'risk');
   assert.equal(r[0].ticket.sym, 'PLTR');
   assert.equal(r[0].ticket.qty % 50, 0);
@@ -52,7 +54,7 @@ ok('rules: 3x book → risk guard sells the donor in 50-share tranches and the l
 
 ok('rules: through the ladder rung the sell goes live and shows debt after', () => {
   const s = A.state({ ...book, positions: [{ symbol: 'IREN', qty: 900, px: 31, avg: 37.5 }, book.positions[1]] });
-  const lad = A.rules(s).find((x) => x.kind === 'ladder');
+  const lad = A.rules(s, { cfg: LEGACY }).find((x) => x.kind === 'ladder');
   assert.equal(lad.ticket.armed, false);
   assert.equal(Math.round(lad.after.debt), 23686 - 6000);
 });
@@ -86,8 +88,8 @@ ok('rules: drift only on Fridays, 5-point band, targets are % of equity', () => 
   assert.ok(!A.rules(s).some((x) => x.kind === 'drift'));
   const fr = A.rules(s, { friday: true }).filter((x) => x.kind === 'drift');
   assert.ok(!fr.some((x) => x.title.startsWith('IREN')), 'v188: IREN core (100 ≤ 500 sh) is not drift-trimmed');
-  const big = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 10, px: 100, avg: 100 }], cash: 0 }), { friday: true });
-  assert.ok(big.some((x) => x.kind === 'drift' && x.title.startsWith('IREN')), 'above the core, drift applies again');
+  const big = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 10, px: 100, avg: 100 }], cash: 0 }), { friday: true, cfg: LEGACY });
+  assert.ok(big.some((x) => x.kind === 'drift' && x.title.startsWith('IREN')), 'above the core, drift applies again (legacy cfg)');
   assert.ok(fr.some((x) => x.title.startsWith('NVDA')), 'NVDA 9% vs 20%');
 });
 
@@ -116,7 +118,7 @@ ok('v188 core: IREN ≤ 500 sh below the 25% stop is HELD, not exited', () => {
 });
 
 ok('v188 core: shares above the core still follow the stop', () => {
-  const r = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 700, px: 18, avg: 44.84 }], cash: 0 }));
+  const r = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 700, px: 18, avg: 44.84 }], cash: 0 }), { cfg: LEGACY });
   const lose = r.find((x) => x.kind === 'lose');
   assert.ok(lose && lose.ticket.qty === 200);
 });
@@ -303,7 +305,7 @@ ok('v195 concentrated position: per-name 50% on IREN blends with 30% on PLTR; se
   assert.ok(Math.abs(s.maint - 11800 / 26000) < 1e-12);
   assert.equal(A.state({ positions: pos, cash: -15000, maint: 0.30 }).req, s.req, 'per-name maint wins over the account default');
   assert.ok(s.eqPct > 0.40 && s.eqPct < s.guardPct, 'old fixed 35% line would have held this book');
-  const r = risk(s);
+  const r = risk(s, { cfg: LEGACY });
   assert.equal(r[0].ticket.sym, 'PLTR');
   assert.equal(r[0].ticket.qty, 60, 'the whole donor goes first');
   assert.ok(r.slice(1).every((x) => x.ticket.sym === 'IREN' && !x.ticket.core), 'then IREN shares above the 500-share core, core kept');
@@ -315,7 +317,7 @@ ok('v195 concentrated position: per-name 50% on IREN blends with 30% on PLTR; se
 ok('v195 insufficient donor: next names, then core shares, core flagged; never stops short silently', () => {
   const pos = [{ symbol: 'IREN', qty: 500, px: 20, avg: 40 }, { symbol: 'PLTR', qty: 5, px: 100, avg: 100 }, { symbol: 'AMZN', qty: 10, px: 200, avg: 200 }];
   const s = A.state({ positions: pos, cash: -9000, maint: 0.50 });   // exposure 12,500 · equity 3,500
-  const r = risk(s);
+  const r = risk(s, { cfg: LEGACY });
   assert.deepEqual(r.map((x) => x.ticket.sym), ['PLTR', 'AMZN', 'IREN']);
   assert.equal(r[2].ticket.core, true); assert.match(r[2].title, /core IREN/);
   const c = lastCheck(r); assert.ok(c.ok && c.eqPct >= 0.60 - 1e-9);
@@ -413,7 +415,6 @@ ok('v197 research tiles: R/R at the shown entry, raw URLs become "source ↗" (N
   assert.ok(!/undefined|NaN/.test(h));
 });
 
-console.log(`apex: ${n}/${n} passed`);
 
 // v199 — one "Confirm this week's Apex book" prompt: whole book, read-only wording, every armed rung listed.
 {
@@ -425,6 +426,34 @@ console.log(`apex: ${n}/${n} passed`);
   assert.match(p, /never review_equity_order or place_equity_order/);
   assert.match(p, /BUY \d+ sh AMZN \(Amazon\) — trigger \$274\.60 · limit \$277\.35 · target \$280\.14 · stop \$253\.89/);
   assert.match(p, /BUY \d+ sh ZS — trigger \$229\.22/);
-  assert.match(p, /IREN 500 sh @ \$21\.24 \(core/);
+  assert.match(p, /IREN 500 sh @ \$21\.24 \(OWNER-MANAGED/);
   console.log('ok portfolioPrompt (v199)');
 }
+
+// v201 — Jack (Nov 8 22:38 ET): "stop telling me to sell the iren to clear margin. Just build the portfolio and I'll handle the iren."
+ok('v201 default: no rule ever sells, trims, ladders or drift-flags IREN — at 3x, below the stop, above +25%, or over 500 sh', () => {
+  const cases = [
+    A.state(book),                                                                                         // 3x book, guard + cap fire
+    A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 18, avg: 44.84 }], cash: 0 }),                    // 900 sh through the stop
+    A.state({ positions: [{ symbol: 'IREN', qty: 900, px: 60, avg: 40 }, { symbol: 'NVDA', qty: 1, px: 100, avg: 100 }], cash: 0 }),   // winner +50%
+    A.state({ positions: [{ symbol: 'IREN', qty: 1000, px: 20, avg: 40 }, { symbol: 'PLTR', qty: 5, px: 100, avg: 100 }], cash: -15000 }), // donor too small
+  ];
+  for (const s of cases) {
+    const r = A.rules(s, { review: true });
+    assert.ok(!r.some((x) => x.ticket && x.ticket.sym === 'IREN'), 'no IREN ticket');
+    assert.ok(!r.some((x) => (x.kind === 'drift' || x.kind === 'ladder' || x.kind === 'win' || x.kind === 'lose') && /IREN/.test(x.title)), 'no IREN drift/ladder/win/lose row');
+    const c = r.find((x) => x.kind === 'core'); assert.ok(c && /your call/.test(c.title));
+  }
+  const r4 = A.rules(cases[3]).filter((x) => x.kind === 'risk');
+  assert.deepEqual(r4.map((x) => x.ticket && x.ticket.sym).filter(Boolean), ['PLTR']);
+  assert.match(r4[r4.length - 1].why, /IREN excluded — your call/);
+});
+
+ok('v201 confirm prompt: IREN marked owner-managed and Claude is told never to propose selling it', () => {
+  const st = A.state(book);
+  const p = A.portfolioPrompt(st, A.rules(st), A.DEFAULT_CFG, null);
+  assert.match(p, /IREN \d+ sh @ \$[\d.]+ \(OWNER-MANAGED/);
+  assert.match(p, /never tell me to sell or trim IREN/);
+});
+
+console.log(`apex: ${n}/${n} passed`);
