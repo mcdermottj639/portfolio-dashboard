@@ -2291,6 +2291,41 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "6bc79c22c4c0884c037f",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "f7e7b537f95cfdcdb9d3",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-09-ibklpn",
+      "date": "2026-11-09",
+      "kind": "rebalance",
+      "targetAsOf": "2026-10-28",
+      "book": 7736.97,
+      "equityAtDecision": 7748.36,
+      "spyAt": 752.045,
+      "rationale": "EXEC_AUTO ticket 2026-11-09-ibklpn: no sells/trims/exits/harvests fired (book calm, -3.0% from its 2026-08-10 peak vs benchmark -4.9% over the same window, 1.8pp relative — drawdown normal). Fresh cash $702.34 (deposit 0d old) tranched 50% per the deposit-tranche rule: deployed $351.17 into the waiting ground (VTI, 0.947648 sh @ $370.5699) standing in for NVDA (wash-sale blocked to 2026-12-05, $1,122.63). $1,795.33 stayed deferred — NVDA (wash-sale), and META/KO/MA/AMZN/SPY (macro: CPI prints 2026-11-10 8:30 AM ET, no new money the session before) — the macro names held in cash rather than VTI per the 2026-09-03 wash-sale-only parking rule. Entry zones are 12d old (target asOf 2026-10-28) and advisory below, binding above. Live pre-checks: plan basis book $7,736.97 vs live total_value $7,748.36 pre-trade (+0.15%, within the 5% abort); cash $702.34 matched exactly; buying power $702.34 covered the $351.17 buy; no orders on this account today before this ticket (PDT n/a — buy only); no ••••0741 realized loss on VTI in the trailing month (cross-account wash n/a); VTI is an index ETF, no earnings blackout. Turnover $351.17. Cash left after this pass: $0.",
+      "trades": [
+        {
+          "sym": "VTI",
+          "side": "BUY",
+          "dollars": 351.17,
+          "shares": 0.947648,
+          "priceAt": 370.5699,
+          "weightBefore": null,
+          "weightAfter": null
+        }
+      ]
     }
   ]
 }

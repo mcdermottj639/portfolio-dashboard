@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-05-cjuvh1",
-  "created": "2026-11-05",
+  "id": "2026-11-09-ibklpn",
+  "created": "2026-11-09",
   "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,110 +16,91 @@
   "universeVersion": "f7e7b537f95cfdcdb9d3",
   "status": "done",
   "autoEligible": true,
-  "turnover": 1752.56,
-  "book": 6918.13,
-  "planHash": "s[NVDA:876]b[VTI:876]t[]",
+  "turnover": 351.17,
+  "book": 7736.97,
+  "planHash": "s[]b[VTI:351]t[]",
   "legs": {
-    "sells": [
-      {
-        "sym": "NVDA",
-        "kind": "harvest",
-        "dollars": 876.13,
-        "shares": 4.793595,
-        "price": 182.77,
-        "pl": -245.19,
-        "note": "tax-loss harvest — realize $-245.19 ST loss; rebuy blocked 30d, target weight sits underweight until then"
-      }
-    ],
+    "sells": [],
     "buysNow": [
       {
         "sym": "VTI",
         "kind": "park",
-        "dollars": 876.43,
-        "shares": 2.4222,
-        "price": 361.83,
+        "dollars": 351.17,
+        "shares": 0.9474,
+        "price": 370.68,
         "pl": null,
-        "note": "waiting ground — holds $876.43 of deferred weight (AMZN, NVDA) in VTI instead of cash; released when they clear"
+        "note": "waiting ground — holds $351.17 of deferred weight (NVDA) in VTI instead of cash; released when they clear"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": -245.19,
-    "net": -245.19,
+    "realizedLoss": 0,
+    "net": 0,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
+      "sym": "NVDA",
+      "reason": "wash-sale",
+      "until": "2026-12-05"
+    },
+    {
+      "sym": "META",
+      "reason": "macro",
+      "until": "2026-11-10"
+    },
+    {
       "sym": "KO",
-      "reason": "above-entry",
-      "until": null
+      "reason": "macro",
+      "until": "2026-11-10"
     },
     {
       "sym": "MA",
-      "reason": "above-entry",
-      "until": null
+      "reason": "macro",
+      "until": "2026-11-10"
     },
     {
       "sym": "AMZN",
-      "reason": "wash-sale",
-      "until": "2026-11-06"
+      "reason": "macro",
+      "until": "2026-11-10"
     },
     {
-      "sym": "NVDA",
-      "reason": "wash-sale",
-      "until": null
+      "sym": "SPY",
+      "reason": "macro",
+      "until": "2026-11-10"
     }
   ],
-  "blockedSells": [
-    {
-      "sym": "V",
-      "kind": "trim",
-      "blocked": "min-hold",
-      "dollars": 360.44,
-      "shares": 0.8441,
-      "partial": false,
-      "pl": 10.1,
-      "plPct": 2.88,
-      "until": "2026-11-13",
-      "heldDays": 6,
-      "note": "all 2.5324 sh held were bought inside the 14d min-hold (2.5324 sh, latest 2026-10-30) — no older lot is free to sell yet; unlocks 2026-11-13"
-    }
-  ],
+  "blockedSells": [],
   "warnings": [
-    "$160.17 of deferred weight (KO, MA) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "4 name(s) deferred (KO, MA, AMZN, NVDA) — ~$1,496.75 of intended weight held pending earnings/re-verify/wash-sale",
-    "1 sell(s) held by the 14d min-hold (V) — churn guard: only the SHARES bought inside the window are held; older lots trim/exit normally (“part” = the rest of that name already sold this ticket)",
-    "entry zones are 8d old (target asOf 2026-10-28) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
-    "$876.43 of deferred weight parked in VTI rather than left in cash (AMZN, NVDA) — released when those names clear; unparking is a taxable ST sale"
+    "$672.7 of deferred weight (META, KO, MA, AMZN, SPY) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "6 name(s) deferred (NVDA, META, KO, MA, AMZN, SPY) — ~$1,795.33 of intended weight held pending earnings/re-verify/wash-sale",
+    "entry zones are 12d old (target asOf 2026-10-28) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
+    "fresh cash $702.34 arrived 0d ago — deploying a 50% tranche ($351.17) today and the rest one tranche per day over the next 3d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in",
+    "$351.17 of deferred weight parked in VTI rather than left in cash (NVDA) — released when those names clear; unparking is a taxable ST sale"
   ],
   "history": [
     {
-      "at": "2026-11-05",
+      "at": "2026-11-09",
       "to": "proposed"
     },
     {
-      "at": "2026-11-05",
+      "at": "2026-11-09",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-05",
-      "to": "sells-placed"
-    },
-    {
-      "at": "2026-11-05",
+      "at": "2026-11-09",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-05",
+      "at": "2026-11-09",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-05",
-  "sells-placedAt": "2026-11-05",
-  "buys-placedAt": "2026-11-05",
-  "doneAt": "2026-11-05",
-  "completedAt": "2026-11-05T19:23:19Z"
+  "confirmedAt": "2026-11-09",
+  "buys-placedAt": "2026-11-09",
+  "doneAt": "2026-11-09",
+  "completedAt": "2026-11-09T18:22:28.274Z"
 }

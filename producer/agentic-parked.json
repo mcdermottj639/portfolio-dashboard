@@ -1,9 +1,8 @@
 {
   "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 1258.81,
+  "dollars": 1609.98,
   "forNames": [
-    "AMZN",
     "NVDA"
   ],
   "since": "2026-10-08",
@@ -115,6 +114,15 @@
         "NVDA"
       ],
       "note": "Ticket 2026-11-05-cjuvh1 park leg: holds $876.43 of deferred weight (AMZN, NVDA) in VTI instead of cash; filled 2.4222 VTI @ $362.0199. NVDA newly wash-blocked by today's TLH harvest; AMZN continues its 2026-11-06 wash-block."
+    },
+    {
+      "date": "2026-11-09",
+      "action": "park",
+      "dollars": 351.17,
+      "forNames": [
+        "NVDA"
+      ],
+      "note": "Ticket 2026-11-09-ibklpn park leg: waiting ground — holds $351.17 of deferred weight (NVDA) in VTI instead of cash; released when they clear; filled 0.9474 VTI @ $370.5699."
     }
   ]
 }
