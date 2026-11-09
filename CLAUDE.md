@@ -1,3 +1,17 @@
+## v205 — The Confirm button carries the week's whole book, not only armed build rungs (2026-11-09)
+
+The first Monday v2.2 scan (Nov 9) landed, but on the real book (1.25x, above the 1.2x reload line) no build rung
+fires, and drift rows carry no ticket — so `portfolioButton` counted **0 orders and hid the button** on the morning it
+was built for, while the research had real changes (S 3% → 16.2%, ZS 2% → 14.5%, new SNPS 16.1%, PLTR 9% → 13.3%,
+AMZN dropped). New pure **`Apex.bookGaps(st, out, cfg)`**: **ADD** for a target name ≥ 2 pts under its weight that is
+not already a build rung (with the research entry · limit · target · stop · R/R from `cfg.levels`), **EXIT** for a held
+non-core name absent from `cfg.targets`. Never the core (IREN, owner-managed), never a wash-window name (it stays the
+TAX HOLD line). Both feed `portfolioPrompt` and the button's order count; Claude still checks each line live
+(YES/WAIT/NO). Also: `data/apex-targets.json` refreshed from Jarvis `os/apex-targets` (Nov 9, rules v2.2) — the
+scan's own copy hit a 403 again (the repo is not a source on that scheduled task). Files: `ui/apex.js`,
+`producer/apex.test.mjs` (49/49, +1 replaying the Nov 9 book), `data/apex-targets.json`, `index.html`, `sw.js`.
+App/cache **v205 / pf-v205**.
+
 ## 2026-11-09 — Open Daily Picks keep getting prices: a `pick` fetch outside the YTD cap + dated quote closes
 
 Jack (Nov 9 01:54 ET, screenshot of the Track Record: BAC/T/NFLX Oct 23–26 and CMCSA Oct 7 "Not graded — no

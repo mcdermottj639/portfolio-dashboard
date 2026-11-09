@@ -376,6 +376,25 @@
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
   }
 
+  /* v205 (Nov 9 2026, first Monday v2.2 book): the week's book is NOT only armed build rungs. Builds fire only under
+     1.2x, so a book already at 1.25x with half-filled names and a new target name produced ZERO countable orders and
+     the Confirm button vanished on the very morning it was meant for. bookGaps() reads the gap between what is held
+     and the research target: ADD for a target name ≥ 2 pts under its weight (not already a build rung), EXIT for a
+     held non-core name the research dropped. Proposals only — Claude still checks each one live. */
+  function bookGaps(st, out, cfg) {
+    const eq = st.equity > 0 ? st.equity : 0; if (!eq) return { adds: [], exits: [] };
+    const built = new Set((out || []).filter((r) => r.kind === 'build' && r.levels).map((r) => r.levels.sym));
+    const held = {}; (st.positions || []).forEach((p) => { held[p.symbol] = p; });
+    const adds = [], exits = [];
+    Object.keys(cfg.targets || {}).forEach((sym) => {
+      if (sym === cfg.core || built.has(sym) || (cfg.wash && cfg.wash[sym] && cfg.wash[sym].clear)) return;
+      const tgt = +cfg.targets[sym] || 0, p = held[sym], have = p ? (p.qty * p.px) / eq * 100 : 0;
+      if (tgt - have >= 2) adds.push({ sym, have, tgt, dollars: (tgt - have) / 100 * eq, lv: levelsFor(cfg, sym) });
+    });
+    (st.positions || []).forEach((p) => { if (p.symbol !== cfg.core && !(cfg.targets || {})[p.symbol] && p.qty > 0) exits.push({ sym: p.symbol, qty: p.qty, px: p.px }); });
+    return { adds, exits };
+  }
+
   /* v199 (Jack, Nov 8 22:33 ET: "full recommended portfolios … the research feeds me the new portfolio each week and
      I one click to confirm"): ONE button on the Apex card opens a Claude chat that checks the WHOLE proposed book
      against live Robinhood data and returns the complete order set — YES / WAIT / NO per name, sized, with prices.
@@ -392,7 +411,10 @@
       ...(cfg.wash && Object.keys(cfg.wash).some((s) => cfg.targets[s] && cfg.wash[s] && cfg.wash[s].clear) ? ['TAX HOLD (wash sale — sold at a loss inside 30 days): ' + Object.keys(cfg.wash).filter((s) => cfg.targets[s] && cfg.wash[s] && cfg.wash[s].clear).map((s) => s + ' until ' + cfg.wash[s].clear).join(' · ') + ' — WAIT; no buy before that date.'] : []), '',
       'Proposed buys (armed buy-stop-limits from this week\u2019s research; levels from a static snapshot — re-check live):'];
     builds.forEach((r) => { const t = r.levels; L.push(`• BUY ${t.qty > 0 ? t.qty + ' sh ' : ''}${t.sym}${t.name ? ' (' + t.name + ')' : ''} — trigger ${f(t.trigger)} · limit ${f(t.limit)} · target ${f(t.tp1)} · stop ${f(t.stop)}${t.rr != null ? ' · scan R/R ' + (+t.rr).toFixed(2) : ''}${r.lowRR ? ' · BELOW 1.5 R/R floor at this entry' : ''}`); });
-    if (!builds.length) L.push('• (none armed this pass)');
+    const gaps = bookGaps(st, out, cfg);
+    gaps.adds.forEach((g) => { const t = g.lv; L.push(`• ADD ${g.sym}${t && t.name ? ' (' + t.name + ')' : ''} — held ${g.have.toFixed(1)}% → target ${g.tgt.toFixed(1)}% of equity (≈ $${k(g.dollars)})${t ? ` · research entry ${f(t.trigger)} · limit ${f(t.limit)} · target ${f(t.tp1)} · stop ${f(t.stop)}${t.rr != null ? ' · R/R at limit ' + t.rr.toFixed(2) + (t.rr < C.RR_MIN ? ' (BELOW 1.5 floor)' : '') : ''}` : ''}`); });
+    if (!builds.length && !gaps.adds.length) L.push('• (none this pass)');
+    if (gaps.exits.length) { L.push('', 'Held names the research DROPPED this week (exit unless you tell me otherwise — check the wash-sale window and earnings first):'); gaps.exits.forEach((g) => L.push(`• SELL ${g.qty} ${g.sym} — last ${f(g.px)}`)); }
     if (sells.length) { L.push('', 'Proposed sells / trims from the rules:'); sells.forEach((r) => L.push(`• SELL ${r.ticket.qty} ${r.ticket.sym} — ${r.ticket.px ? 'limit ' + f(r.ticket.px) : 'market'}${r.ticket.gtc ? ' GTC' : ''} — ${r.title}`)); }
     const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
     if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f(r.stop)}`).join('; ')); }
@@ -401,7 +423,8 @@
     return L.join('\n');
   }
   function portfolioButton(st, out, cfg, research) {
-    const n = (out || []).filter((r) => r.kind === 'build' && r.levels).length + (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').length;
+    const g = bookGaps(st, out, cfg);
+    const n = (out || []).filter((r) => r.kind === 'build' && r.levels).length + (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').length + g.adds.length + g.exits.length;
     if (!n) return '';
     return `<a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div>`;
   }
@@ -484,5 +507,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt, bookGaps };
 });
