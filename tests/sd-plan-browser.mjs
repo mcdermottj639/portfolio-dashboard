@@ -33,7 +33,10 @@ try {
   });
   assert.ok(actualRange,'synthetic preview exercises the real momentum pipeline');
   assert.equal(actualRange.got,actualRange.want,'observed price range reaches the consumer');
-  const render=async(mode)=>page.evaluate(mode=>{
+  // v202: Apex runs the book by default. `apex=false` (the default here) drives the retired August plan, which the
+  // assertions below were written for; the Apex-run plan gets its own section further down.
+  const render=async(mode,apex=false)=>page.evaluate(([mode,apex])=>{
+    window.SD_APEX_RUNS=apex?undefined:false;
     const m={sym:'MSFT',px:100,score:8,rank:8,tier:'core',fromHi20:-10,vol:20,atr:2,s50:90,s100:85,range20:12,theme:'megacap-software'};
     if(mode==='weak')m.score=m.rank=4.9;
     if(mode==='extended'){m.score=m.rank=9.5;m.fromHi20=0;}
@@ -44,7 +47,7 @@ try {
     window.__DATA.options={positions:[],orders:[]};
     window.__SNAP.stats={totalVal:10000,cashVal:mode==='unfunded'?-8000:1000,bpVal:1000};
     renderActionPlan([],[],10000,null,{},mode==='no-target'?{}:{MSFT:{AnalystTargetPrice:130}},{},{});
-  },mode);
+  },[mode,apex]);
   await render('funded');
   assert.equal(await page.locator('#sd-stock-ideas .sd-idea[data-status="ready"]').count(),1);
   assert.match(await page.locator('#plan-content').innerText(),/buy ~[1-9]\d* sh MSFT/);
@@ -81,9 +84,57 @@ try {
   await page.evaluate(()=>document.documentElement.setAttribute('data-theme','gold'));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   if(process.env.PF_SCREENSHOT_DIR)await page.locator('#sd-stock-ideas').screenshot({path:path.join(process.env.PF_SCREENSHOT_DIR,'stock-ideas-midnight-mobile.png')});
+  // ── v202 · Apex runs the book (the default) ──────────────────────────────────────────────────────────────
+  await page.evaluate(()=>{ document.documentElement.removeAttribute('data-theme'); window.SD_APEX_RUNS=undefined; renderPicksStatic(); });   // the page order is chosen at render time
+  await render('funded',true);
+  const apexPlan=await page.locator('#plan-content').innerText();
+  assert.match(apexPlan,/Buys come from the Apex book above/,'Step 2 points at Apex');
+  assert.match(apexPlan,/Margin posture — Apex's band/);
+  assert.match(apexPlan,/Leverage band/,'guardrails are Apex rules');
+  assert.doesNotMatch(apexPlan,/buy ~\d+ sh MSFT/,'the plan sizes no buys');
+  assert.doesNotMatch(apexPlan,/Press room|cruise band|70% ceiling/,'no credit-line bands');
+  assert.equal(await page.getByText('Confirm this buy with Claude',{exact:false}).count(),0,'no SD buy button');
+  assert.equal(await page.locator('#plan-content #sd-stock-ideas').count(),0,'ideas left the plan');
+  // the section rail re-ids every .card (navc-N), so the fold is found by its data attribute, its body by id
+  const foldOpen=()=>page.evaluate(()=>document.getElementById('sd-other-body').style.display!=='none');
+  assert.equal(await foldOpen(),false,'Other screens starts folded');
+  assert.equal(await page.locator('[data-sd-other] #sd-stock-ideas .sd-idea[data-status="ready"]').count(),1,'momentum idea kept in the fold, with no funding state');
+  assert.match(await page.locator('[data-sd-other] #sd-stock-ideas .col-title').textContent(),/watchlist, not buys/);
+  assert.equal(await page.locator('[data-sd-other] #picks-cards').count(),1,'oversold Top 3 lives in the fold');
+  assert.match(await page.locator('#picks-app').textContent(),/oversold screen — not your Apex plan/);
+  assert.equal(await page.locator('#sd-stock-ideas').isVisible(),false,'folded = hidden');
+  await page.locator('[data-sd-other] > .card-title').click();
+  assert.equal(await foldOpen(),true,'tap opens the fold');
+  for(const width of [320,390,768,1440]){
+    await page.setViewportSize({width,height:900});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Apex-run page: no horizontal overflow at '+width);
+    assert.equal(await page.locator('#sd-stock-ideas').isVisible(),true);
+  }
+  await page.setViewportSize({width:390,height:844});
+  if(process.env.PF_SCREENSHOT_DIR){
+    fs.mkdirSync(process.env.PF_SCREENSHOT_DIR,{recursive:true});
+    await page.locator('#plan-content').screenshot({path:path.join(process.env.PF_SCREENSHOT_DIR,'apex-plan-mobile.png')});
+    await page.locator('[data-sd-other]').screenshot({path:path.join(process.env.PF_SCREENSHOT_DIR,'other-screens-mobile.png')});
+  }
+  // a section-rail / Find jump to a card inside the closed fold opens it
+  await page.locator('[data-sd-other] > .card-title').click();
+  assert.equal(await foldOpen(),false,'tap folds it again');
+  assert.equal(await page.evaluate(()=>{ const c=document.querySelector('#sd-other-body .card'); if(!c.id)c.id='t-fold-card'; window.__navJump(c.id); return document.getElementById('sd-other-body').style.display!=='none'; }),true,'a jump to a folded card opens the fold');
+  await render('wash',true);
+  assert.equal(await page.locator('[data-sd-other] .sd-idea[data-status="wash"]').count(),1,'tax hold still shown on the watchlist');
+  // Do-now under Apex: margin judged on Apex's band, earnings kept; RSI / +40% / size alerts belong to the retired plan
+  const feed=await page.evaluate(()=>{ const pos=[{symbol:'AAA',qty:10,px:100,val:1000,avg:50,pnlP:100,pct:50,dayP:1}], port={cash:'-9000',equity_value:'20000',total_value:'11000',buying_power:{buying_power:'1000'}};
+    window.SD_APEX_RUNS=undefined; const a=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag+':'+x.title);
+    window.SD_APEX_RUNS=false; const l=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag);
+    window.SD_APEX_RUNS=undefined; return {a,l}; });
+  assert.deepEqual(feed.a.map(x=>x.split(':')[0]),['MARGIN'],'Apex Do-now: margin only here');
+  assert.match(feed.a[0],/Over Apex's 1\.50× cap — 1\.82× leverage/,'20,000 ÷ 11,000 = 1.82× > 1.5×');
+  assert.ok(feed.l.includes('OVERBOUGHT'),'the retired plan still has its RSI alert');
+  await page.evaluate(()=>{ window.SD_APEX_RUNS=false; renderPicksStatic(); });
+  await render('funded');
   await page.locator('#sd-stock-ideas .sd-idea-link').click();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#page-analyze')).display!=='none');
   assert.equal(await page.locator('#az-ticker').inputValue(),'MSFT');
   assert.deepEqual(errors,[]);
-  console.log('PASS: funded buy, zero-funding research, tax/floor/entry/missing-target rejection, collapsed details, 320–1440px layout, privacy round-trip, Midnight and Analyze link');
+  console.log('PASS: funded buy, zero-funding research, tax/floor/entry/missing-target rejection, collapsed details, 320–1440px layout, privacy round-trip, Midnight and Analyze link; v202 Apex-run plan (Step 2 → Apex, Apex band, folded Other screens, jump-opens-fold, Apex Do-now)');
 }finally{await browser.close();}

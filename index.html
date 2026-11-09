@@ -136,6 +136,12 @@ html { overflow-x: clip; }
 .card-title.collapsible { cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
 .card-title.collapsible:hover { opacity: 0.75; }
 .chevron { font-size: 11px; color: #9ca3af; transition: transform 0.2s; margin-left: 8px; flex-shrink: 0; }
+/* v202 — "Other screens — not your Apex plan": one folded card holding the oversold screen's cards, which sit flat inside it. */
+.sd-other > .card-title { flex-wrap: nowrap; }
+.sd-other > .card-title > span:first-child { min-width: 0; }
+.sd-other-body > .card, .sd-other-body > .picks-hero { margin-left: 0; margin-right: 0; box-shadow: none; }
+.sd-other-body > .card { border: 1px solid rgba(0,0,0,.07); padding: 14px 12px; }
+@media (max-width:760px){ .sd-other { padding: 16px 12px; } .sd-other-body > .picks-hero { padding: 14px 14px; } }
 
 /* Snapshot row */
 .snap-grid { display:grid; grid-template-columns: repeat(5,1fr); gap:10px; }
@@ -709,10 +715,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=201">
-<link rel="stylesheet" href="ui/predictions.css?v=201">
-<link rel="stylesheet" href="ui/smartmoney.css?v=201">
-<link rel="stylesheet" href="ui/ticker.css?v=201">
+<link rel="stylesheet" href="ui/experience.css?v=202">
+<link rel="stylesheet" href="ui/predictions.css?v=202">
+<link rel="stylesheet" href="ui/smartmoney.css?v=202">
+<link rel="stylesheet" href="ui/ticker.css?v=202">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,9 +777,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=201"></script>
-<script src="ui/apex.js?v=201"></script>
-<script src="ui/business.js?v=201"></script>
+<script src="ui/sd-rules.js?v=202"></script>
+<script src="ui/apex.js?v=202"></script>
+<script src="ui/business.js?v=202"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -887,7 +893,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v201'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v202'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1572,8 +1578,9 @@ function buildKyleHTML(){
       +'<div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:'+(beta!=null&&beta>1.2?'#cf222e':'#1f2328')+'">'+betaTxt+'</div><div class="snap-sub">vs 1.00 market · '+cov+'% cov</div></div>'
       /* Figures unchanged (v116/v118 bases); only the verdict COLOUR follows the owner's bands
          (2026-08-25) — this book carries a loan by design, so painting any loan red said nothing. */
-      +(function(){ var kCol=mUse<=0?'#1a7f37':(kUtil==null?'#8c959f':(kUtil>SD_UTIL_MAX*100?'#cf222e':kUtil>SD_UTIL_CRUISE*100?'#bc4c00':'#1a7f37'));
-        return '<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:'+kCol+'">'+(mUse>0?mPct.toFixed(1)+'% · '+kLev.toFixed(2)+'\u00d7':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No borrowing')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:'+kCol+'"></div></div>':'')+(kUtil!=null?'<div class="snap-sub">'+kUtil.toFixed(1)+'% of '+fmtD(kLine)+' line · cruise '+(SD_UTIL_CRUISE*100).toFixed(0)+' / max '+(SD_UTIL_MAX*100).toFixed(0)+'</div>':'')+'</div>'; })()
+      +(function(){ var kApex=sdApexRuns(), kB=sdApexBand();   // v202: Apex's 1.35x/1.5x band judges leverage on this book
+        var kCol=mUse<=0?'#1a7f37':(kApex?(kLev>kB.cap?'#cf222e':kLev>kB.cruise?'#bc4c00':'#1a7f37'):(kUtil==null?'#8c959f':(kUtil>SD_UTIL_MAX*100?'#cf222e':kUtil>SD_UTIL_CRUISE*100?'#bc4c00':'#1a7f37')));
+        return '<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:'+kCol+'">'+(mUse>0?mPct.toFixed(1)+'% · '+kLev.toFixed(2)+'\u00d7':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No borrowing')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:'+kCol+'"></div></div>':'')+(kApex?(mUse>0?'<div class="snap-sub">Apex band: cruise '+kB.cruise.toFixed(2)+'\u00d7 / cap '+kB.cap.toFixed(2)+'\u00d7</div>':''):(kUtil!=null?'<div class="snap-sub">'+kUtil.toFixed(1)+'% of '+fmtD(kLine)+' line · cruise '+(SD_UTIL_CRUISE*100).toFixed(0)+' / max '+(SD_UTIL_MAX*100).toFixed(0)+'</div>':''))+'</div>'; })()
       +'</div><div class="snap" style="margin-top:8px"><div class="snap-lbl">Equity / Holdings / Buying Power</div><div class="snap-val">'+fmtD(netEq)+' <span style="font-size:13px;color:#8c959f;font-weight:600">equity</span> · '+fmtD(st.equityVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">holdings</span> · '+fmtD(st.bpVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">BP</span></div></div></div>'
     +'<div class="section"><div class="stitle">📈 Performance vs Benchmark <span class="badge">YTD</span></div><div class="card"><div class="perf3"><div><div class="p-l">Your holdings*</div><div class="p-v '+sc(P.portYTD)+'">'+pct(P.portYTD)+'</div></div><div><div class="p-l">Nasdaq (QQQ)</div><div class="p-v '+sc(P.qqqYTD)+'">'+pct(P.qqqYTD)+'</div></div><div><div class="p-l">S&amp;P 500 (SPY)</div><div class="p-v '+sc(P.spyYTD)+'">'+pct(P.spyYTD)+'</div></div></div><div class="chart-wrap"><canvas id="perf"></canvas></div><div class="legend-row"><span><span class="ldot" style="background:#6e40c9"></span>Your holdings</span><span><span class="ldot" style="background:#2da44e"></span>QQQ</span><span><span class="ldot" style="background:#9ca3af"></span>SPY</span></div><div class="note">*Price return of your top holdings ('+(S.perf?Math.round(S.perf.cov||cov):cov)+'% of equity) at current weights, indexed to Jan 1 — like-for-like vs the index, not a time-weighted account return.</div></div></div>'
     +'<div class="section"><div class="stitle">🛡️ Risk &amp; Concentration</div><div class="card"><div><span class="stress '+(beta!=null?'neg':'')+'">'+stress(-10)+'</span> <span style="font-size:12px;color:#656d76">est. move if the market falls 10%'+(beta!=null?' (beta '+betaTxt+')':'')+'</span></div><div class="scn-grid"><div class="scn"><div class="scn-l">Market −5%</div><div class="scn-v neg">'+stress(-5)+'</div></div><div class="scn"><div class="scn-l">Market −10%</div><div class="scn-v neg">'+stress(-10)+'</div></div><div class="scn"><div class="scn-l">Market −20%</div><div class="scn-v neg">'+stress(-20)+'</div></div></div><div class="rl"><span>Largest — <b>'+t1.symbol+'</b></span><b>'+t1p.toFixed(1)+'%</b></div><div class="rl"><span>2nd — <b>'+t2.symbol+'</b></span><b>'+t2p.toFixed(1)+'%</b></div><div class="rl"><span>Effective # of bets (1/HHI)</span><b>'+effN.toFixed(1)+' <span style="font-weight:400;color:#8c959f">of '+nPos+'</span></b></div></div>'
@@ -1631,7 +1638,7 @@ function renderSnapshot(stats, betaInfo, opts){
      painted this book permanently red at a level the owner deliberately runs. Colour now tracks the
      owner's BANDS on the line: red only over the ceiling, amber over cruise. With no line derivable
      the tile stays neutral rather than guessing a verdict. */
-  const mColor = mUse>0 ? sdUtilColor(mUtil!=null?mUtil/100:null) : '#10b981';
+  const mColor = mUse>0 ? (sdApexRuns()?sdApexLevColor(mLev):sdUtilColor(mUtil!=null?mUtil/100:null)) : '#10b981';   // v202: Apex's band colours the tile
   /* Unrealized vs YTD — two different questions, and conflating them is what made this tile
      misleading. `totalRet`/`totalPnL` is the unrealized mark on the lots you hold RIGHT NOW
      (cost basis of the current shares), so an account that just redeployed a deposit shows a
@@ -1883,7 +1890,23 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
      design is to carry one. */
   const M=sdMargin(equity,grossVal,cash,parseFloat((port.buying_power&&port.buying_power.buying_power)||0));
   const callTxt=M.callDrop!=null?`Est. margin-call distance ≈ a ${fmt(M.callDrop*100,0)}% uniform drop (25% maintenance).`:'';
-  if(M.debt>0){
+  /* v202: Apex runs this book, so Do-now speaks Apex's band (exposure ÷ equity, 1.35× cruise / 1.5× cap) and
+     keeps only what Apex does not already put on its card: margin and earnings. The size+weakness TRIM, RSI
+     OVERBOUGHT / oversold ADD, +40% TAKE PROFIT, CORRELATED and CROWDED alerts were a second rulebook (Apex
+     trims at +25%, stops at −25%, never adds on RSI) and stay with the old plan (window.SD_APEX_RUNS=false). */
+  const apexRuns=sdApexRuns();
+  if(apexRuns){
+    const B=sdApexBand(), lev=M.lev;
+    if(M.debt>0&&lev>B.cap){
+      add({pr:0,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'MARGIN',
+        title:`Over Apex's ${fmt(B.cap,2)}× cap — ${fmt(lev,2)}× leverage`,
+        detail:`No new buys. The Apex card above lists the sells into strength that bring the book back to ${fmt(B.cap,2)}× (proceeds pay the ${fmtD(M.debt)} loan). IREN stays your call.`});
+    } else if(M.debt>0&&lev>B.cruise){
+      add({pr:3,icon:'🟠',c:'#f97316',bg:'#ffedd5',fg:'#9a3412',tag:'MARGIN',
+        title:`Above Apex's ${fmt(B.cruise,2)}× cruise — ${fmt(lev,2)}× leverage`,
+        detail:`Inside the band, below the ${fmt(B.cap,2)}× cap — hold. Trims pay the ${fmtD(M.debt)} loan down toward ${fmt(B.cruise,2)}× before anything new.`});
+    }
+  } else if(M.debt>0){
     const lk=(typeof sdLockedShares==='function')?sdLockedShares():{};
     const freeOf=p=>Math.max(0,(+p.qty||0)-((lk[p.symbol]&&lk[p.symbol].shares)||0));
     const overLine=(M.util!=null)?(M.util>SD_UTIL_MAX?M.debt-SD_UTIL_MAX*M.line:0)
@@ -1914,12 +1937,13 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
               weak:!!((br&&br.broken)||(mm&&mm.score!=null&&mm.score<SD_MIN_SCORE))};
     }).filter(x=>x.weak).sort((a,b)=>b.pctEq-a.pctEq);
   const critSet=new Set(conc.map(x=>x.p.symbol));
-  for(const x of conc.slice(0,2)){ const p=x.p; const fpe=parseFloat(ovMap[p.symbol]?.ForwardPE)||null; const vN=fpe&&fpe>60?` Fwd P/E ${fmt(fpe,0)} adds valuation risk.`:'';
+  for(const x of (apexRuns?[]:conc.slice(0,2))){ const p=x.p; const fpe=parseFloat(ovMap[p.symbol]?.ForwardPE)||null; const vN=fpe&&fpe>60?` Fwd P/E ${fmt(fpe,0)} adds valuation risk.`:'';
     const wN=(x.br&&x.br.broken)?`its trend is broken (${x.br.why})`:`momentum is ${fmt(x.mm&&x.mm.score!=null?x.mm.score:0,1)}/10, under the ${fmt(SD_MIN_SCORE,1)} floor`;
     add({pr:1,icon:'🔴',c:'#ef4444',bg:'#fee2e2',fg:'#991b1b',tag:'TRIM',title:`${p.symbol} is ${fmt(x.pctEq,1)}% of equity and not leading`,
       detail:`Size isn't the problem here — size plus weakness is: ${wN}. A 20% drop in ${p.symbol} alone takes the account down ~${fmt(x.pctEq*0.2,1)}%.${vN}`}); }
   const upE=Object.entries(earningsMap||{}).filter(([s,e])=>enriched.find(p=>p.symbol===s&&p.val>=SMALL_THR)&&e.daysAway<=14).sort((a,b)=>a[1].daysAway-b[1].daysAway);
   for(const [s,e] of upE.slice(0,3)){ const p=enriched.find(x=>x.symbol===s); const u=e.daysAway<=3?'IMMINENT':e.daysAway<=7?'THIS WEEK':'UPCOMING'; add({pr:2,icon:'🗓️',c:'#6366f1',bg:'#ede9fe',fg:'#4c1d95',tag:'EARNINGS',title:`${s} reports in ${e.daysAway}d (${e.reportDate}) — ${u}`,detail:`You hold ${fmtD(p?.val||0)} (${fmt(p?.pct||0,1)}%). Decide: hold through, trim, or set a stop.${e.estimate?` Est EPS $${parseFloat(e.estimate).toFixed(2)}.`:''}`}); }
+  if(apexRuns){ A.sort((a,b)=>a.pr-b.pr); return A.slice(0,9); }   // v202: margin + earnings only — the rest is Apex's card
   const ob=[...enriched].filter(p=>rsiMap[p.symbol]>=72&&p.pct>3&&p.px>0&&!critSet.has(p.symbol)&&!sdOwnerHold(p.symbol)).sort((a,b)=>rsiMap[b.symbol]-rsiMap[a.symbol]);
   for(const p of ob.slice(0,2)){ add({pr:3,icon:'🟠',c:'#f97316',bg:'#ffedd5',fg:'#9a3412',tag:'OVERBOUGHT',title:`${p.symbol} RSI ${fmt(rsiMap[p.symbol],0)} — extended`,detail:`At ${fmt(p.pct,1)}% (${fmtD(p.val)}). Momentum is hot; consider trimming into strength rather than adding.`}); }
   const win=[...enriched].filter(p=>p.pnlP>40&&p.pct>4&&p.px>0&&!critSet.has(p.symbol)&&!sdOwnerHold(p.symbol)&&!(rsiMap[p.symbol]>=72)).sort((a,b)=>b.pnlP-a.pnlP);
@@ -2006,15 +2030,22 @@ function renderApexCard(S){
   const sma={}; Object.keys(S.smaMap||{}).forEach(k=>{ const m=S.smaMap[k]; const v=(m&&typeof m==='object')?m.s50:m; if(v!=null&&!isNaN(+v))sma[k]={s50:+v}; });
   /* v188: live prices for target names not held, so the build rule can size whole shares. */
   try{ const tg=cfg.targets; Object.keys(tg).forEach(k=>{ const q=(typeof azQuote==='function')?azQuote(k):null; const v=q?parseFloat(q.last_trade_price||q.last_extended_hours_trade_price||0):0; if(v>0){ sma[k]=Object.assign({},sma[k]||{},{px:v}); } }); }catch(_){}
+  /* v202: the wash-sale window reaches Apex. The same cross-account ledger the old plan used (sdWashMap: a loss in
+     either account inside 30 days) marks a target as a TAX HOLD — no build rung, a dated hold row, a 🚫 on its research
+     tile, and a WAIT line in the confirm-book prompt. Live case on Nov 8: a 14% target sat inside its wash window. */
+  try{ if(typeof sdWashMap==='function'){ const w=sdWashMap(); cfg.wash={}; Object.keys(w).forEach(s=>{ if(w[s]&&w[s].clear)cfg.wash[s]={clear:w[s].clear}; }); } }catch(_){}
   const out=Apex.rules(state,{cfg,smaMap:sma,earningsMap:S.earn||{},review});
   /* v188 research tiles: the SD momentum lens (freshness-gated sdMomentum) over SD_BENCH + holdings. */
   let research=null;
   try{
     if(T&&Array.isArray(T.top5)&&T.top5.length){
       const held=new Set(positions.map(p=>p.symbol)), tg=T.targets||{};
-      research={rows:T.top5.slice(0,5).filter(r=>r&&r.sym&&isFinite(+r.composite)).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null})),record:T.record||null,vetoed:T.vetoed||[]
+      /* v202: this week's TARGETS first (by score), then the best of the rest — a 14% target (PLTR, 6th by score) used to
+         lose its tile to two names the cluster cap had already blocked. */
+      const ranked=T.top5.filter(r=>r&&r.sym&&isFinite(+r.composite)).slice().sort((a,b)=>((tg[b.sym]?1:0)-(tg[a.sym]?1:0))||((+b.composite)-(+a.composite)));
+      research={rows:ranked.slice(0,5).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null,wash:(cfg.wash&&cfg.wash[r.sym])?cfg.wash[r.sym].clear:null})),record:T.record||null,vetoed:T.vetoed||[]
         ,asOf:T.asOf||'',source:`Weekly research · ${T.gatedCount||'?'}/${T.universeCount||'?'} passed the gates`,
-        note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. ⏳ = near its 20-day high (half size). News is a veto only. Buy tickets are in Jarvis.'};
+        note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. 🚫 = tax hold (wash sale). ⏳ = near its 20-day high (half size). News is a veto only. Buy tickets are in Jarvis.'};
     } else if(typeof sdMomentum==='function'&&typeof SD_BENCH==='object'){
       const held=new Set(positions.map(p=>p.symbol));
       const uni=[...new Set([...Object.keys(SD_BENCH),...held])];
@@ -2300,6 +2331,22 @@ const SD_FRESH_DAYS=10, SD_AGING_DAYS=35, SD_MIN_BARS=100, SD_AGING_CONF=0.75;
    levered book. This 5.0 stays as the "looked at" bar and the rotation-advisory cutoff. */
 const SD_MIN_SCORE=5.0;
 const SD_SINGLE_MAX_EQ=(typeof window!=='undefined'&&window.SD_SINGLE_MAX_EQ!=null)?window.SD_SINGLE_MAX_EQ:0.20;
+/* v202 — APEX RUNS THE SELF-DIRECTED BOOK (Jack, Nov 8 2026 ~23:05 ET, chose "Apex only" after a page review
+   found two rulebooks on ••0741: this plan's credit-line bands — cruise 50% / ceiling 70% of the line, which allow far
+   more borrowing than Apex's cap — against Apex's 1.35× cruise / 1.5× cap, plus three disagreeing pick lists). ONE leverage rule (Apex's
+   band, exposure ÷ equity) and ONE buy list (Apex's Monday research). This plan keeps only "cut what's broken";
+   its paydown, sleeves, borrowing, press room, rotation and peel-backs stop rendering; the Do-now feed keeps
+   Apex-band margin + earnings only; the momentum ideas and the oversold daily screen fold under "Other screens —
+   not your Apex plan". The old plan is one switch away (window.SD_APEX_RUNS=false), and the browser test runs
+   both. Band numbers are READ from ui/apex.js (Apex.C), never copied, so the two cannot drift. */
+function sdApexRuns(){ return !(typeof window!=='undefined'&&window.SD_APEX_RUNS===false); }
+function sdApexBand(){ const C=(typeof window!=='undefined'&&window.Apex&&window.Apex.C)||{}; return {cruise:C.LEV_NORMAL||1.35,cap:C.LEV_CAP||1.5,reload:C.LEV_RELOAD||1.2}; }
+function sdApexLevColor(lev){ const b=sdApexBand(); return !(lev>0)?'#10b981':lev>b.cap?'#ef4444':lev>b.cruise?'#f97316':'#10b981'; }
+/* "Other screens" opened: a chart drawn while folded (0×0) takes its real size now. */
+function sdOtherShown(){ try{ const b=document.getElementById('sd-other-body'); if(b&&b.style.display!=='none'&&typeof _picksChart!=='undefined'&&_picksChart)_picksChart.resize(); }catch(e){} }
+/* Scroll to the Apex card. Not by id: the section rail re-ids every card (navc-N) when it builds. */
+function sdScrollToApex(){ try{ const c=document.getElementById('apex-content'), card=c&&c.closest('.card'); if(!card)return;
+  if(card.id&&window.__navJump){ window.__navJump(card.id); return; } card.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
 
 /* ─── Momentum lens (consumer-side, reads only what the snapshot already has) ───
    Memoized per snapshot. Every component is optional and the weights renormalize
@@ -2460,17 +2507,18 @@ function sdLockedShares(){
          never by the oversold screen. Wash-blocked and broken names can't reach a buy ticket.
      3 · GUARDRAILS — the standing rulebook for a concentrated, levered, high-beta book.
    rsiMap/ovMap/earningsMap/smaMap stay optional decorators so this renders on the first pass. */
-function sdIdeasHtml(ideas){
+function sdIdeasHtml(ideas,opts){
+  const apex=!!(opts&&opts.apex);   // v202: under Apex these are a momentum WATCHLIST — Apex's research picks the buys
   const safe=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const price=p=>p!=null&&isFinite(p)?'$'+fmt(p,2):'Unavailable';
   const labels={ready:'Setup qualifies',funding:'Needs funding',wash:'Tax hold',trend:'Trend recovery',selling:'Sale planned',
     'name-cap':'Position at limit','cluster-full':'Theme at limit',entry:'Wait for pullback','below-floor':'Momentum watch',
     'entry-data':'Entry data missing','no-target':'Target unavailable',data:'Data incomplete',rr:'Reward/risk too low'};
-  return `<section id="sd-stock-ideas" class="sd-ideas" aria-label="Ranked stock ideas">
-    <div class="col-title">Stock ideas <span class="card-hint">· research first</span></div>
+  return `<section id="sd-stock-ideas" class="sd-ideas" aria-label="${apex?'Momentum watchlist':'Ranked stock ideas'}">
+    <div class="col-title">${apex?'Momentum ideas <span class="card-hint">· watchlist, not buys</span>':'Stock ideas <span class="card-hint">· research first</span>'}</div>
     ${ideas.length?ideas.map(({m,idea})=>{
       const sym=String(m.sym).replace(/[^A-Z0-9.\-]/g,'');
-      const reason={ready:'Entry and estimated reward/risk qualify. Funding, position limits and whole-share sizing still apply.',
+      const reason={ready:apex?'The momentum setup qualifies. A watchlist name, not an Apex pick — Apex\'s Monday research decides buys.':'Entry and estimated reward/risk qualify. Funding, position limits and whole-share sizing still apply.',
         funding:'Entry and estimated reward/risk qualify. The plan has no funds available under the current rules.',
         wash:'The app holds new buys until '+(idea.washUntil||'the tax window clears')+'. Recheck the setup then.',
         trend:'Wait for the trend to recover; this is not an active buy.',selling:'The current plan is selling this holding, so it will not add to it.',
@@ -2490,7 +2538,7 @@ function sdIdeasHtml(ideas){
         <div class="sd-idea-reason">${safe(reason)}${m.stale?' History is aging; refresh before acting.':''}</div>
       </details>`;
     }).join(''):'<p class="sd-idea-reason">No candidates have enough current data to rank. Refresh the research inputs.</p>'}
-    <details class="cov-note"><summary style="cursor:pointer">How ideas are ranked &amp; targets estimated</summary><p>Qualifying setups first, then the strongest momentum candidates to watch. These ideas stay visible when funding is unavailable; quantities appear only in a funded plan. Targets use 1.5× the observed 20-session closing-price range and analyst consensus where available, taking the lower estimate and capping it at 3× stop risk. They are not return forecasts. Recheck prices before placing an order.</p></details>
+    <details class="cov-note"><summary style="cursor:pointer">How ideas are ranked &amp; targets estimated</summary><p>${apex?'Qualifying setups first, then the strongest momentum candidates to watch. A watchlist only — nothing here is sized or bought; Apex\'s Monday research picks the buys. A 3.0:1 R/R means the 3× stop-risk cap set the target, not a measured level.':'Qualifying setups first, then the strongest momentum candidates to watch. These ideas stay visible when funding is unavailable; quantities appear only in a funded plan.'} Targets use 1.5× the observed 20-session closing-price range and analyst consensus where available, taking the lower estimate and capping it at 3× stop risk. They are not return forecasts. Recheck prices before placing an order.</p></details>
   </section>`;
 }
 function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap, earningsMap, smaMap){
@@ -2508,6 +2556,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const lev=equity>0?exposure/equity:0;
   const beta=(betaInfo&&betaInfo.beta!=null)?betaInfo.beta:null;
   const wash=sdWashMap();
+  const apexRuns=sdApexRuns();   // v202: Apex's band + Apex's buy list run this book; this plan keeps "cut what's broken"
 
   /* ── 1 · Classify every holding: broken (exit) vs intact (hold) ─────────────────────────── */
   /* v201 (Jack, Nov 8 22:38 ET: "stop telling me to sell the iren to clear margin … I'll handle the iren"): owner-managed
@@ -2541,7 +2590,8 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
      reduces collateral, so the real line moves down with it. */
   const M=sdMargin(equity,exposure,cashVal,bpVal);
   const utilKnown=M.util!=null;
-  const payNeed=utilKnown ? Math.max(0,M.debt-SD_UTIL_MAX*M.line)
+  const payNeed=apexRuns ? 0   // v202: de-levering is Apex's (1.5× cap, risk guard) — this band no longer forces a sale
+              : utilKnown ? Math.max(0,M.debt-SD_UTIL_MAX*M.line)
                           : Math.max(0,exposure-SD_LEV_FALLBACK*equity);   // no line ⇒ fallback ceiling, and the UI says so
   const soldVal={};                 // symbol → dollars sold in 1b, so the buy legs size against the right book
   const payRows=[]; let payShort=0;
@@ -2740,7 +2790,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const ideaClusters=SR&&SR.clusterAfterFrom?SR.clusterAfterFrom(baseAfter):{};
   const ideaNames=scored.map(m=>byTier.asym.some(p=>p.sym===m.sym)?{...m,tier:'asym'}:m);
   const ideas=SR&&SR.ideaOf?ideaNames.map(m=>({m,idea:SR.ideaOf(m,{
-    street:streetOf(m.sym),funded:m.tier==='asym'?((freed-payDown)+cashAvail)>0:pool>0,washUntil:wash[m.sym]&&wash[m.sym].clear,
+    street:streetOf(m.sym),funded:apexRuns?true:(m.tier==='asym'?((freed-payDown)+cashAvail)>0:pool>0),washUntil:wash[m.sym]&&wash[m.sym].clear,   // v202: a watchlist has no funding state
     broken:sdBroken(m.sym,0).broken,selling:sellingNow.has(m.sym),
     nameFull:(baseAfter[m.sym]||0)>=SR.nameCapDollars(equity,ideaExposure),
     themeFull:(ideaClusters[m.theme||SR.themeOf(m.sym)]||0)>=SR.clusterCapDollars(ideaExposure)
@@ -2768,7 +2818,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     ? {from:rotFrom,to:rotTo,dollars:sellableOf(rotFrom.p)*rotFrom.p.px} : null;
   // Badge any buy that is ALSO one of today's vetted picks, so the Top-3 cards can say so.
   try{ const m={}; const pk=new Set(((typeof PICK_PICKS!=='undefined'&&Array.isArray(PICK_PICKS))?PICK_PICKS:[]).map(p=>p&&p.ticker));
-    buys.forEach(o=>{ if(pk.has(o.sym))m[o.sym]={rank:null,shares:o.qty,dollars:o.qty*o.limit}; });
+    if(!apexRuns) buys.forEach(o=>{ if(pk.has(o.sym))m[o.sym]={rank:null,shares:o.qty,dollars:o.qty*o.limit}; });   // v202: no Step 2 buys when Apex runs
     window.__PLAN_ADDS=m; if(document.getElementById('picks-cards')&&typeof renderPicksCards==='function')renderPicksCards();
   }catch(e){}
 
@@ -2777,7 +2827,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
      "your largest position", and quoting it as one contradicted the trim table right above it. */
   const top=keep.map(r=>r.p).sort((a,b)=>b.val-a.val), t1=top[0]||null;
   const houseMoney=held.filter(p=>p.avg>0&&p.px>=p.avg*SD_HOUSE_MONEY).sort((a,b)=>b.val-a.val);
-  const trimAdv=keep.map(r=>{
+  const trimAdv=apexRuns?[]:keep.map(r=>{   // v202: trims come from the Apex card (+25% / +50% from cost), not peel-backs
     if(r.owner) return null;   // v201: owner-managed — no peel-back advice
     if(!(SR&&typeof SR.trimAdvice==='function')) return null;
     const t=SR.trimAdvice({val:r.p.val,avg:r.p.avg,px:r.p.px},equity);
@@ -2808,8 +2858,104 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       ${aiVal>0?cBar('AI / compute complex',equity>0?aiVal/equity*100:0,`${fmtD(aiVal)} · ${fmt(exposure>0?aiVal/exposure*100:0,0)}% of exposure after planned sells · one macro bet, by design`):''}
       <div class="cb-key"><span><em></em> 20% new-money cap</span>${cScale>100?'<span><em class="cb-eq"></em> 100% = your equity</span>':''}<span>measured after the planned sells</span></div>
       ${trimAdv.length?`<div class="sd-chips sd-chips-row">${trimAdv.map(({r,t})=>`<span class="warn">✂️ ${r.p.symbol} peel ≈ ${fmtD(t.peel)} → ${fmt(SD_SINGLE_MAX_EQ?SD_SINGLE_MAX_EQ*100:20,0)}%</span>`).join('')}<span>advisory · not an order</span></div>`:''}
-      <details class="sd-more"><summary>Why size alone never sells</summary><p>No sell is generated from size alone — that was the 2026-08-25 lesson. New money is a different question: a name already past 20% of equity will not be added to (the tick on each bar), and a name past 25% of equity or +25% from cost is flagged as a peel-back to target weight, not as an exit.${trimAdv.length?' '+trimAdv.map(({r,t})=>`${r.p.symbol}: ${t.why}.`).join(' '):''}</p></details>
+      <details class="sd-more"><summary>Why size alone never sells</summary><p>${apexRuns?`No sell is generated from size alone. New buys stop at 20% of equity per name (the tick on each bar). Trims and stops come from the Apex card: +25% from cost trims a quarter, −25% exits — and IREN is your call.`:`No sell is generated from size alone — that was the 2026-08-25 lesson. New money is a different question: a name already past 20% of equity will not be added to (the tick on each bar), and a name past 25% of equity or +25% from cost is flagged as a peel-back to target weight, not as an exit.${trimAdv.length?' '+trimAdv.map(({r,t})=>`${r.p.symbol}: ${t.why}.`).join(' '):''}`}</p></details>
     </div>`;
+  /* v202 — Step 1's pieces are shared by the old plan and the Apex-run plan (same output, defined once). */
+  const step1ExitsHtml=`
+    <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
+    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
+    ${exits.length
+      ? `<div class="xr-list">${exits.map(r=>`<details class="xr-row"><summary><span class="xr-tk">${r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span> sh</b><small>@ ${P(r.p.px)} · ${fmtD(r.sellVal)}${r.lock?` · 🔒 <span data-priv="val">${fmt(r.lock.shares,0)}</span> held`:''}</small></span><span class="xr-pl ${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span><i class="oh-chev"></i></summary><p>${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</p></details>`).join('')}${exits.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(exitProceeds)} proceeds</span><b class="${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</b></div>`:''}</div>`
+      : (lockedExits.length
+        /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
+           reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
+        ? `<div class="tech-empty">${lockedExits.map(r=>r.p.symbol).join(', ')} ${lockedExits.length===1?'reads':'read'} broken, but every share is collateral for your covered calls — see below for how to unwind it. Nothing else here is broken.</div>`
+        : `<div class="sd-verdict ok">✓ Nothing is broken${rows.length?` — ${rows.length} holding${rows.length===1?'':'s'} checked`:''}</div><details class="sd-more"><summary>What counts as broken</summary><div class="fund-note">${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div></details>`)}`;
+  const lockedBoxHtml=`
+    ${(lockedExits.length||payShort>0)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
+      <b>🔒 Held back by your own covered calls.</b>
+      ${lockedExits.map(r=>`<div style="padding:3px 0">${r.p.symbol} reads broken, but all ${fmt(r.p.qty,2)} sh back ${r.lock?r.lock.contracts:0} short call${r.lock&&r.lock.contracts===1?'':'s'}${r.lock&&r.lock.legs[0]?` ($${r.lock.legs[0].strike} exp ${r.lock.legs[0].expiration})`:''}. To exit, <b>buy the call${r.lock&&r.lock.contracts===1?'':'s'} back first</b> (or let ${r.lock&&r.lock.contracts===1?'it':'them'} expire), then sell the shares — selling first leaves you short naked calls.</div>`).join('')}
+      ${payShort>0?`<div style="padding:3px 0">${fmtD(payShort)} of the margin paydown can't be raised — the remaining shares are pledged to your short calls${Object.keys(locked).length?` (${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')})`:''}. Roll or close them to free the stock; until then the loan stays above your ${fmt(SD_UTIL_MAX*100,0)}% ceiling.</div>`:''}
+    </div>`:''}`;
+  const step1TailHtml=`
+    ${(exits.length||payRows.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
+    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,`Cut broken theses${payRows.length?` and raise ≈ ${fmtD(payNeed)} to get back under the ${fmt(SD_UTIL_MAX*100,0)}% margin-line ceiling`:''} in the self-directed account`),'✅ Confirm '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}`;
+  /* ── v202 · Apex runs this book ─────────────────────────────────────────────────────────────
+     Same Step 1 (broken theses + covered-call locks + the sell confirm), measured on Apex's band;
+     Step 2 is a pointer to the Apex card; Step 3 is Apex's rulebook. The momentum ideas and the
+     "why waiting" detail move into the "Other screens — not your Apex plan" fold. */
+  const ideasFold=document.getElementById('sd-ideas-content');
+  if(apexRuns){
+    const B=sdApexBand(), AC=(window.Apex&&window.Apex.C)||{};
+    const rrMin=AC.RR_MIN||1.5, capEq=Math.round((AC.SINGLE_MAX_EQ||0.20)*100), trimG=Math.round((AC.TRIM_GAIN||0.25)*100),
+          trimG2=Math.round((AC.TRIM_GAIN_2||0.50)*100), trimF=Math.round((AC.TRIM_FRAC||0.25)*100), stopP=Math.round((AC.STOP||0.25)*100), earnD=AC.EARN_DAYS||3;
+    const levCol=sdApexLevColor(lev), overCap=M.debt>0&&lev>B.cap, aboveCruise=!overCap&&M.debt>0&&lev>B.cruise;
+    const roomCruise=Math.max(0,B.cruise*equity-exposure), pastCap=Math.max(0,exposure-B.cap*equity);
+    const washList=Object.keys(wash).sort().map(s=>`${s} to ${wash[s].clear}`);
+    const verdict=overCap?`⚠️ Over Apex's ${fmt(B.cap,2)}× cap — the Apex card sells into strength`:aboveCruise?`✓ Inside Apex's band, above ${fmt(B.cruise,2)}× cruise — hold`:`✓ Under Apex's ${fmt(B.cruise,2)}× cruise — Apex can build`;
+    // the numbers (leverage, debt, room to cruise / past the cap) are the tiles just above — the posture is the verdict
+    const posture=`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Margin posture — Apex's band</div>
+      <div class="sd-verdict ${overCap?'bad':'ok'}">${verdict}</div>
+      <details class="sd-more"><summary>How margin is measured</summary><p>Leverage = stock ÷ equity (${fmtD(exposure)} ÷ ${fmtD(equity)}). Apex cruises at ${fmt(B.cruise,2)}× and caps at ${fmt(B.cap,2)}×; its risk guard and cushion to call use Robinhood's per-stock maintenance and sit on the Apex card. ${utilKnown?`Robinhood's line view, for reference only: ${fmt(utilPct,1)}% of your ${fmtD(M.line)} line is in use — it no longer drives any rule here.`:''}</p></details>`;
+    const whyWait=(washStrip||blocked.length||belowBar.length||extendedBar.length||abstained.length)?`<details style="margin:10px 0 12px"><summary style="cursor:pointer;font-size:12px;font-weight:700">Why other names aren't on the list</summary>
+      ${washStrip}
+      ${blocked.length?`<div class="fund-note" style="margin-top:8px">⏸ <b>Held back</b> — ${blocked.map(b=>b.kind==='wash'?`<b>${b.sym}</b> wash-sale to ${b.t.clear}`:`<b>${b.sym}</b> broken trend`).join(' · ')}.</div>`:''}
+      ${belowBar.length?`<div class="cov-note" style="margin-top:6px">Under the momentum floor (core 7.0 / sat 7.5) — ${belowBar.slice(0,10).sort((a,b)=>b.score-a.score).map(m=>`${m.sym} <span style="opacity:.7">${fmt(m.score,1)}</span>`).join(', ')}${belowBar.length>10?`, +${belowBar.length-10} more`:''}.</div>`:''}
+      ${extendedBar.length?`<div class="cov-note" style="margin-top:6px">At the 20-day high (entry gate) — ${extendedBar.slice(0,10).sort((a,b)=>b.score-a.score).map(m=>`${m.sym} <span style="opacity:.7">${fmt(m.score,1)} · ${m.fromHi20!=null?fmt(Math.abs(m.fromHi20),1)+'% off 20d':''}</span>`).join(', ')}.</div>`:''}
+      ${abstained.length?`<div class="cov-note" style="margin-top:6px">📉 ${abstained.length} bench name${abstained.length===1?'':'s'} sat out for want of current data — ${abstained.slice(0,8).map(a=>`${a.sym} <span style="opacity:.7">(${a.reason})</span>`).join(', ')}${abstained.length>8?`, +${abstained.length-8} more`:''}.</div>`:''}
+    </details>`:'';
+    if(ideasFold) ideasFold.innerHTML=sdIdeasHtml(ideas,{apex:true})+whyWait;
+    el.innerHTML=`
+    <details class="box-info sd-fold" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px"><summary><b>🎯 Mandate: Apex — concentrated growth on margin</b><span class="sd-chips"><span>${fmt(B.cruise,2)}× / ${fmt(B.cap,2)}×</span><span>IREN your call</span><span>research picks</span>${beta!=null?`<span>β ${fmt(beta,2)}</span>`:''}</span><i class="oh-chev"></i></summary><div class="sd-fold-body">
+      <b>Apex runs this book.</b> The IREN core (owner-managed — your call) plus up to 4 names picked by Monday's research, built toward ${fmt(B.cruise,2)}× leverage with a ${fmt(B.cap,2)}× cap. Buys, trims, stops and de-levering come from the <span class="dp-link" onclick="sdScrollToApex()">Apex card</span>; this plan only flags <b>broken theses</b> — a rolled-over trend or a −${stopP}% stop. The August plan's credit-line bands (cruise ${fmt(SD_UTIL_CRUISE*100,0)}% / ceiling ${fmt(SD_UTIL_MAX*100,0)}% of the line) are retired: they allowed far more borrowing than Apex's cap. Its momentum list is folded at the bottom as a watchlist.${beta!=null?` Book beta ≈ <b>${fmt(beta,2)}</b> — a 10% SPY drop ≈ ${fmtP(-10*beta)}.`:''}
+    </div></details>
+
+    <div class="snap-grid" style="margin-bottom:12px">
+      <div class="snap"><div class="snap-lbl">Exposure</div><div class="snap-val">${fmtD(exposure)}</div><div class="snap-sub">what the book controls</div></div>
+      <div class="snap"><div class="snap-lbl">Your equity</div><div class="snap-val">${fmtD(equity)}</div><div class="snap-sub">what you actually own</div></div>
+      <div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:${levCol}">${fmt(lev,2)}×</div><div class="snap-sub">Apex band ${fmt(B.cruise,2)}× / ${fmt(B.cap,2)}×</div></div>
+      <div class="snap"><div class="snap-lbl">${onMargin?'Margin debt':'Idle cash'}</div><div class="snap-val">${fmtD(onMargin?debt:cashAvail)}</div><div class="snap-sub">${pastCap>0?`${fmtD(pastCap)} past the ${fmt(B.cap,2)}× cap`:`${fmtD(roomCruise)} room to ${fmt(B.cruise,2)}×`}</div></div>
+    </div>
+
+${step1ExitsHtml}
+    ${posture}
+    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Concentration — reported, not policed</div>
+    ${concRows.length||aiVal>0
+      ? concHtml
+      : `<div class="tech-empty">No holding is above ${fmt(SD_CONC_FLAG*100,0)}% of equity.${t1?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}%.`:''}</div>`}
+${lockedBoxHtml}
+${step1TailHtml}
+
+    <div class="col-title" style="margin-top:14px">2 · Deploy <span class="card-hint">(buys come from Apex)</span></div>
+    <div class="sd-verdict ok" data-sd-apex-deploy>↑ Buys come from the Apex book above</div>
+    <div class="fund-note">Apex's Monday research picks the names and sizes them toward ${fmt(B.cruise,2)}×, never past ${fmt(B.cap,2)}×; its <b>✅ Confirm this week's Apex book</b> button re-checks every line live. This plan no longer borrows or sizes buys on its own. <span class="dp-link" onclick="sdScrollToApex()">Open the Apex card ↑</span></div>
+
+    <div class="col-title" style="margin-top:14px">3 · Guardrails <span class="card-hint">(Apex's rules · tap for the why)</span></div>
+    ${sdGuardrails([
+      {ic:'📏',t:'Leverage band',chip:`${fmt(lev,2)}× of ${fmt(B.cap,2)}×`,tone:overCap?'bad':aboveCruise?'warn':'ok',
+       b:`Stock ÷ equity. Apex cruises at ${fmt(B.cruise,2)}× and caps at ${fmt(B.cap,2)}×: over the cap there are no new buys and the Apex card sells into strength back to it; under ${fmt(B.reload,2)}× with ⅔ of names above their 50-day it may reload toward ${fmt(B.cruise,2)}×. Now ${fmt(lev,2)}×.`},
+      {ic:'🛡️',t:'Risk guard',chip:'maint + 5',tone:'ok',
+       b:`If equity falls under the maintenance requirement + 5 points of the stock book (Robinhood's per-stock figures), Apex sells non-IREN names until it is back at + 10 points. The live line is on the Apex card.`},
+      {ic:'🔒',t:'Keep call collateral',chip:Object.keys(locked).length?Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · '):'none pledged',tone:Object.keys(locked).length?'warn':'ok',
+       b:`Shares backing a short call are what make it covered; sell them and the call goes naked, with open-ended risk above the strike. Buy the call back or roll it first, then sell the stock.`},
+      {ic:'🧺',t:'Size limits',chip:`${capEq}% · 45% AI`,tone:'ok',
+       b:`New buys stop at ${capEq}% of equity per name. Monday's research caps the AI/compute cluster at 45% of equity (IREN counted at its real value) and takes at most 2 names per theme. Nothing sells for size.`},
+      {ic:'🎯',t:'R/R at entry',chip:`≥ ${fmt(rrMin,1)}`,tone:'ok',
+       b:`Reward ÷ risk is measured at the buy-stop limit — the worst fill — not yesterday's close. Under ${fmt(rrMin,1)} at that entry: no ticket.`},
+      {ic:'✂️',t:'Winner trims',chip:`+${trimG}% / +${trimG2}%`,tone:'ok',
+       b:`+${trimG}% from cost trims ${trimF}% (+${trimG2}% another ${trimF}%), banked against debt, with a trailing stop 15% under the high. Trims wait out an earnings print. Never IREN.`},
+      {ic:'🛑',t:'Stops',chip:`−${stopP}%`,tone:'ok',
+       b:`−${stopP}% from cost exits — no averaging down on margin. The broken-thesis test in step 1 can exit sooner. IREN is exempt — your call.`},
+      {ic:'🚫',t:'Tax holds',chip:washList.length?washList.map(x=>x.split(' ')[0]).join(' · '):'none',tone:washList.length?'warn':'ok',
+       b:`A name sold at a loss in either account can't be rebought for 30 days without a wash sale. Apex shows it as a tax hold and writes no buy until then.${washList.length?' Now: '+washList.join(' · ')+'.':''}`},
+      {ic:'📅',t:'Earnings',chip:earnSoon.length?`${earnSoon[0].p.symbol} in ${earnSoon[0].e.daysAway}d`:'none ≤14d',tone:earnSoon.length?'warn':'ok',
+       b:`No adds within ${earnD} trading days of a print; trims wait until after it.${earnSoon.length?` ${earnSoon[0].p.symbol} reports in ${earnSoon[0].e.daysAway}d (${earnSoon[0].e.reportDate||'soon'}).`:''}`},
+      {ic:'🪨',t:'IREN',chip:'your call',tone:'ok',
+       b:`Owner-managed: no rule proposes selling, trimming or adding IREN. Apex builds the rest of the book around it and sizes buys down when room is short.`}
+    ])}`;
+    return;
+  }
+  if(ideasFold) ideasFold.innerHTML='';
   el.innerHTML=`
     <details class="box-info sd-fold" style="border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;margin-bottom:12px"><summary><b>🎯 Mandate: aggressive growth</b><span class="sd-chips"><span>cut broken, not red</span><span>margin ${fmt(SD_UTIL_CRUISE*100,0)}/${fmt(SD_UTIL_MAX*100,0)}</span>${beta!=null?`<span>β ${fmt(beta,2)}</span>`:''}</span><i class="oh-chev"></i></summary><div class="sd-fold-body">
       <b>Mandate: aggressive growth.</b> This book runs concentrated and high-beta on purpose — ballast, bonds and diversification are the <span class="dp-link" onclick="switchTab('portfolio')">agentic account's</span> job, not this one's. So the plan <b>cuts what's broken, not what's red</b>, and redeploys into momentum leadership rather than into the oversold screen.
@@ -2823,15 +2969,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       <div class="snap"><div class="snap-lbl">${onMargin?'Margin debt':'Idle cash'}</div><div class="snap-val">${fmtD(onMargin?debt:cashAvail)}</div><div class="snap-sub">${onMargin?(headroom!=null?`${fmtD(headroom)} room to your ${fmt(SD_UTIL_MAX*100,0)}% line`:`buying power ${fmtD(bpVal)} · line not derivable`):`buying power ${fmtD(bpVal)}`}</div></div>
     </div>
 
-    <div class="col-title">1 · Cut what's broken <span class="card-hint">(${exits.length?`${exits.length} exit${exits.length===1?'':'s'} · `:''}≈ ${fmtD(freed)} freed)</span></div>
-    <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:2px 0 6px">Broken theses — trend rolled over or a stop breached</div>
-    ${exits.length
-      ? `<div class="xr-list">${exits.map(r=>`<details class="xr-row"><summary><span class="xr-tk">${r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${fmt(r.sellQty,r.sellQty<1?3:2)}</span> sh</b><small>@ ${P(r.p.px)} · ${fmtD(r.sellVal)}${r.lock?` · 🔒 <span data-priv="val">${fmt(r.lock.shares,0)}</span> held`:''}</small></span><span class="xr-pl ${r.sellPl>=0?'pos':'neg'}">${fmtD(r.sellPl)}</span><i class="oh-chev"></i></summary><p>${r.why}${r.lock?` <b style="color:#b45309">Holding back ${fmt(r.lock.shares,0)} sh</b> — collateral for ${r.lock.contracts} short call${r.lock.contracts===1?'':'s'}; selling them would leave you naked.`:''}</p></details>`).join('')}${exits.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(exitProceeds)} proceeds</span><b class="${exitPl>=0?'pos':'neg'}">${fmtD(exitPl)}</b></div>`:''}</div>`
-      : (lockedExits.length
-        /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
-           reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
-        ? `<div class="tech-empty">${lockedExits.map(r=>r.p.symbol).join(', ')} ${lockedExits.length===1?'reads':'read'} broken, but every share is collateral for your covered calls — see below for how to unwind it. Nothing else here is broken.</div>`
-        : `<div class="sd-verdict ok">✓ Nothing is broken${rows.length?` — ${rows.length} holding${rows.length===1?'':'s'} checked`:''}</div><details class="sd-more"><summary>What counts as broken</summary><div class="fund-note">${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div></details>`)}
+${step1ExitsHtml}
     <div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Margin posture — bands on your credit line</div>
     ${payRows.length
       ? `${mgHtml}<div class="xr-list">${payRows.map(t=>`<details class="xr-row"><summary><span class="xr-tk">${t.r.p.symbol}</span><span class="xr-m"><b>Sell <span data-priv="val">${t.sh}</span> sh${t.capped?' 🔒':''}</b><small>@ ${P(t.r.p.px)} · ${fmtD(t.proceeds)}</small></span><span class="xr-pl ${t.pl>=0?'pos':'neg'}">${fmtD(t.pl)}</span><i class="oh-chev"></i></summary><p>Weakest momentum${t.r.m&&t.r.m.score!=null?` (${fmt(t.r.m.score,1)}/10)`:''} among names you can actually deliver.${t.capped?' Capped — the rest is covered-call collateral.':''}</p></details>`).join('')}${payRows.length>1?`<div class="xr-total"><span>Total</span><span>${fmtD(payProceeds)} raised</span><b class="${payPl>=0?'pos':'neg'}">${fmtD(payPl)}</b></div>`:''}</div>
@@ -2845,17 +2983,16 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     ${concRows.length||aiVal>0
       ? concHtml
       : `<div class="tech-empty">No holding is above ${fmt(SD_CONC_FLAG*100,0)}% of equity.${t1?` Largest is ${t1.symbol} at ${fmt(t1.val/equity*100,1)}%.`:''}</div>`}
-    ${(lockedExits.length||payShort>0)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
-      <b>🔒 Held back by your own covered calls.</b>
-      ${lockedExits.map(r=>`<div style="padding:3px 0">${r.p.symbol} reads broken, but all ${fmt(r.p.qty,2)} sh back ${r.lock?r.lock.contracts:0} short call${r.lock&&r.lock.contracts===1?'':'s'}${r.lock&&r.lock.legs[0]?` ($${r.lock.legs[0].strike} exp ${r.lock.legs[0].expiration})`:''}. To exit, <b>buy the call${r.lock&&r.lock.contracts===1?'':'s'} back first</b> (or let ${r.lock&&r.lock.contracts===1?'it':'them'} expire), then sell the shares — selling first leaves you short naked calls.</div>`).join('')}
-      ${payShort>0?`<div style="padding:3px 0">${fmtD(payShort)} of the margin paydown can't be raised — the remaining shares are pledged to your short calls${Object.keys(locked).length?` (${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')})`:''}. Roll or close them to free the stock; until then the loan stays above your ${fmt(SD_UTIL_MAX*100,0)}% ceiling.</div>`:''}
-    </div>`:''}
-    ${(exits.length||payRows.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
-    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,`Cut broken theses${payRows.length?` and raise ≈ ${fmtD(payNeed)} to get back under the ${fmt(SD_UTIL_MAX*100,0)}% margin-line ceiling`:''} in the self-directed account`),'✅ Confirm '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
+${lockedBoxHtml}
+${step1TailHtml}
 
     <div class="col-title" style="margin-top:14px">2 · Deploy into the mandate <span class="card-hint">(≈ ${fmtD(pool)} to put to work)</span></div>
     ${pool<=0
-      ? `<div class="tech-empty">No funds are available for new buys after planned debt repayment and funding limits${utilKnown?`, and the loan is ${utilPct>SD_UTIL_MAX*100?`past your ${fmt(SD_UTIL_MAX*100,0)}% ceiling`:`already at your ${fmt(SD_UTIL_CRUISE*100,0)}% cruise band`} (${fmt(utilPct,1)}% of the ${fmtD(M.line)} line)`:`, and no margin room could be derived`} — review the stock ideas below while funding is unavailable.${pressRoom>0?` You can still <b>press to the ${fmt(SD_UTIL_MAX*100,0)}% ceiling</b> — see below.`:''}</div>`
+      ? `<div class="tech-empty">${/* v202: say the REAL reason. Under cruise the only thing that zeroes the pool is the heat gate — it used to read "already at your 50% cruise band" at 8.4% of the line. */
+          pressClosed?`Borrowing is paused this pass — the buy candidates sit near their recent highs (no borrow into heat; see below)${utilKnown?`. Your loan is ${fmt(utilPct,1)}% of the ${fmtD(M.line)} line`:''}.`
+          :utilKnown&&utilPct>SD_UTIL_MAX*100?`The loan is past your ${fmt(SD_UTIL_MAX*100,0)}% ceiling (${fmt(utilPct,1)}% of the ${fmtD(M.line)} line) — step 1 pays it down first.`
+          :utilKnown&&utilPct>=SD_UTIL_CRUISE*100?`The loan is already at your ${fmt(SD_UTIL_CRUISE*100,0)}% cruise band (${fmt(utilPct,1)}% of the ${fmtD(M.line)} line).`
+          :utilKnown?`No cash or margin room is free for new buys (${fmt(utilPct,1)}% of the ${fmtD(M.line)} line in use).`:`No cash is free and no margin room could be derived.`} Review the stock ideas below meanwhile.${pressRoom>0?` You can still <b>press to the ${fmt(SD_UTIL_MAX*100,0)}% ceiling</b> — see below.`:''}</div>`
       : `<div style="font-size:12.5px;color:var(--text);opacity:.85;line-height:1.5">
       ${payDown>0?`<div style="padding:6px 0"><b style="color:#0969da">Loan clears first</b> <span style="color:#9ca3af">≈ ${fmtD(payDown)}</span> — the sells net against your margin balance automatically at the broker (not a separate order); the pool below is then re-borrowed against the larger, less concentrated book. Net effect is a <b>rotation</b>, not a deleverage: ${fmt(lev,2)}× before → ≈ ${fmt(equity>0?(expAfter+deployed)/equity:0,2)}× after.</div>`:''}
       ${sleeveRows.map(({S,w,picks,none})=>{
@@ -4706,8 +4843,11 @@ async function load(){
            the verdict move. A loan inside the owner's cruise/ceiling band gets the calm variant,
            because red-on-normal is how a banner stops being read. */
         const _M=sdMargin(netEq,equityVal,cashVal,bpVal);
-        const over=(_M.util!=null)?_M.util>SD_UTIL_MAX:(netEq>0&&equityVal/netEq>SD_LEV_FALLBACK);
         const lineTxt=(_M.util!=null)?` · ${fmt(_M.util*100,1)}% of your ${fmtD(_M.line)} line`:'';
+        /* v202: Apex's band is the one leverage rule for this book — the banner judges leverage, not line use. */
+        if(sdApexRuns()){ const B=sdApexBand(), overA=leverage>B.cap, hiA=!overA&&leverage>B.cruise;
+          return `<div class="margin-banner${overA?'':' calm'}"><div style="font-size:20px">${overA?'⚠️':'📊'}</div><div><div class="mb-text">${overA?`Over Apex's ${fmt(B.cap,2)}× cap: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)`:`Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)`}</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))} against ${fmtD(netEq)} of your own money — ${fmt(leverage,2)}× leverage${lineTxt}. ${overA?`Above Apex's ${fmt(B.cap,2)}× cap — no new buys; the Apex card on the Plan tab sells into strength back to the cap.`:hiA?`Inside Apex's band, above its ${fmt(B.cruise,2)}× cruise — hold; trims pay debt down before anything new.`:`Inside Apex's band (cruise ${fmt(B.cruise,2)}× · cap ${fmt(B.cap,2)}×). Amplifies both gains and losses — see Risk below.`}</div></div></div>`; }
+        const over=(_M.util!=null)?_M.util>SD_UTIL_MAX:(netEq>0&&equityVal/netEq>SD_LEV_FALLBACK);
         return `<div class="margin-banner${over?'':' calm'}"><div style="font-size:20px">${over?'⚠️':'📊'}</div><div><div class="mb-text">${over?`Over your ${fmt(SD_UTIL_MAX*100,0)}% ceiling: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)`:`Margin in use: ${fmtD(cashVal)} (${fmt(marginPct,1)}% of equity)`}</div><div class="mb-sub">Borrowing ${fmtD(Math.abs(cashVal))} against ${fmtD(netEq)} of your own money — ${fmt(leverage,2)}× leverage${lineTxt}. ${over?`Above the ${fmt(SD_UTIL_MAX*100,0)}% line ceiling you set — the Plan tab sizes the paydown.`:(_M.util!=null?`Inside your band (cruise ≤${fmt(SD_UTIL_CRUISE*100,0)}% · max ${fmt(SD_UTIL_MAX*100,0)}%). Amplifies both gains and losses — see Risk below.`:`No buying-power figure this snapshot, so your credit line — and the band — can't be derived; this falls back to a ${fmt(SD_LEV_FALLBACK,2)}× exposure/equity check. Amplifies both gains and losses — see Risk below.`)}</div></div></div>`;
       })():''}
       <div class="header"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><div><div class="h-label">Total Portfolio Value</div><div class="h-value">${fmtD(totalVal)}</div><div class="h-tag">Robinhood · Individual Margin</div></div><button id="kyle-btn" class="kyle-btn" onclick="pushToKyle()">📲 Push to Kyle</button></div></div>
@@ -4951,6 +5091,7 @@ window.switchTab=switchTab;
   }
   function jump(id){
     var card=document.getElementById(id); if(!card)return;
+    for(var dd=card.parentElement; dd; dd=dd.parentElement){ if(dd.tagName==='DETAILS'&&!dd.open)dd.open=true; else if(dd.id&&dd.style&&dd.style.display==='none'&&window.toggleSection&&document.querySelector('[data-toggle="'+dd.id+'"]'))window.toggleSection(dd.id); }   // v202: a card inside a folded section ("Other screens") opens it first
     var body=card.querySelector(':scope > .card-body');
     if(body&&body.style.display==='none'){ body.style.display=''; var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform=''; }
     var y=card.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-topOffset();
@@ -5351,6 +5492,7 @@ window.switchTab=switchTab;
     <p>Target weights, entry zones, stop/TP levels and every deferral moved to the <b>Plan tab's Agentic side</b> — they were the same numbers in two places, and the wider table pushed P&amp;L and Day/YTD off a phone screen. This card answers "what do I own and how is it doing"; the Plan tab answers "what happens next and why".</p>
     <p>The <b>🤖 hand-off button</b> carries a deploy/rebalance prompt that places fractional dollar orders after your review.</p>` },
   'action center': { tag:'Plan', t:'Action Center', h:`
+    <p><b>Since v202, Apex runs this book.</b> Do-now shows margin against Apex's 1.35× cruise / 1.5× cap and upcoming earnings only. The plan keeps Step 1 (cut what's broken); Step 2 points to the Apex card, where the buys come from; Step 3 lists Apex's rules. The rest of this note describes the retired August plan, which returns only if Apex is switched off.</p>
     <p>The decide-and-act surface: a ranked feed of live signals, then a concrete cash-raising-and-redeploying plan. It's portfolio-derived, so it populates whether you open this tab before or after the portfolio finishes loading.</p>
     <div class="hsub">Two tiers</div>
     <ul>
@@ -5370,7 +5512,7 @@ window.switchTab=switchTab;
     <p>Existing winners are still not sold for size — that lesson stands. <b>New money is capped</b>: 20% of equity per name, 30% of the book per theme. A name at 25% of equity or +25% from cost is flagged as a peel-back to target weight (advisory, not an exit). The <b>TRIM</b> alert still fires only when a big position is <i>also</i> weak — size plus weakness, not size.</p>
     <p>The buy and sell steps each have a <b>🤖 hand-off button</b> that builds the order prompt. It's a framework, not advice.</p>` },
   'top picks today': { tag:'Plan', t:'Top 3 Picks Today', h:`
-    <p>The three highest-conviction ideas from today's scan, each with a full setup: thesis, entry zone, stop, and profit targets. These are the names the plan's high-conviction sleeve deploys into.</p>
+    <p>The three highest-conviction ideas from today's scan, each with a full setup: thesis, entry zone, stop, and profit targets. It is an <b>oversold</b> screen (RSI under 45 across large caps) — not your Apex plan, which picks its buys from Monday's research — so it sits folded under <b>Other screens</b>.</p>
     <div class="hsub">What each card gives you</div>
     <ul>
       <li><span class="hk">Entry zone</span> — the price range to buy in; <span class="hk">Stop</span> — where the thesis is wrong, so you exit.</li>
@@ -5871,6 +6013,7 @@ window.switchTab=switchTab;
     return (fb&&fb.offsetHeight>0)?fb.offsetHeight+8:48;
   }
   function scrollToCard(card){
+    for(var dd=card.parentElement; dd; dd=dd.parentElement){ if(dd.tagName==='DETAILS'&&!dd.open)dd.open=true; else if(dd.id&&dd.style&&dd.style.display==='none'&&window.toggleSection&&document.querySelector('[data-toggle="'+dd.id+'"]'))window.toggleSection(dd.id); }   // v202: open a folded section first
     var body=card.querySelector(':scope > .card-body');
     if(body&&body.style.display==='none'){ body.style.display='';
       var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform='';
@@ -7694,7 +7837,12 @@ function renderPicksStatic(){
   const daysOld=Math.round((Date.now()-ANALYSIS_TS)/86400000);
   const staleTxt=daysOld<=0?'fresh today':daysOld+' day'+(daysOld===1?'':'s')+' old';
   const staleColor=daysOld>=2?'#fca5a5':'rgba(255,255,255,0.9)';
-  app.innerHTML=`
+  /* v202 (Jack chose "Apex only"): Apex runs ••0741, so the page leads with the Apex card and the Action Center;
+     the momentum watchlist and the whole oversold daily screen (hero, Top 3, scores, track record, income,
+     catalysts, earnings) fold under "Other screens — not your Apex plan". Same cards, same ids, same renderers —
+     only their order and the fold change. window.SD_APEX_RUNS=false restores the old page order. */
+  const apexPage=sdApexRuns();
+  const pHero=`
     <div class="picks-hero">
       <div>
         <div class="ph-label">Daily Large-Cap Scan</div>
@@ -7703,10 +7851,24 @@ function renderPicksStatic(){
       </div>
       <button class="run-btn" onclick="runNewAnalysis()">⚡ Run New Analysis</button>
     </div>
+`;
+  const pAgLink=`
     <div class="card" style="text-align:center"><span class="dp-link" onclick="setPlanAccount('agentic')">🤖 Agentic account (••••3900) — its target, deferrals &amp; guardrails →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">The <b>Agentic</b> toggle above holds that account's <i>plan</i>. Its <b>holdings, drift, performance and rebalance log</b> live on the Accounts tab's Agentic side, along with 🏛️ Flow &amp; Positioning.</div></div>
+`;
+  const pApex=`
     <div class="card" id="apex-card"><div class="card-title collapsible" data-toggle="b-apex" onclick="toggleSection('b-apex')"><span>🪜 Apex <span class="card-hint">(leverage loop · margin book)</span></span><span class="chevron">▼</span></div><div id="b-apex">
       <div id="apex-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Reading the book…</div></div>
     </div></div>
+`;
+  const pAction=apexPage?`
+    <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
+      <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own: margin and earnings now, then the broken-thesis check. Buys come from the Apex card above.</div>
+      <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
+      <div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div>
+      <div class="ac-tier">🧭 The plan <span class="card-hint">(cut broken · Apex runs the rest)</span></div>
+      <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
+    </div></div>
+`:`
     <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
@@ -7714,10 +7876,19 @@ function renderPicksStatic(){
       <div class="ac-tier">🧭 The plan <span class="card-hint">(raise · redeploy · guardrails)</span></div>
       <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
     </div></div>
+`;
+  const pTop3=apexPage?`
+    <div class="card" data-priv="market">
+      <div class="card-title"><span>🎯 Top 3 Picks Today <span class="card-hint">(oversold screen — not your Apex plan)</span></span></div>
+      <div class="picks-grid2" id="picks-cards"></div>
+    </div>
+`:`
     <div class="card" data-priv="market">
       <div class="card-title"><span>🎯 Top 3 Picks Today <span class="card-hint">(the ideas the plan's Step 2 redeploys into)</span></span></div>
       <div class="picks-grid2" id="picks-cards"></div>
     </div>
+`;
+  const pScores=`
     <div class="card" data-priv="market">
       <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">tech 33% · fundamentals 28% · R/R 19% · social 20%</span></span></div>
       <div class="chart-wrap" style="height:300px"><canvas id="picks-chart"></canvas></div>
@@ -7727,12 +7898,30 @@ function renderPicksStatic(){
       <div id="body-picktable"><div id="picks-filters"></div><div id="picks-table"></div></div>
     </div>
     <div class="card" data-priv="market" id="picks-track-card"><div class="card-title collapsible" data-toggle="b-track" onclick="toggleSection('b-track')"><span>📈 Track Record <span class="card-hint">past picks, graded</span></span><span class="chevron">▼</span></div><div id="b-track"><div id="picks-track"></div></div></div>
+`;
+  const pRebal=`
     <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('portfolio');setAccount('main')">🧾 Rebalance Log — your trades, graded vs SPY →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Track Record grades the <i>screen</i>; the Rebalance Log grades <i>what you actually did</i>. It lives on the Accounts tab, beside the agentic account's, so the two books read the same way.</div></div>
+`;
+  const pTail=`
     ${PICK_INCOME.length?`<div class="card" data-priv="market"><div class="card-title"><span>💰 Income Ideas <span class="card-hint">covered calls</span></span></div>${PICK_INCOME.map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.t}</b> <span style="color:#9ca3af">${x.sh}</span><div style="font-size:11px;color:#6b7280;margin-top:2px">${x.note||''}</div></span><span style="font-size:11.5px;font-weight:600;color:#065f46;white-space:nowrap;margin-left:8px">${x.prem||''}</span></div>`).join('')}<div class="fund-note">Holdings with ≥ 100 sellable shares; nearest ~30-delta monthly call.</div></div>`:''}
     ${(MKTX&&MKTX.news&&MKTX.news.items)?`<div class="card" data-priv="off"><div class="card-title"><span>📰 Catalysts &amp; News <span class="card-hint">picks</span></span></div>${MKTX.news.items.filter(x=>PICK_PICKS.some(p=>p.ticker===x.t)).map(x=>`<div class="harv-line"><span><b style="color:${x.sentiment==='bullish'?'#10b981':x.sentiment==='bearish'?'#ef4444':'#6b7280'}">${x.t}</b></span><span style="flex:1;text-align:right;color:var(--text);opacity:.8;font-size:11.5px;margin-left:8px">${x.title}</span></div>`).join('')}<div class="fund-note">Headlines from web research at the morning scan.</div></div>`:''}
     <div class="card" data-priv="market" id="picks-earn-card" style="display:none"><div id="picks-earn"></div></div>
+`;
+  const pDisc=`
     <div class="disclaimer">⚠️ Not financial advice. Scan generated ${ANALYSIS_DATE}; live prices &amp; RSI via Robinhood + Alpha Vantage. Research independently before entering any position.</div>
-  `;
+`;
+  app.innerHTML=apexPage
+    ? pApex+pAction+pRebal+pAgLink+`
+    <div class="card sd-other" id="sd-other-screens" data-sd-other>
+      <div class="card-title collapsible" data-toggle="sd-other-body" onclick="toggleSection('sd-other-body');sdOtherShown()" aria-expanded="false"><span>🗂 Other screens <span class="card-hint">not your Apex plan · momentum ideas · oversold Top 3 · scores</span></span><span class="chevron" style="transform:rotate(-90deg)">▼</span></div>
+      <div id="sd-other-body" class="sd-other-body" style="display:none">
+        <div class="fund-note" style="margin:0 0 10px">These screens don't drive buys on ••0741 — Apex's Monday research does. Kept for reference: the momentum watchlist, and the daily <b>oversold</b> large-cap scan with its scores and track record.</div>
+        <div id="sd-ideas-content"></div>
+`+pHero+pTop3+pScores+pTail+`
+      </div>
+    </div>
+`+pDisc
+    : pHero+pAgLink+pApex+pAction+pTop3+pScores+pRebal+pTail+pDisc;
   paintActionCenter();   // portfolio-derived; populates now if __SNAP is ready, else when load() lands.
   renderPicksChart();
   renderPicksFilters();
@@ -8502,13 +8691,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=201"></script>
-<script src="ui/predictions-model.js?v=201"></script>
-<script src="ui/predictions.js?v=201"></script>
-<script src="ui/smartmoney-model.js?v=201"></script>
-<script src="ui/smartmoney.js?v=201"></script>
-<script src="ui/experience.js?v=201"></script>
-<script src="ui/ticker.js?v=201"></script>
-<script src="ui/compact.js?v=201"></script>
+<script src="ui/experience-model.js?v=202"></script>
+<script src="ui/predictions-model.js?v=202"></script>
+<script src="ui/predictions.js?v=202"></script>
+<script src="ui/smartmoney-model.js?v=202"></script>
+<script src="ui/smartmoney.js?v=202"></script>
+<script src="ui/experience.js?v=202"></script>
+<script src="ui/ticker.js?v=202"></script>
+<script src="ui/compact.js?v=202"></script>
 </body>
 </html>
