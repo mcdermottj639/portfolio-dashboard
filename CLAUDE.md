@@ -1,3 +1,20 @@
+## v198 — Self-directed plan buttons write tickets instead of promising to place trades (2026-11-08)
+
+Jack (Nov 8 22:05 ET, phone screenshot of the Plan page): "Does this allow me to build Claude trades for Robinhood
+or no cause u can't trade in this acct". It did not: the **"Build these N buys / sells with Claude"** buttons on the
+Self-directed Plan (the ••••0741 margin book) predate Apex and opened a Claude chat whose prompt said run
+`review_equity_order` → `place_equity_order` — tools that work only in the dedicated agentic account (••••3900).
+Robinhood's rule, not ours: an agent trades only in its own agentic account, and no agentic account can borrow
+on margin, so the ••••0741 book stays human-entered for good. `planOrdersPrompt` now asks Claude to **WRITE one
+copy-ready order line per ticket** (side · shares · ticker · type · limit · TIF, plus entry/target/stop, CANCEL if
+last > limit + 0.5×ATR) and says the account is read-only to agents; the buttons read **"✍️ Write these N buy
+tickets for Robinhood"** / **"… sell tickets …"**. Unchanged: `eqTradePrompt` / `optTradePrompt` (Analyze, Picks,
+Options ideas — account-agnostic, Claude can still place those in ••••3900) and the agentic page's
+"Deploy ••••3900" button. No rule, ticket, scan or Jarvis change. Files: `index.html`, `sw.js`,
+`tests/sd-plan-browser.mjs` (label assertions), `CLAUDE.md`. Verified: tests/*.test.cjs 4/4, sd-plan-browser PASS
+(320–1440, privacy, Midnight), Playwright 390 screenshot of the button, scrollWidth 390. Physical iPhone not
+verified. App/cache **v198 / pf-v198**.
+
 ## v197 — Research top-5 tiles: links stop running off the screen; R/R measured at the entry the tile shows (2026-11-08)
 
 Jack (Nov 8 00:20 ET, phone screenshot of Research — top 5, "Fix"): the raw SEC URLs in each tile's `why` didn't
