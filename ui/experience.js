@@ -30,8 +30,9 @@
     options: {area:'portfolio', label:'Options', tab:'options'},
     plan: {area:'research', label:'Plan & Action Center', tab:'picks'},
     markets: {area:'research', label:'Markets', tab:'markets'},
-    analyze: {area:'research', label:'Analyze', tab:'analyze'},
+    // v204 (Jack, Nov 9 01:53 ET: "Move screens to 3rd and bunk analyze to 4"): Research row = Plan · Markets · Screens · Analyze · …
     screens: {area:'research', label:'Screens', tab:'screens'},
+    analyze: {area:'research', label:'Analyze', tab:'analyze'},
     technicals: {area:'portfolio', label:'Technicals', tab:'portfolio', section:'technicals'},
     fundamentals: {area:'portfolio', label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
     flow: {area:'portfolio', label:'Flow & positioning', tab:'portfolio', section:'flow'},

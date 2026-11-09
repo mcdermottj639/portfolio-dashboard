@@ -1,3 +1,9 @@
+## v204 — Screens is the 3rd Research tab, Analyze the 4th (2026-11-09)
+
+Jack (Nov 9 01:53 ET): "Move screens to 3rd and bunk analyze to 4". `routes` order in `ui/experience.js` IS the
+Research row, so `screens` now precedes `analyze` (Plan · Markets · Screens · Analyze · Decision evidence · What if?);
+the classic tab bar swaps the same two buttons. Nothing else changed. App/cache **v204 / pf-v204**.
+
 ## v203 — Research › Screens page; Apex rows show shares and dollars (2026-11-09)
 
 Jack (Nov 9 ~01:35 ET), asked whether the v202 "Other screens" fold should be its own page: "Build and merge"; then
@@ -1616,7 +1622,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v203** (`pf-v203`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v204** (`pf-v204`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
