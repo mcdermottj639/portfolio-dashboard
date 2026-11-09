@@ -515,4 +515,18 @@ ok('v202 research tiles: a tax-hold target is flagged and the tile names the lim
   assert.ok(!/undefined|NaN/.test(h));
 });
 
+ok('v203 weights rows carry held / target / this-week shares and dollars; core shows held only', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const st = A.state(nov6);
+  const out = A.rules(st, { cfg: nov6cfg, smaMap: nov6px });
+  A.render(el, st, out, nov6cfg, null);
+  const h = el.innerHTML;
+  const rung = out.find((r) => r.kind === 'build' && r.ticket && r.ticket.sym === 'AMZN');
+  assert.ok(rung && rung.ticket.qty > 0, 'fixture arms an AMZN rung');
+  assert.ok(new RegExp(`this week: buy ${rung.ticket.qty} sh ≈ \\$`).test(h), 'the weights row quotes the rung\'s share count');
+  assert.ok(/hold \d[\d.]* sh · \$[\d.]+K? · yours/.test(h), 'core row: held shares and dollars, no target');
+  assert.ok(/target \$[\d.]+K? \(\d+ sh( at the scan limit)?\)/.test(h), 'a target row: target dollars and shares at the current price');
+  assert.ok(!/undefined|NaN/.test(h), 'no undefined/NaN in markup');
+});
+
 console.log(`apex: ${n}/${n} passed`);

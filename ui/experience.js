@@ -31,6 +31,7 @@
     plan: {area:'research', label:'Plan & Action Center', tab:'picks'},
     markets: {area:'research', label:'Markets', tab:'markets'},
     analyze: {area:'research', label:'Analyze', tab:'analyze'},
+    screens: {area:'research', label:'Screens', tab:'screens'},
     technicals: {area:'portfolio', label:'Technicals', tab:'portfolio', section:'technicals'},
     fundamentals: {area:'portfolio', label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
     flow: {area:'portfolio', label:'Flow & positioning', tab:'portfolio', section:'flow'},
@@ -42,7 +43,7 @@
   const defaults = {today:'today',portfolio:'accounts',research:'plan',signals:'smartmoney',activity:'activity'};
   // Tapping Signals reopens whichever sub-tab was used last.
   const areaDefault = a => a==='signals' ? (read('pf_signals_last','smartmoney')==='predictions'?'predictions':'smartmoney') : defaults[a];
-  const legacyTabs = ['portfolio','markets','picks','options','analyze','predictions','smartmoney'];
+  const legacyTabs = ['portfolio','markets','picks','options','analyze','screens','predictions','smartmoney'];
   const nativeSwitch = window.switchTab;
   const nativeAccount = window.setAccount;
   const nativePlanAccount = window.setPlanAccount;
@@ -241,7 +242,7 @@
   // Existing Find, heatmap drill-downs, pins, and Plan links continue through the same entry point.
   window.switchTab=function(tab){
     if(navigating)return nativeSwitch(tab);
-    const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',predictions:'predictions',smartmoney:'smartmoney'}[tab];
+    const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',screens:'screens',predictions:'predictions',smartmoney:'smartmoney'}[tab];
     return key?navigate(key):nativeSwitch(tab);
   };
   window.setAccount=function(...args){const value=nativeAccount.apply(this,args);queueRefresh();return value;};

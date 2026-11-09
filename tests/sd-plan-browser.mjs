@@ -95,33 +95,36 @@ try {
   assert.doesNotMatch(apexPlan,/Press room|cruise band|70% ceiling/,'no credit-line bands');
   assert.equal(await page.getByText('Confirm this buy with Claude',{exact:false}).count(),0,'no SD buy button');
   assert.equal(await page.locator('#plan-content #sd-stock-ideas').count(),0,'ideas left the plan');
-  // the section rail re-ids every .card (navc-N), so the fold is found by its data attribute, its body by id
-  const foldOpen=()=>page.evaluate(()=>document.getElementById('sd-other-body').style.display!=='none');
-  assert.equal(await foldOpen(),false,'Other screens starts folded');
-  assert.equal(await page.locator('[data-sd-other] #sd-stock-ideas .sd-idea[data-status="ready"]').count(),1,'momentum idea kept in the fold, with no funding state');
-  assert.match(await page.locator('[data-sd-other] #sd-stock-ideas .col-title').textContent(),/watchlist, not buys/);
-  assert.equal(await page.locator('[data-sd-other] #picks-cards').count(),1,'oversold Top 3 lives in the fold');
-  assert.match(await page.locator('#picks-app').textContent(),/oversold screen — not your Apex plan/);
-  assert.equal(await page.locator('#sd-stock-ideas').isVisible(),false,'folded = hidden');
-  await page.locator('[data-sd-other] > .card-title').click();
-  assert.equal(await foldOpen(),true,'tap opens the fold');
+  // v203: the oversold screen and the momentum watchlist left the Plan page — Plan holds only the plan + pointers
+  assert.equal(await page.locator('#picks-app #sd-stock-ideas').count(),0,'momentum watchlist is cut');
+  assert.equal(await page.locator('#picks-app #picks-cards').count(),0,'oversold Top 3 is not on the Plan page');
+  assert.equal(await page.locator('#picks-app [data-sd-screens-link]').count(),1,'Plan points at Research › Screens');
+  assert.equal(await page.locator('#picks-app [data-opt-pick-income], #picks-app .harv-line').count(),0,'income ideas left the Plan page');
   for(const width of [320,390,768,1440]){
     await page.setViewportSize({width,height:900});
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Apex-run page: no horizontal overflow at '+width);
-    assert.equal(await page.locator('#sd-stock-ideas').isVisible(),true);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Apex-run Plan page: no horizontal overflow at '+width);
   }
   await page.setViewportSize({width:390,height:844});
   if(process.env.PF_SCREENSHOT_DIR){
     fs.mkdirSync(process.env.PF_SCREENSHOT_DIR,{recursive:true});
     await page.locator('#plan-content').screenshot({path:path.join(process.env.PF_SCREENSHOT_DIR,'apex-plan-mobile.png')});
-    await page.locator('[data-sd-other]').screenshot({path:path.join(process.env.PF_SCREENSHOT_DIR,'other-screens-mobile.png')});
   }
-  // a section-rail / Find jump to a card inside the closed fold opens it
-  await page.locator('[data-sd-other] > .card-title').click();
-  assert.equal(await foldOpen(),false,'tap folds it again');
-  assert.equal(await page.evaluate(()=>{ const c=document.querySelector('#sd-other-body .card'); if(!c.id)c.id='t-fold-card'; window.__navJump(c.id); return document.getElementById('sd-other-body').style.display!=='none'; }),true,'a jump to a folded card opens the fold');
-  await render('wash',true);
-  assert.equal(await page.locator('[data-sd-other] .sd-idea[data-status="wash"]').count(),1,'tax hold still shown on the watchlist');
+  // Research › Screens: the same oversold cards, same ids, on their own page, flagged as reference
+  await page.evaluate(()=>switchTab('screens'));
+  await page.waitForFunction(()=>document.querySelector('#screens-app #picks-cards'));
+  assert.equal(await page.locator('#screens-app [data-sd-screens-note]').count(),1,'Screens leads with the reference-not-buys note');
+  assert.equal(await page.locator('#screens-app #picks-cards').count(),1,'oversold Top 3 lives on Screens');
+  assert.equal(await page.locator('#screens-app #picks-track-card').count(),1,'track record lives on Screens');
+  assert.equal(await page.locator('#screens-app #sd-stock-ideas').count(),0,'no momentum watchlist on Screens');
+  assert.equal(await page.locator('#picks-cards').count(),1,'the oversold ids exist exactly once app-wide');
+  for(const width of [320,390,768,1440]){
+    await page.setViewportSize({width,height:900});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Screens page: no horizontal overflow at '+width);
+  }
+  await page.setViewportSize({width:390,height:844});
+  if(process.env.PF_SCREENSHOT_DIR) await page.locator('#screens-app').screenshot({path:path.join(process.env.PF_SCREENSHOT_DIR,'screens-mobile.png')});
+  await page.evaluate(()=>switchTab('picks'));
+  await page.waitForFunction(()=>getComputedStyle(document.querySelector('#picks-app')).display!=='none');
   // Do-now under Apex: margin judged on Apex's band, earnings kept; RSI / +40% / size alerts belong to the retired plan
   const feed=await page.evaluate(()=>{ const pos=[{symbol:'AAA',qty:10,px:100,val:1000,avg:50,pnlP:100,pct:50,dayP:1}], port={cash:'-9000',equity_value:'20000',total_value:'11000',buying_power:{buying_power:'1000'}};
     window.SD_APEX_RUNS=undefined; const a=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag+':'+x.title);
@@ -136,5 +139,5 @@ try {
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#page-analyze')).display!=='none');
   assert.equal(await page.locator('#az-ticker').inputValue(),'MSFT');
   assert.deepEqual(errors,[]);
-  console.log('PASS: funded buy, zero-funding research, tax/floor/entry/missing-target rejection, collapsed details, 320–1440px layout, privacy round-trip, Midnight and Analyze link; v202 Apex-run plan (Step 2 → Apex, Apex band, folded Other screens, jump-opens-fold, Apex Do-now)');
+  console.log('PASS: funded buy, zero-funding research, tax/floor/entry/missing-target rejection, collapsed details, 320–1440px layout, privacy round-trip, Midnight and Analyze link; v203 Apex-run plan (Step 2 → Apex, Apex band, Research › Screens page, watchlist cut, income on Options, Apex Do-now)');
 }finally{await browser.close();}
