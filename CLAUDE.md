@@ -1,3 +1,22 @@
+## v201 — IREN is owner-managed: no screen ever tells Jack to sell it (2026-11-08)
+
+Jack (Nov 8 22:38 ET): "I do want u to stop telling me to sell the iren to clear margin. Just build the portfolio and
+I'll handle the iren." **Apex (`ui/apex.js`)**: new `DEFAULT_CFG.coreOwner: true` and `ladder: []` (the IREN 200 @ $30
+rung is retired). With `coreOwner` the core (`cfg.core`, IREN) is never a risk-guard leg (`guardPlan` skips it; a
+short guard says "IREN excluded — your call — deposit cash"), never a ladder rung, never a winner trim or stop exit
+(one neutral `core` row: "IREN — your call"), never drift-flagged; build rungs already skipped it. Leverage / guard
+sells still fire, but only on the other names. `portfolioPrompt` marks IREN "OWNER-MANAGED — Jack handles it" and tells
+Claude never to propose selling or trimming it to make room, fix leverage or fit a cap — size new buys down instead.
+**Self-directed Plan (`index.html`)**: new `sdOwnerHold(sym)` (default `['IREN']`, override `window.SD_OWNER_HOLD`);
+an owner-held name is never a broken-thesis exit, a margin-ceiling paydown donor, a ✂️ peel-back chip, or an Action
+Center TRIM / OVERBOUGHT / winner alert. Concentration bars still SHOW it (measurement, not an order). The old
+behaviour is still tested under `LEGACY = {coreOwner:false, ladder:[IREN 200 @ $30]}`. The "Apex morning scan · 0741"
+scheduled task's prompt was updated the same night to match (no IREN stop/ladder/trim/cluster-trim tickets).
+Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (44/44 + 2 v201 cases), `CLAUDE.md`. Verified:
+apex, sd-rules 76/76, business 18/18, tests/*.cjs 4/4, sd-plan-browser + brief-browser PASS; replay of the live Nov 6
+book (IREN 500 sh, 0.96x) and the Nov 5 3x book (IREN 900 + PLTR 100): no IREN ticket on either; the 3x guard sells
+PLTR only. Physical iPhone not verified. App/cache **v201 / pf-v201**.
+
 ## v199 — One "Confirm this week's Apex book" button; plan buttons become a confirm (2026-11-08)
 
 Jack (Nov 8 22:24–22:33 ET): the hand-off button "should be a confirm so the app builds out what I should be trading

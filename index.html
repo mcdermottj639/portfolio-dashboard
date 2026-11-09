@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=200">
-<link rel="stylesheet" href="ui/predictions.css?v=200">
-<link rel="stylesheet" href="ui/smartmoney.css?v=200">
-<link rel="stylesheet" href="ui/ticker.css?v=200">
+<link rel="stylesheet" href="ui/experience.css?v=201">
+<link rel="stylesheet" href="ui/predictions.css?v=201">
+<link rel="stylesheet" href="ui/smartmoney.css?v=201">
+<link rel="stylesheet" href="ui/ticker.css?v=201">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,9 +771,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=200"></script>
-<script src="ui/apex.js?v=200"></script>
-<script src="ui/business.js?v=200"></script>
+<script src="ui/sd-rules.js?v=201"></script>
+<script src="ui/apex.js?v=201"></script>
+<script src="ui/business.js?v=201"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -887,7 +887,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v200'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v201'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1907,7 +1907,7 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
   /* Concentration alone is NOT an alert on this side — a leader at 90% of equity is the mandate
      working. What is dangerous is size WITHOUT leadership, so this fires only when a big name is
      also broken or under the momentum floor. (PLTR at 9.0/10 stays silent; IREN at 1.4/10 does not.) */
-  const conc=[...enriched].filter(p=>p.px>0&&equity>0&&p.val>equity*SD_CONC_FLAG).map(p=>{
+  const conc=[...enriched].filter(p=>p.px>0&&equity>0&&p.val>equity*SD_CONC_FLAG&&!sdOwnerHold(p.symbol)).map(p=>{
       const mm=(typeof sdMomentum==='function')?sdMomentum(p.symbol):null;
       const br=(typeof sdBroken==='function')?sdBroken(p.symbol,p.avg):null;
       return {p, mm, br, pctEq:p.val/equity*100,
@@ -1920,9 +1920,9 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
       detail:`Size isn't the problem here — size plus weakness is: ${wN}. A 20% drop in ${p.symbol} alone takes the account down ~${fmt(x.pctEq*0.2,1)}%.${vN}`}); }
   const upE=Object.entries(earningsMap||{}).filter(([s,e])=>enriched.find(p=>p.symbol===s&&p.val>=SMALL_THR)&&e.daysAway<=14).sort((a,b)=>a[1].daysAway-b[1].daysAway);
   for(const [s,e] of upE.slice(0,3)){ const p=enriched.find(x=>x.symbol===s); const u=e.daysAway<=3?'IMMINENT':e.daysAway<=7?'THIS WEEK':'UPCOMING'; add({pr:2,icon:'🗓️',c:'#6366f1',bg:'#ede9fe',fg:'#4c1d95',tag:'EARNINGS',title:`${s} reports in ${e.daysAway}d (${e.reportDate}) — ${u}`,detail:`You hold ${fmtD(p?.val||0)} (${fmt(p?.pct||0,1)}%). Decide: hold through, trim, or set a stop.${e.estimate?` Est EPS $${parseFloat(e.estimate).toFixed(2)}.`:''}`}); }
-  const ob=[...enriched].filter(p=>rsiMap[p.symbol]>=72&&p.pct>3&&p.px>0&&!critSet.has(p.symbol)).sort((a,b)=>rsiMap[b.symbol]-rsiMap[a.symbol]);
+  const ob=[...enriched].filter(p=>rsiMap[p.symbol]>=72&&p.pct>3&&p.px>0&&!critSet.has(p.symbol)&&!sdOwnerHold(p.symbol)).sort((a,b)=>rsiMap[b.symbol]-rsiMap[a.symbol]);
   for(const p of ob.slice(0,2)){ add({pr:3,icon:'🟠',c:'#f97316',bg:'#ffedd5',fg:'#9a3412',tag:'OVERBOUGHT',title:`${p.symbol} RSI ${fmt(rsiMap[p.symbol],0)} — extended`,detail:`At ${fmt(p.pct,1)}% (${fmtD(p.val)}). Momentum is hot; consider trimming into strength rather than adding.`}); }
-  const win=[...enriched].filter(p=>p.pnlP>40&&p.pct>4&&p.px>0&&!critSet.has(p.symbol)&&!(rsiMap[p.symbol]>=72)).sort((a,b)=>b.pnlP-a.pnlP);
+  const win=[...enriched].filter(p=>p.pnlP>40&&p.pct>4&&p.px>0&&!critSet.has(p.symbol)&&!sdOwnerHold(p.symbol)&&!(rsiMap[p.symbol]>=72)).sort((a,b)=>b.pnlP-a.pnlP);
   for(const p of win.slice(0,1)){ const n=Math.max(1,Math.floor(p.qty*0.25)); add({pr:4,icon:'🟢',c:'#10b981',bg:'#d1fae5',fg:'#065f46',tag:'TAKE PROFIT',title:`${p.symbol} up ${fmt(p.pnlP,0)}% from cost`,detail:`Trim 25% (~${n} sh @ ${fmtD(p.px)}) → locks ${fmtD(n*(p.px-p.avg))} gain, raises ${fmtD(n*p.px)} cash.`}); }
   const os=[...enriched].filter(p=>rsiMap[p.symbol]<=30&&p.pct>1&&p.pnlP>-40&&p.px>0).sort((a,b)=>rsiMap[a.symbol]-rsiMap[b.symbol]);
   for(const p of os.slice(0,1)){ add({pr:4,icon:'🟢',c:'#10b981',bg:'#d1fae5',fg:'#065f46',tag:'ADD',title:`${p.symbol} RSI ${fmt(rsiMap[p.symbol],0)} — oversold`,detail:`If the thesis holds, a high-conviction add point. Avg cost ${fmtD(p.avg)}, now ${fmtD(p.px)}.`}); }
@@ -2402,6 +2402,8 @@ function sdUtilColor(util){ return util==null?'#9ca3af':(util>SD_UTIL_MAX?'#ef44
    without that buffer this rule fires on exactly the volatility the mandate is
    built to hold. (The producer's `trendGate` uses the 200-DMA; a YTD daily
    series can't reach 200 bars, so the 100-DMA is the long anchor here.) */
+/* v201 (Jack, Nov 8 2026): owner-managed names — no screen ever proposes selling, trimming or exiting them. */
+function sdOwnerHold(sym){ return (window.SD_OWNER_HOLD||['IREN']).map(s=>String(s).toUpperCase()).indexOf(String(sym||'').toUpperCase())>=0; }
 function sdBroken(sym, costBasisPx){
   const m=sdMomentum(sym);
   if(!m||m.score==null) return {broken:false, why:null, m};
@@ -2508,7 +2510,9 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const wash=sdWashMap();
 
   /* ── 1 · Classify every holding: broken (exit) vs intact (hold) ─────────────────────────── */
-  const rows=held.map(p=>{ const b=sdBroken(p.symbol,p.avg); return {p,m:b.m,broken:b.broken,why:b.why}; });
+  /* v201 (Jack, Nov 8 22:38 ET: "stop telling me to sell the iren to clear margin … I'll handle the iren"): owner-managed
+     names are never an exit, a paydown donor or a peel-back here — the plan builds around them as held. */
+  const rows=held.map(p=>{ if(sdOwnerHold(p.symbol)){ const m=(typeof sdMomentum==='function')?sdMomentum(p.symbol):null; return {p,m,broken:false,owner:true,why:'owner-managed — your call'}; } const b=sdBroken(p.symbol,p.avg); return {p,m:b.m,broken:b.broken,why:b.why}; });
   const locked=sdLockedShares();
   /* Sellable = shares you could actually deliver today. P&L is pro-rated by the fraction sold, since
      p.pnlD is the whole position's unrealized mark. */
@@ -2543,7 +2547,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const payRows=[]; let payShort=0;
   if(payNeed>0){
     let need=payNeed-exitProceeds;  // proceeds from 1a already net against the loan at the broker
-    const donors=keep.slice().sort((a,b)=>(((a.m&&a.m.score)!=null?a.m.score:0)-((b.m&&b.m.score)!=null?b.m.score:0)));
+    const donors=keep.filter(r=>!r.owner).sort((a,b)=>(((a.m&&a.m.score)!=null?a.m.score:0)-((b.m&&b.m.score)!=null?b.m.score:0)));
     for(const r of donors){ if(need<=0)break;
       const free=Math.floor(sellableOf(r.p)); if(free<=0||!(r.p.px>0))continue;
       const want=Math.ceil(need/r.p.px), sh=Math.min(free,want); if(sh<=0)continue;
@@ -2774,6 +2778,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
   const top=keep.map(r=>r.p).sort((a,b)=>b.val-a.val), t1=top[0]||null;
   const houseMoney=held.filter(p=>p.avg>0&&p.px>=p.avg*SD_HOUSE_MONEY).sort((a,b)=>b.val-a.val);
   const trimAdv=keep.map(r=>{
+    if(r.owner) return null;   // v201: owner-managed — no peel-back advice
     if(!(SR&&typeof SR.trimAdvice==='function')) return null;
     const t=SR.trimAdvice({val:r.p.val,avg:r.p.avg,px:r.p.px},equity);
     return t?{r,t}:null;
@@ -8497,13 +8502,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=200"></script>
-<script src="ui/predictions-model.js?v=200"></script>
-<script src="ui/predictions.js?v=200"></script>
-<script src="ui/smartmoney-model.js?v=200"></script>
-<script src="ui/smartmoney.js?v=200"></script>
-<script src="ui/experience.js?v=200"></script>
-<script src="ui/ticker.js?v=200"></script>
-<script src="ui/compact.js?v=200"></script>
+<script src="ui/experience-model.js?v=201"></script>
+<script src="ui/predictions-model.js?v=201"></script>
+<script src="ui/predictions.js?v=201"></script>
+<script src="ui/smartmoney-model.js?v=201"></script>
+<script src="ui/smartmoney.js?v=201"></script>
+<script src="ui/experience.js?v=201"></script>
+<script src="ui/ticker.js?v=201"></script>
+<script src="ui/compact.js?v=201"></script>
 </body>
 </html>

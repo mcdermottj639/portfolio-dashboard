@@ -45,7 +45,8 @@
     core: 'IREN',
     coreMax: 500,                                    // v188 (Jack, 2026-11-05): keep an IREN core of up to 500 sh — exempt from the stop and drift trims; trims only into strength
     donor: 'PLTR',                                   // risk-guard tranche source (Jack, 2026-11-05)
-    ladder: [{ sym: 'IREN', px: 30, qty: 200, note: 'newest lots first' }],
+    ladder: [],                                      // v201 (Jack, Nov 8 22:38: "stop telling me to sell the iren … I'll handle the iren"): no IREN rung
+    coreOwner: true,                                 // v201: the core is OWNER-MANAGED — no rule ever proposes selling, trimming or adding it; Apex builds around it
     targets: { IREN: 20, NVDA: 20, PLTR: 15, RKLB: 15, CRWD: 10 },
     kicker: 15,                                      // LEAPS sleeve cap, funded from trims only
     jarvis: 'https://claude.ai/artifact/1rWeHSBKA2BJ1kiesa81sQ',
@@ -122,8 +123,8 @@
     const donor = st.positions.find((x) => x.symbol === cfg.donor && x.symbol !== cfg.core);
     if (donor) order.push({ p: donor, max: donor.qty });
     st.top.filter((x) => x !== donor && x.symbol !== cfg.core).forEach((x) => order.push({ p: x, max: x.qty }));
-    if (core && core.qty - coreKeep > 0) order.push({ p: core, max: core.qty - coreKeep });
-    if (core && coreKeep > 0) order.push({ p: core, max: coreKeep, core: true });
+    if (core && !cfg.coreOwner && core.qty - coreKeep > 0) order.push({ p: core, max: core.qty - coreKeep });
+    if (core && !cfg.coreOwner && coreKeep > 0) order.push({ p: core, max: coreKeep, core: true });
     const legs = [];
     for (const o of order) {
       if (done()) break;
@@ -172,7 +173,7 @@
         const last = i === plan.legs.length - 1;
         const title = L.core ? `Risk guard — core ${L.p.symbol} needed` : (i ? `Risk guard — ${L.p.symbol} too` : 'Risk guard');
         const why = i === 0 ? line : L.core ? `The other names are not enough to reach ${pct(st.guardTarget)}. The core is your call — a margin call would sell it anyway.` : `${plan.legs[0].p.symbol} alone is not enough to reach ${pct(st.guardTarget)}.`;
-        const r = { kind: 'risk', title, why: last && plan.short > 0 ? why + ` Still $${k(plan.short)} short after every sale — deposit cash.` : why,
+        const r = { kind: 'risk', title, why: last && plan.short > 0 ? why + ` Still $${k(plan.short)} short after every sale${cfg.coreOwner ? ' (' + cfg.core + ' excluded — your call)' : ''} — deposit cash.` : why,
           ticket: { side: 'sell', sym: L.p.symbol, qty: L.qty, px: round(L.p.px * 0.995), tranche: i === 0 && !L.core, core: L.core || undefined } };
         r.before = before;
         r.after = { lev: st.equity > 0 ? E / st.equity : 0, debt: D, proceeds: L.s };
@@ -187,7 +188,7 @@
       const need = sellToLev(st, C.LEV_CAP);
       out.push(t('lev', 'Over the 1.5x cap', `${st.lev.toFixed(2)}x. No new buys. Sell $${k(need)} into strength to reach the cap; proceeds pay debt.`, null, st));
       for (const L of cfg.ladder) {
-        const p = byName(L.sym); if (!p) continue;
+        const p = byName(L.sym); if (!p || (cfg.coreOwner && L.sym === cfg.core)) continue;
         const live = p.px >= L.px;
         out.push(t('ladder', `${live ? 'Sell' : 'Armed: sell'} ${L.qty} ${L.sym} at $${L.px}`,
           live ? `Price ${money(p.px)} is through the rung — ${L.note || ''}` : `Fires when ${L.sym} prints $${L.px} (now ${money(p.px)}). ${L.note || ''}`,
@@ -201,6 +202,7 @@
     for (const p of st.positions) {
       if (!(p.avg > 0)) continue;
       const g = p.px / p.avg - 1;
+      if (cfg.coreOwner && p.symbol === cfg.core) { out.push(t('core', `${p.symbol} — your call`, `Owner-managed: Apex never proposes selling, trimming or adding ${p.symbol}. The book is built around it.`, null, st)); continue; }
       if (g >= C.TRIM_GAIN_2 || g >= C.TRIM_GAIN) {
         if (nearEarn(p.symbol)) { out.push(t('guard', `${p.symbol} trim waits for earnings`, `+${pct(g)} from cost but reports in ${earn[p.symbol].daysAway}d — trims after the print.`, null, st)); continue; }
         const qty = Math.floor(p.qty * C.TRIM_FRAC);
@@ -221,7 +223,7 @@
     if (review) {
       for (const p of st.positions) {
         const w = st.weights[p.symbol] || 0, tgt = (cfg.targets[p.symbol] || 0) / 100;
-        if (p.symbol === cfg.core && w > tgt && p.qty <= cfg.coreMax) continue;   // v188: a core ≤ coreMax is never drift-trimmed
+        if (p.symbol === cfg.core && (cfg.coreOwner || (w > tgt && p.qty <= cfg.coreMax))) continue;   // v201: owner-managed core never drifts   // v188: a core ≤ coreMax is never drift-trimmed
         if (tgt > 0 && Math.abs(w - tgt) * 100 >= C.DRIFT_PTS)
           out.push(t('drift', `${p.symbol} ${pct(w)} vs ${pct(tgt)} target`, w > tgt ? 'Trim back to target at the Monday review.' : 'Add back to target — only with leverage room.', null, st));
       }
@@ -358,7 +360,7 @@
     const f = (x) => (x > 0 && isFinite(x) ? '$' + (+x).toFixed(2) : '—');
     const builds = (out || []).filter((r) => r.kind === 'build' && r.levels);
     const sells = (out || []).filter((r) => r.ticket && r.ticket.side === 'sell');
-    const held = (st.positions || []).map((p) => `${p.symbol} ${p.qty} sh @ ${f(p.px)}${p.symbol === cfg.core ? ' (core — keep ≤ ' + cfg.coreMax + ' sh, never add)' : ''}`).join('; ') || 'none';
+    const held = (st.positions || []).map((p) => `${p.symbol} ${p.qty} sh @ ${f(p.px)}${p.symbol === cfg.core ? (cfg.coreOwner ? ' (OWNER-MANAGED — Jack handles it; never propose selling, trimming or adding it)' : ' (core — keep ≤ ' + cfg.coreMax + ' sh, never add)') : ''}`).join('; ') || 'none';
     const L = ['Apex weekly book check — this is the FULL recommended portfolio for my SELF-DIRECTED margin account (••••0741). Check every line against LIVE Robinhood data and give me the complete set of orders to place: YES / WAIT / NO per name, sized, with exact prices. The account is read-only to you: Robinhood READ tools only (quotes, technical indicators, fundamentals, earnings calendar, news) — never review_equity_order or place_equity_order. I enter every YES myself in the Robinhood app.', '',
       `Book now: equity $${k(st.equity)} · margin debt $${k(st.debt)} · leverage ${isFinite(st.lev) ? st.lev.toFixed(2) + 'x' : 'n/a'} (cruise ${C.LEV_NORMAL}x, cap ${C.LEV_CAP}x) · maintenance ${pct(st.maint)}. Held: ${held}.`,
       'Target weights (% of equity): ' + Object.keys(cfg.targets).map((s) => s + ' ' + cfg.targets[s] + '%').join(' · ') + '.', '',
@@ -368,7 +370,7 @@
     if (sells.length) { L.push('', 'Proposed sells / trims from the rules:'); sells.forEach((r) => L.push(`• SELL ${r.ticket.qty} ${r.ticket.sym} — ${r.ticket.px ? 'limit ' + f(r.ticket.px) : 'market'}${r.ticket.gtc ? ' GTC' : ''} — ${r.title}`)); }
     const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
     if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f(r.stop)}`).join('; ')); }
-    L.push('', 'Rules to apply per name: live last + today\u2019s range; within 3% of the 20-day high ⇒ WAIT for a pullback unless momentum is strong; earnings inside 3 trading days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; reward/risk at the limit vs stop and target under 1.5 ⇒ NO; per-name cap 20% of equity; the book must stay under ' + C.LEV_CAP + 'x after fills; several AI/compute names count as one bet.',
+    L.push('', 'Rules to apply per name: live last + today\u2019s range; within 3% of the 20-day high ⇒ WAIT for a pullback unless momentum is strong; earnings inside 3 trading days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; reward/risk at the limit vs stop and target under 1.5 ⇒ NO; per-name cap 20% of equity; the book must stay under ' + C.LEV_CAP + 'x after fills; several AI/compute names count as one bet.' + (cfg.coreOwner ? ' ' + cfg.core + ' is owner-managed: build the rest of the book around it as held — never tell me to sell or trim ' + cfg.core + ' to make room, fix leverage or fit a cap; if room is short, size the new buys down instead.' : ''),
       'Answer with ONE table — Ticker | Verdict | Shares | Entry/limit | Stop | Target | R/R | one-line why — then the leverage after all YES fills, then the Robinhood order lines for every YES (side · shares · ticker · order type · trigger/limit · time-in-force), in the order I should enter them. Keep it to one phone screen plus the order lines. Education only — not financial advice.');
     return L.join('\n');
   }
