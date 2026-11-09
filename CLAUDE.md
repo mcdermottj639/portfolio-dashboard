@@ -1,3 +1,22 @@
+## 2026-11-09 — Open Daily Picks keep getting prices: a `pick` fetch outside the YTD cap + dated quote closes
+
+Jack (Nov 9 01:54 ET, screenshot of the Track Record: BAC/T/NFLX Oct 23–26 and CMCSA Oct 7 "Not graded — no
+recorded prices after the scan"): "make sure these are graded still for the future". The grading universe WAS in
+`hist-plan.mjs`'s priority list, but a name whose series fell more than `HIST_TAIL_DAYS` (10) behind needed a full
+YTD refetch, and those share `HIST_FULL_CAP` (30/run) with holdings, the agentic target and the shadow vintages —
+so an open pick could sit in `fullDeferred` for its whole 60-day life (inferred from the code; the live snapshot was
+not decryptable from this session). Two fixes, producer-only: **(1)** `pickgrade.gradingStarts` → `planHistoricals
+({pinned})`: an open-pick symbol too stale for a tail goes in a new **`pick`** group (`hist-day-pick-<n>.json`,
+≤3/call, OUTSIDE the cap), starting the day after its last bar (no hole for moving averages), else YTD, never later
+than its scan date − 3. **(2)** `pickgrade.quoteCloseBars` + `addQuoteCloses` in `build-data.mjs`: every run, an
+open pick's quote carries Robinhood's official dated close (`previous_close` + `previous_close_date`, verified live
+on BAC/CMCSA), added as a daily bar only where that date is missing AND the series is contiguous
+(`QUOTE_BAR_MAX_GAP_DAYS` 5) — a close appended over a hole could let the grader walk past a stop hit and FREEZE the
+wrong outcome, so a gapped series waits for the backfill. The EVERY-RUN quotes row already carries the grading
+universe, so no Routine prompt change: PRODUCER.md's table and the hist-plan section name the new file. Tests:
+`pickgrade` +3 groups (31), `hist-plan` +7 (43), `build-data` 106/106, full suite green. No app/cache bump.
+Existing ungraded episodes self-heal on the next FETCH_ALL (the `pick` lines backfill from their last bar).
+
 ## v204 — Screens is the 3rd Research tab, Analyze the 4th (2026-11-09)
 
 Jack (Nov 9 01:53 ET): "Move screens to 3rd and bunk analyze to 4". `routes` order in `ui/experience.js` IS the

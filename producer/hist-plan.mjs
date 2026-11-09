@@ -44,7 +44,7 @@ import { shadowSymbols } from './agentic-observatory.mjs';
 
 import { readSnapshot } from './fetchgate.mjs';
 import { analyzeUniverse, heldFromRaw, targetSymbols, tierOf } from './analyze-universe.mjs';
-import { gradingUniverse } from './pickgrade.mjs';
+import { gradingUniverse, gradingStarts } from './pickgrade.mjs';
 
 // --- dials -------------------------------------------------------------------------------------
 export const HIST_TAIL_DAYS = 10;      // last bar this recent (cal days) ⇒ a tail fetch suffices
@@ -102,7 +102,12 @@ export function planHistoricals(universe, hist, today, dials = {}) {
   const day = (hist && (hist.day || hist.daily)) || {};
   const month = (hist && hist.month) || {};
 
-  const tail = [], full = [], fullDeferred = [], fresh = [];
+  // v204: `pinned` = {SYM: 'YYYY-MM-DD'} — open Daily-Picks episodes (pickgrade.gradingStarts). A pinned
+  // symbol too stale for a tail gets a since-the-scan fetch in its own group, OUTSIDE the YTD cap, so an
+  // open pick can never be starved by holdings/target/shadow seeds. A pinned symbol that is fresh or
+  // tail-able takes the normal path. `pin` reaches back to the scan date (or a full series, if older).
+  const pinned = d.pinned || {};
+  const tail = [], full = [], fullDeferred = [], fresh = [], pin = [];
   const monthDue = [], monthDeferred = [];
 
   for (const sym of universe) {
@@ -112,6 +117,12 @@ export function planHistoricals(universe, hist, today, dials = {}) {
     const a = age == null ? null : Math.max(0, age);
     if (a != null && a <= 0) fresh.push({ sym, age: a, last });
     else if (a != null && a <= d.tailDays) tail.push({ sym, age: a, last });
+    else if (pinned[sym]) {
+      // Start the day after the last bar we hold (never leave a hole that skews a moving average), or
+      // YTD with no series — and never later than the scan date the grade needs.
+      const after = last ? new Date(Date.parse(last + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10) : `${today.slice(0, 4)}-01-01`;
+      pin.push({ sym, age: a, last, start: after < pinned[sym] ? after : pinned[sym] });
+    }
     else if (full.length < d.fullCap) full.push({ sym, age: a, last });
     else fullDeferred.push({ sym, age: a, last });
 
@@ -122,7 +133,7 @@ export function planHistoricals(universe, hist, today, dials = {}) {
       else monthDeferred.push({ sym, age: mAge, last: mLast });
     }
   }
-  return { tail, full, fullDeferred, fresh, month: monthDue, monthDeferred };
+  return { tail, full, fullDeferred, fresh, pin, month: monthDue, monthDeferred };
 }
 
 /** Chunk a symbol list into fetch batches. */
@@ -144,12 +155,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // measured) rides in right behind holdings + target: the Track Record can only grade a name whose
   // closes kept arriving, and this is the fetch that keeps them arriving. Read from the same snapshot,
   // so it costs no extra decrypt; a missing/ungradeable snapshot yields an empty list, never a throw.
-  let grading = [];
-  try { const pk = snap && snap.picks; grading = gradingUniverse((pk && pk.history) || [], { asOf: today, grades: pk && pk.grades }); } catch { grading = []; }
+  let grading = [], pinned = {};
+  try { const pk = snap && snap.picks; grading = gradingUniverse((pk && pk.history) || [], { asOf: today, grades: pk && pk.grades });
+        pinned = gradingStarts((pk && pk.history) || [], { asOf: today, grades: pk && pk.grades }); } catch { grading = []; pinned = {}; }
   const base = analyzeUniverse({ positions, target });
   const pri = new Set([...positions, ...target].map((x) => String(x || '').toUpperCase()));
   const universe = [...new Set([...base.filter((x) => pri.has(x)), ...shadowSymbols(snap?.agentic?.correctness?.shadow), ...grading.map((x) => String(x).toUpperCase()), ...base.filter((x) => !pri.has(x))])];
-  const plan = planHistoricals(universe, (snap && snap.hist) || {}, today);
+  const plan = planHistoricals(universe, (snap && snap.hist) || {}, today, { pinned });
 
   const tailStart = isoAgo(HIST_TAIL_LOOKBACK, today);
   const fullStart = `${today.slice(0, 4)}-01-01T00:00:00Z`;
@@ -159,19 +171,23 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const fullBatches = batches(plan.full, HIST_FULL_BATCH);
   const monthBatches = batches(plan.month, HIST_MONTH_BATCH);
   const quoteBatches = batches(universe, QUOTES_BATCH);
-  const calls = tailBatches.length + fullBatches.length + monthBatches.length + quoteBatches.length;
+  // Pinned (open-pick) fetches group by start date so each call has one window; ≤3 per call like FULL.
+  const pinByStart = {}; for (const r of plan.pin) (pinByStart[r.start] = pinByStart[r.start] || []).push(r.sym);
+  const pinBatches = Object.keys(pinByStart).sort().flatMap((st) => batches(pinByStart[st], HIST_FULL_BATCH).map((syms) => ({ st, syms })));
+  const calls = tailBatches.length + pinBatches.length + fullBatches.length + monthBatches.length + quoteBatches.length;
 
   const out = {
     asOf: today,
     snapshot: snap ? 'read' : 'unavailable',
     universe: universe.length,
     counts: {
-      fresh: plan.fresh.length, tail: plan.tail.length, full: plan.full.length,
+      fresh: plan.fresh.length, tail: plan.tail.length, pin: plan.pin.length, full: plan.full.length,
       fullDeferred: plan.fullDeferred.length, month: plan.month.length, monthDeferred: plan.monthDeferred.length,
     },
     calls,
     lines: [
       ...tailBatches.map((syms, i) => ({ kind: 'hist-day-tail', interval: 'day', start_time: tailStart, file: `hist-day-tail-${i + 1}.json`, symbols: syms })),
+      ...pinBatches.map((b, i) => ({ kind: 'hist-day-pick', interval: 'day', start_time: `${b.st}T00:00:00Z`, file: `hist-day-pick-${i + 1}.json`, symbols: b.syms })),
       ...fullBatches.map((syms, i) => ({ kind: 'hist-day-full', interval: 'day', start_time: fullStart, file: `hist-day-full-${i + 1}.json`, symbols: syms })),
       ...monthBatches.map((syms, i) => ({ kind: 'hist-month', interval: 'month', start_time: monthStart, file: `hist-month-${i + 1}.json`, symbols: syms })),
       ...quoteBatches.map((syms, i) => ({ kind: 'quotes-bench', file: `quotes-bench-${i + 1}.json`, symbols: syms })),
@@ -186,7 +202,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log('');
   for (const l of out.lines) {
     if (l.kind === 'quotes-bench') console.log(`QUOTES bench          file=${l.file}  symbols=${l.symbols.join(',')}\n`);
-    else console.log(`HIST ${l.interval} ${l.kind.includes('tail') ? 'tail' : l.kind.includes('full') ? 'full' : '5y  '}  start=${l.start_time}  file=${l.file}  symbols=${l.symbols.join(',')}\n`);
+    else console.log(`HIST ${l.interval} ${l.kind.includes('tail') ? 'tail' : l.kind.includes('pick') ? 'pick' : l.kind.includes('full') ? 'full' : '5y  '}  start=${l.start_time}  file=${l.file}  symbols=${l.symbols.join(',')}\n`);
   }
   if (plan.fullDeferred.length) {
     console.log(`  ⏳ ${plan.fullDeferred.length} symbol(s) queued for a later run (YTD cap ${HIST_FULL_CAP}/run, priority order) — ` +
@@ -194,10 +210,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.log(`     next up: ${plan.fullDeferred.slice(0, 12).map((r) => `${r.sym}(${tierOf(r.sym, { positions, target })})`).join(', ')}${plan.fullDeferred.length > 12 ? ', …' : ''}`);
   }
   if (plan.monthDeferred.length) console.log(`  ⏳ ${plan.monthDeferred.length} symbol(s) queued for a later monthly refresh (cap ${HIST_MONTH_CAP}/run).`);
-  console.log(`\nSUMMARY bench=${universe.length} fresh=${plan.fresh.length} tail=${plan.tail.length} ` +
+  console.log(`\nSUMMARY bench=${universe.length} fresh=${plan.fresh.length} tail=${plan.tail.length} pick=${plan.pin.length} ` +
     `full=${plan.full.length} full-deferred=${plan.fullDeferred.length} month=${plan.month.length} ` +
     `month-deferred=${plan.monthDeferred.length} · calls=${calls} ` +
-    `(tail ${tailBatches.length} + full ${fullBatches.length} + month ${monthBatches.length} + quotes ${quoteBatches.length})`);
+    `(tail ${tailBatches.length} + pick ${pinBatches.length} + full ${fullBatches.length} + month ${monthBatches.length} + quotes ${quoteBatches.length})`);
   console.log('\nFetch each line with `Robinhood · get_equity_historicals { symbols:[…], interval, start_time }`\n' +
     '(quotes lines use `get_equity_quotes { symbols:[…] }`) and `Write` the VERBATIM result to\n' +
     'producer/raw/<file>. build-data.mjs merges every hist-day*/hist-month*/quotes* file by symbol —\n' +

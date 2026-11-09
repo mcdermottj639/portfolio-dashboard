@@ -38,7 +38,7 @@ import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } fr
 import { etDate } from './market.mjs';
 import { mergeOrderPages } from './order-pages.mjs';
 import { compactHist, histBytes, mergeHist } from './histbars.mjs';
-import { gradeAll, gradingUniverse } from './pickgrade.mjs';
+import { gradeAll, gradingUniverse, quoteCloseBars, addQuoteCloses } from './pickgrade.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RAWDIR = join(__dirname, 'raw');
@@ -175,6 +175,18 @@ if (prior && prior.hist) {
   for (const iv of Object.keys(hist)) delete hist[iv];
   Object.assign(hist, merged);
 }
+// v204 — open Daily-Picks episodes get the quote's official dated close (previous_close + previous_close_date)
+// as a daily bar every run, so their series keep advancing even when the day's historicals never land
+// (the BAC/T/NFLX/CMCSA "Not graded" rows). Only open-pick symbols; a real bar for that date always wins.
+try {
+  const pk = prior && prior.picks;
+  if (pk && Array.isArray(pk.history)) {
+    const open = gradingUniverse(pk.history, { asOf: etDate(new Date()), grades: pk.grades });
+    hist.day = hist.day || {};
+    const added = addQuoteCloses(hist.day, quoteCloseBars(quotes, open));
+    if (added) console.log(`picks grading: added ${added} quote close bar(s) for open picks`);
+  }
+} catch (e) { console.warn('picks grading: quote-close bars skipped —', e.message); }
 // Compact the bars to the shape every reader already coalesces to (histbars.mjs explains
 // which fields are dropped and why each is provably unread). This is ONE call site on
 // purpose — it sits AFTER the carry-forward merge so it covers freshly-fetched and
