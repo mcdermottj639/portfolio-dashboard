@@ -415,11 +415,16 @@ ok('v197 research tiles: R/R at the shown entry, raw URLs become "source ↗" (N
 
 console.log(`apex: ${n}/${n} passed`);
 
-// v199 — Confirm-with-Claude links: pure prompt, read-only wording, present on rungs + scan tiles.
+// v199 — one "Confirm this week's Apex book" prompt: whole book, read-only wording, every armed rung listed.
 {
-  const p = A.confirmPrompt({ sym: 'ZS', name: 'Zscaler', qty: 6, trigger: 295.5, limit: 298.46, tp1: 340, stop: 271.86 });
-  assert.match(p, /YES \/ WAIT \/ NO/);
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, AMZN: 22, ZS: 12 }, levels: { AMZN: { trigger: 274.6, limit: 277.35, tp1: 280.14, stop: 253.89, name: 'Amazon' }, ZS: { trigger: 229.22, tp1: 267.87, stop: 177.73 } } });
+  const st = A.state({ equity: 11073, debt: 0, positions: [{ symbol: 'IREN', qty: 500, px: 21.24, avg: 40.99 }], cash: 446 });
+  const out = A.rules(st, { cfg, smaMap: { AMZN: { px: 252 }, ZS: { px: 214 } }, earningsMap: {}, review: false });
+  const p = A.portfolioPrompt(st, out, cfg, null);
+  assert.match(p, /FULL recommended portfolio/);
   assert.match(p, /never review_equity_order or place_equity_order/);
-  assert.match(p, /BUY ~6 sh ZS \(Zscaler\) — buy-stop trigger \$295\.50 · limit \$298\.46 · target \$340\.00 · stop \$271\.86/);
-  console.log('ok confirmPrompt (v199)');
+  assert.match(p, /BUY \d+ sh AMZN \(Amazon\) — trigger \$274\.60 · limit \$277\.35 · target \$280\.14 · stop \$253\.89/);
+  assert.match(p, /BUY \d+ sh ZS — trigger \$229\.22/);
+  assert.match(p, /IREN 500 sh @ \$21\.24 \(core/);
+  console.log('ok portfolioPrompt (v199)');
 }

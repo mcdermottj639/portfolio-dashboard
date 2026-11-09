@@ -339,6 +339,7 @@
       <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${Math.min(99.5, st.guardPct * 100)}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
       ${tw ? `<div style="font-size:11.5px;color:#6b7280;margin-top:8px">Tripwire: ${esc(cfg.core)} at <b style="color:var(--text)">${money(tw)}</b> puts equity on the guard line (others flat) — the ${esc(cfg.donor)} tranche ticket is pre-built for that print.</div>` : ''}
       <div class="ac-tier">⚙️ Rules firing now</div>${rows}
+      ${portfolioButton(st, out, cfg, research)}
       <div data-apex-business></div>
       <div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · cap ${pct(C.SINGLE_MAX_EQ)} · LEAPS kicker ≤ ${cfg.kicker}%)</span></div>${mix}
       ${researchBlock(research, esc)}
@@ -348,21 +349,33 @@
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
   }
 
-  /* v199 — "Confirm with Claude": every Apex rung and research tile opens a Claude chat that re-checks the name
-     against LIVE Robinhood data (read tools only — ••••0741 is read-only to every agent) and answers YES / WAIT / NO
-     with the prices to use. Jack enters a YES himself. Pure string builder; the link is a plain universal link. */
-  function confirmPrompt(L) {
-    const f = (x) => (x > 0 && isFinite(x) ? '$' + (+x).toFixed(2) : null);
-    const qty = L.qty > 0 ? '~' + L.qty + ' sh ' : '';
-    const lv = [L.trigger ? 'buy-stop trigger ' + f(L.trigger) : null, L.limit ? 'limit ' + f(L.limit) : null, L.tp1 ? 'target ' + f(L.tp1) : null, L.stop ? 'stop ' + f(L.stop) : null].filter(Boolean).join(' · ');
-    return ['Apex check — should I place this in my SELF-DIRECTED margin account (••••0741)? Answer YES / WAIT / NO with the exact prices to use. The account is read-only to you: use Robinhood READ tools only (quotes, technical indicators, fundamentals, earnings calendar, news) — never review_equity_order or place_equity_order. I enter a YES myself in the Robinhood app.', '',
-      '• BUY ' + qty + L.sym + (L.name ? ' (' + L.name + ')' : '') + (lv ? ' — ' + lv : ''),
-      '• Proposed by the Apex research scan (momentum-ranked, build-on-confirmation). Levels are from a static snapshot — re-check live.', '',
-      'Check: live last + today\u2019s range; distance from the 20-day high (within 3% = WAIT for a pullback unless momentum is strong); 50/100-day trend; 14-day ATR vs the stop; earnings inside 3 trading days (= WAIT); guidance cut / dilution / investigation / exec exit in the last 10 days (= NO); reward/risk at the limit vs stop and target (under 1.5 = NO).',
-      'Answer in one small table: Verdict | Entry/limit | Stop | Target | R/R | one-line why. If YES, add the Robinhood order line (side · shares · ticker · order type · trigger/limit · time-in-force). One phone screen. Education only — not financial advice.'].join('\n');
+  /* v199 (Jack, Nov 8 22:33 ET: "full recommended portfolios … the research feeds me the new portfolio each week and
+     I one click to confirm"): ONE button on the Apex card opens a Claude chat that checks the WHOLE proposed book
+     against live Robinhood data and returns the complete order set — YES / WAIT / NO per name, sized, with prices.
+     ••••0741 is read-only to every agent, so the prompt forbids review/place_equity_order; Jack enters the YES lines.
+     Pure string builder over the rows render() already has. */
+  function portfolioPrompt(st, out, cfg, research) {
+    const f = (x) => (x > 0 && isFinite(x) ? '$' + (+x).toFixed(2) : '—');
+    const builds = (out || []).filter((r) => r.kind === 'build' && r.levels);
+    const sells = (out || []).filter((r) => r.ticket && r.ticket.side === 'sell');
+    const held = (st.positions || []).map((p) => `${p.symbol} ${p.qty} sh @ ${f(p.px)}${p.symbol === cfg.core ? ' (core — keep ≤ ' + cfg.coreMax + ' sh, never add)' : ''}`).join('; ') || 'none';
+    const L = ['Apex weekly book check — this is the FULL recommended portfolio for my SELF-DIRECTED margin account (••••0741). Check every line against LIVE Robinhood data and give me the complete set of orders to place: YES / WAIT / NO per name, sized, with exact prices. The account is read-only to you: Robinhood READ tools only (quotes, technical indicators, fundamentals, earnings calendar, news) — never review_equity_order or place_equity_order. I enter every YES myself in the Robinhood app.', '',
+      `Book now: equity $${k(st.equity)} · margin debt $${k(st.debt)} · leverage ${isFinite(st.lev) ? st.lev.toFixed(2) + 'x' : 'n/a'} (cruise ${C.LEV_NORMAL}x, cap ${C.LEV_CAP}x) · maintenance ${pct(st.maint)}. Held: ${held}.`,
+      'Target weights (% of equity): ' + Object.keys(cfg.targets).map((s) => s + ' ' + cfg.targets[s] + '%').join(' · ') + '.', '',
+      'Proposed buys (armed buy-stop-limits from this week\u2019s research; levels from a static snapshot — re-check live):'];
+    builds.forEach((r) => { const t = r.levels; L.push(`• BUY ${t.qty > 0 ? t.qty + ' sh ' : ''}${t.sym}${t.name ? ' (' + t.name + ')' : ''} — trigger ${f(t.trigger)} · limit ${f(t.limit)} · target ${f(t.tp1)} · stop ${f(t.stop)}${t.rr != null ? ' · scan R/R ' + (+t.rr).toFixed(2) : ''}${r.lowRR ? ' · BELOW 1.5 R/R floor at this entry' : ''}`); });
+    if (!builds.length) L.push('• (none armed this pass)');
+    if (sells.length) { L.push('', 'Proposed sells / trims from the rules:'); sells.forEach((r) => L.push(`• SELL ${r.ticket.qty} ${r.ticket.sym} — ${r.ticket.px ? 'limit ' + f(r.ticket.px) : 'market'}${r.ticket.gtc ? ' GTC' : ''} — ${r.title}`)); }
+    const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
+    if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f(r.stop)}`).join('; ')); }
+    L.push('', 'Rules to apply per name: live last + today\u2019s range; within 3% of the 20-day high ⇒ WAIT for a pullback unless momentum is strong; earnings inside 3 trading days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; reward/risk at the limit vs stop and target under 1.5 ⇒ NO; per-name cap 20% of equity; the book must stay under ' + C.LEV_CAP + 'x after fills; several AI/compute names count as one bet.',
+      'Answer with ONE table — Ticker | Verdict | Shares | Entry/limit | Stop | Target | R/R | one-line why — then the leverage after all YES fills, then the Robinhood order lines for every YES (side · shares · ticker · order type · trigger/limit · time-in-force), in the order I should enter them. Keep it to one phone screen plus the order lines. Education only — not financial advice.');
+    return L.join('\n');
   }
-  function confirmLink(L, esc) {
-    return `<a href="https://claude.ai/new?q=${encodeURIComponent(confirmPrompt(L))}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;padding:6px 10px;border-radius:8px;background:#059669;color:#fff;font-weight:600;font-size:12px;text-decoration:none">✅ Confirm ${esc(L.sym)} with Claude</a>`;
+  function portfolioButton(st, out, cfg, research) {
+    const n = (out || []).filter((r) => r.kind === 'build' && r.levels).length + (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').length;
+    if (!n) return '';
+    return `<a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div>`;
   }
 
   /* v194 — entry · target · stop · R/R as a 2×2 grid (fits 320px), then company name + a Robinhood link. */
@@ -380,7 +393,7 @@
     const name = L.name ? `<b>${esc(L.name)}</b> · ` : '';
     const link = `<a href="https://robinhood.com/stocks/${encodeURIComponent(L.sym)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">Open in Robinhood ↗</a>`;
     const warn = low ? `<div style="font-size:11.5px;margin-top:6px;color:#b91c1c;font-weight:600">Under your ${C.RR_MIN} R/R floor at this entry.</div>` : '';
-    return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>armed</b> in Jarvis · ${link}</div>${confirmLink(L, esc)}`;
+    return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>armed</b> in Jarvis · ${link}</div>`;
   }
 
   /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
@@ -408,7 +421,7 @@
         const news = cut >= 0 ? whyTxt.slice(cut) : '';
         const closeNote = rrE != null && rrClose != null ? `<div>Scan R/R ${rrClose.toFixed(1)} was measured from the prior close, not this entry.</div>` : '';
         const fold = news || src || closeNote ? `<details class="sd-more" style="margin-top:3px"><summary style="font-size:10.5px;color:#6b7280">${news ? '📰 News' : 'ⓘ Notes'}${src ? ' · source' : ''}</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${news ? news + src : src.trim()}${closeNote}</div></details>` : '';
-        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${whyMain}</div>${fold}${r.trigger ? confirmLink({ sym: r.sym, name: r.name, trigger: r.trigger, limit: lv && lv.limit, tp1: r.tp1, stop: r.stop }, esc) : ''}</div>`;
+        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${whyMain}</div>${fold}</div>`;
       }
       return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
     }).join('');
@@ -442,5 +455,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, confirmPrompt };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt };
 });
