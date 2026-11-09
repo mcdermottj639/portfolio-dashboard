@@ -1,24 +1,28 @@
-## v199 — "Confirm with Claude": every proposed trade gets a live yes / wait / no (2026-11-08)
+## v199 — One "Confirm this week's Apex book" button; plan buttons become a confirm (2026-11-08)
 
-Jack (Nov 8 22:24 ET): "the button should be a confirm so the app builds out what I should be trading. I click confirm
-with Robinhood for them to analyze the trade and then tell me the yes or no and prices to buy at … That's how all the
-apex research should flow through so I know what needs to be placed." Three surfaces now open the same kind of
-Claude chat — a **check**, not an order: Claude re-reads the name with Robinhood READ tools (quote, technicals,
-fundamentals, earnings calendar, news) and answers **YES / WAIT / NO** in one table (verdict · entry/limit · stop ·
-target · R/R · why) plus the Robinhood order line for a YES. ••••0741 is read-only to every agent (Robinhood rule), so
-the prompt forbids `review_equity_order` / `place_equity_order`; Jack enters a YES himself. Gates named in the prompt
-mirror the card's rules: within 3% of the 20-day high ⇒ WAIT unless momentum is strong; earnings inside 3 trading
-days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; R/R at the limit under 1.5 ⇒ NO.
-(1) **Self-directed Plan** buttons (v198's) are now **"✅ Confirm these N buys / sells with Claude"** via
-`planOrdersPrompt`. (2) **Apex build rungs** — `levelsHtml` adds **"✅ Confirm SYM with Claude"** under the Robinhood
-link. (3) **Apex research top-5 tiles** with a scan entry get the same button. New pure `Apex.confirmPrompt(L)` +
-`confirmLink`; universal link `https://claude.ai/new?q=…` (no clipboard). Unchanged: rules, tickets, the scan prompt,
-Jarvis approvals (still the place a ticket is approved/declined), Analyze / Picks / Options hand-offs, the agentic
-"Deploy ••••3900" button. Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (+1, 43/43),
-`tests/sd-plan-browser.mjs` (label), `CLAUDE.md`. Verified: apex 43/43, business 18/18, tests/*.cjs 4/4,
-sd-plan-browser PASS (320–1440, privacy, Midnight); synthetic Playwright 390 with the real `data/apex-targets.json`
-— 4 rungs + 5 tiles each carry one Confirm button, scrollWidth 390, no page errors. Physical iPhone not verified.
-App/cache **v199 / pf-v199**.
+Jack (Nov 8 22:24–22:33 ET): the hand-off button "should be a confirm so the app builds out what I should be trading
+… tell me the yes or no and prices"; then "I don't want it individually. It's supposed to be full recommended
+portfolios. So the research feeds me the new portfolio each week and I one click to confirm." So: **ONE green
+button on the Apex card**, under "Rules firing now" — **"✅ Confirm this week's Apex book with Claude · N orders"**
+(`Apex.portfolioPrompt` + `portfolioButton`, pure; rendered only when at least one armed build rung or a sell ticket
+exists). It opens a Claude chat carrying the WHOLE proposed book: equity / debt / leverage / maintenance, every held
+position (core flagged "keep ≤ 500, never add"), target weights, every armed buy with trigger · limit · target · stop ·
+scan R/R (+ "BELOW 1.5 R/R floor" when `r.lowRR`), any rule sells, and up to 3 research names outside the target
+as context only. Claude is told to check each line with Robinhood READ tools (••••0741 is read-only to every agent;
+`review_equity_order` / `place_equity_order` are forbidden) and answer ONE table — Ticker | Verdict YES/WAIT/NO |
+Shares | Entry/limit | Stop | Target | R/R | why — then leverage after all YES fills, then the Robinhood order lines
+in entry order. Jack types the YES lines into Robinhood. Gates in the prompt mirror the card: within 3% of the
+20-day high ⇒ WAIT, earnings ≤ 3 trading days ⇒ WAIT, bad news ≤ 10 days ⇒ NO, R/R < 1.5 ⇒ NO, 20% per-name cap,
+stay under 1.5x, AI/compute cluster = one bet. The **Self-directed Plan** batch buttons (v198) are the same idea for
+the SD plan's own sells/buys: **"✅ Confirm these N buys / sells with Claude"** via `planOrdersPrompt`. Per-name
+confirm links (tried first this evening) were removed before release at Jack's word. Unchanged: rules, tickets,
+the scan prompt, Jarvis approvals (still where a ticket is approved/declined — this button is the live second
+opinion before entry), Analyze / Picks / Options hand-offs, the agentic "Deploy ••••3900" button. Files: `ui/apex.js`,
+`index.html`, `sw.js`, `producer/apex.test.mjs` (+1, 43/43 incl. the new prompt test), `tests/sd-plan-browser.mjs`
+(label), `CLAUDE.md`. Verified: apex 43/43, business 18/18, tests/*.cjs 4/4, sd-plan-browser PASS (320–1440,
+privacy, Midnight); synthetic Playwright 390 with the real `data/apex-targets.json` (4 armed rungs) — one button,
+"· 4 orders", prompt decodes clean (no undefined/NaN), scrollWidth 390, no page errors. Physical iPhone not
+verified. App/cache **v200 / pf-v200** (the per-name variant shipped briefly as v199 in PR #173; this supersedes it).
 
 ## v198 — Self-directed plan buttons write tickets instead of promising to place trades (2026-11-08)
 
