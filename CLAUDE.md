@@ -1,3 +1,32 @@
+## v203 — Research › Screens page; Apex rows show shares and dollars (2026-11-09)
+
+Jack (Nov 9 ~01:35 ET), asked whether the v202 "Other screens" fold should be its own page: "Build and merge"; then
+(01:38) "Make sure apex is showing the recommended shares and dollar amounts in each ticker as well so it's clear".
+**Pages.** The Plan › Self-directed page now holds ONLY the plan — Apex card → Action Center → Rebalance Log link →
+**Screens link** (`[data-sd-screens-link]`) → Agentic link → disclaimer. The oversold daily screen (hero, Top 3,
+Composite Scores, Scoring Breakdown, Track Record, Catalysts, Earnings preview) moved to a new **Research › Screens**
+page: `#page-screens` / `#screens-app` (`data-priv="market"`), classic tab `#tab-screens`, `routes.screens`
+(`area:'research'`, `tab:'screens'`) in `ui/experience.js`, `initScreens()` → `renderScreensPage()`, led by a
+reference-not-buys note (`[data-sd-screens-note]`: nothing there is checked against Apex's band, cluster cap or tax
+holds and nothing reaches the Confirm button). Shared pieces `screensHeroHtml` / `screensCardsHtml(top3Hint)` /
+`screensDiscHtml` / `screensRenderAll` serve both the Screens page and the legacy (`SD_APEX_RUNS=false`) Plan page,
+which still renders them inline — in that mode Screens is a pointer, so the `picks-*` ids exist once app-wide.
+`fetchPicksLive` runs once whichever page asks first (`_picksLiveStarted`). **Cut:** the momentum watchlist
+(`#sd-ideas-content` has no mount; `renderActionPlan` already null-checks it) — Apex's Monday scan ranks momentum,
+and two lenses on one page was the v202 problem again. **Moved:** Income Ideas (PICK_INCOME) render on the Options
+page via `optPickIncomeHtml()` before Options Knowledge (`[data-opt-pick-income]`, a data attribute because the rail
+re-ids every `.card`); `loadPicksData` slots the card in late if Options rendered first. Earnings stays on both
+(Apex's WAIT gate reads `azEarn`). The v202 `.sd-other` CSS, `sdOtherShown` and the fold are gone; the v202
+jump-opens-folded-ancestor fix stays. **Apex (`ui/apex.js`):** every 🎯 weights row carries a second line —
+`hold N sh · $X · target $Y (N sh)` and, when a build rung is armed, `this week: buy N sh ≈ $Z` taken from the rung's
+own ticket (sized at the limit, so it cannot disagree with the Jarvis ticket); with nothing held the target share
+count is priced at the scan limit and says so; the owner-managed core shows held shares and dollars only.
+**Privacy audit** gained the Screens surface (0 leaked). Files: `index.html`, `ui/apex.js`, `ui/experience.js`,
+`sw.js`, `producer/apex.test.mjs` (48/48, +1), `producer/privacy-audit.mjs`, `tests/sd-plan-browser.mjs` (Screens
+section replaces the fold section), `CLAUDE.md`, `UI-PRESERVATION.md`. Verified: all producer suites, tests/*.cjs
+4/4, sd-plan-browser + brief-browser PASS, privacy audit 0 leaked across 9 surfaces, Playwright 390 — Plan, Options
+and Screens scrollWidth 390, no page errors. Physical iPhone not verified. App/cache **v203 / pf-v203**.
+
 ## v202 — Apex runs the Self-directed page: one leverage rule, one buy list (2026-11-08)
 
 Jack (Nov 8 ~23:05 ET) asked for a review of the whole Self-directed research page, then chose **"Apex only"**. The
@@ -1587,7 +1616,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v202** (`pf-v202`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v203** (`pf-v203`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one

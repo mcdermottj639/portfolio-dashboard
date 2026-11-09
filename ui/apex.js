@@ -340,11 +340,25 @@
       const tk = r.levels ? levelsHtml(r.levels, esc) : r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger in Jarvis</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
       return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0;white-space:nowrap">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
     }).join('') : '<div class="tech-empty">No rule fires. Hold.</div>';
+    /* v203 (Jack, Nov 9 01:38 ET: "make sure apex is showing the recommended shares and dollar amounts in each
+       ticker"): every weights row carries a second line — what you HOLD (shares · $), the full TARGET (shares at
+       the current price · $), and THIS WEEK's armed buy (shares · $) from the build rung when one exists. The
+       core only shows what is held. Share counts come straight from the rung (sized at the limit), so the line
+       can never disagree with the ticket. */
+    const posBy = {}; st.positions.forEach((p) => { posBy[p.symbol] = p; });
+    const rungBy = {}; out.forEach((r) => { if (r.kind === 'build' && r.ticket) rungBy[r.ticket.sym] = r.ticket; });
+    const sizeLine = (s, tg) => {
+      const p = posBy[s], held = p ? `hold ${p.qty % 1 ? p.qty.toFixed(2) : p.qty} sh · $${k(p.val)}` : 'hold 0 sh';
+      if (cfg.coreOwner && s === cfg.core) return `<div style="font-size:10.5px;color:#6b7280;margin:-2px 0 6px 52px">${held} · yours</div>`;
+      const L = levelsFor(cfg, s) || {}, tgtD = tg / 100 * st.equity, px = p ? p.px : (rungBy[s] ? rungBy[s].px : (L.limit || L.trigger || 0)), tgtSh = px > 0 ? Math.floor(tgtD / px) : null;
+      const tk = rungBy[s], wk = tk ? ` · <b style="color:#065f46">this week: buy ${tk.qty} sh ≈ $${k(tk.qty * (tk.limit || tk.px))}</b>` : (cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` · tax hold to ${esc(cfg.wash[s].clear)}` : '');
+      return `<div style="font-size:10.5px;color:#6b7280;margin:-2px 0 6px 52px">${held} · target $${k(tgtD)}${tgtSh != null ? ` (${tgtSh} sh${p ? '' : ' at the scan limit'})` : ''}${wk}</div>`;
+    };
     const mix = Object.keys(cfg.targets).map((s) => { const w = (st.weights[s] || 0) * 100, tg = cfg.targets[s];
       /* v202: the owner-managed core has no target to be over — a neutral bar, no tick, no orange (Jack, Nov 8: stop telling me to sell IREN). */
-      if (cfg.coreOwner && s === cfg.core) return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:#9ca3af"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% · yours</span></div>`;
+      if (cfg.coreOwner && s === cfg.core) return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:#9ca3af"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% · yours</span></div>` + sizeLine(s, tg);
       const hold = cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` <span title="tax hold to ${esc(cfg.wash[s].clear)}">🚫</span>` : '';
-      return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600;white-space:nowrap">${esc(s)}${hold}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>`; }).join('');
+      return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600;white-space:nowrap">${esc(s)}${hold}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>` + sizeLine(s, tg); }).join('');
     el.innerHTML = `
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>approvals live in Jarvis</b>; you place the order in Robinhood.</div>
       <div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
@@ -354,7 +368,7 @@
       <div class="ac-tier">⚙️ Rules firing now</div>${rows}
       ${portfolioButton(st, out, cfg, research)}
       <div data-apex-business></div>
-      <div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · cap ${pct(C.SINGLE_MAX_EQ)} · LEAPS kicker ≤ ${cfg.kicker}%)</span></div>${mix}
+      <div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · held → target in shares and $ · cap ${pct(C.SINGLE_MAX_EQ)})</span></div>${mix}
       ${researchBlock(research, esc)}
       <div class="ac-tier">🧪 What if</div>
       <div id="apex-whatif"></div>

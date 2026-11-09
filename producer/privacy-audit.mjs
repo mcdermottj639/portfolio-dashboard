@@ -75,7 +75,7 @@ const SCAN = `(() => {
      reads "350.00". Check the two places bare figures legitimately live instead: a cell
      under a quantity header, and anything explicitly tagged data-priv="val". */
   for(const t of document.querySelectorAll('table')){
-    const root0=t.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today');
+    const root0=t.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-screens,#page-markets,#page-ex-today');
     if(!root0||getComputedStyle(root0).display==='none')continue;
     const heads=[...t.querySelectorAll('thead th')].map(h=>h.textContent.trim());
     const cols=heads.map(h=>/^(shares?|qty|quantity|contracts?|size|units?)$/i.test(h));
@@ -94,11 +94,11 @@ const SCAN = `(() => {
   for(const e of document.querySelectorAll('[data-priv="val"]')){
     if(e.querySelector('span.priv-m'))continue;
     if(!/\d/.test(e.textContent||''))continue;
-    const root0=e.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today');
+    const root0=e.closest('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-screens,#page-markets,#page-ex-today');
     if(!root0||getComputedStyle(root0).display==='none')continue;
     out.push({page:root0.id,mode:'val',text:(e.textContent||'').trim().slice(0,60),hit:(e.textContent||'').trim().slice(0,24),where:'data-priv=val'});
   }
-  for(const root of document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today')){
+  for(const root of document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-screens,#page-markets,#page-ex-today')){
     if(getComputedStyle(root).display==='none') continue;
     const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n;
     while((n=w.nextNode())){
@@ -129,6 +129,7 @@ const VIEWS = [
   ['Plan · agentic',           p => p.evaluate(() => { switchTab('picks'); setPlanAccount('agentic'); })],
   ['Options',                  p => p.evaluate(() => switchTab('options'))],
   ['Analyze',                  p => p.evaluate(() => { switchTab('analyze'); const i=document.getElementById('az-ticker'); if(i){ i.value='IREN'; azGo(); } })],
+  ['Screens',                  p => p.evaluate(() => switchTab('screens'))],
   ['Markets',                  p => p.evaluate(() => switchTab('markets'))],
 ];
 
@@ -152,7 +153,7 @@ for (const [name, go] of VIEWS) {
   /* A view that rendered nothing leaks nothing, so "0 leaked" is only meaningful next to
      evidence the view exists AND that masking actually fired on it. */
   const stat = await page.evaluate(() => {
-    const vis = [...document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-markets,#page-ex-today')]
+    const vis = [...document.querySelectorAll('#page-portfolio,#page-picks,#page-options,#page-analyze,#page-screens,#page-markets,#page-ex-today')]
       .filter(r => getComputedStyle(r).display !== 'none');
     return { chars: vis.reduce((n, r) => n + r.innerText.length, 0),
              masked: vis.reduce((n, r) => n + r.querySelectorAll('span.priv-m').length, 0),

@@ -12,7 +12,8 @@ Classic view is available from the header. The original feature search and saved
 | Risk, diversification, allocations, drawdown | Portfolio → Risk & allocation; adjacent original cards |
 | Income, dividends, tax-loss harvesting, realized P&L | Portfolio → Income & tax |
 | Options positions, orders, Greeks, IV, ideas, payoff views, watchlists | Portfolio → Options (explicitly self-directed source) |
-| Plan / Action Center, Daily Picks, composite chart, filters, screen track record, earnings | Research → Plan & Action Center (self-directed); since v202 the Daily Picks cards, composite chart, scoring table, track record, income ideas, catalysts and earnings sit inside the collapsed **Other screens — not your Apex plan** card (same cards and ids; a rail/Find jump opens it) |
+| Plan / Action Center | Research → Plan & Action Center (self-directed): the Apex card, the Action Center and two pointer cards (Rebalance Log, Screens) |
+| Daily Picks, composite chart, filters, screen track record, catalysts, earnings | Research → **Screens** (v203, its own page, `#page-screens` / `#screens-app`) — same cards, ids and renderers, led by a reference-not-buys note. Income Ideas moved to the Options page (`[data-opt-pick-income]`); the momentum watchlist is cut (Apex's Monday scan ranks momentum). `window.SD_APEX_RUNS=false` renders the v201 page inline on Plan and turns Screens into a pointer |
 | Agentic targets, bands, drift, parking, guardrails, diagnostics, forward observations | Research → Plan & Action Center (agentic) |
 | Markets, sectors, macro, breadth, retail buzz | Research → Markets |
 | Analyze, technical chart, scanner, fundamentals, live/estimated option context | Research → Analyze |
@@ -23,8 +24,9 @@ Classic view is available from the header. The original feature search and saved
 ## New views and their limits
 
 - v202: Apex runs the self-directed book. The Plan keeps "cut what's broken"; Step 2 points to the Apex card; the
-  retired momentum plan (sleeves, borrowing, press room) returns only with `window.SD_APEX_RUNS=false`. Its momentum
-  ideas remain visible as a watchlist inside **Other screens**.
+  retired momentum plan (sleeves, borrowing, press room) returns only with `window.SD_APEX_RUNS=false`.
+- v203: the oversold daily screen moved to its own Research › Screens page; the momentum watchlist was cut and Income
+  Ideas moved to Options. Apex weights rows carry held / target / this-week shares and dollars.
 
 - Predict adds Positions, Ideas, Watchlist, Results and (v173) a private Settled tab without replacing any account, plan or
   research page. It is a separate account/data scope and hides the stock-account picker.
