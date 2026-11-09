@@ -709,10 +709,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=197">
-<link rel="stylesheet" href="ui/predictions.css?v=197">
-<link rel="stylesheet" href="ui/smartmoney.css?v=197">
-<link rel="stylesheet" href="ui/ticker.css?v=197">
+<link rel="stylesheet" href="ui/experience.css?v=198">
+<link rel="stylesheet" href="ui/predictions.css?v=198">
+<link rel="stylesheet" href="ui/smartmoney.css?v=198">
+<link rel="stylesheet" href="ui/ticker.css?v=198">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -771,9 +771,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=197"></script>
-<script src="ui/apex.js?v=197"></script>
-<script src="ui/business.js?v=197"></script>
+<script src="ui/sd-rules.js?v=198"></script>
+<script src="ui/apex.js?v=198"></script>
+<script src="ui/business.js?v=198"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -887,7 +887,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v197'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v198'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1475,17 +1475,19 @@ function eqTradePrompt(p){
   L.push('','Use the Robinhood connector: run review_equity_order first, show me the cost and buying-power impact, then place_equity_order once I say go. Education only — not financial advice.');
   return L.join('\n');
 }
-/* Multi-order hand-off for the Action Plan: one structured prompt covering a batch of equity
-   orders (the cash-raising sells, or the redeploy buys) with concrete size + limit/stop levels. */
+/* Multi-order hand-off for the self-directed Action Plan (the ••••0741 margin book). v198: this
+   account is READ-ONLY to every agent — Robinhood lets an agent trade only in its own dedicated
+   agentic account (••••3900) — so the prompt asks Claude to WRITE the tickets, never to place them.
+   Jack types each order line into Robinhood himself (the same flow as the Apex tickets in Jarvis). */
 function planOrdersPrompt(orders, goal){
-  const L=['I want to place these equity orders on my Robinhood account. Build each, review with the broker (run review_equity_order to show cost + buying-power impact), and submit ONLY after I confirm.','','Goal: '+goal,''];
+  const L=['Write Robinhood order tickets for these equity orders in my SELF-DIRECTED margin account (••••0741). That account is read-only to you — do NOT call review_equity_order / place_equity_order; I enter the orders in the Robinhood app myself.','','Goal: '+goal,''];
   orders.forEach(function(o){
     var s='• '+(o.side||'BUY').toUpperCase()+' ~'+o.qty+' sh '+o.sym+' — '+(o.limit!=null?'limit $'+(+o.limit).toFixed(2):'market');
     var ex=[]; if(o.zone)ex.push('entry zone '+o.zone); if(o.stop!=null)ex.push('stop $'+(+o.stop).toFixed(2)); if(o.note)ex.push(o.note);
     if(ex.length)s+='  ('+ex.join('; ')+')';
     L.push(s);
   });
-  L.push('','Prices are from a static snapshot — re-check the live mark before each fill. Then place_equity_order once I say go for each. Education only — not financial advice.');
+  L.push('','For each: re-check the live mark (read-only quote is fine), then give me ONE copy-ready order line — side, shares, ticker, order type, limit, time-in-force — plus entry, target and stop. If last > limit + 0.5×ATR say CANCEL instead of walking the limit up. Prices are from a static snapshot. Education only — not financial advice.');
   return L.join('\n');
 }
 function optTradePrompt(o){
@@ -2843,7 +2845,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       ${payShort>0?`<div style="padding:3px 0">${fmtD(payShort)} of the margin paydown can't be raised — the remaining shares are pledged to your short calls${Object.keys(locked).length?` (${Object.entries(locked).map(([k,v])=>`${k} ${fmt(v.shares,0)} sh`).join(' · ')})`:''}. Roll or close them to free the stock; until then the loan stays above your ${fmt(SD_UTIL_MAX*100,0)}% ceiling.</div>`:''}
     </div>`:''}
     ${(exits.length||payRows.length)?`<div class="fund-note">These sells realize ≈ <b class="${netTaxable>=0?'pos':'neg'}">${fmtD(netTaxable)}</b> net.${netTaxable>0?' Short-term lots are taxed as ordinary income — check holding periods before you fire.':' A realized loss offsets gains and carries forward; the 30-day wash window then applies to that name in BOTH accounts.'} Not tax advice.</div>`:''}
-    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,`Cut broken theses${payRows.length?` and raise ≈ ${fmtD(payNeed)} to get back under the ${fmt(SD_UTIL_MAX*100,0)}% margin-line ceiling`:''} in the self-directed account`),'🤖 Build '+(sellOrders.length>1?('these '+sellOrders.length+' sells'):'this sell')+' with Claude')}</div>`:''}
+    ${sellOrders.length?`<div style="margin-top:8px">${chatBtn('plan-sell',planOrdersPrompt(sellOrders,`Cut broken theses${payRows.length?` and raise ≈ ${fmtD(payNeed)} to get back under the ${fmt(SD_UTIL_MAX*100,0)}% margin-line ceiling`:''} in the self-directed account`),'✍️ Write '+(sellOrders.length>1?('these '+sellOrders.length+' sell tickets'):'this sell ticket')+' for Robinhood')}</div>`:''}
 
     <div class="col-title" style="margin-top:14px">2 · Deploy into the mandate <span class="card-hint">(≈ ${fmtD(pool)} to put to work)</span></div>
     ${pool<=0
@@ -2864,7 +2866,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
       }).join('')}
       <div style="padding:6px 0;border-top:1px solid var(--surface-2)"><b style="color:#0969da">${SD_SLEEVES.find(s=>s.k==='cash').label}</b> <span style="color:#9ca3af">≈ ${fmtD(undeployed)} — ${SD_SLEEVES.find(s=>s.k==='cash').hint}</span></div>
       <div class="fund-note">Ranked by <b>momentum</b> (6m/3m RS vs SPY, 50/100-DMA trend). <b>Entry is a separate gate</b>: names within 3% of the 20-session high stay on the pullback watchlist, including those with momentum ≥ 9. Inverse-vol still splits the sleeve, then a name is clamped to 20% of <i>equity</i> and a theme to 30% of the ending book — sizing rules for new money, never a reason to sell a winner. Core floor 7.0 / satellite 7.5. Stops are ATR-scaled and capped (12% core / 20% high-beta); if the cap is tighter than vol, size is cut instead of the stop widened.${marginUse>0?` The pool borrows <b>${fmtD(marginUse)}</b> to reach your ${fmt(SD_UTIL_CRUISE*100,0)}% cruise band${utilKnown?` (loan ${fmtD(debtAfter)} → ${fmtD(debtAfter+marginUse)} of the ${fmtD(M.line)} line)`:''} — that is leverage. A 10% <i>market</i> drop hits a ${fmt(equity>0?(expAfter+deployed)/equity:0,2)}× book about ${fmt((equity>0?(expAfter+deployed)/equity:1)*10,0)}%; this sleeve is higher-beta than SPY, so treat that as the index case, not the book case.`: (pressClosed?` Incremental borrow is <b>closed</b> this pass (${pressClosed.join(', ')}): the proposed fills are too close to the high, or the book is already hot and levered.`:'')} Reprice at order time — if last > limit + 0.5×ATR, cancel; do not walk the limit up. Indicative.</div>
-      ${buys.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buys,'Deploy into the self-directed aggressive mandate — momentum-ranked core / satellite / asymmetric sleeves'),'🤖 Build '+(buys.length>1?('these '+buys.length+' buys'):'this buy')+' with Claude')}</div>`:''}
+      ${buys.length?`<div style="margin-top:8px">${chatBtn('plan-buy',planOrdersPrompt(buys,'Deploy into the self-directed aggressive mandate — momentum-ranked core / satellite / asymmetric sleeves'),'✍️ Write '+(buys.length>1?('these '+buys.length+' buy tickets'):'this buy ticket')+' for Robinhood')}</div>`:''}
     </div>`}
     ${sdIdeasHtml(ideas)}
     ${pressClosed?`<div class="fund-note" style="margin-top:10px">Additional borrowing is <b>paused</b> this pass — ${pressClosed.map(r=>({'hot-book-leverage':'the candidates are volatile and the portfolio already uses leverage','median-extended':'the typical candidate is close to its recent high','half-chasing':'most candidates are close to their recent highs'}[r]||r)).join('; ')}. The research ideas above remain available.</div>`:''}
@@ -8494,13 +8496,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=197"></script>
-<script src="ui/predictions-model.js?v=197"></script>
-<script src="ui/predictions.js?v=197"></script>
-<script src="ui/smartmoney-model.js?v=197"></script>
-<script src="ui/smartmoney.js?v=197"></script>
-<script src="ui/experience.js?v=197"></script>
-<script src="ui/ticker.js?v=197"></script>
-<script src="ui/compact.js?v=197"></script>
+<script src="ui/experience-model.js?v=198"></script>
+<script src="ui/predictions-model.js?v=198"></script>
+<script src="ui/predictions.js?v=198"></script>
+<script src="ui/smartmoney-model.js?v=198"></script>
+<script src="ui/smartmoney.js?v=198"></script>
+<script src="ui/experience.js?v=198"></script>
+<script src="ui/ticker.js?v=198"></script>
+<script src="ui/compact.js?v=198"></script>
 </body>
 </html>
