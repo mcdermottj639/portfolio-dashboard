@@ -1,3 +1,25 @@
+## v199 — "Confirm with Claude": every proposed trade gets a live yes / wait / no (2026-11-08)
+
+Jack (Nov 8 22:24 ET): "the button should be a confirm so the app builds out what I should be trading. I click confirm
+with Robinhood for them to analyze the trade and then tell me the yes or no and prices to buy at … That's how all the
+apex research should flow through so I know what needs to be placed." Three surfaces now open the same kind of
+Claude chat — a **check**, not an order: Claude re-reads the name with Robinhood READ tools (quote, technicals,
+fundamentals, earnings calendar, news) and answers **YES / WAIT / NO** in one table (verdict · entry/limit · stop ·
+target · R/R · why) plus the Robinhood order line for a YES. ••••0741 is read-only to every agent (Robinhood rule), so
+the prompt forbids `review_equity_order` / `place_equity_order`; Jack enters a YES himself. Gates named in the prompt
+mirror the card's rules: within 3% of the 20-day high ⇒ WAIT unless momentum is strong; earnings inside 3 trading
+days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; R/R at the limit under 1.5 ⇒ NO.
+(1) **Self-directed Plan** buttons (v198's) are now **"✅ Confirm these N buys / sells with Claude"** via
+`planOrdersPrompt`. (2) **Apex build rungs** — `levelsHtml` adds **"✅ Confirm SYM with Claude"** under the Robinhood
+link. (3) **Apex research top-5 tiles** with a scan entry get the same button. New pure `Apex.confirmPrompt(L)` +
+`confirmLink`; universal link `https://claude.ai/new?q=…` (no clipboard). Unchanged: rules, tickets, the scan prompt,
+Jarvis approvals (still the place a ticket is approved/declined), Analyze / Picks / Options hand-offs, the agentic
+"Deploy ••••3900" button. Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (+1, 43/43),
+`tests/sd-plan-browser.mjs` (label), `CLAUDE.md`. Verified: apex 43/43, business 18/18, tests/*.cjs 4/4,
+sd-plan-browser PASS (320–1440, privacy, Midnight); synthetic Playwright 390 with the real `data/apex-targets.json`
+— 4 rungs + 5 tiles each carry one Confirm button, scrollWidth 390, no page errors. Physical iPhone not verified.
+App/cache **v199 / pf-v199**.
+
 ## v198 — Self-directed plan buttons write tickets instead of promising to place trades (2026-11-08)
 
 Jack (Nov 8 22:05 ET, phone screenshot of the Plan page): "Does this allow me to build Claude trades for Robinhood
