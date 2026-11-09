@@ -348,6 +348,23 @@
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
   }
 
+  /* v199 — "Confirm with Claude": every Apex rung and research tile opens a Claude chat that re-checks the name
+     against LIVE Robinhood data (read tools only — ••••0741 is read-only to every agent) and answers YES / WAIT / NO
+     with the prices to use. Jack enters a YES himself. Pure string builder; the link is a plain universal link. */
+  function confirmPrompt(L) {
+    const f = (x) => (x > 0 && isFinite(x) ? '$' + (+x).toFixed(2) : null);
+    const qty = L.qty > 0 ? '~' + L.qty + ' sh ' : '';
+    const lv = [L.trigger ? 'buy-stop trigger ' + f(L.trigger) : null, L.limit ? 'limit ' + f(L.limit) : null, L.tp1 ? 'target ' + f(L.tp1) : null, L.stop ? 'stop ' + f(L.stop) : null].filter(Boolean).join(' · ');
+    return ['Apex check — should I place this in my SELF-DIRECTED margin account (••••0741)? Answer YES / WAIT / NO with the exact prices to use. The account is read-only to you: use Robinhood READ tools only (quotes, technical indicators, fundamentals, earnings calendar, news) — never review_equity_order or place_equity_order. I enter a YES myself in the Robinhood app.', '',
+      '• BUY ' + qty + L.sym + (L.name ? ' (' + L.name + ')' : '') + (lv ? ' — ' + lv : ''),
+      '• Proposed by the Apex research scan (momentum-ranked, build-on-confirmation). Levels are from a static snapshot — re-check live.', '',
+      'Check: live last + today\u2019s range; distance from the 20-day high (within 3% = WAIT for a pullback unless momentum is strong); 50/100-day trend; 14-day ATR vs the stop; earnings inside 3 trading days (= WAIT); guidance cut / dilution / investigation / exec exit in the last 10 days (= NO); reward/risk at the limit vs stop and target (under 1.5 = NO).',
+      'Answer in one small table: Verdict | Entry/limit | Stop | Target | R/R | one-line why. If YES, add the Robinhood order line (side · shares · ticker · order type · trigger/limit · time-in-force). One phone screen. Education only — not financial advice.'].join('\n');
+  }
+  function confirmLink(L, esc) {
+    return `<a href="https://claude.ai/new?q=${encodeURIComponent(confirmPrompt(L))}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;padding:6px 10px;border-radius:8px;background:#059669;color:#fff;font-weight:600;font-size:12px;text-decoration:none">✅ Confirm ${esc(L.sym)} with Claude</a>`;
+  }
+
   /* v194 — entry · target · stop · R/R as a 2×2 grid (fits 320px), then company name + a Robinhood link. */
   function levelsHtml(L, esc) {
     const sg = (a, b) => (a > 0 && b > 0 ? ((a / b - 1) * 100) : null);
@@ -363,7 +380,7 @@
     const name = L.name ? `<b>${esc(L.name)}</b> · ` : '';
     const link = `<a href="https://robinhood.com/stocks/${encodeURIComponent(L.sym)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">Open in Robinhood ↗</a>`;
     const warn = low ? `<div style="font-size:11.5px;margin-top:6px;color:#b91c1c;font-weight:600">Under your ${C.RR_MIN} R/R floor at this entry.</div>` : '';
-    return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>armed</b> in Jarvis · ${link}</div>`;
+    return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>armed</b> in Jarvis · ${link}</div>${confirmLink(L, esc)}`;
   }
 
   /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
@@ -391,7 +408,7 @@
         const news = cut >= 0 ? whyTxt.slice(cut) : '';
         const closeNote = rrE != null && rrClose != null ? `<div>Scan R/R ${rrClose.toFixed(1)} was measured from the prior close, not this entry.</div>` : '';
         const fold = news || src || closeNote ? `<details class="sd-more" style="margin-top:3px"><summary style="font-size:10.5px;color:#6b7280">${news ? '📰 News' : 'ⓘ Notes'}${src ? ' · source' : ''}</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${news ? news + src : src.trim()}${closeNote}</div></details>` : '';
-        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${whyMain}</div>${fold}</div>`;
+        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${whyMain}</div>${fold}${r.trigger ? confirmLink({ sym: r.sym, name: r.name, trigger: r.trigger, limit: lv && lv.limit, tp1: r.tp1, stop: r.stop }, esc) : ''}</div>`;
       }
       return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
     }).join('');
@@ -425,5 +442,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, confirmPrompt };
 });

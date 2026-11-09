@@ -49,10 +49,10 @@ try {
   assert.equal(await page.locator('#sd-stock-ideas .sd-idea[data-status="ready"]').count(),1);
   assert.match(await page.locator('#plan-content').innerText(),/buy ~[1-9]\d* sh MSFT/);
   assert.match(await page.locator('#sd-stock-ideas').innerText(),/118\.00/);
-  assert.equal(await page.getByText('Write this buy ticket for Robinhood',{exact:false}).count(),1);
+  assert.equal(await page.getByText('Confirm this buy with Claude',{exact:false}).count(),1);
   await render('unfunded');
   assert.equal(await page.locator('#sd-stock-ideas .sd-idea[data-status="funding"]').count(),1);
-  assert.equal(await page.getByText('Write this buy ticket for Robinhood',{exact:false}).count(),0);
+  assert.equal(await page.getByText('Confirm this buy with Claude',{exact:false}).count(),0);
   assert.match(await page.locator('#plan-content').innerText(),/70% ceiling/);
   const details=page.locator('#plan-content details').filter({hasText:'Why other stocks are waiting'});
   assert.equal(await details.getAttribute('open'),null);
@@ -73,7 +73,7 @@ try {
   for(const [mode,status] of [['wash','wash'],['weak','below-floor'],['extended','entry'],['no-target','no-target']]){
     await render(mode);
     assert.equal(await page.locator('#sd-stock-ideas .sd-idea[data-status="'+status+'"]').count(),1,mode+' visible with truthful status');
-    assert.equal(await page.getByText('Write this buy ticket for Robinhood',{exact:false}).count(),0,mode+' has no buy ticket');
+    assert.equal(await page.getByText('Confirm this buy with Claude',{exact:false}).count(),0,mode+' has no buy ticket');
   }
   await render('funded');
   await page.evaluate(()=>setPrivacy(true));

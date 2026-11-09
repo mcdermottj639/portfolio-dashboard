@@ -414,3 +414,12 @@ ok('v197 research tiles: R/R at the shown entry, raw URLs become "source ↗" (N
 });
 
 console.log(`apex: ${n}/${n} passed`);
+
+// v199 — Confirm-with-Claude links: pure prompt, read-only wording, present on rungs + scan tiles.
+{
+  const p = A.confirmPrompt({ sym: 'ZS', name: 'Zscaler', qty: 6, trigger: 295.5, limit: 298.46, tp1: 340, stop: 271.86 });
+  assert.match(p, /YES \/ WAIT \/ NO/);
+  assert.match(p, /never review_equity_order or place_equity_order/);
+  assert.match(p, /BUY ~6 sh ZS \(Zscaler\) — buy-stop trigger \$295\.50 · limit \$298\.46 · target \$340\.00 · stop \$271\.86/);
+  console.log('ok confirmPrompt (v199)');
+}
