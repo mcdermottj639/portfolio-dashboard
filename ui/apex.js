@@ -249,6 +249,13 @@
           const alloc = Math.min(cap, room * cfg.targets[s] / W);
           const px = (sma[s] && sma[s].px) || (byName(s) || {}).px || 0;
           const L = levelsFor(cfg, s);
+          /* v202: a target inside the 30-day wash-sale window (a loss sale in either account — cfg.wash, built from
+             the dashboard's cross-account ledger) is a TAX HOLD: a dated row, never a buy rung, until the window clears. */
+          const hold = cfg.wash && cfg.wash[s];
+          if (hold && hold.clear) {
+            out.push(t('wash', `${s} — tax hold to ${hold.clear}`, `Sold at a loss inside the last 30 days, so buying before ${hold.clear} is a wash sale (the loss is deferred into the new shares). No buy until then.`, null, st));
+            continue;
+          }
           /* v194 (Jack, 2026-11-06 11:35: "make sure all can be bought on Robinhood always"): a name the
              scan marked untradable on ••0741 never becomes a buy rung. */
           if (L && L.tradable === false) {
@@ -281,7 +288,7 @@
     for (const p of st.positions) if (nearEarn(p.symbol) && !out.some((r) => r.kind === 'guard' && r.title.startsWith(p.symbol)))
       out.push(t('guard', `${p.symbol} reports in ${earn[p.symbol].daysAway}d`, 'No adds inside 3 trading days of a print.', null, st));
 
-    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, win: 4, core: 5, guard: 6, drift: 7, reload: 8, build: 9, skip: 10 };
+    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, win: 4, core: 5, guard: 6, drift: 7, reload: 8, build: 9, wash: 10, skip: 10 };
     return out.sort((a, b) => order[a.kind] - order[b.kind]);
   }
 
@@ -327,13 +334,17 @@
     const bandTxt = { over: 'over the cap — de-lever', high: 'above cruise — hold', normal: 'in band — build', room: 'room to reload' }[st.band];
     const tile = (l, v, c) => `<div class="snap-tile"><div class="snap-lbl">${l}</div><div class="snap-val" style="color:${c || 'var(--text)'}">${v}</div></div>`;
     const tw = tripwire(st, cfg.core);
-    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], lose: ['#fee2e2', '#991b1b', 'stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'], skip: ['#f3f4f6', '#374151', 'not buyable'] };
+    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], lose: ['#fee2e2', '#991b1b', 'stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'], skip: ['#f3f4f6', '#374151', 'not buyable'], wash: ['#fef3c7', '#92400e', 'tax hold'] };
     const rows = out.length ? out.map((r) => {
       const tg = r.lowRR ? ['#fee2e2', '#991b1b', 'below R/R floor'] : (kindTag[r.kind] || kindTag.guard);
       const tk = r.levels ? levelsHtml(r.levels, esc) : r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger in Jarvis</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
       return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0;white-space:nowrap">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
     }).join('') : '<div class="tech-empty">No rule fires. Hold.</div>';
-    const mix = Object.keys(cfg.targets).map((s) => { const w = (st.weights[s] || 0) * 100, tg = cfg.targets[s]; return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>`; }).join('');
+    const mix = Object.keys(cfg.targets).map((s) => { const w = (st.weights[s] || 0) * 100, tg = cfg.targets[s];
+      /* v202: the owner-managed core has no target to be over — a neutral bar, no tick, no orange (Jack, Nov 8: stop telling me to sell IREN). */
+      if (cfg.coreOwner && s === cfg.core) return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:#9ca3af"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% · yours</span></div>`;
+      const hold = cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` <span title="tax hold to ${esc(cfg.wash[s].clear)}">🚫</span>` : '';
+      return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600;white-space:nowrap">${esc(s)}${hold}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>`; }).join('');
     el.innerHTML = `
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>approvals live in Jarvis</b>; you place the order in Robinhood.</div>
       <div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
@@ -363,14 +374,15 @@
     const held = (st.positions || []).map((p) => `${p.symbol} ${p.qty} sh @ ${f(p.px)}${p.symbol === cfg.core ? (cfg.coreOwner ? ' (OWNER-MANAGED — Jack handles it; never propose selling, trimming or adding it)' : ' (core — keep ≤ ' + cfg.coreMax + ' sh, never add)') : ''}`).join('; ') || 'none';
     const L = ['Apex weekly book check — this is the FULL recommended portfolio for my SELF-DIRECTED margin account (••••0741). Check every line against LIVE Robinhood data and give me the complete set of orders to place: YES / WAIT / NO per name, sized, with exact prices. The account is read-only to you: Robinhood READ tools only (quotes, technical indicators, fundamentals, earnings calendar, news) — never review_equity_order or place_equity_order. I enter every YES myself in the Robinhood app.', '',
       `Book now: equity $${k(st.equity)} · margin debt $${k(st.debt)} · leverage ${isFinite(st.lev) ? st.lev.toFixed(2) + 'x' : 'n/a'} (cruise ${C.LEV_NORMAL}x, cap ${C.LEV_CAP}x) · maintenance ${pct(st.maint)}. Held: ${held}.`,
-      'Target weights (% of equity): ' + Object.keys(cfg.targets).map((s) => s + ' ' + cfg.targets[s] + '%').join(' · ') + '.', '',
+      'Target weights (% of equity): ' + Object.keys(cfg.targets).filter((s) => !(cfg.coreOwner && s === cfg.core)).map((s) => s + ' ' + cfg.targets[s] + '%').join(' · ') + (cfg.coreOwner ? ' — plus ' + cfg.core + ', owner-managed (no target)' : '') + '.',
+      ...(cfg.wash && Object.keys(cfg.wash).some((s) => cfg.targets[s] && cfg.wash[s] && cfg.wash[s].clear) ? ['TAX HOLD (wash sale — sold at a loss inside 30 days): ' + Object.keys(cfg.wash).filter((s) => cfg.targets[s] && cfg.wash[s] && cfg.wash[s].clear).map((s) => s + ' until ' + cfg.wash[s].clear).join(' · ') + ' — WAIT; no buy before that date.'] : []), '',
       'Proposed buys (armed buy-stop-limits from this week\u2019s research; levels from a static snapshot — re-check live):'];
     builds.forEach((r) => { const t = r.levels; L.push(`• BUY ${t.qty > 0 ? t.qty + ' sh ' : ''}${t.sym}${t.name ? ' (' + t.name + ')' : ''} — trigger ${f(t.trigger)} · limit ${f(t.limit)} · target ${f(t.tp1)} · stop ${f(t.stop)}${t.rr != null ? ' · scan R/R ' + (+t.rr).toFixed(2) : ''}${r.lowRR ? ' · BELOW 1.5 R/R floor at this entry' : ''}`); });
     if (!builds.length) L.push('• (none armed this pass)');
     if (sells.length) { L.push('', 'Proposed sells / trims from the rules:'); sells.forEach((r) => L.push(`• SELL ${r.ticket.qty} ${r.ticket.sym} — ${r.ticket.px ? 'limit ' + f(r.ticket.px) : 'market'}${r.ticket.gtc ? ' GTC' : ''} — ${r.title}`)); }
     const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
     if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f(r.stop)}`).join('; ')); }
-    L.push('', 'Rules to apply per name: live last + today\u2019s range; within 3% of the 20-day high ⇒ WAIT for a pullback unless momentum is strong; earnings inside 3 trading days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; reward/risk at the limit vs stop and target under 1.5 ⇒ NO; per-name cap 20% of equity; the book must stay under ' + C.LEV_CAP + 'x after fills; several AI/compute names count as one bet.' + (cfg.coreOwner ? ' ' + cfg.core + ' is owner-managed: build the rest of the book around it as held — never tell me to sell or trim ' + cfg.core + ' to make room, fix leverage or fit a cap; if room is short, size the new buys down instead.' : ''),
+    L.push('', 'Rules to apply per name: live last + today\u2019s range; within 3% of the 20-day high ⇒ WAIT for a pullback unless momentum is strong; earnings inside 3 trading days ⇒ WAIT; guidance cut / dilution / investigation / exec exit inside 10 days ⇒ NO; reward/risk at the limit vs stop and target under 1.5 ⇒ NO; a TAX HOLD name ⇒ WAIT until its date; per-name cap 20% of equity; the book must stay under ' + C.LEV_CAP + 'x after fills; several AI/compute names count as one bet.' + (cfg.coreOwner ? ' ' + cfg.core + ' is owner-managed: build the rest of the book around it as held — never tell me to sell or trim ' + cfg.core + ' to make room, fix leverage or fit a cap; if room is short, size the new buys down instead.' : ''),
       'Answer with ONE table — Ticker | Verdict | Shares | Entry/limit | Stop | Target | R/R | one-line why — then the leverage after all YES fills, then the Robinhood order lines for every YES (side · shares · ticker · order type · trigger/limit · time-in-force), in the order I should enter them. Keep it to one phone screen plus the order lines. Education only — not financial advice.');
     return L.join('\n');
   }
@@ -410,6 +422,7 @@
         /* v197 — R/R is measured at the entry this tile shows (limit, else trigger × 1.01), the same way as the
            build rungs; the scan's figure from the prior close moves into the fold. Raw source URLs become a short
            "source ↗" link so they can't run off a 390px screen. */
+        /* v202: the scan writes vol as an annualized FRACTION (AMZN 0.313 = 31%); the tile printed it as "vol 0%". */
         const lv = levelsFor({ levels: { [r.sym]: r } }, r.sym);
         const rrE = lv && lv.rr != null && isFinite(lv.rr) ? lv.rr : null;
         const lowE = rrE != null && rrE < C.RR_MIN;
@@ -423,7 +436,7 @@
         const news = cut >= 0 ? whyTxt.slice(cut) : '';
         const closeNote = rrE != null && rrClose != null ? `<div>Scan R/R ${rrClose.toFixed(1)} was measured from the prior close, not this entry.</div>` : '';
         const fold = news || src || closeNote ? `<details class="sd-more" style="margin-top:3px"><summary style="font-size:10.5px;color:#6b7280">${news ? '📰 News' : 'ⓘ Notes'}${src ? ' · source' : ''}</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${news ? news + src : src.trim()}${closeNote}</div></details>` : '';
-        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(+r.vol) + '% · ' : ''}${whyMain}</div>${fold}</div>`;
+        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.wash ? ' · 🚫' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (lv && lv.limit && Math.abs(lv.limit - r.trigger) > 0.004 ? ' (limit ' + money(lv.limit) + ')' : '') + (r.tp1 ? ' → ' + money(r.tp1) : '') + (r.stop ? ' · stop ' + money(r.stop) : '') + '<br>' : ''}${r.wash ? `<span style="color:#b45309;font-weight:600">🚫 Tax hold to ${esc(r.wash)}</span><br>` : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(Math.abs(+r.vol) <= 3 ? +r.vol * 100 : +r.vol) + '% · ' : ''}${whyMain}</div>${fold}</div>`;
       }
       return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
     }).join('');

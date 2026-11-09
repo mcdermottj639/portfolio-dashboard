@@ -456,4 +456,63 @@ ok('v201 confirm prompt: IREN marked owner-managed and Claude is told never to p
   assert.match(p, /never tell me to sell or trim IREN/);
 });
 
+// v202 — Jack chose "Apex only" for ••0741 (Nov 8 ~23:05 ET). The old plan's wash-sale guard now reaches Apex, the
+// owner-managed core stops reading as "over target", and the research tile names the limit its R/R uses.
+ok('v202 tax hold: a wash-window target is a dated hold row, never a buy rung; the other targets still build', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, AMZN: 22, PLTR: 14 },
+    levels: { AMZN: { trigger: 274.6, limit: 277.35, tp1: 300, stop: 253.89 }, PLTR: { trigger: 181.02, limit: 182.83, tp1: 212.94, stop: 152.6 } },
+    wash: { PLTR: { clear: '2030-02-01' } } });
+  const st = A.state({ equity: 11073, positions: [{ symbol: 'IREN', qty: 500, px: 21.24, avg: 40.99 }], cash: 446 });
+  const out = A.rules(st, { cfg, smaMap: { AMZN: { px: 252 }, PLTR: { px: 160 } }, earningsMap: {} });
+  const hold = out.find((r) => r.kind === 'wash');
+  assert.ok(hold && /PLTR — tax hold to 2030-02-01/.test(hold.title), 'dated hold row');
+  assert.equal(hold.ticket, null, 'no ticket on a hold');
+  assert.ok(!out.some((r) => r.ticket && r.ticket.sym === 'PLTR'), 'no PLTR order of any kind');
+  const amzn = out.find((r) => r.kind === 'build' && r.levels && r.levels.sym === 'AMZN');
+  assert.ok(amzn && amzn.levels.qty === 7, 'AMZN still builds: 20% of $11,073 ÷ $277.35 = 7 sh');
+  const p = A.portfolioPrompt(st, out, cfg, null);
+  assert.match(p, /TAX HOLD \(wash sale[^)]*\): PLTR until 2030-02-01 — WAIT/);
+  assert.match(p, /a TAX HOLD name ⇒ WAIT until its date/);
+  assert.match(p, /Target weights \(% of equity\): AMZN 22% · PLTR 14% — plus IREN, owner-managed \(no target\)\./);
+  // without a hold the same book still arms PLTR — the hold is the only thing that removed it
+  const free = A.rules(st, { cfg: Object.assign({}, cfg, { wash: {} }), smaMap: { AMZN: { px: 252 }, PLTR: { px: 160 } }, earningsMap: {} });
+  assert.ok(free.some((r) => r.kind === 'build' && r.levels && r.levels.sym === 'PLTR'));
+});
+
+ok('v202 weights: the owner-managed core is a neutral bar with no target; a tax-hold target carries 🚫', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, AMZN: 22, PLTR: 14 }, wash: { PLTR: { clear: '2030-02-01' } } });
+  const st = A.state({ equity: 11073, positions: [{ symbol: 'IREN', qty: 500, px: 21.24, avg: 40.99 }], cash: 446 });
+  A.render(el, st, A.rules(st, { cfg }), cfg, null);
+  const h = el.innerHTML;
+  assert.match(h, />IREN<\/span><div class="gauge"[^>]*><div style="width:95\.9\d*%;height:100%;background:#9ca3af"><\/div><\/div><span[^>]*>96% · yours<\/span>/, 'IREN 500 × $21.24 ÷ $11,073 = 96%, grey, no target');
+  assert.ok(!/96% \/ 20%/.test(h), 'no IREN target shown');
+  assert.match(h, /PLTR <span title="tax hold to 2030-02-01">🚫<\/span>/);
+  assert.ok(!/undefined|NaN/.test(h));
+  // legacy core (not owner-managed) keeps the old target bar
+  const el2 = { innerHTML: '', querySelector: () => null };
+  const cfg2 = Object.assign({}, cfg, LEGACY);
+  A.render(el2, st, A.rules(st, { cfg: cfg2 }), cfg2, null);
+  assert.match(el2.innerHTML, /96% \/ 20%/);
+});
+
+ok('v202 research tiles: a tax-hold target is flagged and the tile names the limit its R/R is measured at', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const rows = [{ sym: 'PLTR', score: 5.5, target: 14.03, trigger: 181.02, limit: 182.83, tp1: 212.94, stop: 152.6, vol: 0.499, why: 'Rev +96% YoY', wash: '2030-02-01' },
+    { sym: 'ZS', score: 6.79, target: 12.31, trigger: 229.22, tp1: 267.87, stop: 177.73, vol: 70.2, why: 'pullback' }];
+  A.render(el, A.state(nov5), [], {}, { rows, asOf: '2026-11-06' });
+  const h = el.innerHTML;
+  assert.match(h, /#1 PLTR 🎯 14\.03% · 🚫/);
+  assert.match(h, /Entry \$181\.02 \(limit \$182\.83\) → \$212\.94 · stop \$152\.60/);
+  assert.match(h, /🚫 Tax hold to 2030-02-01/);
+  // (212.94 − 182.83) / (182.83 − 152.60) = 1.00 at the limit (LAB-010: 0.996)
+  assert.match(h, /R\/R <span[^>]*>1\.00<\/span> at entry · under 1\.5/);
+  // a row with no stored limit shows the trigger × 1.01 limit the R/R uses: 229.22 × 1.01 = 231.51
+  assert.match(h, /Entry \$229\.22 \(limit \$231\.51\)/);
+  // vol arrives as a fraction from the scan (0.499 = 50%), and an already-percent figure is left alone
+  assert.match(h, /vol 50% · Rev \+96%/);
+  assert.match(h, /vol 70% · pullback/);
+  assert.ok(!/undefined|NaN/.test(h));
+});
+
 console.log(`apex: ${n}/${n} passed`);

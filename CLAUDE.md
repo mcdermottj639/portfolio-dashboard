@@ -1,3 +1,42 @@
+## v202 — Apex runs the Self-directed page: one leverage rule, one buy list (2026-11-08)
+
+Jack (Nov 8 ~23:05 ET) asked for a review of the whole Self-directed research page, then chose **"Apex only"**. The
+review found two rulebooks on ••0741: the August plan's credit-line bands (cruise 50% / ceiling 70% of the line,
+which allowed far more borrowing than Apex's cap) against Apex's 1.35× cruise / 1.5× cap, and three
+pick lists that never overlapped (Apex's Monday research, the plan's momentum lens over SD_BENCH, and the daily
+**oversold** RSI<45 screen, whose card claimed "the ideas the plan's Step 2 redeploys into" — Step 2 never used it).
+Also: Step 2 read "$0 … already at your 50% cruise band" far below cruise (the real cause was the heat gate), a 14%
+Apex target sat in a wash-sale window only the old plan knew about (Apex had no wash check), the IREN weights bar
+showed orange ~96% vs a 20% target after v201 made IREN owner-managed, and research tiles printed `vol 0%` (the scan
+writes vol as a fraction, 0.313 = 31%).
+**`sdApexRuns()`** (default true; `window.SD_APEX_RUNS=false` restores the old plan, and `tests/sd-plan-browser.mjs`
+runs both) switches, in `index.html`: **Plan** — Step 1 "cut what's broken" kept (exits, covered-call locks, sell
+confirm — shared with the old plan via `step1ExitsHtml`/`lockedBoxHtml`/`step1TailHtml`); the margin-ceiling paydown,
+peel-back chips, sleeves, borrowing, press room and rotation no longer render; margin posture is a verdict on Apex's
+band; Step 2 is "↑ Buys come from the Apex book above"; Step 3 lists Apex's rules (band, risk guard, collateral,
+20%/45% AI size limits, R/R ≥ 1.5 at the limit, +25%/+50% trims, −25% stop, tax holds, earnings, IREN). Band numbers
+are READ from `Apex.C` (`sdApexBand`), never copied. **Do-now** keeps margin on Apex's band + earnings; the
+size+weakness TRIM, RSI OVERBOUGHT / oversold ADD, +40% TAKE PROFIT, CORRELATED and CROWDED alerts stay with the old
+plan. **Accounts** margin banner, Leverage tile colour and the Kyle export judge leverage on Apex's band. **Page
+order:** Apex card → Action Center → Rebalance Log link → Agentic link → **🗂 Other screens** (collapsed
+`.card.sd-other`, body `#sd-other-body`, found in tests by `[data-sd-other]` because the section rail re-ids every
+`.card`) holding the momentum watchlist (`#sd-ideas-content`, "watchlist, not buys", no funding state) and the whole
+oversold daily screen (hero, Top 3 "oversold screen — not your Apex plan", scores, scoring table, track record,
+income ideas, catalysts, earnings) — same ids and renderers, only order and the fold changed. Rail/Find jumps now open
+a folded ancestor (`jump`/`scrollToCard`); `sdOtherShown()` resizes the composite chart when the fold opens. The old
+Step 2 headline now names the real reason (heat gate / ceiling / cruise / no room). **Apex (`ui/apex.js`):**
+`cfg.wash` (from `sdWashMap`, the cross-account loss ledger) makes a wash-window target a dated `wash` row ("SYM —
+tax hold to <date>"), never a build rung, a 🚫 on its tile and weights row, and a WAIT line in `portfolioPrompt`;
+the owner-managed core's weights row is a grey "NN% · yours" bar with no target; `portfolioPrompt`'s target line
+drops the core ("plus IREN, owner-managed (no target)"); research tiles list this week's TARGETS first (PLTR, 6th by
+score, used to lose its tile to two cluster-blocked names), show the limit the R/R is measured at, and print vol as a
+percent. Help text for Action Center and Top 3 updated. Files: `index.html`, `ui/apex.js`, `sw.js`,
+`producer/apex.test.mjs` (47/47, +3), `tests/sd-plan-browser.mjs` (Apex-run section), `CLAUDE.md`,
+`UI-PRESERVATION.md`. Verified: all 55 producer suites, tests/*.cjs 4/4, sd-plan-browser + brief-browser PASS,
+privacy audit 0 leaked, Playwright 390/320 with the real `data/apex-targets.json` and a synthetic wash-window loss —
+scrollWidth = viewport with the fold open, no page errors. Not changed: the Apex morning scan prompt, Jarvis, tickets,
+the producer. Physical iPhone not verified. App/cache **v202 / pf-v202**.
+
 ## v201 — IREN is owner-managed: no screen ever tells Jack to sell it (2026-11-08)
 
 Jack (Nov 8 22:38 ET): "I do want u to stop telling me to sell the iren to clear margin. Just build the portfolio and
@@ -1548,7 +1587,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v166** (`pf-v166`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v202** (`pf-v202`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
@@ -1629,7 +1668,8 @@ Three hazards this table exists to prevent:
   `AGENTIC.md` § THE MANDATE.
 - **Two accounts, two MANDATES — never let one side's rulebook leak into the other.** ••••0741
   (self-directed) is the **aggressive** book: concentrated, high-beta, levered, momentum-driven —
-  its dials are the `SD_*` constants in `index.html`. ••••3900 (agentic) is the **guarded** book:
+  since v202 its dials are **Apex's** (`ui/apex.js` `C`: 1.35× cruise / 1.5× cap, Monday research targets);
+  the `SD_*` constants in `index.html` keep only the broken-thesis exit and the retired plan behind `SD_APEX_RUNS=false`. ••••3900 (agentic) is the **guarded** book:
   unlevered, diversified, research-driven, churn-governed — its dials live in `producer/AGENTIC.md`
   + the `AG_*` constants. A change that makes one look like the other is a bug, not a simplification.
 - **Theming:** two themes toggled by the freshness-bar control — **Light ⇄ Gold** (`data-theme="gold"` on
