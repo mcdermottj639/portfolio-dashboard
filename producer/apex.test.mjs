@@ -529,4 +529,22 @@ ok('v203 weights rows carry held / target / this-week shares and dollars; core s
   assert.ok(!/undefined|NaN/.test(h), 'no undefined/NaN in markup');
 });
 
+
+ok('v205 bookGaps: at 1.25x (no build rungs) the week\'s book still counts — adds for under-target names, exits for dropped ones, IREN never', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, S: 16.18, ZS: 14.45, PLTR: 13.26, SNPS: 16.11 }, levels: { SNPS: { sym: 'SNPS', name: 'Synopsys', trigger: 460.31, limit: 464.91, tp1: 512.49, stop: 441.61, rr: 2.04 } } });
+  const pos = [{ symbol: 'IREN', qty: 500.07, px: 20.73, avg: 40.99 }, { symbol: 'AMZN', qty: 6.07, px: 266.2, avg: 263.47 }, { symbol: 'PLTR', qty: 6.10, px: 162, avg: 168.45 }, { symbol: 'S', qty: 14, px: 21.77, avg: 21.91 }, { symbol: 'ZS', qty: 1, px: 197.66, avg: 202.18 }];
+  const st = A.state({ positions: pos, cash: -2653 });
+  const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {}, review: true });
+  assert.ok(!out.some((r) => r.kind === 'build'), 'no build rungs above 1.2x');
+  const g = A.bookGaps(st, out, cfg);
+  assert.deepEqual(g.adds.map((a) => a.sym).sort(), ['PLTR', 'S', 'SNPS', 'ZS']);
+  assert.deepEqual(A.bookGaps(st, out, Object.assign({}, cfg, { wash: { PLTR: { clear: '2026-11-20' } } })).adds.map((a) => a.sym).sort(), ['S', 'SNPS', 'ZS'], 'a wash-window name stays a TAX HOLD, never an ADD');
+  assert.deepEqual(g.exits.map((e) => e.sym), ['AMZN']);
+  const p = A.portfolioPrompt(st, out, cfg, null);
+  assert.match(p, /ADD SNPS \(Synopsys\) — held 0\.0% → target 16\.1%/);
+  assert.match(p, /SELL 6\.07 AMZN/);
+  assert.ok(!/SELL [\d.]+ IREN/.test(p) && !/ADD IREN/.test(p));
+  assert.doesNotMatch(p, /undefined|NaN/);
+});
+
 console.log(`apex: ${n}/${n} passed`);
