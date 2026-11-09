@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   closeSeries, pickEpisodes, gradeEpisode, gradeAll, gradeStats, gradingUniverse,
+  gradingStarts, quoteCloseBars, addQuoteCloses, GRADE_START_SLACK_DAYS,
   EPISODE_GAP_DAYS, GRADE_HORIZON_DAYS, BAR_REACH_DAYS,
 } from './pickgrade.mjs';
 
@@ -226,6 +227,41 @@ t('empty / malformed history is inert everywhere', () => {
   const g = gradeAll(null, {}, { asOf: '2026-09-08' });
   assert.deepEqual(g.episodes, []);
   assert.equal(g.stats.hitRate, null);
+});
+
+t('v204 gradingStarts: open episodes pin to their earliest scan date minus slack; resolved/expired ones do not', () => {
+  const hist = [
+    { ts: '2026-10-26T13:00:00Z', picks: [{ ticker: 'BAC', entry: '$49', tp1: { price: 55.63 }, sl: { price: 46.02 } }] },
+    { ts: '2026-10-23T13:00:00Z', picks: [{ ticker: 'BAC', entry: '$49.57', tp1: { price: 56.21 }, sl: { price: 46.5 } }, { ticker: 'T', entry: '$22', tp1: { price: 25 }, sl: { price: 20 } }] },
+    { ts: '2026-08-01T13:00:00Z', picks: [{ ticker: 'OLD', entry: '$10', tp1: { price: 11 }, sl: { price: 9 } }] },
+  ];
+  const st = gradingStarts(hist, { asOf: '2026-11-09' });
+  assert.equal(GRADE_START_SLACK_DAYS, 3);
+  assert.deepEqual(st, { BAC: '2026-10-20', T: '2026-10-20' }, 'one episode per BAC (re-pick inside the gap), dated from its FIRST scan; OLD is past its horizon');
+  const resolved = gradingStarts(hist, { asOf: '2026-11-09', grades: { episodes: [{ key: 'T|2026-10-23', resolved: true }] } });
+  assert.deepEqual(Object.keys(resolved), ['BAC'], 'a frozen outcome needs no more prices');
+});
+
+t('v204 quoteCloseBars: the official dated close becomes a bar; undated or junk quotes are ignored', () => {
+  const quotes = {
+    BAC: { symbol: 'BAC', previous_close: '49.420000', previous_close_date: '2026-11-06' },
+    T: { symbol: 'T', last_trade_price: '25' },
+    X: { symbol: 'X', previous_close: '0', previous_close_date: '2026-11-06' },
+  };
+  assert.deepEqual(quoteCloseBars(quotes, ['BAC', 'T', 'X', 'MISSING']), { BAC: { t: '2026-11-06T00:00:00Z', c: 49.42 } });
+});
+
+t('v204 addQuoteCloses: extends only a CONTIGUOUS series, never over a hole, and a real bar wins', () => {
+  const day = { BAC: [bar('2026-11-05', 49), bar('2026-11-06', 49.5)], NFLX: [bar('2026-11-03', 60)], GAP: [bar('2026-10-20', 30)] };
+  const n = addQuoteCloses(day, {
+    BAC: { t: '2026-11-06T00:00:00Z', c: 49.42 }, NFLX: { t: '2026-11-06T00:00:00Z', c: 63 },
+    GAP: { t: '2026-11-06T00:00:00Z', c: 31 }, CMCSA: { t: '2026-11-06T00:00:00Z', c: 24.39 },
+  });
+  assert.equal(n, 1, 'only NFLX: BAC already has the date, GAP has a 17-day hole, CMCSA has no series');
+  assert.equal(closeSeries(day.BAC).at(-1).c, 49.5, 'the historical bar wins');
+  assert.deepEqual(closeSeries(day.NFLX).map((b) => b.t), ['2026-11-03', '2026-11-06']);
+  assert.deepEqual(closeSeries(day.GAP).map((b) => b.t), ['2026-10-20'], 'a gapped series waits for the pick backfill');
+  assert.equal(day.CMCSA, undefined, 'no series is created from a single quote');
 });
 
 console.log(`pickgrade.test.mjs — ${n} assertions groups passed ✅`);

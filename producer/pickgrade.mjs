@@ -214,6 +214,69 @@ export function gradingUniverse(history, { asOf, grades, horizonDays = GRADE_HOR
   return out.slice(0, Math.max(0, cap));
 }
 
+/* v204 (Jack, Nov 9 2026: "make sure these are graded still for the future"). The track record showed
+   BAC/T/NFLX/CMCSA "Not graded — no recorded prices after the scan" for picks 2–5 weeks old. The
+   grading universe WAS in the fetch plan, but a name whose series fell >10 days behind needed a full
+   YTD refetch, and those share a 30-per-run cap with holdings, targets and shadow names — so an open
+   pick could sit in the deferred queue for its whole 60-day life. Two fixes, both here so they are
+   pure and tested:
+
+   1. `gradingStarts` — for each open episode's symbol, the date its bars must reach back to (the
+      earliest open scan date, minus a few days of slack). hist-plan pins those symbols to a small
+      since-the-scan fetch that sits OUTSIDE the YTD cap.
+   2. `quoteCloseBars` — every Robinhood quote carries the official last-session close WITH its date
+      (`previous_close` + `previous_close_date`). build-data adds that as a daily bar for open-pick
+      symbols on every run, so their series advance even on a run whose historicals never land — only
+      onto a CONTIGUOUS series (a hole is the pick backfill's job). A real historical bar for the same
+      date always wins; a quote with no date is ignored (Railway). */
+export const GRADE_START_SLACK_DAYS = 3;
+export function gradingStarts(history, { asOf, grades, horizonDays = GRADE_HORIZON_DAYS, cap = UNIVERSE_CAP } = {}) {
+  const want = new Set(gradingUniverse(history, { asOf, grades, horizonDays, cap }));
+  const a = dnum(asOf);
+  const eps = Array.isArray(grades) ? grades : (grades && Array.isArray(grades.episodes) ? grades.episodes : []);
+  const byKey = new Map(); for (const e of eps) if (e && e.key) byKey.set(e.key, e);
+  const out = {};
+  for (const ep of pickEpisodes(history)) {
+    if (!want.has(ep.sym)) continue;
+    const f = dnum(ep.firstTs);
+    if (f == null || a == null || a > f + horizonDays) continue;
+    const g = byKey.get(ep.key); if (g && g.resolved) continue;
+    const start = iso(f - GRADE_START_SLACK_DAYS);
+    if (!out[ep.sym] || start < out[ep.sym]) out[ep.sym] = start;
+  }
+  return out;
+}
+export function quoteCloseBars(quotes, symbols) {
+  const out = {};
+  for (const sym of symbols || []) {
+    const q = quotes && quotes[sym]; if (!q || typeof q !== 'object') continue;
+    const d = String(q.previous_close_date || '').slice(0, 10);
+    const c = +(q.previous_close ?? q.adjusted_previous_close);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Number.isFinite(c) || c <= 0) continue;
+    out[sym] = { t: d + 'T00:00:00Z', c };
+  }
+  return out;
+}
+/* Add each quote close to its daily series only where no bar exists for that date AND the series is
+   CONTIGUOUS — its last real bar within `maxGapDays` of the quote date. A close appended after a hole
+   would let the grader walk straight past a stop hit inside the gap and FREEZE the wrong outcome, so a
+   gapped (or empty) series waits for hist-plan's `pick` backfill instead. Returns the count added. */
+export const QUOTE_BAR_MAX_GAP_DAYS = 5;
+export function addQuoteCloses(day, closeBars, { maxGapDays = QUOTE_BAR_MAX_GAP_DAYS } = {}) {
+  let n = 0;
+  for (const [sym, bar] of Object.entries(closeBars || {})) {
+    const arr = Array.isArray(day[sym]) ? day[sym] : null;
+    const d = bar.t.slice(0, 10);
+    const cs = closeSeries(arr);
+    if (!cs.length) continue;
+    const last = cs.at(-1).t;
+    if (last >= d || dnum(d) - dnum(last) > maxGapDays) continue;
+    arr.push(bar); n++;
+    arr.sort((x, y) => (barT(x) < barT(y) ? -1 : barT(x) > barT(y) ? 1 : 0));
+  }
+  return n;
+}
+
 /* CLI: print the grading universe for the producer's fetch step (see PRODUCER.md step 2).
    `node producer/pickgrade.mjs --symbols` → comma list · `--json` → the full graded ledger. */
 if (import.meta.url === `file://${process.argv[1]}`) {

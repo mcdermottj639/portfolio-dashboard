@@ -111,5 +111,25 @@ ok('the tail lookback reaches further back than the oldest tail-eligible bar',
 ok('the tail batch is larger than the full batch, deliberately', HIST_TAIL_BATCH > HIST_FULL_BATCH);
 ok('the caps are the ones the runbook quotes', HIST_FULL_CAP === 30 && HIST_MONTH_CAP === 15);
 
+// v204 — open Daily-Picks names (pinned) can never be starved by the YTD cap
+{
+  const today = '2026-11-09';
+  const stale = (d) => [{ begins_at: d + 'T00:00:00Z', close_price: '10' }];
+  const hist = { day: {} };
+  const uni = [];
+  for (let i = 0; i < 40; i++) { uni.push('S' + i); hist.day['S' + i] = stale('2026-09-01'); }   // 40 stale names ahead in priority
+  uni.push('BAC'); hist.day.BAC = stale('2026-10-21');                                              // open pick, 19 days stale
+  uni.push('CMCSA');                                                                                // open pick, no series at all
+  uni.push('NFLX'); hist.day.NFLX = stale('2026-11-03');                                            // open pick, tail-able
+  const p = planHistoricals(uni, hist, today, { pinned: { BAC: '2026-10-20', CMCSA: '2026-10-04', NFLX: '2026-10-20' } });
+  eq('the YTD cap is still 30 for unpinned names', p.full.length, 30);
+  eq('pinned stale names skip the cap', p.pin.map((r) => r.sym), ['BAC', 'CMCSA']);
+  eq('a pinned fetch starts the day after the last bar (no hole in the series)', p.pin.find((r) => r.sym === 'BAC').start, '2026-10-20');
+  eq('…and reaches back to the scan date when that is earlier than the last bar + 1', planHistoricals(['X'], { day: { X: stale('2026-10-25') } }, today, { pinned: { X: '2026-10-20' } }).pin[0].start, '2026-10-20');
+  eq('no series ⇒ YTD start', p.pin.find((r) => r.sym === 'CMCSA').start, '2026-01-01');
+  ok('a tail-able pinned name takes the normal tail path', p.tail.some((r) => r.sym === 'NFLX') && !p.pin.some((r) => r.sym === 'NFLX'));
+  eq('no pinned ⇒ no pin group (old behaviour)', planHistoricals(uni, hist, today).pin.length, 0);
+}
+
 console.log(`\nhist-plan.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

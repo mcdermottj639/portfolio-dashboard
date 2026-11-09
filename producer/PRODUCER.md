@@ -130,6 +130,11 @@ each symbol's series already reaches, and splits the work three ways:
 - **full** — a series we don't hold, or one too stale for a tail to bridge without leaving a gap:
   YTD, **≤3 symbols/call**, capped at 30 symbols per run in priority order (the bench seeds over
   several FETCH_ALL days; the plan prints how many remain).
+- **pick (v204)** — an OPEN Daily-Picks name (the grading universe) too stale for a tail: fetched from
+  the day after its last bar (or the scan date / YTD), **≤3 symbols/call**, OUTSIDE the 30-symbol YTD
+  cap, file `hist-day-pick-<n>.json`. Before v204 these competed with holdings/target/shadow seeds for
+  that cap and could stay deferred for a pick's whole 60-day life — the Nov 9 "Not graded" BAC/T/NFLX/
+  CMCSA rows. Fetch every `pick` line the plan prints, like the others.
 - **month** — 5Y monthly, **≤3 symbols/call**, capped at 15 per run. The Analyze tab's
   Multi-Timeframe card uses monthly bars for the holding's monthly trend row; without them it falls
   back to the 200-day daily average.
@@ -180,7 +185,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `Robinhood · get_equity_positions` | `{ account_number: <agentic acct …3900> }` | `producer/raw/agentic-positions.json` | EVERY-RUN |
    | `Robinhood · get_equity_quotes` | `{ symbols: [all position symbols + all market symbols + all leader symbols + agentic-account holdings + agentic-target tickers + VTI **+ the picks grading universe**] }` | `producer/raw/quotes.json` | EVERY-RUN |
    | `Robinhood · get_equity_quotes` | `{ symbols: [each QUOTES batch `hist-plan.mjs` prints] }` | `producer/raw/quotes-bench-<n>.json` | **FETCH_ALL only** |
-   | `Robinhood · get_equity_historicals` | `{ symbols: […], interval, start_time }` — **exactly the batches `node producer/hist-plan.mjs` prints** | `producer/raw/hist-day-tail-<n>.json`, `hist-day-full-<n>.json`, `hist-month-<n>.json` | **FETCH_ALL only** |
+   | `Robinhood · get_equity_historicals` | `{ symbols: […], interval, start_time }` — **exactly the batches `node producer/hist-plan.mjs` prints** | `producer/raw/hist-day-tail-<n>.json`, `hist-day-pick-<n>.json`, `hist-day-full-<n>.json`, `hist-month-<n>.json` | **FETCH_ALL only** |
 
    > **The picks grading universe** = `node producer/pickgrade.mjs --symbols` (a comma list, possibly
    > EMPTY — then add nothing). These are the archived Daily Picks whose outcome is **still being
@@ -196,6 +201,9 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    > its priority order), so you never add it to a historicals call by hand — only the EVERY-RUN quotes
    > row above still takes it explicitly. If it is ever skipped nothing breaks: those episodes simply
    > report "can't be graded" instead of a made-up outcome, and the build log says which names it wanted.
+   > **v204:** `build-data.mjs` also adds each open pick's official dated close from that run's quote
+   > (`previous_close` + `previous_close_date`) as a daily bar, so the series advances on every run that
+   > quotes the name, and the planner's `pick` group backfills any gap.
    | `Robinhood · get_index_quotes` | `{ instrument_ids: ["3b912aa2-88f9-4682-8ae3-e39520bdf4db"] }` (VIX) | `producer/raw/index-quotes.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` — if `next_cursor` is non-empty, fetch the next page(s) and merge every page's `trades` into this ONE file | `producer/raw/main-trades.json` | EVERY-RUN (also the option-expiry evidence, step 3c) |
