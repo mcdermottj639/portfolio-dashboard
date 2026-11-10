@@ -43,7 +43,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { isMarketOpen, etDate } from './market.mjs';
 import { decryptEnvelope } from './emit.mjs';
-import { planDeployment } from './agentic-deploy.mjs';
+import { planDeployment, applyWashWaiver } from './agentic-deploy.mjs';
 import { bookDrawdown } from './drawdown.mjs';
 
 // The committed index-parking ledger (see producer/agentic-parked.json). Read here rather than off the
@@ -204,12 +204,15 @@ if (ticket && ticket.status === 'done') {
 
 // recentLosses spans BOTH taxable accounts since v105 (each entry tagged `account`) — a loss realized
 // in the self-directed margin book blocks an agentic rebuy just the same (per-taxpayer IRS window).
-const washMap = {};
+const washLedger = {};
 for (const e of A.recentLosses || []) {
   if (!e || !e.sym || !e.date) continue;
   const until = new Date(Date.parse(e.date + 'T00:00:00Z') + 30 * 86400000).toISOString().slice(0, 10);
-  if (until > today && (!washMap[e.sym] || until > washMap[e.sym].until)) washMap[e.sym] = { until, date: e.date, account: e.account || 'agentic' };
+  if (until > today && (!washLedger[e.sym] || until > washLedger[e.sym].until)) washLedger[e.sym] = { until, date: e.date, account: e.account || 'agentic' };
 }
+// Owner waivers (WASH_WAIVED, 2026-11-10): a waived name is dropped here so the planner never defers it.
+const washMap = applyWashWaiver(washLedger);
+for (const s of Object.keys(washLedger)) if (!washMap[s]) console.log(`[exec-gate] wash-sale hold on ${s} WAIVED by the owner (window to ${washLedger[s].until})`);
 // BOOK-LEVEL DRAWDOWN BREAKER (v121; RELATIVE TO SPY since Mandate A, 2026-09-08). Computed here, from
 // the committed snapshot's recorded equity series, and handed to the planner. Deposit-adjusted and
 // memoryless by construction (drawdown.mjs), so the gate needs no state of its own — which matters
