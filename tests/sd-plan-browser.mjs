@@ -130,6 +130,8 @@ try {
     window.SD_APEX_RUNS=undefined; const a=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag+':'+x.title);
     window.SD_APEX_RUNS=false; const l=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag);
     window.SD_APEX_RUNS=undefined; return {a,l}; });
+  const ig=await page.evaluate(()=>{ const d=sdWashIgnore(); window.SD_WASH_IGNORE=[]; const e=sdWashIgnore(); window.SD_WASH_IGNORE=undefined; return {d,e}; });
+  assert.deepEqual(ig.d,['PLTR'],'v207: PLTR is waived from the Apex tax hold by default'); assert.deepEqual(ig.e,[],'v207: SD_WASH_IGNORE overrides the waiver list');
   assert.deepEqual(feed.a.map(x=>x.split(':')[0]),['MARGIN'],'Apex Do-now: margin only here');
   assert.match(feed.a[0],/Over Apex's 1\.75× cap — 1\.82× leverage/,'20,000 ÷ 11,000 = 1.82× > 1.75×');
   assert.ok(feed.l.includes('OVERBOUGHT'),'the retired plan still has its RSI alert');
