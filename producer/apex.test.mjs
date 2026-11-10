@@ -93,6 +93,15 @@ ok('rules: drift only on Fridays, 5-point band, targets are % of equity', () => 
   assert.ok(fr.some((x) => x.title.startsWith('NVDA')), 'NVDA 9% vs 20%');
 });
 
+ok('v206 cap is 1.75x: 1.60x is inside the band (no cap row), 1.80x is over it and the title names the cap', () => {
+  assert.equal(A.C.LEV_CAP, 1.75);
+  const mk = (debt) => A.state({ positions: [{ symbol: 'IREN', qty: 100, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 100, px: 100, avg: 100 }], cash: -debt });
+  const inside = A.rules(mk(7500), {});   // 20,000 / 12,500 = 1.60x
+  assert.ok(!inside.some((x) => /Over the/.test(x.title)), '1.60x is under the 1.75x cap');
+  const over = A.rules(mk(8900), {});     // 20,000 / 11,100 = 1.80x
+  assert.ok(over.some((x) => x.title === 'Over the 1.75x cap'), '1.80x is over the 1.75x cap');
+});
+
 ok('sellToLev: dollars to reach the cap with debt paid 1:1', () => {
   const s = A.state(book);
   const need = A.sellToLev(s, 1.5);

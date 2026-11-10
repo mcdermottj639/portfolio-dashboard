@@ -131,7 +131,7 @@ try {
     window.SD_APEX_RUNS=false; const l=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag);
     window.SD_APEX_RUNS=undefined; return {a,l}; });
   assert.deepEqual(feed.a.map(x=>x.split(':')[0]),['MARGIN'],'Apex Do-now: margin only here');
-  assert.match(feed.a[0],/Over Apex's 1\.50× cap — 1\.82× leverage/,'20,000 ÷ 11,000 = 1.82× > 1.5×');
+  assert.match(feed.a[0],/Over Apex's 1\.75× cap — 1\.82× leverage/,'20,000 ÷ 11,000 = 1.82× > 1.75×');
   assert.ok(feed.l.includes('OVERBOUGHT'),'the retired plan still has its RSI alert');
   await page.evaluate(()=>{ window.SD_APEX_RUNS=false; renderPicksStatic(); });
   await render('funded');

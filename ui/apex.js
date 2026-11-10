@@ -18,7 +18,7 @@
 
   const C = {
     LEV_NORMAL: 1.35,      // where the book cruises; reload adds only up to here
-    LEV_CAP: 1.50,         // hard cap — above it: no new buys, ladder active
+    LEV_CAP: 1.75,         // hard cap — above it: no new buys (Jack, 2026-11-10: 1.75x; was 1.5x)
     LEV_RELOAD: 1.20,      // below it (and the book trending) new borrow is allowed
     MAINT: 0.30,           // Robinhood house maintenance seen on IREN (2026-11-05); PLTR assumed
     /* v195 (LAB-004-P1): the guard follows the maintenance REQUIREMENT, not a fixed line. Buffers are points
@@ -186,7 +186,7 @@
     // A2 Leverage band / de-lever ladder.
     if (st.lev > C.LEV_CAP) {
       const need = sellToLev(st, C.LEV_CAP);
-      out.push(t('lev', 'Over the 1.5x cap', `${st.lev.toFixed(2)}x. No new buys. Sell $${k(need)} into strength to reach the cap; proceeds pay debt.`, null, st));
+      out.push(t('lev', `Over the ${C.LEV_CAP}x cap`, `${st.lev.toFixed(2)}x. No new buys. Sell $${k(need)} into strength to reach the cap; proceeds pay debt.`, null, st));
       for (const L of cfg.ladder) {
         const p = byName(L.sym); if (!p || (cfg.coreOwner && L.sym === cfg.core)) continue;
         const live = p.px >= L.px;
@@ -362,7 +362,7 @@
     el.innerHTML = `
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>approvals live in Jarvis</b>; you place the order in Robinhood.</div>
       <div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
-      <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(st.guardPct)} · 1.5x = ${pct(1 / C.LEV_CAP)}</span></div>
+      <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(st.guardPct)} · ${C.LEV_CAP}x = ${pct(1 / C.LEV_CAP)}</span></div>
       <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${Math.min(99.5, st.guardPct * 100)}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
       ${tw ? `<div style="font-size:11.5px;color:#6b7280;margin-top:8px">Tripwire: ${esc(cfg.core)} at <b style="color:var(--text)">${money(tw)}</b> puts equity on the guard line (others flat) — the ${esc(cfg.donor)} tranche ticket is pre-built for that print.</div>` : ''}
       <div class="ac-tier">⚙️ Rules firing now</div>${rows}

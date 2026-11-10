@@ -1,3 +1,14 @@
+## v206 — Apex leverage cap is 1.75x (2026-11-10)
+
+Jack (Nov 10 01:02 ET), after asking for 2:1 and seeing that 2:1 is the Reg T buying ceiling: "Let's do 1.75 for
+now." `Apex.C.LEV_CAP` 1.50 → **1.75**; cruise 1.35x and the 1.2x reload line are unchanged (he changed the cap only).
+The "Over the …x cap" row title, the gauge label and the confirm prompt now READ the constant, and `sdApexBand()`'s
+fallback matches, so the Plan posture, Do-now, the Accounts banner and the Leverage tile follow. At a 30% maintenance
+requirement a book at 1.75x reaches a call after a 38.8% fall (1.5x: 52.4%). Not changed: maintenance, the risk guard,
+IREN owner-managed, the old plan's `PLAN_MAX_LEVERAGE`. Files: `ui/apex.js`, `index.html`, `sw.js`,
+`producer/apex.test.mjs` (50/50, +1), `tests/sd-plan-browser.mjs`. Verified: all producer suites, tests/*.cjs 4/4,
+sd-plan-browser PASS (320–1440). Physical iPhone not verified. App/cache **v206 / pf-v206**.
+
 ## v205 — The Confirm button carries the week's whole book, not only armed build rungs (2026-11-09)
 
 The first Monday v2.2 scan (Nov 9) landed, but on the real book (1.25x, above the 1.2x reload line) no build rung
