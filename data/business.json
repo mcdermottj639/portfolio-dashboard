@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-06T06:15:00Z",
+  "updated": "2026-11-09T14:04:19Z",
   "about": "Business check — one frozen assessment per symbol: is the company doing what it promised? Read by ui/business.js for display ONLY, on both books (Apex card + Agentic plan). No stop, trim, weight, leverage, ticket or executor logic reads this file. Written weekly by the 'Business check writer' scheduled task (and by hand in Jack's chat). To change a verdict, add a NEW assessment and move the current one into history[] unchanged — never edit a past one, so forward paper tests can grade what was known at the time. Funds (SPY, VTI…) get no record.",
   "names": {
     "IREN": {
@@ -61,6 +61,336 @@
           "title": "Research Lab LAB-009 (ChatGPT) — Nov 5 earnings update",
           "url": "https://docs.google.com/document/d/1bQE67vEyivZDlKpbGsuD5R9-m5iy_4b02ND1hCIgCjg/edit",
           "date": "2026-11-05"
+        }
+      ],
+      "history": []
+    },
+    "AMZN": {
+      "thesis": "AWS expansion and more profitable retail should convert durable revenue growth into cash after infrastructure investment.",
+      "status": "weakening",
+      "summary": "AWS accelerates; investment overwhelms free cash flow.",
+      "asOf": "2026-10-29",
+      "frozenAt": "2026-11-09T14:04:19Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 243.79,
+        "date": "2026-10-29",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, AMZN, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "AWS growth",
+          "state": "met",
+          "metric": "Q3 2026 AWS sales $46.0B; reported growth 39% year over year.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Operating profitability",
+          "state": "met",
+          "metric": "Q3 2026 operating income $28.1B versus $17.4B in Q3 2025.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Positive trailing free cash flow",
+          "state": "missed",
+          "metric": "TTM ended September 30, 2026 free cash flow -$42.4B versus +$14.8B a year earlier.",
+          "asOf": "2026-10-29"
+        }
+      ],
+      "changed": "Initial assessment: AWS and operating earnings expanded, but the cash-generation milestone failed as infrastructure spending absorbed operating cash. Weakening reflects that cash shortfall, not the share price.",
+      "invalidators": [
+        "AWS revenue contracts year over year while AWS operating income turns negative.",
+        "Trailing operating cash flow turns negative while infrastructure spending continues."
+      ],
+      "nextReview": {
+        "date": "2027-01-27",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Amazon Q3 2026 results",
+          "url": "https://ir.aboutamazon.com/news-release/news-release-details/2026/Amazon-com-Announces-Third-Quarter-Results/",
+          "date": "2026-10-29"
+        },
+        {
+          "title": "Reuters: Amazon cash burn and cloud growth",
+          "url": "https://www.reuters.com/business/retail-consumer/amazon-projects-fourth-quarter-sales-below-estimates-2026-10-29/",
+          "date": "2026-10-29"
+        }
+      ],
+      "history": []
+    },
+    "V": {
+      "thesis": "Visa grows digital payment activity and cross-border commerce while converting network scale into rising earnings.",
+      "status": "intact",
+      "summary": "Payment activity and earnings keep expanding.",
+      "asOf": "2026-10-27",
+      "frozenAt": "2026-11-09T14:04:19Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 401.86,
+        "date": "2026-10-27",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, V, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Payment activity",
+          "state": "met",
+          "metric": "Q4 FY2026 payments volume grew 9% year over year in constant dollars.",
+          "asOf": "2026-10-27"
+        },
+        {
+          "name": "Cross-border demand",
+          "state": "met",
+          "metric": "Q4 FY2026 cross-border volume excluding intra-Europe grew 14% in constant dollars.",
+          "asOf": "2026-10-27"
+        },
+        {
+          "name": "Earnings conversion",
+          "state": "met",
+          "metric": "Q4 FY2026 GAAP net income $6.0B, up 18% year over year; net revenue $12.1B.",
+          "asOf": "2026-10-27"
+        }
+      ],
+      "changed": "Initial assessment: payment and cross-border activity expanded alongside earnings. This establishes the baseline; no earlier frozen assessment exists for an improving comparison.",
+      "invalidators": [
+        "Payments volume and processed transactions both contract year over year.",
+        "Annual GAAP operating income turns negative."
+      ],
+      "nextReview": {
+        "date": "2027-01-25",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Visa Q4 FY2026 earnings release filed with SEC",
+          "url": "https://www.sec.gov/Archives/edgar/data/1403161/000140316126000126/q42026earningsrelease.htm",
+          "date": "2026-10-27"
+        },
+        {
+          "title": "Reuters: Visa results and consumer spending",
+          "url": "https://www.marketscreener.com/news/visa-results-beat-estimates-as-resilient-customers-keep-up-spending-ce785cddd189f12d",
+          "date": "2026-10-27"
+        }
+      ],
+      "history": []
+    },
+    "PLTR": {
+      "thesis": "Enterprise and government AI deployments convert into recognized revenue, profitable operations and operating cash.",
+      "status": "intact",
+      "summary": "Commercial adoption expands with profits and cash.",
+      "asOf": "2026-11-02",
+      "frozenAt": "2026-11-09T14:04:19Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 178.34,
+        "date": "2026-11-02",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, PLTR, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Commercial adoption",
+          "state": "met",
+          "metric": "Q3 2026 U.S. commercial revenue $984M, up 148% year over year.",
+          "asOf": "2026-11-02"
+        },
+        {
+          "name": "Operating profitability",
+          "state": "met",
+          "metric": "Q3 2026 GAAP operating income $1.085B with a reported 47% margin.",
+          "asOf": "2026-11-02"
+        },
+        {
+          "name": "Cash conversion",
+          "state": "met",
+          "metric": "Q3 2026 operating cash flow $1.205B; FY2026 adjusted free-cash-flow guidance raised to $4.8B-$5.0B.",
+          "asOf": "2026-11-02"
+        }
+      ],
+      "changed": "Initial assessment: commercial revenue, GAAP profitability and cash generation support the thesis, with full-year guidance raised. Intact establishes the first frozen baseline rather than claiming improvement over a prior assessment.",
+      "invalidators": [
+        "U.S. commercial revenue contracts year over year and companywide revenue also contracts.",
+        "Annual GAAP operating income and operating cash flow both turn negative."
+      ],
+      "nextReview": {
+        "date": "2027-01-31",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Palantir Q3 2026 earnings release filed with SEC",
+          "url": "https://www.sec.gov/Archives/edgar/data/1321655/000132165526000045/a2026q3ex991pressrelease.htm",
+          "date": "2026-11-02"
+        },
+        {
+          "title": "Reuters: Palantir AI software demand",
+          "url": "https://www.investing.com/news/stock-market-news/palantir-tops-thirdquarter-revenue-estimates-on-strong-ai-software-demand-4992744",
+          "date": "2026-11-02"
+        }
+      ],
+      "history": []
+    },
+    "MSFT": {
+      "thesis": "Azure and Microsoft 365 monetization sustain cloud growth and operating earnings as AI infrastructure scales.",
+      "status": "intact",
+      "summary": "Cloud growth supports rising operating earnings.",
+      "asOf": "2026-10-28",
+      "frozenAt": "2026-11-09T14:04:19Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 531.01,
+        "date": "2026-10-28",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, MSFT, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Azure monetization",
+          "state": "met",
+          "metric": "Q1 FY2027 Azure revenue grew 48% year over year.",
+          "asOf": "2026-10-28"
+        },
+        {
+          "name": "Microsoft 365 adoption",
+          "state": "met",
+          "metric": "Q1 FY2027 Microsoft 365 commercial cloud revenue grew 17% on a reported basis.",
+          "asOf": "2026-10-28"
+        },
+        {
+          "name": "Operating earnings",
+          "state": "met",
+          "metric": "Q1 FY2027 GAAP operating income $45.915B versus $37.961B in Q1 FY2026; reported growth 21%.",
+          "asOf": "2026-10-28"
+        }
+      ],
+      "changed": "Initial assessment: cloud services and operating earnings expanded despite weaker Devices and Consumer revenue. Intact is the first frozen baseline; future capacity delivery and investment returns remain review points.",
+      "invalidators": [
+        "Azure and Microsoft 365 commercial cloud revenue both contract year over year.",
+        "Annual GAAP operating income turns negative."
+      ],
+      "nextReview": {
+        "date": "2027-01-26",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Microsoft Q1 FY2027 earnings release",
+          "url": "https://www.microsoft.com/en-us/investor/earnings/fy-2027-q1/press-release-webcast",
+          "date": "2026-10-28"
+        },
+        {
+          "title": "Reuters: Microsoft cloud growth and cash flow",
+          "url": "https://www.marketscreener.com/news/microsoft-beats-quarterly-cloud-revenue-estimates-ce785cd3d980f624",
+          "date": "2026-10-28"
+        }
+      ],
+      "history": []
+    },
+    "LLY": {
+      "thesis": "Diabetes and obesity demand supports revenue and profitable growth as Lilly expands access, manufacturing and its pipeline.",
+      "status": "weakening",
+      "summary": "Demand strong; acquisition charges cut EPS guidance.",
+      "asOf": "2026-10-29",
+      "frozenAt": "2026-11-09T14:04:19Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 1373.7,
+        "date": "2026-10-29",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, LLY, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Revenue expansion",
+          "state": "met",
+          "metric": "Q3 2026 revenue $24.397B versus $17.601B in Q3 2025; FY2026 revenue guidance raised to $91B-$92B.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Gross profitability",
+          "state": "met",
+          "metric": "Q3 2026 non-GAAP gross margin 84.4%, up 0.8 percentage points year over year.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Earnings guidance preservation",
+          "state": "missed",
+          "metric": "FY2026 non-GAAP EPS guidance cut from $35.50-$36.50 to $35.00-$36.00; Q3 acquired IPR&D charges $4.57 per share.",
+          "asOf": "2026-10-29"
+        }
+      ],
+      "changed": "Initial assessment: the guidance-cut rule makes the verdict weakening, although demand and underlying earnings guidance improved. The cut reflects acquired IPR&D charges; quarterly revenue also included about $900M of milestone and rebate-estimate benefits.",
+      "invalidators": [
+        "Worldwide revenue contracts year over year while gross margin declines.",
+        "FDA withdraws approval for both Mounjaro and Zepbound."
+      ],
+      "nextReview": {
+        "date": "2027-01-27",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Lilly Q3 2026 results and updated guidance",
+          "url": "https://investor.lilly.com/news-releases/news-release-details/lilly-reports-third-quarter-2026-financial-results-raises-full",
+          "date": "2026-10-29"
+        },
+        {
+          "title": "Reuters: Lilly revenue increase and profit guidance cut",
+          "url": "https://www.reuters.com/business/healthcare-pharmaceuticals/eli-lilly-lifts-revenue-outlook-weight-loss-drug-sales-trims-profit-view-deal-2026-10-29/",
+          "date": "2026-10-29"
+        }
+      ],
+      "history": []
+    },
+    "META": {
+      "thesis": "Audience and advertising growth fund AI investment while preserving profitable operations and positive free cash flow.",
+      "status": "weakening",
+      "summary": "Ads grow; spending pushes cash flow negative.",
+      "asOf": "2026-10-21",
+      "frozenAt": "2026-11-09T14:04:19Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 697.52,
+        "date": "2026-10-21",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, META, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Advertising monetization",
+          "state": "met",
+          "metric": "Q3 2026 ad impressions grew 10% and average ad price grew 14% year over year.",
+          "asOf": "2026-10-21"
+        },
+        {
+          "name": "Audience retention",
+          "state": "met",
+          "metric": "September 2026 family daily active people 3.64B, up 3% year over year.",
+          "asOf": "2026-10-21"
+        },
+        {
+          "name": "Positive free cash flow",
+          "state": "missed",
+          "metric": "Q3 2026 operating cash flow $32.79B; capital expenditures including finance leases $34.91B; free cash flow -$2.12B.",
+          "asOf": "2026-10-21"
+        }
+      ],
+      "changed": "Initial assessment: audience and advertising grew, but free cash flow was negative. GAAP operating margin fell to 20% from 40%, including a $9.89B litigation charge; the profitable core keeps the thesis alive.",
+      "invalidators": [
+        "Family daily active people and advertising revenue both decline year over year.",
+        "Annual operating cash flow turns negative while capital expenditures continue."
+      ],
+      "nextReview": {
+        "date": "2027-01-19",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Meta Q3 2026 earnings release",
+          "url": "https://investor.atmeta.com/investor-news/press-release-details/2026/Meta-Reports-Third-Quarter-2026-Results/default.aspx",
+          "date": "2026-10-21"
+        },
+        {
+          "title": "Reuters: Meta AI spending and share class",
+          "url": "https://www.investing.com/news/stock-market-news/meta-to-issue-new-class-of-shares-as-it-tightens-ai-spending-forecast-4963908",
+          "date": "2026-10-21"
         }
       ],
       "history": []
