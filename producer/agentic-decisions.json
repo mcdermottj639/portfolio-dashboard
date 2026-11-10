@@ -2326,6 +2326,41 @@
           "weightAfter": null
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "6bc79c22c4c0884c037f",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "f7e7b537f95cfdcdb9d3",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-10-deploy",
+      "date": "2026-11-10",
+      "kind": "deploy",
+      "targetAsOf": "2026-10-28",
+      "book": 7715.08,
+      "equityAtDecision": 7715.08,
+      "spyAt": 749.59,
+      "rationale": "Auto-tier deploy: SPY buy toward target weight (7.6% → 8.01%); NVDA/KO/MA/AMZN remain deferred (reentry/above-entry).",
+      "trades": [
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 34.96,
+          "shares": 0.046637,
+          "priceAt": 749.6129,
+          "weightBefore": 7.56,
+          "weightAfter": 8.01
+        }
+      ]
     }
   ]
 }

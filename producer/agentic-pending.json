@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-09-ibklpn",
-  "created": "2026-11-09",
+  "id": "2026-11-10-be5vxj",
+  "created": "2026-11-10",
   "targetId": "6bc79c22c4c0884c037f",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,20 +16,20 @@
   "universeVersion": "f7e7b537f95cfdcdb9d3",
   "status": "done",
   "autoEligible": true,
-  "turnover": 351.17,
-  "book": 7736.97,
-  "planHash": "s[]b[VTI:351]t[]",
+  "turnover": 34.96,
+  "book": 7715.08,
+  "planHash": "s[]b[SPY:35]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
-        "sym": "VTI",
-        "kind": "park",
-        "dollars": 351.17,
-        "shares": 0.9474,
-        "price": 370.68,
+        "sym": "SPY",
+        "kind": "buy",
+        "dollars": 34.96,
+        "shares": 0.046637,
+        "price": 749.6129,
         "pl": null,
-        "note": "waiting ground — holds $351.17 of deferred weight (NVDA) in VTI instead of cash; released when they clear"
+        "note": "7.6% → 8.01% target"
       }
     ],
     "buysT1": []
@@ -44,63 +44,52 @@
   "deferred": [
     {
       "sym": "NVDA",
-      "reason": "wash-sale",
-      "until": "2026-12-05"
-    },
-    {
-      "sym": "META",
-      "reason": "macro",
-      "until": "2026-11-10"
+      "reason": "reentry",
+      "until": "2026-11-19"
     },
     {
       "sym": "KO",
-      "reason": "macro",
-      "until": "2026-11-10"
+      "reason": "above-entry",
+      "until": null
     },
     {
       "sym": "MA",
-      "reason": "macro",
-      "until": "2026-11-10"
+      "reason": "above-entry",
+      "until": null
     },
     {
       "sym": "AMZN",
-      "reason": "macro",
-      "until": "2026-11-10"
-    },
-    {
-      "sym": "SPY",
-      "reason": "macro",
-      "until": "2026-11-10"
+      "reason": "above-entry",
+      "until": null
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "$672.7 of deferred weight (META, KO, MA, AMZN, SPY) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "6 name(s) deferred (NVDA, META, KO, MA, AMZN, SPY) — ~$1,795.33 of intended weight held pending earnings/re-verify/wash-sale",
-    "entry zones are 12d old (target asOf 2026-10-28) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up",
-    "fresh cash $702.34 arrived 0d ago — deploying a 50% tranche ($351.17) today and the rest one tranche per day over the next 3d, so a lump doesn't buy one arbitrary day's prices; the 5d idle deadline still forces the remainder in",
-    "$351.17 of deferred weight parked in VTI rather than left in cash (NVDA) — released when those names clear; unparking is a taxable ST sale"
+    "$1,751.01 of deferred weight (NVDA, KO, MA, AMZN) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "4 name(s) deferred (NVDA, KO, MA, AMZN) — ~$1,751.01 of intended weight held pending earnings/re-verify/wash-sale",
+    "$316.21 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "entry zones are 13d old (target asOf 2026-10-28) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up"
   ],
   "history": [
     {
-      "at": "2026-11-09",
+      "at": "2026-11-10",
       "to": "proposed"
     },
     {
-      "at": "2026-11-09",
+      "at": "2026-11-10",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-09",
+      "at": "2026-11-10",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-09",
+      "at": "2026-11-10",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-09",
-  "buys-placedAt": "2026-11-09",
-  "doneAt": "2026-11-09",
-  "completedAt": "2026-11-09T18:22:28.274Z"
+  "confirmedAt": "2026-11-10",
+  "buys-placedAt": "2026-11-10",
+  "doneAt": "2026-11-10",
+  "completedAt": "2026-11-10T15:25:15.601Z"
 }
