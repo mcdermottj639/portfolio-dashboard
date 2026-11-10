@@ -1,3 +1,12 @@
+## v207 — PLTR is waived from the Apex wash-sale hold (2026-11-10)
+
+Jack (Nov 10 01:11 ET): "Forget any wash sale for plntr is minimal compared to iren loses". New `sdWashIgnore()`
+(default `['PLTR']`, override `window.SD_WASH_IGNORE`): a name on it is dropped from `cfg.wash` in `renderApexCard`,
+so it is never an Apex TAX HOLD row, 🚫 tile or WAIT line and can be a build rung / ADD line again. **Apex card
+only** — `sdWashMap` (the cross-account ledger), the retired SD plan's wash check and the ••3900 executor's wash block
+are unchanged, and every other name keeps its hold. Files: `index.html`, `sw.js`, `tests/sd-plan-browser.mjs`.
+Verified: apex 50/50, tests/*.cjs 4/4, sd-plan-browser PASS. Physical iPhone not verified. App/cache **v207 / pf-v207**.
+
 ## v206 — Apex leverage cap is 1.75x (2026-11-10)
 
 Jack (Nov 10 01:02 ET), after asking for 2:1 and seeing that 2:1 is the Reg T buying ceiling: "Let's do 1.75 for

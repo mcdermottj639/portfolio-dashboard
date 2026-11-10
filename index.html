@@ -714,10 +714,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=206">
-<link rel="stylesheet" href="ui/predictions.css?v=206">
-<link rel="stylesheet" href="ui/smartmoney.css?v=206">
-<link rel="stylesheet" href="ui/ticker.css?v=206">
+<link rel="stylesheet" href="ui/experience.css?v=207">
+<link rel="stylesheet" href="ui/predictions.css?v=207">
+<link rel="stylesheet" href="ui/smartmoney.css?v=207">
+<link rel="stylesheet" href="ui/ticker.css?v=207">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -782,9 +782,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=206"></script>
-<script src="ui/apex.js?v=206"></script>
-<script src="ui/business.js?v=206"></script>
+<script src="ui/sd-rules.js?v=207"></script>
+<script src="ui/apex.js?v=207"></script>
+<script src="ui/business.js?v=207"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -898,7 +898,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v206'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v207'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2038,7 +2038,9 @@ function renderApexCard(S){
   /* v202: the wash-sale window reaches Apex. The same cross-account ledger the old plan used (sdWashMap: a loss in
      either account inside 30 days) marks a target as a TAX HOLD — no build rung, a dated hold row, a 🚫 on its research
      tile, and a WAIT line in the confirm-book prompt. Live case on Nov 8: a 14% target sat inside its wash window. */
-  try{ if(typeof sdWashMap==='function'){ const w=sdWashMap(); cfg.wash={}; Object.keys(w).forEach(s=>{ if(w[s]&&w[s].clear)cfg.wash[s]={clear:w[s].clear}; }); } }catch(_){}
+  /* v207 (Jack, Nov 10 2026): "Forget any wash sale for PLTR" — a name on sdWashIgnore() never becomes an Apex TAX HOLD.
+     Apex card only: the cross-account ledger itself, the old plan and the ••3900 executor are untouched. */
+  try{ if(typeof sdWashMap==='function'){ const w=sdWashMap(), ig=sdWashIgnore(); cfg.wash={}; Object.keys(w).forEach(s=>{ if(w[s]&&w[s].clear&&ig.indexOf(s)<0)cfg.wash[s]={clear:w[s].clear}; }); } }catch(_){}
   const out=Apex.rules(state,{cfg,smaMap:sma,earningsMap:S.earn||{},review});
   /* v188 research tiles: the SD momentum lens (freshness-gated sdMomentum) over SD_BENCH + holdings. */
   let research=null;
@@ -2468,6 +2470,7 @@ function sdBroken(sym, costBasisPx){
    producer's cross-account realized-loss ledger (v105) and deliberately does NOT
    filter by account: the IRS window is per TAXPAYER, so a loss booked in ••••3900
    blocks a rebuy here just as one booked here blocks the agentic executor. */
+function sdWashIgnore(){ const o=(typeof window!=='undefined'&&window.SD_WASH_IGNORE); return Array.isArray(o)?o:['PLTR']; }   // v207: owner waived the wash-sale hold on these names (Apex card only)
 function sdWashMap(){
   const out={}, A=(window.__DATA&&window.__DATA.agentic)||{};
   const today=_snapETDate();
@@ -8725,13 +8728,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=206"></script>
-<script src="ui/predictions-model.js?v=206"></script>
-<script src="ui/predictions.js?v=206"></script>
-<script src="ui/smartmoney-model.js?v=206"></script>
-<script src="ui/smartmoney.js?v=206"></script>
-<script src="ui/experience.js?v=206"></script>
-<script src="ui/ticker.js?v=206"></script>
-<script src="ui/compact.js?v=206"></script>
+<script src="ui/experience-model.js?v=207"></script>
+<script src="ui/predictions-model.js?v=207"></script>
+<script src="ui/predictions.js?v=207"></script>
+<script src="ui/smartmoney-model.js?v=207"></script>
+<script src="ui/smartmoney.js?v=207"></script>
+<script src="ui/experience.js?v=207"></script>
+<script src="ui/ticker.js?v=207"></script>
+<script src="ui/compact.js?v=207"></script>
 </body>
 </html>
