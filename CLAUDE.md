@@ -1,3 +1,20 @@
+## v209 — Scheduled plan buys are not an insider cluster (2026-11-10)
+Jack, on a "30 insiders bought TSM" Smart Money flag that turned out to be a routine monthly purchase
+(same 30 officers, the 7th of each month, one identical price, 28-152 shares each, about $121K in total):
+"If it's nothing important this shouldn't keep refiring."
+- **Rule (`producer/flow.mjs`):** new `planBuyRows()` + `INSIDER_PLAN_MIN_BUYERS = 3`. `P` rows where 3+
+  DIFFERENT people bought on the same `transactionDate` at the same `transactionPrice` are a scheduled plan
+  run and are treated as mechanical, like `A` grants. `insiderScore` drops them before counting buyers, buy
+  dollars or a cluster (reported as `planRows`, and in the note); `insiderTrades` drops them from the Smart
+  Money feed, so the `cluster-buy|SYM|<latest txn>` flag id no longer changes every month.
+- **Not matched (tested):** two people sharing a day and price; one person's lots at one price; several
+  people on one day at DIFFERENT prices (still a real cluster); sells.
+- **Takes effect** on a symbol's next daily flow-fetch (the sidecar replaces the prior per-symbol read).
+  No UI, score-weight, Jarvis or agentic change. A feed with nothing but plan runs returns no insider read.
+- Files: `producer/flow.mjs`, `producer/flow.test.mjs` (+12), `index.html` + `sw.js` (version), `CLAUDE.md`.
+- Not verified: the live Finnhub TSM payload (no key in this session) — the pattern was read from Alpha
+  Vantage's copy of the same Form 4 rows.
+
 ## v208 — Apex keeps adding: cruise 1.65x, reload line 1.5x (2026-11-10)
 
 Jack (Nov 10 01:18 ET), told that raising the cap to 1.75x only widened the hold zone: "No I don't want that. I want

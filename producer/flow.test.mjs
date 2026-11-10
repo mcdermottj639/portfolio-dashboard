@@ -1,5 +1,5 @@
 // Offline unit checks for flow.mjs — no network. Run: node producer/flow.test.mjs
-import { revisionScore, insiderScore, surpriseScore, flowScore, scoreSymbol, FLOW_WEIGHTS, insiderTrades } from './flow.mjs';
+import { revisionScore, insiderScore, surpriseScore, flowScore, scoreSymbol, FLOW_WEIGHTS, insiderTrades, planBuyRows } from './flow.mjs';
 
 let pass = 0, fail = 0;
 const eq = (label, got, want) => { const g = JSON.stringify(got), w = JSON.stringify(want);
@@ -223,6 +223,45 @@ const whale = insiderScore({ data: [...baseSells,
 ] }, null, { asOf: IASOF });
 eq('a huge sale at a sane price is NOT dropped', whale.droppedRows, 0);
 ok('and it reads as heavy selling', whale.score < 3);
+
+// ---- scheduled plan buys (v209) --------------------------------------------
+// Live TSM shape, 2026-11-10: the same officers buy 28-152 shares each on the 7th of every month at one
+// identical price. Coded 'P', but a plan run — it must not be a cluster, a buyer count or a feed row.
+{
+  const PASOF = '2026-11-10';
+  const officers = ['WEI CHE-CHIA', 'HUANG JEN-CHAU', 'MII YUH-JIER', 'CHIN YUNG-PEI', 'FANG SHU-HUA'];
+  const run = (date, px) => officers.map((name, i) => ({ name, change: 30 + i * 25, transactionCode: 'P', transactionDate: date, transactionPrice: px, isDerivative: false }));
+  const planOnly = { data: [...run('2026-10-07', 79.39), ...run('2026-09-07', 76.2), ...run('2026-08-07', 73.31)] };
+  eq('every plan-run row is identified', planBuyRows(planOnly).size, 15);
+  eq('a feed of nothing but plan runs has no insider opinion', insiderScore(planOnly, null, { asOf: PASOF }), null);
+  eq('and no Smart Money feed rows', insiderTrades(planOnly, { asOf: PASOF }), null);
+
+  // Real discretionary buys alongside the plan runs survive, and only they are counted.
+  const real = [
+    { name: 'YUAN LIPEN', change: 1000, transactionCode: 'P', transactionDate: '2026-08-19', transactionPrice: 73.77 },
+    { name: 'YUAN LIPEN', change: 1000, transactionCode: 'P', transactionDate: '2026-08-18', transactionPrice: 74.5 },
+    { name: 'TIEN BOR-ZEN', change: 1000, transactionCode: 'P', transactionDate: '2026-08-03', transactionPrice: 73.06 },
+  ];
+  const mixedPlan = insiderScore({ data: [...planOnly.data, ...real] }, null, { asOf: PASOF });
+  eq('only discretionary buyers are counted', [mixedPlan.buyers, mixedPlan.cluster, mixedPlan.filings], [2, null, 3]);
+  eq('ignored plan rows are reported', mixedPlan.planRows, 15);
+  ok('note says plan rows were ignored', /15 scheduled plan buy row\(s\) ignored/.test(mixedPlan.note));
+  eq('buy dollars exclude the plan runs', mixedPlan.buyDollars, 73770 + 74500 + 73060);
+  const feedRows = insiderTrades({ data: [...planOnly.data, ...real] }, { asOf: PASOF });
+  eq('feed keeps the discretionary rows only', feedRows.map((r) => r.name), ['YUAN LIPEN', 'YUAN LIPEN', 'TIEN BOR-ZEN']);
+
+  // Guards: two people at one price is coincidence, and one person's lots at one price is one person.
+  const two = { data: run('2026-10-07', 79.39).slice(0, 2) };
+  eq('two buyers sharing a day and price are not a plan run', planBuyRows(two).size, 0);
+  const lots = { data: [1, 2, 3, 4].map((n) => ({ name: 'HUANG JENSEN', change: 100 * n, transactionCode: 'P', transactionDate: '2026-10-07', transactionPrice: 100 })) };
+  eq('one person buying in lots at one price is not a plan run', planBuyRows(lots).size, 0);
+  // Same day, DIFFERENT prices = separate decisions: still a genuine cluster.
+  const sameDay = { data: officers.slice(0, 3).map((name, i) => ({ name, change: 500, transactionCode: 'P', transactionDate: '2026-10-07', transactionPrice: 79 + i * 0.37 })) };
+  eq('three buyers on one day at different prices still cluster', insiderScore(sameDay, null, { asOf: PASOF }).cluster, 'buy');
+  // Sells are never plan-matched.
+  const sells = { data: officers.map((name) => ({ name, change: -50, transactionCode: 'S', transactionDate: '2026-10-07', transactionPrice: 79.39 })) };
+  eq('same-price sells are untouched', [planBuyRows(sells).size, insiderScore(sells, null, { asOf: PASOF }).cluster], [0, 'sell']);
+}
 
 // ---- surpriseScore ---------------------------------------------------------
 const earn = [

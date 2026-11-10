@@ -50,6 +50,14 @@ export const INSIDER_QUIET_CAP = 1;                // ≤half the normal pace is
 export const INSIDER_UNCALIBRATED_NUDGE = 0.5;     // uncalibrated selling: a nudge, never the old floor
 export const INSIDER_PRICE_SANITY_FACTOR = 10;     // reject rows priced >10× off the feed's own median
 export const INSIDER_PRICE_SANITY_MIN_ROWS = 5;    // below this a median is too unstable to police with
+// SCHEDULED PLAN BUYS (v209). Some issuers' officers buy through a company share-purchase plan: every
+// participant gets shares on the SAME day at the SAME price, month after month, and the feed codes each
+// row 'P' exactly like a discretionary purchase. Live case (TSM, 2026-11-10): 30 officers "bought" on
+// Aug 7, Sep 7 and Oct 7, each lot 28-152 shares at one identical price, about $121K in total across all
+// 30 — and the Smart Money tab raised a fresh "30 insiders bought TSM" cluster flag every month. People
+// acting on their own judgment do not fill at one price on one day, so this many distinct buyers sharing
+// a (date, price) is a plan run, not an opinion. Such rows are treated as mechanical, like 'A' grants.
+export const INSIDER_PLAN_MIN_BUYERS = 3;          // distinct buyers sharing a (date, price) = a plan run
 
 // ---- 1. Analyst revision momentum -----------------------------------------
 // Finnhub /stock/recommendation → [{ period:'2026-08-01', strongBuy, buy, hold, sell, strongSell }, …]
@@ -93,6 +101,29 @@ export function revisionScore(recommendation, { lookbackMonths = 3 } = {}) {
   };
 }
 
+// Rows that belong to a scheduled plan run: 'P' rows where INSIDER_PLAN_MIN_BUYERS or more DIFFERENT
+// people bought on the same transactionDate at the same transactionPrice. Returns a Set of row objects.
+// One person splitting a day's buy into lots at one price is NOT a plan run (one name), and rows with
+// no usable price are never matched.
+export function planBuyRows(list) {
+  const groups = new Map();
+  for (const t of rows(list)) {
+    if (!t || t.isDerivative) continue;
+    if (String(t.transactionCode || '').toUpperCase() !== 'P') continue;
+    const px = num(t.transactionPrice), chg = num(t.change);
+    const day = String(t.transactionDate || '').slice(0, 10);
+    if (!(px > 0) || !(chg > 0) || !day) continue;
+    const key = `${day}|${px.toFixed(4)}`;
+    let g = groups.get(key);
+    if (!g) { g = { who: new Set(), rows: [] }; groups.set(key, g); }
+    g.who.add(String(t.name || 'unknown').trim().toUpperCase());
+    g.rows.push(t);
+  }
+  const out = new Set();
+  for (const g of groups.values()) if (g.who.size >= INSIDER_PLAN_MIN_BUYERS) for (const t of g.rows) out.add(t);
+  return out;
+}
+
 // ---- 2. Insider clusters (Form 4) -----------------------------------------
 // Finnhub /stock/insider-transactions → { data:[{ name, change, transactionCode, transactionDate,
 //   transactionPrice, isDerivative }] }, /stock/insider-sentiment → { data:[{ year, month, mspr }] }.
@@ -113,13 +144,19 @@ export function insiderScore(transactions, sentiment, { asOf, windowDays = INSID
   const today = asOf || new Date().toISOString().slice(0, 10);
   // Open-market P/S only, non-derivative, real size, not future-dated. Mechanical codes ('A' grants,
   // 'M'/'X' exercises, 'G' gifts, 'F' withholding) carry no opinion and dominate the raw feed.
+  // Scheduled plan runs (see INSIDER_PLAN_MIN_BUYERS) are coded 'P' but are just as mechanical, so they
+  // are dropped here too: they must not count as buyers, as buy dollars, or as a cluster.
+  const plan = planBuyRows(transactions);
+  let planRows = 0;
   const all = rows(transactions).filter((t) => {
     if (!t || t.isDerivative) return false;
     const code = String(t.transactionCode || '').toUpperCase();
     if (code !== 'P' && code !== 'S') return false;
     if (!t.transactionDate) return false;
     if (!(daysBetween(today, t.transactionDate) >= 0)) return false;   // drop future-dated provider junk
-    return num(t.change) != null && num(t.change) !== 0;
+    if (!(num(t.change) != null && num(t.change) !== 0)) return false;
+    if (plan.has(t)) { planRows++; return false; }
+    return true;
   });
   if (!all.length) return null;
 
@@ -236,11 +273,12 @@ export function insiderScore(transactions, sentiment, { asOf, windowDays = INSID
     buyers, sellers, cluster, filings: tx.length,
     buyDollars: Math.round(buyD), sellDollars: Math.round(sellD),
     sellIntensity, baselineDays: calibrated ? baselineDays : null, calibrated,
-    anchor, anchorAge, stale, droppedRows: dropped,
+    anchor, anchorAge, stale, droppedRows: dropped, planRows,
     mspr: mspr == null ? null : r2(mspr),
-    note: cluster
+    note: (cluster
       ? `${cluster === 'buy' ? 'CLUSTER BUY' : 'cluster sell'} — ${cluster === 'buy' ? buyers : sellers} insiders in ${windowDays}d; ${intensityNote}`
-      : `${buyers} buyer(s) / ${sellers} seller(s) in ${windowDays}d; ${intensityNote}`,
+      : `${buyers} buyer(s) / ${sellers} seller(s) in ${windowDays}d; ${intensityNote}`)
+      + (planRows ? `; ${planRows} scheduled plan buy row(s) ignored` : ''),
   };
 }
 
@@ -377,10 +415,12 @@ export const INSIDER_TRADES_LIMIT = 10;
 export function insiderTrades(transactions, { asOf, windowDays = INSIDER_TRADES_WINDOW_DAYS, limit = INSIDER_TRADES_LIMIT } = {}) {
   const today = asOf || new Date().toISOString().slice(0, 10);
   const out = [];
+  const plan = planBuyRows(transactions);   // v209: scheduled plan runs are not open-market opinions
   for (const t of rows(transactions)) {
     if (!t || t.isDerivative) continue;
     const code = String(t.transactionCode || '').toUpperCase();
     if (code !== 'P' && code !== 'S') continue;
+    if (plan.has(t)) continue;
     const txn = String(t.transactionDate || '').slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(txn)) continue;
     const age = daysBetween(today, txn);
