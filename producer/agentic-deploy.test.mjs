@@ -1,5 +1,5 @@
 // Offline unit checks for agentic-deploy.mjs — no network, no I/O. Run: node producer/agentic-deploy.test.mjs
-import { planDeployment, marketRegime, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY,
+import { planDeployment, applyWashWaiver, WASH_WAIVED, marketRegime, EARNINGS_BLACKOUT_DAYS, AUTO_TURNOVER_CAP, MIN_HOLD_DAYS, REENTRY_COOLDOWN_DAYS, MIN_BUY,
   TLH_MIN_LOSS, TLH_MIN_LOSS_PCT, DEPOSIT_TRANCHE_DAYS, DEPOSIT_TRANCHE_PCT, DEPOSIT_TRANCHE_MIN } from './agentic-deploy.mjs';
 
 let pass = 0, fail = 0;
@@ -52,6 +52,14 @@ const crossWash = planDeployment({ target: { names: [{ ticker: 'NVDA', weightPct
 const cw = find(crossWash.deferred, 'NVDA');
 ok('a margin-book loss defers the agentic buy', cw && cw.reason === 'wash-sale' && !find(crossWash.buys, 'NVDA'));
 ok('cross-account deferral names the other account', cw && /cross-account/.test(cw.detail));
+
+// 2026-11-10 owner waiver: NVDA is dropped from the wash map BEFORE the planner sees it; other names keep their hold.
+const waivedMap = applyWashWaiver({ NVDA: { until: '2026-12-01' }, V: { until: '2026-12-01' } });
+ok('NVDA is on the owner waiver list', WASH_WAIVED.includes('NVDA'));
+ok('waiver drops NVDA from the wash map and keeps V', !waivedMap.NVDA && !!waivedMap.V);
+ok('waiver is case-insensitive and takes an override list', !applyWashWaiver({ v: { until: 'x' } }, ['V']).v && !!applyWashWaiver({ NVDA: { until: 'x' } }, []).NVDA);
+const waivedPlan = planDeployment({ target: { names: [{ ticker: 'NVDA', weightPct: 100, entry: '205-215', stop: 190 }] }, positions: [], cash: 1000, quotes: { NVDA: 209 }, washMap: applyWashWaiver({ NVDA: { until: '2026-08-01' } }), opts: { asOf: '2026-07-23' } });
+ok('a waived NVDA is bought, not deferred', !!find(waivedPlan.buys, 'NVDA') && !find(waivedPlan.deferred, 'NVDA'));
 
 // over-target holding triggers a trim (taxable, sequenced before the buys it funds)
 const over = planDeployment({

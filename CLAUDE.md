@@ -13,6 +13,17 @@ a session permission check twice on Nov 10; until it is changed the scan's ticke
 case). Verified: all producer suites, tests/*.cjs 4/4, sd-plan-browser PASS. Physical iPhone not verified.
 App/cache **v208 / pf-v208**.
 
+**Also in v208 — NVDA is waived from the AGENTIC wash-sale block.** Jack (Nov 10 01:21 ET): "remove any nvda wash
+sale restrictions for agentic". `WASH_WAIVED = ['NVDA']` + `applyWashWaiver()` in `producer/agentic-deploy.mjs`,
+applied where the ledger becomes a washMap — `agentic-exec-gate.mjs` (which logs each waived hold) and the card's
+`agenticWashMap` mirror (`AG_WASH_WAIVED` in `index.html`; keep the two in step). `planDeployment` is untouched and
+stays a pure function of the map it is handed; a same-ticket TLH harvest still blocks its own rebuy; every other
+name keeps its 30-day hold; `data.agentic.recentLosses` (the ledger) is unchanged, so the self-directed side still
+sees an NVDA loss. `AGENTIC.md` step 3c tells the executor the live cross-account check exempts waived names too
+(the executor prompt defers to that runbook; the prompt itself was not edited). Tax effect: a wash sale DEFERS the
+loss into the replacement shares' basis; Robinhood does not adjust a cross-account wash on the 1099-B. Tests:
+agentic-deploy 276 (+4), agentic-exec-gate 18. Not verified: a live executor pass (market closed, no passphrase here).
+
 ## v207 — PLTR is waived from the Apex wash-sale hold (2026-11-10)
 
 Jack (Nov 10 01:11 ET): "Forget any wash sale for plntr is minimal compared to iren loses". New `sdWashIgnore()`

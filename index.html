@@ -3313,12 +3313,14 @@ function agenticPxOf(sym,heldPos){
 /* Wash-sale ledger → {SYM:{until,date,account}} for names still inside the window. data.agentic
    .recentLosses spans BOTH taxable books since v105 (each entry tagged `account`) because the IRS
    window is per TAXPAYER — a loss booked in ••••0741 blocks a rebuy in ••••3900 too. */
+const AG_WASH_WAIVED=['NVDA'];   // v208 (Jack, Nov 10 2026): never wash-hold these in the agentic book — keep in step with WASH_WAIVED
 function agenticWashMap(A){
   const today=agToday(), m={};
   if(A&&Array.isArray(A.recentLosses)) for(const e of A.recentLosses){
     if(!e||!e.sym||!e.date)continue;
     const d=new Date(e.date+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+AG_WASH_WINDOW_D+1);
     const until=d.toISOString().slice(0,10);
+    if(AG_WASH_WAIVED.indexOf(e.sym)>=0)continue;   // v208: owner waiver — mirrors WASH_WAIVED in producer/agentic-deploy.mjs
     if(until>today&&(!m[e.sym]||until>m[e.sym].until)) m[e.sym]={until,date:e.date,account:e.account||'agentic'};
   }
   return m;

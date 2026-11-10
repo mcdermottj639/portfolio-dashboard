@@ -585,7 +585,9 @@ claude.ai Routine UI, enables it, and disables the persistent one — the API ca
       the same symbol kills a harvest (keep exits, flag `washRisk`). The gate can see neither, so this is
       the only place both are enforced. **Also (v105): `get_pnl_trade_history` on the margin account
       (…0741, span `month`) — drop any BUY of a name that account realized a LOSS on within 30 days**
-      (cross-account wash; keep the target weight, defer like the gate's own wash deferral). The
+      (cross-account wash; keep the target weight, defer like the gate's own wash deferral). **Owner
+      waiver (2026-11-10): a name in `WASH_WAIVED` (`agentic-deploy.mjs`, currently NVDA) is exempt from
+      this live check too — do not drop or defer its buy for a wash-sale reason.** The
       snapshot's merged ledger covers losses up to the last producer run; this live call covers a loss
       the owner books between that run and this executor pass — the exact gap that let a Jul-29 NVDA
       loss in ••••0741 get partially disallowed by an Aug-11 agentic rebuy.

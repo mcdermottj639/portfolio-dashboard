@@ -245,6 +245,20 @@ export const PARK_MIN = 100;   // don't park (or release) less than this — the
 // chose — all short enough that the round trip is a coin flip against a now-yielding alternative.
 export const PARK_DATED_REASONS = new Set(['wash-sale']);
 
+// OWNER WASH-SALE WAIVERS (Jack, 2026-11-10: "remove any nvda wash sale restrictions for agentic").
+// A name listed here is never deferred by the wash-sale LEDGER — the buy goes ahead inside the 30-day
+// window and the disallowed loss moves into the replacement shares' cost basis (deferred, not lost).
+// Applied where the ledger becomes a washMap (the exec gate, the card's agenticWashMap mirror), NOT
+// inside planDeployment — the planner stays a pure function of the map it is handed, and a same-ticket
+// TLH harvest still blocks its own rebuy (harvesting a name and rebuying it at once is pointless).
+// Keep AG_WASH_WAIVED in index.html in step.
+export const WASH_WAIVED = ['NVDA'];
+export function applyWashWaiver(washMap, waived = WASH_WAIVED) {
+  const out = {}, skip = new Set((waived || []).map((s) => String(s).toUpperCase()));
+  for (const [sym, v] of Object.entries(washMap || {})) if (!skip.has(String(sym).toUpperCase())) out[sym] = v;
+  return out;
+}
+
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const money = (n) => '$' + (Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 // entry zones are "745-755" | "745–755" | "745" | "$1,130-$1,180 (some prose)" → numeric bounds.
