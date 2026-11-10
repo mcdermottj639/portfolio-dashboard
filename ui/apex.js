@@ -17,9 +17,9 @@
   'use strict';
 
   const C = {
-    LEV_NORMAL: 1.35,      // where the book cruises; reload adds only up to here
+    LEV_NORMAL: 1.65,      // where the book cruises; adds go only up to here (Jack, 2026-11-10: "keep adding" — was 1.35)
     LEV_CAP: 1.75,         // hard cap — above it: no new buys (Jack, 2026-11-10: 1.75x; was 1.5x)
-    LEV_RELOAD: 1.20,      // below it (and the book trending) new borrow is allowed
+    LEV_RELOAD: 1.50,      // below it new borrow is allowed (was 1.20; trails cruise by the same 0.15)
     MAINT: 0.30,           // Robinhood house maintenance seen on IREN (2026-11-05); PLTR assumed
     /* v195 (LAB-004-P1): the guard follows the maintenance REQUIREMENT, not a fixed line. Buffers are points
        of exposure over the (blended, per-name) requirement; at the default 30% they give the old 35% / 40%. */
@@ -229,7 +229,7 @@
       }
     }
 
-    // A6 Reload — only when winning and under 1.2x.
+    // A6 Reload — only when winning and under the reload line (C.LEV_RELOAD).
     const above50 = st.positions.filter((p) => sma[p.symbol] && sma[p.symbol].s50 && p.px > sma[p.symbol].s50).length;
     if (st.lev < C.LEV_RELOAD && st.positions.length >= 3 && above50 * 3 >= st.positions.length * 2) {
       const room = Math.max(0, C.LEV_NORMAL * st.equity - st.exposure);

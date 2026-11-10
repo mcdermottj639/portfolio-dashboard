@@ -132,17 +132,18 @@ ok('v188 core: shares above the core still follow the stop', () => {
   assert.ok(lose && lose.ticket.qty === 200);
 });
 
-ok('v188 build: lev < 1.2x, trend shut → armed buys split 20/15/15/10 to 1.35x, never the core', () => {
+ok('v188 build: under the reload line, trend shut → armed buys split 20/15/15/10 toward cruise, never the core', () => {
   const s = A.state(nov5);
   const px = { NVDA: { px: 181.59 }, PLTR: { px: 154.85 }, RKLB: { px: 45.98 }, CRWD: { px: 217.2 } };
   const r = A.rules(s, { smaMap: px });
   const b = r.filter((x) => x.kind === 'build');
   assert.deepEqual(b.map((x) => x.ticket && x.ticket.sym), ['NVDA', 'PLTR', 'RKLB', 'CRWD']);
   assert.ok(b.every((x) => x.ticket.armed && x.ticket.side === 'buy'));
-  const room = 1.35 * 9917.94 - 500.07 * 18.015;
+  const room = A.C.LEV_NORMAL * 9917.94 - 500.07 * 18.015;
   const spend = b.reduce((a, x) => a + x.ticket.qty * x.ticket.px, 0);
-  assert.ok(spend <= room + 0.01 && spend > room * 0.8, `spend ${spend} vs room ${room}`);
-  assert.equal(b[0].ticket.qty, Math.floor((room * 20 / 60) / 181.59));
+  // v208: cruise 1.65x — the room is larger than the 20%-of-equity per-name cap, so the cap sizes the leg.
+  assert.ok(spend <= room + 0.01 && spend > 0, `spend ${spend} vs room ${room}`);
+  assert.equal(b[0].ticket.qty, Math.floor(Math.min(room * 20 / 60, A.C.SINGLE_MAX_EQ * 9917.94) / 181.59));
 });
 
 ok('v188 build: does not fire when the reload rule is open', () => {
@@ -215,7 +216,7 @@ ok('v194 build: rungs carry entry/target/stop/R-R + name, sized at the limit lik
   assert.equal(amzn.levels.tp1, 280.14); assert.equal(amzn.levels.stop, 253.89);
   assert.equal(amzn.levels.name, 'Amazon');
   assert.ok(/at \$274\.60/.test(amzn.title), amzn.title);
-  const room = 1.35 * 11073.3 - 500.07 * 21.25, W = 22.13 + 14.03 + 11.53 + 12.31;
+  const room = A.C.LEV_NORMAL * 11073.3 - 500.07 * 21.25, W = 22.13 + 14.03 + 11.53 + 12.31;
   assert.equal(amzn.ticket.qty, Math.floor(Math.min(0.2 * 11073.3, room * 22.13 / W) / 277.35));
   assert.ok(b.every((x) => x.lowRR), 'all four Nov 6 rungs sit under the 1.5 floor at their real entry');
 });
@@ -539,15 +540,25 @@ ok('v203 weights rows carry held / target / this-week shares and dollars; core s
 });
 
 
-ok('v205 bookGaps: at 1.25x (no build rungs) the week\'s book still counts — adds for under-target names, exits for dropped ones, IREN never', () => {
+ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\'s book still counts — adds for under-target names, exits for dropped ones, IREN never', () => {
   const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, S: 16.18, ZS: 14.45, PLTR: 13.26, SNPS: 16.11 }, levels: { SNPS: { sym: 'SNPS', name: 'Synopsys', trigger: 460.31, limit: 464.91, tp1: 512.49, stop: 441.61, rr: 2.04 } } });
   const pos = [{ symbol: 'IREN', qty: 500.07, px: 20.73, avg: 40.99 }, { symbol: 'AMZN', qty: 6.07, px: 266.2, avg: 263.47 }, { symbol: 'PLTR', qty: 6.10, px: 162, avg: 168.45 }, { symbol: 'S', qty: 14, px: 21.77, avg: 21.91 }, { symbol: 'ZS', qty: 1, px: 197.66, avg: 202.18 }];
-  const st = A.state({ positions: pos, cash: -2653 });
+  // v208: the reload line moved 1.2x → 1.5x, so the same book is replayed with the debt that puts it between 1.5x and 1.65x.
+  const st = A.state({ positions: pos, cash: -4890 });
+  assert.ok(st.lev > A.C.LEV_RELOAD && st.lev < A.C.LEV_NORMAL, `fixture sits between reload and cruise (${st.lev.toFixed(2)}x)`);
   const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {}, review: true });
-  assert.ok(!out.some((r) => r.kind === 'build'), 'no build rungs above 1.2x');
+  assert.ok(!out.some((r) => r.kind === 'build'), 'no build rungs above the reload line');
+  // v208 "keep adding": the real Nov 9 book (1.25x, debt $2,653) is now UNDER the reload line, so Apex adds toward 1.65x.
+  const live = A.state({ positions: pos, cash: -2653 });
+  assert.ok(live.lev < A.C.LEV_RELOAD, `the Nov 9 book (${live.lev.toFixed(2)}x) is under the 1.5x reload line`);
+  const liveOut = A.rules(live, { cfg, smaMap: { S: { px: 21.77 }, ZS: { px: 197 }, PLTR: { px: 162 }, SNPS: { px: 460 } }, earningsMap: {}, review: true });
+  assert.ok(liveOut.some((r) => r.kind === 'build' || r.kind === 'reload'), 'at 1.25x Apex now opens buys (it stopped at 1.2x before)');
+  assert.ok(!liveOut.some((r) => r.ticket && r.ticket.sym === 'IREN' && r.ticket.side === 'buy'), 'never adds to IREN');
+  assert.equal(A.C.LEV_NORMAL, 1.65); assert.equal(A.C.LEV_RELOAD, 1.5); assert.equal(A.C.LEV_CAP, 1.75);
   const g = A.bookGaps(st, out, cfg);
-  assert.deepEqual(g.adds.map((a) => a.sym).sort(), ['PLTR', 'S', 'SNPS', 'ZS']);
-  assert.deepEqual(A.bookGaps(st, out, Object.assign({}, cfg, { wash: { PLTR: { clear: '2026-11-20' } } })).adds.map((a) => a.sym).sort(), ['S', 'SNPS', 'ZS'], 'a wash-window name stays a TAX HOLD, never an ADD');
+  // on this smaller equity PLTR sits within 2 pts of its 13.3% weight, so it is no longer an ADD line
+  assert.deepEqual(g.adds.map((a) => a.sym).sort(), ['S', 'SNPS', 'ZS']);
+  assert.deepEqual(A.bookGaps(st, out, Object.assign({}, cfg, { wash: { S: { clear: '2026-11-20' } } })).adds.map((a) => a.sym).sort(), ['SNPS', 'ZS'], 'a wash-window name stays a TAX HOLD, never an ADD');
   assert.deepEqual(g.exits.map((e) => e.sym), ['AMZN']);
   const p = A.portfolioPrompt(st, out, cfg, null);
   assert.match(p, /ADD SNPS \(Synopsys\) — held 0\.0% → target 16\.1%/);

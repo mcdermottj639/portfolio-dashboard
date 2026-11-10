@@ -1,3 +1,18 @@
+## v208 — Apex keeps adding: cruise 1.65x, reload line 1.5x (2026-11-10)
+
+Jack (Nov 10 01:18 ET), told that raising the cap to 1.75x only widened the hold zone: "No I don't want that. I want
+to keep adding" — then chose "Add to 1.65x". `Apex.C.LEV_NORMAL` 1.35 → **1.65** (where adds stop) and `LEV_RELOAD`
+1.20 → **1.50** (below it Apex opens buys; it trails cruise by the same 0.15 as before). Cap stays 1.75x (v206), so
+the hold-only zone is 1.65–1.75x. The real Nov 9 book (1.25x) is now UNDER the reload line and builds again. Every
+surface reads the band from `Apex.C` (`sdApexBand()` fallbacks match). Per-name cap (20% of equity), R/R floor, IREN
+owner-managed and maintenance are unchanged — with the Nov 9 targets (60% of equity) plus IREN the book tops out
+near 1.56x, below cruise. At 30% maintenance a 1.65x book reaches a call after a 43.7% fall. **The "Apex morning
+scan · 0741" prompt still hard-codes 1.35x cruise / 1.2x reload / 1.65x cap (rules v2.3)** — its update was refused by
+a session permission check twice on Nov 10; until it is changed the scan's tickets and this card disagree. Files:
+`ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (50/50; build and book-gaps tests migrated, +keep-adding
+case). Verified: all producer suites, tests/*.cjs 4/4, sd-plan-browser PASS. Physical iPhone not verified.
+App/cache **v208 / pf-v208**.
+
 ## v207 — PLTR is waived from the Apex wash-sale hold (2026-11-10)
 
 Jack (Nov 10 01:11 ET): "Forget any wash sale for plntr is minimal compared to iren loses". New `sdWashIgnore()`
