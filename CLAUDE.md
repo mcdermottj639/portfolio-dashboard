@@ -9,6 +9,9 @@ scored S, ZS and SNPS with HIS resting Robinhood stops (`stopBasis: "Jack's open
   name. His order prices are never read. IREN excluded.
 - Weights rows show "research exit: stop · target" under every held target name; research tiles show the research stop.
 - Confirm prompt: lists research exit levels for held names and tells Claude his resting orders are never an input.
+- Confirm answer format (Jack, same day, screenshot of the 8-column table cut off on his iPhone: "orders easy to
+  read in one view on iOS no scrolling"): numbered order lines first, leverage line, one 3-column Ticker | Stop |
+  Target table, one "No action" line; no table wider than 3 columns.
 - `index.html`: `cfg.levels` and research rows carry `atr` + `stopBasis`.
 - `index.html` also reads optional `heldLevels` rows from `data/apex-targets.json` (scan rules v2.5: research
   stop/target/score for every held name, not only the top 5); a `top5` row wins.

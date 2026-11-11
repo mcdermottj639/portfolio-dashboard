@@ -633,6 +633,8 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
   assert.match(p, /Research exit levels for held names \(the only stop and target that count\): ZS stop \$173\.82 · target \$267\.87; NET stop \$250\.92 · target \$370\.35; PLTR stop \$152\.60 · target \$212\.94\./);
   assert.match(p, /My own resting Robinhood orders \(stops, limits, OCO legs\) are NEVER an input/);
   assert.doesNotMatch(p, /\$180\.00|undefined|NaN/);
+  assert.match(p, /ONE iPhone screen with no sideways or vertical scrolling\. No table wider than 3 columns/);
+  assert.doesNotMatch(p, /Ticker \| Verdict \| Shares \| Entry/, 'the 8-column table is gone');
   const el = { innerHTML: '', querySelector: () => null };
   const res = { rows: [Object.assign({ sym: 'ZS', score: 7.9, why: 'picked', target: 20 }, zs)], asOf: 'x' };
   A.render(el, st, rows, cfg, res);
