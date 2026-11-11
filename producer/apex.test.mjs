@@ -646,4 +646,44 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
   assert.ok(/research stop<\/span>/.test(el.innerHTML) && /target hit<\/span>/.test(el.innerHTML), 'both tags render');
 });
 
+/* v212 — Jack, Nov 11 2026: "somewhere here it's gotta tell me what trades it's recommended that I click to confirm".
+   The live Nov 11 book: SNPS dropped by the research, NET/PLTR/ZS at weight, IREN owner-managed, 1.71x. */
+ok('v212 the Confirm button lists the trades it is about to send — same set it counts', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: {
+    ZS: { trigger: 199.1, limit: 199.1, tp1: 267.87, stop: 180, stopBasis: "Jack's open stop", atr: 12.64 },
+    NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99 } } });
+  const st = A.state({ positions: [
+    { symbol: 'IREN', qty: 500.071851, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 168.84, avg: 165.14 },
+    { symbol: 'ZS', qty: 11, px: 194.92, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 459.92, avg: 456.64 },
+    { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ], cash: -6637.1, equity: 10650 });
+  const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
+  const lines = A.bookLines(st, out, cfg);
+  assert.deepEqual(lines.map((l) => [l.side, l.text, l.px]), [['sell', 'Sell 4 SNPS', 'last $459.92']]);
+  assert.ok(!lines.some((l) => l.sym === 'IREN'), 'IREN never');
+  const el = { innerHTML: '', querySelector: () => null };
+  A.render(el, st, out, cfg, null);
+  assert.match(el.innerHTML, /Recommended trades/);
+  assert.match(el.innerHTML, /data-apex-trade="SNPS"[^]*?>SELL<\/span>[^]*?<b[^>]*>Sell 4 SNPS<\/b>[^]*?last \$459\.92[^]*?dropped by this week’s research/);
+  assert.ok(el.innerHTML.indexOf('data-apex-trades') < el.innerHTML.indexOf('Confirm this week'), 'the list sits above the button');
+  assert.match(el.innerHTML, /· 1 order</);
+  // under the reload line: build rungs (sized at the limit, research stop not his $180) and a winner trim all list
+  const st2 = A.state({ positions: [
+    { symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 215, avg: 165.14 },
+    { symbol: 'ZS', qty: 5, px: 194.92, avg: 198.66 } ], cash: -3000 });
+  const cfg2 = Object.assign({}, cfg, { levels: Object.assign({}, cfg.levels, { PLTR: { limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low' } }) });
+  const out2 = A.rules(st2, { cfg: cfg2, smaMap: {}, earningsMap: {} });
+  const l2 = A.bookLines(st2, out2, cfg2);
+  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 4 NET', 'limit $294.90'], ['buy', 'Buy 5 ZS', 'limit $199.10'], ['sell', 'Sell 3 PLTR', 'limit $213.93']]);
+  assert.equal(l2[1].sub, 'target $267.87 · stop $173.82');
+  assert.equal(A.bookLines(st, [], Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20 } })).filter((l) => l.side === 'sell').map((l) => l.text).join(), 'Sell 11 ZS,Sell 4 SNPS,Sell 7 NET', 'whole and fractional share counts print cleanly');
+  A.render(el, st2, out2, cfg2, null);
+  assert.equal((el.innerHTML.match(/data-apex-trade="/g) || []).length, l2.length);
+  assert.match(el.innerHTML, new RegExp('· ' + l2.length + ' orders<'));
+  assert.ok(!/undefined|NaN/.test(el.innerHTML));
+  // nothing to do ⇒ no list and no button
+  const st3 = A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }], cash: 0 });
+  A.render(el, st3, A.rules(st3, { cfg: { targets: { IREN: 20 } } }), { targets: { IREN: 20 } }, null);
+  assert.ok(!/Recommended trades|Confirm this week/.test(el.innerHTML));
+});
+
 console.log(`apex: ${n}/${n} passed`);

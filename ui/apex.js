@@ -454,11 +454,30 @@
       'FORMAT — it must fit ONE iPhone screen with no sideways or vertical scrolling. No table wider than 3 columns, no cell longer than about 14 characters. In this order: (1) one verdict line: how many orders to place today. (2) ORDERS, numbered, one short line each, in the order I should enter them: "SELL 4 SNPS · limit $464.00 · Day" (for a breakout: "BUY 3 ZS · stop $x → limit $y · GTC"); a step like cancelling a resting order is its own numbered line. (3) one line: leverage after fills. (4) one 3-column table for the names I hold — Ticker | Stop | Target (research levels). (5) one line "No action:" listing every other name with a 2–3 word reason each. Nothing else: no long table, no why column, no paragraphs; I ask "more" if I want the reasoning. Education only — not financial advice.');
     return L.join('\n');
   }
-  function portfolioButton(st, out, cfg, research) {
+  /* v212 (Jack, Nov 11 2026, screenshot of the button reading only "1 order": "somewhere here it's gotta tell me what
+     trades it's recommended that I click to confirm"). bookLines() is the SAME set the button counts and the prompt
+     sends — build rungs, under-target adds, research-dropped exits, rule sells — as one short line each. Prices are
+     the snapshot's; the confirm step re-prices live. Pure. */
+  function bookLines(st, out, cfg) {
+    const q = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? String(Math.round(x)) : (+x).toFixed(2));
+    const lines = [];
+    (out || []).filter((r) => r.kind === 'build' && r.levels).forEach((r) => { const t = r.levels;
+      lines.push({ side: 'buy', sym: t.sym, text: `Buy ${t.qty > 0 ? q(t.qty) + ' ' : ''}${t.sym}`, px: t.limit > 0 ? 'limit ' + money(t.limit) : '', sub: `${t.tp1 > 0 ? 'target ' + money(t.tp1) : ''}${t.stop > 0 ? ' · stop ' + money(t.stop) : ''}`.replace(/^ · /, '') }); });
     const g = bookGaps(st, out, cfg);
-    const n = (out || []).filter((r) => r.kind === 'build' && r.levels).length + (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').length + g.adds.length + g.exits.length;
+    g.adds.forEach((a) => { const t = a.lv || {}, sh = t.limit > 0 ? Math.floor(a.dollars / t.limit) : 0;
+      lines.push({ side: 'buy', sym: a.sym, text: `Add ${sh > 0 ? sh + ' ' : ''}${a.sym}`, px: t.limit > 0 ? 'limit ' + money(t.limit) : '≈ $' + k(a.dollars), sub: `to ${a.tgt.toFixed(0)}% of equity (now ${a.have.toFixed(0)}%)` }); });
+    g.exits.forEach((e) => lines.push({ side: 'sell', sym: e.sym, text: `Sell ${q(e.qty)} ${e.sym}`, px: e.px > 0 ? 'last ' + money(e.px) : '', sub: 'dropped by this week\u2019s research' }));
+    (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? 'limit ' + money(r.ticket.px) : '', sub: r.title }));
+    return lines;
+  }
+  function portfolioButton(st, out, cfg, research) {
+    const lines = bookLines(st, out, cfg);
+    const n = lines.length;
     if (!n) return '';
-    return `<a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div>`;
+    const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const rows = lines.map((l) => `<div data-apex-trade="${escH(l.sym)}" style="display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-top:1px solid rgba(0,0,0,.06);min-width:0"><span style="flex:0 0 auto;font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;background:${l.side === 'sell' ? '#fee2e2' : '#d1fae5'};color:${l.side === 'sell' ? '#991b1b' : '#065f46'}">${l.side === 'sell' ? 'SELL' : 'BUY'}</span><span style="flex:1 1 auto;min-width:0"><b style="font-size:13px">${escH(l.text)}</b>${l.px ? ` <span style="font-size:12px;white-space:nowrap">· ${escH(l.px)}</span>` : ''}${l.sub ? `<br><span style="font-size:10.5px;color:#6b7280;overflow-wrap:anywhere">${escH(l.sub)}</span>` : ''}</span></div>`).join('');
+    const list = `<div class="ac-tier">🧾 Recommended trades <span class="card-hint">(${n} · snapshot prices — the confirm re-prices them live)</span></div><div data-apex-trades style="border:1px solid rgba(0,0,0,.08);border-radius:12px;overflow:hidden;margin-bottom:8px">${rows.replace('border-top:1px solid rgba(0,0,0,.06);', '')}</div>`;
+    return list + `<a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div>`;
   }
 
   /* v194 — entry · target · stop · R/R as a 2×2 grid (fits 320px), then company name + a Robinhood link. */
@@ -571,5 +590,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt, bookGaps };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt, bookGaps, bookLines };
 });
