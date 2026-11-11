@@ -30,10 +30,11 @@ jobs:
           node --check ui/journey.js
           node --test tests/*.test.cjs
           git diff --check
-      - name: Commit scoped release and remove temporary package
+      - name: Commit app code only; workflow edits remain connector-owned
         run: |
-          git rm -r .journey-package .github/workflows/prepare-portfolio-journey.yml
-          git add .github/workflows/tests.yml CLAUDE.md UI-PRESERVATION.md UX_REVIEW.md index.html sw.js tests/journey-browser.mjs tests/journey.test.cjs tests/verify-live-shell.py ui/experience.js ui/journey.css ui/journey.js
+          git restore .github/workflows/tests.yml
+          git rm -r .journey-package
+          git add CLAUDE.md UI-PRESERVATION.md UX_REVIEW.md index.html sw.js tests/journey-browser.mjs tests/journey.test.cjs tests/verify-live-shell.py ui/experience.js ui/journey.css ui/journey.js
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Improve Portfolio holding-to-research journey (v217)'
