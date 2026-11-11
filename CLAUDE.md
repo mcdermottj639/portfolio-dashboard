@@ -1,3 +1,14 @@
+## v217 — Portfolio UI/UX continuation (2026-11-11)
+- Added read-only holding/research/plan context, route-only history, Back/Forward/refresh restoration,
+  account-local selected names/evidence filters, position search and keyboard row details.
+- Removed only the redundant read-only Analyze confirmation; whole-book/trade confirmation unchanged.
+- Existing Apex v216 and Agentic retry safeguards, strategy/risk thresholds and source data unchanged.
+- Analyze's legacy self-directed input boundary is explicit; account-specific decisions stay on Plan.
+- Added journey unit/browser checks and exact served-shell verification. Local producer 56/56 and
+  existing model tests pass; consult the PR/CI and shared handoff for final browser/publication status.
+- App/cache v217 / pf-v217. Research, source links, testing limits and Caddie→Jarvis continuation:
+  `UX_REVIEW.md`. No physical-device, private-account decryption or broker execution claim.
+
 ## v216 — Separate entry eligibility from held exits; stop turnover loops (2026-11-11)
 - A held name falling off the entry list is now a visible review/no-add item, never a sell by omission.
   Missing research cannot liquidate holdings. Valid entries share hard finite-level/R/R gates;

@@ -1,9 +1,6 @@
 name: Producer tests
 
-# Offline unit + integration tests for the producer pipeline (producer/*.test.mjs). No network,
-# no MCP, no secrets — the build-data integration test runs against fixtures and restores the
-# workspace copy of data.json afterward.
-
+# Synthetic/offline tests: no broker writes, secrets or decrypted account records.
 on:
   pull_request:
     paths: ['producer/**', 'ui/**', 'tests/**', 'index.html', 'sw.js', '.github/workflows/tests.yml']
@@ -17,8 +14,8 @@ permissions:
 
 jobs:
   test:
-    # Pin the OS alongside Playwright so a new ubuntu-latest image cannot break browser support.
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,7 +36,9 @@ jobs:
       - name: Install browser test runtime
         run: |
           npm install --no-save --no-package-lock playwright@1.57.0
-          npx playwright install --with-deps chromium
+          # The pinned hosted image already has Chromium's shared libraries.
+          # Do not depend on apt mirrors merely to install extra font packages.
+          npx playwright install chromium
 
       - name: Check synthetic dashboard in Chromium
         run: |
@@ -53,3 +52,34 @@ jobs:
           node tests/brief-browser.mjs
           node tests/sd-plan-browser.mjs
           node tests/apex-browser.mjs
+          node tests/journey-browser.mjs
+
+      - name: Verify published UI after a main release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          python3 tests/verify-live-shell.py
+          PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/journey-browser.mjs
+
+      - name: Save synthetic layout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-browser-evidence
+          path: tmp/journey-evidence/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Save public UI source for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-review-source
+          path: |
+            index.html
+            sw.js
+            ui/
+            tests/
+            UX_REVIEW.md
+            UI-PRESERVATION.md
+            CLAUDE.md
+          retention-days: 3

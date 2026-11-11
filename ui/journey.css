@@ -1,0 +1,45 @@
+/* v217 — compact continuation controls; original cards and charts stay reachable. */
+#pj-back{min-width:72px;min-height:44px;flex-shrink:0}
+#pj-back:disabled{opacity:.38;cursor:default}
+.ex-top{gap:10px!important;padding-top:10px!important;padding-bottom:10px!important}
+.pj-context{border:1px solid var(--ex-border);border-radius:12px;background:var(--ex-panel);padding:12px;margin:0 0 12px;color:var(--ex-text)}
+.pj-context-head{display:flex;gap:12px;align-items:center;justify-content:space-between;min-width:0}
+.pj-context-head>strong{font-size:13px;white-space:nowrap}
+.pj-context label{font-size:11px;color:var(--ex-muted);display:flex;gap:8px;align-items:center;min-width:0}
+.pj-context select,.pj-evidence-filter select,.pj-filter input{font:inherit;font-size:14px;min-height:44px;background:var(--ex-panel);color:var(--ex-text);border:1px solid var(--ex-border);border-radius:8px;padding:8px;max-width:100%;min-width:0}
+.pj-context select{width:130px}
+.pj-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0}
+.pj-metrics span{display:block;font-size:11px;color:var(--ex-muted)}
+.pj-metrics b{display:block;font-size:20px;font-variant-numeric:tabular-nums;margin-top:3px;overflow-wrap:anywhere}
+.pj-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:8px}
+.pj-steps button,.pj-notice button,.pj-filter button,.pj-row-toggle{font:inherit;background:var(--ex-soft);border:1px solid var(--ex-border);border-radius:8px;color:var(--ex-text);min-height:44px;padding:8px;cursor:pointer;font-weight:600}
+.pj-steps button{font-size:12px}.pj-steps button[aria-current="step"]{border-color:var(--ex-accent);color:var(--ex-accent)}
+.pj-steps button:disabled{opacity:.45;cursor:default}
+.pj-source{font-size:11px;color:var(--ex-muted);margin-top:7px}.pj-source summary{min-height:32px;display:flex;align-items:center;cursor:pointer}.pj-source summary::before{content:'+';margin-right:6px}.pj-source[open] summary::before{content:'−'}.pj-source p{line-height:1.5;margin:6px 0}
+.pj-notice{font-size:11px;line-height:1.5;margin:4px 0 0;color:var(--ex-muted)}.pj-notice button{font-size:11px;border:0;background:transparent;color:var(--ex-accent);padding:0 4px;min-height:32px}
+.pj-filter{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-bottom:10px}.pj-filter label{flex:1;min-width:100px;font-size:11px;color:var(--ex-muted)}.pj-filter input{display:block;width:100%;margin-top:4px}.pj-filter [role="status"]{width:100%;font-size:12px;color:var(--ex-muted)}.pj-filter [role="status"]:empty{display:none}
+.pj-evidence-filter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;margin:10px 0}.pj-evidence-filter span{flex-basis:100%;color:var(--ex-muted)}
+.pj-row-toggle{display:none}
+[hidden][data-evidence-symbol],#pos-table tr[hidden],#pj-context[hidden]{display:none!important}
+.pj-context button:focus-visible,.pj-context select:focus-visible,#pj-back:focus-visible,.pj-filter input:focus-visible,.pj-row-toggle:focus-visible,[data-pj-keyboard]:focus-visible{outline:2px solid var(--ex-accent);outline-offset:2px}
+@media(max-width:650px){
+ .ex-top{flex-wrap:wrap!important}.ex-top>div:not(.ex-tools){flex:1}.ex-brand{font-size:21px!important}.ex-tools{gap:5px!important}.ex-caption{line-height:1.4}
+ .ex-page h1{font-size:24px!important;margin:8px 0!important}.ex-card{padding:14px!important}.ex-brief-grid{gap:10px!important}.ex-brief-hero{padding:15px!important;gap:10px!important}.ex-hero-value{font-size:32px!important}.ex-daily-value{font-size:25px!important}
+ .ex-subnav button{min-height:44px!important}.pj-context-head label{font-size:0}.pj-context-head select{font-size:14px}.pj-metrics b{font-size:19px}
+}
+@media(max-width:520px){
+ .pj-row-toggle{display:block;font-size:10px;min-height:32px;padding:4px 6px;margin-top:4px;max-width:100%}
+ .pf-stack tbody tr.pf-more{padding-right:2px!important}.pf-stack tbody tr.pf-more::after{display:none}
+}
+@media(max-width:400px){
+ #page-analyze .az-search{flex-wrap:wrap;gap:6px}
+ #page-analyze .az-search input{flex:1 1 90px;min-width:90px;padding:10px 8px}
+ #page-analyze .az-search .az-btn{font-size:13px;padding:10px;min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}}
+/* Replace the redundant Analyze hero with the useful continuation panel. */
+.pj-analyzing #page-analyze .picks-hero{display:none}
+.pj-notice{display:flex;gap:5px;justify-content:space-between;align-items:center;flex-wrap:wrap}.pj-notice button{white-space:nowrap}
+.pj-context .pj-source summary{padding:0;min-height:26px}
+.pj-context{padding:10px 12px}.pj-context .pj-metrics{margin:7px 0}
+#pj-apex-evidence>h2{font-size:18px}#pj-apex-evidence .ex-card{min-width:0}
