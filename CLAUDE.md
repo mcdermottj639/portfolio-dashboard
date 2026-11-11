@@ -1,3 +1,18 @@
+## v210 — Apex research: the 50-name "News veto" paragraph is one folded line (2026-11-11)
+Jack (Nov 11 04:26 ET, phone screenshot of Research: a 30-line orange paragraph repeating "price below SMA200" 40
+times): "Clean this up and merge". `ui/apex.js` new `vetoBlock()` renders `R.vetoed` as ONE collapsed
+`<details class="sd-more apex-veto" data-apex-veto>`: summary "⛔ 50 screened out" + a count chip per reason
+(40 below 200-day · 6 R/R under 1.5 · 4 other). Open: names sharing a reason are ticker chips; R/R misses are chips
+carrying the figure, with their limit → target · stop lines in a nested fold; one-off reasons stay "SYM — why" rows.
+Display only — same rows, nothing computed or dropped (test asserts every name survives). Relabelled from "News veto"
+to "screened out" because most rows are trend / R/R gates, not news. No scan prompt, rule, ticket or Jarvis change.
+- Checked, not changed: 8 of the 40 (NVDA, GOOGL, TSLA, AVGO, MU, TSM, CEG, HOOD) re-read from Robinhood — each
+  closed Nov 10 under its 200-day SMA, so the list is real, not a data fault.
+- Files: `ui/apex.js`, `producer/apex.test.mjs` (51/51, +1), `index.html` + `sw.js` (version), `CLAUDE.md`.
+- Verified: all producer suites, tests/*.cjs, sd-plan + brief browser suites; Chromium 390 and 320px, Ivory and
+  Midnight, with the real Nov 10 `data/apex-targets.json` list — closed 2 lines, open no overflow. The full page
+  with live data and a physical iPhone not verified. App/cache **v210 / pf-v210**.
+
 ## v209 — Scheduled plan buys are not an insider cluster (2026-11-10)
 Jack, on a "30 insiders bought TSM" Smart Money flag that turned out to be a routine monthly purchase
 (same 30 officers, the 7th of each month, one identical price, 28-152 shares each, about $121K in total):
