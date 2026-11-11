@@ -714,10 +714,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=214">
-<link rel="stylesheet" href="ui/predictions.css?v=214">
-<link rel="stylesheet" href="ui/smartmoney.css?v=214">
-<link rel="stylesheet" href="ui/ticker.css?v=214">
+<link rel="stylesheet" href="ui/experience.css?v=215">
+<link rel="stylesheet" href="ui/predictions.css?v=215">
+<link rel="stylesheet" href="ui/smartmoney.css?v=215">
+<link rel="stylesheet" href="ui/ticker.css?v=215">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -782,9 +782,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=214"></script>
-<script src="ui/apex.js?v=214"></script>
-<script src="ui/business.js?v=214"></script>
+<script src="ui/sd-rules.js?v=215"></script>
+<script src="ui/apex.js?v=215"></script>
+<script src="ui/business.js?v=215"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -898,7 +898,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v214'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v215'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2068,6 +2068,9 @@ function renderApexCard(S){
     }
   }catch(e){ research={rows:[],empty:'Research lens failed: '+(e&&e.message||e)}; }
   Apex.render(el,state,out,cfg,research);
+  /* v215: Plan step 1 ("Cut what's broken") names the sells the Apex card recommends, so "Nothing is broken" no longer
+     reads as contradicting a research-dropped exit. The plan renders first; this fills its slot on every Apex render. */
+  try{ const sl=document.querySelector('[data-sd-apex-sells]'); if(sl&&typeof Apex.planSellNote==='function')sl.innerHTML=Apex.planSellNote(state,out,cfg,(sl.getAttribute('data-skip')||'').split(',').filter(Boolean)); }catch(_){}
   /* v191 — Business check tiles (display only; nothing above reads it). Held names, then targets. */
   { const bc=Object.assign({},Apex.DEFAULT_CFG||{},cfg); const coreHeld=positions.find(p=>p.symbol===bc.core);
     bizPaint(el.querySelector('[data-apex-business]'),[...positions.map(p=>p.symbol),...Object.keys(cfg.targets||{})],positions,(bc.coreMax>0&&coreHeld)?bc.core:null); }
@@ -2879,7 +2882,8 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
         /* Same trap as the paydown empty state: a broken name whose shares are ALL pledged never
            reaches `exits`, and "Nothing is broken" would then contradict the 🔒 callout below it. */
         ? `<div class="tech-empty">${lockedExits.map(r=>r.p.symbol).join(', ')} ${lockedExits.length===1?'reads':'read'} broken, but every share is collateral for your covered calls — see below for how to unwind it. Nothing else here is broken.</div>`
-        : `<div class="sd-verdict ok">✓ Nothing is broken${rows.length?` — ${rows.length} holding${rows.length===1?'':'s'} checked`:''}</div><details class="sd-more"><summary>What counts as broken</summary><div class="fund-note">${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div></details>`)}`;
+        : `<div class="sd-verdict ok">✓ Nothing is broken${rows.length?` — ${rows.length} holding${rows.length===1?'':'s'} checked`:''}</div><details class="sd-more"><summary>What counts as broken</summary><div class="fund-note">${rows.length?`${rows.length} holding${rows.length===1?'':'s'} checked — being underwater is <b>not</b> an exit signal in a book like this; the test is a rolled-over trend (50-DMA under the 100-DMA, price decisively below it) or a −25% stop breach.${rows.filter(r=>r.p.pnlD<0).length?` ${rows.filter(r=>r.p.pnlD<0).map(r=>r.p.symbol).join(', ')} ${rows.filter(r=>r.p.pnlD<0).length===1?'is':'are'} red but intact — hold.`:''}`:'No holdings to check.'}</div></details>`)}
+    ${apexRuns?`<div data-sd-apex-sells data-skip="${exits.map(r=>r.p.symbol).join(',')}"></div>`:''}`;
   const lockedBoxHtml=`
     ${(lockedExits.length||payShort>0)?`<div class="box-warn" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin-top:8px">
       <b>🔒 Held back by your own covered calls.</b>
@@ -2901,7 +2905,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
     const levCol=sdApexLevColor(lev), overCap=M.debt>0&&lev>B.cap, aboveCruise=!overCap&&M.debt>0&&lev>B.cruise;
     const roomCruise=Math.max(0,B.cruise*equity-exposure), pastCap=Math.max(0,exposure-B.cap*equity);
     const washList=Object.keys(wash).sort().map(s=>`${s} to ${wash[s].clear}`);
-    const verdict=overCap?`⚠️ Over Apex's ${fmt(B.cap,2)}× cap — the Apex card sells into strength`:aboveCruise?`✓ Inside Apex's band, above ${fmt(B.cruise,2)}× cruise — hold`:`✓ Under Apex's ${fmt(B.cruise,2)}× cruise — Apex can build`;
+    const verdict=overCap?`⚠️ Over Apex's ${fmt(B.cap,2)}× cap — the Apex card sells into strength`:aboveCruise?`✓ Inside Apex's band, above ${fmt(B.cruise,2)}× cruise — no new buys`:`✓ Under Apex's ${fmt(B.cruise,2)}× cruise — Apex can build`;
     // the numbers (leverage, debt, room to cruise / past the cap) are the tiles just above — the posture is the verdict
     const posture=`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.75;margin:12px 0 6px">Margin posture — Apex's band</div>
       <div class="sd-verdict ${overCap?'bad':'ok'}">${verdict}</div>
@@ -8733,13 +8737,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=214"></script>
-<script src="ui/predictions-model.js?v=214"></script>
-<script src="ui/predictions.js?v=214"></script>
-<script src="ui/smartmoney-model.js?v=214"></script>
-<script src="ui/smartmoney.js?v=214"></script>
-<script src="ui/experience.js?v=214"></script>
-<script src="ui/ticker.js?v=214"></script>
-<script src="ui/compact.js?v=214"></script>
+<script src="ui/experience-model.js?v=215"></script>
+<script src="ui/predictions-model.js?v=215"></script>
+<script src="ui/predictions.js?v=215"></script>
+<script src="ui/smartmoney-model.js?v=215"></script>
+<script src="ui/smartmoney.js?v=215"></script>
+<script src="ui/experience.js?v=215"></script>
+<script src="ui/ticker.js?v=215"></script>
+<script src="ui/compact.js?v=215"></script>
 </body>
 </html>

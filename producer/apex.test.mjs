@@ -714,4 +714,31 @@ ok('v214 a stale snapshot never names an order price: the list shows estimates a
   assert.ok(!/undefined|NaN/.test(stale.html + fresh.html));
 });
 
+/* v215 — Jack, Nov 11 2026 05:15 ET: Plan step 1 read "✓ Nothing is broken · ≈ $0.00 freed" above the Apex card's
+   "Sell 4 SNPS · dropped by this week's research": "Rec sells but nothing broken. Where's the disconnect". */
+ok('v215 Plan step 1 names the sells the Apex card recommends (same set as the Confirm button)', () => {
+  const pos = [
+    { symbol: 'IREN', qty: 500.071851, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 168.84, avg: 165.14 },
+    { symbol: 'ZS', qty: 11, px: 194.92, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 459.92, avg: 456.64 },
+    { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ];
+  const st = A.state({ positions: pos, cash: -6637.1, equity: 10650 });
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, snapAgeMin: 12 * 60 + 33 });
+  const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
+  const note = A.planSellNote(st, out, cfg, []);
+  assert.match(note, /data-sd-apex-sell-note/);
+  assert.match(note, /1 sell is on the Apex card above: <b>SNPS<\/b> \(dropped by this week\u2019s research\)\./);
+  assert.match(note, /not this trend test \u2014 not counted in this step/);
+  assert.ok(!/\$|IREN|\b4\b|459|457|undefined|NaN/.test(note), 'tickers and reasons only: no dollars, no share counts, never the core');
+  assert.deepEqual(A.bookLines(st, out, cfg).filter((l) => l.side === 'sell').map((l) => l.sym), ['SNPS'], 'same set the button sends');
+  assert.equal(A.planSellNote(st, out, cfg, ['SNPS']), '', 'a name step 1 already lists is not repeated');
+  // nothing to sell ⇒ no line at all
+  const cfgAll = Object.assign({}, cfg, { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20, SNPS: 16 } });
+  assert.equal(A.planSellNote(st, A.rules(st, { cfg: cfgAll, smaMap: {}, earningsMap: {} }), cfgAll, []), '');
+  // two dropped names ⇒ plural, each named once
+  const cfg2 = Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20, ZS: 20 } });
+  const note2 = A.planSellNote(st, A.rules(st, { cfg: cfg2, smaMap: {}, earningsMap: {} }), cfg2);
+  assert.match(note2, /2 sells are on the Apex card above:/);
+  assert.equal((note2.match(/<b>SNPS<\/b>/g) || []).length, 1); assert.equal((note2.match(/<b>NET<\/b>/g) || []).length, 1);
+});
+
 console.log(`apex: ${n}/${n} passed`);

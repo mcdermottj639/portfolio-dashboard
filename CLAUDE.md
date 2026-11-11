@@ -1,3 +1,24 @@
+## v215 — Plan step 1 points at the Apex sells; margin verdict says "no new buys" (2026-11-11)
+Jack (Nov 11 05:15 ET, two screenshots: Plan step 1 "✓ Nothing is broken — 5 holdings checked · ≈ $0.00 freed" and
+"✓ Inside Apex's band, above 1.65× cruise — hold", above the Apex card's "Sell 4 SNPS · dropped by this week's
+research"): "Rec sells but nothing broken. Where's the disconnect". No rule disagreed — two tests, and the page never
+said so: step 1 (`sdBroken`) is a trend / −25% stop test; the Apex list also exits a held non-core name absent from
+`cfg.targets` (`bookGaps`) and any rule sell. SNPS left the targets on Nov 10 (R/R at entry 1.09 < 1.5).
+- `ui/apex.js`: new pure `planSellNote(st, out, cfg, skip)` (exported) — one amber line naming the SELL names
+  `bookLines()` sends (same set as the Confirm button), minus names step 1 already lists. Tickers and reasons only: no
+  share counts, no dollars, never the core.
+- `index.html`: `step1ExitsHtml` ends with a `[data-sd-apex-sells]` slot (Apex-run plan only, `data-skip` = step 1's
+  exits); `renderApexCard` fills it after `Apex.render` (the plan renders first; the targets fetch re-renders Apex
+  only). Margin verdict "above cruise — hold" → "— no new buys" ("hold" read as "don't sell"). Wording only: no rule,
+  ticket, prompt, scan or Jarvis change. "≈ $ freed" and "after planned sells" still count step 1's exits only.
+- Checked, not changed: the Nov 10 drop scored SNPS with Jack's own $431 stop (ruled out Nov 11, v211). Re-scored with
+  the research stop (limit − 2 × ATR14; ATR14 ≈ $19.10 from Robinhood daily bars through Nov 9): R/R 1.11 at the scan's
+  $469.91 limit, 1.22 at the 4:01 AM ET pre-market $466.44, target held at the scan's $512.49 — still under 1.5.
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (55/55, +1), `CLAUDE.md`.
+- Verified: 55 producer suites, tests/*.test.cjs (23 pass), sd-plan-browser + brief-browser PASS; Chromium 390 and
+  320px with the Nov 11 book (line renders under step 1, scrollWidth = innerWidth, 0 page errors, screenshot read).
+  Not verified: the full page with live data, a physical iPhone. App/cache **v215 / pf-v215**.
+
 ## v214 — The trade list never shows a stale price as an order price (2026-11-11)
 Jack (Nov 11 05:02–05:04 ET, on v213's "Sell 4 SNPS · limit $457.62 · Day" — built from the Nov 10 4:41 PM close while
 SNPS last traded $466.44 pre-market): "U want me to sell at this limit price" · "Fix the app!" · "Needs to say right
