@@ -1,10 +1,8 @@
 {
   "_comment": "Index-parking ledger for the agentic account (••••3900) — the 'waiting ground'. When agentic-deploy.mjs defers a target name (below/above entry, earnings, policy, wash), its dollars are parked in a broad-market placeholder instead of idling in cash, and released to fund the name when it clears. raw/ is wiped every run and the executor may not write data.json, so this COMMITTED file is the only place the state can live (same pattern as agentic-target.json / agentic-decisions.json). build-data.mjs reads it into data.agentic.parked; the executor rewrites it after a park or release FILLS. dollars = cost basis currently parked on behalf of forNames (not market value).",
   "vehicle": "VTI",
-  "dollars": 1609.98,
-  "forNames": [
-    "NVDA"
-  ],
+  "dollars": 24.02,
+  "forNames": [],
   "since": "2026-10-08",
   "history": [
     {
@@ -123,6 +121,13 @@
         "NVDA"
       ],
       "note": "Ticket 2026-11-09-ibklpn park leg: waiting ground — holds $351.17 of deferred weight (NVDA) in VTI instead of cash; released when they clear; filled 0.9474 VTI @ $370.5699."
+    },
+    {
+      "date": "2026-11-11",
+      "action": "release",
+      "dollars": -1585.96,
+      "forNames": [],
+      "note": "Ticket 2026-11-11-7h4xeg: released 4.259784 VTI @ $372.3001 = $1,585.60 (realized +$13.76 ST) to fund MSFT/META/CVX/MA/PEP. NVDA (the only name this pool was held for) dropped from the 2026-11-11 target (not-held) and is separately owner-waived from the wash-sale block - nothing left to hold the vehicle for. $24.02 of cost basis remains unreleased (residual sliver, below MIN_BUY to bother sweeping)."
     }
   ]
 }

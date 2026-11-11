@@ -1,7 +1,7 @@
 {
-  "id": "2026-11-10-be5vxj",
-  "created": "2026-11-10",
-  "targetId": "6bc79c22c4c0884c037f",
+  "id": "2026-11-11-7h4xeg",
+  "created": "2026-11-11",
+  "targetId": "97f64950150a6d2dd74d",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
   "riskVersion": "hard-caps-v3",
@@ -13,83 +13,132 @@
     "valuation": 0.18,
     "flow": 0
   },
-  "universeVersion": "f7e7b537f95cfdcdb9d3",
+  "universeVersion": "80f4c5d54ce396515cb7",
   "status": "done",
   "autoEligible": true,
-  "turnover": 34.96,
-  "book": 7715.08,
-  "planHash": "s[]b[SPY:35]t[]",
+  "turnover": 3976.91,
+  "book": 7713.89,
+  "planHash": "s[UNP:244,VTI:1586]b[CVX:667,MA:164,META:305,MSFT:631,PEP:381]t[]",
   "legs": {
-    "sells": [],
+    "sells": [
+      {
+        "sym": "UNP",
+        "kind": "exit",
+        "dollars": 244.39,
+        "shares": 0.813571,
+        "price": 300.39,
+        "pl": 3.15,
+        "note": "not in the current target — exit funds the underweight names"
+      },
+      {
+        "sym": "VTI",
+        "kind": "park-release",
+        "dollars": 1585.96,
+        "shares": 4.259784,
+        "price": 372.31,
+        "pl": 13.76,
+        "note": "release parked placeholder — funds MSFT/META/CVX/MA/PEP"
+      }
+    ],
     "buysNow": [
       {
-        "sym": "SPY",
+        "sym": "MSFT",
         "kind": "buy",
-        "dollars": 34.96,
-        "shares": 0.046637,
-        "price": 749.6129,
+        "dollars": 630.6,
+        "shares": 1.1842,
+        "price": 532.53,
         "pl": null,
-        "note": "7.6% → 8.01% target"
+        "note": "9.4% → 18.22% target"
+      },
+      {
+        "sym": "META",
+        "kind": "buy",
+        "dollars": 305.24,
+        "shares": 0.473,
+        "price": 645.3399,
+        "pl": null,
+        "note": "7.3% → 11.52% target"
+      },
+      {
+        "sym": "CVX",
+        "kind": "buy",
+        "dollars": 666.58,
+        "shares": 3.1562,
+        "price": 211.195,
+        "pl": null,
+        "note": "0.0% → 9.3% target"
+      },
+      {
+        "sym": "MA",
+        "kind": "buy",
+        "dollars": 163.54,
+        "shares": 0.2496,
+        "price": 655.12,
+        "pl": null,
+        "note": "4.4% → 6.64% target"
+      },
+      {
+        "sym": "PEP",
+        "kind": "buy",
+        "dollars": 380.6,
+        "shares": 2.6858,
+        "price": 141.71,
+        "pl": null,
+        "note": "0.0% → 5.31% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 0,
+    "realizedGain": 16.91,
     "realizedLoss": 0,
-    "net": 0,
+    "net": 16.91,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
-      "sym": "NVDA",
-      "reason": "reentry",
-      "until": "2026-11-19"
-    },
-    {
-      "sym": "KO",
+      "sym": "AAPL",
       "reason": "above-entry",
       "until": null
     },
     {
-      "sym": "MA",
-      "reason": "above-entry",
-      "until": null
-    },
-    {
-      "sym": "AMZN",
+      "sym": "COST",
       "reason": "above-entry",
       "until": null
     }
   ],
   "blockedSells": [],
   "warnings": [
-    "$1,751.01 of deferred weight (NVDA, KO, MA, AMZN) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "4 name(s) deferred (NVDA, KO, MA, AMZN) — ~$1,751.01 of intended weight held pending earnings/re-verify/wash-sale",
-    "$316.21 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "entry zones are 13d old (target asOf 2026-10-28) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up"
+    "$521.36 of deferred weight (AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "2 name(s) deferred (AAPL, COST) — ~$521.36 of intended weight held pending earnings/re-verify/wash-sale",
+    "released $1,585.96 from the VTI waiting ground to fund cleared names — realizes $13.76 ST"
   ],
   "history": [
     {
-      "at": "2026-11-10",
+      "at": "2026-11-11",
       "to": "proposed"
     },
     {
-      "at": "2026-11-10",
+      "at": "2026-11-11",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-10",
+      "at": "2026-11-11",
+      "to": "sells-placed"
+    },
+    {
+      "at": "2026-11-11",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-10",
+      "at": "2026-11-11",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-10",
-  "buys-placedAt": "2026-11-10",
-  "doneAt": "2026-11-10",
-  "completedAt": "2026-11-10T15:25:15.601Z"
+  "confirmedAt": "2026-11-11",
+  "sells-placedAt": "2026-11-11",
+  "buys-placedAt": "2026-11-11",
+  "doneAt": "2026-11-11",
+  "completedAt": "2026-11-11T15:26:23.000Z"
 }

@@ -2361,6 +2361,112 @@
           "weightAfter": 8.01
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "97f64950150a6d2dd74d",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "80f4c5d54ce396515cb7",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-11-rebalance",
+      "date": "2026-11-11",
+      "kind": "rebalance",
+      "targetAsOf": "2026-11-11",
+      "book": 7703.19,
+      "equityAtDecision": 7703.19,
+      "spyAt": 756.49,
+      "rationale": "EXEC_AUTO ticket 2026-11-11-7h4xeg: exited UNP (sold 0.813571 sh @ $299.8542 = $244.03, realized ST gain +$3.15 — not in the fresh 2026-11-11 target, two consecutive refreshes without it, phase-out-complete) and released $1,585.60 from the VTI waiting ground (sold 4.259784 sh @ $372.3001, realized ST gain +$13.76) — NVDA's wash-sale park is now moot since NVDA is owner-waived and absent from the new target. Proceeds + $316.21 cash funded MSFT ($630.60 -> 18.22% target), META ($305.24 -> 11.52%), CVX ($666.58, new name, -> 9.3%), MA ($163.54 -> 6.64%) and PEP ($380.00 of a $380.60 target - trimmed $0.60 to the cent actually left in buying power after fees/slippage on the sells). AAPL ($111.75) and COST ($409.61) stayed deferred above-entry (2.8% and 4.8% over their ceilings respectively) and held in cash per the dated-parking-only rule. Live pre-checks: plan basis book $7,713.89 vs live total_value $7,702.52 pre-trade (-0.15%, within the 5% abort); no orders on ••••3900 today before this ticket (PDT n/a); no MSFT/META/CVX/MA/PEP realized loss on the margin account (••••0741) in the trailing month (cross-account wash n/a); none of the 5 buy names report earnings within 7 days. Drawdown per the gate: book -3.3% from its 2026-08-10 peak vs benchmark -3.0% over the same window (-0.3pp relative; deployment normal). Turnover $3,976.91. Cash left after this pass: $0.08.",
+      "trades": [
+        {
+          "sym": "VTI",
+          "side": "SELL",
+          "dollars": 1585.6,
+          "shares": 4.259784,
+          "priceAt": 372.3001,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "UNP",
+          "side": "SELL",
+          "dollars": 244.03,
+          "shares": 0.813571,
+          "priceAt": 299.8542,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 630.6,
+          "shares": 1.210411,
+          "priceAt": 520.9799,
+          "weightBefore": 9.42,
+          "weightAfter": 18.22,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "META",
+          "side": "BUY",
+          "dollars": 305.24,
+          "shares": 0.479183,
+          "priceAt": 637,
+          "weightBefore": 7.26,
+          "weightAfter": 11.52,
+          "drivers": [
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "CVX",
+          "side": "BUY",
+          "dollars": 666.58,
+          "shares": 3.129194,
+          "priceAt": 213.0197,
+          "weightBefore": 0,
+          "weightAfter": 9.3
+        },
+        {
+          "sym": "MA",
+          "side": "BUY",
+          "dollars": 163.54,
+          "shares": 0.249325,
+          "priceAt": 655.9299,
+          "weightBefore": 4.36,
+          "weightAfter": 6.64,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "PEP",
+          "side": "BUY",
+          "dollars": 380,
+          "shares": 2.683426,
+          "priceAt": 141.61,
+          "weightBefore": 0,
+          "weightAfter": 5.31,
+          "drivers": [
+            "valuation"
+          ]
+        }
+      ]
     }
   ]
 }
