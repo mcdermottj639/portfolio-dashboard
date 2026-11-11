@@ -34,3 +34,21 @@ jobs:
 
       - name: Run dashboard model tests
         run: node --test tests/*.test.cjs
+
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.57.0
+          npx playwright install --with-deps chromium
+
+      - name: Check synthetic dashboard in Chromium
+        run: |
+          node tests/preview.mjs > /tmp/portfolio-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8767/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node tests/brief-browser.mjs
+          node tests/sd-plan-browser.mjs
+          node tests/apex-browser.mjs

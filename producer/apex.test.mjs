@@ -9,7 +9,7 @@ const A = require('../ui/apex.js');
 // v201: IREN is owner-managed by default (no IREN sells). The mechanics stay tested under the old config.
 const LEGACY = { coreOwner: false, ladder: [{ sym: 'IREN', px: 30, qty: 200, note: 'newest lots first' }] };
 
-let n = 0; const ok = (name, fn) => { fn(); n++; console.log('  ✓', name); };
+let n = 0, failed = 0; const ok = (name, fn) => { n++; try { fn(); console.log('  ✓', name); } catch (e) { failed++; console.error('  FAIL', name, '\n', e.message); } };
 
 const book = { positions: [
   { symbol: 'IREN', qty: 900, px: 20.83, avg: 37.5 },
@@ -48,7 +48,7 @@ ok('rules: 3x book → risk guard sells the donor in 50-share tranches and the l
   assert.equal(r[0].ticket.qty % 50, 0);
   assert.ok(r[0].after.lev < r[0].before.lev);
   const lad = r.find((x) => x.kind === 'ladder');
-  assert.ok(lad && lad.ticket.armed === true && lad.ticket.px === 30 && lad.ticket.gtc === true);
+  assert.equal(lad, undefined, 'the active stop supersedes an armed future ladder on the same symbol');
   assert.ok(r.some((x) => x.kind === 'lev' && /cap/.test(x.title)));
 });
 
@@ -59,10 +59,10 @@ ok('rules: through the ladder rung the sell goes live and shows debt after', () 
   assert.equal(Math.round(lad.after.debt), 23686 - 6000);
 });
 
-ok('rules: winner trims 25% at +25% from cost; waits inside the earnings window', () => {
+ok('rules: winner milestone requires execution review; waits inside the earnings window', () => {
   const s = A.state({ positions: [{ symbol: 'NVDA', qty: 40, px: 250, avg: 190 }], cash: 0 });
   const r = A.rules(s);
-  assert.equal(r[0].kind, 'win'); assert.equal(r[0].ticket.qty, 10);
+  assert.equal(r[0].kind, 'review'); assert.equal(r[0].ticket, null, 'execution history is required before a milestone trim');
   const g = A.rules(s, { earningsMap: { NVDA: { daysAway: 2 } } });
   assert.equal(g[0].kind, 'guard');
 });
@@ -135,7 +135,8 @@ ok('v188 core: shares above the core still follow the stop', () => {
 ok('v188 build: under the reload line, trend shut → armed buys split 20/15/15/10 toward cruise, never the core', () => {
   const s = A.state(nov5);
   const px = { NVDA: { px: 181.59 }, PLTR: { px: 154.85 }, RKLB: { px: 45.98 }, CRWD: { px: 217.2 } };
-  const r = A.rules(s, { smaMap: px });
+  const levels = Object.fromEntries(Object.entries(px).map(([sym, v]) => [sym, {trigger:v.px, limit:v.px, stop:v.px*0.9, tp1:v.px*1.2}]));
+  const r = A.rules(s, { smaMap: px, cfg: { levels } });
   const b = r.filter((x) => x.kind === 'build');
   assert.deepEqual(b.map((x) => x.ticket && x.ticket.sym), ['NVDA', 'PLTR', 'RKLB', 'CRWD']);
   assert.ok(b.every((x) => x.ticket.armed && x.ticket.side === 'buy'));
@@ -226,17 +227,11 @@ ok('v194 levelsFor: limit defaults to trigger × 1.01; R/R is measured at the LI
   assert.equal(A.levelsFor(nov6cfg, 'NVDA'), null);
 });
 
-ok('v194 build: rungs carry entry/target/stop/R-R + name, sized at the limit like the Jarvis tickets', () => {
-  const b = A.rules(A.state(nov6), { cfg: nov6cfg, smaMap: nov6px }).filter((x) => x.kind === 'build');
-  assert.deepEqual(b.map((x) => x.levels.sym), ['AMZN', 'PLTR', 'S', 'ZS']);
-  const amzn = b[0];
-  assert.equal(amzn.levels.trigger, 274.6); assert.equal(amzn.levels.limit, 277.35);
-  assert.equal(amzn.levels.tp1, 280.14); assert.equal(amzn.levels.stop, 253.89);
-  assert.equal(amzn.levels.name, 'Amazon');
-  assert.ok(/at \$274\.60/.test(amzn.title), amzn.title);
-  const room = A.C.LEV_NORMAL * 11073.3 - 500.07 * 21.25, W = 22.13 + 14.03 + 11.53 + 12.31;
-  assert.equal(amzn.ticket.qty, Math.floor(Math.min(0.2 * 11073.3, room * 22.13 / W) / 277.35));
-  assert.ok(b.every((x) => x.lowRR), 'all four Nov 6 rungs sit under the 1.5 floor at their real entry');
+ok('v216 historical low-R/R rungs are reviews, never buy tickets', () => {
+  const rows = A.rules(A.state(nov6), { cfg: nov6cfg, smaMap: nov6px });
+  assert.equal(rows.filter(r => r.kind === 'build').length, 0);
+  assert.deepEqual(rows.filter(r => r.lowRR).map(r => r.sym), ['AMZN', 'PLTR', 'S', 'ZS']);
+  assert.equal(A.bookLines(A.state(nov6), rows, {...A.DEFAULT_CFG, ...nov6cfg}).length, 0);
 });
 
 ok('v194 build: a name the scan marked untradable on Robinhood never becomes a buy rung', () => {
@@ -268,10 +263,10 @@ ok('v194 drift: weekly review flag (Monday) — `friday` still accepted; copy sa
   assert.ok(d1.every((x) => !/Friday/.test(x.why)));
 });
 
-ok('v194 build without levels keeps the v188 live-price sizing (old snapshots)', () => {
+ok('v216 missing levels cannot use the retired live-price buy fallback', () => {
   const s = A.state(nov5);
   const b = A.rules(s, { smaMap: { NVDA: { px: 181.59 }, PLTR: { px: 154.85 }, RKLB: { px: 45.98 }, CRWD: { px: 217.2 } } }).filter((x) => x.kind === 'build');
-  assert.ok(b.every((x) => !x.levels));
+  assert.equal(b.length, 0);
 });
 
 /* v195 — LAB-004-P1: the risk guard follows the maintenance requirement (ChatGPT's 2026-11-07 finding:
@@ -436,7 +431,7 @@ ok('v197 research tiles: R/R at the shown entry, raw URLs become "source ↗" (N
   // AMZN (280.14 − 277.35) / (277.35 − 253.89) = 0.12 ; PANW limit 361.13 → (432.32 − 361.13) / (361.13 − 312.12) = 1.45
   assert.ok(/R\/R <span[^>]*>0\.12<\/span> at entry · under 1\.5/.test(h), 'AMZN at entry');
   assert.ok(/R\/R <span[^>]*>1\.45<\/span> at entry · under 1\.5/.test(h), 'PANW at entry, not 46.1');
-  assert.ok(/Scan R\/R 46\.1 was measured from the prior close/.test(h), 'scan figure kept in the fold');
+  assert.ok(/Scan reported R\/R 46\.1/.test(h), 'scan figure kept in the fold');
   assert.ok(/<summary[^>]*>📰 News · source<\/summary>/.test(h), 'news + link folded');
   assert.ok(h.includes('href="' + url + '"') && /source ↗/.test(h), 'link kept');
   assert.ok(!h.includes('>' + url) && !h.includes(url + '<'), 'URL not printed as text');
@@ -452,8 +447,8 @@ ok('v197 research tiles: R/R at the shown entry, raw URLs become "source ↗" (N
   const p = A.portfolioPrompt(st, out, cfg, null);
   assert.match(p, /FULL recommended portfolio/);
   assert.match(p, /never review_equity_order or place_equity_order/);
-  assert.match(p, /BUY \d+ sh AMZN \(Amazon\) — trigger \$274\.60 · limit \$277\.35 · target \$280\.14 · stop \$253\.89/);
-  assert.match(p, /BUY \d+ sh ZS — trigger \$229\.22/);
+  assert.match(p, /REVIEW AMZN/); assert.doesNotMatch(p, /• BUY/);
+  assert.match(p, /REVIEW ZS/);
   assert.match(p, /IREN 500 sh @ \$21\.24 \(OWNER-MANAGED/);
   console.log('ok portfolioPrompt (v199)');
 }
@@ -488,7 +483,7 @@ ok('v201 confirm prompt: IREN marked owner-managed and Claude is told never to p
 // owner-managed core stops reading as "over target", and the research tile names the limit its R/R uses.
 ok('v202 tax hold: a wash-window target is a dated hold row, never a buy rung; the other targets still build', () => {
   const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, AMZN: 22, PLTR: 14 },
-    levels: { AMZN: { trigger: 274.6, limit: 277.35, tp1: 300, stop: 253.89 }, PLTR: { trigger: 181.02, limit: 182.83, tp1: 212.94, stop: 152.6 } },
+    levels: { AMZN: { trigger: 274.6, limit: 277.35, tp1: 320, stop: 253.89 }, PLTR: { trigger: 181.02, limit: 182.83, tp1: 240, stop: 152.6 } },
     wash: { PLTR: { clear: '2030-02-01' } } });
   const st = A.state({ equity: 11073, positions: [{ symbol: 'IREN', qty: 500, px: 21.24, avg: 40.99 }], cash: 446 });
   const out = A.rules(st, { cfg, smaMap: { AMZN: { px: 252 }, PLTR: { px: 160 } }, earningsMap: {} });
@@ -500,7 +495,7 @@ ok('v202 tax hold: a wash-window target is a dated hold row, never a buy rung; t
   assert.ok(amzn && amzn.levels.qty === 7, 'AMZN still builds: 20% of $11,073 ÷ $277.35 = 7 sh');
   const p = A.portfolioPrompt(st, out, cfg, null);
   assert.match(p, /TAX HOLD \(wash sale[^)]*\): PLTR until 2030-02-01 — WAIT/);
-  assert.match(p, /a TAX HOLD name ⇒ WAIT until its date/);
+  assert.match(p, /PLTR until 2030-02-01 — WAIT; no buy before that date/);
   assert.match(p, /Target weights \(% of equity\): AMZN 22% · PLTR 14% — plus IREN, owner-managed \(no target\)\./);
   // without a hold the same book still arms PLTR — the hold is the only thing that removed it
   const free = A.rules(st, { cfg: Object.assign({}, cfg, { wash: {} }), smaMap: { AMZN: { px: 252 }, PLTR: { px: 160 } }, earningsMap: {} });
@@ -546,8 +541,9 @@ ok('v202 research tiles: a tax-hold target is flagged and the tile names the lim
 ok('v203 weights rows carry held / target / this-week shares and dollars; core shows held only', () => {
   const el = { innerHTML: '', querySelector: () => null };
   const st = A.state(nov6);
-  const out = A.rules(st, { cfg: nov6cfg, smaMap: nov6px });
-  A.render(el, st, out, nov6cfg, null);
+  const validCfg = {...nov6cfg, levels: {...lv, AMZN: {...lv.AMZN, tp1:320}}};
+  const out = A.rules(st, { cfg: validCfg, smaMap: nov6px });
+  A.render(el, st, out, validCfg, null);
   const h = el.innerHTML;
   const rung = out.find((r) => r.kind === 'build' && r.ticket && r.ticket.sym === 'AMZN');
   assert.ok(rung && rung.ticket.qty > 0, 'fixture arms an AMZN rung');
@@ -558,7 +554,7 @@ ok('v203 weights rows carry held / target / this-week shares and dollars; core s
 });
 
 
-ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\'s book still counts — adds for under-target names, exits for dropped ones, IREN never', () => {
+ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\'s book still counts — adds for under-target names, reviews for dropped ones, IREN never', () => {
   const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, S: 16.18, ZS: 14.45, PLTR: 13.26, SNPS: 16.11 }, levels: { SNPS: { sym: 'SNPS', name: 'Synopsys', trigger: 460.31, limit: 464.91, tp1: 512.49, stop: 441.61, rr: 2.04 } } });
   const pos = [{ symbol: 'IREN', qty: 500.07, px: 20.73, avg: 40.99 }, { symbol: 'AMZN', qty: 6.07, px: 266.2, avg: 263.47 }, { symbol: 'PLTR', qty: 6.10, px: 162, avg: 168.45 }, { symbol: 'S', qty: 14, px: 21.77, avg: 21.91 }, { symbol: 'ZS', qty: 1, px: 197.66, avg: 202.18 }];
   // v208: the reload line moved 1.2x → 1.5x, so the same book is replayed with the debt that puts it between 1.5x and 1.65x.
@@ -575,12 +571,12 @@ ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\
   assert.equal(A.C.LEV_NORMAL, 1.65); assert.equal(A.C.LEV_RELOAD, 1.5); assert.equal(A.C.LEV_CAP, 1.75);
   const g = A.bookGaps(st, out, cfg);
   // on this smaller equity PLTR sits within 2 pts of its 13.3% weight, so it is no longer an ADD line
-  assert.deepEqual(g.adds.map((a) => a.sym).sort(), ['S', 'SNPS', 'ZS']);
-  assert.deepEqual(A.bookGaps(st, out, Object.assign({}, cfg, { wash: { S: { clear: '2026-11-20' } } })).adds.map((a) => a.sym).sort(), ['SNPS', 'ZS'], 'a wash-window name stays a TAX HOLD, never an ADD');
-  assert.deepEqual(g.exits.map((e) => e.sym), ['AMZN']);
+  assert.deepEqual(g.adds.map((a) => a.sym), ['SNPS'], 'missing research cannot add S or ZS');
+  assert.deepEqual(A.bookGaps(st, out, Object.assign({}, cfg, { wash: { S: { clear: '2026-11-20' } } })).adds.map((a) => a.sym).sort(), ['SNPS'], 'a wash-window name stays a TAX HOLD, never an ADD');
+  assert.deepEqual(g.exits, []); assert.ok(g.reviews.some(r=>r.sym==='AMZN'));
   const p = A.portfolioPrompt(st, out, cfg, null);
-  assert.match(p, /ADD SNPS \(Synopsys\) — held 0\.0% → target 16\.1%/);
-  assert.match(p, /SELL 6\.07 AMZN/);
+  assert.match(p, /• ADD \d+ SNPS/);
+  assert.match(p, /REVIEW AMZN/); assert.doesNotMatch(p, /• SELL [^\n]*AMZN/);
   assert.ok(!/SELL [\d.]+ IREN/.test(p) && !/ADD IREN/.test(p));
   assert.doesNotMatch(p, /undefined|NaN/);
 });
@@ -597,7 +593,7 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
   const L = A.levelsFor(cfg, 'ZS');
   assert.equal(L.ownerStop, true);
   assert.equal(L.stop, 173.82, 'limit − 2 × ATR14, not his $180');
-  assert.equal(L.stopBasis, '2×ATR');
+  assert.equal(L.stopBasis, '2×ATR estimate (entry only)');
   assert.ok(Math.abs(L.rr - (267.87 - 199.1) / (199.1 - 173.82)) < 1e-9);
   const noAtr = A.levelsFor({ levels: { ZS: Object.assign({}, zs, { atr: null }) } }, 'ZS');
   assert.equal(noAtr.stop, null); assert.equal(noAtr.rr, null, 'no research stop ⇒ no R/R, never his price');
@@ -605,6 +601,8 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
   assert.equal(A.levelsFor(cfg, 'PLTR').stop, 152.6, 'a research basis (swing low) is untouched');
   for (const b of ['Jack\'s open stop', 'owner stop', 'his open Robinhood stop', 'my stop']) assert.equal(A.levelsFor({ levels: { X: { limit: 100, tp1: 130, stop: 95, stopBasis: b, atr: 4 } } }, 'X').stop, 92, b);
 
+  assert.equal(A.exitLevelsFor(cfg, 'ZS').stop, null, 'entry ATR fallback is not a held stop');
+  cfg.exitLevels = {ZS: {...zs, stop:173.82, stopBasis:'verified research swing low'}};
   const book = (zsPx, netPx) => A.state({ positions: [
     { symbol: 'IREN', qty: 500, px: 20, avg: 44.84 }, { symbol: 'ZS', qty: 11, px: zsPx, avg: 198.66 },
     { symbol: 'NET', qty: 7, px: netPx, avg: 300.18 }, { symbol: 'PLTR', qty: 13, px: 170, avg: 165.14 } ], cash: -6600 });
@@ -626,12 +624,12 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
   // a name already carrying a rule sell (25% stop) keeps one sell line
   const deep = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 20, avg: 44.84 }, { symbol: 'ZS', qty: 11, px: 140, avg: 198.66 }], cash: -3000 }), { cfg, smaMap: {}, earningsMap: {} });
   assert.equal(deep.filter((r) => r.ticket && r.ticket.side === 'sell' && r.ticket.sym === 'ZS').length, 1);
-  assert.ok(deep.some((r) => r.kind === 'sl' && !r.ticket));
+  assert.equal(deep.filter(r=>r.ticket&&r.ticket.sym==='ZS').length,1);
 
   const st = book(199.75, 315), rows = fire(199.75, 315);
   const p = A.portfolioPrompt(st, rows, Object.assign({}, A.DEFAULT_CFG, cfg), null);
   assert.match(p, /Research exit levels for held names \(the only stop and target that count\): ZS stop \$173\.82 · target \$267\.87; NET stop \$250\.92 · target \$370\.35; PLTR stop \$152\.60 · target \$212\.94\./);
-  assert.match(p, /My own resting Robinhood orders \(stops, limits, OCO legs\) are NEVER an input/);
+  assert.match(p, /Read my resting orders only to prevent conflicts, not to set research stops\/targets/);
   assert.doesNotMatch(p, /\$180\.00|undefined|NaN/);
   assert.match(p, /ONE iPhone screen with no sideways or vertical scrolling\. No table wider than 3 columns/);
   assert.doesNotMatch(p, /Ticker \| Verdict \| Shares \| Entry/, 'the 8-column table is gone');
@@ -658,16 +656,12 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
     { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ], cash: -6637.1, equity: 10650 });
   const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
   const lines = A.bookLines(st, out, cfg);
-  assert.deepEqual(lines.map((l) => [l.side, l.text, l.px]), [['sell', 'Sell 4 SNPS', 'limit $457.62 · Day']]);
-  assert.ok(!lines.some((l) => l.sym === 'IREN'), 'IREN never');
+  assert.deepEqual(lines, []);
   const el = { innerHTML: '', querySelector: () => null };
   A.render(el, st, out, cfg, null);
-  assert.match(el.innerHTML, /Recommended trades/);
-  assert.match(el.innerHTML, /data-apex-trade="SNPS"[^]*?>SELL<\/span>[^]*?<b[^>]*>Sell 4 SNPS<\/b>[^]*?limit \$457\.62 · Day[^]*?dropped by this week’s research · snapshot price \$459\.92/);
-  assert.ok(el.innerHTML.indexOf('data-apex-trades') < el.innerHTML.indexOf('Confirm this week'), 'the list sits above the button');
-  assert.match(el.innerHTML, /· 1 order</);
-  assert.ok(lines.every((l) => /^limit \$[\d.]+ · (Day|GTC)$/.test(l.px)), 'v213: every line names the price to enter');
-  assert.match(A.portfolioPrompt(st, out, cfg, null), /SELL 4 SNPS — snapshot price \$459\.92 \(5 min old\) — set the limit from the LIVE price/);
+  assert.match(el.innerHTML, /data-apex-reviews/);
+  assert.doesNotMatch(el.innerHTML, /data-apex-trade="SNPS"/);
+  assert.match(A.portfolioPrompt(st, out, cfg, null), /REVIEW SNPS/);
   // under the reload line: build rungs (sized at the limit, research stop not his $180) and a winner trim all list
   const st2 = A.state({ positions: [
     { symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 215, avg: 165.14 },
@@ -675,9 +669,9 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const cfg2 = Object.assign({}, cfg, { levels: Object.assign({}, cfg.levels, { PLTR: { limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low' } }) });
   const out2 = A.rules(st2, { cfg: cfg2, smaMap: {}, earningsMap: {} });
   const l2 = A.bookLines(st2, out2, cfg2);
-  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 4 NET', 'limit $294.90 · GTC'], ['buy', 'Buy 5 ZS', 'limit $199.10 · GTC'], ['sell', 'Sell 3 PLTR', 'limit $213.93 · Day']]);
-  assert.equal(l2[1].sub, 'target $267.87 · stop $173.82');
-  assert.equal(A.bookLines(st, [], Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20 } })).filter((l) => l.side === 'sell').map((l) => l.text).join(), 'Sell 11 ZS,Sell 4 SNPS,Sell 7 NET', 'whole and fractional share counts print cleanly');
+  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 4 NET', 'limit $294.90 · GTC'], ['sell', 'Sell 13.10 PLTR', 'limit $213.93 · Day']]);
+  assert.match(l2[1].sub, /research target/); assert.ok(!l2.some(l=>l.sym==='ZS'), 'owner stop cannot authorize an entry');
+  assert.equal(A.bookLines(st, [], Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20 } })).filter((l) => l.side === 'sell').map((l) => l.text).join(), '', 'omitting targets never sells holdings');
   A.render(el, st2, out2, cfg2, null);
   assert.equal((el.innerHTML.match(/data-apex-trade="/g) || []).length, l2.length);
   assert.match(el.innerHTML, new RegExp('· ' + l2.length + ' orders<'));
@@ -691,7 +685,7 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
 /* v214 — Jack, Nov 11 2026 05:02 ET: the card said "Sell 4 SNPS · limit $457.62 · Day" from a 12-hour-old close while
    SNPS traded $466 pre-market. "U want me to sell at this limit price" · "Fix the app!" */
 ok('v214 a stale snapshot never names an order price: the list shows estimates and points at Confirm', () => {
-  const base = { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: { NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99 } } };
+  const base = { exitLevels: { SNPS: { stop:460, stopBasis:'research support', tp1:520 } }, targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: { NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99 } } };
   const st = A.state({ positions: [
     { symbol: 'IREN', qty: 500.071851, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 168.84, avg: 165.14 },
     { symbol: 'ZS', qty: 11, px: 194.92, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 459.92, avg: 456.64 },
@@ -701,7 +695,7 @@ ok('v214 a stale snapshot never names an order price: the list shows estimates a
   assert.deepEqual(stale.lines.map((l) => [l.text, l.px, l.est]), [['Sell 4 SNPS', '≈ $457.62', true]]);
   assert.ok(!/limit \$457\.62|· Day/.test(stale.html.slice(stale.html.indexOf('data-apex-trades'), stale.html.indexOf('Confirm this week'))), 'no "limit … Day" on a stale line');
   assert.match(stale.html, /data-apex-price-note[^>]*>Not order prices yet — quotes are 12h old\. The app re-prices at its next refresh \(weekdays, hourly 8:41 AM–4:41 PM ET\)\. For the exact price now, tap Confirm\./);
-  assert.match(stale.prompt, /SELL 4 SNPS — snapshot price \$459\.92 \(12h old\) — set the limit from the LIVE price/);
+  assert.match(stale.prompt, /• SELL 4 SNPS — ≈ \$457\.62/);
   assert.doesNotMatch(stale.prompt, /proposed limit/);
   for (const age of [undefined, null, NaN, -5, 76, 60 * 24 * 3]) assert.equal(run(age).lines[0].est, true, 'unknown or old age is an estimate: ' + age);
   assert.match(run(60 * 24 * 3).html, /quotes are 3 days old/);
@@ -722,23 +716,24 @@ ok('v215 Plan step 1 names the sells the Apex card recommends (same set as the C
     { symbol: 'ZS', qty: 11, px: 194.92, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 459.92, avg: 456.64 },
     { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ];
   const st = A.state({ positions: pos, cash: -6637.1, equity: 10650 });
-  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, snapAgeMin: 12 * 60 + 33 });
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { exitLevels: { SNPS: {stop:460,tp1:520,stopBasis:'research support'} }, targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, snapAgeMin: 12 * 60 + 33 });
   const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
   const note = A.planSellNote(st, out, cfg, []);
   assert.match(note, /data-sd-apex-sell-note/);
-  assert.match(note, /1 sell is on the Apex card above: <b>SNPS<\/b> \(dropped by this week\u2019s research\)\./);
+  assert.match(note, /1 sell is on the Apex card above: <b>SNPS<\/b> \(SNPS is through its research stop/);
   assert.match(note, /not this trend test \u2014 not counted in this step/);
-  assert.ok(!/\$|IREN|\b4\b|459|457|undefined|NaN/.test(note), 'tickers and reasons only: no dollars, no share counts, never the core');
+  assert.ok(!/IREN|\b4\b|459|457|undefined|NaN/.test(note), 'tickers and reasons only: no dollars, no share counts, never the core');
   assert.deepEqual(A.bookLines(st, out, cfg).filter((l) => l.side === 'sell').map((l) => l.sym), ['SNPS'], 'same set the button sends');
   assert.equal(A.planSellNote(st, out, cfg, ['SNPS']), '', 'a name step 1 already lists is not repeated');
   // nothing to sell ⇒ no line at all
-  const cfgAll = Object.assign({}, cfg, { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20, SNPS: 16 } });
+  const cfgAll = Object.assign({}, cfg, { exitLevels: {}, targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20, SNPS: 16 } });
   assert.equal(A.planSellNote(st, A.rules(st, { cfg: cfgAll, smaMap: {}, earningsMap: {} }), cfgAll, []), '');
   // two dropped names ⇒ plural, each named once
-  const cfg2 = Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20, ZS: 20 } });
+  const cfg2 = Object.assign({}, cfg, { exitLevels: { ...cfg.exitLevels, NET: {stop:306,tp1:370,stopBasis:'research support'} }, targets: { IREN: 20, PLTR: 20, ZS: 20 } });
   const note2 = A.planSellNote(st, A.rules(st, { cfg: cfg2, smaMap: {}, earningsMap: {} }), cfg2);
   assert.match(note2, /2 sells are on the Apex card above:/);
   assert.equal((note2.match(/<b>SNPS<\/b>/g) || []).length, 1); assert.equal((note2.match(/<b>NET<\/b>/g) || []).length, 1);
 });
 
-console.log(`apex: ${n}/${n} passed`);
+console.log(`apex: ${n - failed}/${n} passed`);
+assert.equal(failed, 0);

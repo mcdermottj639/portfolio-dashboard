@@ -714,10 +714,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=215">
-<link rel="stylesheet" href="ui/predictions.css?v=215">
-<link rel="stylesheet" href="ui/smartmoney.css?v=215">
-<link rel="stylesheet" href="ui/ticker.css?v=215">
+<link rel="stylesheet" href="ui/experience.css?v=216">
+<link rel="stylesheet" href="ui/predictions.css?v=216">
+<link rel="stylesheet" href="ui/smartmoney.css?v=216">
+<link rel="stylesheet" href="ui/ticker.css?v=216">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -782,9 +782,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=215"></script>
-<script src="ui/apex.js?v=215"></script>
-<script src="ui/business.js?v=215"></script>
+<script src="ui/sd-rules.js?v=216"></script>
+<script src="ui/apex.js?v=216"></script>
+<script src="ui/business.js?v=216"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -898,7 +898,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v215'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v216'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2021,20 +2021,27 @@ function renderApexCard(S){
   const T=window.__APEX_TGT;
   if(T===undefined){ window.__APEX_TGT=null; fetch('data/apex-targets.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.targets&&typeof j.targets==='object'){ window.__APEX_TGT=j; try{ renderApexCard(window.__SNAP||S); }catch(_){} } }).catch(()=>{}); }
   cfg.targets=Object.assign({IREN:20},(T&&T.targets)||{});
+  // Entry research and quote freshness are different clocks. A weekly research
+  // source can cover a weekend, but missing/invalid/old research cannot add risk.
+  const researchAge=T&&T.asOf?(Date.now()-Date.parse(T.asOf))/60000:NaN;
+  cfg.researchReady=!!(T&&T.targets&&Number.isFinite(researchAge)&&researchAge>=-5&&researchAge<=8*24*60);
+  cfg.researchAsOf=(T&&T.asOf)||null;
   /* v214: minutes since the snapshot — past Apex.C.PRICE_FRESH_MIN the Recommended-trades list shows estimates, never an order price. */
   try{ const g=(window.__DATA&&window.__DATA.generatedAt)||null, tms=g?Date.parse(g):NaN; cfg.snapAgeMin=isFinite(tms)?(Date.now()-tms)/60000:null; }catch(_){ cfg.snapAgeMin=null; }
   /* v194 (Jack, 2026-11-06: "always put the entry target prices" · "make sure all can be bought on Robinhood
      always"): the scan's per-name trigger / limit / TP1 / stop / company name / ••0741 tradability ride from
      data/apex-targets.json top5 into the build rungs, which then show entry · target · stop · R/R at entry. */
-  cfg.levels={}; /* v211: heldLevels = the scan's research stop/target for EVERY held name (also ones outside the top 5); a top5 row wins. */ try{ (T&&Array.isArray(T.heldLevels)?T.heldLevels:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={tp1:r.tp1,stop:r.stop,atr:r.atr,stopBasis:r.stopBasis||null,limit:r.limit||r.entry||null,name:r.name||null}; }); }catch(_){}
-  try{ (T&&Array.isArray(T.top5)?T.top5:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={trigger:r.trigger,limit:r.limit,tp1:r.tp1,stop:r.stop,atr:r.atr,stopBasis:r.stopBasis||null,name:r.name||null,tradable:r.tradable,tradableAt:r.tradableAt||null}; }); }catch(_){}
+  cfg.levels={}; cfg.exitLevels={};
+  // Held research stays separate: a new entry must not overwrite its exit plan.
+  try{ (T&&Array.isArray(T.heldLevels)?T.heldLevels:[]).forEach(r=>{ if(r&&r.sym) cfg.exitLevels[r.sym]={tp1:r.tp1,stop:r.stop,atr:r.atr,stopBasis:r.stopBasis||null,limit:r.limit||r.entry||null,name:r.name||null}; }); }catch(_){}
+  try{ (T&&Array.isArray(T.top5)?T.top5:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={trigger:r.trigger,limit:r.limit,tp1:r.tp1,stop:r.stop,atr:r.atr,stopBasis:r.stopBasis||null,name:r.name||null,tradable:r.tradable,tradableAt:r.tradableAt||null,orderType:r.orderType,maxPx:r.maxPx}; }); }catch(_){}
   /* v195 (LAB-004-P1): the risk guard follows the maintenance requirement. Optional broker inputs ride in
      window.__APEX_CFG: maint (account default), maintBy {SYM: 0–1} (Robinhood's per-name house figure, e.g. a
      concentrated name at 50%) and maintReq ($ total incl. options). None set ⇒ 30% default, guard 35% / 40%. */
   /* v196: Apex.DEFAULT_CFG.maintBy carries Robinhood's per-stock figures (IREN 30, AMZN 25, PLTR 25); __APEX_CFG.maintBy overrides per name. */
   const mBy=Object.assign({},(Apex.DEFAULT_CFG&&Apex.DEFAULT_CFG.maintBy)||{},(cfg.maintBy&&typeof cfg.maintBy==='object')?cfg.maintBy:{});
   const state=Apex.state({positions:positions.map(p=>mBy[p.symbol]!=null?Object.assign({},p,{maint:mBy[p.symbol]}):p),cash:+st.cashVal||0,equity:(+st.totalVal>0)?+st.totalVal:undefined,maint:cfg.maint,maintReq:cfg.maintReq});
-  const d=new Date(); const review=d.getDay()===1;   // v194: the weekly Apex review is MONDAY (Jack, Nov 6 01:47 ET)
+  const review=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'}).format(new Date())==='Mon';
   const sma={}; Object.keys(S.smaMap||{}).forEach(k=>{ const m=S.smaMap[k]; const v=(m&&typeof m==='object')?m.s50:m; if(v!=null&&!isNaN(+v))sma[k]={s50:+v}; });
   /* v188: live prices for target names not held, so the build rule can size whole shares. */
   try{ const tg=cfg.targets; Object.keys(tg).forEach(k=>{ const q=(typeof azQuote==='function')?azQuote(k):null; const v=q?parseFloat(q.last_trade_price||q.last_extended_hours_trade_price||0):0; if(v>0){ sma[k]=Object.assign({},sma[k]||{},{px:v}); } }); }catch(_){}
@@ -2068,7 +2075,7 @@ function renderApexCard(S){
     }
   }catch(e){ research={rows:[],empty:'Research lens failed: '+(e&&e.message||e)}; }
   Apex.render(el,state,out,cfg,research);
-  /* v215: Plan step 1 ("Cut what's broken") names the sells the Apex card recommends, so "Nothing is broken" no longer
+  /* v216: Plan step 1 ("Cut what's broken") names the sells the Apex card recommends, so "Nothing is broken" no longer
      reads as contradicting a research-dropped exit. The plan renders first; this fills its slot on every Apex render. */
   try{ const sl=document.querySelector('[data-sd-apex-sells]'); if(sl&&typeof Apex.planSellNote==='function')sl.innerHTML=Apex.planSellNote(state,out,cfg,(sl.getAttribute('data-skip')||'').split(',').filter(Boolean)); }catch(_){}
   /* v191 — Business check tiles (display only; nothing above reads it). Held names, then targets. */
@@ -8737,13 +8744,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=215"></script>
-<script src="ui/predictions-model.js?v=215"></script>
-<script src="ui/predictions.js?v=215"></script>
-<script src="ui/smartmoney-model.js?v=215"></script>
-<script src="ui/smartmoney.js?v=215"></script>
-<script src="ui/experience.js?v=215"></script>
-<script src="ui/ticker.js?v=215"></script>
-<script src="ui/compact.js?v=215"></script>
+<script src="ui/experience-model.js?v=216"></script>
+<script src="ui/predictions-model.js?v=216"></script>
+<script src="ui/predictions.js?v=216"></script>
+<script src="ui/smartmoney-model.js?v=216"></script>
+<script src="ui/smartmoney.js?v=216"></script>
+<script src="ui/experience.js?v=216"></script>
+<script src="ui/ticker.js?v=216"></script>
+<script src="ui/compact.js?v=216"></script>
 </body>
 </html>
