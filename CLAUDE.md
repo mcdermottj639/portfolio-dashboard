@@ -1,3 +1,13 @@
+## v213 — Recommended trades name the price to enter (2026-11-11)
+Jack (Nov 11 04:56 ET, on v212's "Sell 4 SNPS · last $459.92"): "Sell or buy at what price". `bookLines()` now puts
+an order price and time-in-force on every line: build rungs and adds "limit $x · GTC", rule sells "limit $x · Day"
+(GTC when the ticket says so), research-dropped exits "limit = last × 0.995 · Day" (the scan's swap rule) with the
+last price moved to the grey line; an add with no research limit says "price at confirm". `portfolioPrompt` sends
+the same proposed limit for exits. Display + prompt text only.
+- Files: `ui/apex.js`, `producer/apex.test.mjs` (53/53), `index.html` + `sw.js` (version), `CLAUDE.md`.
+- Verified: all producer suites, tests/*.test.cjs. Not verified: browser at phone width for this text change, the
+  served site, a physical iPhone. App/cache **v213 / pf-v213**.
+
 ## v212 — The Apex Confirm button lists the trades it sends (2026-11-11)
 Jack (Nov 11 04:51 ET, phone screenshot of the button reading only "1 order"): "somewhere here it's gotta tell me
 what trades it's recommended that I click to confirm". `ui/apex.js` new pure `bookLines()` (exported) = the same set

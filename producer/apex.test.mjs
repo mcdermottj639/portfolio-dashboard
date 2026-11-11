@@ -658,14 +658,16 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
     { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ], cash: -6637.1, equity: 10650 });
   const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
   const lines = A.bookLines(st, out, cfg);
-  assert.deepEqual(lines.map((l) => [l.side, l.text, l.px]), [['sell', 'Sell 4 SNPS', 'last $459.92']]);
+  assert.deepEqual(lines.map((l) => [l.side, l.text, l.px]), [['sell', 'Sell 4 SNPS', 'limit $457.62 · Day']]);
   assert.ok(!lines.some((l) => l.sym === 'IREN'), 'IREN never');
   const el = { innerHTML: '', querySelector: () => null };
   A.render(el, st, out, cfg, null);
   assert.match(el.innerHTML, /Recommended trades/);
-  assert.match(el.innerHTML, /data-apex-trade="SNPS"[^]*?>SELL<\/span>[^]*?<b[^>]*>Sell 4 SNPS<\/b>[^]*?last \$459\.92[^]*?dropped by this week’s research/);
+  assert.match(el.innerHTML, /data-apex-trade="SNPS"[^]*?>SELL<\/span>[^]*?<b[^>]*>Sell 4 SNPS<\/b>[^]*?limit \$457\.62 · Day[^]*?dropped by this week’s research · last \$459\.92/);
   assert.ok(el.innerHTML.indexOf('data-apex-trades') < el.innerHTML.indexOf('Confirm this week'), 'the list sits above the button');
   assert.match(el.innerHTML, /· 1 order</);
+  assert.ok(lines.every((l) => /^limit \$[\d.]+ · (Day|GTC)$/.test(l.px)), 'v213: every line names the price to enter');
+  assert.match(A.portfolioPrompt(st, out, cfg, null), /SELL 4 SNPS — last \$459\.92 · proposed limit \$457\.62 Day/);
   // under the reload line: build rungs (sized at the limit, research stop not his $180) and a winner trim all list
   const st2 = A.state({ positions: [
     { symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 215, avg: 165.14 },
@@ -673,7 +675,7 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const cfg2 = Object.assign({}, cfg, { levels: Object.assign({}, cfg.levels, { PLTR: { limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low' } }) });
   const out2 = A.rules(st2, { cfg: cfg2, smaMap: {}, earningsMap: {} });
   const l2 = A.bookLines(st2, out2, cfg2);
-  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 4 NET', 'limit $294.90'], ['buy', 'Buy 5 ZS', 'limit $199.10'], ['sell', 'Sell 3 PLTR', 'limit $213.93']]);
+  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 4 NET', 'limit $294.90 · GTC'], ['buy', 'Buy 5 ZS', 'limit $199.10 · GTC'], ['sell', 'Sell 3 PLTR', 'limit $213.93 · Day']]);
   assert.equal(l2[1].sub, 'target $267.87 · stop $173.82');
   assert.equal(A.bookLines(st, [], Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20 } })).filter((l) => l.side === 'sell').map((l) => l.text).join(), 'Sell 11 ZS,Sell 4 SNPS,Sell 7 NET', 'whole and fractional share counts print cleanly');
   A.render(el, st2, out2, cfg2, null);

@@ -445,7 +445,7 @@
     const gaps = bookGaps(st, out, cfg);
     gaps.adds.forEach((g) => { const t = g.lv; L.push(`• ADD ${g.sym}${t && t.name ? ' (' + t.name + ')' : ''} — held ${g.have.toFixed(1)}% → target ${g.tgt.toFixed(1)}% of equity (≈ $${k(g.dollars)})${t ? ` · research entry ${f(t.trigger)} · limit ${f(t.limit)} · target ${f(t.tp1)} · stop ${f(t.stop)}${t.rr != null ? ' · R/R at limit ' + t.rr.toFixed(2) + (t.rr < C.RR_MIN ? ' (BELOW 1.5 floor)' : '') : ''}` : ''}`); });
     if (!builds.length && !gaps.adds.length) L.push('• (none this pass)');
-    if (gaps.exits.length) { L.push('', 'Held names the research DROPPED this week (exit unless you tell me otherwise — check the wash-sale window and earnings first):'); gaps.exits.forEach((g) => L.push(`• SELL ${g.qty} ${g.sym} — last ${f(g.px)}`)); }
+    if (gaps.exits.length) { L.push('', 'Held names the research DROPPED this week (exit unless you tell me otherwise — check the wash-sale window and earnings first):'); gaps.exits.forEach((g) => L.push(`• SELL ${g.qty} ${g.sym} — last ${f(g.px)} · proposed limit ${f(round(g.px * 0.995))} Day`)); }
     if (sells.length) { L.push('', 'Proposed sells / trims from the rules:'); sells.forEach((r) => L.push(`• SELL ${r.ticket.qty} ${r.ticket.sym} — ${r.ticket.px ? 'limit ' + f(r.ticket.px) : 'market'}${r.ticket.gtc ? ' GTC' : ''} — ${r.title}`)); }
     const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
     if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f((levelsFor({ levels: { [r.sym]: r } }, r.sym) || {}).stop)}`).join('; ')); }
@@ -462,12 +462,14 @@
     const q = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? String(Math.round(x)) : (+x).toFixed(2));
     const lines = [];
     (out || []).filter((r) => r.kind === 'build' && r.levels).forEach((r) => { const t = r.levels;
-      lines.push({ side: 'buy', sym: t.sym, text: `Buy ${t.qty > 0 ? q(t.qty) + ' ' : ''}${t.sym}`, px: t.limit > 0 ? 'limit ' + money(t.limit) : '', sub: `${t.tp1 > 0 ? 'target ' + money(t.tp1) : ''}${t.stop > 0 ? ' · stop ' + money(t.stop) : ''}`.replace(/^ · /, '') }); });
+      lines.push({ side: 'buy', sym: t.sym, text: `Buy ${t.qty > 0 ? q(t.qty) + ' ' : ''}${t.sym}`, px: t.limit > 0 ? 'limit ' + money(t.limit) + ' · GTC' : '', sub: `${t.tp1 > 0 ? 'target ' + money(t.tp1) : ''}${t.stop > 0 ? ' · stop ' + money(t.stop) : ''}`.replace(/^ · /, '') }); });
     const g = bookGaps(st, out, cfg);
     g.adds.forEach((a) => { const t = a.lv || {}, sh = t.limit > 0 ? Math.floor(a.dollars / t.limit) : 0;
-      lines.push({ side: 'buy', sym: a.sym, text: `Add ${sh > 0 ? sh + ' ' : ''}${a.sym}`, px: t.limit > 0 ? 'limit ' + money(t.limit) : '≈ $' + k(a.dollars), sub: `to ${a.tgt.toFixed(0)}% of equity (now ${a.have.toFixed(0)}%)` }); });
-    g.exits.forEach((e) => lines.push({ side: 'sell', sym: e.sym, text: `Sell ${q(e.qty)} ${e.sym}`, px: e.px > 0 ? 'last ' + money(e.px) : '', sub: 'dropped by this week\u2019s research' }));
-    (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? 'limit ' + money(r.ticket.px) : '', sub: r.title }));
+      lines.push({ side: 'buy', sym: a.sym, text: `Add ${sh > 0 ? sh + ' ' : ''}${a.sym}`, px: t.limit > 0 ? 'limit ' + money(t.limit) + ' · GTC' : '≈ $' + k(a.dollars) + ' · price at confirm', sub: `to ${a.tgt.toFixed(0)}% of equity (now ${a.have.toFixed(0)}%)${t.tp1 > 0 ? ' · target ' + money(t.tp1) : ''}${t.stop > 0 ? ' · stop ' + money(t.stop) : ''}` }); });
+    /* v213 (Jack, Nov 11 2026: "Sell or buy at what price"): every line carries the price to ENTER — a research-dropped
+       exit uses the scan's swap rule, limit = last × 0.995, Day (same as the rule sells) — never just "last". */
+    g.exits.forEach((e) => lines.push({ side: 'sell', sym: e.sym, text: `Sell ${q(e.qty)} ${e.sym}`, px: e.px > 0 ? 'limit ' + money(round(e.px * 0.995)) + ' · Day' : '', sub: `dropped by this week\u2019s research${e.px > 0 ? ' · last ' + money(e.px) : ''}` }));
+    (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? 'limit ' + money(r.ticket.px) + (r.ticket.gtc ? ' · GTC' : ' · Day') : '', sub: r.title }));
     return lines;
   }
   function portfolioButton(st, out, cfg, research) {
@@ -476,7 +478,7 @@
     if (!n) return '';
     const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const rows = lines.map((l) => `<div data-apex-trade="${escH(l.sym)}" style="display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-top:1px solid rgba(0,0,0,.06);min-width:0"><span style="flex:0 0 auto;font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;background:${l.side === 'sell' ? '#fee2e2' : '#d1fae5'};color:${l.side === 'sell' ? '#991b1b' : '#065f46'}">${l.side === 'sell' ? 'SELL' : 'BUY'}</span><span style="flex:1 1 auto;min-width:0"><b style="font-size:13px">${escH(l.text)}</b>${l.px ? ` <span style="font-size:12px;white-space:nowrap">· ${escH(l.px)}</span>` : ''}${l.sub ? `<br><span style="font-size:10.5px;color:#6b7280;overflow-wrap:anywhere">${escH(l.sub)}</span>` : ''}</span></div>`).join('');
-    const list = `<div class="ac-tier">🧾 Recommended trades <span class="card-hint">(${n} · snapshot prices — the confirm re-prices them live)</span></div><div data-apex-trades style="border:1px solid rgba(0,0,0,.08);border-radius:12px;overflow:hidden;margin-bottom:8px">${rows.replace('border-top:1px solid rgba(0,0,0,.06);', '')}</div>`;
+    const list = `<div class="ac-tier">🧾 Recommended trades <span class="card-hint">(${n} · the price to enter, from the last snapshot — the confirm re-prices it live)</span></div><div data-apex-trades style="border:1px solid rgba(0,0,0,.08);border-radius:12px;overflow:hidden;margin-bottom:8px">${rows.replace('border-top:1px solid rgba(0,0,0,.06);', '')}</div>`;
     return list + `<a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div>`;
   }
 
