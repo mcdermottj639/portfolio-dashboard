@@ -1,3 +1,25 @@
+## v211 — Apex stops and targets are research levels only; the card alerts at them (2026-11-11)
+Jack (Nov 11 04:29–04:31 ET): "My manual inputs should never be accounted for" · "u tell me tp or sl spots … when a
+price hits the correct tp or sl the app is telling me. But the recs are from deep research". The Nov 10 scan had
+scored S, ZS and SNPS with HIS resting Robinhood stops (`stopBasis: "Jack's open stop"`).
+- `levelsFor()`: a stop whose `stopBasis` names Jack's own order is dropped; fallback = limit − 2 × `atr` (the
+  scan's default basis) when the row carries an ATR, else no stop and no R/R. ZS: $180 → $173.82.
+- New rule A4b: a held non-core name at/through its research `tp1` → `tp` row ("target hit"); at/through its
+  research stop → `sl` row ("research stop"); each a whole-position sell line unless a rule sell is already on the
+  name. His order prices are never read. IREN excluded.
+- Weights rows show "research exit: stop · target" under every held target name; research tiles show the research stop.
+- Confirm prompt: lists research exit levels for held names and tells Claude his resting orders are never an input.
+- Confirm answer format (Jack, same day, screenshot of the 8-column table cut off on his iPhone: "orders easy to
+  read in one view on iOS no scrolling"): numbered order lines first, leverage line, one 3-column Ticker | Stop |
+  Target table, one "No action" line; no table wider than 3 columns.
+- `index.html`: `cfg.levels` and research rows carry `atr` + `stopBasis`.
+- `index.html` also reads optional `heldLevels` rows from `data/apex-targets.json` (scan rules v2.5: research
+  stop/target/score for every held name, not only the top 5); a `top5` row wins.
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (52/52, +1), `CLAUDE.md`.
+- Verified: 55 producer suites, tests/*.test.cjs 4/4. NOT run: sd-plan / brief browser suites (playwright import
+  failed in the session), phone-width check, served site. Needs scan rules v2.5 (prompt change, separate).
+  App/cache **v211 / pf-v211**.
+
 ## v210 — Apex research: the 50-name "News veto" paragraph is one folded line (2026-11-11)
 Jack (Nov 11 04:26 ET, phone screenshot of Research: a 30-line orange paragraph repeating "price below SMA200" 40
 times): "Clean this up and merge". `ui/apex.js` new `vetoBlock()` renders `R.vetoed` as ONE collapsed

@@ -585,4 +585,65 @@ ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\
   assert.doesNotMatch(p, /undefined|NaN/);
 });
 
+/* v211 — Jack, Nov 11 2026: "My manual inputs should never be accounted for" · "u tell me tp or sl spots … when a
+   price hits the correct tp or sl the app is telling me". The Nov 10 scan row for ZS carried HIS resting stop ($180,
+   stopBasis "Jack's open stop"). The app drops it, falls back to the scan's own 2 × ATR14 basis, and alerts on the
+   RESEARCH levels only. */
+ok('v211 research levels: an owner-entered stop is never a level; the card alerts at the research target and stop', () => {
+  const zs = { trigger: 199.1, limit: 199.1, tp1: 267.87, stop: 180, stopBasis: "Jack's open stop", atr: 12.64, name: 'Zscaler' };
+  const net = { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99, name: 'Cloudflare' };
+  const pltr = { trigger: 168.43, limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low', atr: 9.72 };
+  const cfg = { targets: { IREN: 20, ZS: 20, NET: 20, PLTR: 20 }, levels: { ZS: zs, NET: net, PLTR: pltr } };
+  const L = A.levelsFor(cfg, 'ZS');
+  assert.equal(L.ownerStop, true);
+  assert.equal(L.stop, 173.82, 'limit − 2 × ATR14, not his $180');
+  assert.equal(L.stopBasis, '2×ATR');
+  assert.ok(Math.abs(L.rr - (267.87 - 199.1) / (199.1 - 173.82)) < 1e-9);
+  const noAtr = A.levelsFor({ levels: { ZS: Object.assign({}, zs, { atr: null }) } }, 'ZS');
+  assert.equal(noAtr.stop, null); assert.equal(noAtr.rr, null, 'no research stop ⇒ no R/R, never his price');
+  assert.equal(A.levelsFor(cfg, 'NET').stop, 250.92); assert.equal(A.levelsFor(cfg, 'NET').ownerStop, false);
+  assert.equal(A.levelsFor(cfg, 'PLTR').stop, 152.6, 'a research basis (swing low) is untouched');
+  for (const b of ['Jack\'s open stop', 'owner stop', 'his open Robinhood stop', 'my stop']) assert.equal(A.levelsFor({ levels: { X: { limit: 100, tp1: 130, stop: 95, stopBasis: b, atr: 4 } } }, 'X').stop, 92, b);
+
+  const book = (zsPx, netPx) => A.state({ positions: [
+    { symbol: 'IREN', qty: 500, px: 20, avg: 44.84 }, { symbol: 'ZS', qty: 11, px: zsPx, avg: 198.66 },
+    { symbol: 'NET', qty: 7, px: netPx, avg: 300.18 }, { symbol: 'PLTR', qty: 13, px: 170, avg: 165.14 } ], cash: -6600 });
+  const fire = (zsPx, netPx) => A.rules(book(zsPx, netPx), { cfg, smaMap: {}, earningsMap: {} });
+  let out = fire(199.75, 315);
+  assert.ok(!out.some((r) => r.kind === 'tp' || r.kind === 'sl'), 'inside the levels: nothing fires');
+  out = fire(178, 315);
+  assert.ok(!out.some((r) => r.kind === 'sl'), '$178 is under HIS $180 but above the research stop $173.82: no alert');
+  out = fire(173.5, 315);
+  const sl = out.find((r) => r.kind === 'sl');
+  assert.ok(sl && /ZS is through its research stop \$173\.82/.test(sl.title));
+  assert.deepEqual([sl.ticket.side, sl.ticket.sym, sl.ticket.qty], ['sell', 'ZS', 11]);
+  out = fire(199.75, 371);
+  const tp = out.find((r) => r.kind === 'tp');
+  assert.ok(tp && /NET is at its research target \$370\.35/.test(tp.title));
+  assert.deepEqual([tp.ticket.side, tp.ticket.sym, tp.ticket.qty], ['sell', 'NET', 7]);
+  assert.ok(tp.after && tp.after.lev < book(199.75, 371).lev, 'the row shows leverage after the sale');
+  assert.ok(!out.some((r) => r.ticket && r.ticket.sym === 'IREN'), 'IREN never');
+  // a name already carrying a rule sell (25% stop) keeps one sell line
+  const deep = A.rules(A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 20, avg: 44.84 }, { symbol: 'ZS', qty: 11, px: 140, avg: 198.66 }], cash: -3000 }), { cfg, smaMap: {}, earningsMap: {} });
+  assert.equal(deep.filter((r) => r.ticket && r.ticket.side === 'sell' && r.ticket.sym === 'ZS').length, 1);
+  assert.ok(deep.some((r) => r.kind === 'sl' && !r.ticket));
+
+  const st = book(199.75, 315), rows = fire(199.75, 315);
+  const p = A.portfolioPrompt(st, rows, Object.assign({}, A.DEFAULT_CFG, cfg), null);
+  assert.match(p, /Research exit levels for held names \(the only stop and target that count\): ZS stop \$173\.82 · target \$267\.87; NET stop \$250\.92 · target \$370\.35; PLTR stop \$152\.60 · target \$212\.94\./);
+  assert.match(p, /My own resting Robinhood orders \(stops, limits, OCO legs\) are NEVER an input/);
+  assert.doesNotMatch(p, /\$180\.00|undefined|NaN/);
+  assert.match(p, /ONE iPhone screen with no sideways or vertical scrolling\. No table wider than 3 columns/);
+  assert.doesNotMatch(p, /Ticker \| Verdict \| Shares \| Entry/, 'the 8-column table is gone');
+  const el = { innerHTML: '', querySelector: () => null };
+  const res = { rows: [Object.assign({ sym: 'ZS', score: 7.9, why: 'picked', target: 20 }, zs)], asOf: 'x' };
+  A.render(el, st, rows, cfg, res);
+  assert.match(el.innerHTML, /data-apex-exit="ZS">research exit: stop <b>\$173\.82<\/b> · target <b>\$267\.87<\/b>/);
+  assert.ok(!/data-apex-exit="IREN"/.test(el.innerHTML), 'the owner-managed core has no research exit line');
+  assert.ok(/stop \$173\.82/.test(el.innerHTML) && !/\$180\.00/.test(el.innerHTML), 'the research tile shows the research stop');
+  assert.ok(!/undefined|NaN/.test(el.innerHTML));
+  out = fire(173.5, 371); A.render(el, book(173.5, 371), out, cfg, res);
+  assert.ok(/research stop<\/span>/.test(el.innerHTML) && /target hit<\/span>/.test(el.innerHTML), 'both tags render');
+});
+
 console.log(`apex: ${n}/${n} passed`);
