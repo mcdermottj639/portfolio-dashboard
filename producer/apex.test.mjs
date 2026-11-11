@@ -649,7 +649,7 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
 /* v212 — Jack, Nov 11 2026: "somewhere here it's gotta tell me what trades it's recommended that I click to confirm".
    The live Nov 11 book: SNPS dropped by the research, NET/PLTR/ZS at weight, IREN owner-managed, 1.71x. */
 ok('v212 the Confirm button lists the trades it is about to send — same set it counts', () => {
-  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { snapAgeMin: 5, targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: {
     ZS: { trigger: 199.1, limit: 199.1, tp1: 267.87, stop: 180, stopBasis: "Jack's open stop", atr: 12.64 },
     NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99 } } });
   const st = A.state({ positions: [
@@ -663,11 +663,11 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const el = { innerHTML: '', querySelector: () => null };
   A.render(el, st, out, cfg, null);
   assert.match(el.innerHTML, /Recommended trades/);
-  assert.match(el.innerHTML, /data-apex-trade="SNPS"[^]*?>SELL<\/span>[^]*?<b[^>]*>Sell 4 SNPS<\/b>[^]*?limit \$457\.62 · Day[^]*?dropped by this week’s research · last \$459\.92/);
+  assert.match(el.innerHTML, /data-apex-trade="SNPS"[^]*?>SELL<\/span>[^]*?<b[^>]*>Sell 4 SNPS<\/b>[^]*?limit \$457\.62 · Day[^]*?dropped by this week’s research · snapshot price \$459\.92/);
   assert.ok(el.innerHTML.indexOf('data-apex-trades') < el.innerHTML.indexOf('Confirm this week'), 'the list sits above the button');
   assert.match(el.innerHTML, /· 1 order</);
   assert.ok(lines.every((l) => /^limit \$[\d.]+ · (Day|GTC)$/.test(l.px)), 'v213: every line names the price to enter');
-  assert.match(A.portfolioPrompt(st, out, cfg, null), /SELL 4 SNPS — last \$459\.92 · proposed limit \$457\.62 Day/);
+  assert.match(A.portfolioPrompt(st, out, cfg, null), /SELL 4 SNPS — snapshot price \$459\.92 \(5 min old\) — set the limit from the LIVE price/);
   // under the reload line: build rungs (sized at the limit, research stop not his $180) and a winner trim all list
   const st2 = A.state({ positions: [
     { symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 215, avg: 165.14 },
@@ -686,6 +686,32 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const st3 = A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }], cash: 0 });
   A.render(el, st3, A.rules(st3, { cfg: { targets: { IREN: 20 } } }), { targets: { IREN: 20 } }, null);
   assert.ok(!/Recommended trades|Confirm this week/.test(el.innerHTML));
+});
+
+/* v214 — Jack, Nov 11 2026 05:02 ET: the card said "Sell 4 SNPS · limit $457.62 · Day" from a 12-hour-old close while
+   SNPS traded $466 pre-market. "U want me to sell at this limit price" · "Fix the app!" */
+ok('v214 a stale snapshot never names an order price: the list shows estimates and points at Confirm', () => {
+  const base = { targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: { NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99 } } };
+  const st = A.state({ positions: [
+    { symbol: 'IREN', qty: 500.071851, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 168.84, avg: 165.14 },
+    { symbol: 'ZS', qty: 11, px: 194.92, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 459.92, avg: 456.64 },
+    { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ], cash: -6637.1, equity: 10650 });
+  const run = (age) => { const cfg = Object.assign({}, A.DEFAULT_CFG, base, age === undefined ? {} : { snapAgeMin: age }); const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} }); const el = { innerHTML: '', querySelector: () => null }; A.render(el, st, out, cfg, null); return { lines: A.bookLines(st, out, cfg), html: el.innerHTML, prompt: A.portfolioPrompt(st, out, cfg, null) }; };
+  const stale = run(12 * 60 + 21);   // the live case: Nov 10 4:41 PM snapshot read at 5:02 AM
+  assert.deepEqual(stale.lines.map((l) => [l.text, l.px, l.est]), [['Sell 4 SNPS', '≈ $457.62', true]]);
+  assert.ok(!/limit \$457\.62|· Day/.test(stale.html.slice(stale.html.indexOf('data-apex-trades'), stale.html.indexOf('Confirm this week'))), 'no "limit … Day" on a stale line');
+  assert.match(stale.html, /data-apex-price-note[^>]*>Not order prices yet — quotes are 12h old\. The app re-prices at its next refresh \(weekdays, hourly 8:41 AM–4:41 PM ET\)\. For the exact price now, tap Confirm\./);
+  assert.match(stale.prompt, /SELL 4 SNPS — snapshot price \$459\.92 \(12h old\) — set the limit from the LIVE price/);
+  assert.doesNotMatch(stale.prompt, /proposed limit/);
+  for (const age of [undefined, null, NaN, -5, 76, 60 * 24 * 3]) assert.equal(run(age).lines[0].est, true, 'unknown or old age is an estimate: ' + age);
+  assert.match(run(60 * 24 * 3).html, /quotes are 3 days old/);
+  assert.match(run(undefined).html, /quotes are unknown age/);
+  const fresh = run(4);
+  assert.deepEqual(fresh.lines.map((l) => [l.text, l.px, l.est]), [['Sell 4 SNPS', 'limit $457.62 · Day', false]]);
+  assert.match(fresh.html, /data-apex-price-note[^>]*>Order prices use quotes 4 min old \(refreshed hourly in market hours\)\. Confirm re-checks them live\./);
+  assert.equal(A.priceIsFresh({ snapAgeMin: 75 }), true); assert.equal(A.priceIsFresh({ snapAgeMin: 75.1 }), false);
+  assert.deepEqual(run(58).lines.map((l) => l.px), ['limit $457.62 · Day'], 'inside one hourly cycle the line is an order price');
+  assert.ok(!/undefined|NaN/.test(stale.html + fresh.html));
 });
 
 console.log(`apex: ${n}/${n} passed`);
