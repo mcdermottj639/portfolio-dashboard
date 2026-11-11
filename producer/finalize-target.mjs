@@ -269,6 +269,14 @@ export function finalizeTarget(allocation, meta = {}) {
         dropped.push({ ticker: sym, reason: 'business-broken', detail: (v.risk || v.biggestRisk || ''), since: asOfStr });
         continue;
       }
+      // Finalization retries are not a second research observation. Keep the first
+      // strike on a same-date rebuild; explicit broken-business verdicts above
+      // still take precedence. A later dated research target may complete it.
+      if (p.phaseOut && prior.asOf === asOfStr) {
+        phaseOuts.push({ ...p, ticker: sym,
+          px: p.px ?? uni[sym]?.px, hi: p.hi ?? uni[sym]?.hi, lo: p.lo ?? uni[sym]?.lo });
+        continue;
+      }
       if (p.phaseOut) { dropped.push({ ticker: sym, reason: 'phase-out-complete', detail: 'absent from two consecutive research targets', since: asOfStr }); continue; }
       phaseOuts.push({
         ticker: sym, sector: p.sector || '', weightPct: +p.weightPct || 0,

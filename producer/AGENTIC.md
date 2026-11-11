@@ -1,5 +1,13 @@
 # AGENTIC.md — Agentic account (••••3900) automation & rebalancing
 
+> **Phase-out retry correction (2026-11-11):** Finalizing the same dated research
+> again retains an existing first-strike phase-out instead of manufacturing a
+> second-strike exit. A later dated research target may still complete the
+> phase-out; explicit broken-business verdicts still take precedence immediately.
+> This is a same-date retry guard, not a new holding period or a change to broker
+> orders already submitted. It does not identify reused research stamped with a
+> new date; immutable research-run identity remains a follow-up.
+
 > **v149 follow-up:** Account estimates now consume existing recorded equity history automatically
 > (producer and browser share the same calculation), with matching-date coverage checks and explicit
 > inferred-flow / valuation-time limitations. The panel shows the existing account record even before

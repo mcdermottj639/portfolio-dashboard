@@ -114,6 +114,16 @@ ok('without a prior target the shape is unchanged (no dropped key)',
   const rerunPrior = { ...churn.target };                       // exactly what run #1 committed
   const stillHeld = ['GE', 'UNH', 'AAPL', 'V', 'SPY', 'NVDA', 'JPM'];
   const rerun = finalizeTarget(ALLOC, { ...base, prior: rerunPrior, held: stillHeld });
+  ok('same-date rebuild retains a first-strike holding', nameOf(rerun, 'GE')?.phaseOut === true);
+  ok('same-date rebuild does not manufacture a second-strike exit', !rerun.target.dropped.some(d => d.ticker === 'GE'));
+  eq('same-date rebuild does not nest phase-out explanation', nameOf(rerun, 'GE')?.thesis, nameOf(churn, 'GE').thesis);
+  const again = finalizeTarget(ALLOC, { ...base, prior: rerun.target, held: stillHeld });
+  ok('repeated same-date retries remain first strike', nameOf(again, 'GE')?.phaseOut === true);
+  const later = finalizeTarget(ALLOC, { ...base, asOf: '2026-08-18', prior: rerun.target, held: stillHeld });
+  ok('later research date can complete the second strike', later.target.dropped.some(d => d.ticker === 'GE' && d.reason === 'phase-out-complete'));
+  const broken = finalizeTarget(ALLOC, { ...base, prior: rerun.target, held: stillHeld,
+    verdicts: [{ t: 'GE', businessOk: false, rec: 'avoid', risk: 'new verified thesis failure' }] });
+  ok('same-date thesis failure still exits immediately', broken.target.dropped.some(d => d.ticker === 'GE' && d.reason === 'business-broken'));
   const r = (t) => (rerun.target.dropped.find((d) => d.ticker === t) || {});
   ok('re-run carries the business-broken record forward', r('AAPL').reason === 'business-broken');
   ok('re-run carries the phase-out-complete record forward', r('UNH').reason === 'phase-out-complete');
