@@ -118,3 +118,13 @@ snapshot, privacy-aware. Changed presentation only: Options Income & History con
 a scoreboard; every field shown before (contracts, expiration, status, opened, event date, opening and
 closing cash, net) is still shown. The freshness strip, Find, privacy, theme, ↻ and the account switcher
 keep their behavior; their sticky offsets now include the tape height.
+
+### Apex decision corrections (v216)
+
+Research › Plan retains its existing cards. Apex now separates review-only names
+from recommended trades, shares its action set with the Plan note and confirmation
+prompt, preserves held exit research, and gates entries at the executable limit.
+Profit milestones require execution review; the separate agentic model is unchanged.
+`tests/apex-browser.mjs` covers adapter propagation, missing/stale research, entry
+gates, genuine exits, prompt/count agreement and 320–1440px layouts. CI runs this
+with the existing Brief and Plan browser checks on synthetic data.

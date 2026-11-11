@@ -1,3 +1,23 @@
+## v216 — Separate entry eligibility from held exits; stop turnover loops (2026-11-11)
+- A held name falling off the entry list is now a visible review/no-add item, never a sell by omission.
+  Missing research cannot liquidate holdings. Valid entries share hard finite-level/R/R gates;
+  gap adds also respect earnings, tradability, target/name caps and combined cruise room.
+- One reconciled action set supplies the app, count, Plan note and Claude confirmation prompt.
+  Protective exits remain active, override smaller optional sells and exclude same-name buys.
+  Guard legs for the same holding are combined; proposed sales never exceed held shares.
+- Held exit levels are separate from new-entry levels. Owner-stop ATR replacements are labelled
+  estimates and cannot authorize entries or become held stops. Limit vs stop-limit and max price
+  survive the adapter. Weekly review uses the Eastern weekday.
+- Mechanical profit-milestone trims are REVIEW ONLY: the existing aggregate order history cannot
+  establish completed trims. No execution ledger or live pending-order reconciliation is claimed.
+- The in-app confirmation prompt follows the new contract. The external Claude scheduled routine
+  was inaccessible and is NOT updated by this release. See producer/APEX-DECISIONS.md for the
+  exact remaining scan and durable-ledger requirements. No broker writes or agentic-model changes.
+- Local validation: 56/56 producer suites and 23 dashboard tests passed; seven turnover failures
+  plus seven additional cases covered. Local Chromium could not start due to the environment's
+  socket restriction; the CI workflow now runs all three synthetic browser suites before merge.
+  Self-audited; no separate Fable reviewer available. App/cache v216 / pf-v216.
+
 ## v215 — Plan step 1 points at the Apex sells; margin verdict says "no new buys" (2026-11-11)
 Jack (Nov 11 05:15 ET, two screenshots: Plan step 1 "✓ Nothing is broken — 5 holdings checked · ≈ $0.00 freed" and
 "✓ Inside Apex's band, above 1.65× cruise — hold", above the Apex card's "Sell 4 SNPS · dropped by this week's
