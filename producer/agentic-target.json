@@ -1,17 +1,32 @@
 {
-  "asOf": "2026-10-28",
+  "asOf": "2026-11-11",
   "account": "AGENTIC",
-  "book": 7426,
+  "book": 7728,
   "driftTriggerPp": 5,
   "names": [
     {
-      "ticker": "NVDA",
-      "sector": "Electronic Technology",
-      "weightPct": 14.51,
-      "entry": "212-220",
-      "stop": 196,
-      "target": 262,
-      "thesis": "Highest composite in the batch; quality 9.5 and growth 9.5 lead, with EPS beats six quarters running. It sits below its 50-DMA at RSI 44, so this is the best entry in the batch (entry discount 1.09).",
+      "ticker": "MSFT",
+      "sector": "Technology Services",
+      "weightPct": 18.22,
+      "entry": "520-535",
+      "stop": 490,
+      "target": 640,
+      "thesis": "Only buy-rated name: revenue +18.8%, net income +32%, quality 9.0 and momentum 8.6; best entryQuality in the cohort (6.5, haircut 1.12), so it gets the top slot. Existing 9.4% holding is increased on merit.",
+      "singleNameCapPct": 25,
+      "drivers": [
+        "quality",
+        "momentum",
+        "growth"
+      ]
+    },
+    {
+      "ticker": "META",
+      "sector": "Technology Services",
+      "weightPct": 11.52,
+      "entry": "625-645",
+      "stop": 585,
+      "target": 780,
+      "thesis": "Cheapest of the megacaps (P/E ~22, valuation 6.3) with revenue still +26% and a mean target of $850. Entry is the second-best in the cohort (6.0) because it is in a pullback; the 17.7% drawdown is not a broken thesis. Incumbent held at a slightly larger weight.",
       "singleNameCapPct": 25,
       "drivers": [
         "quality",
@@ -21,11 +36,18 @@
     {
       "ticker": "V",
       "sector": "Finance",
-      "weightPct": 10.42,
-      "entry": "390-404",
-      "stop": 368,
-      "target": 440,
-      "thesis": "Quality 9 and momentum 7.9 compounder. It has already reported (a small beat on 10-27), so no event risk is left; payments cluster sits at the 20% cap with MA.",
+      "weightPct": 10.63,
+      "entry": "$407.41-$421.41 (entry-quality 4/10 vs cohort 4.25 → ceiling held 0.4% under the $423.00 spot; was 410-424)",
+      "stop": 385,
+      "target": 458,
+      "thesis": "Quality 9.5 and momentum 9.3 (composite 7.31), with a growing network business. Extended entry (haircut 0.97) and a thin R/R, so the weight is trimmed slightly from the current 13.9% rather than exited. V+MA stays under the 20% payments cap.",
+      "entryTightened": {
+        "from": 424,
+        "to": 421.41,
+        "discountPct": 0.4,
+        "entryQuality": 4,
+        "bar": 4.25
+      },
       "singleNameCapPct": 25,
       "drivers": [
         "quality",
@@ -34,92 +56,55 @@
       ]
     },
     {
-      "ticker": "MSFT",
-      "sector": "Technology Services",
-      "weightPct": 9.22,
-      "entry": "$507.35-$527.35 (entry-quality 4/10 vs cohort 4.5 → ceiling held 0.8% under the $531.33 spot; was 515-535)",
-      "stop": 478,
-      "target": 610,
-      "thesis": "Quality 9.5 and momentum 8.85, with a 39.7% net margin and revenue up 17.7%. Trimmed slightly for its 4/10 entry because it reports tonight; it is not extended at RSI 56.",
-      "entryTightened": {
-        "from": 535,
-        "to": 527.35,
-        "discountPct": 0.8,
-        "entryQuality": 4,
-        "bar": 4.5
-      },
-      "singleNameCapPct": 25,
-      "drivers": [
-        "quality",
-        "momentum",
-        "growth"
-      ]
+      "ticker": "CVX",
+      "sector": "Energy Minerals",
+      "weightPct": 9.3,
+      "entry": "205-212",
+      "stop": 192,
+      "target": 247,
+      "thesis": "Only non-tech/financial name with a real composite (6.15): P/E ~15, 3.3% yield, EPS beats three quarters running, and a sound entry (5.0, haircut 1.03) after a 10.7% pullback below the 50-DMA. The earnings are cyclical, so it is sized below the compounders. New name that diversifies the factor mix.",
+      "singleNameCapPct": 24.64
+    },
+    {
+      "ticker": "SPY",
+      "sector": "Index",
+      "weightPct": 8.42,
+      "entry": "market, core hold",
+      "stop": 0,
+      "target": 0,
+      "thesis": "Residual index sleeve only, not ballast: holds the current ~8% position and absorbs weight not allocated on conviction. Kept inside the 5-10% limit.",
+      "singleNameCapPct": 10
     },
     {
       "ticker": "LLY",
       "sector": "Health Technology",
-      "weightPct": 7.61,
-      "entry": "$1188.07-$1253.07 (entry-quality 3/10 vs cohort 4.5 → ceiling held 2.3% under the $1281.91 spot; was 1220-1285)",
-      "stop": 1150,
-      "target": 1450,
-      "thesis": "Quality and growth both 8.5, with revenue up about 48% and large EPS beats. Kept near its current weight but not added, because the entry scores 3/10 into tomorrow's print (entry discount 0.88).",
+      "weightPct": 7.09,
+      "entry": "$1351.17-$1406.17 (entry-quality 3/10 vs cohort 4.25 → ceiling held 1.9% under the $1433.04 spot; was 1380-1435)",
+      "stop": 1290,
+      "target": 1600,
+      "thesis": "Momentum 9.4, growth 8.0, revenue +38.6%, so the business is intact (businessOk true). It is sized below its 9.3% current weight for its wide 52-week range, a poor entry (3.0, haircut 0.91), a top-of-range price and a fading net margin.",
       "entryTightened": {
-        "from": 1285,
-        "to": 1253.07,
-        "discountPct": 2.3,
+        "from": 1435,
+        "to": 1406.17,
+        "discountPct": 1.9,
         "entryQuality": 3,
-        "bar": 4.5
+        "bar": 4.25
       },
-      "singleNameCapPct": 25,
+      "singleNameCapPct": 24.97,
       "drivers": [
+        "momentum",
         "quality",
-        "growth",
-        "momentum"
-      ]
-    },
-    {
-      "ticker": "META",
-      "sector": "Technology Services",
-      "weightPct": 7.21,
-      "entry": "600-625",
-      "stop": 560,
-      "target": 760,
-      "thesis": "Strongest across sleeves outside momentum: quality, growth and catalyst all 8, valuation 6.3, after a 28.9% EPS beat. It is oversold at RSI 32 and 20% off its high; it re-qualifies out of phase-out.",
-      "singleNameCapPct": 25,
-      "drivers": [
-        "quality",
-        "growth",
-        "catalyst"
-      ]
-    },
-    {
-      "ticker": "KO",
-      "sector": "Consumer Non-Durables",
-      "weightPct": 7.21,
-      "entry": "88.5-91.5",
-      "stop": 84,
-      "target": 98,
-      "thesis": "Quality 8 and momentum 6.8, with consistent beats and earnings already reported. Chosen on its verified composite, not as ballast, and it diversifies away from the AI cluster.",
-      "singleNameCapPct": 25,
-      "drivers": [
-        "quality"
+        "growth"
       ]
     },
     {
       "ticker": "MA",
       "sector": "Finance",
-      "weightPct": 5.61,
-      "entry": "$578.7-$600.7 (entry-quality 3.5/10 vs cohort 4.5 → ceiling held 1.5% under the $609.85 spot; was 590-612)",
-      "stop": 552,
-      "target": 681,
-      "thesis": "Quality 9 with net margins expanding to 47.3%. Sized below V for its 3.5/10 entry into tomorrow's pre-market print (entry discount 0.91).",
-      "entryTightened": {
-        "from": 612,
-        "to": 600.7,
-        "discountPct": 1.5,
-        "entryQuality": 3.5,
-        "bar": 4.5
-      },
+      "weightPct": 6.64,
+      "entry": "640-660",
+      "stop": 595,
+      "target": 730,
+      "thesis": "Highest composite in the cohort (7.36) on quality 9.5 and momentum 9.5, with net margin 47% and rising. Entry is average (4.5, haircut 1.00); a modest increase from 4.4% toward its research weight. V+MA totals 19.5%.",
       "singleNameCapPct": 25,
       "drivers": [
         "quality",
@@ -128,116 +113,94 @@
       ]
     },
     {
-      "ticker": "NEM",
-      "sector": "Non-Energy Minerals",
-      "weightPct": 5.61,
-      "entry": "108-114",
-      "stop": 100,
-      "target": 138,
-      "thesis": "Balanced sleeves (quality 7.5, growth and catalyst 7, valuation 6.6) at a 12.8x P/E, plus gold-price diversification away from the equity-beta cluster. It is the widest-range name here (0.53), so it is held near the floor.",
-      "singleNameCapPct": 19.96,
-      "drivers": [
-        "quality",
-        "growth",
-        "catalyst"
-      ]
-    },
-    {
-      "ticker": "AMZN",
-      "sector": "Retail Trade",
-      "weightPct": 4.81,
-      "entry": "$240.2-$251.2 (entry-quality 4/10 vs cohort 4.5 → ceiling held 0.8% under the $253.10 spot; was 245-256)",
-      "stop": 228,
-      "target": 300,
-      "thesis": "Growth 8 with revenue accelerating to +19.6%, sitting on its 50/100-DMA at RSI 48. A new name at the floor: Q2 GAAP net income looks inflated by one-off gains and it reports after the close tomorrow.",
+      "ticker": "AAPL",
+      "sector": "Electronic Technology",
+      "weightPct": 6.2,
+      "entry": "$327.09-$342.09 (entry-quality 3/10 vs cohort 4.25 → ceiling held 1.9% under the $348.63 spot; was 335-350)",
+      "stop": 318,
+      "target": 380,
+      "thesis": "Retained rather than phased out: quality 9.0 and momentum 8.4 with businessOk true. Growth is slowing and price is above the mean target (entry 3.0, haircut 0.91), so this is an incremental increase from 4.7%, not a full reinstatement.",
       "entryTightened": {
-        "from": 256,
-        "to": 251.2,
-        "discountPct": 0.8,
-        "entryQuality": 4,
-        "bar": 4.5
+        "from": 350,
+        "to": 342.09,
+        "discountPct": 1.9,
+        "entryQuality": 3,
+        "bar": 4.25
       },
       "singleNameCapPct": 25,
       "drivers": [
-        "growth",
-        "quality"
-      ]
-    },
-    {
-      "ticker": "SPY",
-      "sector": "Index",
-      "weightPct": 8.01,
-      "entry": "755-772",
-      "stop": 690,
-      "target": 840,
-      "thesis": "Core hold. A residual index position only, at the 10% maximum, for weight not placed on conviction.",
-      "singleNameCapPct": 10
-    },
-    {
-      "ticker": "GOOGL",
-      "sector": "Technology Services",
-      "weightPct": 6.92,
-      "entry": "345-358",
-      "stop": 322,
-      "target": 410,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 8, growth 8.5 and the best valuation of the megacaps (6.6). 13% off highs with an above-median entry (1.07x). Re-included from phase-out, earnings 10-28.",
-      "singleNameCapPct": 23.69,
-      "drivers": [
         "quality",
-        "growth",
-        "valuation"
-      ]
-    },
-    {
-      "ticker": "AAPL",
-      "sector": "Electronic Technology",
-      "weightPct": 3.96,
-      "entry": "$320.43-$337.43 (entry-quality 3/10 vs cohort 3.75 → ceiling held 1.1% under the $341.27 spot; was 325-342 (50-DMA ~323))",
-      "stop": 306,
-      "target": 385,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 9, momentum 7.4, growth 7.5 (net income +27%). Chased at a new high above the mean target, so kept at a floor weight, not added.",
-      "singleNameCapPct": 25,
-      "drivers": [
-        "growth",
         "momentum"
       ]
     },
     {
-      "ticker": "CAT",
-      "sector": "Producer Manufacturing",
-      "weightPct": 4.29,
-      "entry": "755-790",
-      "stop": 695,
-      "target": 920,
+      "ticker": "COST",
+      "sector": "Retail Trade",
+      "weightPct": 5.31,
+      "entry": "$992.16-$1038.16 (entry-quality 2.5/10 vs cohort 4.25 → ceiling held 2.6% under the $1066.15 spot; was 1020-1066)",
+      "stop": 960,
+      "target": 1150,
+      "thesis": "Strong momentum (7.2), sound business (revenue +11%, stable margin) and composite 5.70, but the worst entry in the cohort (2.5, haircut 0.88) at 51x P/E. Held at the 6% floor with the zone set near spot, not an unreachable pullback level. New name; lowest-conviction slot.",
+      "entryTightened": {
+        "from": 1066,
+        "to": 1038.16,
+        "discountPct": 2.6,
+        "entryQuality": 2.5,
+        "bar": 4.25
+      },
+      "singleNameCapPct": 25,
+      "drivers": [
+        "momentum"
+      ]
+    },
+    {
+      "ticker": "PEP",
+      "sector": "Consumer Non-Durables",
+      "weightPct": 5.31,
+      "entry": "138-144",
+      "stop": 132,
+      "target": 158,
+      "thesis": "Valuation-led (7.2): P/E 17.8, 4.1% yield, 16% below its high, revenue +5.6%. Momentum is weak (4.9), so it is the lowest-conviction name and is held at the floor for sector and factor diversification. It enters only on its composite (5.72), not as a defensive floor.",
+      "singleNameCapPct": 25,
+      "drivers": [
+        "valuation"
+      ]
+    },
+    {
+      "ticker": "KO",
+      "sector": "Consumer Non-Durables",
+      "weightPct": 6.39,
+      "entry": "88.5-91.5",
+      "stop": 84,
+      "target": 98,
       "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Growth 8, quality 7.5 (EPS 8.17 vs 6.17 estimate). 28% off highs but in a downtrend with a very wide range, so it gets a minimum vol-scaled slot into 10-29 earnings.",
-      "singleNameCapPct": 13.75,
+      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 8 and momentum 6.8, with consistent beats and earnings already reported. Chosen on its verified composite, not as ballast, and it diversifies away from the AI cluster.",
+      "singleNameCapPct": 25,
+      "drivers": [
+        "momentum",
+        "quality"
+      ]
+    },
+    {
+      "ticker": "NEM",
+      "sector": "Non-Energy Minerals",
+      "weightPct": 4.97,
+      "entry": "108-114",
+      "stop": 100,
+      "target": 138,
+      "phaseOut": true,
+      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Balanced sleeves (quality 7.5, growth and catalyst 7, valuation 6.6) at a 12.8x P/E, plus gold-price diversification away from the equity-beta cluster. It is the widest-range name here (0.53), so it is held near the floor.",
+      "singleNameCapPct": 23.35,
       "drivers": [
         "quality",
         "growth"
       ]
-    },
-    {
-      "ticker": "UNP",
-      "sector": "Transportation",
-      "weightPct": 4.61,
-      "entry": "274-288",
-      "stop": 257,
-      "target": 325,
-      "phaseOut": true,
-      "thesis": "PHASE-OUT (churn governor) — dropped by the latest research but held one more cycle at its prior weight: exits on the NEXT refresh unless re-included; no new money goes in meanwhile. Was: Quality 8 (stable 29% net margin), valuation 5.7, 1.97% yield. A sector diversifier at a mid-cohort entry. Earnings 10-22 may defer the buy until after the print.",
-      "singleNameCapPct": 25,
-      "drivers": [
-        "quality"
-      ]
     }
   ],
   "defensive": {
-    "direct": 14.82,
-    "lookThrough": 1.0333,
-    "total": 15.8533,
+    "direct": 17.01,
+    "lookThrough": 1.0862,
+    "total": 18.0962,
     "floor": 0,
     "shortfall": 0
   },
@@ -248,10 +211,30 @@
   },
   "dropped": [
     {
-      "ticker": "XOM",
+      "ticker": "NVDA",
+      "reason": "not-held",
+      "since": "2026-11-11"
+    },
+    {
+      "ticker": "AMZN",
+      "reason": "not-held",
+      "since": "2026-11-11"
+    },
+    {
+      "ticker": "GOOGL",
+      "reason": "not-held",
+      "since": "2026-11-11"
+    },
+    {
+      "ticker": "CAT",
+      "reason": "not-held",
+      "since": "2026-11-11"
+    },
+    {
+      "ticker": "UNP",
       "reason": "phase-out-complete",
       "detail": "absent from two consecutive research targets",
-      "since": "2026-10-28"
+      "since": "2026-11-11"
     },
     {
       "ticker": "VTI",
@@ -261,94 +244,82 @@
       "carried": true
     }
   ],
-  "researchSummary": "This target keeps ten names on the $7,426 book and changes as little as possible. Eight of them are already held: NVDA 18%, V 13%, MSFT 11.5%, LLY 9.5%, META 9%, MA 7%, NEM 7% and SPY 10%. SPY is only a residual. The two new names are KO 9% and AMZN 6% at the floor, sized down because AMZN reports earnings after the close on Oct 29 at a weaker-than-usual entry. META and NEM come back from phase-out because they passed verification. The weights favour names that score well on several sleeves: quality and growth on NVDA, MSFT and META, payments compounders capped together at 20%, and gold-miner diversification through NEM. The megacap-tech/AI cluster totals 44.5% (NVDA 18 + MSFT 11.5 + META 9 + AMZN 6), under the 48% cap. If finalize-target keeps GOOGL and AAPL as phase-out positions, the cluster comes back under review there. The defensive total is 9% direct (KO, staples), chosen on its verified composite and not as ballast. It is about 18.5% if LLY's healthcare position counts, since its 0.40 range clears the 0.42 vol gate, plus about 1pp held through SPY. Two non-verified incumbents are handled differently. XOM is on its second strike and exits; there is no evidence its thesis is broken, it simply did not re-qualify in two straight refreshes. GOOGL, AAPL, CAT and UNP did not reach the verified survivor set this cycle, so I have no verdict that their thesis is broken. They are left to the churn governor's one-cycle phase-out retention rather than exited on this list. Entry timing is a real concern: MSFT reports tonight, LLY and MA report tomorrow morning and AMZN tomorrow after the close. Their weights are trimmed by each name's entry discount (0.88 to 0.94), not deferred, and the entry zones sit near spot.",
+  "researchSummary": "Nine verified survivors plus SPY at 9.5% as a residual. Weight tilts to MSFT (the only buy-rated name, best entry in the cohort, +32% net income) and META, with every other incumbent kept near its current weight. The megacap-tech/AI cluster is 40.5% (MSFT 20.5, META 13, AAPL 7), under the 48% cap. Payments V+MA are 19.5%, under 20%. The defensive total is about 12% by this allocation (PEP 6, COST 6), plus the retained KO phase-out. It is measured, not mandated: both names are in on their composite and neither is ballast, and LLY is excluded from the defensive count by its wide range. No held name is dropped for a broken thesis. KO, NEM and UNP, plus the VTI parking vehicle, were simply not among this cycle's verified survivors. They are left to the two-strike phase-out and churn governor rather than force-sold, and UNP is on its second consecutive miss. NVDA, AMZN, GOOGL and CAT are not held, so omitting them costs nothing. Weights are conviction-first and then scaled by the cohort-relative entry haircut. MSFT and META get the largest slots (best relative entries, 1.12 and 1.09). LLY, COST and AAPL are sized down (0.91, 0.88, 0.91) with zones set near spot. V and COST have thin or poor reward:risk at spot, so their slots stay small and are not cut to cash.",
   "adjustments": [
-    "combined allocation normalized from 124.69% to 100% before risk caps",
-    "megacap-tech is 46.6% direct (within its 48% cap) but 49.6% including 3.0pp held inside index vehicles — reported, not enforced",
-    "FYI: megacap-tech is 46.6% direct (inside its 48% cap) but 49.6% counting 3.0pp inside index vehicles — look-through is reported, not enforced (owner decision 2026-08-25)"
+    "combined allocation normalized from 112.82% to 100% before risk caps"
   ],
   "construction": {
-    "names": 14,
+    "names": 12,
     "active": 10,
-    "phaseOut": 4,
-    "phaseOutWeightPct": 19.78,
-    "indexPct": 8.01,
+    "phaseOut": 2,
+    "phaseOutWeightPct": 11.36,
+    "indexPct": 8.42,
     "exposure": {
       "megacap-tech": {
-        "direct": 46.63,
-        "lookThrough": 3.0038,
-        "total": 49.6338
+        "direct": 35.94,
+        "lookThrough": 3.1575,
+        "total": 39.0975
       },
       "payments": {
-        "direct": 16.03,
-        "lookThrough": 0.1282,
-        "total": 16.1582
+        "direct": 17.27,
+        "lookThrough": 0.1347,
+        "total": 17.4047
       },
-      "pharma": {
-        "direct": 7.61,
-        "lookThrough": 0.2403,
-        "total": 7.8503
-      },
-      "staples": {
-        "direct": 7.21,
-        "lookThrough": 0.2163,
-        "total": 7.4263
-      },
-      "single:NEM": {
-        "direct": 5.61,
-        "lookThrough": 0,
-        "total": 5.61
+      "energy": {
+        "direct": 9.3,
+        "lookThrough": 0.1516,
+        "total": 9.4516
       },
       "index": {
-        "direct": 8.01,
+        "direct": 8.42,
         "lookThrough": 0,
-        "total": 8.01
+        "total": 8.42
       },
       "banks": {
         "direct": 0,
-        "lookThrough": 0.2964,
-        "total": 0.2964
+        "lookThrough": 0.3115,
+        "total": 0.3115
       },
-      "energy": {
-        "direct": 0,
-        "lookThrough": 0.1442,
-        "total": 0.1442
+      "pharma": {
+        "direct": 7.09,
+        "lookThrough": 0.2526,
+        "total": 7.3426
+      },
+      "staples": {
+        "direct": 17.01,
+        "lookThrough": 0.2273,
+        "total": 17.2373
       },
       "utilities": {
         "direct": 0,
-        "lookThrough": 0.1762,
-        "total": 0.1762
+        "lookThrough": 0.1852,
+        "total": 0.1852
       },
       "reits": {
         "direct": 0,
-        "lookThrough": 0.1442,
-        "total": 0.1442
+        "lookThrough": 0.1516,
+        "total": 0.1516
       },
       "telecom": {
         "direct": 0,
-        "lookThrough": 0.1121,
-        "total": 0.1121
+        "lookThrough": 0.1179,
+        "total": 0.1179
       },
       "health-svc": {
         "direct": 0,
-        "lookThrough": 0.1442,
-        "total": 0.1442
+        "lookThrough": 0.1516,
+        "total": 0.1516
       },
-      "single:CAT": {
-        "direct": 4.29,
+      "single:NEM": {
+        "direct": 4.97,
         "lookThrough": 0,
-        "total": 4.29
-      },
-      "single:UNP": {
-        "direct": 4.61,
-        "lookThrough": 0,
-        "total": 4.61
+        "total": 4.97
       }
     },
     "defensive": {
-      "direct": 14.82,
-      "lookThrough": 1.0333,
-      "total": 15.8533,
+      "direct": 17.01,
+      "lookThrough": 1.0862,
+      "total": 18.0962,
       "floor": 0,
       "shortfall": 0
     },
@@ -362,7 +333,7 @@
       "errors": []
     }
   },
-  "method": "10 active names plus 4 phase-out holdings (19.78% of the final target). Megacap-tech is 46.63% direct and 49.63% including index look-through. Index vehicles total 8.01%. Defensive exposure is 14.82% direct and 15.85% including index look-through. Gold/bullion exposure is 0.00%. Figures describe the final weights after risk adjustment and phase-out retention. Thesis-review levels are monitored; they are not resting stop orders. | risk-adjusted (finalize-target.mjs: hard correlation-cluster + vol-scaled caps) | combined allocation normalized from 124.69% to 100% before risk caps | megacap-tech is 46.6% direct (within its 48% cap) but 49.6% including 3.0pp held inside index vehicles — reported, not enforced | FYI: megacap-tech is 46.6% direct (inside its 48% cap) but 49.6% counting 3.0pp inside index vehicles — look-through is reported, not enforced (owner decision 2026-08-25) | phase-out retained: GOOGL, AAPL, CAT, UNP | entry bands measured against the COHORT MEDIAN entryQuality 4.5",
+  "method": "10 active names plus 2 phase-out holdings (11.36% of the final target). Megacap-tech is 35.94% direct and 39.10% including index look-through. Index vehicles total 8.42%. Defensive exposure is 17.01% direct and 18.10% including index look-through. Gold/bullion exposure is 0.00%. Figures describe the final weights after risk adjustment and phase-out retention. Thesis-review levels are monitored; they are not resting stop orders. | risk-adjusted (finalize-target.mjs: hard correlation-cluster + vol-scaled caps) | combined allocation normalized from 112.82% to 100% before risk caps | phase-out retained: KO, NEM | entry bands measured against the COHORT MEDIAN entryQuality 4.25",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
   "riskVersion": "hard-caps-v3",
@@ -374,7 +345,7 @@
     "valuation": 0.18,
     "flow": 0
   },
-  "universeVersion": "f7e7b537f95cfdcdb9d3",
+  "universeVersion": "80f4c5d54ce396515cb7",
   "research": {
     "version": "evidence-v1",
     "status": "verified-coverage",
@@ -383,18 +354,7 @@
     "universe": 61,
     "rows": [
       {
-        "ticker": "MSFT",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "NVDA",
+        "ticker": "MA",
         "supported": [
           "momentum",
           "quality",
@@ -408,30 +368,7 @@
         "supported": [
           "momentum",
           "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "META",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "NEM",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
+          "growth"
         ],
         "eligible": true,
         "reasons": []
@@ -447,7 +384,77 @@
         "reasons": []
       },
       {
-        "ticker": "MA",
+        "ticker": "MSFT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "META",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "AAPL",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "NVDA",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "UNP",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "NEM",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "KO",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "GOOGL",
         "supported": [
           "momentum",
           "quality",
@@ -467,154 +474,7 @@
         "reasons": []
       },
       {
-        "ticker": "XOM",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "GOOGL",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "UNP",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "KO",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "AMZN",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "PG",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
         "ticker": "AVGO",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "COST",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "GE",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "NEE",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "ABBV",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "BKNG",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "LIN",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "PLD",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "JNJ",
         "supported": [
           "momentum",
           "quality",
@@ -634,23 +494,31 @@
         "reasons": []
       },
       {
-        "ticker": "WM",
+        "ticker": "COST",
         "supported": [
           "momentum",
           "quality",
-          "growth",
-          "catalyst"
+          "growth"
         ],
         "eligible": true,
         "reasons": []
       },
       {
-        "ticker": "SHW",
+        "ticker": "ABBV",
         "supported": [
           "momentum",
           "quality",
-          "growth",
-          "catalyst"
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "JNJ",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
         ],
         "eligible": true,
         "reasons": []
@@ -666,7 +534,7 @@
         "reasons": []
       },
       {
-        "ticker": "CI",
+        "ticker": "AMZN",
         "supported": [
           "momentum",
           "quality",
@@ -676,23 +544,31 @@
         "reasons": []
       },
       {
-        "ticker": "AMT",
+        "ticker": "WM",
         "supported": [
           "momentum",
           "quality",
-          "growth",
-          "catalyst"
+          "growth"
         ],
         "eligible": true,
         "reasons": []
       },
       {
-        "ticker": "VZ",
+        "ticker": "NEE",
         "supported": [
           "momentum",
           "quality",
-          "growth",
-          "catalyst"
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "PG",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
         ],
         "eligible": true,
         "reasons": []
@@ -708,86 +584,11 @@
         "reasons": []
       },
       {
-        "ticker": "T",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "FCX",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "WMT",
+        "ticker": "LIN",
         "supported": [
           "momentum",
           "quality",
           "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "TSLA",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "TMUS",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "DUK",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "UNH",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth"
-        ],
-        "eligible": true,
-        "reasons": []
-      },
-      {
-        "ticker": "UPS",
-        "supported": [
-          "momentum",
-          "quality",
-          "growth",
-          "catalyst"
         ],
         "eligible": true,
         "reasons": []
@@ -803,7 +604,57 @@
         "reasons": []
       },
       {
-        "ticker": "LEN",
+        "ticker": "BKNG",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "WMT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "TMUS",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "DUK",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "GE",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "SHW",
         "supported": [
           "momentum",
           "quality",
@@ -823,6 +674,106 @@
         "reasons": []
       },
       {
+        "ticker": "PLD",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "FCX",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "CI",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "VZ",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "AMT",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "SYY",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "UPS",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "UNH",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "LEN",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
+        "ticker": "TSLA",
+        "supported": [
+          "momentum",
+          "quality",
+          "growth"
+        ],
+        "eligible": true,
+        "reasons": []
+      },
+      {
         "ticker": "JPM",
         "supported": [
           "momentum"
@@ -833,7 +784,7 @@
         ]
       },
       {
-        "ticker": "SYY",
+        "ticker": "XOM",
         "supported": [
           "momentum"
         ],
@@ -855,8 +806,7 @@
       {
         "ticker": "ELV",
         "supported": [
-          "momentum",
-          "catalyst"
+          "momentum"
         ],
         "eligible": false,
         "reasons": [
@@ -896,17 +846,6 @@
       {
         "ticker": "DECK",
         "supported": [
-          "momentum",
-          "catalyst"
-        ],
-        "eligible": false,
-        "reasons": [
-          "need quality and at least three supported sleeves"
-        ]
-      },
-      {
-        "ticker": "VTI",
-        "supported": [
           "momentum"
         ],
         "eligible": false,
@@ -915,7 +854,7 @@
         ]
       },
       {
-        "ticker": "AAPL",
+        "ticker": "VTI",
         "supported": [
           "momentum"
         ],
@@ -945,10 +884,19 @@
         ]
       },
       {
+        "ticker": "T",
+        "supported": [
+          "momentum"
+        ],
+        "eligible": false,
+        "reasons": [
+          "need quality and at least three supported sleeves"
+        ]
+      },
+      {
         "ticker": "ECL",
         "supported": [
-          "momentum",
-          "catalyst"
+          "momentum"
         ],
         "eligible": false,
         "reasons": [
@@ -968,8 +916,7 @@
       {
         "ticker": "CSX",
         "supported": [
-          "momentum",
-          "catalyst"
+          "momentum"
         ],
         "eligible": false,
         "reasons": [
@@ -1013,7 +960,8 @@
         ],
         "eligible": false,
         "reasons": [
-          "need quality and at least three supported sleeves"
+          "need quality and at least three supported sleeves",
+          "fresh, sourced price/range inputs missing"
         ]
       }
     ],
@@ -1022,27 +970,27 @@
       "NVDA": {
         "momentum": {
           "ticker": "NVDA",
-          "score": 5.36,
-          "note": "217.92 vs 50-DMA 222.30 / 100-DMA 214.41; 3m RS +6.3pp, 6m RS -7.3pp vs SPY; 8.9% off trailing high; bars to 2026-10-26",
+          "score": 1.4480262207042114,
+          "note": "168.79 vs 50-DMA 219.04 / 100-DMA 213.73; 3m RS -15.5pp, 6m RS -20.4pp vs SPY; 29.4% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/NVDA",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.36/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 1.45/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "NVDA",
           "score": 9.5,
-          "note": "Reduced coverage: Robinhood quarterly financials only (no AV balance sheet/cash flow); leverage not checked.",
+          "note": "Reduced coverage: RH quarterly profitability only; leverage/FCF/ROE not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-07-26",
-              "claim": "NVDA FQ2 FY27 revenue 96.22B, gross profit 72.14B, net income 59.69B, net margin 62.03%"
+              "claim": "FQ2'27 revenue 96.2B, gross profit 72.1B (75% GM), net income 59.7B, net margin 62.0%"
             }
           ]
         },
@@ -1050,47 +998,53 @@
           "ticker": "NVDA",
           "score": 9.5,
           "status": "observed",
-          "note": "Revenue +105.8% YoY, accelerating from +85%; NI up ~126%. Reduced coverage: no EPS revision/surprise data fetched.",
+          "note": "Rev YoY +106% vs +85% prior qtr (accelerating), NI +126%. Estimate revisions/surprise not checked (reduced coverage).",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/NVDA",
               "asOf": "2026-07-26",
-              "claim": "Q2 FY27 revenue 96.221B vs 46.743B year-ago (+105.8%); Q1 FY27 81.615B vs 44.062B (+85.2%); net income 59.688B vs 26.422B"
+              "claim": "Q2 FY27 revenue 96.221B vs 46.743B a year earlier (+106%); prior quarter 81.615B vs 44.062B (+85%); net income 59.7B vs 26.4B"
             }
           ]
         },
         "catalyst": {
           "ticker": "NVDA",
-          "score": null,
-          "note": "No catalyst evidence within 14 days found (no earnings in window; news/insider not fetched).",
-          "status": "missing",
-          "evidence": []
+          "score": 4,
+          "status": "observed",
+          "note": "Earnings Nov 17 after close (verified), within about 2 weeks, so a fresh-entry risk and nudged down. No news or insider data: AV NEWS_SENTIMENT was rate-limited. Reduced coverage.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood/get_earnings_calendar",
+              "asOf": "2026-11-17",
+              "claim": "NVDA FQ3 2027 earnings scheduled 2026-11-17 pm, verified, EPS est 2.48"
+            }
+          ]
         }
       },
       "MSFT": {
         "momentum": {
           "ticker": "MSFT",
-          "score": 8.85,
-          "note": "531.60 vs 50-DMA 509.17 / 100-DMA 460.97; 3m RS +32.1pp, 6m RS +18.4pp vs SPY; 2.2% off trailing high; bars to 2026-10-26",
+          "score": 8.60527235971953,
+          "note": "533.41 vs 50-DMA 517.28 / 100-DMA 473.97; 3m RS +10.5pp, 6m RS +30.3pp vs SPY; 4.0% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/MSFT",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 8.85/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 8.61/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "MSFT",
-          "score": 9.5,
-          "note": "Reduced coverage: margins only.",
+          "score": 9,
+          "note": "Reduced coverage: profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "MSFT FQ4 FY26 revenue 90.01B, gross profit 60.48B, net income 35.77B, net margin 39.74%"
+              "asOf": "2026-09-30",
+              "claim": "FQ1'27 revenue 92.3B, gross profit 62.6B, net income 36.6B, net margin 39.7%, stable vs 39.7% prior quarter"
             }
           ]
         },
@@ -1098,101 +1052,89 @@
           "ticker": "MSFT",
           "score": 7.5,
           "status": "observed",
-          "note": "Revenue +17.7% YoY, steady vs +18.3% prior quarter; NI +31%. No revision data.",
+          "note": "Rev YoY +18.8% (prior +17.7%), NI +32%. Revisions not checked.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/MSFT",
-              "asOf": "2026-06-30",
-              "claim": "Q4 FY26 revenue 90.007B vs 76.441B (+17.7%); Q3 82.886B vs 70.066B (+18.3%); NI 35.766B vs 27.233B"
+              "asOf": "2026-09-30",
+              "claim": "Q1 FY27 revenue 92.279B vs 77.673B (+18.8%); prior quarter +17.7%; net income 36.6B vs 27.7B"
             }
           ]
         },
         "catalyst": {
           "ticker": "MSFT",
-          "score": 3.5,
-          "note": "Reports 2026-10-28 after close: binary earnings event, risk for fresh entry. Sentiment/insider not fetched.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-28",
-              "claim": "MSFT Q earnings scheduled 2026-10-28 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days; AV news was rate-limited and no earnings in window.",
+          "evidence": []
         }
       },
       "AMZN": {
         "momentum": {
           "ticker": "AMZN",
-          "score": 5.09,
-          "note": "253.16 vs 50-DMA 255.21 / 100-DMA 251.76; 3m RS +8.4pp, 6m RS -9.6pp vs SPY; 10.9% off trailing high; bars to 2026-10-27",
+          "score": 5.445832478764751,
+          "note": "270.90 vs 50-DMA 253.96 / 100-DMA 252.81; 3m RS +0.4pp, 6m RS -2.6pp vs SPY; 4.6% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/AMZN",
-              "asOf": "2026-10-27",
-              "claim": "producer/momentum.mjs RS/MA composite 5.09/10 from recorded daily closes through 2026-10-27"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 5.45/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "AMZN",
-          "score": 7.5,
-          "note": "Reduced coverage: Q2 net margin 31.2% looks inflated by non-operating gains (Q1 16.7%).",
+          "score": 6.5,
+          "note": "Net margin noisy (10.2% vs 31.2% prior quarter on gains); profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "AMZN Q2 2026 revenue 200.6B, gross profit 104.8B, net income 62.6B, net margin 31.23%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 201.9B, gross profit 107.4B, net income 20.7B, net margin 10.2%"
             }
           ]
         },
         "growth": {
           "ticker": "AMZN",
-          "score": 8,
+          "score": 5.5,
           "status": "observed",
-          "note": "Revenue growth accelerating to +19.6% from +16.6%; NI sharply higher. No revision data.",
+          "note": "Rev growth fading to +12.1% from +19.6%; NI flat YoY. Revisions not checked.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/AMZN",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 200.606B vs 167.702B (+19.6%); Q1 181.519B vs 155.667B (+16.6%); NI 62.647B vs 18.164B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 201.944B vs 180.169B (+12.1%); Q2 200.606B vs 167.702B (+19.6%); net income 20.7B vs 21.2B"
             }
           ]
         },
         "catalyst": {
           "ticker": "AMZN",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 after close; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "AMZN earnings scheduled 2026-10-29 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "JPM": {
         "momentum": {
           "ticker": "JPM",
-          "score": 4.29,
-          "note": "335.78 vs 50-DMA 344.83 / 100-DMA 342.10; 3m RS -9.8pp, 6m RS +0.2pp vs SPY; 8.1% off trailing high; bars to 2026-10-26",
+          "score": 5.609811032471286,
+          "note": "342.11 vs 50-DMA 341.52 / 100-DMA 344.36; 3m RS -3.2pp, 6m RS +12.2pp vs SPY; 6.3% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/JPM",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.29/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 5.61/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "JPM",
           "score": null,
-          "note": "Newest quarter in RH financials is 2026-03-31, outside the 120-day window.",
+          "note": "Newest RH quarter is 2026-03-31, outside 120-day window.",
           "status": "missing",
           "evidence": []
         },
@@ -1200,95 +1142,89 @@
           "ticker": "JPM",
           "score": null,
           "status": "missing",
-          "note": "Latest financials period ending 2026-03-31 is older than 120 days and prior rows are mis-dated; not scored.",
+          "note": "Latest financials period 2026-03-31, older than 120 days; data also inconsistent.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "JPM",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "LLY": {
         "momentum": {
           "ticker": "LLY",
-          "score": 7.79,
-          "note": "1281.52 vs 50-DMA 1188.58 / 100-DMA 1179.06; 3m RS +1.5pp, 6m RS +40.3pp vs SPY; 1.9% off trailing high; bars to 2026-10-26",
+          "score": 9.437723286919251,
+          "note": "1433.04 vs 50-DMA 1219.00 / 100-DMA 1202.92; 3m RS +18.5pp, 6m RS +44.2pp vs SPY; 0.0% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/LLY",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.79/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 9.44/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "LLY",
           "score": 8.5,
-          "note": "Reduced coverage: margins only.",
+          "note": "Margin eased from 37% to 26%; profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "LLY Q2 2026 revenue 22.97B, gross profit 19.71B, net income 7.10B, net margin 30.88%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 24.4B, gross profit 20.5B (84% GM), net income 6.45B, net margin 26.4%"
             }
           ]
         },
         "growth": {
           "ticker": "LLY",
-          "score": 8.5,
+          "score": 8,
           "status": "observed",
-          "note": "Revenue +47.7% YoY, slightly fading from +55.6% but very high. No revision data.",
+          "note": "Rev +38.6% YoY but rate fading from +47.7%; NI +15.6%. Revisions not checked.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/LLY",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 22.974B vs 15.558B (+47.7%); Q1 19.799B vs 12.729B (+55.6%); NI 7.095B vs 5.661B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 24.397B vs 17.601B (+38.6%); Q2 22.974B vs 15.558B (+47.7%); net income 6.45B vs 5.58B"
             }
           ]
         },
         "catalyst": {
           "ticker": "LLY",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "LLY earnings scheduled 2026-10-29 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "UNH": {
         "momentum": {
           "ticker": "UNH",
-          "score": 5.23,
-          "note": "410.61 vs 50-DMA 388.75 / 100-DMA 401.97; 3m RS -7.5pp, 6m RS +8.8pp vs SPY; 5.9% off trailing high; bars to 2026-10-26",
+          "score": 5.265275208461818,
+          "note": "405.06 vs 50-DMA 390.65 / 100-DMA 401.81; 3m RS -1.3pp, 6m RS +1.9pp vs SPY; 7.2% off trailing high; bars to 2026-11-06",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/UNH",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.23/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-06",
+              "claim": "producer/momentum.mjs RS/MA composite 5.27/10 from recorded daily closes through 2026-11-06"
             }
           ]
         },
         "quality": {
           "ticker": "UNH",
-          "score": 5,
-          "note": "Thin and declining margin; reduced coverage.",
+          "score": 4.5,
+          "note": "Thin and declining margin; Q4'25 near zero.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "UNH Q2 2026 revenue 112.03B, net income 5.48B, net margin 4.90% (Q1 5.62%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 112.7B, net income 4.11B, net margin 3.65% (down from 5.6% in Q1'26)"
             }
           ]
         },
@@ -1296,155 +1232,131 @@
           "ticker": "UNH",
           "score": 3.5,
           "status": "observed",
-          "note": "Revenue flat (+0.4%); NI recovering off depressed base. No revision data.",
+          "note": "Flat revenue; NI recovering YoY off a low base but falling sequentially (6.28B to 5.48B to 4.11B).",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/UNH",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 112.032B vs 111.616B (+0.4%); NI 5.484B vs 3.406B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 112.694B vs 113.161B (-0.4%); net income 4.11B vs 2.35B but down from 6.28B in Q1 and 5.48B in Q2"
             }
           ]
         },
         "catalyst": {
           "ticker": "UNH",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "GE": {
         "momentum": {
           "ticker": "GE",
-          "score": 2.26,
-          "note": "297.71 vs 50-DMA 321.95 / 100-DMA 339.19; 3m RS -24.0pp, 6m RS -5.7pp vs SPY; 21.9% off trailing high; bars to 2026-10-26",
+          "score": 2.868976233977821,
+          "note": "336.13 vs 50-DMA 317.31 / 100-DMA 338.24; 3m RS -15.9pp, 6m RS +3.5pp vs SPY; 11.8% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/GE",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.26/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 2.87/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "GE",
-          "score": 7,
-          "note": "Reduced coverage: margins only.",
+          "score": 7.5,
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "GE Q3 2026 revenue 14.12B, net income 2.29B, net margin 16.21%"
+              "claim": "Q3'26 revenue 14.1B, net income 2.29B, net margin 16.2%, range 15-18% over last three quarters"
             }
           ]
         },
         "growth": {
           "ticker": "GE",
-          "score": 6.5,
+          "score": 6,
           "status": "observed",
-          "note": "Revenue +15.9% YoY but decelerating from +21%; NI +6%. No revision data.",
+          "note": "Rev +15.9% (prior +21.1%, fading), NI +6%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/GE",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 14.118B vs 12.181B (+15.9%); Q2 13.349B vs 11.023B (+21.1%); NI 2.288B vs 2.157B"
+              "claim": "Q3 revenue 14.118B vs 12.181B (+15.9%); Q2 13.349B vs 11.023B (+21.1%); net income 2.288B vs 2.157B"
             }
           ]
         },
         "catalyst": {
           "ticker": "GE",
-          "score": 7,
-          "note": "Reported 2026-10-20 EPS 2.25 vs 2.01 est (+11.9%). News/insider not checked.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-20",
-              "claim": "GE EPS actual 2.25 vs estimate 2.01"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "XOM": {
         "momentum": {
           "ticker": "XOM",
-          "score": 8.57,
-          "note": "179.89 vs 50-DMA 166.27 / 100-DMA 156.92; 3m RS +17.3pp, 6m RS +17.5pp vs SPY; 2.5% off trailing high; bars to 2026-10-26",
+          "score": 6.578793547467193,
+          "note": "164.47 vs 50-DMA 168.82 / 100-DMA 159.52; 3m RS +6.1pp, 6m RS +12.9pp vs SPY; 12.2% off trailing high; bars to 2026-11-06",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/XOM",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 8.57/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-06",
+              "claim": "producer/momentum.mjs RS/MA composite 6.58/10 from recorded daily closes through 2026-11-06"
             }
           ]
         },
         "quality": {
           "ticker": "XOM",
-          "score": 6.5,
-          "note": "Cyclical, volatile margin (Q1 4.9% vs Q2 12.5%); reduced coverage.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "XOM Q2 2026 revenue 116.0B, net income 14.5B, net margin 12.52%"
-            }
-          ]
+          "score": null,
+          "note": "Newest RH quarter 2026-06-30 is 133 days old, outside 120-day window.",
+          "status": "missing",
+          "evidence": []
         },
         "growth": {
           "ticker": "XOM",
-          "score": 7,
-          "status": "observed",
-          "note": "Revenue +42% and NI doubled, but commodity-price driven. No revision data.",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_financials/XOM",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 116.017B vs 81.506B (+42.3%); NI 14.525B vs 7.082B"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "Latest reported period 2026-06-30 is more than 120 days old; Q3 not available.",
+          "evidence": []
         },
         "catalyst": {
           "ticker": "XOM",
-          "score": 3.5,
-          "note": "Reports 2026-10-30 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-30",
-              "claim": "XOM earnings scheduled 2026-10-30 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "PG": {
         "momentum": {
           "ticker": "PG",
-          "score": 6.12,
-          "note": "159.24 vs 50-DMA 148.67 / 100-DMA 148.26; 3m RS +4.1pp, 6m RS +0.7pp vs SPY; 3.8% off trailing high; bars to 2026-10-26",
+          "score": 5.7791632718778345,
+          "note": "168.62 vs 50-DMA 149.99 / 100-DMA 148.85; 3m RS +13.8pp, 6m RS +7.9pp vs SPY; 0.0% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/PG",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 6.12/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.78/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "PG",
-          "score": 8,
-          "note": "Reduced coverage: margins only.",
+          "score": 7.5,
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "PG FQ1 FY27 revenue 23.28B, gross profit 11.60B, net income 4.73B, net margin 20.33%"
+              "claim": "FQ1'27 revenue 23.3B, gross profit 11.6B, net income 4.73B, net margin 20.3%"
             }
           ]
         },
@@ -1452,479 +1364,431 @@
           "ticker": "PG",
           "score": 4.5,
           "status": "observed",
-          "note": "Low single-digit growth, flat NI.",
+          "note": "Low-single-digit growth (+4.0%), slightly improving; NI flat.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/PG",
               "asOf": "2026-09-30",
-              "claim": "Q1 FY27 revenue 23.276B vs 22.386B (+4.0%); NI 4.731B vs 4.750B"
+              "claim": "Q1 FY27 revenue 23.276B vs 22.386B (+4.0%); prior quarter +1.5%; net income 4.73B vs 4.75B"
             }
           ]
         },
         "catalyst": {
           "ticker": "PG",
-          "score": 6.5,
-          "note": "Reported 2026-10-22 EPS 2.00 vs 1.89 est (+5.8%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-22",
-              "claim": "PG EPS actual 2.00 vs estimate 1.89"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "NEE": {
         "momentum": {
           "ticker": "NEE",
-          "score": 2.52,
-          "note": "82.42 vs 50-DMA 80.52 / 100-DMA 83.82; 3m RS -11.4pp, 6m RS -20.5pp vs SPY; 15.8% off trailing high; bars to 2026-10-26",
+          "score": 3.0739662058589916,
+          "note": "87.40 vs 50-DMA 80.24 / 100-DMA 83.71; 3m RS -1.0pp, 6m RS -15.5pp vs SPY; 10.7% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/NEE",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.52/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 3.07/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "NEE",
-          "score": 6.5,
-          "note": "High margin but utility leverage not checked.",
+          "score": 6,
+          "note": "Net margin inflated by non-operating gains; utility leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "NEE Q3 2026 revenue 8.1B, net income 4.78B, net margin 58.95%"
+              "claim": "Q3'26 revenue 8.1B, net income 4.78B, net margin 59% vs 25.6% in Q4'25 (volatile)"
             }
           ]
         },
         "growth": {
           "ticker": "NEE",
-          "score": 6,
+          "score": 6.5,
           "status": "observed",
-          "note": "Revenue +9.5% and accelerating from +4.7%; NI inflated by likely non-operating items.",
+          "note": "Rev +9.5% (accelerating from +4.7%), NI +96% (likely includes mark-to-market items).",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/NEE",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 8.1B vs 7.4B (+9.5%); Q2 6.7B vs 6.4B (+4.7%); NI 4.775B vs 2.438B"
+              "claim": "Q3 revenue 8.1B vs 7.4B (+9.5%); Q2 6.7B vs 6.4B; net income 4.775B vs 2.438B"
             }
           ]
         },
         "catalyst": {
           "ticker": "NEE",
-          "score": 6,
-          "note": "Reported 2026-10-21 EPS 1.24 vs 1.19 est (+4.2%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-21",
-              "claim": "NEE EPS actual 1.24 vs estimate 1.19"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "VZ": {
         "momentum": {
           "ticker": "VZ",
-          "score": 3,
-          "note": "43.92 vs 50-DMA 47.35 / 100-DMA 46.38; 3m RS -10.3pp, 6m RS -14.0pp vs SPY; 14.6% off trailing high; bars to 2026-10-27",
+          "score": 3.096327936269212,
+          "note": "45.83 vs 50-DMA 47.04 / 100-DMA 46.33; 3m RS -3.2pp, 6m RS -8.8pp vs SPY; 10.9% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/VZ",
-              "asOf": "2026-10-27",
-              "claim": "producer/momentum.mjs RS/MA composite 3.00/10 from recorded daily closes through 2026-10-27"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 3.10/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "VZ",
-          "score": 6,
-          "note": "Leverage not checked; margin fell from Q1.",
+          "score": 5.5,
+          "note": "Leverage not checked; margin volatile.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "VZ Q2 2026 revenue 34.25B, net income 3.84B, net margin 11.20% (Q1 14.65%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 34.3B, net income 5.2B, net margin 15.2% (6.4% in Q4'25)"
             }
           ]
         },
         "growth": {
           "ticker": "VZ",
-          "score": 3.5,
+          "score": 4,
           "status": "observed",
-          "note": "Revenue slipping, growth fading from +2.8% to -0.7%.",
+          "note": "Revenue roughly flat (+1.5%), NI +5%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/VZ",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 34.253B vs 34.504B (-0.7%); Q1 34.440B vs 33.485B (+2.9%); NI 3.835B vs 5.003B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 34.313B vs 33.821B (+1.5%); Q2 -0.7%; net income 5.198B vs 4.950B"
             }
           ]
         },
         "catalyst": {
           "ticker": "VZ",
-          "score": 6,
-          "note": "Reported 2026-10-26 EPS 1.31 vs 1.27 est (+3.1%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-26",
-              "claim": "VZ EPS actual 1.31 vs estimate 1.27"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "O": {
         "momentum": {
           "ticker": "O",
-          "score": 2.33,
-          "note": "56.83 vs 50-DMA 57.97 / 100-DMA 60.48; 3m RS -16.3pp, 6m RS -15.9pp vs SPY; 13.6% off trailing high; bars to 2026-10-26",
+          "score": 4.3730946613298505,
+          "note": "59.53 vs 50-DMA 57.05 / 100-DMA 60.14; 3m RS -1.5pp, 6m RS -6.4pp vs SPY; 9.5% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/O",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.33/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 4.37/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "O",
           "score": 5.5,
-          "note": "REIT; leverage not checked.",
+          "note": "REIT; GAAP margin only, leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "O Q2 2026 revenue 1.548B, net income 370.5M, net margin 23.94%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 1.62B, net income 432M, net margin 26.7%"
             }
           ]
         },
         "growth": {
           "ticker": "O",
-          "score": 5.5,
+          "score": 6,
           "status": "observed",
-          "note": "Revenue +9.7% YoY, NI higher.",
+          "note": "Steady rev +10.3% (prior +9.7%), NI +37%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/O",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 1.548B vs 1.410B (+9.7%); NI 370.5M vs 196.9M"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 1.622B vs 1.471B (+10.3%); Q2 1.548B vs 1.410B (+9.7%); net income 432M vs 316M"
             }
           ]
         },
         "catalyst": {
           "ticker": "O",
-          "score": 4,
-          "note": "Reports 2026-11-02 after close; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-02",
-              "claim": "O earnings scheduled 2026-11-02 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "LIN": {
         "momentum": {
           "ticker": "LIN",
-          "score": 4.55,
-          "note": "508.58 vs 50-DMA 481.15 / 100-DMA 495.80; 3m RS -4.0pp, 6m RS -7.6pp vs SPY; 7.0% off trailing high; bars to 2026-10-26",
+          "score": 4.582353955952247,
+          "note": "515.92 vs 50-DMA 483.53 / 100-DMA 495.81; 3m RS +9.3pp, 6m RS -0.6pp vs SPY; 5.6% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/LIN",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.55/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.58/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "LIN",
-          "score": 8.5,
-          "note": "Stable margins; reduced coverage.",
+          "score": 8,
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "LIN Q2 2026 revenue 9.29B, net income 1.93B, net margin 20.76% (Q1 21.15%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 9.4B, net income 1.69B, net margin 18.0%, 17-21% over four quarters"
             }
           ]
         },
         "growth": {
           "ticker": "LIN",
-          "score": 5.5,
+          "score": 5,
           "status": "observed",
-          "note": "Steady ~9% revenue growth, slightly accelerating.",
+          "note": "Rev +9.2% steady but NI down 12%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/LIN",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 9.289B vs 8.495B (+9.3%); Q1 8.781B vs 8.112B (+8.2%); NI 1.928B vs 1.766B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 9.404B vs 8.615B (+9.2%); net income 1.692B vs 1.929B"
             }
           ]
         },
         "catalyst": {
           "ticker": "LIN",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "LIN earnings scheduled 2026-10-29 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "FCX": {
         "momentum": {
           "ticker": "FCX",
-          "score": 4.99,
-          "note": "65.94 vs 50-DMA 71.86 / 100-DMA 67.98; 3m RS +2.4pp, 6m RS +0.6pp vs SPY; 17.5% off trailing high; bars to 2026-10-26",
+          "score": 3.6628074255487304,
+          "note": "62.28 vs 50-DMA 71.58 / 100-DMA 67.98; 3m RS +0.5pp, 6m RS +8.7pp vs SPY; 22.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/FCX",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.99/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 3.66/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "FCX",
-          "score": 5.5,
-          "note": "Cyclical, margin falling.",
+          "score": 6,
+          "note": "Cyclical; profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "FCX Q2 2026 revenue 7.03B, gross profit 2.19B, net income 984M, net margin 14.0% (Q1 22.25%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 7.55B, gross profit 2.55B, net income 1.17B, net margin 15.6%"
             }
           ]
         },
         "growth": {
           "ticker": "FCX",
-          "score": 3.5,
+          "score": 5.5,
           "status": "observed",
-          "note": "Revenue -7.3% YoY, NI down ~36%.",
+          "note": "Rev turned positive (+8.2% vs -7.3%) but NI -6%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/FCX",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 7.029B vs 7.582B (-7.3%); NI 984M vs 1.547B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 7.546B vs 6.972B (+8.2%); Q2 7.029B vs 7.582B (-7.3%); net income 1.174B vs 1.247B"
             }
           ]
         },
         "catalyst": {
           "ticker": "FCX",
-          "score": 6.5,
-          "note": "Reported 2026-10-27 EPS 0.88 vs 0.82 est (+7.3%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "FCX EPS actual 0.88 vs estimate 0.82"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "UNP": {
         "momentum": {
           "ticker": "UNP",
-          "score": 5.58,
-          "note": "299.96 vs 50-DMA 287.49 / 100-DMA 285.16; 3m RS -2.5pp, 6m RS +3.4pp vs SPY; 3.4% off trailing high; bars to 2026-10-26",
+          "score": 6.469111754187305,
+          "note": "300.61 vs 50-DMA 286.49 / 100-DMA 288.47; 3m RS +3.7pp, 6m RS +11.0pp vs SPY; 3.2% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/UNP",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.58/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 6.47/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "UNP",
           "score": 8,
-          "note": "Reduced coverage; rail leverage not checked.",
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "UNP Q3 2026 revenue 7.20B, net income 2.08B, net margin 28.85%"
+              "claim": "Q3'26 revenue 7.2B, net income 2.08B, net margin 28.9%, steady 27-30%"
             }
           ]
         },
         "growth": {
           "ticker": "UNP",
-          "score": 6.5,
+          "score": 7,
           "status": "observed",
-          "note": "Revenue +15.3%, accelerating from +11.5%; NI +16%.",
+          "note": "Rev +15.3% accelerating from +11.5%, NI +16%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/UNP",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 7.197B vs 6.244B (+15.3%); Q2 6.864B vs 6.154B (+11.5%); NI 2.076B vs 1.788B"
+              "claim": "Q3 revenue 7.197B vs 6.244B (+15.3%); Q2 6.864B vs 6.154B (+11.5%); net income 2.076B vs 1.788B"
             }
           ]
         },
         "catalyst": {
           "ticker": "UNP",
-          "score": 5.5,
-          "note": "Reported 2026-10-22 EPS 3.53 vs 3.47 est (+1.7%), modest beat.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-22",
-              "claim": "UNP EPS actual 3.53 vs estimate 3.47"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "SYY": {
         "momentum": {
           "ticker": "SYY",
-          "score": 5.16,
-          "note": "82.31 vs 50-DMA 80.54 / 100-DMA 81.33; 3m RS -6.8pp, 6m RS +5.2pp vs SPY; 3.5% off trailing high; bars to 2026-10-27",
+          "score": 4.018106856660715,
+          "note": "77.04 vs 50-DMA 80.54 / 100-DMA 81.50; 3m RS -0.1pp, 6m RS +10.1pp vs SPY; 9.7% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SYY",
-              "asOf": "2026-10-27",
-              "claim": "producer/momentum.mjs RS/MA composite 5.16/10 from recorded daily closes through 2026-10-27"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.02/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "SYY",
-          "score": null,
-          "note": "Newest quarter ends 2026-06-27, just outside 120-day window.",
-          "status": "missing",
-          "evidence": []
+          "score": 4.5,
+          "note": "Very thin margin.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood/get_financials",
+              "asOf": "2026-09-26",
+              "claim": "FQ1'27 revenue 21.7B, gross profit 4.05B, net income 526M, net margin 2.4%"
+            }
+          ]
         },
         "growth": {
           "ticker": "SYY",
           "score": 4.5,
           "status": "observed",
-          "note": "Revenue +4.7%, NI +4%.",
+          "note": "Rev +2.8% (fading from +4.7%), NI +10.5%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/SYY",
-              "asOf": "2026-06-27",
-              "claim": "Q4 FY26 revenue 22.124B vs 21.137B (+4.7%); NI 552M vs 531M"
+              "asOf": "2026-09-26",
+              "claim": "Q1 FY27 revenue 21.744B vs 21.148B (+2.8%); prior quarter +4.7%; net income 526M vs 476M"
             }
           ]
         },
         "catalyst": {
           "ticker": "SYY",
-          "score": 4,
-          "note": "Reports 2026-11-03 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-03",
-              "claim": "SYY earnings scheduled 2026-11-03 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "WM": {
         "momentum": {
           "ticker": "WM",
-          "score": 5.36,
-          "note": "235.63 vs 50-DMA 217.28 / 100-DMA 222.37; 3m RS -2.6pp, 6m RS -0.5pp vs SPY; 2.7% off trailing high; bars to 2026-10-26",
+          "score": 4.506986145522889,
+          "note": "235.29 vs 50-DMA 217.84 / 100-DMA 222.86; 3m RS +5.4pp, 6m RS +0.2pp vs SPY; 2.9% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/WM",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.36/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.51/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "WM",
           "score": 7,
-          "note": "Reduced coverage.",
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "WM Q2 2026 revenue 6.68B, gross profit 2.73B, net income 785M, net margin 11.74%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 6.85B, gross profit 2.75B, net income 820M, net margin 12.0%, very stable"
             }
           ]
         },
         "growth": {
           "ticker": "WM",
-          "score": 4.8,
+          "score": 6.5,
           "status": "observed",
-          "note": "Revenue +4.0%, NI +8%.",
+          "note": "Rev +6.3% accelerating from +3.9%, NI +36%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/WM",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 6.684B vs 6.430B (+4.0%); NI 785M vs 726M"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 6.846B vs 6.443B (+6.3%); Q2 6.684B vs 6.430B (+3.9%); net income 820M vs 603M"
             }
           ]
         },
         "catalyst": {
           "ticker": "WM",
-          "score": 4.5,
-          "note": "Reported 2026-10-27 EPS 2.15 vs 2.18 est (-1.4%), slight miss.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "WM EPS actual 2.15 vs estimate 2.18"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "MCD": {
         "momentum": {
           "ticker": "MCD",
-          "score": 2.12,
-          "note": "249.47 vs 50-DMA 249.35 / 100-DMA 261.49; 3m RS -11.4pp, 6m RS -20.6pp vs SPY; 21.0% off trailing high; bars to 2026-10-26",
+          "score": 3.344282970135721,
+          "note": "279.43 vs 50-DMA 248.28 / 100-DMA 260.52; 3m RS -0.4pp, 6m RS -11.8pp vs SPY; 10.4% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/MCD",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.12/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 3.34/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "MCD",
-          "score": 8,
-          "note": "Reduced coverage; MCD has negative equity/high leverage, not checked.",
+          "score": 8.5,
+          "note": "Profitability only; franchise leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "MCD Q2 2026 revenue 7.10B, gross profit 6.42B, net income 2.36B, net margin 33.27%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 7.16B, gross profit 6.47B, net income 2.49B, net margin 34.7%"
             }
           ]
         },
@@ -1932,101 +1796,89 @@
           "ticker": "MCD",
           "score": 4.5,
           "status": "observed",
-          "note": "Revenue +3.7%, NI +4.8%.",
+          "note": "Rev +1.1% (fading from +3.7%), NI +9%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/MCD",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 7.099B vs 6.843B (+3.7%); NI 2.362B vs 2.253B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 7.157B vs 7.078B (+1.1%); Q2 7.099B vs 6.843B (+3.7%); net income 2.486B vs 2.278B"
             }
           ]
         },
         "catalyst": {
           "ticker": "MCD",
-          "score": 4,
-          "note": "Reports 2026-11-04 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-04",
-              "claim": "MCD earnings scheduled 2026-11-04 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "TSLA": {
         "momentum": {
           "ticker": "TSLA",
-          "score": 7.06,
-          "note": "407.46 vs 50-DMA 364.76 / 100-DMA 367.92; 3m RS +24.1pp, 6m RS -3.6pp vs SPY; 8.5% off trailing high; bars to 2026-10-26",
+          "score": 4.951130911977193,
+          "note": "374.12 vs 50-DMA 369.60 / 100-DMA 367.92; 3m RS +26.5pp, 6m RS +0.5pp vs SPY; 16.0% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/TSLA",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.06/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.95/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "TSLA",
           "score": 4.5,
-          "note": "Thin margin, extreme valuation not part of quality.",
+          "note": "Low margins relative to valuation.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "TSLA Q3 2026 revenue 28.05B, gross profit 5.49B, net income 787M, net margin 2.81%"
+              "claim": "Q3'26 revenue 28.0B, gross profit 5.49B (19.6% GM), net income 787M, net margin 2.8%"
             }
           ]
         },
         "growth": {
           "ticker": "TSLA",
-          "score": 3.5,
+          "score": 3,
           "status": "observed",
-          "note": "Revenue growth collapsed from +25% to flat; NI down ~43%.",
+          "note": "Revenue growth stalled (-0.2% vs +25.5%), NI -43%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/TSLA",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 28.046B vs 28.095B (-0.2%); Q2 28.236B vs 22.496B (+25.5%); NI 787M vs 1.373B"
+              "claim": "Q3 revenue 28.046B vs 28.095B (-0.2%); Q2 28.236B vs 22.496B (+25.5%); net income 787M vs 1.373B"
             }
           ]
         },
         "catalyst": {
           "ticker": "TSLA",
-          "score": 7,
-          "note": "Reported 2026-10-21 EPS 0.48 vs 0.40 est (+20%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-21",
-              "claim": "TSLA EPS actual 0.48 vs estimate 0.40"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "SPY": {
         "momentum": {
           "ticker": "SPY",
-          "score": 5.58,
-          "note": "769.72 vs 50-DMA 767.59 / 100-DMA 758.26; 3m RS +0.0pp, 6m RS +0.0pp vs SPY; 1.2% off trailing high; bars to 2026-10-26",
+          "score": 5.286563410524105,
+          "note": "749.96 vs 50-DMA 765.35 / 100-DMA 759.65; 3m RS +0.0pp, 6m RS +0.0pp vs SPY; 3.7% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SPY",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.58/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 5.29/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "SPY",
           "score": null,
-          "note": "ETF; quality factor not applicable.",
+          "note": "Fund; no company financials.",
           "status": "missing",
           "evidence": []
         },
@@ -2034,41 +1886,41 @@
           "ticker": "SPY",
           "score": null,
           "status": "missing",
-          "note": "ETF; no company financials.",
+          "note": "Index fund; no company financials.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "SPY",
           "score": null,
-          "note": "Index ETF; no catalyst evidence.",
           "status": "missing",
+          "note": "Index ETF; no single-name catalyst evidence retrieved.",
           "evidence": []
         }
       },
       "AVGO": {
         "momentum": {
           "ticker": "AVGO",
-          "score": 1.31,
-          "note": "342.46 vs 50-DMA 355.48 / 100-DMA 372.97; 3m RS -16.9pp, 6m RS -28.3pp vs SPY; 28.9% off trailing high; bars to 2026-10-26",
+          "score": 1.1266696595687575,
+          "note": "332.04 vs 50-DMA 346.90 / 100-DMA 366.50; 3m RS -20.9pp, 6m RS -27.2pp vs SPY; 31.1% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/AVGO",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 1.31/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 1.13/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "AVGO",
           "score": 8.5,
-          "note": "Leverage not checked.",
+          "note": "Profitability only; debt load not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-08-02",
-              "claim": "AVGO FQ3 FY26 revenue 29.59B, gross profit 20.46B, net income 13.09B, net margin 44.23%"
+              "claim": "FQ3'26 revenue 29.6B, gross profit 20.5B, net income 13.1B, net margin 44.2%"
             }
           ]
         },
@@ -2076,101 +1928,95 @@
           "ticker": "AVGO",
           "score": 9.5,
           "status": "observed",
-          "note": "Revenue +85.5% YoY, accelerating from +47.9%; NI ~3x.",
+          "note": "Rev +85.5% accelerating from +47.9%, NI +216%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/AVGO",
               "asOf": "2026-08-02",
-              "claim": "Q3 FY26 revenue 29.591B vs 15.952B (+85.5%); Q2 22.187B vs 15.004B (+47.9%); NI 13.088B vs 4.140B"
+              "claim": "Q3 FY26 revenue 29.591B vs 15.952B (+85.5%); Q2 22.187B vs 15.004B (+47.9%); net income 13.09B vs 4.14B"
             }
           ]
         },
         "catalyst": {
           "ticker": "AVGO",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "GOOGL": {
         "momentum": {
           "ticker": "GOOGL",
-          "score": 2.61,
-          "note": "320.56 vs 50-DMA 342.36 / 100-DMA 348.13; 3m RS -8.4pp, 6m RS -16.6pp vs SPY; 20.4% off trailing high; bars to 2026-10-26",
+          "score": 1.1780856125497108,
+          "note": "287.38 vs 50-DMA 331.76 / 100-DMA 340.77; 3m RS -13.9pp, 6m RS -27.7pp vs SPY; 28.6% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/GOOGL",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.61/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 1.18/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "GOOGL",
           "score": 8.5,
-          "note": "Net margin 93.7% inflated by non-operating gains; scored on gross margin 61.6%.",
+          "note": "Q2 net income inflated by gains; underlying margin used.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "GOOGL Q2 2026 revenue 119.8B, gross profit 73.85B, net income 112.2B"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 127.6B, gross profit 76.2B, net income 26.5B, net margin 20.8%"
             }
           ]
         },
         "growth": {
           "ticker": "GOOGL",
-          "score": 8.5,
+          "score": 8,
           "status": "observed",
-          "note": "Revenue +24.2%, accelerating from +21.8%; reported NI likely distorted by gains.",
+          "note": "Rev +24.7% sustained; GAAP NI down YoY on investment-gain noise.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/GOOGL",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 119.796B vs 96.428B (+24.2%); Q1 109.896B vs 90.234B (+21.8%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 127.577B vs 102.346B (+24.7%); Q2 119.796B vs 96.428B (+24.2%); net income 26.5B vs 35.0B"
             }
           ]
         },
         "catalyst": {
           "ticker": "GOOGL",
-          "score": 3.5,
-          "note": "Reports 2026-10-28 after close; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-28",
-              "claim": "GOOGL earnings scheduled 2026-10-28 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "COST": {
         "momentum": {
           "ticker": "COST",
-          "score": 5.03,
-          "note": "992.13 vs 50-DMA 939.75 / 100-DMA 945.16; 3m RS +0.7pp, 6m RS -6.3pp vs SPY; 9.3% off trailing high; bars to 2026-10-26",
+          "score": 7.157667892727295,
+          "note": "1066.15 vs 50-DMA 952.41 / 100-DMA 949.30; 3m RS +12.9pp, 6m RS +2.6pp vs SPY; 2.6% off trailing high; bars to 2026-11-06",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/COST",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.03/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-06",
+              "claim": "producer/momentum.mjs RS/MA composite 7.16/10 from recorded daily closes through 2026-11-06"
             }
           ]
         },
         "quality": {
           "ticker": "COST",
-          "score": 7.5,
-          "note": "Low margin but stable.",
+          "score": 6.5,
+          "note": "Thin but very stable margin.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-08-30",
-              "claim": "COST FQ4 FY26 revenue 95.72B, gross profit 12.19B, net income 3.0B, net margin 3.13%"
+              "claim": "FQ4'26 revenue 95.7B, gross profit 12.2B, net income 3.0B, net margin 3.1%, 2.9-3.1% across four periods"
             }
           ]
         },
@@ -2178,47 +2024,47 @@
           "ticker": "COST",
           "score": 6.5,
           "status": "observed",
-          "note": "Revenue ~+11%, NI +15%; Q4 is a longer fiscal quarter, so comparison is approximate.",
+          "note": "Steady rev ~+11%, NI +15%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/COST",
               "asOf": "2026-08-30",
-              "claim": "Q4 FY26 revenue 95.723B vs 86.156B (+11.1%); Q3 70.527B vs 63.205B (+11.6%); NI 2.998B vs 2.610B"
+              "claim": "Q4 FY26 revenue 95.723B vs 86.156B (+11.1%); Q3 70.527B vs 63.205B (+11.6%); net income 2.998B vs 2.610B"
             }
           ]
         },
         "catalyst": {
           "ticker": "COST",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "V": {
         "momentum": {
           "ticker": "V",
-          "score": 7.92,
-          "note": "401.94 vs 50-DMA 377.87 / 100-DMA 363.17; 3m RS +6.9pp, 6m RS +23.5pp vs SPY; 3.0% off trailing high; bars to 2026-10-26",
+          "score": 9.26287366901549,
+          "note": "423.00 vs 50-DMA 386.65 / 100-DMA 372.53; 3m RS +18.7pp, 6m RS +28.5pp vs SPY; 3.1% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/V",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.92/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 9.26/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "V",
-          "score": 9,
-          "note": "Reduced coverage.",
+          "score": 9.5,
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "V FQ3 FY26 revenue 11.63B, net income 5.63B, net margin 48.38%"
+              "asOf": "2026-09-30",
+              "claim": "FQ4'26 revenue 12.1B, net income 6.0B, net margin 49.4%"
             }
           ]
         },
@@ -2226,95 +2072,89 @@
           "ticker": "V",
           "score": 7,
           "status": "observed",
-          "note": "Revenue +14.4%, slightly fading from ~17%; NI +6.8%.",
+          "note": "Rev +13.2% (prior +14.4%), NI +17.9%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/V",
-              "asOf": "2026-06-30",
-              "claim": "Q3 FY26 revenue 11.633B vs 10.172B (+14.4%); Q2 11.230B vs 9.594B (+17.1%); NI 5.628B vs 5.272B"
+              "asOf": "2026-09-30",
+              "claim": "Q4 FY26 revenue 12.139B vs 10.724B (+13.2%); Q3 11.633B vs 10.172B (+14.4%); net income 6.0B vs 5.09B"
             }
           ]
         },
         "catalyst": {
           "ticker": "V",
-          "score": 5.5,
-          "note": "Reported 2026-10-27 EPS 3.48 vs 3.44 est (+1.2%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "V EPS actual 3.48 vs estimate 3.44"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "JNJ": {
         "momentum": {
           "ticker": "JNJ",
-          "score": 6,
-          "note": "268.78 vs 50-DMA 265.32 / 100-DMA 258.32; 3m RS -3.5pp, 6m RS +11.2pp vs SPY; 3.5% off trailing high; bars to 2026-10-26",
+          "score": 8.136099230557768,
+          "note": "279.88 vs 50-DMA 266.07 / 100-DMA 262.11; 3m RS +10.9pp, 6m RS +25.6pp vs SPY; 0.8% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/JNJ",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 6.00/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 8.14/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "JNJ",
-          "score": 7,
-          "note": "Latest quarter net income only 210M (0.83% margin), likely one-off charge; prior quarter 21.9%.",
+          "score": 6.5,
+          "note": "Q3 net margin 0.8% looks like a one-off charge; prior quarters about 21%.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-27",
-              "claim": "JNJ Q3 2026 revenue 25.40B, gross profit 17.30B, net income 210M; Q2 net margin 21.86%"
+              "claim": "Q3'26 revenue 25.4B, gross profit 17.3B, net income 210M (0.83%); Q2 net margin 21.9%"
             }
           ]
         },
         "growth": {
           "ticker": "JNJ",
-          "score": 5,
+          "score": 4.5,
           "status": "observed",
-          "note": "Revenue +5.9%; latest-quarter NI collapsed on apparent one-time item.",
+          "note": "Rev +5.9% but Q3 NI collapsed to 0.21B (likely one-off charge).",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/JNJ",
               "asOf": "2026-09-27",
-              "claim": "Q3 2026 revenue 25.399B vs 23.993B (+5.9%); Q2 25.310B vs 23.743B (+6.6%); Q3 NI 210M"
+              "claim": "Q3 revenue 25.399B vs 23.993B (+5.9%); net income 210M vs 5.15B"
             }
           ]
         },
         "catalyst": {
           "ticker": "JNJ",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "ELV": {
         "momentum": {
           "ticker": "ELV",
-          "score": 7.09,
-          "note": "421.37 vs 50-DMA 408.67 / 100-DMA 402.59; 3m RS +8.5pp, 6m RS +14.1pp vs SPY; 5.4% off trailing high; bars to 2026-10-26",
+          "score": 5.467109277277309,
+          "note": "427.00 vs 50-DMA 410.56 / 100-DMA 402.69; 3m RS +12.1pp, 6m RS +10.9pp vs SPY; 4.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/ELV",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.09/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.47/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "ELV",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -2322,155 +2162,137 @@
           "ticker": "ELV",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "ELV",
-          "score": 8,
-          "note": "Reported 2026-10-21 EPS 6.99 vs 4.69 est (+49%), large beat.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-21",
-              "claim": "ELV EPS actual 6.99 vs estimate 4.69"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "CAT": {
         "momentum": {
           "ticker": "CAT",
-          "score": 0.77,
-          "note": "713.63 vs 50-DMA 796.45 / 100-DMA 854.49; 3m RS -21.0pp, 6m RS -23.5pp vs SPY; 33.0% off trailing high; bars to 2026-10-26",
+          "score": 0,
+          "note": "584.49 vs 50-DMA 756.32 / 100-DMA 825.11; 3m RS -26.7pp, 6m RS -37.2pp vs SPY; 45.1% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/CAT",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 0.77/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 0.00/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "CAT",
-          "score": 8,
-          "note": "Reduced coverage.",
+          "score": 7.5,
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "CAT Q2 2026 revenue 20.54B, gross profit 7.76B, net income 3.59B, net margin 17.49%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 20.7B, gross profit 7.35B, net income 3.29B, net margin 15.9%"
             }
           ]
         },
         "growth": {
           "ticker": "CAT",
-          "score": 7,
+          "score": 7.5,
           "status": "observed",
-          "note": "Revenue ~+24% YoY by quarter-level comparison, but year-ago rows carry inconsistent dates, so lower confidence.",
+          "note": "Rev +17.3%, NI +43%, growth strong.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/CAT",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 20.543B, NI 3.593B; Q1 17.415B; comparable year-ago row (16.569B) is mis-dated in feed"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 20.682B vs 17.638B (+17.3%); net income 3.286B vs 2.299B (+43%)"
             }
           ]
         },
         "catalyst": {
           "ticker": "CAT",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "CAT earnings scheduled 2026-10-29 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "CVX": {
         "momentum": {
           "ticker": "CVX",
-          "score": 8.93,
-          "note": "228.33 vs 50-DMA 211.06 / 100-DMA 197.53; 3m RS +20.4pp, 6m RS +18.5pp vs SPY; 2.1% off trailing high; bars to 2026-10-26",
+          "score": 6.260972164947827,
+          "note": "211.10 vs 50-DMA 213.15 / 100-DMA 199.25; 3m RS +24.2pp, 6m RS +21.7pp vs SPY; 10.4% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/CVX",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 8.93/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 6.26/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "CVX",
           "score": 6.5,
-          "note": "Cyclical margin.",
+          "note": "Cyclical; margin volatile.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "CVX Q2 2026 revenue 70.06B, net income 12.07B, net margin 17.23% (Q1 4.55%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 67.8B, net income 9.92B, net margin 14.6% (4.6% in Q1'26)"
             }
           ]
         },
         "growth": {
           "ticker": "CVX",
-          "score": 7,
+          "score": 6.5,
           "status": "observed",
-          "note": "Revenue +56% and NI ~5x, commodity-price driven.",
+          "note": "Rev +36%, NI ~3x, but growth rate fading from +56% and commodity-driven.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/CVX",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 70.055B vs 44.822B (+56.3%); NI 12.072B vs 2.490B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 67.798B vs 49.726B (+36%); Q2 70.055B vs 44.822B (+56%); net income 9.92B vs 3.54B"
             }
           ]
         },
         "catalyst": {
           "ticker": "CVX",
-          "score": 3.5,
-          "note": "Reports 2026-10-30 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-30",
-              "claim": "CVX earnings scheduled 2026-10-30 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "KO": {
         "momentum": {
           "ticker": "KO",
-          "score": 6.77,
-          "note": "91.18 vs 50-DMA 89.20 / 100-DMA 86.29; 3m RS +1.7pp, 6m RS +15.9pp vs SPY; 4.4% off trailing high; bars to 2026-10-26",
+          "score": 8.295483556010971,
+          "note": "96.91 vs 50-DMA 90.07 / 100-DMA 87.65; 3m RS +13.4pp, 6m RS +20.3pp vs SPY; 0.0% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/KO",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 6.77/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 8.30/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "KO",
           "score": 8,
-          "note": "Reduced coverage.",
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-07-03",
-              "claim": "KO Q2 2026 revenue 13.38B, gross profit 8.42B, net income 4.43B, net margin 33.07%"
+              "asOf": "2026-10-02",
+              "claim": "Q3'26 revenue 13.4B, gross profit 8.45B, net income 4.0B, net margin 30.0%"
             }
           ]
         },
@@ -2478,94 +2300,82 @@
           "ticker": "KO",
           "score": 5.5,
           "status": "observed",
-          "note": "Revenue +6.7%, Q1 was +12%; NI up.",
+          "note": "Rev +7.4% (prior +6.7%), NI +8.5%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/KO",
-              "asOf": "2026-07-03",
-              "claim": "Q2 2026 revenue 13.380B vs 12.535B (+6.7%); Q1 12.472B vs 11.129B (+12.1%); NI 4.425B vs 3.810B"
+              "asOf": "2026-10-02",
+              "claim": "Q3 revenue 13.38B vs 12.455B (+7.4%); Q2 13.38B vs 12.535B (+6.7%); net income 4.01B vs 3.70B"
             }
           ]
         },
         "catalyst": {
           "ticker": "KO",
-          "score": 6,
-          "note": "Reported 2026-10-27 EPS 0.91 vs 0.88 est (+3.4%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "KO EPS actual 0.91 vs estimate 0.88"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "DUK": {
         "momentum": {
           "ticker": "DUK",
-          "score": 4.18,
-          "note": "124.80 vs 50-DMA 118.95 / 100-DMA 122.29; 3m RS -7.0pp, 6m RS -9.1pp vs SPY; 6.2% off trailing high; bars to 2026-10-26",
+          "score": 4.257730211998023,
+          "note": "128.01 vs 50-DMA 119.11 / 100-DMA 122.39; 3m RS +4.8pp, 6m RS -2.8pp vs SPY; 3.8% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/DUK",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.18/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.26/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "DUK",
-          "score": 5.5,
-          "note": "Utility leverage not checked.",
+          "score": 6,
+          "note": "Regulated utility; leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "DUK Q2 2026 revenue 7.43B, net income 1.09B, net margin 14.70%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 9.1B, net income 1.57B, net margin 17.2%"
             }
           ]
         },
         "growth": {
           "ticker": "DUK",
-          "score": 4.5,
+          "score": 5.5,
           "status": "observed",
-          "note": "Flat revenue, NI +11%.",
+          "note": "Rev +8.6% accelerating, NI +10%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/DUK",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 7.428B vs 7.373B (+0.7%); NI 1.092B vs 984M"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 9.101B vs 8.377B (+8.6%); Q2 +0.7%; net income 1.565B vs 1.421B"
             }
           ]
         },
         "catalyst": {
           "ticker": "DUK",
-          "score": 4,
-          "note": "Reports 2026-11-05 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-05",
-              "claim": "DUK earnings scheduled 2026-11-05 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "TMUS": {
         "momentum": {
           "ticker": "TMUS",
-          "score": 0.89,
-          "note": "146.81 vs 50-DMA 169.02 / 100-DMA 175.30; 3m RS -22.4pp, 6m RS -28.4pp vs SPY; 31.4% off trailing high; bars to 2026-10-27",
+          "score": 1.5789366220524033,
+          "note": "164.50 vs 50-DMA 167.13 / 100-DMA 174.45; 3m RS -9.3pp, 6m RS -22.0pp vs SPY; 23.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/TMUS",
-              "asOf": "2026-10-27",
-              "claim": "producer/momentum.mjs RS/MA composite 0.89/10 from recorded daily closes through 2026-10-27"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 1.58/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
@@ -2577,116 +2387,104 @@
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "TMUS Q2 2026 revenue 22.79B, net income 3.24B, net margin 14.21%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 23.6B, net income 3.46B, net margin 14.7%, rising"
             }
           ]
         },
         "growth": {
           "ticker": "TMUS",
-          "score": 5,
+          "score": 6,
           "status": "observed",
-          "note": "Revenue +7.9% but decelerating; NI flat.",
+          "note": "Rev +7.4% steady, NI +27%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/TMUS",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 22.791B vs 21.132B (+7.9%); Q1 23.107B vs 20.886B (+10.6%); NI 3.239B vs 3.222B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 23.584B vs 21.957B (+7.4%); Q2 +7.9%; net income 3.455B vs 2.714B"
             }
           ]
         },
         "catalyst": {
           "ticker": "TMUS",
-          "score": 3.5,
-          "note": "Reports 2026-10-28 after close; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-28",
-              "claim": "TMUS earnings scheduled 2026-10-28 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "AMT": {
         "momentum": {
           "ticker": "AMT",
-          "score": 6.07,
-          "note": "183.78 vs 50-DMA 174.94 / 100-DMA 174.34; 3m RS +6.5pp, 6m RS +0.4pp vs SPY; 5.3% off trailing high; bars to 2026-10-26",
+          "score": 5.122237405319991,
+          "note": "190.54 vs 50-DMA 175.87 / 100-DMA 174.07; 3m RS +10.9pp, 6m RS +1.6pp vs SPY; 1.8% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/AMT",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 6.07/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.12/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "AMT",
-          "score": 5,
-          "note": "REIT, high leverage typical, not checked.",
+          "score": 6,
+          "note": "REIT, heavily levered business (not verified here).",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "AMT Q3 2026 revenue 2.785B, net income 780.8M, net margin 28.03%"
+              "claim": "Q3'26 revenue 2.79B, net income 781M, net margin 28.0%"
             }
           ]
         },
         "growth": {
           "ticker": "AMT",
-          "score": 4,
+          "score": 3.5,
           "status": "observed",
-          "note": "Revenue +2.5%.",
+          "note": "Rev +2.5% fading from +4.7%, NI -14%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/AMT",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 2.785B vs 2.717B (+2.5%); NI 781M vs 913M"
+              "claim": "Q3 revenue 2.785B vs 2.717B (+2.5%); Q2 2.749B vs 2.627B (+4.7%); net income 781M vs 913M"
             }
           ]
         },
         "catalyst": {
           "ticker": "AMT",
-          "score": 6,
-          "note": "Reported 2026-10-27 EPS 2.87 vs 2.78 est (+3.2%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "AMT EPS actual 2.87 vs estimate 2.78"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "SHW": {
         "momentum": {
           "ticker": "SHW",
-          "score": 3.74,
-          "note": "325.95 vs 50-DMA 331.07 / 100-DMA 333.03; 3m RS -8.7pp, 6m RS -7.3pp vs SPY; 11.8% off trailing high; bars to 2026-10-26",
+          "score": 4.014523125125068,
+          "note": "352.74 vs 50-DMA 329.35 / 100-DMA 333.97; 3m RS -3.8pp, 6m RS +2.8pp vs SPY; 4.6% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SHW",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 3.74/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.01/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "SHW",
           "score": 7,
-          "note": "Reduced coverage.",
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "SHW Q3 2026 revenue 6.86B, gross profit 3.28B, net income 821M, net margin 11.97%"
+              "claim": "Q3'26 revenue 6.86B, gross profit 3.28B, net income 821M, net margin 12.0%"
             }
           ]
         },
@@ -2694,53 +2492,47 @@
           "ticker": "SHW",
           "score": 5,
           "status": "observed",
-          "note": "Revenue +7.9%, NI slightly down.",
+          "note": "Rev +7.9% steady, NI flat.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/SHW",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 6.860B vs 6.358B (+7.9%); NI 821M vs 833M"
+              "claim": "Q3 revenue 6.86B vs 6.358B (+7.9%); net income 821M vs 833M"
             }
           ]
         },
         "catalyst": {
           "ticker": "SHW",
-          "score": 4.5,
-          "note": "Reported 2026-10-27 EPS 3.63 vs 3.68 est (-1.4%), slight miss.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "SHW EPS actual 3.63 vs estimate 3.68"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "NEM": {
         "momentum": {
           "ticker": "NEM",
-          "score": 5.6,
-          "note": "112.65 vs 50-DMA 121.52 / 100-DMA 110.31; 3m RS +17.3pp, 6m RS -11.9pp vs SPY; 16.6% off trailing high; bars to 2026-10-26",
+          "score": 6.125644007270602,
+          "note": "119.96 vs 50-DMA 118.84 / 100-DMA 111.60; 3m RS +9.1pp, 6m RS +1.9pp vs SPY; 11.2% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/NEM",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.60/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 6.13/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "NEM",
           "score": 7.5,
-          "note": "Cyclical commodity margin.",
+          "note": "Commodity-driven margin.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "NEM Q3 2026 revenue 6.36B, net income 2.48B, net margin 38.90%"
+              "claim": "Q3'26 revenue 6.36B, net income 2.48B, net margin 38.9%"
             }
           ]
         },
@@ -2748,101 +2540,89 @@
           "ticker": "NEM",
           "score": 7,
           "status": "observed",
-          "note": "Revenue +15% steady, NI +35%; metal-price driven.",
+          "note": "Rev +15.2% steady, NI +35%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/NEM",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 6.363B vs 5.524B (+15.2%); NI 2.475B vs 1.832B"
+              "claim": "Q3 revenue 6.363B vs 5.524B (+15.2%); Q2 +15.1%; net income 2.475B vs 1.832B"
             }
           ]
         },
         "catalyst": {
           "ticker": "NEM",
-          "score": 7,
-          "note": "Reported 2026-10-22 EPS 2.20 vs 1.94 est (+13.4%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-22",
-              "claim": "NEM EPS actual 2.20 vs estimate 1.94"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "UPS": {
         "momentum": {
           "ticker": "UPS",
-          "score": 3.52,
-          "note": "106.13 vs 50-DMA 98.85 / 100-DMA 103.89; 3m RS -8.2pp, 6m RS -14.3pp vs SPY; 9.8% off trailing high; bars to 2026-10-26",
+          "score": 4.179251505536359,
+          "note": "110.00 vs 50-DMA 99.20 / 100-DMA 103.82; 3m RS +3.6pp, 6m RS -1.2pp vs SPY; 6.6% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/UPS",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 3.52/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.18/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "UPS",
           "score": 5,
-          "note": "Thin and falling margin.",
+          "note": "Low and volatile margin.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "UPS Q2 2026 revenue 22.83B, net income 604M, net margin 2.65% (Q1 4.08%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 22.9B, net income 1.16B, net margin 5.1% (2.7% in Q2)"
             }
           ]
         },
         "growth": {
           "ticker": "UPS",
-          "score": 3.5,
+          "score": 4,
           "status": "observed",
-          "note": "Revenue +7.6% but NI down ~53%.",
+          "note": "Rev +6.7% (fading), NI -11%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/UPS",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 22.834B vs 21.221B (+7.6%); NI 604M vs 1.283B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 22.853B vs 21.415B (+6.7%); Q2 +7.6%; net income 1.163B vs 1.311B"
             }
           ]
         },
         "catalyst": {
           "ticker": "UPS",
-          "score": 6,
-          "note": "Reported 2026-10-27 EPS 1.69 vs 1.63 est (+3.7%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "UPS EPS actual 1.69 vs estimate 1.63"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "FAST": {
         "momentum": {
           "ticker": "FAST",
-          "score": 6.72,
-          "note": "51.57 vs 50-DMA 50.42 / 100-DMA 48.94; 3m RS +5.8pp, 6m RS +8.9pp vs SPY; 2.2% off trailing high; bars to 2026-10-26",
+          "score": 5.705768883248701,
+          "note": "54.06 vs 50-DMA 50.48 / 100-DMA 49.15; 3m RS +10.2pp, 6m RS +13.8pp vs SPY; 0.0% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/FAST",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 6.72/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.71/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "FAST",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -2850,35 +2630,35 @@
           "ticker": "FAST",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "FAST",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "VRSK": {
         "momentum": {
           "ticker": "VRSK",
-          "score": 4.47,
-          "note": "187.70 vs 50-DMA 180.85 / 100-DMA 184.35; 3m RS -10.9pp, 6m RS +5.2pp vs SPY; 11.9% off trailing high; bars to 2026-10-26",
+          "score": 4.792545721709359,
+          "note": "203.03 vs 50-DMA 181.56 / 100-DMA 184.77; 3m RS +4.0pp, 6m RS +6.6pp vs SPY; 4.7% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/VRSK",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.47/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.79/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "VRSK",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -2886,89 +2666,77 @@
           "ticker": "VRSK",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "VRSK",
-          "score": 4,
-          "note": "Reports 2026-11-05 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-05",
-              "claim": "VRSK earnings scheduled 2026-11-05 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "SBUX": {
         "momentum": {
           "ticker": "SBUX",
-          "score": 4.82,
-          "note": "103.04 vs 50-DMA 99.41 / 100-DMA 101.44; 3m RS -3.7pp, 6m RS -2.1pp vs SPY; 5.1% off trailing high; bars to 2026-10-26",
+          "score": 4.185188927900418,
+          "note": "107.73 vs 50-DMA 99.26 / 100-DMA 101.77; 3m RS +2.6pp, 6m RS -3.9pp vs SPY; 0.8% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SBUX",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.82/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.19/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "SBUX",
-          "score": null,
-          "note": "Newest quarter ends 2026-06-28, outside 120-day window.",
-          "status": "missing",
-          "evidence": []
+          "score": 5,
+          "note": "Recovering from very low margins.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood/get_financials",
+              "asOf": "2026-06-28",
+              "claim": "FQ3'26 revenue 9.32B, net income 1.05B, net margin 11.2% (1.4% in FQ4'25)"
+            }
+          ]
         },
         "growth": {
           "ticker": "SBUX",
-          "score": 5,
-          "status": "observed",
-          "note": "Revenue slightly negative, but earnings recovering sharply.",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_financials/SBUX",
-              "asOf": "2026-06-28",
-              "claim": "Q3 FY26 revenue 9.323B vs 9.456B (-1.4%); NI 1.045B vs 558M"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "Latest period 2026-06-28 is more than 120 days old.",
+          "evidence": []
         },
         "catalyst": {
           "ticker": "SBUX",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 after close; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "SBUX earnings scheduled 2026-10-29 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "DECK": {
         "momentum": {
           "ticker": "DECK",
-          "score": 1.09,
-          "note": "80.55 vs 50-DMA 83.34 / 100-DMA 93.38; 3m RS -26.0pp, 6m RS -31.7pp vs SPY; 29.6% off trailing high; bars to 2026-10-26",
+          "score": 1.377472510045397,
+          "note": "87.89 vs 50-DMA 82.66 / 100-DMA 92.25; 3m RS -15.3pp, 6m RS -20.5pp vs SPY; 23.2% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/DECK",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 1.09/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 1.38/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "DECK",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -2976,41 +2744,35 @@
           "ticker": "DECK",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "DECK",
-          "score": 7,
-          "note": "Reported 2026-10-22 EPS 2.03 vs 1.80 est (+12.8%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-22",
-              "claim": "DECK EPS actual 2.03 vs estimate 1.80"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "VTI": {
         "momentum": {
           "ticker": "VTI",
-          "score": 5.45,
-          "note": "377.89 vs 50-DMA 377.65 / 100-DMA 373.85; 3m RS -0.7pp, 6m RS -0.5pp vs SPY; 1.7% off trailing high; bars to 2026-10-26",
+          "score": 5.263809255408861,
+          "note": "369.56 vs 50-DMA 376.23 / 100-DMA 374.41; 3m RS -0.2pp, 6m RS +0.2pp vs SPY; 3.8% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/VTI",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.45/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 5.26/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "VTI",
           "score": null,
-          "note": "ETF; quality factor not applicable.",
+          "note": "Fund; no company financials.",
           "status": "missing",
           "evidence": []
         },
@@ -3018,191 +2780,191 @@
           "ticker": "VTI",
           "score": null,
           "status": "missing",
-          "note": "ETF; no company financials.",
+          "note": "Index fund; no company financials.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "VTI",
           "score": null,
-          "note": "Index ETF; no catalyst evidence.",
           "status": "missing",
+          "note": "Index ETF; no single-name catalyst evidence retrieved.",
           "evidence": []
         }
       },
       "AAPL": {
         "momentum": {
           "ticker": "AAPL",
-          "score": 7.17,
-          "note": "347.08 vs 50-DMA 330.23 / 100-DMA 319.71; 3m RS -2.2pp, 6m RS +21.5pp vs SPY; 0.3% off trailing high; bars to 2026-10-26",
+          "score": 8.364171620303196,
+          "note": "348.63 vs 50-DMA 336.63 / 100-DMA 324.32; 3m RS +17.3pp, 6m RS +18.0pp vs SPY; 0.6% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/AAPL",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.17/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 8.36/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "AAPL",
-          "score": null,
-          "note": "Newest quarter ends 2026-06-27, outside 120-day window.",
-          "status": "missing",
-          "evidence": []
+          "score": 9,
+          "note": "Profitability only.",
+          "status": "observed",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood/get_financials",
+              "asOf": "2026-09-26",
+              "claim": "FQ4'26 revenue 114.5B, gross profit 54.8B, net income 30.7B, net margin 26.8%"
+            }
+          ]
         },
         "growth": {
           "ticker": "AAPL",
-          "score": 7.5,
+          "score": 6.5,
           "status": "observed",
-          "note": "Revenue +16.4%, steady vs +16.6%; NI +27%.",
+          "note": "Rev +11.7% (prior +16.4%, fading), NI +11.8%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/AAPL",
-              "asOf": "2026-06-27",
-              "claim": "Q3 FY26 revenue 109.417B vs 94.036B (+16.4%); Q2 111.184B vs 95.359B (+16.6%); NI 29.789B vs 23.434B"
+              "asOf": "2026-09-26",
+              "claim": "Q4 FY26 revenue 114.477B vs 102.466B (+11.7%); Q3 109.417B vs 94.036B (+16.4%); net income 30.7B vs 27.5B"
             }
           ]
         },
         "catalyst": {
           "ticker": "AAPL",
-          "score": 4,
-          "note": "Reports 2026-11-02 after close; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-02",
-              "claim": "AAPL earnings scheduled 2026-11-02 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "META": {
         "momentum": {
           "ticker": "META",
-          "score": 4.16,
-          "note": "620.12 vs 50-DMA 665.65 / 100-DMA 630.81; 3m RS +2.6pp, 6m RS -14.6pp vs SPY; 20.3% off trailing high; bars to 2026-10-27",
+          "score": 6.066069714880694,
+          "note": "641.66 vs 50-DMA 676.18 / 100-DMA 634.16; 3m RS +9.4pp, 6m RS +5.3pp vs SPY; 17.5% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/META",
-              "asOf": "2026-10-27",
-              "claim": "producer/momentum.mjs RS/MA composite 4.16/10 from recorded daily closes through 2026-10-27"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 6.07/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "META",
           "score": 8,
-          "note": "Q3 margin fell to 15.3% from 26.1%; gross margin 79%.",
+          "note": "Q3 margin dipped to 15%; capex/leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-30",
-              "claim": "META Q3 2026 revenue 64.60B, gross profit 51.23B, net income 9.86B, net margin 15.26%"
+              "claim": "Q3'26 revenue 64.6B, gross profit 51.2B (79% GM), net income 9.86B, net margin 15.3%"
             }
           ]
         },
         "growth": {
           "ticker": "META",
-          "score": 8,
+          "score": 7.5,
           "status": "observed",
-          "note": "Revenue +26.1%, slightly fading from +28%; NI distorted.",
+          "note": "Rev +26.1% (prior +28%); GAAP NI comparison distorted by a 2025 one-off, falling sequentially.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/META",
               "asOf": "2026-09-30",
-              "claim": "Q3 2026 revenue 64.601B vs 51.242B (+26.1%); Q2 60.801B vs 47.516B (+28.0%)"
+              "claim": "Q3 revenue 64.601B vs 51.242B (+26.1%); Q2 60.801B vs 47.516B (+28%); net income 9.86B vs 15.85B in Q2"
             }
           ]
         },
         "catalyst": {
           "ticker": "META",
-          "score": 8,
-          "note": "Reported 2026-10-21 EPS 7.40 vs 5.74 est (+28.9%), large beat.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-21",
-              "claim": "META EPS actual 7.40 vs estimate 5.74"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "WMT": {
         "momentum": {
           "ticker": "WMT",
-          "score": 4.79,
-          "note": "119.29 vs 50-DMA 109.53 / 100-DMA 112.01; 3m RS +3.0pp, 6m RS -12.7pp vs SPY; 11.1% off trailing high; bars to 2026-10-26",
+          "score": 6.5777329788643355,
+          "note": "125.48 vs 50-DMA 112.48 / 100-DMA 112.39; 3m RS +13.7pp, 6m RS -5.6pp vs SPY; 6.5% off trailing high; bars to 2026-11-06",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/WMT",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.79/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-06",
+              "claim": "producer/momentum.mjs RS/MA composite 6.58/10 from recorded daily closes through 2026-11-06"
             }
           ]
         },
         "quality": {
           "ticker": "WMT",
-          "score": 6,
-          "note": "Low margin.",
+          "score": 6.5,
+          "note": "Thin but stable margin.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-07-31",
-              "claim": "WMT FQ2 FY27 revenue 187.9B, gross profit 49.13B, net income 6.37B, net margin 3.39%"
+              "claim": "FQ2'27 revenue 187.9B, gross profit 49.1B, net income 6.37B, net margin 3.4%"
             }
           ]
         },
         "growth": {
           "ticker": "WMT",
-          "score": 4.8,
+          "score": 5,
           "status": "observed",
-          "note": "Revenue +5.9%, slowing from +7.3%; NI down.",
+          "note": "Rev +5.9% (fading from +7.3%), NI -9%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/WMT",
               "asOf": "2026-07-31",
-              "claim": "Q2 FY27 revenue 187.937B vs 177.402B (+5.9%); Q1 177.751B vs 165.609B (+7.3%); NI 6.366B vs 7.026B"
+              "claim": "Q2 FY27 revenue 187.937B vs 177.402B (+5.9%); Q1 +7.3%; net income 6.37B vs 7.03B"
             }
           ]
         },
         "catalyst": {
           "ticker": "WMT",
-          "score": null,
-          "note": "No in-window catalyst evidence found.",
-          "status": "missing",
-          "evidence": []
+          "score": 4,
+          "status": "observed",
+          "note": "Earnings Nov 19 before the open (verified), within about 2 weeks, so a fresh-entry risk and nudged down. No news or insider data: AV NEWS_SENTIMENT was rate-limited. Reduced coverage.",
+          "evidence": [
+            {
+              "source": "mcp:Robinhood/get_earnings_calendar",
+              "asOf": "2026-11-19",
+              "claim": "WMT FQ3 2027 earnings scheduled 2026-11-19 am, verified, EPS est 0.64"
+            }
+          ]
         }
       },
       "MA": {
         "momentum": {
           "ticker": "MA",
-          "score": 7.19,
-          "note": "609.78 vs 50-DMA 582.54 / 100-DMA 555.89; 3m RS +5.7pp, 6m RS +14.1pp vs SPY; 3.7% off trailing high; bars to 2026-10-26",
+          "score": 9.482124380458941,
+          "note": "658.98 vs 50-DMA 594.27 / 100-DMA 571.21; 3m RS +19.1pp, 6m RS +29.9pp vs SPY; 2.0% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/MA",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.19/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 9.48/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "MA",
-          "score": 9,
-          "note": "Reduced coverage.",
+          "score": 9.5,
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "MA Q2 2026 revenue 9.28B, net income 4.39B, net margin 47.30%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 9.81B, net income 4.63B, net margin 47.2%"
             }
           ]
         },
@@ -3210,155 +2972,137 @@
           "ticker": "MA",
           "score": 7,
           "status": "observed",
-          "note": "Revenue +14.1%, NI +18.6%; mild fade from +15.8%.",
+          "note": "Rev +14.0% steady, NI +17.8%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/MA",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 9.277B vs 8.133B (+14.1%); Q1 8.398B vs 7.250B (+15.8%); NI 4.388B vs 3.701B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 9.807B vs 8.602B (+14.0%); Q2 +14.1%; net income 4.63B vs 3.93B"
             }
           ]
         },
         "catalyst": {
           "ticker": "MA",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "MA earnings scheduled 2026-10-29 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "ABBV": {
         "momentum": {
           "ticker": "ABBV",
-          "score": 8.42,
-          "note": "286.43 vs 50-DMA 266.87 / 100-DMA 255.66; 3m RS +5.6pp, 6m RS +38.3pp vs SPY; 0.9% off trailing high; bars to 2026-10-26",
+          "score": 7.133401043829752,
+          "note": "291.70 vs 50-DMA 269.29 / 100-DMA 258.24; 3m RS +22.6pp, 6m RS +40.9pp vs SPY; 1.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/ABBV",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 8.42/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 7.13/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "ABBV",
-          "score": 6,
-          "note": "Volatile margin (Q1 4.6%, Q2 21.3%); leverage not checked.",
+          "score": 6.5,
+          "note": "Margin recovered from 4.6% in Q1; leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "ABBV Q2 2026 revenue 16.99B, gross profit 12.70B, net income 3.61B, net margin 21.27%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 17.4B, gross profit 13.1B, net income 4.22B, net margin 24.2%"
             }
           ]
         },
         "growth": {
           "ticker": "ABBV",
-          "score": 6,
+          "score": 6.5,
           "status": "observed",
-          "note": "Revenue +10.2%, slowing from +12.4%; NI recovering.",
+          "note": "Rev +10.3% steady, GAAP NI rebounding off low base.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/ABBV",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 16.990B vs 15.423B (+10.2%); Q1 15.002B vs 13.343B (+12.4%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 17.404B vs 15.776B (+10.3%); Q2 +10.2%; net income 4.22B vs 0.19B"
             }
           ]
         },
         "catalyst": {
           "ticker": "ABBV",
-          "score": 3.5,
-          "note": "Reports 2026-10-30 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-30",
-              "claim": "ABBV earnings scheduled 2026-10-30 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "CI": {
         "momentum": {
           "ticker": "CI",
-          "score": 5.48,
-          "note": "298.29 vs 50-DMA 282.22 / 100-DMA 284.13; 3m RS -1.7pp, 6m RS +1.2pp vs SPY; 5.6% off trailing high; bars to 2026-10-26",
+          "score": 4.679538316804502,
+          "note": "294.15 vs 50-DMA 283.91 / 100-DMA 284.48; 3m RS +8.1pp, 6m RS +3.6pp vs SPY; 6.9% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/CI",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.48/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.68/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "CI",
           "score": 5.5,
-          "note": "Thin margin.",
+          "note": "Very thin margin.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "CI Q2 2026 revenue 71.67B, net income 1.66B, net margin 2.32%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 73.7B, net income 1.44B, net margin 2.0%"
             }
           ]
         },
         "growth": {
           "ticker": "CI",
-          "score": 4.5,
+          "score": 3.5,
           "status": "observed",
-          "note": "Revenue +6.7%, NI +1.7%.",
+          "note": "Rev +5.6% fading, NI -26%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/CI",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 71.668B vs 67.178B (+6.7%); NI 1.660B vs 1.632B"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 73.683B vs 69.748B (+5.6%); Q2 +6.7%; net income 1.442B vs 1.973B"
             }
           ]
         },
         "catalyst": {
           "ticker": "CI",
-          "score": 4,
-          "note": "Reports 2026-11-05 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-05",
-              "claim": "CI earnings scheduled 2026-11-05 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "ETN": {
         "momentum": {
           "ticker": "ETN",
-          "score": 2.84,
-          "note": "384.22 vs 50-DMA 414.85 / 100-DMA 414.07; 3m RS -7.0pp, 6m RS -17.8pp vs SPY; 16.5% off trailing high; bars to 2026-10-26",
+          "score": 1.440192635851163,
+          "note": "349.81 vs 50-DMA 411.13 / 100-DMA 413.28; 3m RS -13.3pp, 6m RS -14.9pp vs SPY; 23.9% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/ETN",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.84/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 1.44/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "ETN",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3366,41 +3110,35 @@
           "ticker": "ETN",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "ETN",
-          "score": 4,
-          "note": "Reports 2026-11-03 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-03",
-              "claim": "ETN earnings scheduled 2026-11-03 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "SHEL": {
         "momentum": {
           "ticker": "SHEL",
-          "score": 8.74,
-          "note": "104.78 vs 50-DMA 96.97 / 100-DMA 90.84; 3m RS +20.7pp, 6m RS +16.0pp vs SPY; 3.1% off trailing high; bars to 2026-10-26",
+          "score": 7.176595460215582,
+          "note": "96.39 vs 50-DMA 99.25 / 100-DMA 92.72; 3m RS +11.6pp, 6m RS +14.0pp vs SPY; 11.3% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SHEL",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 8.74/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 7.18/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "SHEL",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3408,47 +3146,41 @@
           "ticker": "SHEL",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data (foreign filer).",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "SHEL",
-          "score": 3.5,
-          "note": "Reports 2026-10-29; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "SHEL earnings scheduled 2026-10-29"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "PEP": {
         "momentum": {
           "ticker": "PEP",
-          "score": 2.81,
-          "note": "133.47 vs 50-DMA 134.01 / 100-DMA 137.08; 3m RS -8.5pp, 6m RS -19.1pp vs SPY; 15.8% off trailing high; bars to 2026-10-26",
+          "score": 4.852554444379605,
+          "note": "141.32 vs 50-DMA 133.33 / 100-DMA 136.58; 3m RS +4.9pp, 6m RS -10.4pp vs SPY; 10.8% off trailing high; bars to 2026-11-06",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/PEP",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.81/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-06",
+              "claim": "producer/momentum.mjs RS/MA composite 4.85/10 from recorded daily closes through 2026-11-06"
             }
           ]
         },
         "quality": {
           "ticker": "PEP",
           "score": 6.5,
-          "note": "Reduced coverage.",
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-09-05",
-              "claim": "PEP Q3 2026 revenue 25.27B, gross profit 13.75B, net income 3.05B, net margin 12.06%"
+              "claim": "FQ3'26 revenue 25.3B, gross profit 13.75B, net income 3.05B, net margin 12.1%"
             }
           ]
         },
@@ -3456,203 +3188,173 @@
           "ticker": "PEP",
           "score": 5,
           "status": "observed",
-          "note": "Revenue +5.6%, NI +17%.",
+          "note": "Rev +5.6% (prior +6.4%), NI +17%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/PEP",
               "asOf": "2026-09-05",
-              "claim": "Q3 2026 revenue 25.274B vs 23.937B (+5.6%); NI 3.048B vs 2.603B"
+              "claim": "Q3 revenue 25.274B vs 23.937B (+5.6%); Q2 24.181B vs 22.726B (+6.4%); net income 3.05B vs 2.60B"
             }
           ]
         },
         "catalyst": {
           "ticker": "PEP",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "SO": {
         "momentum": {
           "ticker": "SO",
-          "score": 4.18,
-          "note": "92.64 vs 50-DMA 87.73 / 100-DMA 91.14; 3m RS -7.7pp, 6m RS -8.3pp vs SPY; 5.4% off trailing high; bars to 2026-10-26",
+          "score": 3.8664609174344564,
+          "note": "92.25 vs 50-DMA 87.78 / 100-DMA 91.16; 3m RS +3.1pp, 6m RS -4.9pp vs SPY; 5.8% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SO",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 4.18/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 3.87/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "SO",
-          "score": 5.5,
-          "note": "Utility leverage not checked.",
+          "score": 6,
+          "note": "Regulated utility; leverage not checked.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "SO Q2 2026 revenue 6.98B, net income 1.17B, net margin 16.83%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 8.84B, net income 2.05B, net margin 23.1% (6.9% in Q4'25)"
             }
           ]
         },
         "growth": {
           "ticker": "SO",
-          "score": 4,
+          "score": 6.5,
           "status": "observed",
-          "note": "Flat revenue, NI up.",
+          "note": "Rev +13.0% accelerating from flat, NI +20%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/SO",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 6.977B vs 6.973B (0.1%); NI 1.174B vs 880M"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 8.843B vs 7.823B (+13.0%); Q2 +0.1%; net income 2.046B vs 1.711B"
             }
           ]
         },
         "catalyst": {
           "ticker": "SO",
-          "score": 4,
-          "note": "Reports 2026-11-05 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-05",
-              "claim": "SO earnings scheduled 2026-11-05 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "T": {
         "momentum": {
           "ticker": "T",
-          "score": 1.65,
-          "note": "20.94 vs 50-DMA 24.67 / 100-DMA 23.68; 3m RS -18.8pp, 6m RS -25.3pp vs SPY; 28.0% off trailing high; bars to 2026-10-26",
+          "score": 2.566714927099521,
+          "note": "21.93 vs 50-DMA 23.87 / 100-DMA 23.52; 3m RS -8.7pp, 6m RS -14.2pp vs SPY; 22.6% off trailing high; bars to 2026-11-09",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/T",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 1.65/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-09",
+              "claim": "producer/momentum.mjs RS/MA composite 2.57/10 from recorded daily closes through 2026-11-09"
             }
           ]
         },
         "quality": {
           "ticker": "T",
-          "score": 5.5,
-          "note": "Leverage not checked.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "T Q2 2026 revenue 31.56B, net income 4.63B, net margin 14.66%"
-            }
-          ]
+          "score": null,
+          "note": "Newest RH quarter 2026-06-30 is 133 days old, outside 120-day window.",
+          "status": "missing",
+          "evidence": []
         },
         "growth": {
           "ticker": "T",
-          "score": 3.8,
-          "status": "observed",
-          "note": "Revenue +2.3%, NI +3%.",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_financials/T",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 31.558B vs 30.847B (+2.3%); NI 4.627B vs 4.500B"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "Latest period 2026-06-30 is more than 120 days old.",
+          "evidence": []
         },
         "catalyst": {
           "ticker": "T",
-          "score": 6.5,
-          "note": "Reported 2026-10-21 EPS 0.65 vs 0.60 est (+8.3%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-21",
-              "claim": "T EPS actual 0.65 vs estimate 0.60"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "PLD": {
         "momentum": {
           "ticker": "PLD",
-          "score": 2.12,
-          "note": "126.47 vs 50-DMA 134.05 / 100-DMA 138.65; 3m RS -17.5pp, 6m RS -16.8pp vs SPY; 15.7% off trailing high; bars to 2026-10-26",
+          "score": 2.3033250134662904,
+          "note": "128.96 vs 50-DMA 132.95 / 100-DMA 137.94; 3m RS -8.9pp, 6m RS -11.3pp vs SPY; 14.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/PLD",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.12/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 2.30/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "PLD",
           "score": 7,
-          "note": "REIT; leverage not checked.",
+          "note": "GAAP net income lumpy (gains).",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "PLD Q2 2026 revenue 2.43B, net income 1.06B, net margin 43.79%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 2.39B, net income 817M, net margin 34.2%"
             }
           ]
         },
         "growth": {
           "ticker": "PLD",
-          "score": 6.5,
+          "score": 5,
           "status": "observed",
-          "note": "Revenue +11.1%, accelerating from +7.4%.",
+          "note": "Rev +7.8% (prior +11.1%), NI +7%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/PLD",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 2.425B vs 2.184B (+11.1%); Q1 2.298B vs 2.140B (+7.4%)"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 2.388B vs 2.214B (+7.8%); Q2 2.425B vs 2.184B (+11.1%); net income 817M vs 764M"
             }
           ]
         },
         "catalyst": {
           "ticker": "PLD",
-          "score": 6,
-          "note": "Reported 2026-10-15 EPS 1.60 vs 1.58 est (+1.3%); 13 days old, at edge of window.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-15",
-              "claim": "PLD EPS actual 1.60 vs estimate 1.58"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "ECL": {
         "momentum": {
           "ticker": "ECL",
-          "score": 5.75,
-          "note": "291.28 vs 50-DMA 280.67 / 100-DMA 277.24; 3m RS -1.2pp, 6m RS +0.8pp vs SPY; 0.3% off trailing high; bars to 2026-10-26",
+          "score": 5.752176837788005,
+          "note": "304.57 vs 50-DMA 281.96 / 100-DMA 278.78; 3m RS +10.7pp, 6m RS +14.9pp vs SPY; 0.0% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/ECL",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.75/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.75/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "ECL",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3660,41 +3362,35 @@
           "ticker": "ECL",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "ECL",
-          "score": 5,
-          "note": "Reported 2026-10-27 EPS 2.18 in line with 2.18 est.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-27",
-              "claim": "ECL EPS actual 2.18 vs estimate 2.18"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "VMC": {
         "momentum": {
           "ticker": "VMC",
-          "score": 2.47,
-          "note": "262.55 vs 50-DMA 255.87 / 100-DMA 272.22; 3m RS -12.6pp, 6m RS -17.3pp vs SPY; 16.1% off trailing high; bars to 2026-10-26",
+          "score": 3.708668652636937,
+          "note": "289.23 vs 50-DMA 255.71 / 100-DMA 271.98; 3m RS +1.5pp, 6m RS -7.2pp vs SPY; 7.6% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/VMC",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 2.47/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 3.71/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "VMC",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3702,41 +3398,35 @@
           "ticker": "VMC",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "VMC",
-          "score": 3.5,
-          "note": "Reports 2026-10-29 pre-market; earnings risk.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-29",
-              "claim": "VMC earnings scheduled 2026-10-29 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "CSX": {
         "momentum": {
           "ticker": "CSX",
-          "score": 5.86,
-          "note": "52.26 vs 50-DMA 48.74 / 100-DMA 48.86; 3m RS -2.4pp, 6m RS +5.8pp vs SPY; 1.8% off trailing high; bars to 2026-10-26",
+          "score": 4.862711713640191,
+          "note": "49.50 vs 50-DMA 48.86 / 100-DMA 49.07; 3m RS +6.7pp, 6m RS +13.5pp vs SPY; 7.0% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/CSX",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.86/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.86/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "CSX",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3744,41 +3434,35 @@
           "ticker": "CSX",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "CSX",
-          "score": 6.5,
-          "note": "Reported 2026-10-21 EPS 0.57 vs 0.53 est (+7.5%).",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-10-21",
-              "claim": "CSX EPS actual 0.57 vs estimate 0.53"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "GWW": {
         "momentum": {
           "ticker": "GWW",
-          "score": 5.53,
-          "note": "1342.58 vs 50-DMA 1297.33 / 100-DMA 1320.20; 3m RS -6.3pp, 6m RS +10.2pp vs SPY; 4.2% off trailing high; bars to 2026-10-26",
+          "score": 5.313308131453683,
+          "note": "1465.93 vs 50-DMA 1300.84 / 100-DMA 1322.11; 3m RS +1.4pp, 6m RS +16.5pp vs SPY; 0.0% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/GWW",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 5.53/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.31/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "GWW",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3786,41 +3470,35 @@
           "ticker": "GWW",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "GWW",
-          "score": 4,
-          "note": "Reports 2026-11-04 pre-market; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-04",
-              "claim": "GWW earnings scheduled 2026-11-04 am"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "CTAS": {
         "momentum": {
           "ticker": "CTAS",
-          "score": 7.29,
-          "note": "214.78 vs 50-DMA 203.22 / 100-DMA 196.11; 3m RS +1.8pp, 6m RS +22.8pp vs SPY; 4.9% off trailing high; bars to 2026-10-26",
+          "score": 6.357728544992387,
+          "note": "221.95 vs 50-DMA 204.45 / 100-DMA 197.63; 3m RS +10.1pp, 6m RS +27.8pp vs SPY; 1.8% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/CTAS",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 7.29/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 6.36/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "CTAS",
           "score": null,
-          "note": "No RH financials returned.",
+          "note": "RH get_financials returned no data.",
           "status": "missing",
           "evidence": []
         },
@@ -3828,95 +3506,89 @@
           "ticker": "CTAS",
           "score": null,
           "status": "missing",
-          "note": "get_financials returned no data.",
+          "note": "No financials returned.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "CTAS",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "BKNG": {
         "momentum": {
           "ticker": "BKNG",
-          "score": 0.99,
-          "note": "150.13 vs 50-DMA 176.05 / 100-DMA 179.80; 3m RS -26.5pp, 6m RS -20.8pp vs SPY; 30.0% off trailing high; bars to 2026-10-26",
+          "score": 2.41110630472177,
+          "note": "164.08 vs 50-DMA 166.49 / 100-DMA 178.87; 3m RS -22.2pp, 6m RS -5.0pp vs SPY; 23.5% off trailing high; bars to 2026-11-06",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/BKNG",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 0.99/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-11-06",
+              "claim": "producer/momentum.mjs RS/MA composite 2.41/10 from recorded daily closes through 2026-11-06"
             }
           ]
         },
         "quality": {
           "ticker": "BKNG",
           "score": 8,
-          "note": "Reduced coverage.",
+          "note": "Profitability only.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
-              "asOf": "2026-06-30",
-              "claim": "BKNG Q2 2026 revenue 7.35B, net income 1.95B, net margin 26.52%"
+              "asOf": "2026-09-30",
+              "claim": "Q3'26 revenue 8.89B, net income 2.72B, net margin 30.6%"
             }
           ]
         },
         "growth": {
           "ticker": "BKNG",
-          "score": 6,
+          "score": 4,
           "status": "observed",
-          "note": "Revenue +8.2%, fading from +16.2%; NI more than doubled.",
+          "note": "Q3 rev -1.3% YoY (prior +8.1%), NI -1%; seasonal and data oddities possible.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/BKNG",
-              "asOf": "2026-06-30",
-              "claim": "Q2 2026 revenue 7.352B vs 6.798B (+8.2%); Q1 5.532B vs 4.762B (+16.2%); NI 1.950B vs 895M"
+              "asOf": "2026-09-30",
+              "claim": "Q3 revenue 8.893B vs 9.008B (-1.3%); Q2 7.352B vs 6.798B (+8.1%); net income 2.717B vs 2.748B"
             }
           ]
         },
         "catalyst": {
           "ticker": "BKNG",
-          "score": 4,
-          "note": "Reports 2026-11-03 after close; earnings within ~2 weeks.",
-          "status": "observed",
-          "evidence": [
-            {
-              "source": "mcp:Robinhood/get_earnings_calendar",
-              "asOf": "2026-11-03",
-              "claim": "BKNG earnings scheduled 2026-11-03 pm"
-            }
-          ]
+          "score": null,
+          "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
+          "evidence": []
         }
       },
       "LEN": {
         "momentum": {
           "ticker": "LEN",
-          "score": 3.75,
-          "note": "84.58 vs 50-DMA 81.12 / 100-DMA 84.10; 3m RS -3.3pp, 6m RS -15.4pp vs SPY; 10.9% off trailing high; bars to 2026-10-27",
+          "score": 4.251578923668474,
+          "note": "90.76 vs 50-DMA 81.08 / 100-DMA 83.92; 3m RS +4.4pp, 6m RS -3.5pp vs SPY; 4.4% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/LEN",
-              "asOf": "2026-10-27",
-              "claim": "producer/momentum.mjs RS/MA composite 3.75/10 from recorded daily closes through 2026-10-27"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 4.25/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "LEN",
-          "score": 5.5,
-          "note": "Cyclical homebuilder, thin margin.",
+          "score": 4.5,
+          "note": "Thin and declining margin.",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials",
               "asOf": "2026-08-31",
-              "claim": "LEN FQ3 FY26 revenue 8.05B, net income 283.9M, net margin 3.53%"
+              "claim": "FQ3'26 revenue 8.05B, net income 284M, net margin 3.5% (5.2% a year-quarter earlier)"
             }
           ]
         },
@@ -3924,41 +3596,41 @@
           "ticker": "LEN",
           "score": 2,
           "status": "observed",
-          "note": "Revenue -8.7% and NI down ~52%.",
+          "note": "Shrinking revenue (-8.7%, worse than -5.2%) and NI -52%.",
           "evidence": [
             {
               "source": "mcp:Robinhood/get_financials/LEN",
               "asOf": "2026-08-31",
-              "claim": "Q3 FY26 revenue 8.046B vs 8.810B (-8.7%); NI 284M vs 591M"
+              "claim": "Q3 revenue 8.046B vs 8.810B (-8.7%); Q2 7.940B vs 8.378B (-5.2%); net income 284M vs 591M"
             }
           ]
         },
         "catalyst": {
           "ticker": "LEN",
           "score": null,
-          "note": "No in-window catalyst evidence found.",
           "status": "missing",
+          "note": "No dated catalyst evidence within 14 days retrieved.",
           "evidence": []
         }
       },
       "SCHD": {
         "momentum": {
           "ticker": "SCHD",
-          "score": 6.18,
-          "note": "35.13 vs 50-DMA 34.08 / 100-DMA 33.45; 3m RS +0.9pp, 6m RS +6.4pp vs SPY; 0.8% off trailing high; bars to 2026-10-26",
+          "score": 5.256870392983174,
+          "note": "35.37 vs 50-DMA 34.13 / 100-DMA 33.57; 3m RS +8.9pp, 6m RS +10.5pp vs SPY; 1.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/SCHD",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 6.18/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 5.26/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "SCHD",
           "score": null,
-          "note": "ETF; quality factor not applicable.",
+          "note": "Fund; no company financials.",
           "status": "missing",
           "evidence": []
         },
@@ -3972,29 +3644,29 @@
         "catalyst": {
           "ticker": "SCHD",
           "score": null,
-          "note": "ETF; no catalyst evidence.",
           "status": "missing",
+          "note": "Dividend ETF; no single-name catalyst evidence retrieved.",
           "evidence": []
         }
       },
       "GLDM": {
         "momentum": {
           "ticker": "GLDM",
-          "score": 3.15,
-          "note": "80.34 vs 50-DMA 84.97 / 100-DMA 83.60; 3m RS -3.7pp, 6m RS -21.3pp vs SPY; 16.3% off trailing high; bars to 2026-10-26",
+          "score": 2.4927484681354475,
+          "note": "79.64 vs 50-DMA 84.27 / 100-DMA 83.33; 3m RS -1.8pp, 6m RS -17.6pp vs SPY; 17.1% off trailing high; bars to 2026-10-30 (11d stale — confidence x0.75)",
           "status": "observed",
           "evidence": [
             {
               "source": "mcp:Robinhood-get_equity_historicals/GLDM",
-              "asOf": "2026-10-26",
-              "claim": "producer/momentum.mjs RS/MA composite 3.15/10 from recorded daily closes through 2026-10-26"
+              "asOf": "2026-10-30",
+              "claim": "producer/momentum.mjs RS/MA composite 2.49/10 from recorded daily closes through 2026-10-30"
             }
           ]
         },
         "quality": {
           "ticker": "GLDM",
           "score": null,
-          "note": "Commodity trust; quality factor not applicable.",
+          "note": "Bullion trust; no company financials.",
           "status": "missing",
           "evidence": []
         },
@@ -4002,14 +3674,14 @@
           "ticker": "GLDM",
           "score": null,
           "status": "missing",
-          "note": "Commodity trust; no company financials.",
+          "note": "Gold trust; no growth data.",
           "evidence": []
         },
         "catalyst": {
           "ticker": "GLDM",
           "score": null,
-          "note": "Commodity ETF; no catalyst evidence.",
           "status": "missing",
+          "note": "Gold trust; catalyst factor not applicable and no evidence retrieved.",
           "evidence": []
         }
       }
@@ -4019,22 +3691,20 @@
   "riskSettings": {
     "indexMaxPct": 10,
     "singleNameCaps": {
-      "NVDA": 25,
-      "V": 25,
       "MSFT": 25,
-      "LLY": 25,
       "META": 25,
-      "KO": 25,
-      "MA": 25,
-      "NEM": 19.96,
-      "AMZN": 25,
+      "V": 25,
+      "CVX": 24.64,
       "SPY": 10,
-      "GOOGL": 23.69,
+      "LLY": 24.97,
+      "MA": 25,
       "AAPL": 25,
-      "CAT": 13.75,
-      "UNP": 25
+      "COST": 25,
+      "PEP": 25,
+      "KO": 25,
+      "NEM": 23.35
     },
     "lookThroughEnforced": false
   },
-  "targetId": "6bc79c22c4c0884c037f"
+  "targetId": "97f64950150a6d2dd74d"
 }
