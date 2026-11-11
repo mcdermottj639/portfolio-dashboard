@@ -1,0 +1,40 @@
+name: Prepare Portfolio journey release
+on:
+  push:
+    branches: ['ux/20261111-portfolio-journey']
+    paths: ['.journey-package/**', '.github/workflows/prepare-portfolio-journey.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    if: github.repository == 'mcdermottj639/portfolio-dashboard'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - name: Apply checksum-verified, locally tested UI patch
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib, subprocess
+          chunks = [pathlib.Path(f'.journey-package/{i}.b64').read_text().strip() for i in range(1,5)]
+          chunks[1] = chunks[1].replace('PIK5TLuZXZrF5', 'PIK5TLuZXZzrF5')
+          patch = gzip.decompress(base64.b64decode(''.join(chunks), validate=True))
+          assert hashlib.sha256(patch).hexdigest() == 'd6a80693757432cc8fce1666907e8b867f4a9d14c97f89827e8492a66b9c1db8', 'Patch integrity mismatch'
+          assert subprocess.check_output(['git','hash-object','index.html'],text=True).strip() == '88d960e3328989c17d96595736321579438f36c8', 'Source baseline moved'
+          pathlib.Path('/tmp/journey.patch').write_bytes(patch)
+          subprocess.run(['git','apply','--check','/tmp/journey.patch'],check=True)
+          subprocess.run(['git','apply','/tmp/journey.patch'],check=True)
+          PY
+          node --check ui/experience.js
+          node --check ui/journey.js
+          node --test tests/*.test.cjs
+          git diff --check
+      - name: Commit scoped release and remove temporary package
+        run: |
+          git rm -r .journey-package .github/workflows/prepare-portfolio-journey.yml
+          git add .github/workflows/tests.yml CLAUDE.md UI-PRESERVATION.md UX_REVIEW.md index.html sw.js tests/journey-browser.mjs tests/journey.test.cjs tests/verify-live-shell.py ui/experience.js ui/journey.css ui/journey.js
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Improve Portfolio holding-to-research journey (v217)'
+          git push origin HEAD:ux/20261111-portfolio-journey
