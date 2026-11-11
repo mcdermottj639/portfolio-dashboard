@@ -447,6 +447,38 @@
     return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>armed</b> in Jarvis · ${link}</div>`;
   }
 
+  /* v210 — Jack (Nov 11 2026, phone screenshot of a 50-name "News veto" paragraph): "Clean this up and merge".
+     Same rows, re-shaped: one folded line with a count per reason; inside, names that share a reason are ticker
+     chips, R/R misses are chips carrying the figure (levels on the chip's title and in the list under them), and
+     one-off reasons stay as "SYM — why" rows. Labelled "screened out": most rows are trend / R/R gates, not news. */
+  function vetoBlock(list, esc) {
+    const rows = (Array.isArray(list) ? list : []).filter((v) => v && v.sym);
+    if (!rows.length) return '';
+    const label = (why) => /^price below SMA200\b/i.test(why) ? 'Below 200-day' : why;
+    const groups = new Map(), rr = [], solo = [];
+    rows.forEach((v) => {
+      const why = String(v.why || '').trim();
+      const m = /^R\/R at entry\s+(-?[\d.]+)\s*<\s*([\d.]+)\s*(?:\((.*)\))?$/.exec(why);
+      if (m) { rr.push({ sym: v.sym, rr: m[1], floor: m[2], lv: m[3] || '' }); return; }
+      if (!why) { solo.push({ sym: v.sym, why: '' }); return; }
+      if (!groups.has(why)) groups.set(why, []);
+      groups.get(why).push(v.sym);
+    });
+    const shared = [];
+    groups.forEach((syms, why) => { if (syms.length > 1) shared.push({ why, syms }); else solo.push({ sym: syms[0], why }); });
+    shared.sort((a, b) => b.syms.length - a.syms.length);
+    const chip = (t, title) => `<span${title ? ' title="' + esc(title) + '"' : ''}>${t}</span>`;
+    const head = (t, n) => `<div style="font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#b45309;margin:8px 0 4px">${esc(t)} · ${n}</div>`;
+    const sum = shared.map((g) => chip(g.syms.length + ' ' + esc(label(g.why).toLowerCase())))
+      .concat(rr.length ? [chip(rr.length + ' R/R under ' + esc(rr[0].floor))] : [])
+      .concat(solo.length ? [chip(solo.length + ' other')] : []).join('');
+    const body = shared.map((g) => head(label(g.why), g.syms.length) + `<div class="sd-chips">${g.syms.map((s) => chip(esc(s))).join('')}</div>`).join('') +
+      (rr.length ? head('R/R under ' + rr[0].floor + ' at entry', rr.length) + `<div class="sd-chips">${rr.map((x) => chip(esc(x.sym) + ' <b>' + esc(x.rr) + '</b>', x.lv)).join('')}</div>` +
+        (rr.some((x) => x.lv) ? `<details class="sd-more" style="margin-top:4px"><summary style="font-size:10.5px;color:#6b7280">Entry → target · stop</summary>${rr.filter((x) => x.lv).map((x) => `<div style="font-size:10.5px;color:#6b7280;line-height:1.5;overflow-wrap:anywhere"><b>${esc(x.sym)}</b> ${esc(x.lv)}</div>`).join('')}</details>` : '') : '') +
+      (solo.length ? head('Other', solo.length) + solo.map((x) => `<div style="font-size:11px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>${esc(x.sym)}</b>${x.why ? ' — ' + esc(x.why) : ''}</div>`).join('') : '');
+    return `<details class="sd-more apex-veto" data-apex-veto style="margin-top:8px"><summary style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:#b45309;opacity:1"><span style="white-space:nowrap">⛔ ${rows.length} screened out ▾</span><span class="sd-chips">${sum}</span></summary>${body}</details>`;
+  }
+
   /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
      from the dashboard's SD momentum lens (sdMomentum over SD_BENCH, freshness-gated). A name only
      becomes a ticket via the Friday swap rule in the scan (beats the weakest holding by ≥ 1.5). */
@@ -481,7 +513,7 @@
     const recLine = rec && (rec.n30 > 0 || rec.n5 > 0 || rec.n90 > 0)
       ? `<div style="font-size:11.5px;margin-top:8px;color:var(--text)"><b>Record vs SPY:</b> ${[['5d', rec.n5, rec.hit5, rec.avgAlpha5], ['30d', rec.n30, rec.hit30, rec.avgAlpha30], ['90d', rec.n90, rec.hit90, rec.avgAlpha90]].filter((x) => x[1] > 0).map((x) => `${x[0]} ${Math.round(x[2] * 100)}% beat · ${x[3] >= 0 ? '+' : ''}${(+x[3]).toFixed(1)}pp (n=${x[1]})`).join(' · ')}</div>`
       : (rec ? '<div style="font-size:11px;color:#9ca3af;margin-top:8px">Record vs SPY: no graded picks yet — first marks at 5 trading days.</div>' : '');
-    const vet = Array.isArray(R.vetoed) && R.vetoed.length ? `<div style="font-size:11px;color:#b45309;margin-top:4px">⛔ News veto: ${R.vetoed.map((v) => esc(v.sym) + (v.why ? ' — ' + esc(v.why) : '')).join(' · ')}</div>` : '';
+    const vet = vetoBlock(R.vetoed, esc);
     return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div>${recLine}${vet}<div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
   }
 

@@ -180,11 +180,29 @@ ok('v190 render: record line, vetoed names, vol + extended badge', () => {
     record: { n5: 4, hit5: 0.75, avgAlpha5: 1.2, n30: 0, n90: 0 }, vetoed: [{ sym: 'SMCI', why: 'accounting probe' }] };
   A.render(el, A.state(nov5), [], { targets: { IREN: 20, VRT: 14 } }, res);
   assert.ok(/5d 75% beat · \+1\.2pp \(n=4\)/.test(el.innerHTML), 'record line');
-  assert.ok(/News veto: SMCI — accounting probe/.test(el.innerHTML));
+  assert.ok(/1 screened out/.test(el.innerHTML) && /<b>SMCI<\/b> — accounting probe/.test(el.innerHTML), 'vetoed name + reason');
   assert.ok(/vol 62%/.test(el.innerHTML) && /⏳ extended/.test(el.innerHTML));
   assert.ok(!/undefined|NaN/.test(el.innerHTML));
   A.render(el, A.state(nov5), [], {}, { rows: res.rows, record: { n5: 0, n30: 0, n90: 0 } });
   assert.ok(/no graded picks yet/.test(el.innerHTML));
+});
+
+ok('v210 screened-out fold: shared reasons become chips, R/R misses keep the figure, nothing dropped', () => {
+  const el = { innerHTML: '', querySelector: () => null };
+  const vetoed = [
+    { sym: 'NVDA', why: 'price below SMA200' }, { sym: 'GOOGL', why: 'price below SMA200' }, { sym: 'TSLA', why: 'price below SMA200' },
+    { sym: 'REGN', why: 'R/R at entry 1.16 < 1.5 (limit $919.01 → target $991.73, stop $856.28 2xATR)' },
+    { sym: 'AMZN', why: 'R/R at entry 0.47 < 1.5 (limit $268.47 → target $275.34, stop $253.96 SMA50)' },
+    { sym: 'PANW', why: '3-mo RS vs SPY not in top 40% (−11.5pp)' }, { sym: 'META', why: 'held ≥$250 in ••3900' }, { sym: 'XYZ' }];
+  A.render(el, A.state(nov5), [], {}, { rows: [{ sym: 'VRT', score: 7.8, px: 150, why: 'x', rr: 2.4 }], vetoed });
+  const h = el.innerHTML;
+  assert.ok(/8 screened out/.test(h) && /3 below 200-day/.test(h) && /2 R\/R under 1\.5/.test(h) && /3 other/.test(h), 'summary counts');
+  vetoed.forEach((v) => assert.ok(h.includes('>' + v.sym + '<') || h.includes('>' + v.sym + ' <b>'), v.sym + ' still listed'));
+  assert.ok(/REGN <b>1\.16<\/b>/.test(h) && /limit \$919\.01 → target \$991\.73, stop \$856\.28 2xATR/.test(h), 'R/R figure + levels kept');
+  assert.ok(/<b>PANW<\/b> — 3-mo RS vs SPY not in top 40%/.test(h) && /held ≥\$250/.test(h), 'one-off reasons kept verbatim');
+  assert.ok(!/News veto:/.test(h) && !/undefined|NaN/.test(h));
+  A.render(el, A.state(nov5), [], {}, { rows: [{ sym: 'VRT', score: 7.8, px: 150, why: 'x', rr: 2.4 }], vetoed: [] });
+  assert.ok(!/screened out/.test(el.innerHTML), 'empty list renders nothing');
 });
 
 /* v194 — Jack 2026-11-06 11:34 "always put the entry target prices" · 11:35 "make sure all can be bought on
