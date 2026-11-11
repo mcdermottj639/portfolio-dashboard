@@ -15,7 +15,7 @@
 .pj-steps button,.pj-notice button,.pj-filter button,.pj-row-toggle{font:inherit;background:var(--ex-soft);border:1px solid var(--ex-border);border-radius:8px;color:var(--ex-text);min-height:44px;padding:8px;cursor:pointer;font-weight:600}
 .pj-steps button{font-size:12px}.pj-steps button[aria-current="step"]{border-color:var(--ex-accent);color:var(--ex-accent)}
 .pj-steps button:disabled{opacity:.45;cursor:default}
-.pj-source{font-size:11px;color:var(--ex-muted);margin-top:7px}.pj-source summary{min-height:32px;display:flex;align-items:center;cursor:pointer}.pj-source summary::before{content:'＋';margin-right:6px}.pj-source[open] summary::before{content:'−'}.pj-source p{line-height:1.5;margin:6px 0}
+.pj-source{font-size:11px;color:var(--ex-muted);margin-top:7px}.pj-source summary{min-height:32px;display:flex;align-items:center;cursor:pointer}.pj-source summary::before{content:'+';margin-right:6px}.pj-source[open] summary::before{content:'−'}.pj-source p{line-height:1.5;margin:6px 0}
 .pj-notice{font-size:11px;line-height:1.5;margin:4px 0 0;color:var(--ex-muted)}.pj-notice button{font-size:11px;border:0;background:transparent;color:var(--ex-accent);padding:0 4px;min-height:32px}
 .pj-filter{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-bottom:10px}.pj-filter label{flex:1;min-width:100px;font-size:11px;color:var(--ex-muted)}.pj-filter input{display:block;width:100%;margin-top:4px}.pj-filter [role="status"]{width:100%;font-size:12px;color:var(--ex-muted)}.pj-filter [role="status"]:empty{display:none}
 .pj-evidence-filter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;margin:10px 0}.pj-evidence-filter span{flex-basis:100%;color:var(--ex-muted)}
@@ -30,6 +30,11 @@
 @media(max-width:520px){
  .pj-row-toggle{display:block;font-size:10px;min-height:32px;padding:4px 6px;margin-top:4px;max-width:100%}
  .pf-stack tbody tr.pf-more{padding-right:2px!important}.pf-stack tbody tr.pf-more::after{display:none}
+}
+@media(max-width:400px){
+ #page-analyze .az-search{flex-wrap:wrap;gap:6px}
+ #page-analyze .az-search input{flex:1 1 90px;min-width:90px;padding:10px 8px}
+ #page-analyze .az-search .az-btn{font-size:13px;padding:10px;min-height:44px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}}
 /* Replace the redundant Analyze hero with the useful continuation panel. */
