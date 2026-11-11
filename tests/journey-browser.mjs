@@ -17,8 +17,9 @@ try{
   if(!sessionStorage.getItem('journey-test-initialized')){localStorage.setItem('pf_acct','main');localStorage.setItem('pf_experience_route','today');sessionStorage.setItem('journey-test-initialized','1');}
  });
  await page.route('https://**/*',r=>r.request().url().startsWith(base)?r.continue():r.abort());
- await page.route('**/data.json',r=>r.fulfill({json:sample}));
- await page.route('**/data/apex-targets.json',r=>r.fulfill({json:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}}));
+ // Match query strings too: production deliberately cache-busts these read-only feeds.
+ await page.route(/\/data\.json(?:\?.*)?$/,r=>r.fulfill({json:sample}));
+ await page.route(/\/data\/apex-targets\.json(?:\?.*)?$/,r=>r.fulfill({json:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}}));
  await page.goto(base);await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);
  const nav=(route,account)=>page.evaluate(({route,account})=>PFExperience.navigate(route,account?{account}:{}),{route,account});
  const settle=()=>page.waitForTimeout(800);
