@@ -1,3 +1,15 @@
+## v212 — The Apex Confirm button lists the trades it sends (2026-11-11)
+Jack (Nov 11 04:51 ET, phone screenshot of the button reading only "1 order"): "somewhere here it's gotta tell me
+what trades it's recommended that I click to confirm". `ui/apex.js` new pure `bookLines()` (exported) = the same set
+the button counts and `portfolioPrompt` sends: build rungs, under-target adds, research-dropped exits, rule sells.
+`portfolioButton()` renders them as a "🧾 Recommended trades" list directly above the button: a BUY/SELL tag, one
+line ("Sell 4 SNPS · last $459.92"), one grey reason line. Snapshot prices; the confirm step re-prices live. No
+rule, prompt, scan or Jarvis change. IREN never appears.
+- Files: `ui/apex.js`, `producer/apex.test.mjs` (53/53, +1), `index.html` + `sw.js` (version), `CLAUDE.md`.
+- Verified: all producer suites, tests/*.test.cjs; Chromium 390 and 320px with the Nov 11 book (scrollWidth =
+  innerWidth, 0 page errors, screenshot read). Not verified: the full page with live data, a physical iPhone.
+  App/cache **v212 / pf-v212**.
+
 ## v211 — Apex stops and targets are research levels only; the card alerts at them (2026-11-11)
 Jack (Nov 11 04:29–04:31 ET): "My manual inputs should never be accounted for" · "u tell me tp or sl spots … when a
 price hits the correct tp or sl the app is telling me. But the recs are from deep research". The Nov 10 scan had
