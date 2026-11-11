@@ -714,10 +714,10 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=210">
-<link rel="stylesheet" href="ui/predictions.css?v=210">
-<link rel="stylesheet" href="ui/smartmoney.css?v=210">
-<link rel="stylesheet" href="ui/ticker.css?v=210">
+<link rel="stylesheet" href="ui/experience.css?v=211">
+<link rel="stylesheet" href="ui/predictions.css?v=211">
+<link rel="stylesheet" href="ui/smartmoney.css?v=211">
+<link rel="stylesheet" href="ui/ticker.css?v=211">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -782,9 +782,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=210"></script>
-<script src="ui/apex.js?v=210"></script>
-<script src="ui/business.js?v=210"></script>
+<script src="ui/sd-rules.js?v=211"></script>
+<script src="ui/apex.js?v=211"></script>
+<script src="ui/business.js?v=211"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -898,7 +898,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v210'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v211'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2024,7 +2024,8 @@ function renderApexCard(S){
   /* v194 (Jack, 2026-11-06: "always put the entry target prices" · "make sure all can be bought on Robinhood
      always"): the scan's per-name trigger / limit / TP1 / stop / company name / ••0741 tradability ride from
      data/apex-targets.json top5 into the build rungs, which then show entry · target · stop · R/R at entry. */
-  cfg.levels={}; try{ (T&&Array.isArray(T.top5)?T.top5:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={trigger:r.trigger,limit:r.limit,tp1:r.tp1,stop:r.stop,name:r.name||null,tradable:r.tradable,tradableAt:r.tradableAt||null}; }); }catch(_){}
+  cfg.levels={}; /* v211: heldLevels = the scan's research stop/target for EVERY held name (also ones outside the top 5); a top5 row wins. */ try{ (T&&Array.isArray(T.heldLevels)?T.heldLevels:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={tp1:r.tp1,stop:r.stop,atr:r.atr,stopBasis:r.stopBasis||null,limit:r.limit||r.entry||null,name:r.name||null}; }); }catch(_){}
+  try{ (T&&Array.isArray(T.top5)?T.top5:[]).forEach(r=>{ if(r&&r.sym) cfg.levels[r.sym]={trigger:r.trigger,limit:r.limit,tp1:r.tp1,stop:r.stop,atr:r.atr,stopBasis:r.stopBasis||null,name:r.name||null,tradable:r.tradable,tradableAt:r.tradableAt||null}; }); }catch(_){}
   /* v195 (LAB-004-P1): the risk guard follows the maintenance requirement. Optional broker inputs ride in
      window.__APEX_CFG: maint (account default), maintBy {SYM: 0–1} (Robinhood's per-name house figure, e.g. a
      concentrated name at 50%) and maintReq ($ total incl. options). None set ⇒ 30% default, guard 35% / 40%. */
@@ -2050,7 +2051,7 @@ function renderApexCard(S){
       /* v202: this week's TARGETS first (by score), then the best of the rest — a 14% target (PLTR, 6th by score) used to
          lose its tile to two names the cluster cap had already blocked. */
       const ranked=T.top5.filter(r=>r&&r.sym&&isFinite(+r.composite)).slice().sort((a,b)=>((tg[b.sym]?1:0)-(tg[a.sym]?1:0))||((+b.composite)-(+a.composite)));
-      research={rows:ranked.slice(0,5).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null,wash:(cfg.wash&&cfg.wash[r.sym])?cfg.wash[r.sym].clear:null})),record:T.record||null,vetoed:T.vetoed||[]
+      research={rows:ranked.slice(0,5).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null,atr:+r.atr||null,stopBasis:r.stopBasis||null,wash:(cfg.wash&&cfg.wash[r.sym])?cfg.wash[r.sym].clear:null})),record:T.record||null,vetoed:T.vetoed||[]
         ,asOf:T.asOf||'',source:`Weekly research · ${T.gatedCount||'?'}/${T.universeCount||'?'} passed the gates`,
         note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. 🚫 = tax hold (wash sale). ⏳ = near its 20-day high (half size). News is a veto only. Buy tickets are in Jarvis.'};
     } else if(typeof sdMomentum==='function'&&typeof SD_BENCH==='object'){
@@ -8730,13 +8731,13 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=210"></script>
-<script src="ui/predictions-model.js?v=210"></script>
-<script src="ui/predictions.js?v=210"></script>
-<script src="ui/smartmoney-model.js?v=210"></script>
-<script src="ui/smartmoney.js?v=210"></script>
-<script src="ui/experience.js?v=210"></script>
-<script src="ui/ticker.js?v=210"></script>
-<script src="ui/compact.js?v=210"></script>
+<script src="ui/experience-model.js?v=211"></script>
+<script src="ui/predictions-model.js?v=211"></script>
+<script src="ui/predictions.js?v=211"></script>
+<script src="ui/smartmoney-model.js?v=211"></script>
+<script src="ui/smartmoney.js?v=211"></script>
+<script src="ui/experience.js?v=211"></script>
+<script src="ui/ticker.js?v=211"></script>
+<script src="ui/compact.js?v=211"></script>
 </body>
 </html>
