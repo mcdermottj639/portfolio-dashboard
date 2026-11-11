@@ -482,6 +482,20 @@
     (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? P('limit', r.ticket.px, r.ticket.gtc ? 'GTC' : 'Day') : '', est: !fresh, sub: r.title }));
     return lines;
   }
+  /* v215 (Jack, Nov 11 2026 05:15 ET, screenshots of Plan step 1 "✓ Nothing is broken · ≈ $0.00 freed" above a
+     Recommended trade "Sell 4 SNPS": "Rec sells but nothing broken. Where's the disconnect"). Two different tests:
+     step 1 is a trend / −25% stop test; the Apex list also sells a held name this week's research dropped and any
+     rule sell. planSellNote() is the one line step 1 shows so the two cards stop reading as a contradiction. It
+     names the SAME sell lines the Confirm button sends (bookLines), minus names step 1 already lists (skip).
+     Tickers and reasons only — no share counts or dollars. */
+  function planSellNote(st, out, cfg, skip) {
+    const sk = new Set(skip || []), seen = new Set();
+    const sells = bookLines(st, out, cfg).filter((l) => l.side === 'sell' && !sk.has(l.sym) && !seen.has(l.sym) && seen.add(l.sym));
+    if (!sells.length) return '';
+    const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const items = sells.map((l) => `<b>${escH(l.sym)}</b> (${escH(String(l.sub || 'Apex rule').split(' · ')[0])})`).join(', ');
+    return `<div data-sd-apex-sell-note style="font-size:11.5px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:8px;padding:6px 9px;margin-top:8px">↪ ${sells.length === 1 ? '1 sell is' : sells.length + ' sells are'} on the Apex card above: ${items}. Apex\u2019s research and rules, not this trend test \u2014 not counted in this step.</div>`;
+  }
   function portfolioButton(st, out, cfg, research) {
     const lines = bookLines(st, out, cfg);
     const n = lines.length;
@@ -606,5 +620,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt, bookGaps, bookLines, priceIsFresh };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, portfolioPrompt, bookGaps, bookLines, planSellNote, priceIsFresh };
 });
