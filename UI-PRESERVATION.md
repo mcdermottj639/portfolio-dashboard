@@ -128,3 +128,15 @@ Profit milestones require execution review; the separate agentic model is unchan
 `tests/apex-browser.mjs` covers adapter propagation, missing/stale research, entry
 gates, genuine exits, prompt/count agreement and 320–1440px layouts. CI runs this
 with the existing Brief and Plan browser checks on synthetic data.
+
+### v217 — Context-preserving research journey
+
+The original account, Plan, chart, Options, Signals, Activity, Find, privacy and Classic
+surfaces remain. The read-only Analyze pre-confirmation is removed; trade confirmations
+are not. New context distinguishes account-specific position observations from the
+legacy self-directed general Analyze screen. The account Plan remains authoritative.
+
+Route-only hashes, Back/Forward, refreshed selections and scroll/details are covered in
+`tests/journey-browser.mjs`. `ui/journey.js` stores only UI preferences; no saved financial
+records, raw balances, broker credentials or strategy state are added. Shell/cache v217
+moves with the new assets. See `UX_REVIEW.md` and the shared handoff for evidence and limits.

@@ -43,7 +43,7 @@
   };
   const defaults = {today:'today',portfolio:'accounts',research:'plan',signals:'smartmoney',activity:'activity'};
   // Tapping Signals reopens whichever sub-tab was used last.
-  const areaDefault = a => a==='signals' ? (read('pf_signals_last','smartmoney')==='predictions'?'predictions':'smartmoney') : defaults[a];
+  const areaDefault = a => { const key=read('pf_area_'+a,a==='signals'?read('pf_signals_last','smartmoney'):defaults[a]); return routes[key]?.area===a?key:defaults[a]; };
   const legacyTabs = ['portfolio','markets','picks','options','analyze','screens','predictions','smartmoney'];
   const nativeSwitch = window.switchTab;
   const nativeAccount = window.setAccount;
@@ -54,7 +54,7 @@
   const model = () => M.snapshot(window.__DATA, window.__SNAP, account());
   const jump = (key, text, scope) => '<button type="button" class="ex-link" data-ex-route="'+key+'"'+(scope?' data-ex-account="'+scope+'"':'')+'>'+esc(text || routes[key].label)+' →</button>';
   const row = (label, value, detail = '') => '<div class="ex-row"><span>'+esc(label)+(detail?'<small>'+esc(detail)+'</small>':'')+'</span><span>'+value+'</span></div>';
-  const card = (title, html, wide = false) => '<section class="ex-card'+(wide?' ex-wide':'')+'"><h2>'+esc(title)+'</h2>'+html+'</section>';
+  const card = (title, html, wide = false, symbol = '') => '<section'+(symbol?' data-evidence-symbol="'+esc(symbol)+'"':'')+' class="ex-card'+(wide?' ex-wide':'')+'"><h2>'+esc(title)+'</h2>'+html+'</section>';
   const prettyStatus = value => {
     if (value === null || value === undefined || value === '') return 'Not in this snapshot';
     const s = String(value).trim();
@@ -183,7 +183,7 @@
       const drivers=Array.isArray(n.drivers)?n.drivers.map(v=>typeof v==='string'?v:JSON.stringify(v)).join(' · '):'Not recorded';
       return card(symbol+' · target '+(M.number(n.weightPct)===null?'unknown':M.number(n.weightPct).toFixed(1)+'%'),
         '<p>'+esc(n.thesis || 'No thesis text was recorded.')+'</p>'+row('Entry zone',esc(typeof n.entry==='object'?JSON.stringify(n.entry):n.entry || 'Not recorded'))+row('Research stop / target',esc((n.stop ?? '—')+' / '+(n.target ?? '—')))+
-        '<details><summary>Drivers, sources & dates</summary><p>'+esc(drivers)+'</p>'+(sources.length?sources.map(e=>'<div class="ex-evidence"><div class="ex-label">'+esc(e.sleeve)+' · '+esc(e.asOf || 'Date unavailable')+'</div><p>'+esc(e.claim)+'</p>'+(e.href?'<a href="'+esc(e.href)+'" target="_blank" rel="noopener noreferrer">Read source ↗</a>':'<span class="ex-muted">'+esc(e.source || 'Source unavailable')+'</span>')+'</div>').join(''):'<p>Claim-level source records are unavailable in this target. They have not been reconstructed or invented.</p>')+'</details>'+jump('plan','See current eligibility & deferrals'));
+        '<details><summary>Drivers, sources & dates</summary><p>'+esc(drivers)+'</p>'+(sources.length?sources.map(e=>'<div class="ex-evidence"><div class="ex-label">'+esc(e.sleeve)+' · '+esc(e.asOf || 'Date unavailable')+'</div><p>'+esc(e.claim)+'</p>'+(e.href?'<a href="'+esc(e.href)+'" target="_blank" rel="noopener noreferrer">Read source ↗</a>':'<span class="ex-muted">'+esc(e.source || 'Source unavailable')+'</span>')+'</div>').join(''):'<p>Claim-level source records are unavailable in this target. They have not been reconstructed or invented.</p>')+'</details>'+jump('plan','See current eligibility & deferrals'),false,symbol);
     }).join('')+'</div>'+note('Opposing evidence, tax estimates, and a complete do-nothing comparison are shown only where recorded. The stress test is hypothetical; it is not a forecast or recommendation.')+jump('scenario','Explore a what-if scenario')+jump('log','Review the measured record');
     $('page-ex-decisions').innerHTML=html;
   }
@@ -217,7 +217,7 @@
     if(r.tab==='smartmoney')window.PFSmartMoney?.mount($('smartmoney-app'));
     protect();
   }
-  function queueRefresh() { clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{header();renderCustom();},60); }
+  function queueRefresh() { clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{header();renderCustom();document.dispatchEvent(new Event('pf:render'));},60); }
   function placeSection(section, token, attempts=0) {
     if(token!==jumpToken)return;
     const root=$(account()==='agentic'?'agentic-app':'app'), target=root?.querySelector('[data-sec="'+section+'"]');
@@ -227,7 +227,9 @@
     requestAnimationFrame(()=>{if(token!==jumpToken)return;const y=target.getBoundingClientRect().top+window.scrollY-(window.__pfTopOffset?.()||8);window.scrollTo(0,Math.max(0,y));});
   }
   function navigate(key, options={}) {
-    if(!routes[key])return; routeKey=key; save('pf_experience_route',key); if(routes[key].area==='signals')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
+    if(!routes[key])return; document.dispatchEvent(new CustomEvent('pf:before-route',{detail:{from:routeKey,to:key}}));
+    if(options.account==='main'||options.account==='agentic')save('pf_acct',options.account);
+    routeKey=key; save('pf_area_'+routes[key].area,key); save('pf_experience_route',key); if(routes[key].area==='signals')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
     ['today','activity','decisions','scenario'].forEach(n=>$('page-ex-'+n).hidden=r.custom!==n);
     navigating=true;
     try {
@@ -237,6 +239,7 @@
     header();renderCustom();
     if(r.section)placeSection(r.section,token);
     else if(!options.keepScroll)window.scrollTo(0,0);
+    document.dispatchEvent(new CustomEvent('pf:route',{detail:{route:key,account:account()}}));
     // Existing Chart.js instances resize when their original page becomes visible.
     requestAnimationFrame(()=>{if(window.Chart?.instances)Object.values(Chart.instances).forEach(c=>{if(c.canvas?.offsetParent)c.resize();});});
   }
@@ -246,17 +249,12 @@
     const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',screens:'screens',predictions:'predictions',smartmoney:'smartmoney'}[tab];
     return key?navigate(key):nativeSwitch(tab);
   };
-  window.setAccount=function(...args){const value=nativeAccount.apply(this,args);queueRefresh();return value;};
-  window.setPlanAccount=function(...args){const value=nativePlanAccount.apply(this,args);queueRefresh();return value;};
-  $('ex-account').addEventListener('change',e=>{save('pf_acct',e.target.value);const r=routes[routeKey];
-    if(r.tab==='portfolio')window.setAccount(e.target.value,{keepSection:true});
-    else if(r.tab==='picks')window.setPlanAccount(e.target.value);
-    header();renderCustom();if(r.section)placeSection(r.section,++jumpToken);
-  });
+  window.setAccount=function(...args){const changed=!navigating&&args[0]!==account();if(changed)document.dispatchEvent(new Event('pf:before-account'));const value=nativeAccount.apply(this,args);queueRefresh();if(changed)document.dispatchEvent(new Event('pf:account'));return value;};
+  window.setPlanAccount=function(...args){const changed=!navigating&&args[0]!==account();if(changed)document.dispatchEvent(new Event('pf:before-account'));const value=nativePlanAccount.apply(this,args);queueRefresh();if(changed)document.dispatchEvent(new Event('pf:account'));return value;};
+  $('ex-account').addEventListener('change',e=>navigate(routeKey,{account:e.target.value}));
   document.addEventListener('click',e=>{
     const b=e.target.closest('[data-ex-route],[data-ex-area]');if(!b)return;
-    if(b.dataset.exAccount==='main'||b.dataset.exAccount==='agentic')save('pf_acct',b.dataset.exAccount);
-    if(b.dataset.exRoute)navigate(b.dataset.exRoute);else navigate(areaDefault(b.dataset.exArea));
+    navigate(b.dataset.exRoute||areaDefault(b.dataset.exArea),{account:b.dataset.exAccount});
   });
   $('ex-find').addEventListener('click',()=>{if(window.__pfFind)window.__pfFind();});
   $('ex-classic').addEventListener('click',goClassic);
@@ -274,5 +272,6 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&routeKey==='today')queueRefresh();});
   setInterval(()=>{if(!document.hidden&&routeKey==='today')queueRefresh();},60000);
   window.__experienceRefresh=queueRefresh;
+  window.PFExperience=Object.freeze({navigate,get route(){return routeKey;},get account(){return account();}});
   navigate(routeKey,{keepScroll:true});
 })();
