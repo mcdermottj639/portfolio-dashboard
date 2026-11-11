@@ -1,3 +1,17 @@
+## v214 — The trade list never shows a stale price as an order price (2026-11-11)
+Jack (Nov 11 05:02–05:04 ET, on v213's "Sell 4 SNPS · limit $457.62 · Day" — built from the Nov 10 4:41 PM close while
+SNPS last traded $466.44 pre-market): "U want me to sell at this limit price" · "Fix the app!" · "Needs to say right
+price". The page has no live quote source: prices come only from the producer snapshot (hourly, weekdays 8:41 AM–
+4:41 PM ET; it prefers the extended-hours quote, so the 8:41 run carries the pre-market price).
+- `index.html` passes `cfg.snapAgeMin` (minutes since `__DATA.generatedAt`).
+- `ui/apex.js`: `C.PRICE_FRESH_MIN = 75`, `priceIsFresh()`. Fresh ⇒ lines read "limit $x · Day|GTC" and a grey note
+  gives the quote age. Stale or unknown ⇒ lines read "≈ $x" in amber (`est: true`, no "limit", no time-in-force) under
+  an amber note: not order prices yet, when the app re-prices, tap Confirm for the exact price now.
+- `portfolioPrompt`: exits send the snapshot price with its age and tell Claude to set the limit from the LIVE price.
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (54/54, +1), `CLAUDE.md`.
+- Not done (needs Jack's decision — usage): a pre-market producer run earlier than 8:41 AM.
+  App/cache **v214 / pf-v214**.
+
 ## v213 — Recommended trades name the price to enter (2026-11-11)
 Jack (Nov 11 04:56 ET, on v212's "Sell 4 SNPS · last $459.92"): "Sell or buy at what price". `bookLines()` now puts
 an order price and time-in-force on every line: build rungs and adds "limit $x · GTC", rule sells "limit $x · Day"
