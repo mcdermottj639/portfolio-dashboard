@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-11-7h4xeg",
-  "created": "2026-11-11",
+  "id": "2026-11-12-jqmalp",
+  "created": "2026-11-12",
   "targetId": "97f64950150a6d2dd74d",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,83 +16,46 @@
   "universeVersion": "80f4c5d54ce396515cb7",
   "status": "done",
   "autoEligible": true,
-  "turnover": 3976.91,
-  "book": 7713.89,
-  "planHash": "s[UNP:244,VTI:1586]b[CVX:667,MA:164,META:305,MSFT:631,PEP:381]t[]",
+  "turnover": 134.3,
+  "book": 7897.79,
+  "planHash": "s[]b[CVX:39,META:39,MSFT:57]t[]",
   "legs": {
-    "sells": [
-      {
-        "sym": "UNP",
-        "kind": "exit",
-        "dollars": 244.39,
-        "shares": 0.813571,
-        "price": 300.39,
-        "pl": 3.15,
-        "note": "not in the current target — exit funds the underweight names"
-      },
-      {
-        "sym": "VTI",
-        "kind": "park-release",
-        "dollars": 1585.96,
-        "shares": 4.259784,
-        "price": 372.31,
-        "pl": 13.76,
-        "note": "release parked placeholder — funds MSFT/META/CVX/MA/PEP"
-      }
-    ],
+    "sells": [],
     "buysNow": [
       {
         "sym": "MSFT",
         "kind": "buy",
-        "dollars": 630.6,
-        "shares": 1.1842,
-        "price": 532.53,
+        "dollars": 57.11,
+        "shares": 0.108787,
+        "price": 524.9699,
         "pl": null,
-        "note": "9.4% → 18.22% target"
+        "note": "17.0% → 18.22% target"
       },
       {
         "sym": "META",
         "kind": "buy",
-        "dollars": 305.24,
-        "shares": 0.473,
-        "price": 645.3399,
+        "dollars": 38.53,
+        "shares": 0.061989,
+        "price": 621.5599,
         "pl": null,
-        "note": "7.3% → 11.52% target"
+        "note": "10.7% → 11.52% target"
       },
       {
         "sym": "CVX",
         "kind": "buy",
-        "dollars": 666.58,
-        "shares": 3.1562,
-        "price": 211.195,
+        "dollars": 38.66,
+        "shares": 0.17997,
+        "price": 214.8132,
         "pl": null,
-        "note": "0.0% → 9.3% target"
-      },
-      {
-        "sym": "MA",
-        "kind": "buy",
-        "dollars": 163.54,
-        "shares": 0.2496,
-        "price": 655.12,
-        "pl": null,
-        "note": "4.4% → 6.64% target"
-      },
-      {
-        "sym": "PEP",
-        "kind": "buy",
-        "dollars": 380.6,
-        "shares": 2.6858,
-        "price": 141.71,
-        "pl": null,
-        "note": "0.0% → 5.31% target"
+        "note": "8.5% → 9.3% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
-    "realizedGain": 16.91,
+    "realizedGain": 0,
     "realizedLoss": 0,
-    "net": 16.91,
+    "net": 0,
     "term": "short",
     "note": null
   },
@@ -110,35 +73,30 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "$521.36 of deferred weight (AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "2 name(s) deferred (AAPL, COST) — ~$521.36 of intended weight held pending earnings/re-verify/wash-sale",
-    "released $1,585.96 from the VTI waiting ground to fund cleared names — realizes $13.76 ST"
+    "$537.02 of deferred weight (AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "2 name(s) deferred (AAPL, COST) — ~$537.02 of intended weight held pending earnings/re-verify/wash-sale",
+    "$33.78 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
   ],
   "history": [
     {
-      "at": "2026-11-11",
+      "at": "2026-11-12",
       "to": "proposed"
     },
     {
-      "at": "2026-11-11",
+      "at": "2026-11-12",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-11",
-      "to": "sells-placed"
-    },
-    {
-      "at": "2026-11-11",
+      "at": "2026-11-12",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-11",
+      "at": "2026-11-12",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-11",
-  "sells-placedAt": "2026-11-11",
-  "buys-placedAt": "2026-11-11",
-  "doneAt": "2026-11-11",
-  "completedAt": "2026-11-11T15:26:23.000Z"
+  "confirmedAt": "2026-11-12",
+  "buys-placedAt": "2026-11-12",
+  "doneAt": "2026-11-12",
+  "completedAt": "2026-11-12T15:24:25.110Z"
 }

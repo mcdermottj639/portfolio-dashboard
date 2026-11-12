@@ -2467,6 +2467,68 @@
           ]
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "97f64950150a6d2dd74d",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "80f4c5d54ce396515cb7",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-12-deploy",
+      "date": "2026-11-12",
+      "kind": "deploy",
+      "targetAsOf": "2026-11-11",
+      "book": 7897.79,
+      "equityAtDecision": 7878.93,
+      "spyAt": 756.54,
+      "rationale": "Then deploy $134.3 of settled cash: MSFT $57.11, META $38.53, CVX $38.66. Hold $537.02 for AAPL (above-entry), COST (above-entry). $33.78 stays in cash. Turnover $134.3.",
+      "trades": [
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 57.11,
+          "shares": 0.108787,
+          "priceAt": 524.9699,
+          "weightBefore": 17.04,
+          "weightAfter": 18.22,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "META",
+          "side": "BUY",
+          "dollars": 38.53,
+          "shares": 0.061989,
+          "priceAt": 621.5599,
+          "weightBefore": 10.72,
+          "weightAfter": 11.52,
+          "drivers": [
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "CVX",
+          "side": "BUY",
+          "dollars": 38.66,
+          "shares": 0.17997,
+          "priceAt": 214.8132,
+          "weightBefore": 8.5,
+          "weightAfter": 9.3
+        }
+      ]
     }
   ]
 }
