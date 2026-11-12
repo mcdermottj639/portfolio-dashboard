@@ -18,8 +18,8 @@ model. The separate agentic model and brokerage execution are outside this chang
 
 Quote freshness remains separate from research freshness. The existing 75-minute
 quote rule labels older prices as estimates. Every proposed order still requires
-live confirmation. The unchanged leverage band is reload 1.50, cruise 1.65, cap
-1.75. Existing owner wash waivers remain in the adapter.
+live confirmation. The leverage band is reload 1.75, cruise 1.90, cap
+2.00 (v218, Jack Nov 11 2026; was 1.50 / 1.65 / 1.75). Existing owner wash waivers remain in the adapter.
 
 `bookLines()` supplies the trade list, order count, Plan sell note and confirmation
 prompt. Review rows are visible but are not counted as orders. Pending/partial

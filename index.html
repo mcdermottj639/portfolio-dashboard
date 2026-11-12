@@ -714,11 +714,11 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=217">
-<link rel="stylesheet" href="ui/journey.css?v=217">
-<link rel="stylesheet" href="ui/predictions.css?v=217">
-<link rel="stylesheet" href="ui/smartmoney.css?v=217">
-<link rel="stylesheet" href="ui/ticker.css?v=217">
+<link rel="stylesheet" href="ui/experience.css?v=218">
+<link rel="stylesheet" href="ui/journey.css?v=218">
+<link rel="stylesheet" href="ui/predictions.css?v=218">
+<link rel="stylesheet" href="ui/smartmoney.css?v=218">
+<link rel="stylesheet" href="ui/ticker.css?v=218">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -783,9 +783,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=217"></script>
-<script src="ui/apex.js?v=217"></script>
-<script src="ui/business.js?v=217"></script>
+<script src="ui/sd-rules.js?v=218"></script>
+<script src="ui/apex.js?v=218"></script>
+<script src="ui/business.js?v=218"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -899,7 +899,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v217'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v218'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1584,7 +1584,7 @@ function buildKyleHTML(){
       +'<div class="snap"><div class="snap-lbl">Portfolio Beta</div><div class="snap-val" style="color:'+(beta!=null&&beta>1.2?'#cf222e':'#1f2328')+'">'+betaTxt+'</div><div class="snap-sub">vs 1.00 market · '+cov+'% cov</div></div>'
       /* Figures unchanged (v116/v118 bases); only the verdict COLOUR follows the owner's bands
          (2026-08-25) — this book carries a loan by design, so painting any loan red said nothing. */
-      +(function(){ var kApex=sdApexRuns(), kB=sdApexBand();   // v202: Apex's 1.65x/1.75x band judges leverage on this book
+      +(function(){ var kApex=sdApexRuns(), kB=sdApexBand();   // v202: Apex's band (v218: 1.90x cruise / 2.00x cap) judges leverage on this book
         var kCol=mUse<=0?'#1a7f37':(kApex?(kLev>kB.cap?'#cf222e':kLev>kB.cruise?'#bc4c00':'#1a7f37'):(kUtil==null?'#8c959f':(kUtil>SD_UTIL_MAX*100?'#cf222e':kUtil>SD_UTIL_CRUISE*100?'#bc4c00':'#1a7f37')));
         return '<div class="snap"><div class="snap-lbl">Leverage</div><div class="snap-val" style="color:'+kCol+'">'+(mUse>0?mPct.toFixed(1)+'% · '+kLev.toFixed(2)+'\u00d7':'None')+'</div><div class="snap-sub">'+(mUse>0?fmtD(mUse)+' borrowed':'No borrowing')+'</div>'+(mUse>0?'<div class="gauge"><div class="gauge-fill" style="width:'+Math.min(mPct,100).toFixed(0)+'%;background:'+kCol+'"></div></div>':'')+(kApex?(mUse>0?'<div class="snap-sub">Apex band: cruise '+kB.cruise.toFixed(2)+'\u00d7 / cap '+kB.cap.toFixed(2)+'\u00d7</div>':''):(kUtil!=null?'<div class="snap-sub">'+kUtil.toFixed(1)+'% of '+fmtD(kLine)+' line · cruise '+(SD_UTIL_CRUISE*100).toFixed(0)+' / max '+(SD_UTIL_MAX*100).toFixed(0)+'</div>':''))+'</div>'; })()
       +'</div><div class="snap" style="margin-top:8px"><div class="snap-lbl">Equity / Holdings / Buying Power</div><div class="snap-val">'+fmtD(netEq)+' <span style="font-size:13px;color:#8c959f;font-weight:600">equity</span> · '+fmtD(st.equityVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">holdings</span> · '+fmtD(st.bpVal)+' <span style="font-size:13px;color:#8c959f;font-weight:600">BP</span></div></div></div>'
@@ -1896,7 +1896,7 @@ function buildActionFeed(enriched, port, clusters, totalVal, rsiMap, ovMap, earn
      design is to carry one. */
   const M=sdMargin(equity,grossVal,cash,parseFloat((port.buying_power&&port.buying_power.buying_power)||0));
   const callTxt=M.callDrop!=null?`Est. margin-call distance ≈ a ${fmt(M.callDrop*100,0)}% uniform drop (25% maintenance).`:'';
-  /* v202: Apex runs this book, so Do-now speaks Apex's band (exposure ÷ equity, 1.65× cruise / 1.75× cap) and
+  /* v202: Apex runs this book, so Do-now speaks Apex's band (exposure ÷ equity; v218: 1.90× cruise / 2.00× cap) and
      keeps only what Apex does not already put on its card: margin and earnings. The size+weakness TRIM, RSI
      OVERBOUGHT / oversold ADD, +40% TAKE PROFIT, CORRELATED and CROWDED alerts were a second rulebook (Apex
      trims at +25%, stops at −25%, never adds on RSI) and stay with the old plan (window.SD_APEX_RUNS=false). */
@@ -2361,7 +2361,7 @@ const SD_SINGLE_MAX_EQ=(typeof window!=='undefined'&&window.SD_SINGLE_MAX_EQ!=nu
    not your Apex plan". The old plan is one switch away (window.SD_APEX_RUNS=false), and the browser test runs
    both. Band numbers are READ from ui/apex.js (Apex.C), never copied, so the two cannot drift. */
 function sdApexRuns(){ return !(typeof window!=='undefined'&&window.SD_APEX_RUNS===false); }
-function sdApexBand(){ const C=(typeof window!=='undefined'&&window.Apex&&window.Apex.C)||{}; return {cruise:C.LEV_NORMAL||1.65,cap:C.LEV_CAP||1.75,reload:C.LEV_RELOAD||1.5}; }
+function sdApexBand(){ const C=(typeof window!=='undefined'&&window.Apex&&window.Apex.C)||{}; return {cruise:C.LEV_NORMAL||1.9,cap:C.LEV_CAP||2,reload:C.LEV_RELOAD||1.75}; }
 function sdApexLevColor(lev){ const b=sdApexBand(); return !(lev>0)?'#10b981':lev>b.cap?'#ef4444':lev>b.cruise?'#f97316':'#10b981'; }
 /* Scroll to the Apex card. Not by id: the section rail re-ids every card (navc-N) when it builds. */
 function sdScrollToApex(){ try{ const c=document.getElementById('apex-content'), card=c&&c.closest('.card'); if(!card)return;
@@ -2610,7 +2610,7 @@ function renderActionPlan(enriched, clusters, totalVal, betaInfo, rsiMap, ovMap,
      reduces collateral, so the real line moves down with it. */
   const M=sdMargin(equity,exposure,cashVal,bpVal);
   const utilKnown=M.util!=null;
-  const payNeed=apexRuns ? 0   // v202: de-levering is Apex's (1.75× cap, risk guard) — this band no longer forces a sale
+  const payNeed=apexRuns ? 0   // v202: de-levering is Apex's (cap from Apex.C, risk guard) — this band no longer forces a sale
               : utilKnown ? Math.max(0,M.debt-SD_UTIL_MAX*M.line)
                           : Math.max(0,exposure-SD_LEV_FALLBACK*equity);   // no line ⇒ fallback ceiling, and the UI says so
   const soldVal={};                 // symbol → dollars sold in 1b, so the buy legs size against the right book
@@ -5517,7 +5517,7 @@ window.switchTab=switchTab;
     <p>Target weights, entry zones, stop/TP levels and every deferral moved to the <b>Plan tab's Agentic side</b> — they were the same numbers in two places, and the wider table pushed P&amp;L and Day/YTD off a phone screen. This card answers "what do I own and how is it doing"; the Plan tab answers "what happens next and why".</p>
     <p>The <b>🤖 hand-off button</b> carries a deploy/rebalance prompt that places fractional dollar orders after your review.</p>` },
   'action center': { tag:'Plan', t:'Action Center', h:`
-    <p><b>Since v202, Apex runs this book.</b> Do-now shows margin against Apex's 1.65× cruise / 1.75× cap and upcoming earnings only. The plan keeps Step 1 (cut what's broken); Step 2 points to the Apex card, where the buys come from; Step 3 lists Apex's rules. The rest of this note describes the retired August plan, which returns only if Apex is switched off.</p>
+    <p><b>Since v202, Apex runs this book.</b> Do-now shows margin against Apex's 1.90× cruise / 2.00× cap and upcoming earnings only. The plan keeps Step 1 (cut what's broken); Step 2 points to the Apex card, where the buys come from; Step 3 lists Apex's rules. The rest of this note describes the retired August plan, which returns only if Apex is switched off.</p>
     <p>The decide-and-act surface: a ranked feed of live signals, then a concrete cash-raising-and-redeploying plan. It's portfolio-derived, so it populates whether you open this tab before or after the portfolio finishes loading.</p>
     <div class="hsub">Two tiers</div>
     <ul>
@@ -8745,14 +8745,14 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=217"></script>
-<script src="ui/predictions-model.js?v=217"></script>
-<script src="ui/predictions.js?v=217"></script>
-<script src="ui/smartmoney-model.js?v=217"></script>
-<script src="ui/smartmoney.js?v=217"></script>
-<script src="ui/experience.js?v=217"></script>
-<script src="ui/ticker.js?v=217"></script>
-<script src="ui/compact.js?v=217"></script>
-<script src="ui/journey.js?v=217"></script>
+<script src="ui/experience-model.js?v=218"></script>
+<script src="ui/predictions-model.js?v=218"></script>
+<script src="ui/predictions.js?v=218"></script>
+<script src="ui/smartmoney-model.js?v=218"></script>
+<script src="ui/smartmoney.js?v=218"></script>
+<script src="ui/experience.js?v=218"></script>
+<script src="ui/ticker.js?v=218"></script>
+<script src="ui/compact.js?v=218"></script>
+<script src="ui/journey.js?v=218"></script>
 </body>
 </html>

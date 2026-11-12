@@ -126,14 +126,14 @@ try {
   await page.evaluate(()=>switchTab('picks'));
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#picks-app')).display!=='none');
   // Do-now under Apex: margin judged on Apex's band, earnings kept; RSI / +40% / size alerts belong to the retired plan
-  const feed=await page.evaluate(()=>{ const pos=[{symbol:'AAA',qty:10,px:100,val:1000,avg:50,pnlP:100,pct:50,dayP:1}], port={cash:'-9000',equity_value:'20000',total_value:'11000',buying_power:{buying_power:'1000'}};
-    window.SD_APEX_RUNS=undefined; const a=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag+':'+x.title);
-    window.SD_APEX_RUNS=false; const l=buildActionFeed(pos,port,{},11000,{AAA:80},{},{}).map(x=>x.tag);
+  const feed=await page.evaluate(()=>{ const pos=[{symbol:'AAA',qty:10,px:100,val:1000,avg:50,pnlP:100,pct:50,dayP:1}], port={cash:'-10500',equity_value:'20000',total_value:'9500',buying_power:{buying_power:'1000'}};
+    window.SD_APEX_RUNS=undefined; const a=buildActionFeed(pos,port,{},9500,{AAA:80},{},{}).map(x=>x.tag+':'+x.title);
+    window.SD_APEX_RUNS=false; const l=buildActionFeed(pos,port,{},9500,{AAA:80},{},{}).map(x=>x.tag);
     window.SD_APEX_RUNS=undefined; return {a,l}; });
   const ig=await page.evaluate(()=>{ const d=sdWashIgnore(); window.SD_WASH_IGNORE=[]; const e=sdWashIgnore(); window.SD_WASH_IGNORE=undefined; return {d,e}; });
   assert.deepEqual(ig.d,['PLTR'],'v207: PLTR is waived from the Apex tax hold by default'); assert.deepEqual(ig.e,[],'v207: SD_WASH_IGNORE overrides the waiver list');
   assert.deepEqual(feed.a.map(x=>x.split(':')[0]),['MARGIN'],'Apex Do-now: margin only here');
-  assert.match(feed.a[0],/Over Apex's 1\.75× cap — 1\.82× leverage/,'20,000 ÷ 11,000 = 1.82× > 1.75×');
+  assert.match(feed.a[0],/Over Apex's 2\.00× cap — 2\.11× leverage/,'v218: 20,000 ÷ 9,500 = 2.11× > 2.00×');
   assert.ok(feed.l.includes('OVERBOUGHT'),'the retired plan still has its RSI alert');
   await page.evaluate(()=>{ window.SD_APEX_RUNS=false; renderPicksStatic(); });
   await render('funded');

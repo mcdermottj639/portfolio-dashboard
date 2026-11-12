@@ -17,9 +17,9 @@
   'use strict';
 
   const C = {
-    LEV_NORMAL: 1.65,      // where the book cruises; adds go only up to here (Jack, 2026-11-10: "keep adding" — was 1.35)
-    LEV_CAP: 1.75,         // hard cap — above it: no new buys (Jack, 2026-11-10: 1.75x; was 1.5x)
-    LEV_RELOAD: 1.50,      // below it new borrow is allowed (was 1.20; trails cruise by the same 0.15)
+    LEV_NORMAL: 1.90,      // where the book cruises; adds go only up to here (Jack, 2026-11-11: cap 2x, same spacing — was 1.65)
+    LEV_CAP: 2.00,         // hard cap — above it: no new buys (Jack, 2026-11-11: "Raise leverage cap to 2x"; was 1.75x). Also Robinhood's 50%-initial-margin buying ceiling
+    LEV_RELOAD: 1.75,      // below it new borrow is allowed (was 1.50; trails cruise by the same 0.15)
     MAINT: 0.30,           // Robinhood house maintenance seen on IREN (2026-11-05); PLTR assumed
     /* v195 (LAB-004-P1): the guard follows the maintenance REQUIREMENT, not a fixed line. Buffers are points
        of exposure over the (blended, per-name) requirement; at the default 30% they give the old 35% / 40%. */
