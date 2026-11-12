@@ -1,3 +1,29 @@
+## v219 — iPhone Duo layouts: slim header, left rail + two panes when open, Confirm pinned (2026-11-12)
+Jack (Nov 12 17:40 ET): "I just got the iPhone duo. Can our apps be optimized for the folded vs big view" → asked for
+mockups, then "Both" (Today and Apex). Layout only — same cards, numbers and controls; nothing new is computed.
+- New `ui/duo.css` (loaded last, in `sw.js` precache). Keyed to width RANGES, not a device: the Duo's browser width
+  was estimated from Apple's pixel counts (folded ≈ 466×678, open ≈ 890×626), never measured on the phone.
+  - **≤ 739px wide, or ≤ 720px tall — slim header.** `#ex-top` is one row (Back · title · Classic view; the
+    "Both accounts" badge is hidden because the caption says it), Today's one-tab sub-nav row is hidden, and "Your
+    daily brief." is one line (its label and tagline hidden). 420–739px: equity sits beside the day move.
+  - **≤ 739px — Apex.** `#apex-content` is a flex column: leverage → Recommended trades → Rules firing now → rest
+    (CSS `order`; the DOM order is unchanged). `[data-apex-confirm]` is `position:sticky` above the bottom nav while
+    the trade list is in view.
+  - **740–900px — left rail.** `.ex-main` becomes a 76px rail under the tape; body padding follows.
+  - **740–1100px — two panes.** Today: hero · accounts · cash on the left, On your radar on the right, the other
+    cards pair up below (`.ex-brief-grid` is `display:contents`). Apex: leverage + rules left, trades + sticky
+    Confirm right. The Plan context card (`#pj-context`) puts the name picker and the three steps on one row.
+- `ui/apex.js`: three wrappers only — `[data-apex-lev]`, `[data-apex-rules]`, `[data-apex-book]` — plus
+  `[data-apex-confirm]` around the button and its note. No rule, prompt, ticket or text change.
+- Differs from the mockup: the radar (not the day drivers) is the right pane on Today, and on Plan the context card,
+  account switcher and section chips still sit above the Apex card, so the trades need one scroll.
+- Files: `ui/duo.css` (new), `ui/apex.js`, `index.html`, `sw.js`, `tests/journey.test.cjs`, `CLAUDE.md`.
+- Verified (synthetic preview, Chromium): 56 producer suites, tests/*.test.cjs 33/33, brief / sd-plan / apex / journey
+  browser suites PASS; 12 widths (320–1101) × Today, Plan, Portfolio, Markets × Ivory + Midnight: scrollWidth =
+  innerWidth, scrollX 0 after a forced sideways scroll, 0 page errors; screenshots read at 320, 390, 466×678, 890×626,
+  1024; Apex shows no readable $ in private mode. Not verified: a physical iPhone Duo (real viewport, fold/unfold,
+  safe-area insets), live data. App/cache **v219 / pf-v219**.
+
 ## v218 — Apex leverage band 1.75x reload / 1.90x cruise / 2.00x cap (2026-11-11)
 Jack (Nov 11 22:03 ET): "Apex not able to get crwd when it's a buy? Raise leverage cap to 2x"; then (22:08) "Update the
 app". The Nov 11 scan read 1.70x, above the 1.65x cruise, so CRWD (a picked target) got no buy. He named the cap only;

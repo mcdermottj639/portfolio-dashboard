@@ -1,0 +1,116 @@
+/* v219 — iPhone Duo (foldable) layouts. Jack, Nov 12 2026: "Can our apps be optimized for the folded vs big
+   view" → picked both mockups ("Both"). Layout only: every card, number and control is the same; nothing is
+   computed here. Widths are keyed to ranges, not to a device (the Duo's browser width was estimated, not measured):
+     · phone / folded  ≤ 739px            → slim header, equity beside the day move, Apex trades above the rules
+                                             with Confirm pinned over the bottom nav
+     · open            740–900px          → the bottom nav becomes a left rail; Today and Apex become two panes
+     · short screens   ≤ 720px tall       → the slim header at any width (the open Duo is wide but short)
+   Loaded last so it only overrides. */
+
+/* ── 1 · Slim header: phones and short screens ─────────────────────────────────────────────────────────── */
+@media (max-width:739px), (max-height:720px) {
+  html.experience-on .ex-top{flex-wrap:nowrap!important;padding:6px 0;gap:8px}
+  html.experience-on .ex-top>div:not(.ex-tools){flex:1 1 auto;min-width:0}
+  html.experience-on .ex-top .ex-tools{flex:0 0 auto;width:auto;flex-wrap:nowrap}
+  html.experience-on .ex-brand{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  html.experience-on #ex-context{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* The caption under the title already reads "Self-directed + Agentic". */
+  html.experience-on #ex-all-accounts{display:none}
+  /* Today has one sub-page, so its one-tab row is only height. */
+  html.experience-on #ex-subnav:has(>button:only-child){display:none}
+
+  #page-ex-today .ex-brief-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #page-ex-today .ex-brief-heading .ex-label,
+  #page-ex-today .ex-brief-heading p.ex-muted{display:none}
+  #page-ex-today .ex-brief-heading h1{font-size:18px;letter-spacing:-.3px;margin:0}
+  #page-ex-today .ex-brief-heading>.ex-badge{margin:0;flex-shrink:0}
+  #page-ex-today .ex-brief-hero{margin-top:8px;padding:14px;gap:12px}
+  #page-ex-today .ex-brief-hero p.ex-muted{font-size:11.5px;line-height:1.4;margin-bottom:4px}
+  #page-ex-today .ex-move-tile{padding:12px}
+  #page-ex-today .ex-account-grid{margin:10px 0}
+}
+
+@media (max-width:739px) {
+  #pj-context{padding:8px 10px;margin-bottom:8px}
+  #pj-context>.pj-steps{margin-top:6px}
+  #pj-context>.pj-source{margin-top:2px}
+}
+
+/* Equity beside the day move wherever two columns fit (the folded Duo, larger phones). */
+@media (min-width:420px) and (max-width:739px) {
+  #page-ex-today .ex-brief-hero{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center}
+}
+
+/* ── 2 · Phone / folded: Apex trades come before the rules; Confirm stays in reach ───────────────────── */
+@media (max-width:739px) {
+  #apex-content{display:flex;flex-direction:column}
+  #apex-content>*{order:3;min-width:0}
+  #apex-content>:first-child,
+  #apex-content>[data-apex-lev]{order:0}
+  #apex-content>[data-apex-book]{order:1}
+  #apex-content>[data-apex-rules]{order:2}
+  #apex-content>[data-apex-book]{margin-top:10px}
+  #apex-content [data-apex-confirm]{bottom:calc(env(safe-area-inset-bottom) + 66px)}
+}
+
+/* Confirm stays on screen while its trade list is in view (phone: above the bottom nav; open: foot of the pane). */
+@media (max-width:1100px) {
+  #apex-content [data-apex-confirm]{position:sticky;z-index:5;background:var(--sl-panel,#fff);padding:6px 0 2px;
+    box-shadow:0 -10px 12px -10px rgba(20,33,57,.22)}
+}
+@media (min-width:740px) and (max-width:1100px) {
+  #apex-content [data-apex-confirm]{bottom:0;padding-bottom:calc(env(safe-area-inset-bottom) + 8px)}
+}
+
+/* ── 3 · Open: left rail instead of the bottom nav ────────────────────────────────────────────────────── */
+@media (min-width:740px) and (max-width:900px) {
+  html.experience-on body{padding-left:calc(env(safe-area-inset-left) + 88px);padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
+  html.experience-on .ex-main{top:0;bottom:0;left:0;right:auto;width:calc(env(safe-area-inset-left) + 76px);height:auto;
+    flex-direction:column;justify-content:flex-start;align-items:center;gap:6px;
+    padding:10px 6px 10px calc(env(safe-area-inset-left) + 6px);border-top:0;border-right:1px solid var(--ex-border)}
+  html.experience-on.pf-has-tape .ex-main{top:calc(var(--tk-pad, 0px) + var(--tk-h, 0px))}
+  html.experience-on .ex-main button{flex:0 0 auto;width:64px;min-width:0;min-height:58px;padding:6px 2px;font-size:10.5px;border-radius:10px}
+  html.experience-on .ex-main button[aria-current="page"]{box-shadow:none;background:var(--ex-soft)}
+}
+
+/* ── 4 · Open: two panes (also when the shell already has its side nav, up to 1100px) ───────────────── */
+@media (min-width:740px) and (max-width:1100px) {
+  /* Today: equity, accounts and cash on the left; the radar on the right; the rest pairs up below. */
+  #page-ex-today:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+  #page-ex-today>*{margin-top:0;margin-bottom:0}
+  #page-ex-today>.ex-brief-heading{grid-column:1/-1}
+  #page-ex-today>.ex-brief-hero{grid-column:1;grid-row:2;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;padding:14px;gap:12px}
+  #page-ex-today>.ex-account-grid{grid-column:1;grid-row:3;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  #page-ex-today .ex-account-card{padding:13px}
+  #page-ex-today .ex-account-head{display:block}
+  #page-ex-today .ex-account-head h2{font-size:14px}
+  #page-ex-today .ex-account-head .ex-link{font-size:11px;padding:5px 0}
+  #page-ex-today .ex-account-value{font-size:22px}
+  #page-ex-today .ex-account-facts .ex-row{display:block;font-size:11px}
+  #page-ex-today .ex-account-facts .ex-row>span{display:block;max-width:100%;text-align:left}
+  #page-ex-today .ex-account-facts .ex-row>span:last-child{font-size:16px;margin-top:3px}
+  #page-ex-today>.ex-cash-strip{grid-column:1;grid-row:4;grid-template-columns:1fr 1fr;padding:12px 14px;gap:10px}
+  #page-ex-today>.ex-cash-strip>p{grid-column:1/-1;margin:0}
+  #page-ex-today>.ex-brief-grid{display:contents}
+  #page-ex-today>.ex-brief-grid>.ex-card.ex-wide:first-child{grid-column:2;grid-row:2/span 3}
+
+  /* Plan context card: account, name picker and the three steps share one row. */
+  #pj-context{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);column-gap:12px;align-items:center;padding:8px 12px}
+  #pj-context>*{grid-column:1/-1;min-width:0}
+  #pj-context>.pj-context-head{grid-column:1}
+  #pj-context>.pj-context-head+.pj-steps{grid-column:2;margin-top:0}
+  #pj-context>.pj-source{margin-top:2px}
+
+  /* Apex: leverage and rules on the left; the trades and Confirm on the right. */
+  #apex-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;align-items:start}
+  #apex-content>*{grid-column:1/-1;min-width:0}
+  #apex-content>[data-apex-lev]{grid-column:1;grid-row:2}
+  #apex-content>[data-apex-rules]{grid-column:1;grid-row:3}
+  #apex-content>[data-apex-book]{grid-column:2;grid-row:2/span 2}
+  #apex-content>[data-apex-lev] .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #apex-content>[data-apex-book]>.ac-tier:first-child{margin-top:0}
+  /* No trades and nothing to review: the left pane takes the full width. */
+  #apex-content>[data-apex-book]:empty{display:none}
+  #apex-content:has(>[data-apex-book]:empty)>[data-apex-lev],
+  #apex-content:has(>[data-apex-book]:empty)>[data-apex-rules]{grid-column:1/-1}
+}

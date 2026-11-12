@@ -34,8 +34,9 @@ test('selection choices deduplicate but retain a researched, unheld name',()=>{
 test('missing source coverage creates no invented holding',()=>assert.deepEqual(M.choices(null,null,''),[]));
 test('new assets, version and offline shell move together',()=>{
  const html=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const name of ['journey.js','journey.css']){assert.ok(html.includes('ui/'+name+'?v=218'));assert.ok(sw.includes('ui/'+name+'?v=218'));}
- assert.ok(html.includes("APP_VERSION='v218'"));assert.ok(sw.includes("'pf-v218'"));
+ for(const name of ['journey.js','journey.css']){assert.ok(html.includes('ui/'+name+'?v=219'));assert.ok(sw.includes('ui/'+name+'?v=219'));}
+ assert.ok(html.includes('ui/duo.css?v=219')&&sw.includes('ui/duo.css?v=219'),'v219 Duo layouts are linked and precached');
+ assert.ok(html.includes("APP_VERSION='v219'"));assert.ok(sw.includes("'pf-v219'"));
 });
 test('source integration is display-only and preserves confirmation entry points',()=>{
  const j=fs.readFileSync('ui/journey.js','utf8');assert.doesNotMatch(j,/place_equity_order|review_equity_order|fetch\([^)]*,\s*\{[^}]*method\s*:/);
