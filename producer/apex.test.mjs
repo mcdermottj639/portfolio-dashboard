@@ -79,7 +79,7 @@ ok('rules: reload only under 1.2x with 2/3 of names above their 50-day', () => {
   const sma = { A: { s50: 90 }, B: { s50: 90 }, C: { s50: 120 } };
   assert.ok(A.rules(s, { smaMap: sma }).some((x) => x.kind === 'reload'));
   assert.ok(!A.rules(s, { smaMap: { A: { s50: 90 }, B: { s50: 120 }, C: { s50: 120 } } }).some((x) => x.kind === 'reload'));
-  const hi = A.state({ positions: pos, cash: -1200 }); // 1.67x
+  const hi = A.state({ positions: pos, cash: -1350 }); // 3000 / 1650 = 1.82x — above the 1.75x reload line (v218)
   assert.ok(!A.rules(hi, { smaMap: sma }).some((x) => x.kind === 'reload'));
 });
 
@@ -93,13 +93,13 @@ ok('rules: drift only on Fridays, 5-point band, targets are % of equity', () => 
   assert.ok(fr.some((x) => x.title.startsWith('NVDA')), 'NVDA 9% vs 20%');
 });
 
-ok('v206 cap is 1.75x: 1.60x is inside the band (no cap row), 1.80x is over it and the title names the cap', () => {
-  assert.equal(A.C.LEV_CAP, 1.75);
+ok('v218 cap is 2x: 1.82x is inside the band (no cap row), 2.04x is over it and the title names the cap', () => {
+  assert.equal(A.C.LEV_CAP, 2);
   const mk = (debt) => A.state({ positions: [{ symbol: 'IREN', qty: 100, px: 100, avg: 100 }, { symbol: 'NVDA', qty: 100, px: 100, avg: 100 }], cash: -debt });
-  const inside = A.rules(mk(7500), {});   // 20,000 / 12,500 = 1.60x
-  assert.ok(!inside.some((x) => /Over the/.test(x.title)), '1.60x is under the 1.75x cap');
-  const over = A.rules(mk(8900), {});     // 20,000 / 11,100 = 1.80x
-  assert.ok(over.some((x) => x.title === 'Over the 1.75x cap'), '1.80x is over the 1.75x cap');
+  const inside = A.rules(mk(9000), {});   // 20,000 / 11,000 = 1.82x
+  assert.ok(!inside.some((x) => /Over the/.test(x.title)), '1.82x is under the 2x cap');
+  const over = A.rules(mk(10200), {});    // 20,000 / 9,800 = 2.04x
+  assert.ok(over.some((x) => x.title === 'Over the 2x cap'), '2.04x is over the 2x cap');
 });
 
 ok('sellToLev: dollars to reach the cap with debt paid 1:1', () => {
@@ -142,7 +142,7 @@ ok('v188 build: under the reload line, trend shut → armed buys split 20/15/15/
   assert.ok(b.every((x) => x.ticket.armed && x.ticket.side === 'buy'));
   const room = A.C.LEV_NORMAL * 9917.94 - 500.07 * 18.015;
   const spend = b.reduce((a, x) => a + x.ticket.qty * x.ticket.px, 0);
-  // v208: cruise 1.65x — the room is larger than the 20%-of-equity per-name cap, so the cap sizes the leg.
+  // v208/v218: cruise 1.90x — the room is larger than the 20%-of-equity per-name cap, so the cap sizes the leg.
   assert.ok(spend <= room + 0.01 && spend > 0, `spend ${spend} vs room ${room}`);
   assert.equal(b[0].ticket.qty, Math.floor(Math.min(room * 20 / 60, A.C.SINGLE_MAX_EQ * 9917.94) / 181.59));
 });
@@ -557,18 +557,18 @@ ok('v203 weights rows carry held / target / this-week shares and dollars; core s
 ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\'s book still counts — adds for under-target names, reviews for dropped ones, IREN never', () => {
   const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, S: 16.18, ZS: 14.45, PLTR: 13.26, SNPS: 16.11 }, levels: { SNPS: { sym: 'SNPS', name: 'Synopsys', trigger: 460.31, limit: 464.91, tp1: 512.49, stop: 441.61, rr: 2.04 } } });
   const pos = [{ symbol: 'IREN', qty: 500.07, px: 20.73, avg: 40.99 }, { symbol: 'AMZN', qty: 6.07, px: 266.2, avg: 263.47 }, { symbol: 'PLTR', qty: 6.10, px: 162, avg: 168.45 }, { symbol: 'S', qty: 14, px: 21.77, avg: 21.91 }, { symbol: 'ZS', qty: 1, px: 197.66, avg: 202.18 }];
-  // v208: the reload line moved 1.2x → 1.5x, so the same book is replayed with the debt that puts it between 1.5x and 1.65x.
-  const st = A.state({ positions: pos, cash: -4890 });
+  // v218: the band moved to 1.75x / 1.90x, so the same book is replayed with the debt that puts it between them (≈1.82x).
+  const st = A.state({ positions: pos, cash: -6070 });
   assert.ok(st.lev > A.C.LEV_RELOAD && st.lev < A.C.LEV_NORMAL, `fixture sits between reload and cruise (${st.lev.toFixed(2)}x)`);
   const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {}, review: true });
   assert.ok(!out.some((r) => r.kind === 'build'), 'no build rungs above the reload line');
-  // v208 "keep adding": the real Nov 9 book (1.25x, debt $2,653) is now UNDER the reload line, so Apex adds toward 1.65x.
+  // v208 "keep adding": the real Nov 9 book (1.25x, debt $2,653) is UNDER the reload line, so Apex adds toward cruise (1.90x since v218).
   const live = A.state({ positions: pos, cash: -2653 });
-  assert.ok(live.lev < A.C.LEV_RELOAD, `the Nov 9 book (${live.lev.toFixed(2)}x) is under the 1.5x reload line`);
+  assert.ok(live.lev < A.C.LEV_RELOAD, `the Nov 9 book (${live.lev.toFixed(2)}x) is under the reload line`);
   const liveOut = A.rules(live, { cfg, smaMap: { S: { px: 21.77 }, ZS: { px: 197 }, PLTR: { px: 162 }, SNPS: { px: 460 } }, earningsMap: {}, review: true });
   assert.ok(liveOut.some((r) => r.kind === 'build' || r.kind === 'reload'), 'at 1.25x Apex now opens buys (it stopped at 1.2x before)');
   assert.ok(!liveOut.some((r) => r.ticket && r.ticket.sym === 'IREN' && r.ticket.side === 'buy'), 'never adds to IREN');
-  assert.equal(A.C.LEV_NORMAL, 1.65); assert.equal(A.C.LEV_RELOAD, 1.5); assert.equal(A.C.LEV_CAP, 1.75);
+  assert.equal(A.C.LEV_NORMAL, 1.9); assert.equal(A.C.LEV_RELOAD, 1.75); assert.equal(A.C.LEV_CAP, 2);
   const g = A.bookGaps(st, out, cfg);
   // on this smaller equity PLTR sits within 2 pts of its 13.3% weight, so it is no longer an ADD line
   assert.deepEqual(g.adds.map((a) => a.sym), ['SNPS'], 'missing research cannot add S or ZS');
@@ -653,7 +653,7 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const st = A.state({ positions: [
     { symbol: 'IREN', qty: 500.071851, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 168.84, avg: 165.14 },
     { symbol: 'ZS', qty: 11, px: 194.92, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 459.92, avg: 456.64 },
-    { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ], cash: -6637.1, equity: 10650 });
+    { symbol: 'NET', qty: 7, px: 305.97, avg: 300.18 } ], cash: -6637.1, equity: 9500 });   // v218: 1.92x — between cruise 1.90x and the 2x cap, so no adds
   const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
   const lines = A.bookLines(st, out, cfg);
   assert.deepEqual(lines, []);
@@ -669,7 +669,7 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const cfg2 = Object.assign({}, cfg, { levels: Object.assign({}, cfg.levels, { PLTR: { limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low' } }) });
   const out2 = A.rules(st2, { cfg: cfg2, smaMap: {}, earningsMap: {} });
   const l2 = A.bookLines(st2, out2, cfg2);
-  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 4 NET', 'limit $294.90 · GTC'], ['sell', 'Sell 13.10 PLTR', 'limit $213.93 · Day']]);
+  assert.deepEqual(l2.map((l) => [l.side, l.text, l.px]), [['buy', 'Buy 7 NET', 'limit $294.90 · GTC'], ['sell', 'Sell 13.10 PLTR', 'limit $213.93 · Day']]);
   assert.match(l2[1].sub, /research target/); assert.ok(!l2.some(l=>l.sym==='ZS'), 'owner stop cannot authorize an entry');
   assert.equal(A.bookLines(st, [], Object.assign({}, cfg, { targets: { IREN: 20, PLTR: 20 } })).filter((l) => l.side === 'sell').map((l) => l.text).join(), '', 'omitting targets never sells holdings');
   A.render(el, st2, out2, cfg2, null);

@@ -1,3 +1,20 @@
+## v218 — Apex leverage band 1.75x reload / 1.90x cruise / 2.00x cap (2026-11-11)
+Jack (Nov 11 22:03 ET): "Apex not able to get crwd when it's a buy? Raise leverage cap to 2x"; then (22:08) "Update the
+app". The Nov 11 scan read 1.70x, above the 1.65x cruise, so CRWD (a picked target) got no buy. He named the cap only;
+the Nov 10 spacing was kept (cruise = cap − 0.10, reload = cruise − 0.15).
+- `ui/apex.js`: `Apex.C.LEV_CAP` 1.75 → **2.00**, `LEV_NORMAL` 1.65 → **1.90**, `LEV_RELOAD` 1.50 → **1.75**.
+  `sdApexBand()` fallbacks and the help line in `index.html` match. No other rule changed (risk guard, maintenance,
+  R/R floor, per-name and cluster caps, IREN owner-managed, −25% stop, milestones).
+- The "Apex morning scan · 0741" prompt was updated first, same night, to rules **v2.7** with the same band (also sizes
+  picks to 1.90x and caps buys at Robinhood's reported buying power). Scan and card agree.
+- Facts for the next reader: 2.00x is Robinhood's 50%-initial-margin buying ceiling, so real buying power can be
+  smaller than the card's room. At 30% maintenance a 1.90x book reaches a call after a 32.3% fall and a 2.00x book
+  after 28.6% (1.65x: 43.7%). From 1.90x a 5.3% fall in the book reaches the 2.00x cap.
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `producer/apex.test.mjs` (55/55; cap, reload, book-gaps and
+  Confirm-list fixtures migrated), `tests/sd-plan-browser.mjs`, `producer/APEX-DECISIONS.md`, `CLAUDE.md`.
+- Verified locally: all producer suites, tests/*.test.cjs. Browser suites run in CI only (no Chromium in the
+  session). Physical iPhone not verified. App/cache **v218 / pf-v218**.
+
 ## v217 — Portfolio UI/UX continuation (2026-11-11)
 - Added read-only holding/research/plan context, route-only history, Back/Forward/refresh restoration,
   account-local selected names/evidence filters, position search and keyboard row details.
