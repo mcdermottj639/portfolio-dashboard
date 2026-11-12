@@ -3,7 +3,7 @@
    computed here. Widths are keyed to ranges, not to a device (the Duo's browser width was estimated, not measured):
      · phone / folded  ≤ 739px            → slim header, equity beside the day move, Apex trades above the rules
                                              with Confirm pinned over the bottom nav
-     · open            740–900px          → the bottom nav becomes a left rail; Today and Apex become two panes
+     · open            740–1100px         → the bottom nav / sidebar becomes a left rail; Today and Apex become two panes
      · short screens   ≤ 720px tall       → the slim header at any width (the open Duo is wide but short)
    Loaded last so it only overrides. */
 
@@ -63,7 +63,7 @@
 }
 
 /* ── 3 · Open: left rail instead of the bottom nav ────────────────────────────────────────────────────── */
-@media (min-width:740px) and (max-width:900px) {
+@media (min-width:740px) and (max-width:1100px) {
   html.experience-on body{padding-left:calc(env(safe-area-inset-left) + 88px);padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
   html.experience-on .ex-main{top:0;bottom:0;left:0;right:auto;width:calc(env(safe-area-inset-left) + 76px);height:auto;
     flex-direction:column;justify-content:flex-start;align-items:center;gap:6px;
@@ -71,6 +71,9 @@
   html.experience-on.pf-has-tape .ex-main{top:calc(var(--tk-pad, 0px) + var(--tk-h, 0px))}
   html.experience-on .ex-main button{flex:0 0 auto;width:64px;min-width:0;min-height:58px;padding:6px 2px;font-size:10.5px;border-radius:10px}
   html.experience-on .ex-main button[aria-current="page"]{box-shadow:none;background:var(--ex-soft)}
+  /* v220: 901-1100px used to keep the 184px desktop sidebar (the open Duo measures ~960px wide, not ~890). */
+  html.experience-on .ex-main button{flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}
+  html.experience-on .ex-main .ex-wordmark,html.experience-on .ex-main .ex-classic{display:none}
 }
 
 /* ── 4 · Open: two panes (also when the shell already has its side nav, up to 1100px) ───────────────── */
@@ -79,20 +82,25 @@
   #page-ex-today:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
   #page-ex-today>*{margin-top:0;margin-bottom:0}
   #page-ex-today>.ex-brief-heading{grid-column:1/-1}
-  #page-ex-today>.ex-brief-hero{grid-column:1;grid-row:2;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;padding:14px;gap:12px}
+  #page-ex-today>.ex-brief-hero{grid-column:1;grid-row:2;align-self:stretch;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;padding:14px;gap:12px}
   #page-ex-today>.ex-account-grid{grid-column:1;grid-row:3;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   #page-ex-today .ex-account-card{padding:13px}
   #page-ex-today .ex-account-head{display:block}
   #page-ex-today .ex-account-head h2{font-size:14px}
   #page-ex-today .ex-account-head .ex-link{font-size:11px;padding:5px 0}
-  #page-ex-today .ex-account-value{font-size:22px}
   #page-ex-today .ex-account-facts .ex-row{display:block;font-size:11px}
   #page-ex-today .ex-account-facts .ex-row>span{display:block;max-width:100%;text-align:left}
   #page-ex-today .ex-account-facts .ex-row>span:last-child{font-size:16px;margin-top:3px}
-  #page-ex-today>.ex-cash-strip{grid-column:1;grid-row:4;grid-template-columns:1fr 1fr;padding:12px 14px;gap:10px}
+  #page-ex-today>.ex-cash-strip{grid-column:2;grid-row:3;align-self:stretch;align-content:center;grid-template-columns:1fr 1fr;padding:12px 14px;gap:10px}
   #page-ex-today>.ex-cash-strip>p{grid-column:1/-1;margin:0}
   #page-ex-today>.ex-brief-grid{display:contents}
-  #page-ex-today>.ex-brief-grid>.ex-card.ex-wide:first-child{grid-column:2;grid-row:2/span 3}
+  #page-ex-today>.ex-brief-grid>.ex-card.ex-wide:first-child{grid-column:2;grid-row:2;align-self:stretch}
+  /* v220: a figure never wraps mid-number or spills out of its tile in a narrow pane. */
+  #page-ex-today .ex-hero-value{font-size:clamp(20px,2.9vw,28px);white-space:nowrap}
+  #page-ex-today .ex-daily-value{font-size:clamp(17px,2.4vw,24px);white-space:nowrap}
+  #page-ex-today .ex-move-tile{min-width:0;padding:12px}
+  #page-ex-today .ex-move-tile p.ex-muted{font-size:11px}
+  #page-ex-today .ex-account-value{white-space:nowrap;font-size:clamp(17px,2.3vw,22px)}
 
   /* Plan context card: account, name picker and the three steps share one row. */
   #pj-context{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);column-gap:12px;align-items:center;padding:8px 12px}
@@ -114,3 +122,12 @@
   #apex-content:has(>[data-apex-book]:empty)>[data-apex-lev],
   #apex-content:has(>[data-apex-book]:empty)>[data-apex-rules]{grid-column:1/-1}
 }
+
+/* ── 5 · Side status area (v220) — the cards use the full width; only the rows beside the icons stay clear ── */
+html.pf-side-status body{padding-right:12px!important}
+html.pf-side-status #pf-fresh,
+html.pf-side-status #ex-top,
+html.pf-side-status #ex-subnav,
+html.pf-side-status #page-ex-today .ex-brief-heading{margin-right:var(--duo-r,0px)!important}
+/* The sticky account switcher keeps its own backing under the icons, so scrolled text never shows beside it. */
+html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;background:var(--sl-ground,#f7f6f2)}
