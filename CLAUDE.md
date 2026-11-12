@@ -1,3 +1,23 @@
+## v220 — Duo follow-up: the open screen is ~960px wide, and the side status strip is reclaimed (2026-11-12)
+Jack (Nov 12 18:31 ET, two screenshots from the phone): "Full view is awful" and, on the empty strip beside the
+clock/Wi-Fi icons, "Reclaim what u can". v219's sizes were estimates and both were wrong: the open screen measures
+about **960 CSS px** wide (so it got the 184px desktop sidebar plus panes too narrow for the figures — "$18,254." /
+"28" wrapped and "-$717.94" spilled out of its tile), and the Duo reports its status icons as a **~100px RIGHT
+safe-area inset** on both screens, which the page padded by for its whole height.
+- `ui/duo.css`: the left rail now covers **740–1100px** and fully overrides the desktop sidebar (column buttons,
+  wordmark and sidebar Classic hidden; the header Classic button stays). Today's panes are paired rows — hero | radar,
+  accounts | cash, then the existing two-column grid — so a short radar leaves no hole. Hero, day-move and account
+  values are `nowrap` with clamped sizes.
+- New `ui/duo.js` (precached): measures the safe-area insets and sets `html.pf-side-status` + `--duo-r` ONLY for a
+  right inset ≥ 60px with a left inset < 20px (the Duo's shape; a notched iPhone in landscape reports both sides and
+  is untouched). Under that class the body's right padding drops to 12px and only `#pf-fresh`, `#ex-top`,
+  `#ex-subnav`, the Today heading and the sticky account switcher stay clear of the icons.
+- Known trade-off: a card's right edge passes under the icons while it scrolls through the top ~100–160px.
+- Files: `ui/duo.css`, `ui/duo.js` (new), `index.html`, `sw.js`, `tests/journey.test.cjs`, `CLAUDE.md`.
+- Verified (synthetic preview, Chromium, inset forced by hand since `env()` cannot be simulated): 960×676 and
+  466×677 screenshots read, 6-figure equity fits; suites as listed in the PR. Not verified: the real inset values or
+  the icon area's height on the phone. App/cache **v220 / pf-v220**.
+
 ## v219 — iPhone Duo layouts: slim header, left rail + two panes when open, Confirm pinned (2026-11-12)
 Jack (Nov 12 17:40 ET): "I just got the iPhone duo. Can our apps be optimized for the folded vs big view" → asked for
 mockups, then "Both" (Today and Apex). Layout only — same cards, numbers and controls; nothing new is computed.
