@@ -900,7 +900,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v224'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v225'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -937,11 +937,12 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
         var warn=locked||err||stale||!!nudge;
         bar.style.color=warn?'#7c2d12':'#475569'; bar.style.background=warn?'#fff7ed':'#eef2f7'; bar.style.borderColor=warn?'#fed7aa':'#dbe2ea';
         var l=document.getElementById('pf-fresh-left'); if(!l) return;
+        var displayDate=String(lab).replace(/ (\d{4}),/,function(m,y){return y==String(new Date().getFullYear())?',':m;});
         l.innerHTML = nudge ? nudge
           : locked ? '🔒 Locked — enter your passphrase to view'
           : err    ? '⚠️ Couldn’t load data ('+err+')'
-          : stale  ? '⚠️ Snapshot '+ageStr(ageH)+' — tap ↻ to refresh'
-          :          '📡 <span class="pf-fl-word">Snapshot: </span>'+String(lab).replace(/ (\d{4}),/,function(m,y){return y==String(new Date().getFullYear())?',':m;})+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
+          : stale  ? '⚠️ '+displayDate+' · '+ageStr(ageH)+' — tap ↻ to refresh'
+          :          displayDate+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
       }
       paintBar();
       window.__pfNudge=function(html){ nudge=html; paintBar(); };
