@@ -131,3 +131,72 @@ html.pf-side-status #ex-subnav,
 html.pf-side-status #page-ex-today .ex-brief-heading{margin-right:var(--duo-r,0px)!important}
 /* The sticky account switcher keeps its own backing under the icons, so scrolled text never shows beside it. */
 html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;background:var(--sl-ground,#f7f6f2)}
+
+/* ───────── 6 · v221: the rest of the app ─────────
+   Jack (Nov 12, on v220's open Today): "That's better. Do the rest of that portfolio dashboard app now."
+   Layout only: same cards, same numbers. */
+
+/* 6a · Short or narrow screens: page banners become one slim row (both Duo screens are < 720px tall). */
+@media (max-width:739px), (max-height:720px) {
+  #page-portfolio .header{padding:10px 16px;margin-bottom:10px}
+  #page-portfolio .header>div{align-items:center!important;gap:10px}
+  #page-portfolio .header .h-label{font-size:10px}
+  #page-portfolio .header .h-value{font-size:clamp(22px,5vw,28px);line-height:1.15;white-space:nowrap}
+  .picks-hero{padding:10px 16px;margin-bottom:10px;gap:8px}
+  .picks-hero .ph-label{font-size:10px}
+  .picks-hero .ph-date{font-size:17px;margin-top:0}
+  .picks-hero .ph-stale{font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .picks-hero>div{min-width:0}
+  .picks-hero .run-btn{padding:6px 12px;font-size:12px}
+  .pred-page .pred-head{padding:4px 0 8px}
+  .pred-page .pred-head h1{font-size:26px;line-height:1.1}
+  .pred-page .pred-head h1+p{display:none}
+  .pred-page .pred-head-tools{margin-top:6px}
+}
+
+/* 6b · Folded (420–739): six snapshot tiles in two rows of three instead of three rows of two. */
+@media (min-width:420px) and (max-width:739px) {
+  #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  #page-portfolio [data-sec="snapshot"] .snap{padding:10px;min-width:0}
+  #page-portfolio [data-sec="snapshot"] .snap-val{font-size:clamp(14px,3.7vw,18px);white-space:nowrap}
+}
+
+/* 6c · Open (740–1100): use the width. */
+@media (min-width:740px) and (max-width:1100px) {
+  /* Accounts: all six snapshot tiles on one row */
+  #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+  #page-portfolio [data-sec="snapshot"] .snap{padding:10px;min-width:0}
+  #page-portfolio [data-sec="snapshot"] .snap-val{font-size:clamp(14px,1.75vw,18px);white-space:nowrap}
+
+  /* Shared pairing grid: a page's cards sit two-up; wide ones opt back to full width. */
+  #markets-app,#options-app,#plan-agentic-app,#az-result{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:start}
+  #markets-app>*,#options-app>*,#plan-agentic-app>*,#az-result>*{grid-column:1/-1;min-width:0}
+
+  /* Markets: sector map beside US-vs-international, macro beside breadth */
+  #markets-app>.card:has(#sec-hint),#markets-app>.card:has(#sec-hint)+.card,
+  #markets-app>.card:has(#mkt-macro),#markets-app>.card:has(#mkt-breadth){grid-column:auto}
+  #mkt-macro .snap-grid,#mkt-macro .mkt-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #mkt-macro .snap{min-width:0}
+
+  /* Options: the two income rankers side by side */
+  #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income]){grid-column:auto}
+
+  /* Agentic plan: every card after the banner pairs up */
+  #plan-agentic-app>.card{grid-column:auto}
+
+  /* Analyze: header and flow chip full width, the rest two-up */
+  #az-result>.card{grid-column:auto}
+  #az-result>.card:first-child,#az-result>.card:nth-child(2){grid-column:1/-1}
+
+  /* Half-width cards: the grey hint leaves the title so the ? ☆ ▼ buttons stay on its line */
+  #markets-app>.card:has(#sec-hint) .card-title .card-hint,#markets-app>.card:has(#sec-hint)+.card .card-title .card-hint,
+  #markets-app>.card:has(#mkt-breadth) .card-title .card-hint,
+  #plan-agentic-app>.card>.card-title .card-hint,#az-result>.card:nth-child(n+3)>.card-title .card-hint{display:none}
+
+  /* Smart Money: full width, rows two-up */
+  .sm-page{max-width:none}
+  .sm-page .sm-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sm-page .sm-rows>.sm-row:nth-child(2){border-top:0}
+  .sm-page .sm-rows>.sm-row:nth-child(odd){border-right:1px solid var(--sm-rule)}
+  .sm-page .sm-rows>:not(.sm-row){grid-column:1/-1}
+}
