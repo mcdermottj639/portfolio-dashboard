@@ -6,7 +6,7 @@
      - data.json: network-first with cache fallback (freshest snapshot; offline → last snapshot)
      - other shell assets (manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
    Bump CACHE_VERSION when the shell changes. */
-const CACHE_VERSION = 'pf-v224';
+const CACHE_VERSION = 'pf-v225';
 /* v171: the snapshot lives in its OWN cache that survives version bumps. It used to sit in the
    versioned cache, so every app update deleted the only offline copy — and the first fetch after
    an update failing (a flaky network, a stalled 6 MB download) left the app with NOTHING: the
