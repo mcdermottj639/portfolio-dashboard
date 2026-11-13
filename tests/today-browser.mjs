@@ -131,10 +131,12 @@ export async function runTodayChecks(page) {
     await openToday(page);
     for (const theme of ['light', 'dark']) {
       await page.locator('#td-theme').selectOption(theme);
+      await checkSelectedViewContrast(page, theme);
       for (const [width, height] of [[320,844],[390,844],[430,932],[466,677],[678,453],[960,676],[1440,1000]]) {
         await page.setViewportSize({ width, height });
         await page.waitForTimeout(80);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Today has no horizontal overflow in ' + theme + ' at ' + width + '×' + height);
+        await checkCompactLabels(page, theme + ' at ' + width + '×' + height);
         assert.equal(await page.locator('.ex-main [data-ex-area="signals"]').isVisible(), true, 'Signals stays reachable');
       }
     }
@@ -183,6 +185,40 @@ export async function runTodayChecks(page) {
     await openToday(page);
     page.off('request', recordWrite);
   }
+}
+
+async function checkSelectedViewContrast(page, theme) {
+  const colors = await page.locator('.td-view-switch button[aria-pressed="true"]').evaluate(el => {
+    const style = getComputedStyle(el);
+    return { text:style.color, fill:style.backgroundColor };
+  });
+  const luminance = color => {
+    assert.match(color, /^rgba?\(/, 'selected control resolves to an RGB color');
+    const channels = color.match(/[\d.]+/g).map(Number);
+    assert.ok(channels.length === 3 || channels[3] === 1, 'selected control has an opaque fill/text');
+    const [r,g,b] = channels.slice(0,3).map(value => {
+      const v = value / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  };
+  const light = luminance(colors.text), dark = luminance(colors.fill);
+  const ratio = (Math.max(light,dark)+0.05) / (Math.min(light,dark)+0.05);
+  assert.ok(ratio >= 4.5, 'selected Map/List text remains readable immediately after switching to ' + theme + ': ' + ratio.toFixed(2));
+}
+
+async function checkCompactLabels(page, viewport) {
+  const clipped = await page.locator('.td-map .td-tile:not(.td-tile-small) :is(.td-ticker,.td-tile-change), .td-market .ex-market-grid strong').evaluateAll(nodes => nodes.flatMap(el => {
+    if (getComputedStyle(el).display === 'none') return [];
+    const box = el.closest('.td-tile-content') || el.parentElement;
+    const style = getComputedStyle(box);
+    const available = box.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const range = document.createRange(); range.selectNodeContents(el);
+    const rects = [...range.getClientRects()];
+    return rects.length > 1 || range.getBoundingClientRect().width > available + 1
+      ? [{label:el.textContent, available, width:range.getBoundingClientRect().width, lines:rects.length}] : [];
+  }));
+  assert.deepEqual(clipped, [], 'major holding labels and market percentages fit in ' + viewport);
 }
 
 async function checkCoverageAndTicketStates(page, symbol) {

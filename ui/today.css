@@ -508,6 +508,7 @@ html.pf-today-premium[data-theme="gold"] {
 #page-ex-today .td-shell .td-tile {
   position: absolute;
   display: block;
+  container: td-holding / inline-size;
   min-width: 0;
   min-height: 0;
   min-inline-size: 0;
@@ -670,13 +671,19 @@ html[data-theme="gold"] #page-ex-today .td-shell .td-tile.td-neutral { --td-tile
 
 #page-ex-today .td-shell .td-market .ex-market-grid { gap: 10px; margin: 0; }
 #page-ex-today .td-shell .td-market .ex-market-grid > div {
+  container-type: inline-size;
   padding: 12px;
   border: 1px solid var(--td-rule);
   border-radius: 11px;
   background: var(--td-raised);
 }
 #page-ex-today .td-shell .td-market .ex-market-grid :is(span, small) { font-size: 12px; }
-#page-ex-today .td-shell .td-market .ex-market-grid strong { margin-top: 8px; font-size: 22px; }
+#page-ex-today .td-shell .td-market .ex-market-grid strong {
+  margin-top: 8px;
+  font-size: 22px;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 
 #page-ex-today .td-shell .td-sheet {
   width: min(600px, calc(100% - 32px));
@@ -836,13 +843,38 @@ html[data-theme="gold"] #page-ex-today .td-shell .td-tile.td-neutral { --td-tile
   #page-ex-today .td-shell .td-trade-row { grid-template-columns: minmax(0, 1fr); }
   #page-ex-today .td-shell .td-price { text-align: left; }
   #page-ex-today .td-shell .td-map { height: 224px; }
+  #page-ex-today .td-shell .td-market .ex-market-grid > div { padding: 8px; }
+  #page-ex-today .td-shell .td-market .ex-market-grid strong { font-size: 16px; }
+}
+
+/* Internal labels follow the actual rectangle, never its viewport or value
+   share. This does not add minimum sizes to the positioned map geometry. */
+@container td-holding (max-width: 100px) {
+  #page-ex-today .td-shell .td-tile .td-tile-content { padding: 6px 4px; }
+  #page-ex-today .td-shell .td-tile .td-ticker { font-size: clamp(12px, 24cqi, 20px); }
+  #page-ex-today .td-shell .td-tile .td-tile-change { font-size: clamp(12px, 17cqi, 15px); }
+}
+@container td-holding (max-width: 70px) {
+  #page-ex-today .td-shell .td-tile .td-tile-pnl { display: none; }
+}
+@supports (container-type: inline-size) {
+  #page-ex-today .td-shell .td-market .ex-market-grid strong { font-size: clamp(12px, 28cqi, 22px); }
+}
+@supports not (container-type: inline-size) {
+  @media (max-width: 1100px) {
+    #page-ex-today .td-shell .td-tile .td-tile-content { padding: 6px 4px; }
+    #page-ex-today .td-shell .td-tile .td-ticker,
+    #page-ex-today .td-shell .td-tile .td-tile-change { font-size: 12px; }
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   #page-ex-today .td-shell .td-disclosure > summary::after { transition: transform 160ms ease; }
-  #page-ex-today .td-shell :is(.td-primary, .td-secondary, .td-view-switch button) {
+  #page-ex-today .td-shell :is(.td-primary, .td-secondary) {
     transition: background-color 160ms ease, border-color 160ms ease;
   }
+  /* Theme foreground and fill must change together to preserve contrast. */
+  #page-ex-today .td-shell .td-view-switch button { transition: border-color 160ms ease; }
 }
 
 @media (forced-colors: active) {
