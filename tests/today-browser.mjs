@@ -59,10 +59,10 @@ export async function runTodayChecks(page) {
     const history = page.locator('[data-td-details="history"]');
     assert.equal(await history.evaluate(el => el.tagName), 'DETAILS');
     assert.equal(await history.getAttribute('open'), null, 'daily value history starts collapsed');
-    assert.match(await history.locator('summary').innerText(), /Value over time/i);
+    assert.match(await history.locator(':scope > summary').innerText(), /Value over time/i);
     assert.equal(await page.locator('#page-ex-today').getByRole('button', { name: '1D', exact: true }).count(), 0);
     assert.equal(await page.locator('.td-map svg,.td-map canvas').count(), 0, 'holding tiles have no invented sparklines');
-    await history.locator('summary').click();
+    await history.locator(':scope > summary').click();
     assert.ok(await history.locator('.ex-private-chart').isVisible());
     assert.match(await history.innerText(), /recorded|daily/i);
     await refresh(page);
@@ -131,8 +131,10 @@ export async function runTodayChecks(page) {
       }
     }
 
-    if (process.env.PF_SCREENSHOT_DIR) {
-      const dir = path.resolve(process.env.PF_SCREENSHOT_DIR); fs.mkdirSync(dir, { recursive: true });
+    {
+      assert.equal(await page.evaluate(() => document.body.textContent.includes('LOCAL PREVIEW — SYNTHETIC SAMPLE DATA')), true,
+        'Today screenshots require the isolated synthetic preview');
+      const dir = path.resolve(process.env.PF_SCREENSHOT_DIR || 'tmp/journey-evidence'); fs.mkdirSync(dir, { recursive: true });
       await page.locator('#td-theme').selectOption('light');
       await page.setViewportSize({ width:390, height:844 });
       await page.evaluate(() => window.scrollTo(0,0));
@@ -146,6 +148,26 @@ export async function runTodayChecks(page) {
     }
     assert.deepEqual(writes, [], 'Today makes no account or trade writes');
     console.log('today-browser PASS: five tabs, combined scope, Light/Dark/System persistence, daily history, proportionate map/list, both-account holding journeys, privacy, missing quotes, ticket ownership/states, whole-book prompt parity, 7 viewport sizes; synthetic data only');
+  } catch (error) {
+    // The CI artifact directory is shared with the Journey suite. Capture before
+    // cleanup, and only when the isolated preview's synthetic-data marker exists.
+    try {
+      const synthetic = await page.evaluate(() => document.body.textContent.includes('LOCAL PREVIEW — SYNTHETIC SAMPLE DATA'));
+      if (synthetic) {
+        const dir = path.resolve(process.env.PF_SCREENSHOT_DIR || 'tmp/journey-evidence');
+        fs.mkdirSync(dir, {recursive:true});
+        const state = await page.evaluate(() => ({route: window.PFExperience?.route,
+          theme: document.documentElement.getAttribute('data-theme'), preference: window.PFTheme?.preference()}));
+        fs.writeFileSync(path.join(dir, 'today-failure.json'), JSON.stringify({
+          synthetic:true, commit:process.env.GITHUB_SHA || null, capturedAt:new Date().toISOString(),
+          error:{name:error.name, message:String(error.message).slice(0,4000)}, viewport:page.viewportSize(), ...state
+        }, null, 2));
+        await page.screenshot({path:path.join(dir, 'today-failure.png'), fullPage:true, timeout:10000});
+      }
+    } catch (captureError) {
+      console.warn('Today failure evidence capture failed: ' + String(captureError.message).split('\n')[0]);
+    }
+    throw error;
   } finally {
     await page.evaluate(mode => { setPrivacy(false); PFTheme.set(mode); }, initialTheme);
     await page.emulateMedia({ colorScheme: null });

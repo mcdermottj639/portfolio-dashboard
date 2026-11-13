@@ -5,7 +5,8 @@ import time
 import urllib.request
 ROOT=Path(__file__).resolve().parents[1]
 BASE='https://mcdermottj639.github.io/portfolio-dashboard/'
-ASSETS=['index.html','sw.js','ui/experience.js','ui/journey.js','ui/journey.css']
+ASSETS=['index.html','sw.js','ui/experience.js','ui/journey.js','ui/journey.css',
+        'ui/theme.js','ui/today-model.js','ui/today.js','ui/today.css']
 expected={p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in ASSETS}
 last={}
 for attempt in range(30):
