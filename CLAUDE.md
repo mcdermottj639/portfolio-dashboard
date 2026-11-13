@@ -1,3 +1,31 @@
+## v224 — Apex rules v2.8: tech capped at 40% of the stock outside IREN (2026-11-13)
+Jack (Nov 13 11:59 ET, after a day when every Apex name fell with tech): "The decision is if we should continue to keep
+concentrating Apex inside AI like this, or if we should look for growth other where … doesn't mean we have to be
+exclusively AI." Claude proposed a 40% theme cap + a wider universe; ChatGPT reviewed it (transition rule, keep the
+45% AI-compute cap separate, versioned theme map, three-arm paper test); Jack (12:13 ET): "Review confirm edit as
+needed build and merge".
+- `ui/apex.js`: `C.THEME_MAX` 0.40 / `C.THEME_CAPPED` 'tech'; theme map **themes-v1** (`TECH` list: AI compute, AI and
+  software, cyber, TSLA, AXON — software and cyber cannot escape under separate labels); `cfg.themeMap` (from the scan's
+  `data/apex-targets.json` `themeMap`) overrides per name; unknown names are "other". New pure `themeOf`,
+  `themeShare` (stock outside the core + a whole-account figure incl. the core, reported, never used to pass the cap),
+  `themeRoom` (dollars of a tech buy that keep tech ≤ 40% after it: (0.4·N − T) ÷ 0.6, counting rungs already written).
+- **Forward-only.** `buyBlock` refuses a tech buy/add once tech is at the cap ("Not a sell signal"); build rungs and
+  `bookGaps` adds are sized down to `themeRoom`; non-tech buys are untouched. No rule sells for the cap, and no
+  leverage, maintenance or per-name limit moved. The existing 45%-of-equity AI-compute cap (scan, incl. IREN) is a
+  separate control and is unchanged.
+- Card: a "Tech outside IREN — X% / 40% cap" bar under Weights vs target (`[data-apex-theme]`). Confirm prompt
+  carries the cap and today's share. `cfg.themeCap:false` = the v2.7 book (paper control, pre-v2.8 tests).
+- Live book on Nov 13: tech = 100% of the $8,472 outside IREN, so every tech add (incl. the CRWD drift buy) is blocked
+  until non-tech names are bought or tech exits by its own rules.
+- The "Apex morning scan · 0741" prompt moved to **rules v2.8** the same day (wider universe: the existing list + a fixed
+  S&P 500 growth extension across health, finance, industrial, consumer; same gates and R/R ≥ 1.5; theme cap in picks
+  and adds; three paper arms v2.8 / v2.7 / v1). Monday Nov 16 7:12 AM ET is its first v2.8 research run.
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `tests/journey.test.cjs`, `producer/apex.test.mjs` (59/59: +4; five
+  pre-v2.8 fixtures pinned to `themeCap:false`), `producer/APEX-DECISIONS.md`, `CLAUDE.md`.
+- Verified: all producer suites, tests/*.test.cjs 33/33, apex / sd-plan / brief / journey browser suites (local
+  Chrome); the theme bar at 390 and 320px with the Nov 13 book — scrollWidth = innerWidth, 0 page errors, screenshot read.
+  Not verified: a physical iPhone, live data. App/cache **v224 / pf-v224** (v223 is held by ChatGPT's open Today PR #207, which must re-bump past v224 when it rebases).
+
 ## v222 — Duo folded screen turned sideways: nav rail in the left strip (2026-11-13)
 Jack (Nov 13 10:55 ET, screenshot of Today on the folded screen held sideways): "optimize this landscape folded view
 as well". Measured from the screenshot: about **678 x 453 CSS px**, the Duo reports an **~85px LEFT** safe-area inset

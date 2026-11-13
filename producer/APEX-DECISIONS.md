@@ -15,6 +15,7 @@ model. The separate agentic model and brokerage execution are outside this chang
 | Genuine hard stop, held research stop/target or maintenance trigger | One sell proposal per symbol, no opposing buy; quantity capped at the holding. Full exits supersede smaller optional sells |
 | Mechanical +25%/+50% profit milestone | Review only until execution-backed milestone state is available. Position quantity alone cannot establish whether a trim already filled |
 | Owner-managed core | No automated sell, trim or add proposal |
+| Theme cap (v224, rules v2.8) | Tech (themes-v1: AI compute, AI and software, cyber, TSLA, AXON) may be at most 40% of the stock outside the core after the buy. At or over the cap: no tech buy or add; non-tech buys allowed; tech buys sized down to the room. Never a sell, never more leverage. The 45%-of-equity AI-compute cap stays a separate control |
 
 Quote freshness remains separate from research freshness. The existing 75-minute
 quote rule labels older prices as estimates. Every proposed order still requires
