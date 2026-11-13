@@ -38,7 +38,21 @@
     RR_MIN: 1.5,           // v194: Jack's reward/risk floor, measured at the ACTUAL entry (the limit), not yesterday's close
     PRICE_FRESH_MIN: 75,   // v214: the producer refreshes hourly 8:41 AM–4:41 PM ET on weekdays (incl. the pre-market price); a snapshot older than one cycle + slack cannot name an order price
     LIMIT_PAD: 0.01,       // v194: the scan's buy-stop-limit sits 1% over the trigger (274.60 → 277.35)
+    /* v224 — rules v2.8 (Jack, Nov 13 2026 12:13 ET: "Review confirm edit as needed build and merge", approving the
+       40% cap after asking "if we should continue to keep concentrating Apex inside AI … growth oriented … doesn't
+       mean we have to be exclusively AI"). One theme ("tech" = AI compute + AI/software + cyber, one versioned map)
+       may hold at most 40% of the stock OUTSIDE the owner-managed core. FORWARD-ONLY: over the cap, tech buys and
+       adds stop; non-tech buys are allowed; nothing is ever sold to meet it and no leverage limit moves for it. */
+    THEME_MAX: 0.40,
+    THEME_CAPPED: 'tech',
   };
+
+  /* v224 theme map v1 (rules v2.8). Software and cyber cannot escape the cap under separate labels. A name not
+     listed here is "other" unless data/apex-targets.json themeMap (written by the scan) names its theme. */
+  const THEME_MAP_VERSION = 'themes-v1';
+  const TECH = ('NVDA AMD AVGO MU TSM ASML AMAT LRCX KLAC ARM MRVL ANET SMCI ON INTC QCOM CIFR WULF CORZ HUT VRT IREN ' +
+    'PLTR APP DDOG SNPS CDNS ADBE META GOOGL GOOG AMZN NFLX TTD MELI MSFT AAPL ORCL CRM NOW INTU SHOP SNOW MDB ' +
+    'CRWD PANW ZS FTNT NET S OKTA CYBR TSLA AXON').split(' ');
 
   /* Default book config. Overridable from window.__APEX_CFG (set by the producer
      later) or a test. Targets are % of EQUITY, must respect SINGLE_MAX_EQ. */
@@ -54,7 +68,34 @@
     /* v196: Robinhood's per-stock maintenance (Margin buffer screen, Jack, 2026-11-08). Names not listed use
        the 30% account default, which is the same or stricter than Robinhood's figure for them. */
     maintBy: { IREN: 0.30, AMZN: 0.25, PLTR: 0.25 },
+    themeCap: true,                                  // v224: rules v2.8 theme cap on; false = the v2.7 book (paper control and pre-v2.8 tests)
+    themeMap: null,                                  // v224: optional {SYM: theme} from the scan; overrides the built-in map per name
   };
+
+  /* v224 (rules v2.8) theme helpers. Measured on stock OUTSIDE the core; the whole-account picture (core included)
+     is reported separately and never used to pass or fail this cap. */
+  function themeOf(cfg, sym) {
+    const m = cfg && cfg.themeMap; const s = String(sym || '').toUpperCase();
+    if (m && Object.prototype.hasOwnProperty.call(m, s)) return String(m[s]).toLowerCase() === 'tech' ? 'tech' : String(m[s]).toLowerCase();
+    return TECH.includes(s) ? 'tech' : 'other';
+  }
+  function themeShare(st, cfg) {
+    cfg = cfg || DEFAULT_CFG;
+    let outside = 0, capped = 0;
+    (st.positions || []).forEach((p) => { if (p.symbol === cfg.core) return; outside += p.val; if (themeOf(cfg, p.symbol) === C.THEME_CAPPED) capped += p.val; });
+    const all = (st.positions || []).reduce((a, p) => a + p.val, 0);
+    const coreVal = all - outside, cappedAll = capped + (themeOf(cfg, cfg.core) === C.THEME_CAPPED ? coreVal : 0);
+    return { outside, capped, share: outside > 0 ? capped / outside : 0, over: outside > 0 && capped / outside > C.THEME_MAX + 1e-9,
+      wholeShare: all > 0 ? cappedAll / all : 0, max: C.THEME_MAX, theme: C.THEME_CAPPED, mapVersion: THEME_MAP_VERSION };
+  }
+  /* Dollars of a capped-theme buy that keep the theme at or under the cap after the buy: (T + d) / (N + d) ≤ max.
+     Non-capped names are unlimited here (every other limit still applies). */
+  function themeRoom(st, cfg, sym, pending) {
+    if ((cfg && cfg.themeCap === false) || themeOf(cfg, sym) !== C.THEME_CAPPED) return Infinity;
+    const t = themeShare(st, cfg), add = pending || { capped: 0, other: 0 };
+    const T = t.capped + add.capped, N = t.outside + add.capped + add.other;
+    return Math.max(0, (C.THEME_MAX * N - T) / (1 - C.THEME_MAX));
+  }
 
   const num = (v) => (v == null || isNaN(+v) ? 0 : +v);
 
@@ -261,11 +302,12 @@
       const names = Object.keys(cfg.targets).filter((s) => s !== cfg.core && !nearEarn(s));
       const W = names.reduce((a, s) => a + cfg.targets[s], 0);
       if (room >= 100 && W > 0) {
+        const pend = { capped: 0, other: 0 };   // v224: rungs written earlier this pass count toward the theme cap
         for (const s of names) {
           if (out.some((r) => (r.ticket && r.ticket.side === 'sell' && r.ticket.sym === s) || (r.kind === 'review' && r.sym === s))) continue;
           const held = (byName(s) || { val: 0 }).val;
           const cap = Math.max(0, Math.min(C.SINGLE_MAX_EQ, cfg.targets[s] / 100) * st.equity - held);
-          const alloc = Math.min(cap, room * cfg.targets[s] / W);
+          const alloc = Math.min(cap, room * cfg.targets[s] / W, themeRoom(st, cfg, s, pend));
           const px = (sma[s] && sma[s].px) || (byName(s) || {}).px || 0;
           const L = levelsFor(cfg, s);
           /* v202: a target inside the 30-day wash-sale window (a loss sale in either account — cfg.wash, built from
@@ -294,6 +336,7 @@
              the Jarvis ticket (floor(budget ÷ limit)). Missing or invalid levels produce a review without a ticket. */
           const sizePx = L && L.limit > 0 ? L.limit : px;
           const qty = sizePx > 0 ? Math.floor(alloc / sizePx) : 0;
+          if (qty > 0) pend[themeOf(cfg, s) === C.THEME_CAPPED ? 'capped' : 'other'] += qty * sizePx;
           if (L && qty > 0) {
             const away = px > 0 ? L.trigger / px - 1 : null;
             const tk = Object.assign({}, L, { side: 'buy', sym: s, qty, px: round(px), armed: L.orderType !== 'limit', away });
@@ -360,6 +403,10 @@
     if (!['limit', 'stop_limit', 'stop-limit'].includes(L.orderType) || (L.orderType !== 'limit' && !(L.trigger > 0 && L.trigger <= L.limit))) return 'Valid entry order type and trigger required.';
     if (L.maxPx != null && L.limit > L.maxPx) return 'Entry exceeds the research maximum price.';
     if (L.rr < C.RR_MIN) return `R/R ${L.rr.toFixed(2)} at the entry limit is below ${C.RR_MIN}. No add; this is not a sell signal.`;
+    if (cfg.themeCap !== false && themeOf(cfg, sym) === C.THEME_CAPPED && themeRoom(st, cfg, sym) < 1) {
+      const t = themeShare(st, cfg);
+      return `Tech is ${pct(t.share)} of the stock outside ${cfg.core} vs the ${pct(C.THEME_MAX)} cap (v2.8) — no tech adds. Not a sell signal.`;
+    }
     return null;
   }
 
@@ -478,11 +525,23 @@
       <div data-apex-book>${portfolioButton(st, out, cfg, research)}</div>
       <div data-apex-business></div>
       <div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · held → target in shares and $ · cap ${pct(C.SINGLE_MAX_EQ)})</span></div>${mix}
+      ${themeHtml(st, cfg)}
       ${researchBlock(research, esc)}
       <div class="ac-tier">🧪 What if</div>
       <div id="apex-whatif"></div>
       <div style="font-size:11px;color:#9ca3af;margin-top:10px">Tickets are proposals from these rules. Approve or decline them in <a href="${esc(cfg.jarvis)}" target="_blank" rel="noopener" style="color:#2563eb">Jarvis</a>; confirm against live holdings and pending orders before entering a ticket.</div>`;
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
+  }
+
+  /* v224 (rules v2.8): one bar — the capped theme's share of the stock outside the core, a tick at the cap. The
+     whole-account figure (core included) is a second, grey line so meeting the cap is never read as diversified. */
+  function themeHtml(st, cfg) {
+    if (cfg.themeCap === false) return '';
+    const t = themeShare(st, cfg); if (!(t.outside > 0)) return '';
+    const w = t.share * 100, col = t.over ? '#f97316' : '#10b981';
+    return `<div data-apex-theme style="margin:10px 0 4px"><div style="display:flex;justify-content:space-between;font-size:11.5px"><b>Tech outside ${cfg.core}</b><span style="color:${col};font-weight:600">${w.toFixed(0)}% / ${(C.THEME_MAX * 100).toFixed(0)}% cap</span></div>` +
+      `<div class="gauge" style="position:relative;height:8px;margin:4px 0"><div style="width:${Math.min(100, w)}%;height:100%;background:${col}"></div><div style="position:absolute;left:${C.THEME_MAX * 100}%;top:-3px;width:2px;height:14px;background:#111827"></div></div>` +
+      `<div style="font-size:10.5px;color:#6b7280">${t.over ? 'Over the cap: no tech buys or adds; other growth names can still be bought. Nothing is sold for this.' : 'Under the cap: tech buys allowed up to the line.'} Whole account incl. ${cfg.core}: ${(t.wholeShare * 100).toFixed(0)}% tech.</div></div>`;
   }
 
   /* One allocation budget for valid entries. A held name outside the buy list
@@ -497,14 +556,16 @@
     const held = {}; (st.positions || []).forEach((p) => { held[p.symbol] = p; });
     const adds = [], reviews = [];
     let room = Math.max(0, C.LEV_NORMAL * eq - st.exposure - builds.reduce((a, r) => a + r.ticket.qty * r.ticket.limit, 0));
+    const pend = { capped: 0, other: 0 };   // v224: build rungs already on the list count toward the theme cap
+    builds.forEach((r) => { pend[themeOf(cfg, r.ticket.sym) === C.THEME_CAPPED ? 'capped' : 'other'] += r.ticket.qty * r.ticket.limit; });
     Object.keys(cfg.targets || {}).forEach((sym) => {
       if (!eq || sym === cfg.core || built.has(sym) || sells.has(sym)) return;
       const tgt = Math.min(C.SINGLE_MAX_EQ * 100, Math.max(0, +cfg.targets[sym] || 0)), p = held[sym], have = p ? p.val / eq * 100 : 0;
       if (tgt - have < 2) return;
       const reason = buyBlock(st, out, cfg, sym);
       if (reason) { reviews.push({ sym, why: reason }); return; }
-      const lv = levelsFor(cfg, sym), dollars = Math.min(room, (tgt - have) / 100 * eq), qty = Math.floor(dollars / lv.limit);
-      if (qty > 0) { adds.push({ sym, have, tgt, dollars: qty * lv.limit, qty, lv }); room -= qty * lv.limit; }
+      const lv = levelsFor(cfg, sym), dollars = Math.min(room, (tgt - have) / 100 * eq, themeRoom(st, cfg, sym, pend)), qty = Math.floor(dollars / lv.limit);
+      if (qty > 0) { adds.push({ sym, have, tgt, dollars: qty * lv.limit, qty, lv }); room -= qty * lv.limit; pend[themeOf(cfg, sym) === C.THEME_CAPPED ? 'capped' : 'other'] += qty * lv.limit; }
     });
     (st.positions || []).forEach((p) => {
       if (p.symbol !== cfg.core && !(cfg.targets || {})[p.symbol] && !sells.has(p.symbol)) reviews.push({ sym: p.symbol,
@@ -545,7 +606,7 @@
     if (reviews.length) { L.push('', 'Review only — these are NOT orders:'); reviews.forEach((r) => L.push(`• REVIEW ${r.sym} — ${r.why}`)); }
     const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
     if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f((levelsFor({ levels: { [r.sym]: r } }, r.sym) || {}).stop)}`).join('; ')); }
-    L.push('', 'New buys/adds only: require finite 0 < research stop < executable limit < target, R/R at the limit >= 1.5, verified tradability, no earnings inside 3 trading days, no active exit, per-name cap 20% of equity, and total buys sized within ' + C.LEV_NORMAL + 'x cruise (hard cap ' + C.LEV_CAP + 'x). Preserve limit entries versus breakout stop-limits. Revalidate live; never move a stop or target just to pass R/R. Owner order prices are not research levels. Missing, stale or derived-only research means WAIT on an entry.',
+    L.push('', 'New buys/adds only: require finite 0 < research stop < executable limit < target, R/R at the limit >= 1.5, verified tradability, no earnings inside 3 trading days, no active exit, per-name cap 20% of equity, and total buys sized within ' + C.LEV_NORMAL + 'x cruise (hard cap ' + C.LEV_CAP + 'x).' + (cfg.themeCap === false ? '' : ' Theme cap (rules v2.8): tech (AI compute + AI/software + cyber) may be at most ' + Math.round(C.THEME_MAX * 100) + '% of the stock outside ' + cfg.core + ' after all buys; tech now ' + Math.round(themeShare(st, cfg).share * 100) + '%. Over the cap, a tech buy or add is NO; never propose a sale or more leverage to meet the cap.') + ' Preserve limit entries versus breakout stop-limits. Revalidate live; never move a stop or target just to pass R/R. Owner order prices are not research levels. Missing, stale or derived-only research means WAIT on an entry.',
       'Held positions: low entry R/R or removal from the buy list means HOLD / NO ADD / REVIEW, never a sell by itself. Genuine research stop, thesis/trend failure, planned profit target and maintenance exits remain independent. Do not re-anchor a held stop to a new entry price. Review discretionary rotations weekly; require a documented material advantage on the same horizon after spread, slippage and other costs. A small score/rank change is insufficient. No minimum holding period may delay a genuine risk exit.',
       'Before any YES, read current holdings and ALL pending, partially filled, filled, cancelled and rejected orders including advanced orders. Reconcile each symbol to ONE net action within available shares and buying power. Unknown execution state means WAIT for a new ticket, while retaining any protective alert. Read my resting orders only to prevent conflicts, not to set research stops/targets. A profit-milestone trim requires durable cycle/milestone records linked to confirmed fills: a clicked recommendation is not a fill. Never repeat a completed trim; partial fills count only their filled shares, pending shares reserve quantity, and cancellations do not erase filled quantities. The app does not yet have this ledger, so its mechanical profit milestones are review-only.' + (cfg.coreOwner ? ' ' + cfg.core + ' is owner-managed: never tell me to sell or trim ' + cfg.core + ' or add to it. Size the rest around it.' : ''),
       /* v211 (Jack, Nov 11 2026, screenshot of an 8-column table cut off on his iPhone: "I want the orders easy to read in one view on iOS no scrolling"). */
@@ -720,5 +781,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, themeShare, themeRoom, THEME_MAP_VERSION };
 });

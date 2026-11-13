@@ -33,7 +33,7 @@
       const lines = window.Apex.bookLines(context.st, context.out, context.cfg);
       const reviews = window.Apex.bookReviews(context.st, context.out, context.cfg);
       const fresh = window.Apex.priceIsFresh(context.cfg);
-      const signature = JSON.stringify([data?.generatedAt, context.cfg.researchAsOf, fresh, lines, reviews, context.st, context.cfg.targets, context.cfg.levels, context.cfg.exitLevels]);
+      const signature = JSON.stringify([data?.generatedAt, context.cfg.researchAsOf, fresh, lines, reviews, context.st, context.cfg.targets, context.cfg.levels, context.cfg.exitLevels, context.cfg.themeMap, context.cfg.themeCap]);
       return {context, lines, reviews, fresh, signature};
     } catch (_) { return null; }
   }
