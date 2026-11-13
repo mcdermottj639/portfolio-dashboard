@@ -136,7 +136,7 @@ ok('v188 build: under the reload line, trend shut → armed buys split 20/15/15/
   const s = A.state(nov5);
   const px = { NVDA: { px: 181.59 }, PLTR: { px: 154.85 }, RKLB: { px: 45.98 }, CRWD: { px: 217.2 } };
   const levels = Object.fromEntries(Object.entries(px).map(([sym, v]) => [sym, {trigger:v.px, limit:v.px, stop:v.px*0.9, tp1:v.px*1.2}]));
-  const r = A.rules(s, { smaMap: px, cfg: { levels } });
+  const r = A.rules(s, { smaMap: px, cfg: { levels, themeCap: false } });
   const b = r.filter((x) => x.kind === 'build');
   assert.deepEqual(b.map((x) => x.ticket && x.ticket.sym), ['NVDA', 'PLTR', 'RKLB', 'CRWD']);
   assert.ok(b.every((x) => x.ticket.armed && x.ticket.side === 'buy'));
@@ -482,7 +482,7 @@ ok('v201 confirm prompt: IREN marked owner-managed and Claude is told never to p
 // v202 — Jack chose "Apex only" for ••0741 (Nov 8 ~23:05 ET). The old plan's wash-sale guard now reaches Apex, the
 // owner-managed core stops reading as "over target", and the research tile names the limit its R/R uses.
 ok('v202 tax hold: a wash-window target is a dated hold row, never a buy rung; the other targets still build', () => {
-  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, AMZN: 22, PLTR: 14 },
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeCap: false, targets: { IREN: 20, AMZN: 22, PLTR: 14 },
     levels: { AMZN: { trigger: 274.6, limit: 277.35, tp1: 320, stop: 253.89 }, PLTR: { trigger: 181.02, limit: 182.83, tp1: 240, stop: 152.6 } },
     wash: { PLTR: { clear: '2030-02-01' } } });
   const st = A.state({ equity: 11073, positions: [{ symbol: 'IREN', qty: 500, px: 21.24, avg: 40.99 }], cash: 446 });
@@ -541,7 +541,7 @@ ok('v202 research tiles: a tax-hold target is flagged and the tile names the lim
 ok('v203 weights rows carry held / target / this-week shares and dollars; core shows held only', () => {
   const el = { innerHTML: '', querySelector: () => null };
   const st = A.state(nov6);
-  const validCfg = {...nov6cfg, levels: {...lv, AMZN: {...lv.AMZN, tp1:320}}};
+  const validCfg = {...nov6cfg, themeCap: false, levels: {...lv, AMZN: {...lv.AMZN, tp1:320}}};
   const out = A.rules(st, { cfg: validCfg, smaMap: nov6px });
   A.render(el, st, out, validCfg, null);
   const h = el.innerHTML;
@@ -555,7 +555,7 @@ ok('v203 weights rows carry held / target / this-week shares and dollars; core s
 
 
 ok('v205 bookGaps: between the reload line and cruise (no build rungs) the week\'s book still counts — adds for under-target names, reviews for dropped ones, IREN never', () => {
-  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, S: 16.18, ZS: 14.45, PLTR: 13.26, SNPS: 16.11 }, levels: { SNPS: { sym: 'SNPS', name: 'Synopsys', trigger: 460.31, limit: 464.91, tp1: 512.49, stop: 441.61, rr: 2.04 } } });
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeCap: false, targets: { IREN: 20, S: 16.18, ZS: 14.45, PLTR: 13.26, SNPS: 16.11 }, levels: { SNPS: { sym: 'SNPS', name: 'Synopsys', trigger: 460.31, limit: 464.91, tp1: 512.49, stop: 441.61, rr: 2.04 } } });
   const pos = [{ symbol: 'IREN', qty: 500.07, px: 20.73, avg: 40.99 }, { symbol: 'AMZN', qty: 6.07, px: 266.2, avg: 263.47 }, { symbol: 'PLTR', qty: 6.10, px: 162, avg: 168.45 }, { symbol: 'S', qty: 14, px: 21.77, avg: 21.91 }, { symbol: 'ZS', qty: 1, px: 197.66, avg: 202.18 }];
   // v218: the band moved to 1.75x / 1.90x, so the same book is replayed with the debt that puts it between them (≈1.82x).
   const st = A.state({ positions: pos, cash: -6070 });
@@ -647,7 +647,7 @@ ok('v211 research levels: an owner-entered stop is never a level; the card alert
 /* v212 — Jack, Nov 11 2026: "somewhere here it's gotta tell me what trades it's recommended that I click to confirm".
    The live Nov 11 book: SNPS dropped by the research, NET/PLTR/ZS at weight, IREN owner-managed, 1.71x. */
 ok('v212 the Confirm button lists the trades it is about to send — same set it counts', () => {
-  const cfg = Object.assign({}, A.DEFAULT_CFG, { snapAgeMin: 5, targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeCap: false, snapAgeMin: 5, targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 }, levels: {
     ZS: { trigger: 199.1, limit: 199.1, tp1: 267.87, stop: 180, stopBasis: "Jack's open stop", atr: 12.64 },
     NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99 } } });
   const st = A.state({ positions: [
@@ -733,6 +733,58 @@ ok('v215 Plan step 1 names the sells the Apex card recommends (same set as the C
   const note2 = A.planSellNote(st, A.rules(st, { cfg: cfg2, smaMap: {}, earningsMap: {} }), cfg2);
   assert.match(note2, /2 sells are on the Apex card above:/);
   assert.equal((note2.match(/<b>SNPS<\/b>/g) || []).length, 1); assert.equal((note2.match(/<b>NET<\/b>/g) || []).length, 1);
+});
+
+/* v224 — rules v2.8 theme cap (Jack, Nov 13 2026): tech ≤ 40% of the stock outside the core, forward-only. */
+const lv28 = (limit) => ({ trigger: limit, limit, tp1: +(limit * 1.3).toFixed(2), stop: +(limit * 0.9).toFixed(2), orderType: 'limit', tradable: true, stopBasis: 'SMA50' });
+
+ok('v2.8 theme map: software and cyber count as one theme; unknown names are other; scan map overrides', () => {
+  const c = A.DEFAULT_CFG;
+  for (const s of ['PLTR', 'SNPS', 'ZS', 'CRWD', 'NET', 'NVDA', 'TSLA']) assert.equal(A.themeOf(c, s), 'tech', s);
+  for (const s of ['GE', 'BSX', 'AXP', 'COST']) assert.equal(A.themeOf(c, s), 'other', s);
+  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { GE: 'tech', ZS: 'cyber' } }), 'GE'), 'tech');
+  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { ZS: 'Tech' } }), 'ZS'), 'tech');
+});
+
+ok('v2.8 Nov 13 book: tech is 100% of the stock outside IREN → every tech add blocked, no sell written for the cap', () => {
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 500.07, px: 17.715, avg: 44.84 }, { symbol: 'CRWD', qty: 1, px: 223.85, avg: 226.99 },
+    { symbol: 'PLTR', qty: 13.1, px: 167.78, avg: 165.14 }, { symbol: 'ZS', qty: 11, px: 191.7, avg: 198.66 }, { symbol: 'SNPS', qty: 4, px: 450.83, avg: 456.64 },
+    { symbol: 'NET', qty: 7, px: 305.41, avg: 300.18 } ], cash: -8114 });
+  const t = A.themeShare(st, A.DEFAULT_CFG);
+  assert.equal(Math.round(t.share * 100), 100); assert.ok(t.over); assert.equal(Math.round(t.outside), 8472);
+  assert.equal(A.themeRoom(st, A.DEFAULT_CFG, 'CRWD'), 0);
+  assert.equal(A.themeRoom(st, A.DEFAULT_CFG, 'GE'), Infinity);
+  const st2 = Object.assign({}, st, { lev: 1.5 });   // isolate the theme gate from the leverage gate
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { levels: { CRWD: lv28(229.54), GE: lv28(300) } });
+  assert.match(A.buyBlock(st2, [], cfg, 'CRWD'), /Tech is 100% .* 40% cap \(v2\.8\) — no tech adds\. Not a sell signal/);
+  assert.equal(A.buyBlock(st2, [], cfg, 'GE'), null, 'a non-tech buy is not blocked by the cap');
+  const out = A.rules(st, { cfg: Object.assign({}, cfg, { targets: { IREN: 20, CRWD: 16.5, PLTR: 20, ZS: 19, SNPS: 18.1 } }), smaMap: {}, earningsMap: {} });
+  assert.ok(!out.some((r) => r.ticket && r.ticket.side === 'sell'), 'the cap never writes a sell');
+});
+
+ok('v2.8 build: tech rungs are sized so tech ends at or under 40% of the stock outside the core; non-tech fills the rest', () => {
+  // equity ≈ $10,000, lev ≈ 1.2x: IREN $6,000, GE $4,000 (other), ZS $2,000 (tech) → tech 33% of $6,000 outside the core
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 300, px: 20, avg: 40 }, { symbol: 'GE', qty: 20, px: 200, avg: 190 }, { symbol: 'ZS', qty: 10, px: 200, avg: 198 } ], cash: -2000 });
+  assert.ok(st.lev < A.C.LEV_RELOAD);
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20, ZS: 20, CRWD: 20, BSX: 20 }, levels: { ZS: lv28(200), CRWD: lv28(230), BSX: lv28(100) }, researchReady: true });
+  const out = A.rules(st, { cfg, smaMap: { ZS: { px: 200 }, CRWD: { px: 230 }, BSX: { px: 100 } }, earningsMap: {} });
+  const rungs = out.filter((r) => r.kind === 'build' && r.ticket);
+  const techD = rungs.filter((r) => A.themeOf(cfg, r.ticket.sym) === 'tech').reduce((a, r) => a + r.ticket.qty * r.ticket.limit, 0);
+  const otherD = rungs.filter((r) => A.themeOf(cfg, r.ticket.sym) !== 'tech').reduce((a, r) => a + r.ticket.qty * r.ticket.limit, 0);
+  assert.ok(otherD > 0, 'BSX gets a rung');
+  const after = (2000 + techD) / (6000 + techD + otherD);
+  assert.ok(after <= 0.4 + 1e-9, 'tech after all rungs ' + after.toFixed(3));
+  const gaps = A.bookGaps(st, out, cfg);
+  const techAfter = (2000 + techD + gaps.adds.filter((a) => A.themeOf(cfg, a.sym) === 'tech').reduce((x, a) => x + a.dollars, 0)) /
+    (6000 + techD + otherD + gaps.adds.reduce((x, a) => x + a.dollars, 0));
+  assert.ok(techAfter <= 0.4 + 1e-9, 'rungs + gap adds stay under the cap ' + techAfter.toFixed(3));
+});
+
+ok('v2.8 confirm prompt carries the theme cap and the current tech share', () => {
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 500, px: 18, avg: 44 }, { symbol: 'ZS', qty: 11, px: 191.7, avg: 198.66 } ], cash: -3000 });
+  const p = A.portfolioPrompt(st, [], A.DEFAULT_CFG, null);
+  assert.match(p, /Theme cap \(rules v2\.8\): tech .* at most 40% of the stock outside IREN after all buys; tech now 100%/);
+  assert.match(p, /never propose a sale or more leverage to meet the cap/);
 });
 
 console.log(`apex: ${n - failed}/${n} passed`);
