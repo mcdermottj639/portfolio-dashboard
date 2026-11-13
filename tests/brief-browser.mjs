@@ -15,6 +15,13 @@ try {
   await page.addInitScript(stub);
   await page.addInitScript(()=>{localStorage.setItem('pf_acct','agentic');localStorage.setItem('pf_experience_route','today');});
   await page.route('https://**/*',r=>r.abort());
+  // Reproduce the production phone label exactly, including redundant timezone text.
+  await page.route('**/data.json',async route=>{
+    const response=await route.fetch();
+    const data=await response.json();
+    data.generatedAtLabel='Nov 13, 12:40 PM ET';
+    await route.fulfill({response,contentType:'application/json',body:JSON.stringify(data)});
+  });
   await page.goto(process.env.PF_PREVIEW_URL||'http://127.0.0.1:8767');
   await page.waitForFunction(()=>window.__SNAP&&document.querySelector('#ex-combined-equity')?.textContent.includes('$'));
   assert.equal(await page.locator('#ex-account').isVisible(),false);
@@ -45,6 +52,16 @@ try {
   for(const width of [320,390,768,1440]) {
     await page.setViewportSize({width,height:900});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no horizontal overflow at '+width);
+    if(width<=390){
+      const stamp=await page.locator('#pf-fresh-left').innerText();
+      assert.equal(stamp,'Nov 13, 12:40','published date and full time remain visible without AM/PM or ET at '+width);
+      const fits=await page.evaluate(()=>{
+        const left=document.querySelector('#pf-fresh-left').getBoundingClientRect();
+        const right=document.querySelector('#pf-fresh .pf-fresh-actions').getBoundingClientRect();
+        return left.right+3<=right.left;
+      });
+      assert.equal(fits,true,'date and time do not overlap actions at '+width);
+    }
   }
   await page.locator('.ex-brief-method summary').click();
   await page.evaluate(()=>window.__experienceRefresh());
