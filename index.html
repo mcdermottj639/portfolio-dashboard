@@ -714,12 +714,12 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=226">
-<link rel="stylesheet" href="ui/journey.css?v=226">
-<link rel="stylesheet" href="ui/predictions.css?v=226">
-<link rel="stylesheet" href="ui/smartmoney.css?v=226">
-<link rel="stylesheet" href="ui/ticker.css?v=226">
-<link rel="stylesheet" href="ui/duo.css?v=226">
+<link rel="stylesheet" href="ui/experience.css?v=227">
+<link rel="stylesheet" href="ui/journey.css?v=227">
+<link rel="stylesheet" href="ui/predictions.css?v=227">
+<link rel="stylesheet" href="ui/smartmoney.css?v=227">
+<link rel="stylesheet" href="ui/ticker.css?v=227">
+<link rel="stylesheet" href="ui/duo.css?v=227">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -784,9 +784,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=226"></script>
-<script src="ui/apex.js?v=226"></script>
-<script src="ui/business.js?v=226"></script>
+<script src="ui/sd-rules.js?v=227"></script>
+<script src="ui/apex.js?v=227"></script>
+<script src="ui/business.js?v=227"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -900,7 +900,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v226'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v227'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -937,11 +937,12 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
         var warn=locked||err||stale||!!nudge;
         bar.style.color=warn?'#7c2d12':'#475569'; bar.style.background=warn?'#fff7ed':'#eef2f7'; bar.style.borderColor=warn?'#fed7aa':'#dbe2ea';
         var l=document.getElementById('pf-fresh-left'); if(!l) return;
+        var displayDate=String(lab).replace(/ (\d{4}),/,function(m,y){return y==String(new Date().getFullYear())?',':m;});
         l.innerHTML = nudge ? nudge
           : locked ? '🔒 Locked — enter your passphrase to view'
           : err    ? '⚠️ Couldn’t load data ('+err+')'
-          : stale  ? '⚠️ Snapshot '+ageStr(ageH)+' — tap ↻ to refresh'
-          :          '📡 <span class="pf-fl-word">Snapshot: </span>'+String(lab).replace(/ (\d{4}),/,function(m,y){return y==String(new Date().getFullYear())?',':m;})+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
+          : stale  ? '⚠️ '+displayDate+' · '+ageStr(ageH)+' — tap ↻ to refresh'
+          :          displayDate+(ageH!=null&&ageH>=1?' · '+ageStr(ageH):'');
       }
       paintBar();
       window.__pfNudge=function(html){ nudge=html; paintBar(); };
@@ -8748,15 +8749,15 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=226"></script>
-<script src="ui/predictions-model.js?v=226"></script>
-<script src="ui/predictions.js?v=226"></script>
-<script src="ui/smartmoney-model.js?v=226"></script>
-<script src="ui/smartmoney.js?v=226"></script>
-<script src="ui/experience.js?v=226"></script>
-<script src="ui/ticker.js?v=226"></script>
-<script src="ui/duo.js?v=226"></script>
-<script src="ui/compact.js?v=226"></script>
-<script src="ui/journey.js?v=226"></script>
+<script src="ui/experience-model.js?v=227"></script>
+<script src="ui/predictions-model.js?v=227"></script>
+<script src="ui/predictions.js?v=227"></script>
+<script src="ui/smartmoney-model.js?v=227"></script>
+<script src="ui/smartmoney.js?v=227"></script>
+<script src="ui/experience.js?v=227"></script>
+<script src="ui/ticker.js?v=227"></script>
+<script src="ui/duo.js?v=227"></script>
+<script src="ui/compact.js?v=227"></script>
+<script src="ui/journey.js?v=227"></script>
 </body>
 </html>
