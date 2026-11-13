@@ -714,12 +714,12 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=224">
-<link rel="stylesheet" href="ui/journey.css?v=224">
-<link rel="stylesheet" href="ui/predictions.css?v=224">
-<link rel="stylesheet" href="ui/smartmoney.css?v=224">
-<link rel="stylesheet" href="ui/ticker.css?v=224">
-<link rel="stylesheet" href="ui/duo.css?v=224">
+<link rel="stylesheet" href="ui/experience.css?v=226">
+<link rel="stylesheet" href="ui/journey.css?v=226">
+<link rel="stylesheet" href="ui/predictions.css?v=226">
+<link rel="stylesheet" href="ui/smartmoney.css?v=226">
+<link rel="stylesheet" href="ui/ticker.css?v=226">
+<link rel="stylesheet" href="ui/duo.css?v=226">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -784,9 +784,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=224"></script>
-<script src="ui/apex.js?v=224"></script>
-<script src="ui/business.js?v=224"></script>
+<script src="ui/sd-rules.js?v=226"></script>
+<script src="ui/apex.js?v=226"></script>
+<script src="ui/business.js?v=226"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -900,7 +900,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v224'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v226'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2028,7 +2028,7 @@ function renderApexCard(S){
   const researchAge=T&&T.asOf?(Date.now()-Date.parse(T.asOf))/60000:NaN;
   cfg.researchReady=!!(T&&T.targets&&Number.isFinite(researchAge)&&researchAge>=-5&&researchAge<=8*24*60);
   cfg.researchAsOf=(T&&T.asOf)||null;
-  /* v224 (rules v2.8): the scan's versioned theme map, when present, overrides the card's built-in map per name. */
+  /* v226 (rules v2.8): the scan's versioned theme map, when present, overrides the card's built-in map per name. */
   if(T&&T.themeMap&&typeof T.themeMap==='object') cfg.themeMap=T.themeMap;
   /* v214: minutes since the snapshot — past Apex.C.PRICE_FRESH_MIN the Recommended-trades list shows estimates, never an order price. */
   try{ const g=(window.__DATA&&window.__DATA.generatedAt)||null, tms=g?Date.parse(g):NaN; cfg.snapAgeMin=isFinite(tms)?(Date.now()-tms)/60000:null; }catch(_){ cfg.snapAgeMin=null; }
@@ -8748,15 +8748,15 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=224"></script>
-<script src="ui/predictions-model.js?v=224"></script>
-<script src="ui/predictions.js?v=224"></script>
-<script src="ui/smartmoney-model.js?v=224"></script>
-<script src="ui/smartmoney.js?v=224"></script>
-<script src="ui/experience.js?v=224"></script>
-<script src="ui/ticker.js?v=224"></script>
-<script src="ui/duo.js?v=224"></script>
-<script src="ui/compact.js?v=224"></script>
-<script src="ui/journey.js?v=224"></script>
+<script src="ui/experience-model.js?v=226"></script>
+<script src="ui/predictions-model.js?v=226"></script>
+<script src="ui/predictions.js?v=226"></script>
+<script src="ui/smartmoney-model.js?v=226"></script>
+<script src="ui/smartmoney.js?v=226"></script>
+<script src="ui/experience.js?v=226"></script>
+<script src="ui/ticker.js?v=226"></script>
+<script src="ui/duo.js?v=226"></script>
+<script src="ui/compact.js?v=226"></script>
+<script src="ui/journey.js?v=226"></script>
 </body>
 </html>

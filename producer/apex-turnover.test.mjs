@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const A = createRequire(import.meta.url)('../ui/apex.js');
 const level = (overrides = {}) => ({ trigger: 100, limit: 100, stop: 90, tp1: 120, orderType: 'limit', tradable: true, ...overrides });
-const config = (overrides = {}) => ({ ...A.DEFAULT_CFG, targets: { IREN: 20, X: 20 }, levels: { X: level() }, snapAgeMin: 5, ...overrides });
+// v226: synthetic tickers are unclassified and would fail CLOSED (count as tech) under the theme cap; classify them so these turnover cases test what they always tested.
+const themeMap = { X: 'industrial', Y: 'industrial', Z: 'industrial' };
+const config = (overrides = {}) => ({ ...A.DEFAULT_CFG, themeMap, targets: { IREN: 20, X: 20 }, levels: { X: level() }, snapAgeMin: 5, ...overrides });
 const book = (positions = [], equity = 10000) => A.state({ positions: [{ symbol: 'IREN', qty: 50, px: 100, avg: 100 }, ...positions], equity, cash: 0 });
 const run = (st, cfg, opt = {}) => { const rows = A.rules(st, { cfg, ...opt }); return { rows, lines: A.bookLines(st, rows, cfg), reviews: A.bookReviews(st, rows, cfg), prompt: A.portfolioPrompt(st, rows, cfg) }; };
 let n = 0;

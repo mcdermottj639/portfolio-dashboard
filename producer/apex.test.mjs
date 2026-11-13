@@ -738,12 +738,41 @@ ok('v215 Plan step 1 names the sells the Apex card recommends (same set as the C
 /* v224 — rules v2.8 theme cap (Jack, Nov 13 2026): tech ≤ 40% of the stock outside the core, forward-only. */
 const lv28 = (limit) => ({ trigger: limit, limit, tp1: +(limit * 1.3).toFixed(2), stop: +(limit * 0.9).toFixed(2), orderType: 'limit', tradable: true, stopBasis: 'SMA50' });
 
-ok('v2.8 theme map: software and cyber count as one theme; unknown names are other; scan map overrides', () => {
+ok('v2.8 theme map: software and cyber count as one theme; known non-tech names keep their cluster', () => {
   const c = A.DEFAULT_CFG;
   for (const s of ['PLTR', 'SNPS', 'ZS', 'CRWD', 'NET', 'NVDA', 'TSLA']) assert.equal(A.themeOf(c, s), 'tech', s);
-  for (const s of ['GE', 'BSX', 'AXP', 'COST']) assert.equal(A.themeOf(c, s), 'other', s);
-  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { GE: 'tech', ZS: 'cyber' } }), 'GE'), 'tech');
-  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { ZS: 'Tech' } }), 'ZS'), 'tech');
+  assert.equal(A.themeOf(c, 'GE'), 'industrial'); assert.equal(A.themeOf(c, 'BSX'), 'health');
+  assert.equal(A.themeOf(c, 'AXP'), 'finance'); assert.equal(A.themeOf(c, 'COST'), 'consumer');
+  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { GE: 'tech' } }), 'GE'), 'tech', 'a scan map may UPGRADE a name to tech');
+});
+
+/* v226 — ChatGPT's review of v224: a scan map using the narrow cluster labels let tech names escape the cap. */
+ok('v226 scan labels are normalized: ai-software / cyber / ai-compute / tech-other all count as tech', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeMap: { ZS: 'cyber', PLTR: 'ai-software', NVDA: 'ai-compute', AXON: 'tech-other', ACME: 'Cyber', NEWAI: 'ai-software' } });
+  for (const s of ['ZS', 'PLTR', 'NVDA', 'AXON', 'ACME', 'NEWAI']) assert.equal(A.themeOf(cfg, s), 'tech', s);
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 100, px: 20 }, { symbol: 'ZS', qty: 10, px: 200 }, { symbol: 'PLTR', qty: 10, px: 170 } ], cash: -500 });
+  assert.equal(Math.round(A.themeShare(st, cfg).share * 100), 100, 'labels from the scan cannot shrink the tech share');
+  assert.equal(A.themeRoom(st, cfg, 'NEWAI'), 0, 'a scan-labelled ai-software name is blocked over the cap');
+});
+
+ok('v226 a scan label can never DOWNGRADE a built-in tech name', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeMap: { NVDA: 'power', CRWD: 'industrial', SNPS: 'other' } });
+  for (const s of ['NVDA', 'CRWD', 'SNPS']) assert.equal(A.themeOf(cfg, s), 'tech', s);
+});
+
+ok('v226 an unclassified name fails CLOSED: counted as tech until the scan or a list classifies it', () => {
+  const c = A.DEFAULT_CFG;
+  assert.equal(A.classOf(c, 'ZZZZ'), 'unclassified');
+  assert.equal(A.themeOf(c, 'ZZZZ'), 'tech');
+  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { ZZZZ: 'health' } }), 'ZZZZ'), 'health', 'a scan classification releases it');
+  assert.equal(A.themeOf(Object.assign({}, c, { themeMap: { ZZZZ: '' } }), 'ZZZZ'), 'tech', 'a blank label is not a classification');
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 100, px: 20 }, { symbol: 'GE', qty: 10, px: 200 }, { symbol: 'ZZZZ', qty: 10, px: 300 } ], cash: -500 });
+  const t = A.themeShare(st, c);
+  assert.deepEqual(t.unclassified, ['ZZZZ']);
+  assert.equal(Math.round(t.share * 100), 60, 'the unknown name is in the numerator');
+  const el = { innerHTML: '', querySelector: () => null };
+  A.render(el, st, [], c, null);
+  assert.match(el.innerHTML, /Counted as tech until classified: ZZZZ/);
 });
 
 ok('v2.8 Nov 13 book: tech is 100% of the stock outside IREN → every tech add blocked, no sell written for the cap', () => {
