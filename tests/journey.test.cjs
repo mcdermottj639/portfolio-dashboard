@@ -34,10 +34,10 @@ test('selection choices deduplicate but retain a researched, unheld name',()=>{
 test('missing source coverage creates no invented holding',()=>assert.deepEqual(M.choices(null,null,''),[]));
 test('new assets, version and offline shell move together',()=>{
  const html=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const name of ['journey.js','journey.css']){assert.ok(html.includes('ui/'+name+'?v=226'));assert.ok(sw.includes('ui/'+name+'?v=226'));}
- assert.ok(html.includes('ui/duo.css?v=226')&&sw.includes('ui/duo.css?v=226'),'Duo layouts are linked and precached');
- assert.ok(html.includes('ui/duo.js?v=226')&&sw.includes('ui/duo.js?v=226'),'side-status measure script is linked and precached');
- assert.ok(html.includes("APP_VERSION='v226'"));assert.ok(sw.includes("'pf-v226'"));
+ for(const name of ['journey.js','journey.css']){assert.ok(html.includes('ui/'+name+'?v=227'));assert.ok(sw.includes('ui/'+name+'?v=227'));}
+ assert.ok(html.includes('ui/duo.css?v=227')&&sw.includes('ui/duo.css?v=227'),'Duo layouts are linked and precached');
+ assert.ok(html.includes('ui/duo.js?v=227')&&sw.includes('ui/duo.js?v=227'),'side-status measure script is linked and precached');
+ assert.ok(html.includes("APP_VERSION='v227'"));assert.ok(sw.includes("'pf-v227'"));
 });
 test('source integration is display-only and preserves confirmation entry points',()=>{
  const j=fs.readFileSync('ui/journey.js','utf8');assert.doesNotMatch(j,/place_equity_order|review_equity_order|fetch\([^)]*,\s*\{[^}]*method\s*:/);
