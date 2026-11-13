@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {runTodayChecks} from './today-browser.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const {chromium}=await import(process.env.PF_PLAYWRIGHT||'playwright');
 const source=fs.readFileSync(path.join(root,'producer/privacy-audit.mjs'),'utf8');
@@ -38,7 +39,8 @@ try {
   await page.locator('#acct-tg-agentic').click();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#agentic-app')).display!=='none');
   await today();assert.equal(await page.locator('#ex-combined-equity').innerText(),initial);
-  await page.locator('#page-ex-today [data-ex-route="options"]').last().click();
+  await page.locator('[data-td-details="options"] > summary').click();
+  await page.locator('[data-td-details="options"] [data-ex-route="options"]').click();
   await page.waitForFunction(()=>getComputedStyle(document.querySelector('#page-options')).display!=='none');
   assert.equal(await page.evaluate(()=>localStorage.getItem('pf_acct')),'main');
   await today();
@@ -67,6 +69,7 @@ try {
     await page.screenshot({path:path.join(dir,'daily-brief-desktop.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(dir,'daily-brief-mobile.png'),fullPage:true});
   }
+  await runTodayChecks(page);
   await page.evaluate(()=>{delete window.__DATA.agentic;window.__experienceRefresh();});
   await page.waitForFunction(()=>document.querySelector('#ex-combined-equity').textContent==='Unavailable');
   assert.ok((await page.locator('#page-ex-today').innerText()).includes('Account totals are incomplete'));

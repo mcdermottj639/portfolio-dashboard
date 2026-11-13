@@ -1,3 +1,25 @@
+## v223 — Premium Today, Light / Dark / System (2026-11-13)
+Jack requested the stronger Today concept built into the app, then corrected the mockup:
+daily-only value history behind a tap row; visible trades + prices directly above **Confirm
+with Claude**; separate **Waiting on you** and **Out of your hands**; restrained gold, no
+glow/gradient buttons; all five tabs. No account selector on Today and no ticker logos.
+These corrections supersede the earlier illustrative mockup's intraday line.
+
+- `ui/today.js`, `today-model.js`, `today.css`, `theme.js`: combined overview, proportional
+  holdings map/list, account-aware holding dialog, recorded status ownership, full Apex
+  confirmation and remembered Light/Dark/System. The strategy and broker/producer code
+  are unchanged; the Plan adapter exposes its same computed state to Today.
+- `Value over time` uses only matching daily records, including flows. Stock move is not
+  full account P&L. Unknown quotes stay unknown; the biggest-drag line requires a complete
+  recorded contribution. No hardcoded trade, price, ticker recommendation or chart series.
+- Privacy covers new bare trade quantities and dynamic dialogs. The private Claude prompt
+  is built on click; a changed proposed book blocks that click pending review. Five tabs,
+  v222 Duo geometry and scoped account/Research/Back behavior remain authoritative.
+- Build/cache: **v223 / pf-v223**. Implementation handoff: `ui/TODAY.md`.
+- Local validation: 56/56 producer suites and 57/57 dashboard/model tests passed. Local
+  Chromium is blocked by socket EPERM; browser and screenshot validation are required in
+  the existing CI workflow before release. No physical-device validation is claimed.
+
 ## v222 — Duo folded screen turned sideways: nav rail in the left strip (2026-11-13)
 Jack (Nov 13 10:55 ET, screenshot of Today on the folded screen held sideways): "optimize this landscape folded view
 as well". Measured from the screenshot: about **678 x 453 CSS px**, the Duo reports an **~85px LEFT** safe-area inset
