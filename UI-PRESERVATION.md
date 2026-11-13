@@ -23,7 +23,7 @@ Classic view is available from the header. The original feature search and saved
 
 ## New views and their limits
 
-- v225: Today uses `ui/today.js`, `today-model.js` and `today.css`; the original renderer
+- v227: Today uses `ui/today.js`, `today-model.js` and `today.css`; the original renderer
   is retained as a missing-asset fallback. Light / Dark / System replaces the old two-state
   toggle while keeping the `gold` CSS namespace and existing stored choices. Five-tab
   navigation, account scopes, privacy and v222 Duo rail behavior are retained.

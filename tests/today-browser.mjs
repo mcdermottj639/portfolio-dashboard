@@ -380,7 +380,7 @@ async function checkApexParity(page) {
     window.__todayTestBackup = { data:structuredClone(__DATA), snap:structuredClone(__SNAP), target:window.__APEX_TGT, cfg:window.__APEX_CFG };
     __DATA.generatedAt = new Date().toISOString();
     __APEX_CFG = {};
-    __APEX_TGT = { asOf:new Date().toISOString(), targets:{Y:20}, themeMap:{X:'tech',Y:'other'}, top5:[{sym:'Y',trigger:100,limit:100,tp1:120,stop:90,orderType:'limit',maxPx:105,tradable:true,composite:8,why:'Synthetic Today test'}], heldLevels:[{sym:'X',stop:80,tp1:150}] };
+    __APEX_TGT = { asOf:new Date().toISOString(), targets:{Y:20}, themeMap:{X:'tech',Y:'health'}, top5:[{sym:'Y',trigger:100,limit:100,tp1:120,stop:90,orderType:'limit',maxPx:105,tradable:true,composite:8,why:'Synthetic Today test'}], heldLevels:[{sym:'X',stop:80,tp1:150}] };
     __SNAP = { enriched:[{symbol:'IREN',qty:50,px:100,avg:100,val:5000},{symbol:'X',qty:10,px:100,avg:100,val:1000}], stats:{totalVal:10000,cashVal:0}, smaMap:{}, earn:{} };
     renderApexCard(__SNAP); __experienceRefresh();
   });
@@ -397,7 +397,7 @@ async function checkApexParity(page) {
         precedes:[...document.querySelectorAll('#page-ex-today .td-trade-row')].every(r=>Boolean(r.compareDocumentPosition(document.querySelector('[data-td-confirm]'))&Node.DOCUMENT_POSITION_FOLLOWING))
       };
     });
-    assert.deepEqual(await page.evaluate(() => __PF_APEX_REVIEW.cfg.themeMap), {X:'tech',Y:'other'}, 'Today preserves the published scan theme map');
+    assert.deepEqual(await page.evaluate(() => __PF_APEX_REVIEW.cfg.themeMap), {X:'tech',Y:'health'}, 'Today preserves the published scan theme map');
     assert.ok(parity.rows.length, 'fixture must offer an eligible trade');
     assert.equal(parity.visible.length, parity.rows.length, 'all confirmed trades are visible, not only a teaser');
     parity.rows.forEach((r,i)=>{assert.ok(parity.visible[i].includes(r.text));assert.ok(parity.visible[i].includes(r.px));});
