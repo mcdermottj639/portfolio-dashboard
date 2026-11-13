@@ -44,6 +44,16 @@ class DataValidationTests(unittest.TestCase):
             with self.subTest(raw=raw), self.assertRaises(VALIDATOR.DataError):
                 self.check(raw)
 
+    def test_integer_form_overflow_rejected(self):
+        for sign in ['', '-']:
+            with self.subTest(sign=sign), self.assertRaises(VALIDATOR.DataError):
+                self.check('{"v":' + sign + '9' * 400 + '}')
+
+    def test_large_but_finite_integer_allowed(self):
+        for sign in ['', '-']:
+            with self.subTest(sign=sign):
+                self.check('{"v":' + sign + '1' + '0' * 308 + '}')
+
     def test_valid_finite_numbers(self):
         self.check('{"v":[0,-1,1.25,1e10,1e-10]}')
 

@@ -38,6 +38,17 @@ def finite_float(value: str) -> float:
     return number
 
 
+def finite_int(value: str) -> int:
+    # JSON integer literals also become JavaScript Numbers in the dashboard.
+    number = int(value)
+    try:
+        if not math.isfinite(float(number)):
+            raise DataError('non-finite number')
+    except OverflowError:
+        raise DataError('non-finite number') from None
+    return number
+
+
 def reject_constant(_value: str) -> None:
     raise DataError('non-standard numeric constant')
 
@@ -49,6 +60,7 @@ def validate_file(path: Path) -> None:
         value = json.loads(path.read_text(encoding='utf-8'),
                            object_pairs_hook=unique_object,
                            parse_float=finite_float,
+                           parse_int=finite_int,
                            parse_constant=reject_constant)
     except json.JSONDecodeError as exc:
         # The exception's normal string can contain private payload fragments.
