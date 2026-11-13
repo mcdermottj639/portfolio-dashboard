@@ -20,7 +20,7 @@ try {
     const p = (symbol, qty, px, avg = px) => ({ symbol, qty, px, avg, val: qty * px });
     const pos = [p('IREN', 50, 100), p('X', 10, mode === 'stop' ? 79 : mode === 'winner' ? 130 : 100, 100)];
     const top5 = [{ sym: 'Y', trigger: 100, limit: 100, tp1: 120, stop: 90, orderType: 'limit', maxPx: 105, tradable: true, composite: 8, why: 'Synthetic research' }];
-    window.__APEX_TGT = mode === 'missing' ? null : { asOf: mode === 'stale' ? '2020-01-01T00:00:00Z' : current, targets: { Y: 20 }, top5, heldLevels: [{ sym: 'X', stop: 80, tp1: 150, stopBasis: 'held support' }] };
+    window.__APEX_TGT = mode === 'missing' ? null : { asOf: mode === 'stale' ? '2020-01-01T00:00:00Z' : current, targets: { Y: 20 }, themeMap: { X: 'industrial', Y: 'health' }, top5, heldLevels: [{ sym: 'X', stop: 80, tp1: 150, stopBasis: 'held support' }] };
     if (mode === 'owner') { top5[0].stopBasis = 'owner stop'; top5[0].atr = 5; }
     if (mode === 'invalid') top5[0].stop = null;
     if (mode === 'overlap') { top5.push({ sym: 'X', trigger: 110, limit: 110, tp1: 150, stop: 105, orderType: 'limit', tradable: true }); window.__APEX_TGT.targets.X = 20; }

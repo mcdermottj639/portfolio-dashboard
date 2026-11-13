@@ -1,3 +1,23 @@
+## v226 — Apex theme cap: scan labels normalized, unknown names fail closed (2026-11-13)
+ChatGPT's review of the merged v224 (claudex Portfolio handoff, Nov 13 ~12:39 ET) found a real hole: `themeOf()` returned a
+scan `themeMap` label verbatim, so a map saying `ZS:'cyber'` or `PLTR:'ai-software'` made those names NOT tech and they
+escaped the 40% cap. Not live yet (the committed `data/apex-targets.json` is v2.7 and carries no `themeMap`), but Monday's
+first v2.8 scan writes one. Jack: "Review confirm edit as needed build and merge" stands for the fix.
+- `ui/apex.js` (theme map **themes-v1.1**): new `classOf()`; `themeOf()` = `classOf()` with 'unclassified' folded into the
+  capped theme. Rules in order: (1) a built-in `TECH` name is ALWAYS tech — a scan label can never downgrade it; (2) a scan
+  label is normalized — `ai-compute`/`ai-software`/`cyber`/`tech-other`/`semis`/`software`… → `tech`, case-insensitive;
+  (3) a name no list or scan classifies (or a blank label) is **unclassified and counts as tech** until classified — fail
+  closed, or the cap leaks every time the universe grows. A built-in `NONTECH` map covers the scan's non-tech clusters
+  (power, space, crypto, health, finance, industrial, consumer) so the S&P growth extension is classified without the scan.
+  `themeShare().unclassified` lists them and the Tech bar says "Counted as tech until classified: …".
+- Tests: `producer/apex.test.mjs` 62/62 (+3: label normalization incl. a scan-labelled newcomer blocked over the cap, no
+  downgrade of a built-in tech name, fail-closed + its card line); `apex-turnover.test.mjs` and `tests/apex-browser.mjs`
+  classify their synthetic X/Y/Z tickers (they would otherwise fail closed — which is the rule working).
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `tests/journey.test.cjs`, `producer/apex.test.mjs`,
+  `producer/apex-turnover.test.mjs`, `tests/apex-browser.mjs`, `producer/APEX-DECISIONS.md`, `CLAUDE.md`.
+- Verified: all producer suites, tests/*.test.cjs 33/33, apex / sd-plan / brief / journey browser suites (local Chrome).
+  App/cache **v226 / pf-v226** (v225 is ChatGPT's open Today PR #207; it must re-bump past v226 when it rebases).
+
 ## v224 — Apex rules v2.8: tech capped at 40% of the stock outside IREN (2026-11-13)
 Jack (Nov 13 11:59 ET, after a day when every Apex name fell with tech): "The decision is if we should continue to keep
 concentrating Apex inside AI like this, or if we should look for growth other where … doesn't mean we have to be

@@ -49,7 +49,7 @@
 
   /* v224 theme map v1 (rules v2.8). Software and cyber cannot escape the cap under separate labels. A name not
      listed here is "other" unless data/apex-targets.json themeMap (written by the scan) names its theme. */
-  const THEME_MAP_VERSION = 'themes-v1';
+  const THEME_MAP_VERSION = 'themes-v1.1';
   const TECH = ('NVDA AMD AVGO MU TSM ASML AMAT LRCX KLAC ARM MRVL ANET SMCI ON INTC QCOM CIFR WULF CORZ HUT VRT IREN ' +
     'PLTR APP DDOG SNPS CDNS ADBE META GOOGL GOOG AMZN NFLX TTD MELI MSFT AAPL ORCL CRM NOW INTU SHOP SNOW MDB ' +
     'CRWD PANW ZS FTNT NET S OKTA CYBR TSLA AXON').split(' ');
@@ -74,19 +74,40 @@
 
   /* v224 (rules v2.8) theme helpers. Measured on stock OUTSIDE the core; the whole-account picture (core included)
      is reported separately and never used to pass or fail this cap. */
-  function themeOf(cfg, sym) {
-    const m = cfg && cfg.themeMap; const s = String(sym || '').toUpperCase();
-    if (m && Object.prototype.hasOwnProperty.call(m, s)) return String(m[s]).toLowerCase() === 'tech' ? 'tech' : String(m[s]).toLowerCase();
-    return TECH.includes(s) ? 'tech' : 'other';
+  /* v226 — classification hardening (ChatGPT review of v224, Nov 13 2026: a scan map saying ZS:'cyber' or PLTR:'ai-software'
+     made themeOf return that label instead of 'tech', so those names escaped the cap). Three rules, in order:
+     (1) a name on the built-in TECH list is ALWAYS tech — a scan label can never downgrade it;
+     (2) a scan label is NORMALIZED: every tech cluster (ai-compute, ai-software, cyber, tech-other, semis, software…) → 'tech';
+     (3) a name neither list nor scan classifies is 'unclassified' and COUNTS AS TECH for the cap until something classifies
+         it — an unknown name must fail closed, or the cap leaks every time the universe grows. */
+  const TECH_LABELS = ['tech', 'ai-compute', 'ai-software', 'cyber', 'tech-other', 'semis', 'semiconductors', 'software', 'ai', 'internet', 'technology'];
+  const NONTECH = (() => {
+    const m = {}, add = (cl, list) => list.split(' ').forEach((x) => { m[x] = cl; });
+    add('power', 'VST NRG OKLO GEV CEG'); add('space', 'RKLB ASTS LUNR'); add('crypto', 'COIN HOOD MSTR');
+    add('health', 'ISRG VRTX REGN BSX SYK DXCM IDXX MCK LLY UNH JNJ ABBV'); add('finance', 'AXP GS KKR BX SCHW SPGI V MA JPM');
+    add('industrial', 'GE ETN PWR URI HWM TT PH CAT'); add('consumer', 'COST TJX BKNG ABNB CMG ORLY RCL');
+    return m;
+  })();
+  function classOf(cfg, sym) {
+    const s = String(sym || '').toUpperCase();
+    if (TECH.includes(s)) return 'tech';
+    const m = cfg && cfg.themeMap;
+    if (m && Object.prototype.hasOwnProperty.call(m, s) && m[s] != null && String(m[s]).trim()) {
+      const v = String(m[s]).trim().toLowerCase();
+      return TECH_LABELS.includes(v) ? 'tech' : v;
+    }
+    return NONTECH[s] || 'unclassified';
   }
+  /* What the cap sees: 'tech' for tech AND unclassified names (fail closed), else the cluster. */
+  function themeOf(cfg, sym) { const c = classOf(cfg, sym); return c === 'unclassified' ? C.THEME_CAPPED : c; }
   function themeShare(st, cfg) {
     cfg = cfg || DEFAULT_CFG;
-    let outside = 0, capped = 0;
-    (st.positions || []).forEach((p) => { if (p.symbol === cfg.core) return; outside += p.val; if (themeOf(cfg, p.symbol) === C.THEME_CAPPED) capped += p.val; });
+    let outside = 0, capped = 0; const unclassified = [];
+    (st.positions || []).forEach((p) => { if (p.symbol === cfg.core) return; outside += p.val; if (themeOf(cfg, p.symbol) === C.THEME_CAPPED) capped += p.val; if (classOf(cfg, p.symbol) === 'unclassified') unclassified.push(p.symbol); });
     const all = (st.positions || []).reduce((a, p) => a + p.val, 0);
     const coreVal = all - outside, cappedAll = capped + (themeOf(cfg, cfg.core) === C.THEME_CAPPED ? coreVal : 0);
     return { outside, capped, share: outside > 0 ? capped / outside : 0, over: outside > 0 && capped / outside > C.THEME_MAX + 1e-9,
-      wholeShare: all > 0 ? cappedAll / all : 0, max: C.THEME_MAX, theme: C.THEME_CAPPED, mapVersion: THEME_MAP_VERSION };
+      wholeShare: all > 0 ? cappedAll / all : 0, max: C.THEME_MAX, theme: C.THEME_CAPPED, mapVersion: THEME_MAP_VERSION, unclassified };
   }
   /* Dollars of a capped-theme buy that keep the theme at or under the cap after the buy: (T + d) / (N + d) ≤ max.
      Non-capped names are unlimited here (every other limit still applies). */
@@ -541,7 +562,7 @@
     const w = t.share * 100, col = t.over ? '#f97316' : '#10b981';
     return `<div data-apex-theme style="margin:10px 0 4px"><div style="display:flex;justify-content:space-between;font-size:11.5px"><b>Tech outside ${cfg.core}</b><span style="color:${col};font-weight:600">${w.toFixed(0)}% / ${(C.THEME_MAX * 100).toFixed(0)}% cap</span></div>` +
       `<div class="gauge" style="position:relative;height:8px;margin:4px 0"><div style="width:${Math.min(100, w)}%;height:100%;background:${col}"></div><div style="position:absolute;left:${C.THEME_MAX * 100}%;top:-3px;width:2px;height:14px;background:#111827"></div></div>` +
-      `<div style="font-size:10.5px;color:#6b7280">${t.over ? 'Over the cap: no tech buys or adds; other growth names can still be bought. Nothing is sold for this.' : 'Under the cap: tech buys allowed up to the line.'} Whole account incl. ${cfg.core}: ${(t.wholeShare * 100).toFixed(0)}% tech.</div></div>`;
+      `<div style="font-size:10.5px;color:#6b7280">${t.over ? 'Over the cap: no tech buys or adds; other growth names can still be bought. Nothing is sold for this.' : 'Under the cap: tech buys allowed up to the line.'} Whole account incl. ${cfg.core}: ${(t.wholeShare * 100).toFixed(0)}% tech.${t.unclassified.length ? ` Counted as tech until classified: ${t.unclassified.join(', ')}.` : ''}</div></div>`;
   }
 
   /* One allocation budget for valid entries. A held name outside the buy list
@@ -781,5 +802,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, themeShare, themeRoom, THEME_MAP_VERSION };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION };
 });
