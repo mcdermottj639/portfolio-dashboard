@@ -34,15 +34,18 @@ test('selection choices deduplicate but retain a researched, unheld name',()=>{
 test('missing source coverage creates no invented holding',()=>assert.deepEqual(M.choices(null,null,''),[]));
 test('new assets, version and offline shell move together',()=>{
  const html=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const name of ['journey.js','journey.css']){assert.ok(html.includes('ui/'+name+'?v=228'));assert.ok(sw.includes('ui/'+name+'?v=228'));}
- assert.ok(html.includes('ui/duo.css?v=228')&&sw.includes('ui/duo.css?v=228'),'Duo layouts are linked and precached');
- assert.ok(html.includes('ui/duo.js?v=228')&&sw.includes('ui/duo.js?v=228'),'side-status measure script is linked and precached');
- assert.ok(html.includes("APP_VERSION='v228'"));assert.ok(sw.includes("'pf-v228'"));
+ for(const name of ['journey.js','journey.css']){assert.ok(html.includes('ui/'+name+'?v=229'));assert.ok(sw.includes('ui/'+name+'?v=229'));}
+ assert.ok(html.includes('ui/duo.css?v=229')&&sw.includes('ui/duo.css?v=229'),'Duo layouts are linked and precached');
+ assert.ok(html.includes('ui/duo.js?v=229')&&sw.includes('ui/duo.js?v=229'),'side-status measure script is linked and precached');
+ assert.ok(html.includes("APP_VERSION='v229'"));assert.ok(sw.includes("'pf-v229'"));
 });
 test('freshness header shows the date and time without a meridiem label',()=>{
  const html=fs.readFileSync('index.html','utf8');
  assert.ok(html.includes("replace(/(\\d{1,2}:\\d{2})\\s*(?:AM|PM)\\b/gi,'$1')"));
  assert.ok(!html.includes('<span class="pf-fl-word">Snapshot: </span>'));
+ assert.ok(html.includes(".replace(/\\s+(?:ET|EST|EDT)\\s*$/i,'')"),'remove display-only timezone suffix');
+ assert.ok(html.includes('class="pf-fresh-actions"'),'controls have a compact mobile layout');
+ assert.ok(html.includes('.pf-find-word')&&html.includes('.pf-refresh-word'),'button text hides on narrow screens without removing actions');
 });
 test('source integration is display-only and preserves confirmation entry points',()=>{
  const j=fs.readFileSync('ui/journey.js','utf8');assert.doesNotMatch(j,/place_equity_order|review_equity_order|fetch\([^)]*,\s*\{[^}]*method\s*:/);
