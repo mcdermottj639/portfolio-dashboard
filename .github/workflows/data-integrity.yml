@@ -1,0 +1,35 @@
+name: Data integrity
+
+# Always report on PRs: path-filtered required workflows can stay pending.
+# Direct GITHUB_TOKEN pushes do not trigger a new run; publishers must also
+# validate before pushing (predictions.yml does so).
+on:
+  pull_request: {}
+  merge_group: {}
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: data-integrity-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  data-integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Test the validator with synthetic invalid and valid inputs
+        run: python3 -m unittest discover -s tests -p 'test_validate_data.py' -v
+      - name: Validate published JSON without logging payloads
+        run: python3 scripts/validate-data.py
+      - name: Validate business-record structure and display-only boundary
+        run: node producer/business.test.mjs

@@ -25,6 +25,8 @@ jobs:
           node-version: 22
       - name: Collect public markets and settle recorded observations
         run: node producer/predictions-fetch.mjs
+      - name: Validate before publishing (bot pushes do not trigger follow-on CI)
+        run: python3 scripts/validate-data.py data/predictions.json
       - name: Publish only the public prediction snapshot
         run: |
           git config user.name 'github-actions[bot]'
@@ -34,6 +36,7 @@ jobs:
           git commit -m 'Refresh prediction market snapshot'
           for attempt in 1 2 3; do
             git pull --rebase origin main || exit 1
+            python3 scripts/validate-data.py data/predictions.json || exit 1
             if git push origin HEAD:main; then exit 0; fi
           done
           exit 1
