@@ -23,6 +23,18 @@ Classic view is available from the header. The original feature search and saved
 
 ## New views and their limits
 
+- v229: Today uses `ui/today.js`, `today-model.js` and `today.css`; the original renderer
+  is retained as a missing-asset fallback. Light / Dark / System replaces the old two-state
+  toggle while keeping the `gold` CSS namespace and existing stored choices. Five-tab
+  navigation, account scopes, privacy and v222 Duo rail behavior are retained.
+- Trades and prices above Confirm come from the same Apex `bookLines` as the unchanged
+  whole-book Claude prompt. No new execution path is added. `Waiting on you` distinguishes
+  owner approval from `Out of your hands` recorded executor/broker states. The latter does
+  not equate a submitted or complete ticket with confirmed broker fills.
+- Today history stays behind `Value over time`, uses only matching daily records, and has
+  no 1D/intraday view. The map uses actual proportional values with an accessible list;
+  its holding dialog offers explicit account destinations for shared names. See `ui/TODAY.md`.
+
 - v202: Apex runs the self-directed book. The Plan keeps "cut what's broken"; Step 2 points to the Apex card; the
   retired momentum plan (sleeves, borrowing, press room) returns only with `window.SD_APEX_RUNS=false`.
 - v203: the oversold daily screen moved to its own Research › Screens page; the momentum watchlist was cut and Income

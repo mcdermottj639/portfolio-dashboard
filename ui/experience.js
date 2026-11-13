@@ -118,6 +118,7 @@
     const d=window.__DATA;
     const calendar=d&&typeof window._earnMap==='function'?window._earnMap():{};
     const s=M.dailyBrief(d,window.__SNAP,{calendar});
+    if(window.PFToday){window.PFToday.render($('page-ex-today'),{data:d,snapshot:window.__SNAP,brief:s,historyHTML:()=>historyChart(s.history,true)});return;}
     const tone=n=>n===null||Math.abs(n)<.005?'neutral':n>0?'up':'down';
     const amount=n=>'<span class="ex-'+tone(n)+'">'+esc(money(n))+'</span>';
     const when=n=>n===0?'Today':n===1?'Tomorrow':'In '+n+' days';

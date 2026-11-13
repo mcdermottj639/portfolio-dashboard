@@ -1,3 +1,29 @@
+## v229 — Premium Today, Light / Dark / System (2026-11-13)
+Jack requested the stronger Today concept built into the app, then corrected the mockup:
+daily-only value history behind a tap row; visible trades + prices directly above **Confirm
+with Claude**; separate **Waiting on you** and **Out of your hands**; restrained gold, no
+glow/gradient buttons; all five tabs. No account selector on Today and no ticker logos.
+These corrections supersede the earlier illustrative mockup's intraday line.
+
+- `ui/today.js`, `today-model.js`, `today.css`, `theme.js`: combined overview, proportional
+  holdings map/list, account-aware holding dialog, recorded status ownership, full Apex
+  confirmation and remembered Light/Dark/System. The strategy and broker/producer code
+  are unchanged; the Plan adapter exposes its same computed state to Today.
+- `Value over time` uses only matching daily records, including flows. Stock move is not
+  full account P&L. Unknown quotes stay unknown; the biggest-drag line requires a complete
+  recorded contribution. No hardcoded trade, price, ticker recommendation or chart series.
+- Privacy covers new bare trade quantities and dynamic dialogs. The private Claude prompt
+  is built on click; a changed proposed book blocks that click pending review. Five tabs,
+  v222 Duo geometry and scoped account/Research/Back behavior remain authoritative.
+- Build/cache: **v229 / pf-v229**. Implementation handoff: `ui/TODAY.md`.
+- Local validation: 56/56 producer suites and 58/58 dashboard/model tests passed. Local
+  Chromium is blocked by socket EPERM; browser and screenshot validation are required in
+  the existing CI workflow before release. No physical-device validation is claimed.
+- Reconciled through PR #209 / v226 before release: Apex rules v2.8 / themes-v1.1,
+  normalized scan labels and fail-closed unknown names remain authoritative. Today reuses
+  that same engine and whole-book prompt. Current main data refreshes and the
+  v228 date-only freshness header without AM/PM are preserved.
+
 ## v226 — Apex theme cap: scan labels normalized, unknown names fail closed (2026-11-13)
 ChatGPT's review of the merged v224 (claudex Portfolio handoff, Nov 13 ~12:39 ET) found a real hole: `themeOf()` returned a
 scan `themeMap` label verbatim, so a map saying `ZS:'cyber'` or `PLTR:'ai-software'` made those names NOT tech and they

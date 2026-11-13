@@ -6,7 +6,7 @@
      - data.json: network-first with cache fallback (freshest snapshot; offline → last snapshot)
      - other shell assets (manifest, icons, Chart.js CDN): cache-first (instant, offline-capable)
    Bump CACHE_VERSION when the shell changes. */
-const CACHE_VERSION = 'pf-v228';
+const CACHE_VERSION = 'pf-v229';
 /* v171: the snapshot lives in its OWN cache that survives version bumps. It used to sit in the
    versioned cache, so every app update deleted the only offline copy — and the first fetch after
    an update failing (a flaky network, a stalled 6 MB download) left the app with NOTHING: the
@@ -17,25 +17,29 @@ const DATA_TIMEOUT_MS = 20000;
 const SHELL = [
   './',
   './index.html',
-  './ui/experience.css?v=228',
-  './ui/sd-rules.js?v=228',
-  './ui/apex.js?v=228',
-  './ui/business.js?v=228',
-  './ui/experience-model.js?v=228',
-  './ui/experience.js?v=228',
-  './ui/ticker.js?v=228',
-  './ui/duo.js?v=228',
-  './ui/compact.js?v=228',
-  './ui/journey.js?v=228',
-  './ui/journey.css?v=228',
-  './ui/ticker.css?v=228',
-  './ui/duo.css?v=228',
-  './ui/predictions.css?v=228',
-  './ui/predictions-model.js?v=228',
-  './ui/predictions.js?v=228',
-  './ui/smartmoney.css?v=228',
-  './ui/smartmoney-model.js?v=228',
-  './ui/smartmoney.js?v=228',
+  './ui/experience.css?v=229',
+  './ui/sd-rules.js?v=229',
+  './ui/apex.js?v=229',
+  './ui/business.js?v=229',
+  './ui/experience-model.js?v=229',
+  './ui/theme.js?v=229',
+  './ui/today-model.js?v=229',
+  './ui/today.js?v=229',
+  './ui/today.css?v=229',
+  './ui/experience.js?v=229',
+  './ui/ticker.js?v=229',
+  './ui/duo.js?v=229',
+  './ui/compact.js?v=229',
+  './ui/journey.js?v=229',
+  './ui/journey.css?v=229',
+  './ui/ticker.css?v=229',
+  './ui/duo.css?v=229',
+  './ui/predictions.css?v=229',
+  './ui/predictions-model.js?v=229',
+  './ui/predictions.js?v=229',
+  './ui/smartmoney.css?v=229',
+  './ui/smartmoney-model.js?v=229',
+  './ui/smartmoney.js?v=229',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
