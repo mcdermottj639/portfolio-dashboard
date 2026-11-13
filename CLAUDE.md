@@ -1,4 +1,4 @@
-## v227 — Premium Today, Light / Dark / System (2026-11-13)
+## v228 — Premium Today, Light / Dark / System (2026-11-13)
 Jack requested the stronger Today concept built into the app, then corrected the mockup:
 daily-only value history behind a tap row; visible trades + prices directly above **Confirm
 with Claude**; separate **Waiting on you** and **Out of your hands**; restrained gold, no
@@ -15,13 +15,14 @@ These corrections supersede the earlier illustrative mockup's intraday line.
 - Privacy covers new bare trade quantities and dynamic dialogs. The private Claude prompt
   is built on click; a changed proposed book blocks that click pending review. Five tabs,
   v222 Duo geometry and scoped account/Research/Back behavior remain authoritative.
-- Build/cache: **v227 / pf-v227**. Implementation handoff: `ui/TODAY.md`.
+- Build/cache: **v228 / pf-v228**. Implementation handoff: `ui/TODAY.md`.
 - Local validation: 56/56 producer suites and 57/57 dashboard/model tests passed. Local
   Chromium is blocked by socket EPERM; browser and screenshot validation are required in
   the existing CI workflow before release. No physical-device validation is claimed.
 - Reconciled through PR #209 / v226 before release: Apex rules v2.8 / themes-v1.1,
   normalized scan labels and fail-closed unknown names remain authoritative. Today reuses
-  that same engine and whole-book prompt. Current main data refreshes are preserved.
+  that same engine and whole-book prompt. Current main data refreshes and the
+  v227 date-only freshness header are preserved.
 
 ## v226 — Apex theme cap: scan labels normalized, unknown names fail closed (2026-11-13)
 ChatGPT's review of the merged v224 (claudex Portfolio handoff, Nov 13 ~12:39 ET) found a real hole: `themeOf()` returned a
