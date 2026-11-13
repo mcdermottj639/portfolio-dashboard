@@ -90,6 +90,29 @@ class DataValidationTests(unittest.TestCase):
         (self.root / 'data/new/feed.json').write_text('{}')
         self.assertIn(self.root / 'data/new/feed.json', VALIDATOR.selected_files(self.root, []))
 
+    def test_linked_directory_is_not_silently_skipped(self):
+        (self.root / 'data').mkdir()
+        target = self.root / 'linked-content'
+        target.mkdir()
+        (target / 'bad.json').write_text('not-json-private-marker')
+        (self.root / 'data/nested').symlink_to(target, target_is_directory=True)
+        with self.assertRaises(VALIDATOR.DataError) as error:
+            VALIDATOR.selected_files(self.root, [])
+        self.assertNotIn('private-marker', str(error.exception))
+
+    def test_dangling_directory_link_is_rejected(self):
+        (self.root / 'data').mkdir()
+        (self.root / 'data/nested').symlink_to(self.root / 'missing', target_is_directory=True)
+        with self.assertRaises(VALIDATOR.DataError):
+            VALIDATOR.selected_files(self.root, [])
+
+    def test_linked_data_root_is_rejected(self):
+        target = self.root / 'linked-content'
+        target.mkdir()
+        (self.root / 'data').symlink_to(target, target_is_directory=True)
+        with self.assertRaises(VALIDATOR.DataError):
+            VALIDATOR.selected_files(self.root, [])
+
     def test_selected_file_does_not_require_other_feeds(self):
         self.assertEqual(VALIDATOR.selected_files(self.root, ['data/predictions.json']), [self.root / 'data/predictions.json'])
 
