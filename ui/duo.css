@@ -200,3 +200,33 @@ html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;back
   .sm-page .sm-rows>.sm-row:nth-child(odd){border-right:1px solid var(--sm-rule)}
   .sm-page .sm-rows>:not(.sm-row){grid-column:1/-1}
 }
+
+/* ───────── 7 · v222: folded screen turned sideways (about 678 x 453) ─────────
+   Jack (Nov 13, screenshot): "Got this folded landscape view … optimize this landscape folded view as well".
+   The Duo reports an ~85px LEFT inset in this pose and the bottom bar took a quarter of the 453px height, so the
+   nav becomes a left rail that sits in that inset (width = the larger of the inset and 72px), the bottom bar goes,
+   and the Today heading row (its age repeats the snapshot strip) is hidden. Layout only. --duo-l comes from
+   ui/duo.js; env() is the fallback. Any short wide screen (a phone sideways) gets the same treatment. */
+@media (min-width:560px) and (max-width:739px) and (max-height:520px) {
+  html.experience-on{--duo-rail:max(72px, var(--duo-l, env(safe-area-inset-left)))}
+  html.experience-on body{padding-left:calc(var(--duo-rail) + 10px)!important;padding-bottom:calc(env(safe-area-inset-bottom) + 16px)!important}
+  html.experience-on .ex-main{top:0;bottom:0;left:0;right:auto;width:var(--duo-rail);height:auto;
+    flex-direction:column;justify-content:flex-start;align-items:center;gap:4px;padding:8px 4px;
+    border-top:0;border-right:1px solid var(--ex-border)}
+  html.experience-on.pf-has-tape .ex-main{top:calc(var(--tk-pad, 0px) + var(--tk-h, 0px))}
+  html.experience-on .ex-main button{flex:0 0 auto;width:62px;min-width:0;min-height:52px;padding:5px 2px;font-size:10.5px;
+    flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border-radius:10px}
+  html.experience-on .ex-main button[aria-current="page"]{box-shadow:none;background:var(--ex-soft)}
+  html.experience-on .ex-main svg{width:20px;height:20px}
+  html.experience-on .ex-main .ex-wordmark,html.experience-on .ex-main .ex-classic{display:none}
+  html.experience-on .ex-classic-return{bottom:16px}
+  #page-ex-today .ex-brief-heading{display:none!important}
+  #page-ex-today .ex-brief-hero{margin-top:0;padding:12px 14px}
+  #page-ex-today .ex-hero-value{font-size:clamp(22px,4.4vw,28px);white-space:nowrap}
+  #page-ex-today .ex-daily-value{font-size:clamp(18px,3.6vw,24px);white-space:nowrap}
+  #apex-content [data-apex-confirm]{bottom:calc(env(safe-area-inset-bottom) + 8px)}
+  #pj-context{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);column-gap:10px;align-items:center}
+  #pj-context>*{grid-column:1/-1;min-width:0}
+  #pj-context>.pj-context-head{grid-column:1}
+  #pj-context>.pj-context-head+.pj-steps{grid-column:2;margin-top:0}
+}

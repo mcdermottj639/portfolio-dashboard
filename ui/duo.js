@@ -15,6 +15,8 @@
       var on=r>=60&&l<20, root=document.documentElement;
       root.classList.toggle('pf-side-status',on);
       if(on) root.style.setProperty('--duo-r',r+'px'); else root.style.removeProperty('--duo-r');
+      /* v222: folded + landscape puts the inset on the LEFT (about 85px); ui/duo.css hangs the nav rail in it. */
+      if(l>0) root.style.setProperty('--duo-l',l+'px'); else root.style.removeProperty('--duo-l');
     }catch(_){}
   }
   if(document.body) measure(); else document.addEventListener('DOMContentLoaded',measure);

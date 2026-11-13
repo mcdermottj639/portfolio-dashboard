@@ -1,3 +1,18 @@
+## v222 — Duo folded screen turned sideways: nav rail in the left strip (2026-11-13)
+Jack (Nov 13 10:55 ET, screenshot of Today on the folded screen held sideways): "optimize this landscape folded view
+as well". Measured from the screenshot: about **678 x 453 CSS px**, the Duo reports an **~85px LEFT** safe-area inset
+in this pose, and the bottom bar took ~100px of the 453px height. `ui/duo.css` section 7, for
+`(min-width:560px) and (max-width:739px) and (max-height:520px)`: the nav becomes a left rail sitting in that strip
+(width = max(72px, the inset)), the bottom bar goes, Today's heading row is hidden (its age repeats the snapshot strip),
+the hero is tighter, the Plan context card is one row, and Apex Confirm pins to the bottom edge. `ui/duo.js` now also
+sets `--duo-l` (the measured left inset). Any short wide screen (a phone held sideways) gets the same layout.
+- Not changed: portrait folded, open, desktop (their ranges do not overlap: open and desktop are taller than 520px).
+- Files: `ui/duo.css`, `ui/duo.js`, `index.html`, `sw.js`, `tests/journey.test.cjs`, `CLAUDE.md`.
+- Verified (synthetic preview, Chromium, left inset forced by hand): 14 routes x 678x453, 466x677, 960x676, 390x844,
+  667x375 — scrollWidth = innerWidth, scrollX 0 after a forced sideways scroll, no new page errors; screenshots read;
+  suites as listed in the PR. Not verified: the real phone, and whether status icons sit inside the left strip in this
+  pose (the screenshot showed none). App/cache **v222 / pf-v222**.
+
 ## v221 — Duo layouts for the rest of the app (2026-11-12)
 Jack (Nov 12 ~19:00 ET, on v220's open Today): "That's better. Do the rest of that portfolio dashboard app now."
 Layout only, all in `ui/duo.css` section 6 — no JS, no card, number or copy change.
@@ -1929,7 +1944,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v221** (`pf-v221`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v222** (`pf-v222`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
