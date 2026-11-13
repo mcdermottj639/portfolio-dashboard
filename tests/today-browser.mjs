@@ -115,6 +115,7 @@ export async function runTodayChecks(page) {
     await page.evaluate(() => setPrivacy(false));
     assert.equal(await page.locator('#ex-combined-equity').innerText(), initialEquity);
     await checkCoverageAndTicketStates(page, selected);
+    await checkTinyHoldingMap(page);
 
     // Exercise the visible trade + whole-book confirmation against the authoritative
     // Apex adapter, with a deliberately synthetic, fresh one-line entry proposal.
@@ -215,32 +216,97 @@ async function checkCoverageAndTicketStates(page, symbol) {
 }
 
 async function checkMapProportions(page) {
-  const map = await page.evaluate(() => {
+  const {width, height, tiles: map} = await page.evaluate(() => {
     const positions = PFExperienceModel.dailyBrief(__DATA, __SNAP).positions.filter(p => p.value > 0);
     const total = positions.reduce((sum, p) => sum + p.value, 0);
     const weights = Object.fromEntries(positions.map(p => [p.symbol, p.value / total]));
-    return [...document.querySelectorAll('.td-map [data-td-holding]')].map(el => ({
-      symbol: el.dataset.tdHolding,
-      weight: weights[el.dataset.tdHolding],
-      x: parseFloat(el.style.left), y: parseFloat(el.style.top),
-      width: parseFloat(el.style.width), height: parseFloat(el.style.height),
-      units: ['left', 'top', 'width', 'height'].every(key => el.style[key].endsWith('%'))
-    }));
+    const bounds = document.querySelector('.td-map').getBoundingClientRect();
+    return {width: bounds.width, height: bounds.height, tiles: [...document.querySelectorAll('.td-map [data-td-holding]')].map(el => {
+      const rect = el.getBoundingClientRect();
+      return {
+        symbol: el.dataset.tdHolding,
+        weight: weights[el.dataset.tdHolding],
+        x: parseFloat(el.style.left), y: parseFloat(el.style.top),
+        width: parseFloat(el.style.width), height: parseFloat(el.style.height),
+        units: ['left', 'top', 'width', 'height'].every(key => el.style[key].endsWith('%')),
+        rect: {x: rect.left - bounds.left, y: rect.top - bounds.top, width: rect.width, height: rect.height}
+      };
+    })};
   });
   assert.ok(map.length);
+  assert.ok(width > 0 && height > 0, 'the measured map is visible');
+  // Browser layout quantizes fractions of a CSS pixel. This tolerance allows that
+  // rounding, but cannot hide a border/padding minimum inflating a small holding.
+  const pixelTolerance = 0.15;
   for (const tile of map) {
     assert.ok(tile.units, tile.symbol + ' uses a responsive percentage rectangle');
     assert.ok(tile.x >= 0 && tile.y >= 0 && tile.width > 0 && tile.height > 0);
     assert.ok(tile.x + tile.width <= 100.01 && tile.y + tile.height <= 100.01, tile.symbol + ' fits inside the map');
     assert.ok(Math.abs(tile.width * tile.height / 10000 - tile.weight) < 0.0001, tile.symbol + ' area represents its recorded position value');
+    const expected = {x: width * tile.x / 100, y: height * tile.y / 100, width: width * tile.width / 100, height: height * tile.height / 100};
+    for (const dimension of ['x', 'y', 'width', 'height']) {
+      assert.ok(Math.abs(tile.rect[dimension] - expected[dimension]) <= pixelTolerance,
+        tile.symbol + ' actual ' + dimension + ' matches its proportional rectangle');
+    }
+    assert.ok(tile.rect.x >= -pixelTolerance && tile.rect.y >= -pixelTolerance);
+    assert.ok(tile.rect.x + tile.rect.width <= width + pixelTolerance && tile.rect.y + tile.rect.height <= height + pixelTolerance,
+      tile.symbol + ' actual border box stays within the map');
+    const areaTolerance = (expected.width + expected.height) * pixelTolerance + pixelTolerance ** 2;
+    assert.ok(Math.abs(tile.rect.width * tile.rect.height - tile.weight * width * height) <= areaTolerance,
+      tile.symbol + ' rendered area represents its recorded position value');
   }
   for (let i = 0; i < map.length; i++) for (let j = i + 1; j < map.length; j++) {
     const a = map[i], b = map[j];
     const overlapX = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
     const overlapY = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
     assert.ok(overlapX < 0.01 || overlapY < 0.01, a.symbol + ' and ' + b.symbol + ' do not overlap');
+    const actualOverlapX = Math.min(a.rect.x + a.rect.width, b.rect.x + b.rect.width) - Math.max(a.rect.x, b.rect.x);
+    const actualOverlapY = Math.min(a.rect.y + a.rect.height, b.rect.y + b.rect.height) - Math.max(a.rect.y, b.rect.y);
+    assert.ok(actualOverlapX <= pixelTolerance || actualOverlapY <= pixelTolerance,
+      a.symbol + ' and ' + b.symbol + ' rendered border boxes do not overlap');
   }
   assert.ok(Math.abs(map.reduce((sum, tile) => sum + tile.width * tile.height / 10000, 0) - 1) < 0.0001, 'map uses the complete priced stock allocation');
+  const totalAreaTolerance = map.reduce((sum, tile) => sum + (width * tile.width / 100 + height * tile.height / 100) * pixelTolerance + pixelTolerance ** 2, 0);
+  assert.ok(Math.abs(map.reduce((sum, tile) => sum + tile.rect.width * tile.rect.height, 0) - width * height) <= totalAreaTolerance,
+    'actual tile areas cover the map without inflating the allocation');
+}
+
+async function checkTinyHoldingMap(page) {
+  const viewport = page.viewportSize();
+  await page.evaluate(() => {
+    window.__todayTinyMapBackup = {data: __DATA, snap: __SNAP};
+    const now = new Date().toISOString();
+    __DATA = {...__DATA, generatedAt: now,
+      main: {equity: 100000, cash: 0, asOf: now},
+      agentic: {equity: 0, cash: 0, positions: [], asOf: now}};
+    __SNAP = {stats: {totalVal: 100000, cashVal: 0}, enriched: [
+      {symbol:'LARGE', qty:990, px:100, avg:100, val:99000, dayP:0, dayD:0},
+      {symbol:'SMALL', qty:10, px:100, avg:100, val:1000, dayP:0, dayD:0}
+    ], smaMap:{}, earn:{}};
+    __experienceRefresh();
+  });
+  try {
+    await page.setViewportSize({width:320, height:844});
+    await refresh(page);
+    await page.locator('[data-td-view="map"]').click();
+    assert.equal(await page.locator('.td-map [data-td-holding]').count(), 2, 'tiny-map fixture has exactly two holdings');
+    await checkMapProportions(page);
+    const small = await page.locator('.td-map [data-td-holding="SMALL"]').boundingBox();
+    assert.ok(small && small.width > 0 && small.width < 10, 'the 1% holding remains a genuinely small rendered tile');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'the tiny holding does not overflow the viewport');
+    await page.locator('[data-td-view="list"]').click();
+    assert.equal(await page.locator('.td-holdings-list [data-td-holding="SMALL"]').isVisible(), true, 'a tiny tile remains reachable through List');
+    await page.locator('[data-td-view="map"]').click();
+  } finally {
+    await page.evaluate(() => {
+      const backup = window.__todayTinyMapBackup;
+      __DATA = backup.data; __SNAP = backup.snap;
+      delete window.__todayTinyMapBackup;
+      __experienceRefresh();
+    });
+    if (viewport) await page.setViewportSize(viewport);
+    await refresh(page);
+  }
 }
 
 async function checkApexParity(page) {

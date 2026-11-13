@@ -77,10 +77,32 @@ def validate_file(path: Path) -> None:
         raise DataError('root must be an object or array')
 
 
+def discover_json(root: Path) -> set[str]:
+    """Enumerate data entries without following or silently skipping links."""
+    data = root / 'data'
+    if data.is_symlink():
+        raise DataError('symlink is not a published JSON path')
+    if not data.exists():
+        return set()  # Required missing feeds are rejected by validate_file.
+    names: set[str] = set()
+    pending = [data]
+    try:
+        while pending:
+            directory = pending.pop()
+            for path in directory.iterdir():
+                if path.is_symlink():
+                    raise DataError('symlink is not a published JSON path')
+                if path.is_dir():
+                    pending.append(path)
+                elif path.suffix == '.json':
+                    names.add(path.relative_to(root).as_posix())
+    except OSError:
+        raise DataError('missing or unreadable data directory') from None
+    return names
+
+
 def selected_files(root: Path, arguments: list[str]) -> list[Path]:
-    names = arguments or sorted(set(REQUIRED) | {
-        p.relative_to(root).as_posix() for p in (root / 'data').rglob('*.json')
-    })
+    names = arguments or sorted(set(REQUIRED) | discover_json(root))
     paths = []
     for name in names:
         candidate = root / name
