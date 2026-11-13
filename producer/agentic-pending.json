@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-12-jqmalp",
-  "created": "2026-11-12",
+  "id": "2026-11-13-oref7a",
+  "created": "2026-11-13",
   "targetId": "97f64950150a6d2dd74d",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,38 +16,56 @@
   "universeVersion": "80f4c5d54ce396515cb7",
   "status": "done",
   "autoEligible": true,
-  "turnover": 134.3,
-  "book": 7897.79,
-  "planHash": "s[]b[CVX:39,META:39,MSFT:57]t[]",
+  "turnover": 281.71,
+  "book": 8170.74,
+  "planHash": "s[]b[MA:38,META:48,MSFT:82,PEP:46,SPY:68]t[]",
   "legs": {
     "sells": [],
     "buysNow": [
       {
         "sym": "MSFT",
         "kind": "buy",
-        "dollars": 57.11,
-        "shares": 0.108787,
-        "price": 524.9699,
+        "dollars": 82.32,
+        "shares": 0.1571,
+        "price": 523.99,
         "pl": null,
-        "note": "17.0% → 18.22% target"
+        "note": "17.2% → 18.22% target"
       },
       {
         "sym": "META",
         "kind": "buy",
-        "dollars": 38.53,
-        "shares": 0.061989,
-        "price": 621.5599,
+        "dollars": 47.58,
+        "shares": 0.075,
+        "price": 634.21,
         "pl": null,
-        "note": "10.7% → 11.52% target"
+        "note": "10.9% → 11.52% target"
       },
       {
-        "sym": "CVX",
+        "sym": "SPY",
         "kind": "buy",
-        "dollars": 38.66,
-        "shares": 0.17997,
-        "price": 214.8132,
+        "dollars": 67.58,
+        "shares": 0.0899,
+        "price": 751.91,
         "pl": null,
-        "note": "8.5% → 9.3% target"
+        "note": "7.6% → 8.42% target"
+      },
+      {
+        "sym": "MA",
+        "kind": "buy",
+        "dollars": 37.92,
+        "shares": 0.0573,
+        "price": 661.785,
+        "pl": null,
+        "note": "6.2% → 6.64% target"
+      },
+      {
+        "sym": "PEP",
+        "kind": "buy",
+        "dollars": 46.31,
+        "shares": 0.3206,
+        "price": 144.4266,
+        "pl": null,
+        "note": "4.7% → 5.31% target"
       }
     ],
     "buysT1": []
@@ -61,6 +79,11 @@
   },
   "deferred": [
     {
+      "sym": "CVX",
+      "reason": "above-entry",
+      "until": null
+    },
+    {
       "sym": "AAPL",
       "reason": "above-entry",
       "until": null
@@ -73,30 +96,30 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "$537.02 of deferred weight (AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "2 name(s) deferred (AAPL, COST) — ~$537.02 of intended weight held pending earnings/re-verify/wash-sale",
-    "$33.78 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
+    "$605.09 of deferred weight (CVX, AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "3 name(s) deferred (CVX, AAPL, COST) — ~$605.09 of intended weight held pending earnings/re-verify/wash-sale",
+    "$9.05 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
   ],
   "history": [
     {
-      "at": "2026-11-12",
+      "at": "2026-11-13",
       "to": "proposed"
     },
     {
-      "at": "2026-11-12",
+      "at": "2026-11-13",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-12",
+      "at": "2026-11-13",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-12",
+      "at": "2026-11-13",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-12",
-  "buys-placedAt": "2026-11-12",
-  "doneAt": "2026-11-12",
-  "completedAt": "2026-11-12T15:24:25.110Z"
+  "confirmedAt": "2026-11-13",
+  "buys-placedAt": "2026-11-13",
+  "doneAt": "2026-11-13",
+  "completedAt": "2026-11-13T18:23:12.507Z"
 }

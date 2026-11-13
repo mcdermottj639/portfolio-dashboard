@@ -2529,6 +2529,94 @@
           "weightAfter": 9.3
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "97f64950150a6d2dd74d",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "80f4c5d54ce396515cb7",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-13-deploy",
+      "date": "2026-11-13",
+      "kind": "deploy",
+      "targetAsOf": "2026-11-11",
+      "book": 8170.74,
+      "equityAtDecision": 8172.10434833,
+      "spyAt": 751.45,
+      "rationale": "Then deploy $281.71 of settled cash: MSFT $82.32, META $47.58, SPY $67.58, MA $37.92, PEP $46.31. Hold $605.09 for CVX (above-entry), AAPL (above-entry), COST (above-entry). $9.05 stays in cash. Live pre-checks: plan basis book $8170.74 vs live total_value $8172.10 pre-trade (+0.02%, within the 5% abort); buying power $290.76 covered the $281.71 turnover; no orders on ••••3900 today before this ticket (PDT n/a); no sells in this pass so the cross-account wash check does not apply; none of the 5 buy names (MSFT/META/SPY/MA/PEP) report earnings within 7 days. Drawdown per the gate: book -2.9% from its peak (2026-08-10) vs benchmark -2.1% over the same window — -0.9pp relative; deployment normal. Turnover $281.71.",
+      "trades": [
+        {
+          "sym": "MSFT",
+          "side": "BUY",
+          "dollars": 82.32,
+          "shares": 0.157087,
+          "priceAt": 524.039,
+          "weightBefore": 17.21,
+          "weightAfter": 18.22,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "META",
+          "side": "BUY",
+          "dollars": 47.58,
+          "shares": 0.074885,
+          "priceAt": 635.3661,
+          "weightBefore": 10.94,
+          "weightAfter": 11.52,
+          "drivers": [
+            "quality",
+            "growth"
+          ]
+        },
+        {
+          "sym": "SPY",
+          "side": "BUY",
+          "dollars": 67.58,
+          "shares": 0.089935,
+          "priceAt": 751.4276,
+          "weightBefore": 7.59,
+          "weightAfter": 8.42
+        },
+        {
+          "sym": "MA",
+          "side": "BUY",
+          "dollars": 37.92,
+          "shares": 0.057386,
+          "priceAt": 660.7812,
+          "weightBefore": 6.18,
+          "weightAfter": 6.64,
+          "drivers": [
+            "quality",
+            "momentum",
+            "growth"
+          ]
+        },
+        {
+          "sym": "PEP",
+          "side": "BUY",
+          "dollars": 46.31,
+          "shares": 0.320324,
+          "priceAt": 144.572,
+          "weightBefore": 4.74,
+          "weightAfter": 5.31,
+          "drivers": [
+            "valuation"
+          ]
+        }
+      ]
     }
   ]
 }
