@@ -1,3 +1,26 @@
+## v221 — Duo layouts for the rest of the app (2026-11-12)
+Jack (Nov 12 ~19:00 ET, on v220's open Today): "That's better. Do the rest of that portfolio dashboard app now."
+Layout only, all in `ui/duo.css` section 6 — no JS, no card, number or copy change.
+- **Both screens (≤ 739px wide or ≤ 720px tall):** the dark page banners (`#page-portfolio .header`, every
+  `.picks-hero`, the Predictions head) are one slim block (Accounts 143 → 100px, Markets/Options 105 → 70px).
+- **Folded (420–739px):** the six Accounts snapshot tiles are 3 × 2 instead of 2 × 3.
+- **Open (740–1100px):** Accounts snapshot tiles are one row of six. `#markets-app`, `#options-app`,
+  `#plan-agentic-app` and `#az-result` are two-column grids where every child spans both columns unless opted in:
+  Markets pairs Sector Heatmap | US vs International and Macro | Breadth; Options pairs the two income rankers;
+  the Agentic plan and Analyze pair every card after their header. Paired cards drop the grey title hint so the
+  ? ☆ ▼ buttons stay on the title line. Smart Money is full width with trade rows two-up.
+- Cards are matched by content (`:has(#sec-hint)`, `:has(#mkt-macro)`, `[data-priv="market"]`), never by `navc-N`
+  ids, which the section rail regenerates.
+- Not changed: Accounts tables and charts (too wide for half a screen), the Action Center, Screens, Activity,
+  Decision evidence, What if (already grids), Predictions cards (already two-up).
+- Measured (synthetic preview, 960×676): Agentic plan 4,151 → 2,962px, Markets 2,321 → 1,826, Analyze 3,078 → 2,476,
+  Smart Money 2,016 → 1,452.
+- Files: `ui/duo.css`, `index.html` + `sw.js` + `tests/journey.test.cjs` (version), `CLAUDE.md`.
+- Verified (synthetic preview, Chromium, side inset forced by hand): 13 routes × 960×676 and 466×677 — scrollWidth =
+  innerWidth, nothing past the right edge, 0 page errors other than the preview's missing Chart.js on Screens (same on
+  main); suites as listed in the PR. Not verified: charts at half width (no Chart.js in preview), a physical iPhone
+  Duo. App/cache **v221 / pf-v221**.
+
 ## v220 — Duo follow-up: the open screen is ~960px wide, and the side status strip is reclaimed (2026-11-12)
 Jack (Nov 12 18:31 ET, two screenshots from the phone): "Full view is awful" and, on the empty strip beside the
 clock/Wi-Fi icons, "Reclaim what u can". v219's sizes were estimates and both were wrong: the open screen measures
@@ -1906,7 +1929,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v204** (`pf-v204`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v221** (`pf-v221`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
