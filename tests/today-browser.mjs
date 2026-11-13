@@ -7,8 +7,16 @@ import path from 'node:path';
 
 const ready = page => page.waitForFunction(() => window.__SNAP && window.PFTheme && document.querySelector('#page-ex-today .td-shell'));
 const refresh = async page => {
-  await page.evaluate(() => window.__experienceRefresh());
-  await page.waitForTimeout(220);
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const done = () => { clearTimeout(timer); resolve(); };
+    const timer = setTimeout(() => {
+      document.removeEventListener('pf:render', done);
+      reject(new Error('Today did not finish its queued render within 10 seconds'));
+    }, 10000);
+    document.addEventListener('pf:render', done, {once:true});
+    try { window.__experienceRefresh(); }
+    catch (error) { clearTimeout(timer); document.removeEventListener('pf:render', done); reject(error); }
+  }));
 };
 const currentTheme = page => page.evaluate(() => document.documentElement.getAttribute('data-theme'));
 const openToday = async page => {
@@ -341,6 +349,7 @@ async function checkApexParity(page) {
     renderApexCard(__SNAP); __experienceRefresh();
   });
   try {
+    await refresh(page);
     await page.waitForFunction(() => document.querySelector('#page-ex-today [data-td-confirm]'));
     const parity = await page.evaluate(() => {
       const a=window.__PF_APEX_REVIEW;
