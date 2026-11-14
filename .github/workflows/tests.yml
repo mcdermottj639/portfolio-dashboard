@@ -61,6 +61,7 @@ jobs:
           node tests/apex-browser.mjs
           node tests/journey-browser.mjs
           node tests/holdings-duo-browser.mjs
+          node tests/today-viewport-browser.mjs
 
       - name: Verify published UI after a main release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -68,6 +69,7 @@ jobs:
           python3 tests/verify-live-shell.py
           PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/journey-browser.mjs
           PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/holdings-duo-browser.mjs
+          PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/today-viewport-browser.mjs
 
       - name: Save synthetic layout evidence
         if: always()
@@ -92,3 +94,39 @@ jobs:
             UI-PRESERVATION.md
             CLAUDE.md
           retention-days: 3
+
+  webkit-layout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Install WebKit layout runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.57.0
+          npx playwright install --with-deps webkit
+      - name: Verify compact Today in WebKit with synthetic data
+        run: |
+          node tests/preview.mjs > /tmp/portfolio-webkit-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8767/ >/dev/null; then break; fi
+            sleep 1
+          done
+          PF_BROWSER=webkit node tests/today-viewport-browser.mjs
+      - name: Verify served Today in WebKit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          python3 tests/verify-live-shell.py
+          PF_BROWSER=webkit PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/today-viewport-browser.mjs
+      - name: Save synthetic WebKit layout evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: today-webkit-evidence
+          path: tmp/journey-evidence/
+          if-no-files-found: ignore
+          retention-days: 14

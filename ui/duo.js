@@ -1,8 +1,8 @@
-/* v220 — side status area (iPhone Duo). Jack, Nov 12 2026, on a strip of empty page beside the clock/Wi-Fi
-   icons: "Reclaim what u can". The Duo reports those icons as a large RIGHT safe-area inset with no matching left
-   one; the page padded its whole height by it. This measures the insets and, only for that lopsided shape, sets
+/* v220 — asymmetric safe-area fallback. v232 correction: Safari's Duo controls
+   column is outside the web viewport, not reclaimable CSS padding. This applies
+   only where an environment actually exposes a large asymmetric inset. It sets
    html.pf-side-status + --duo-r so ui/duo.css can keep just the top rows clear and let the cards run full width.
-   A normal iPhone in landscape reports both sides (the notch) and is left alone. Layout only; reads no data. */
+   Symmetric insets are left alone. Layout only; reads no data or screen identity. */
 (function(){
   var probe, observer, frame;
   function measure(){

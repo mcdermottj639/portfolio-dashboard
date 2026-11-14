@@ -162,3 +162,13 @@ Keep duo.css last. Late-inset/resume detection, symmetric-notch protection and
 folded/open/sideways geometry are exercised by holdings-duo-browser.mjs in CI.
 Preserve the sticky date bar's opaque backing beside the reserved status inset.
 The exact native iOS status strip remains a physical-device acceptance item.
+
+### v232 — Native control column and compact Today
+
+The Duo status/control column is browser-owned and outside the web viewport:
+https://webkit.org/blog/18486/#web-content-under-the-controls . Do not claim it can
+be reclaimed by CSS or use screen.width to force a wider page. Distinguish actual
+content viewport tests from synthetic inset tests. Retain one narrow Today toolbar,
+44px Back/Classic/account links, sticky date/stale/appearance controls and all five
+tabs. Account context stays visible on the other routes. Agentic details and all
+account/model/confirmation boundaries from v231 remain protected.

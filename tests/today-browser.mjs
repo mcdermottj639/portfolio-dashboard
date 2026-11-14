@@ -24,6 +24,15 @@ const openToday = async page => {
   await ready(page);
 };
 
+// Compact Today uses the existing sticky appearance control, not a second picker.
+async function chooseTheme(page, value) {
+  if (await page.locator('#td-theme').isVisible()) await page.locator('#td-theme').selectOption(value);
+  else {
+    for (let i=0; i<3 && await page.evaluate(() => PFTheme.preference())!==value; i++) await page.locator('#theme-toggle').click();
+    assert.equal(await page.evaluate(() => PFTheme.preference()), value);
+  }
+}
+
 export async function runTodayChecks(page) {
   const writes = [];
   const recordWrite = request => { if (!['GET', 'HEAD'].includes(request.method())) writes.push(request.url()); };
@@ -42,7 +51,7 @@ export async function runTodayChecks(page) {
 
     // Theme selection persists independently of the account / route state and follows the
     // operating system only when System has been selected explicitly.
-    await page.locator('#td-theme').selectOption('dark');
+    await chooseTheme(page, 'dark');
     await page.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'gold');
     assert.equal(await page.evaluate(() => PFTheme.preference()), 'dark');
     await page.reload(); await ready(page);
@@ -50,14 +59,14 @@ export async function runTodayChecks(page) {
     assert.equal(await page.locator('#td-theme').inputValue(), 'dark');
     assert.equal(await page.locator('#ex-combined-equity').innerText(), initialEquity);
     await page.emulateMedia({ colorScheme: 'dark' });
-    await page.locator('#td-theme').selectOption('system');
+    await chooseTheme(page, 'system');
     await page.waitForFunction(() => PFTheme.preference() === 'system' && document.documentElement.getAttribute('data-theme') === 'gold');
     await page.emulateMedia({ colorScheme: 'light' });
     await page.waitForFunction(() => document.documentElement.getAttribute('data-theme') === 'light');
     await page.reload(); await ready(page);
     assert.equal(await page.evaluate(() => PFTheme.preference()), 'system', 'System survives reload');
     assert.equal(await currentTheme(page), 'light');
-    await page.locator('#td-theme').selectOption('dark');
+    await chooseTheme(page, 'dark');
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.emulateMedia({ colorScheme: 'light' });
     assert.equal(await currentTheme(page), 'gold', 'OS changes do not override a manual choice');
@@ -130,7 +139,7 @@ export async function runTodayChecks(page) {
     await checkApexParity(page);
     await openToday(page);
     for (const theme of ['light', 'dark']) {
-      await page.locator('#td-theme').selectOption(theme);
+      await chooseTheme(page, theme);
       await checkSelectedViewContrast(page, theme);
       for (const [width, height] of [[320,844],[390,844],[430,932],[466,677],[678,453],[960,676],[1440,1000]]) {
         await page.setViewportSize({ width, height });
@@ -145,11 +154,11 @@ export async function runTodayChecks(page) {
       assert.equal(await page.evaluate(() => document.body.textContent.includes('LOCAL PREVIEW — SYNTHETIC SAMPLE DATA')), true,
         'Today screenshots require the isolated synthetic preview');
       const dir = path.resolve(process.env.PF_SCREENSHOT_DIR || 'tmp/journey-evidence'); fs.mkdirSync(dir, { recursive: true });
-      await page.locator('#td-theme').selectOption('light');
+      await chooseTheme(page, 'light');
       await page.setViewportSize({ width:390, height:844 });
       await page.evaluate(() => window.scrollTo(0,0));
       await page.screenshot({ path:path.join(dir,'today-light-390.png'), fullPage:true });
-      await page.locator('#td-theme').selectOption('dark');
+      await chooseTheme(page, 'dark');
       await page.screenshot({ path:path.join(dir,'today-dark-390.png'), fullPage:true });
       await page.setViewportSize({ width:960, height:676 });
       await page.screenshot({ path:path.join(dir,'today-duo-960.png'), fullPage:true });
