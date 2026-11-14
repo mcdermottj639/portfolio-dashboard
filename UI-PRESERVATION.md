@@ -152,3 +152,12 @@ Route-only hashes, Back/Forward, refreshed selections and scroll/details are cov
 `tests/journey-browser.mjs`. `ui/journey.js` stores only UI preferences; no saved financial
 records, raw balances, broker credentials or strategy state are added. Shell/cache v217
 moves with the new assets. See `UX_REVIEW.md` and the shared handoff for evidence and limits.
+
+### v231 — Agentic positions and Duo
+
+Both accounts share All Positions columns and retain account-local filters/sorts.
+Agentic has no small-position cutoff; unknown quotes/costs are not zero. Its
+existing target/trade table and handoff remain in Target comparison & trade review.
+Keep duo.css last. Late-inset/resume detection, symmetric-notch protection and
+folded/open/sideways geometry are exercised by holdings-duo-browser.mjs in CI.
+The exact native iOS status strip remains a physical-device acceptance item.
