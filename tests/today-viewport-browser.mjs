@@ -38,7 +38,10 @@ try {
    const clipped=await page.locator('#ex-combined-equity,#ex-combined-move,.td-account-value,.td-account-head .td-link').evaluateAll(nodes=>nodes.filter(el=>el.scrollWidth>el.clientWidth+2).map(el=>el.className||el.id));
    assert.deepEqual(clipped,[],`${engine} ${width}: numbers and account links fit`);
    const top=await page.locator('#ex-top').boundingBox(),hero=await page.locator('.td-hero').boundingBox(),waiting=await page.locator('.td-waiting').boundingBox();
-   evidence.push({engine,theme,width,height,toolbarHeight:top.height,heroHeight:hero.height,waitingTop:waiting.y});
+   const previewBanner=page.getByText('LOCAL PREVIEW — SYNTHETIC SAMPLE DATA',{exact:true});
+   const previewHeight=await previewBanner.count()?(await previewBanner.boundingBox()).height:0;
+   const waitingContentTop=waiting.y-previewHeight;
+   evidence.push({engine,theme,width,height,toolbarHeight:top.height,heroHeight:hero.height,waitingTop:waiting.y,previewHeight,waitingContentTop});
    fs.writeFileSync(`${out}/${base.startsWith('https:')?'live-':''}today-content-${engine}.json`,JSON.stringify(evidence,null,2));
    if(width<=739) {
     assert.ok(top.height<=60,'one compact toolbar replaces repeated headings');
@@ -51,8 +54,9 @@ try {
     }
    }
    if(width>=373&&width<=385) {
-    // Visibility is the acceptance criterion; font metrics can differ by engine.
-    assert.ok(waiting.y<=425,`${engine} ${width}: action section reaches first screen ${waiting.y}`);
+    // The local-only sample banner stays in screenshots, but is not product UI.
+    // Keep the actual visible-heading check below as well, without normalization.
+    assert.ok(waitingContentTop<=425,`${engine} ${width}: action section reaches first screen ${waitingContentTop}`);
     const nav=await page.locator('.ex-main').boundingBox();
     const heading=await page.locator('.td-waiting h2').boundingBox();
     assert.ok(heading.y+heading.height<nav.y,'Waiting on you is visible above navigation');
