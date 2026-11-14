@@ -1,3 +1,30 @@
+## v232 — Compact Today in the actual Duo web viewport (2026-11-14)
+
+Jack's follow-up screenshot shows v231 loaded and a native controls column still
+outside the page. This supersedes the earlier assumption that a right CSS inset
+could explain/reclaim that entire column. WebKit explicitly documents this limit:
+https://webkit.org/blog/18486/#web-content-under-the-controls . Safari 27.2's notes
+publish no change to that contract: https://webkit.org/blog/18515/webkit-features-for-safari-27-2/ .
+Do not force screen.width, zoom, or claim Chromium inset emulation is native Duo proof.
+
+- On narrow Today, one toolbar replaces the repeated Portfolio/caption/Today rows.
+  Back and Classic keep 44px targets. The existing sticky date, stale warning and
+  Light/Dark/System toggle remain; the duplicate Today appearance picker is hidden.
+- Each account name is its explicit Portfolio link. Compact overview padding and
+  figures bring Waiting on you higher without changing any displayed calculation.
+  Open/landscape layouts, source notes, confirmation flow and v231 Agentic details
+  stay intact. The visible account context remains on other routes.
+- New Chromium and Playwright WebKit checks use content widths (373px screenshot
+  approximation, documented 382/385/594/669/951px widths, and 320px fallback), assert
+  first-screen action visibility, no clipped figures, touch targets, account links,
+  Back, reload, privacy, Classic and all three appearance modes. These are browser
+  engine checks, not native-device or installed-PWA acceptance. New CI screenshots
+  and geometry evidence are required before merge; main also checks served assets.
+- Based on a70bc69, preserving the newer prediction snapshot. No data, model,
+  executor, permission, schedule or trade changes. Local 63 model tests pass;
+  local Chromium cannot launch (socket EPERM), so layout evidence runs in CI.
+  App/cache v232/pf-v232. Final release evidence: PR and canonical handoff.
+
 ## v231 — Agentic holdings parity and Duo preservation (2026-11-14)
 
 Jack reported missing Agentic holding details and an apparent Duo regression in

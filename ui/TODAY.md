@@ -34,7 +34,7 @@ or ticker logos.** Keep all five tabs: Today, Portfolio, Research, Signals, Acti
   System follows OS changes only when selected; legacy dark preferences survive.
 - `today-model.js`: pure percentage, treemap, rail, drag and ticket presentation helpers.
 - `today.js`: rendering and read-only interactions. It does not recalculate the strategy.
-- `today.css`: scoped Today styling; loaded after the existing Duo stylesheet.
+- `today.css`: scoped Today styling; loaded before duo.css, which stays last.
 - `index.html` / `renderApexCard`: exposes the same computed Plan state to Today through
   `__PF_APEX_REVIEW`, including snapshot/source identity. A `fromToday` option prevents
   refresh recursion. The strategy engine and broker producer files are unchanged.
@@ -65,3 +65,14 @@ changed-plan click and seven viewport sizes. The Claude window is stubbed; no tr
 or authenticated broker write is exercised. Existing Plan, Apex and Journey browser
 suites remain release gates. CI saves synthetic screenshots under its Journey evidence
 artifact. Production credentials or decrypted account data must not be used for previews.
+
+## v232 compact viewport correction
+
+On narrow screens, Today uses one toolbar title. Back and Classic remain visible;
+the sticky appearance button cycles Light / Dark / System, while the duplicated
+Today picker is hidden. Freshness and its warning remain in the sticky date bar.
+Account names link to their exact portfolio and retain 44px targets. No figure,
+source or trade action is removed. `tests/today-viewport-browser.mjs` runs with
+Chromium and desktop WebKit at actual content widths, locally and against the
+served shell. This cannot certify installed iPhone/PWA chrome. Apple's native
+Duo control column is outside that content viewport; it is not CSS padding.

@@ -5,7 +5,39 @@
                                              with Confirm pinned over the bottom nav
      · open            740–1100px         → the bottom nav / sidebar becomes a left rail; Today and Apex become two panes
      · short screens   ≤ 720px tall       → the slim header at any width (the open Duo is wide but short)
-   Loaded last so it only overrides. */
+   Loaded last so it only overrides.
+   v232 correction: Safari's native Duo controls column is OUTSIDE the web
+   viewport. Inset emulation does not reproduce or reclaim it. Size content to
+   the available viewport; never expand to screen.width or force a zoom. */
+
+.ex-today-title{display:none}
+/* One Today heading on a narrow viewport. Date, stale warning and the working
+   Light/Dark/System control already remain in the sticky freshness bar. */
+@media (max-width:739px) {
+  html.pf-today-premium #ex-top .ex-brand,
+  html.pf-today-premium #ex-top #ex-context,
+  html.pf-today-premium #page-ex-today .td-heading{display:none!important}
+  html.pf-today-premium #ex-top .ex-today-title{display:block;font-size:22px;line-height:1.2;margin:0;letter-spacing:-.5px}
+  html.pf-today-premium #ex-top{padding:4px 0 8px!important;gap:8px!important}
+  html.pf-today-premium #ex-top #ex-classic{min-height:44px;font-size:12px;padding:6px 10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-layout{gap:10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-panel{padding:12px;border-radius:14px}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero.ex-brief-hero{padding:12px!important}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero-line{gap:6px 10px;margin:6px 0 8px;align-items:center}
+  html.pf-today-premium #page-ex-today .td-shell #ex-combined-equity{font-size:clamp(26px,7vw,34px)}
+  html.pf-today-premium #page-ex-today .td-shell #ex-combined-move{font-size:18px}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero-change{font-size:11px;flex:1 1 110px}
+  html.pf-today-premium #page-ex-today .td-shell .td-eyebrow{font-size:10.5px}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero>.td-muted{font-size:11px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-grid{gap:10px;padding-top:6px;margin-top:6px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account+.td-account{padding-left:10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-head{margin-bottom:2px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-head .td-link{min-height:44px;width:100%;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account .td-account-value{font-size:clamp(18px,5.3vw,23px)}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-meta{font-size:11px;gap:2px 6px;margin-top:3px}
+  html.pf-today-premium #page-ex-today .td-shell .td-section-head{margin-bottom:10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-trade-card{padding:10px}
+}
 
 /* ── 1 · Slim header: phones and short screens ─────────────────────────────────────────────────────────── */
 @media (max-width:739px), (max-height:720px) {
@@ -123,7 +155,7 @@
   #apex-content:has(>[data-apex-book]:empty)>[data-apex-rules]{grid-column:1/-1}
 }
 
-/* ── 5 · Side status area (v220) — the cards use the full width; only the rows beside the icons stay clear ── */
+/* ── 5 · Reported asymmetric inset fallback (v220), not Safari's native control column ── */
 html.pf-side-status body{padding-right:12px!important}
 html.pf-side-status #pf-fresh,
 html.pf-side-status #ex-top,
