@@ -33,7 +33,9 @@
   html.pf-today-premium #page-ex-today .td-shell .td-account+.td-account{padding-left:10px}
   html.pf-today-premium #page-ex-today .td-shell .td-account-head{margin-bottom:2px}
   html.pf-today-premium #page-ex-today .td-shell .td-account-head .td-link{min-height:44px;width:100%;display:flex;align-items:center;justify-content:space-between;font-size:12px}
-  html.pf-today-premium #page-ex-today .td-shell .td-account .td-account-value{font-size:clamp(18px,5.3vw,23px)}
+  /* A landscape pane can be much narrower than its viewport. Keep the existing
+     account container sizing, with a viewport fallback for older engines. */
+  html.pf-today-premium #page-ex-today .td-shell .td-account .td-account-value{font-size:clamp(18px,5.3vw,23px);font-size:clamp(14px,12.4cqi,23px)}
   html.pf-today-premium #page-ex-today .td-shell .td-account-meta{font-size:11px;gap:2px 6px;margin-top:3px}
   html.pf-today-premium #page-ex-today .td-shell .td-section-head{margin-bottom:10px}
   html.pf-today-premium #page-ex-today .td-shell .td-trade-card{padding:10px}
