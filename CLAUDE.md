@@ -16,6 +16,8 @@ full right strip. The v229 stylesheet order no longer kept duo.css last.
   changes with ResizeObserver, PWA resume, visibility and visual-viewport events.
   No guessed device width, forced zoom or native-status-bar override is used.
   Folded holdings use tighter card spacing and readable three-column details.
+  The sticky date bar masks its reserved side area so scrolled cards cannot bleed
+  through beside it; this was caught in the first CI screenshot review.
 - New synthetic holdings tests cover fractional, unavailable and account-local
   rows. holdings-duo-browser uses Chromium's real safe-area override, checks
   late insets without a resize, symmetric notches, 320/373/466/678/960/1440 widths,

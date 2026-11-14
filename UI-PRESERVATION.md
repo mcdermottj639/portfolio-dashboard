@@ -160,4 +160,5 @@ Agentic has no small-position cutoff; unknown quotes/costs are not zero. Its
 existing target/trade table and handoff remain in Target comparison & trade review.
 Keep duo.css last. Late-inset/resume detection, symmetric-notch protection and
 folded/open/sideways geometry are exercised by holdings-duo-browser.mjs in CI.
+Preserve the sticky date bar's opaque backing beside the reserved status inset.
 The exact native iOS status strip remains a physical-device acceptance item.
