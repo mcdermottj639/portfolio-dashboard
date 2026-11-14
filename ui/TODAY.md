@@ -45,9 +45,10 @@ or ticker logos.** Keep all five tabs: Today, Portfolio, Research, Signals, Acti
 ## Responsive and privacy requirements
 
 Phone reading order is overview → waiting → out of your hands → holdings → details.
-Duo/open and desktop use two columns. Preserve the v222 folded-landscape rail and
-safe-area handling, including ~678×453 with a left status strip and ~960×676 with
-a right status strip. Never claim physical-device testing from a desktop emulation.
+Duo/open and desktop use two columns. Preserve the v222 folded-landscape rail.
+The 678×453 left-inset and 960×676 right-inset fixtures are historical synthetic
+compatibility cases, not verified Safari viewport geometry. Test actual content
+widths separately; never claim native-device proof from desktop emulation.
 
 Today and its holding dialog use the existing private region. Trade share quantities
 have explicit bare-value markers; monetary values and leverage use existing masking.
