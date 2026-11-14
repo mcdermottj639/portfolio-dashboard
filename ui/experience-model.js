@@ -10,6 +10,33 @@
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
   }
+  // Read-only rows for the shared holdings view. Never borrow self-directed lots or
+  // turn an absent quote/cost basis into a zero price, gain or concentration band.
+  function agenticPositionRows(data) {
+    const source = data?.agentic;
+    const rows = (Array.isArray(source?.positions) ? source.positions : [])
+      .filter(p => p && /^[A-Z][A-Z0-9.-]{0,14}$/.test(p.symbol || '') && number(p.qty) > 0)
+      .map(p => {
+        const qty = number(p.qty), avg = number(p.avgCost), quote = number(p.px);
+        const px = quote > 0 ? quote : null, reported = number(p.value);
+        // The producer uses zero for an unquoted lot. Keep the lot visible.
+        const val = reported > 0 ? reported : px !== null ? qty * px : null;
+        const cost = avg !== null && avg >= 0 ? qty * avg : null;
+        const pnlD = val !== null && cost !== null ? val - cost : null;
+        const q = data?.quotes?.[p.symbol];
+        const adjusted = number(q?.adjusted_previous_close), previous = number(q?.previous_close);
+        const prev = adjusted > 0 ? adjusted : previous > 0 ? previous : null;
+        return {symbol:p.symbol, qty, avg:avg !== null && avg >= 0 ? avg : null, px, val, cost, pnlD,
+          pnlP:cost > 0 && pnlD !== null ? pnlD / cost * 100 : null,
+          dayP:px !== null && prev !== null ? (px - prev) / prev * 100 : null,
+          dayD:px !== null && prev !== null ? qty * (px - prev) : null,
+          dayBase:px !== null && prev !== null ? qty * prev : null};
+      });
+    const cash = number(source?.cash);
+    const book = cash !== null && rows.every(p => p.val !== null)
+      ? Math.max(0, cash) + rows.reduce((sum, p) => sum + p.val, 0) : null;
+    return rows.map(p => ({...p, pct:book > 0 && p.val !== null ? p.val / book * 100 : null}));
+  }
   function snapshot(data, main, account) {
     const agentic = account === 'agentic';
     const source = agentic ? data?.agentic : main?.stats;
@@ -211,5 +238,5 @@
         href: typeof e.source === 'string' && /^https:\/\//i.test(e.source) ? e.source : null
       })));
   }
-  return { number, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence };
+  return { number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence };
 });

@@ -156,14 +156,17 @@
       control.querySelector('[role="status"]').textContent=count?count+' shown':selected?'No recorded thesis for '+selected+'. Open the account plan for its current status.':'Choose a name above, or show all research.';
     }
     function enhanceHoldings() {
-      // Filter the existing position table; no positions or totals are recomputed.
-      const table=$('pos-table');if(!table)return;
-      let tools=$('pj-holding-filter');
-      if(!tools){tools=d.createElement('div');tools.id='pj-holding-filter';tools.className='pj-filter';tools.innerHTML='<label>Find a position<input id="pj-holding-search" type="search" placeholder="Ticker" autocomplete="off" aria-label="Filter self-directed positions"></label><button type="button" id="pj-clear">Clear</button><span id="pj-found" role="status"></span>';table.before(tools);}
-      const query=String(pref('main').query||'').slice(0,20).toUpperCase();const input=$('pj-holding-search');if(d.activeElement!==input)input.value=query;
-      const rows=[...table.querySelectorAll('tbody tr')];let found=0;
-      rows.forEach(row=>{const s=symbol(row.querySelector('.sym')?.textContent||'');if(!s)return;row.hidden=!!query&&!s.includes(query);if(!row.hidden)found++;});
-      $('pj-found').textContent=query?(found+' matching position'+(found===1?'':'s')):'';
+      // The two tables use separate filters and sort state, even for a shared ticker.
+      for(const key of ['main','agentic']){
+        const suffix=key==='agentic'?'-ag':'', table=$('pos-table'+suffix);if(!table)continue;
+        let tools=$('pj-holding-filter'+suffix);
+        if(!tools){tools=d.createElement('div');tools.id='pj-holding-filter'+suffix;tools.className='pj-filter';tools.innerHTML='<label>Find a position<input id="pj-holding-search'+suffix+'" data-pj-holding-account="'+key+'" type="search" placeholder="Ticker" autocomplete="off" aria-label="Filter '+scope(key)+' positions"></label><button type="button" id="pj-clear'+suffix+'" data-pj-clear-account="'+key+'">Clear</button><span id="pj-found'+suffix+'" role="status"></span>';table.before(tools);}
+        const query=String(pref(key).query||'').slice(0,20).toUpperCase(), input=$('pj-holding-search'+suffix);
+        if(d.activeElement!==input)input.value=query;
+        const rows=[...table.querySelectorAll('tbody tr')];let found=0;
+        rows.forEach(row=>{const s=symbol(row.querySelector('.sym')?.textContent||'');if(!s){row.hidden=!!query;return;}row.hidden=!!query&&!s.includes(query);if(!row.hidden)found++;});
+        $('pj-found'+suffix).textContent=query?(found+' matching position'+(found===1?'':'s')):'';
+      }
     }
     function accessible() {
       d.querySelectorAll('.az-link[onclick],.az-chip[onclick]').forEach(el=>{
@@ -186,13 +189,14 @@
       const selected=d.querySelector('#ex-subnav [aria-current="page"]');if(selected){const rail=$('ex-subnav');if(selected.offsetLeft<rail.scrollLeft||selected.offsetLeft+selected.offsetWidth>rail.scrollLeft+rail.clientWidth)rail.scrollLeft=selected.offsetLeft;}
     }
     function schedule(){clearTimeout(refreshTimer);refreshTimer=w.setTimeout(render,40);}
-    d.addEventListener('input',e=>{if(e.target.id==='pj-holding-search'){pref('main').query=e.target.value.slice(0,20).toUpperCase();write('localStorage','pf-journey-ui-v1',prefs);enhanceHoldings();}});
+    d.addEventListener('input',e=>{if(e.target.matches('[data-pj-holding-account]')){pref(account(e.target.dataset.pjHoldingAccount)).query=e.target.value.slice(0,20).toUpperCase();write('localStorage','pf-journey-ui-v1',prefs);enhanceHoldings();}});
     d.addEventListener('change',e=>{
       if(e.target.id==='pj-symbol'){select(e.target.value);if(E.route==='analyze'&&symbol(e.target.value))w.runAnalysis?.(symbol(e.target.value));filterEvidence();}
       if(e.target.closest('#pj-evidence-filter')){pref(E.account).evidence=e.target.value;write('localStorage','pf-journey-ui-v1',prefs);filterEvidence();}
     });
     d.addEventListener('click',e=>{
-      if(e.target.closest('#pj-clear')){pref('main').query='';write('localStorage','pf-journey-ui-v1',prefs);$('pj-holding-search').value='';enhanceHoldings();$('pj-holding-search').focus();}
+      const clear=e.target.closest('[data-pj-clear-account]');
+      if(clear){const key=account(clear.dataset.pjClearAccount), input=$('pj-holding-search'+(key==='agentic'?'-ag':''));pref(key).query='';write('localStorage','pf-journey-ui-v1',prefs);input.value='';enhanceHoldings();input.focus();}
       const b=e.target.closest('[data-pj-go]');if(!b)return;
       const route=b.dataset.pjGo,s=symbol(pref(E.account).symbol);if(route==='decisions'&&s){pref(E.account).evidence='selected';write('localStorage','pf-journey-ui-v1',prefs);}E.navigate(route);
       if(route==='analyze'&&s)w.runAnalysis?.(s);

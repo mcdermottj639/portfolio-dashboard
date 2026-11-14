@@ -1,3 +1,35 @@
+## v231 — Agentic holdings parity and Duo preservation (2026-11-14)
+
+Jack reported missing Agentic holding details and an apparent Duo regression in
+his v230 screenshot. Comparison to v222 confirmed ui/duo.css and ui/duo.js were
+retained unchanged; the screenshot alone cannot establish why iOS reserved the
+full right strip. The v229 stylesheet order no longer kept duo.css last.
+
+- Agentic now uses the same All Positions renderer: percentage of its own book,
+  concentration label, exact shares, average cost, price, value, unrealized P&L
+  dollars/percent and daily move. Every positive fractional lot remains visible.
+  Search and sort state are account-local. Missing costs/quotes remain unavailable.
+- Existing Agentic target/performance/trade review is retained inside a named
+  disclosure. Strategy, snapshots, executor, confirmation text and permissions
+  are unchanged. Generic Analyze still carries its existing source limitation.
+- duo.css is last again. A persistent environment probe detects late safe-area
+  changes with ResizeObserver, PWA resume, visibility and visual-viewport events.
+  No guessed device width, forced zoom or native-status-bar override is used.
+  Folded holdings use tighter card spacing and readable three-column details.
+  The sticky date bar masks its reserved side area so scrolled cards cannot bleed
+  through beside it; this was caught in the first CI screenshot review.
+- New synthetic holdings tests cover fractional, unavailable and account-local
+  rows. holdings-duo-browser uses Chromium's real safe-area override, checks
+  late insets without a resize, symmetric notches, 320/373/466/678/960/1440 widths,
+  both accounts/themes, search/sort/Back/refresh/privacy and preserved trade review.
+  CI also verifies these paths and Duo/model asset hashes on the served shell.
+- Local: 56 producer suites, 63 dashboard tests, 21 validator tests and published
+  JSON validation pass. Local Chromium cannot launch (socket EPERM); required
+  browser checks and rendered screenshots run in CI before merge. This is
+  self-review; neither physical iPhone acceptance nor broker execution is claimed.
+- App/cache: v231 / pf-v231. Publication evidence belongs to the PR and canonical
+  handoff. Recovery: revert this bounded release, retaining newer source data.
+
 ## v229 — Premium Today, Light / Dark / System (2026-11-13)
 Jack requested the stronger Today concept built into the app, then corrected the mockup:
 daily-only value history behind a tap row; visible trades + prices directly above **Confirm

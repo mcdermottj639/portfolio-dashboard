@@ -129,8 +129,34 @@ html.pf-side-status #pf-fresh,
 html.pf-side-status #ex-top,
 html.pf-side-status #ex-subnav,
 html.pf-side-status #page-ex-today .ex-brief-heading{margin-right:var(--duo-r,0px)!important}
+/* The date bar is sticky too: cover its reserved side area so a full-width
+   card cannot show through beside it after scrolling. Keep the controls inset. */
+html.pf-side-status #pf-fresh::after{content:'';position:absolute;top:-1px;bottom:-1px;left:100%;
+  width:calc(var(--duo-r,0px) + 1px);background:var(--sl-ground,#f7f6f2);pointer-events:none}
 /* The sticky account switcher keeps its own backing under the icons, so scrolled text never shows beside it. */
 html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;background:var(--sl-ground,#f7f6f2)}
+
+/* Keep the same holdings controls and numbers readable in the actual phone
+   viewport, including an iOS window that reserves a system-owned side strip. */
+#pos-table,#pos-table-ag{max-width:100%;overflow-x:auto}
+@media (max-width:739px) {
+  #page-portfolio .card[data-sec="holdings"]{padding:12px}
+  #page-portfolio .card[data-sec="holdings"]>.card-title{margin-bottom:10px;flex-wrap:nowrap;gap:5px}
+  #page-portfolio .card[data-sec="holdings"]>.card-title .card-hint{display:none}
+  #page-portfolio .card[data-sec="holdings"] .pj-filter{margin-bottom:8px}
+}
+@media (max-width:520px) {
+  :is(#pos-table,#pos-table-ag) tr.pf-open{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  :is(#pos-table,#pos-table-ag) tr.pf-open>td:first-child{grid-column:1/-1;display:flex;align-items:center;gap:10px}
+  :is(#pos-table,#pos-table-ag) tr.pf-open .pj-row-toggle{margin:0 0 0 auto}
+  :is(#pos-table,#pos-table-ag) td .badge{font-size:11px;padding:2px 5px}
+  :is(#pos-table,#pos-table-ag) .pj-row-toggle{min-height:44px;min-width:44px}
+}
+@media (max-width:399px) {
+  :is(#pos-table,#pos-table-ag) table.pf-stack tbody tr{grid-template-columns:repeat(3,minmax(0,1fr))}
+  :is(#pos-table,#pos-table-ag) table.pf-stack tbody td:first-child{grid-column:1/-1;display:flex;align-items:center;gap:10px}
+  :is(#pos-table,#pos-table-ag) .pj-row-toggle{margin:0 0 0 auto}
+}
 
 /* ───────── 6 · v221: the rest of the app ─────────
    Jack (Nov 12, on v220's open Today): "That's better. Do the rest of that portfolio dashboard app now."

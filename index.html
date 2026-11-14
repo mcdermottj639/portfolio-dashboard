@@ -43,7 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=230"></script>
+<script src="ui/theme.js?v=231"></script>
+<script src="ui/experience-model.js?v=231"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -725,13 +726,13 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=230">
-<link rel="stylesheet" href="ui/journey.css?v=230">
-<link rel="stylesheet" href="ui/predictions.css?v=230">
-<link rel="stylesheet" href="ui/smartmoney.css?v=230">
-<link rel="stylesheet" href="ui/ticker.css?v=230">
-<link rel="stylesheet" href="ui/duo.css?v=230">
-<link rel="stylesheet" href="ui/today.css?v=230">
+<link rel="stylesheet" href="ui/experience.css?v=231">
+<link rel="stylesheet" href="ui/journey.css?v=231">
+<link rel="stylesheet" href="ui/predictions.css?v=231">
+<link rel="stylesheet" href="ui/smartmoney.css?v=231">
+<link rel="stylesheet" href="ui/ticker.css?v=231">
+<link rel="stylesheet" href="ui/today.css?v=231">
+<link rel="stylesheet" href="ui/duo.css?v=231">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -796,9 +797,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=230"></script>
-<script src="ui/apex.js?v=230"></script>
-<script src="ui/business.js?v=230"></script>
+<script src="ui/sd-rules.js?v=231"></script>
+<script src="ui/apex.js?v=231"></script>
+<script src="ui/business.js?v=231"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -912,7 +913,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v230'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v231'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3580,8 +3581,9 @@ function renderAgenticPage(){
       <div class="h-tag">Robinhood · Agentic ••••3900 · limited margin (1×)</div></div></div>
     ${A?'':`<div class="card"><div class="box-info" style="border-radius:10px;padding:10px 13px;font-size:12.5px">The producer hasn't captured <b>••••3900</b> yet. The account's live cash, holdings, drift and performance appear here after the next scheduled run picks it up — the target blueprint below still renders.</div></div>`}
     <div class="card" data-sec="snapshot"><div id="snap-content-ag"></div></div>
-    <div class="card" data-sec="holdings"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 Agentic Portfolio <span class="card-hint">(target vs. actual · drift · trades)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
-      <div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div>
+    <div class="card" data-sec="holdings"><div class="card-title collapsible" data-toggle="b-agentic" onclick="toggleSection('b-agentic')"><span>🤖 All Positions <span class="card-hint">(click headers to sort)</span></span><span class="chevron">▼</span></div><div id="b-agentic">
+      <div id="pos-table-ag"></div>
+      <details class="sd-more ag-trade-review"><summary>Target comparison &amp; trade review</summary><div id="agentic-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building target…</div></div></details>
     </div></div>
     <div class="card" data-sec="performance"><div class="card-title collapsible" data-toggle="b-ag-perf" onclick="toggleSection('b-ag-perf')"><span>📈 Account Performance <span class="card-hint">(deposit-adjusted · vs SPY)</span></span><span class="chevron">▼</span></div><div id="b-ag-perf">
       <div id="ag-perf-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Reading equity history…</div></div>
@@ -3604,6 +3606,7 @@ function renderAgenticPage(){
   // throw (a bad series, a Chart.js hiccup, a missing CDN) can't leave every card below it stuck on
   // its spinner forever. Don't "simplify" these guards away.
   const guard=(label,fn)=>{ try{ return fn(); }catch(e){ try{console.warn('[render]',label,e&&e.message);}catch(_){} } };
+  guard('agenticPositions',()=>renderAgenticPositions());
   guard('agenticCard',()=>renderAgenticCard());
   guard('agenticPerf',()=>renderAgenticPerf());
   guard('agenticLog',()=>renderAgenticLog());
@@ -4642,29 +4645,44 @@ function renderFlowCard(opts){
 window.renderFlowCard=renderFlowCard;
 
 /* ═══ All Positions (kept) ═══ */
-let _sc='val',_sd=1,_enriched=[];
-function sortBy(col){ _sd=_sc===col?-_sd:1; _sc=col; _renderPos(_enriched); }
+let _enriched=[];
+const _posStates={main:{col:'val',dir:1,rows:[]},agentic:{col:'val',dir:1,rows:[]}};
+function sortBy(col,account='main'){
+  if(!['symbol','pct','qty','avg','px','val','pnlD','pnlP','dayP'].includes(col))return;
+  const key=account==='agentic'?'agentic':'main', state=_posStates[key];
+  state.dir=state.col===col?-state.dir:1; state.col=col; _renderPos(state.rows,key);
+}
 window.sortBy=sortBy;
-function _renderPos(rows){
-  _enriched=rows;
-  const mainRows=rows.filter(r=>r.val>=SMALL_THR);
-  const smallRows=rows.filter(r=>r.val>0&&r.val<SMALL_THR);
-  const sorted=[...mainRows].sort((a,b)=>_sd*((b[_sc]??0)-(a[_sc]??0)));
+function renderAgenticPositions(){
+  const rows=window.PFExperienceModel.agenticPositionRows(window.__DATA);
+  _renderPos(rows.map(p=>({...p,r:p.pct==null?null:risk(p.pct)})),'agentic');
+}
+function _renderPos(rows,account='main'){
+  const agentic=account==='agentic', state=_posStates[agentic?'agentic':'main'];
+  state.rows=rows;
+  if(!agentic)_enriched=rows;
+  const mainRows=agentic?rows:rows.filter(r=>r.val>=SMALL_THR);
+  const smallRows=agentic?[]:rows.filter(r=>r.val>0&&r.val<SMALL_THR);
+  const sorted=[...mainRows].sort((a,b)=>{
+    if(a[state.col]==null)return b[state.col]==null?0:1;
+    if(b[state.col]==null)return -1;
+    return state.dir*(state.col==='symbol'?a.symbol.localeCompare(b.symbol):b[state.col]-a[state.col]);
+  });
   const cols=[
-    {k:'symbol',lbl:'Symbol',th:'',            fn:r=>`<span class="sym az-link" onclick="azConfirm('${r.symbol}')">${r.symbol}</span>`},
-    {k:'pct',   lbl:'% Port',th:'tr sortable', fn:r=>`<span style="font-weight:700;color:${r.r.color}">${fmt(r.pct,1)}%</span>`},
-    {k:'pct',   lbl:'Risk',  th:'tc',           fn:r=>`<span class="badge" style="background:${r.r.bg};color:${r.r.fg}">${r.r.level}</span>`},
+    {k:'symbol',lbl:'Symbol',th:'sortable',            fn:r=>`<span class="sym az-link" onclick="azConfirm('${r.symbol}')">${r.symbol}</span>`},
+    {k:'pct',   lbl:'% Port',th:'tr sortable', fn:r=>r.pct!=null?`<span style="font-weight:700;color:${r.r.color}">${fmt(r.pct,1)}%</span>`:'—'},
+    {k:'pct',   lbl:'Risk',  th:'tc',           fn:r=>r.r?`<span class="badge" title="Position concentration label; not a trading instruction" style="background:${r.r.bg};color:${r.r.fg}">${r.r.level}</span>`:'—'},
     {k:'qty',   lbl:'Shares',th:'tr sortable', fn:r=>`<span data-priv="val">${fmt(r.qty,r.qty<1?4:2)}</span>`},
-    {k:'avg',   lbl:'Cost',  th:'tr sortable', fn:r=>'$'+fmt(r.avg)},
+    {k:'avg',   lbl:'Cost',  th:'tr sortable', fn:r=>fmtD(r.avg)},
     {k:'px',    lbl:'Price', th:'tr sortable', fn:r=>r.px?'$'+fmt(r.px):'—'},
     {k:'val',   lbl:'Value', th:'tr sortable', fn:r=>fmtD(r.val)},
     {k:'pnlD',  lbl:'P&L $', th:'tr sortable', fn:r=>`<span class="${sc(r.pnlD)}">${fmtD(r.pnlD)}</span>`},
-    {k:'pnlP',  lbl:'P&L %', th:'tr sortable', fn:r=>`<span class="badge" style="background:${r.pnlP>=0?'#d1fae5':'#fee2e2'};color:${r.pnlP>=0?'#065f46':'#991b1b'}">${fmtP(r.pnlP)}</span>`},
+    {k:'pnlP',  lbl:'P&L %', th:'tr sortable', fn:r=>r.pnlP==null?'—':`<span class="badge" style="background:${r.pnlP>=0?'#d1fae5':'#fee2e2'};color:${r.pnlP>=0?'#065f46':'#991b1b'}">${fmtP(r.pnlP)}</span>`},
     {k:'dayP',  lbl:'Day %', th:'tr sortable', fn:r=>r.dayP!=null?`<span class="${sc(r.dayP)}">${fmtP(r.dayP)}</span>`:'—'},
   ];
-  const arrow=k=>_sc===k?(_sd===-1?' ↓':' ↑'):'';
+  const arrow=k=>state.col===k?(state.dir===1?(k==='symbol'?' ↑':' ↓'):(k==='symbol'?' ↓':' ↑')):'';
   let h='<table><thead><tr>';
-  for(const c of cols){ const cls=[c.th,_sc===c.k&&c.th.includes('sortable')?'active':''].filter(Boolean).join(' '); const click=c.th.includes('sortable')?`onclick="sortBy('${c.k}')"`:''; h+=`<th class="${cls}" ${click}>${c.lbl}${arrow(c.k)}</th>`; }
+  for(const c of cols){ const cls=[c.th,state.col===c.k&&c.th.includes('sortable')?'active':''].filter(Boolean).join(' '); const click=c.th.includes('sortable')?`onclick="sortBy('${c.k}','${agentic?'agentic':'main'}')" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`:''; h+=`<th class="${cls}" ${click}>${c.lbl}${arrow(c.k)}</th>`; }
   h+='</tr></thead><tbody>';
   for(const r of sorted){ h+='<tr>'+cols.map(c=>{ const align=c.th.includes('tr')?' style="text-align:right"':c.th.includes('tc')?' style="text-align:center"':''; return`<td${align}>${c.fn(r)}</td>`; }).join('')+'</tr>'; }
   if(smallRows.length>0){
@@ -4676,27 +4694,29 @@ function _renderPos(rows){
   // Day % is value-weighted over positions that have a day move.
   const allRows=rows.filter(r=>r.val>0);
   if(allRows.length){
-    const tVal=allRows.reduce((s,r)=>s+r.val,0);
-    const tCost=allRows.reduce((s,r)=>s+(r.cost||0),0);
-    const tPnlD=allRows.reduce((s,r)=>s+(r.pnlD||0),0);
-    const tPnlP=tCost>0?(tPnlD/tCost)*100:0;
-    const tPct=allRows.reduce((s,r)=>s+(r.pct||0),0);
-    let dNum=0,dDen=0; for(const r of allRows){ if(r.dayP!=null){ dNum+=r.val*r.dayP; dDen+=r.val; } }
+    const tVal=rows.some(r=>r.val==null)?null:allRows.reduce((s,r)=>s+r.val,0);
+    const tCost=rows.some(r=>r.cost==null)?null:rows.reduce((s,r)=>s+r.cost,0);
+    const tPnlD=rows.some(r=>r.val==null||r.pnlD==null)?null:allRows.reduce((s,r)=>s+r.pnlD,0);
+    const tPnlP=tCost>0&&tPnlD!=null?(tPnlD/tCost)*100:null;
+    const tPct=allRows.some(r=>r.pct==null)?null:allRows.reduce((s,r)=>s+r.pct,0);
+    let dNum=0,dDen=0; for(const r of allRows){ if(r.dayP!=null){ dNum+=agentic?r.dayD*100:r.val*r.dayP; dDen+=agentic?r.dayBase:r.val; } }
     const tDayP=dDen>0?dNum/dDen:null;
     h+=`<tr style="border-top:2px solid #9ca3af;font-weight:800;background:var(--surface-2)">`
       +`<td style="padding:10px 8px">TOTAL</td>`
-      +`<td style="text-align:right">${fmt(tPct,1)}%</td>`
+      +`<td style="text-align:right">${tPct==null?'—':fmt(tPct,1)+'%'}</td>`
       +`<td></td><td></td>`
       +`<td style="text-align:right">${fmtD(tCost)}</td>`
       +`<td></td>`
       +`<td style="text-align:right">${fmtD(tVal)}</td>`
       +`<td style="text-align:right"><span class="${sc(tPnlD)}">${fmtD(tPnlD)}</span></td>`
-      +`<td style="text-align:right"><span class="badge" style="background:${tPnlP>=0?'#d1fae5':'#fee2e2'};color:${tPnlP>=0?'#065f46':'#991b1b'}">${fmtP(tPnlP)}</span></td>`
+      +`<td style="text-align:right">${tPnlP==null?'—':`<span class="badge" style="background:${tPnlP>=0?'#d1fae5':'#fee2e2'};color:${tPnlP>=0?'#065f46':'#991b1b'}">${fmtP(tPnlP)}</span>`}</td>`
       +`<td style="text-align:right">${tDayP!=null?`<span class="${sc(tDayP)}">${fmtP(tDayP)}</span>`:'—'}</td>`
     +`</tr>`;
   }
   h+='</tbody></table>';
-  const el=document.getElementById('pos-table'); if(el)el.innerHTML=h;
+  const el=document.getElementById(agentic?'pos-table-ag':'pos-table');
+  if(el)el.innerHTML=rows.length?h:'<div class="tech-empty">'+(agentic&&!Array.isArray(window.__DATA?.agentic?.positions)?'Agentic holdings unavailable in this snapshot.':'No open positions in this account.')+'</div>';
+  window.__privScan?.();
 }
 
 /* ═══ Technical Signals (kept) ═══ */
@@ -8766,17 +8786,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/experience-model.js?v=230"></script>
-<script src="ui/today-model.js?v=230"></script>
-<script src="ui/today.js?v=230"></script>
-<script src="ui/predictions-model.js?v=230"></script>
-<script src="ui/predictions.js?v=230"></script>
-<script src="ui/smartmoney-model.js?v=230"></script>
-<script src="ui/smartmoney.js?v=230"></script>
-<script src="ui/experience.js?v=230"></script>
-<script src="ui/ticker.js?v=230"></script>
-<script src="ui/duo.js?v=230"></script>
-<script src="ui/compact.js?v=230"></script>
-<script src="ui/journey.js?v=230"></script>
+<script src="ui/today-model.js?v=231"></script>
+<script src="ui/today.js?v=231"></script>
+<script src="ui/predictions-model.js?v=231"></script>
+<script src="ui/predictions.js?v=231"></script>
+<script src="ui/smartmoney-model.js?v=231"></script>
+<script src="ui/smartmoney.js?v=231"></script>
+<script src="ui/experience.js?v=231"></script>
+<script src="ui/ticker.js?v=231"></script>
+<script src="ui/duo.js?v=231"></script>
+<script src="ui/compact.js?v=231"></script>
+<script src="ui/journey.js?v=231"></script>
 </body>
 </html>

@@ -60,12 +60,14 @@ jobs:
           node tests/sd-plan-browser.mjs
           node tests/apex-browser.mjs
           node tests/journey-browser.mjs
+          node tests/holdings-duo-browser.mjs
 
       - name: Verify published UI after a main release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           python3 tests/verify-live-shell.py
           PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/journey-browser.mjs
+          PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/holdings-duo-browser.mjs
 
       - name: Save synthetic layout evidence
         if: always()
