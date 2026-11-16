@@ -741,6 +741,77 @@
     return `<details class="sd-more apex-veto" data-apex-veto style="margin-top:8px"><summary style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:#b45309;opacity:1"><span style="white-space:nowrap">⛔ ${rows.length} screened out ▾</span><span class="sd-chips">${sum}</span></summary>${body}</details>`;
   }
 
+  /* v233 — Ranked opportunities (Jack, Nov 16 2026: zero buys with the top-scored names locked out — "I don't get how
+     this works"; then approved "Publish the ranked opportunity list … why they qualify or fail, and what would make
+     them actionable"). DISPLAY ONLY: a re-sort of rows the Monday scan already wrote to data/apex-targets.json.
+     Nothing here picks, sizes, tickets or relaxes a gate, and no rule reads it. Buckets:
+       qualified  = on this week's buy list (targets, never the core)
+       restricted = passed every gate but blocked by the tech cap or the AI-compute cluster cap
+       near       = failed ONLY the R/R floor; needPx is the entry at which R/R reaches the floor with the scan's own
+                    target and stop held fixed: (tp1 + floor·stop) ÷ (1 + floor). The scan re-derives levels each
+                    research day, so needPx is an estimate, labelled as one.
+       watch      = failed the relative-strength or catalyst gate (above its 200-day)
+       belowTrend = count of names under their 200-day (not listed). */
+  function opportunities(T) {
+    const out = { qualified: [], restricted: [], near: [], watch: [], belowTrend: 0, asOf: (T && T.asOf) || '', rulesVersion: (T && T.rulesVersion) || '' };
+    if (!T || typeof T !== 'object') return out;
+    const num = (v) => (v != null && v !== '' && isFinite(+v) ? +v : null);
+    const core = T.core || 'IREN', floor = C.RR_MIN;
+    const top = {}; (Array.isArray(T.top5) ? T.top5 : []).concat(Array.isArray(T.heldLevels) ? T.heldLevels : []).forEach((r) => { if (r && r.sym && !top[r.sym]) top[r.sym] = r; });
+    const lv = (sym, r) => { const a = r || {}, b = top[sym] || {}; const pick = (k) => num(a[k]) != null ? num(a[k]) : num(b[k]);
+      return { name: a.name || b.name || null, composite: pick('composite'), limit: pick('limit') != null ? pick('limit') : pick('entry'), tp1: pick('tp1'), stop: pick('stop'), rr: pick('rr') }; };
+    const tg = T.targets && typeof T.targets === 'object' ? T.targets : {};
+    Object.keys(tg).forEach((sym) => { if (sym === core) return; const L = lv(sym); out.qualified.push(Object.assign({ sym, weight: num(tg[sym]), why: 'On this week\'s buy list', unlock: 'Already on the buy list — the trade list above shows whether a buy is still needed' }, L)); });
+    const seen = new Set(out.qualified.map((x) => x.sym));
+    const addR = (row, kind) => { if (!row || !row.sym || row.sym === core || seen.has(row.sym)) return;
+      const ex = out.restricted.find((x) => x.sym === row.sym);
+      const unlock = kind === 'theme' ? 'Tech back under ' + Math.round(C.THEME_MAX * 100) + '% of the stock outside ' + core : 'AI-compute cluster back under its 45%-of-equity cap';
+      if (ex) { ex.blocks.push(kind); ex.unlock += ' and ' + unlock.charAt(0).toLowerCase() + unlock.slice(1); return; }
+      out.restricted.push(Object.assign({ sym: row.sym, blocks: [kind], why: kind === 'theme' ? 'Blocked by the tech cap' : 'Blocked by the AI-compute cap', unlock }, lv(row.sym, row))); };
+    (Array.isArray(T.blockedByTheme) ? T.blockedByTheme : []).forEach((r) => addR(r, 'theme'));
+    (Array.isArray(T.blockedByCap) ? T.blockedByCap : []).forEach((r) => addR(r, 'cluster'));
+    out.restricted.forEach((x) => seen.add(x.sym));
+    (Array.isArray(T.vetoed) ? T.vetoed : []).forEach((v) => {
+      if (!v || !v.sym || v.sym === core || seen.has(v.sym)) return;
+      const why = String(v.why || '').trim();
+      if (/below\s+(?:its\s+)?(?:SMA200|200-day)/i.test(why)) { out.belowTrend++; return; }
+      const m = /^R\/R at entry\s+(-?[\d.]+)\s*<\s*[\d.]+\s*$/.exec(why);
+      if (m) {
+        const L = lv(v.sym, v), rr = num(m[1]);
+        let needPx = null, pct = null;
+        if (L.limit > 0 && L.tp1 > 0 && L.stop > 0 && L.tp1 > L.stop) { needPx = (L.tp1 + floor * L.stop) / (1 + floor); pct = (needPx / L.limit - 1) * 100; if (!(needPx > L.stop) || !(pct < 0)) { needPx = null; pct = null; } }
+        out.near.push(Object.assign({ sym: v.sym, why: 'R/R ' + (rr != null ? rr.toFixed(2) : '?') + ' at today\'s entry (floor ' + floor + ')', needPx, pct,
+          unlock: needPx != null ? 'About $' + needPx.toFixed(2) + ' (' + pct.toFixed(1) + '%) reaches ' + floor + ' R/R with the same target and stop — estimate' : 'A lower entry or a higher target — the scan re-checks every Monday' }, L, { rr }));
+        seen.add(v.sym); return;
+      }
+      if (/relative strength|\bRS\b/i.test(why)) { out.watch.push(Object.assign({ sym: v.sym, why: '3-month strength vs the market too weak', unlock: '3-month strength back in the top 40% of the list' }, lv(v.sym, v))); seen.add(v.sym); return; }
+      if (/catalyst/i.test(why)) { out.watch.push(Object.assign({ sym: v.sym, why: 'No earnings or catalyst inside 60 days', unlock: 'A dated catalyst inside 60 days, or its 50-day back above its 200-day' }, lv(v.sym, v))); seen.add(v.sym); }
+    });
+    const byScore = (a, b) => (b.composite != null ? b.composite : -1) - (a.composite != null ? a.composite : -1) || a.sym.localeCompare(b.sym);
+    out.qualified.sort(byScore); out.restricted.sort(byScore); out.watch.sort(byScore);
+    out.near.sort((a, b) => (a.pct != null ? -a.pct : 1e9) - (b.pct != null ? -b.pct : 1e9) || byScore(a, b));
+    return out;
+  }
+
+  function oppBlock(O, esc) {
+    if (!O) return '';
+    const total = O.qualified.length + O.restricted.length + O.near.length + O.watch.length;
+    if (!total && !O.belowTrend) return '';
+    const row = (x, col) => `<details class="sd-more apex-opp-row" style="margin:0;border-top:1px solid rgba(128,128,128,.18);padding:6px 0"><summary style="display:flex;align-items:center;gap:8px;opacity:1;color:var(--text);font-size:12px;min-width:0"><b style="flex:0 0 46px">${esc(x.sym)}</b><span style="flex:0 0 30px;color:${col};font-weight:700">${x.composite != null ? x.composite.toFixed(1) : '—'}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280">${esc(x.why)}</span></summary><div style="font-size:11.5px;line-height:1.5;color:var(--text);padding:4px 0 2px 54px;overflow-wrap:anywhere">${x.name ? '<b>' + esc(x.name) + '</b><br>' : ''}<span style="color:#6b7280">Actionable when:</span> ${esc(x.unlock)}${x.limit && x.tp1 && x.stop ? '<br><span style="color:#6b7280">Scan levels:</span> entry ' + money(x.limit) + ' → ' + money(x.tp1) + ' · stop ' + money(x.stop) + (x.rr != null ? ' · R/R ' + x.rr.toFixed(2) : '') : ''}</div></details>`;
+    const group = (key, icon, title, hint, list, col, open) => list.length
+      ? `<details class="sd-more apex-opp" data-apex-opp="${key}"${open ? ' open' : ''} style="margin-top:6px"><summary style="opacity:1;color:var(--text);font-size:12.5px;font-weight:700">${icon} ${esc(title)} · ${list.length} <span style="font-weight:400;color:#9ca3af">${esc(hint)}</span></summary>${list.map((x) => row(x, col)).join('')}</details>`
+      : `<div data-apex-opp="${key}" style="font-size:12px;color:#9ca3af;margin-top:6px">${icon} ${esc(title)} · 0</div>`;
+    const firstOpen = O.qualified.length ? 'q' : O.restricted.length ? 'r' : O.near.length ? 'n' : 'w';
+    return `<div class="ac-tier" data-apex-opps style="margin-top:12px">📋 Ranked opportunities <span class="card-hint">(rules ${esc(O.rulesVersion || '?')} · display only)</span></div>
+      <div class="snap-grid" style="grid-template-columns:repeat(4,1fr);gap:6px">${[['Buy list', O.qualified.length, '#10b981'], ['Blocked', O.restricted.length, '#f59e0b'], ['Close', O.near.length, '#3b82f6'], ['Watch', O.watch.length, '#9ca3af']].map((t) => `<div class="snap-tile" style="min-width:0;padding:6px 4px;text-align:center"><div class="snap-val" style="color:${t[2]};font-size:18px">${t[1]}</div><div class="snap-lbl" style="font-size:10px">${t[0]}</div></div>`).join('')}</div>
+      ${group('qualified', '✅', 'Buy list', 'passed everything', O.qualified, '#10b981', firstOpen === 'q')}
+      ${group('restricted', '🔒', 'Blocked by a cap', 'passed every gate', O.restricted, '#f59e0b', firstOpen === 'r')}
+      ${group('near', '🎯', 'Close', 'only the R/R floor is missing', O.near, '#3b82f6', firstOpen === 'n')}
+      ${group('watch', '👀', 'Watch', 'one gate short', O.watch, '#9ca3af', firstOpen === 'w')}
+      ${O.belowTrend ? `<div style="font-size:11px;color:#9ca3af;margin-top:6px">${O.belowTrend} more are under their 200-day average and are not ranked.</div>` : ''}
+      <details class="sd-more" style="margin-top:4px"><summary style="font-size:10.5px;color:#6b7280">ⓘ How to read this</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.45">Same rows as the Monday scan, re-sorted. Nothing here is an order and no rule reads it. "Blocked" names passed every gate and are held back only by the tech cap or the AI-compute cap. "Close" prices are estimates that keep the scan's target and stop fixed; the scan sets fresh levels each Monday.</div></details>`;
+  }
+
   /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
      from the dashboard's SD momentum lens (sdMomentum over SD_BENCH, freshness-gated). A name only
      becomes a ticket via the Friday swap rule in the scan (beats the weakest holding by ≥ 1.5). */
@@ -777,7 +848,8 @@
       ? `<div style="font-size:11.5px;margin-top:8px;color:var(--text)"><b>Record vs SPY:</b> ${[['5d', rec.n5, rec.hit5, rec.avgAlpha5], ['30d', rec.n30, rec.hit30, rec.avgAlpha30], ['90d', rec.n90, rec.hit90, rec.avgAlpha90]].filter((x) => x[1] > 0).map((x) => `${x[0]} ${Math.round(x[2] * 100)}% beat · ${x[3] >= 0 ? '+' : ''}${(+x[3]).toFixed(1)}pp (n=${x[1]})`).join(' · ')}</div>`
       : (rec ? '<div style="font-size:11px;color:#9ca3af;margin-top:8px">Record vs SPY: no graded picks yet — first marks at 5 trading days.</div>' : '');
     const vet = vetoBlock(R.vetoed, esc);
-    return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div>${recLine}${vet}<div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
+    const opp = oppBlock(R.opps, esc);
+    return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div>${recLine}${opp}${vet}<div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
   }
 
   /* Two sliders: the core name and the donor. Debt held fixed; shows band + which rules fire. */
@@ -802,5 +874,5 @@
     upd();
   }
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION, opportunities };
 });

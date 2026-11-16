@@ -816,5 +816,49 @@ ok('v2.8 confirm prompt carries the theme cap and the current tech share', () =>
   assert.match(p, /never propose a sale or more leverage to meet the cap/);
 });
 
+ok('v233 ranked opportunities: display-only re-sort of the scan rows, with what would make each actionable', () => {
+  const T = { asOf: '2026-11-16T07:13:00-05:00', rulesVersion: 'v2.8', core: 'IREN', targets: { DXCM: 20 },
+    top5: [ { sym: 'ZS', name: 'Zscaler', composite: 7.11, limit: 188.76, tp1: 267.87, stop: 164.58, rr: 3.27 }, { sym: 'DXCM', composite: 6.42, limit: 82.6, tp1: 92.59, stop: 77.65, rr: 1.52 } ],
+    blockedByTheme: [ { sym: 'ZS', composite: 7.11, why: 'tech cap' }, { sym: 'AMD', composite: 5.15, why: 'tech cap' } ],
+    blockedByCap: [ { sym: 'AMD', composite: 5.15, why: 'ai cap' } ],
+    vetoed: [ { sym: 'REGN', composite: 7.53, limit: 971.62, tp1: 991.73, stop: 907.72, rr: 0.31, why: 'R/R at entry 0.31 < 1.5' },
+      { sym: 'URI', composite: 5.9, limit: 1100, tp1: 1160, stop: 1057.4, rr: 1.41, why: 'R/R at entry 1.41 < 1.5' },
+      { sym: 'SPGI', composite: 5, limit: 500, tp1: 510, stop: 480, why: 'R/R at entry 0.39 < 1.5; negative revenue growth -5.4%' },
+      { sym: 'PANW', why: '3-month RS not in top 40% (3m -14.2% vs cut −6.6%)' }, { sym: 'CMG', why: 'no earnings/catalyst inside 60 days and SMA50 < SMA200' },
+      { sym: 'NVDA', why: 'price below SMA200' }, { sym: 'GOOGL', why: 'price below SMA200 (x)' }, { sym: 'IREN', why: 'R/R at entry 1.0 < 1.5' } ] };
+  const O = A.opportunities(T);
+  assert.deepEqual(O.qualified.map((x) => x.sym), ['DXCM']);
+  assert.deepEqual(O.restricted.map((x) => x.sym), ['ZS', 'AMD'], 'ranked by score, one row per name');
+  assert.deepEqual(O.restricted[1].blocks, ['theme', 'cluster']);
+  assert.deepEqual(O.near.map((x) => x.sym), ['URI', 'REGN'], 'closest to the floor first; a second disqualifier (SPGI) is not "close"');
+  const regn = O.near[1]; assert.ok(Math.abs(regn.needPx - (991.73 + 1.5 * 907.72) / 2.5) < 1e-6 && regn.pct < 0);
+  assert.ok(Math.abs(((991.73 - regn.needPx) / (regn.needPx - 907.72)) - 1.5) < 1e-9, 'R/R at needPx is exactly the floor');
+  assert.deepEqual(O.watch.map((x) => x.sym).sort(), ['CMG', 'PANW']);
+  assert.equal(O.belowTrend, 2);
+  assert.ok(![...O.qualified, ...O.restricted, ...O.near, ...O.watch].some((x) => x.sym === 'IREN'), 'never the core');
+  const e = A.opportunities(null); assert.equal(e.qualified.length + e.restricted.length + e.near.length + e.watch.length, 0);
+  // the list is never an input to a rule or a ticket
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 500, px: 17, avg: 41 } ], cash: -2000 });
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: { IREN: 20 } });
+  assert.deepEqual(JSON.stringify(A.rules(st, { cfg, smaMap: {}, earningsMap: {} })), JSON.stringify(A.rules(st, { cfg: Object.assign({}, cfg, { opps: O }), smaMap: {}, earningsMap: {} })));
+});
+
+ok('v233 ranked opportunities render: four counts, grouped rows, real Nov 16 file', () => {
+  const fs = require('node:fs');
+  const T = JSON.parse(fs.readFileSync(new URL('../data/apex-targets.json', import.meta.url), 'utf8'));
+  const O = A.opportunities(T);
+  assert.ok(O.qualified.length + O.restricted.length + O.near.length + O.watch.length > 0);
+  const el = { innerHTML: '', querySelector: () => null, querySelectorAll: () => [] };
+  const st = A.state({ positions: [ { symbol: 'IREN', qty: 500, px: 17, avg: 41 }, { symbol: 'ZS', qty: 11, px: 188, avg: 198 } ], cash: -3000 });
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { targets: Object.assign({ IREN: 20 }, T.targets) });
+  A.render(el, st, A.rules(st, { cfg, smaMap: {}, earningsMap: {} }), cfg, { rows: [ { sym: 'ZS', score: 7.1, why: 'x', rs3: null } ], vetoed: T.vetoed, opps: O, asOf: T.asOf });
+  const h = el.innerHTML;
+  assert.ok(/data-apex-opps/.test(h) && /Ranked opportunities/.test(h) && /display only/.test(h));
+  ['qualified', 'restricted', 'near', 'watch'].forEach((k) => assert.ok(h.includes('data-apex-opp="' + k + '"'), k));
+  assert.ok(/Actionable when:/.test(h));
+  O.restricted.forEach((x) => assert.ok(h.includes('<b style="flex:0 0 46px">' + x.sym + '</b>'), x.sym));
+  assert.ok(!/undefined|NaN/.test(h.slice(h.indexOf('data-apex-opps'), h.indexOf('data-apex-opps') + 20000)));
+});
+
 console.log(`apex: ${n - failed}/${n} passed`);
 assert.equal(failed, 0);
