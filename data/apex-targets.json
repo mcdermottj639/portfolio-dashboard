@@ -1,70 +1,913 @@
 {
-  "asOf": "2026-11-13T12:50:00-05:00",
+ "asOf": "2026-11-16T07:13:00-05:00",
+ "rulesVersion": "v2.8",
+ "core": "IREN",
+ "coreOwner": true,
+ "targets": {
+  "DXCM": 20
+ },
+ "pickBudget": 55.7,
+ "themeMapVersion": "themes-v1",
+ "themeCap": {
+  "theme": "tech",
+  "max": 40,
+  "current": 76.3,
+  "planned": 76.3,
+  "wholeAccount": 86.7
+ },
+ "themeMap": {
+  "ABNB": "consumer",
+  "ADBE": "tech",
+  "AMAT": "tech",
+  "AMD": "tech",
+  "AMZN": "tech",
+  "ANET": "tech",
+  "APP": "tech",
+  "ARM": "tech",
+  "ASML": "tech",
+  "ASTS": "space",
+  "AVGO": "tech",
+  "AXON": "tech",
+  "AXP": "finance",
+  "BKNG": "consumer",
+  "BSX": "health",
+  "BX": "finance",
+  "CDNS": "tech",
+  "CEG": "power",
+  "CIFR": "tech",
+  "CMG": "consumer",
+  "COIN": "crypto",
+  "CORZ": "tech",
+  "COST": "consumer",
+  "CRWD": "tech",
+  "DDOG": "tech",
+  "DXCM": "health",
+  "ETN": "industrial",
+  "FTNT": "tech",
+  "GE": "industrial",
+  "GEV": "power",
+  "GOOGL": "tech",
+  "GS": "finance",
+  "HOOD": "crypto",
+  "HUT": "tech",
+  "HWM": "industrial",
+  "IDXX": "health",
+  "INTC": "tech",
+  "IREN": "tech",
+  "ISRG": "health",
+  "KKR": "finance",
+  "KLAC": "tech",
+  "LRCX": "tech",
+  "LUNR": "space",
+  "MCK": "health",
+  "MELI": "tech",
+  "META": "tech",
+  "MRVL": "tech",
+  "MSTR": "crypto",
+  "MU": "tech",
+  "NET": "tech",
+  "NFLX": "tech",
+  "NRG": "power",
+  "NVDA": "tech",
+  "OKLO": "power",
+  "ON": "tech",
+  "ORLY": "consumer",
+  "PANW": "tech",
+  "PH": "industrial",
+  "PLTR": "tech",
+  "PWR": "industrial",
+  "QCOM": "tech",
+  "RCL": "consumer",
+  "REGN": "health",
+  "RKLB": "space",
+  "S": "tech",
+  "SCHW": "finance",
+  "SMCI": "tech",
+  "SNPS": "tech",
+  "SPGI": "finance",
+  "SYK": "health",
+  "TJX": "consumer",
+  "TSLA": "tech",
+  "TSM": "tech",
+  "TT": "industrial",
+  "TTD": "tech",
+  "URI": "industrial",
+  "VRT": "tech",
+  "VRTX": "health",
+  "VST": "power",
+  "WULF": "tech",
+  "ZS": "tech"
+ },
+ "blockedByTheme": [
+  {
+   "sym": "ZS",
+   "composite": 7.11,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  },
+  {
+   "sym": "S",
+   "composite": 6.35,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  },
+  {
+   "sym": "NET",
+   "composite": 6.19,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  },
+  {
+   "sym": "PLTR",
+   "composite": 6.07,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  },
+  {
+   "sym": "CRWD",
+   "composite": 5.88,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  },
+  {
+   "sym": "SNPS",
+   "composite": 4.69,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  },
+  {
+   "sym": "AMD",
+   "composite": 5.15,
+   "why": "tech 76.3% of stock outside IREN ≥ 40% cap — no tech buy"
+  }
+ ],
+ "clusterCap": {
+  "ai": {
+   "current": 67.7,
+   "cap": 45,
+   "room": -22.7,
+   "asShareOfStock": 29.1
+  }
+ },
+ "blockedByCap": [
+  {
+   "sym": "AMD",
+   "composite": 5.15,
+   "why": "ai-compute 67.7% of equity (IREN) vs 45% cap"
+  }
+ ],
+ "added": [],
+ "removed": [],
+ "top5": [
+  {
+   "sym": "ZS",
+   "name": "Zscaler",
+   "theme": "tech",
+   "cluster": "cyber",
+   "tradable": true,
+   "tradableAt": "2026-11-16 07:14 ET",
+   "composite": 7.11,
+   "momentum": 5.94,
+   "rsi": 35.6,
+   "fwdPE": -486.9,
+   "peSource": "trailing",
+   "revGrowth": 24.9,
+   "rr": 3.27,
+   "rrAtStopLimit": 2.49,
+   "vol": 0.685,
+   "entryState": "normal",
+   "orderType": "limit",
+   "multiplier": 1,
+   "newsStatus": "noise",
+   "entry": 188.2,
+   "trigger": 188.76,
+   "limit": 188.76,
+   "maxPx": 193.85,
+   "tp1": 267.87,
+   "stop": 164.58,
+   "stopBasis": "2xATR",
+   "atr": 12.09,
+   "earnings": "2026-12-02",
+   "extended": false,
+   "picked": false,
+   "why": "theme cap: tech 76% outside IREN — held, no add (C 7.11, R/R 3.27) · news: sector selloff after Fortinet plunge, no company change; reports Dec 2 — https://www.tikr.com/blog/zscaler-sinks-14-in-a-week-as-fortinets-plunge-and-a-tech-selloff-hit-security-stocks (Nov 2026)"
+  },
+  {
+   "sym": "DXCM",
+   "name": "DexCom",
+   "theme": "health",
+   "cluster": "health",
+   "tradable": true,
+   "tradableAt": "2026-11-16 07:14 ET",
+   "composite": 6.42,
+   "momentum": 6.52,
+   "rsi": 51.4,
+   "fwdPE": 32.66,
+   "peSource": "trailing",
+   "revGrowth": 11.2,
+   "rr": 1.52,
+   "rrAtStopLimit": 12.38,
+   "vol": 0.3618,
+   "entryState": "normal",
+   "orderType": "limit",
+   "multiplier": 1,
+   "newsStatus": "noise",
+   "entry": 83.33,
+   "trigger": 83.58,
+   "limit": 83.58,
+   "maxPx": 83.62,
+   "tp1": 92.59,
+   "stop": 77.65,
+   "stopBasis": "2xATR",
+   "atr": 2.97,
+   "earnings": "2027-02 (not in window)",
+   "extended": false,
+   "picked": true,
+   "why": "target, already at weight 20.6% vs 20% (C 6.42, R/R 1.52, only non-tech passing) · news: Q3 2026 beat (rev +11.2%), 2026 guide raised; buyback +$1B (Zacks, Oct 30 2026) — https://www.zacks.com/stock/news/3019782/dexcom-stock-up-on-q3-earnings-&-revenue-beat,-margins-rise"
+  },
+  {
+   "sym": "S",
+   "name": "SentinelOne",
+   "theme": "tech",
+   "cluster": "cyber",
+   "tradable": true,
+   "tradableAt": "2026-11-16 07:14 ET",
+   "composite": 6.35,
+   "momentum": 7.11,
+   "rsi": 44,
+   "fwdPE": -21.98,
+   "peSource": "trailing",
+   "revGrowth": 20.6,
+   "rr": 1.61,
+   "rrAtStopLimit": 60.5,
+   "vol": 0.6764,
+   "entryState": "pullback",
+   "orderType": "limit",
+   "multiplier": 1,
+   "newsStatus": "no-new-news",
+   "entry": 21.8887,
+   "trigger": 21.95,
+   "limit": 21.95,
+   "maxPx": 22.08,
+   "tp1": 26.5,
+   "stop": 19.13,
+   "stopBasis": "2xATR",
+   "atr": 1.41,
+   "earnings": "2026-12-03",
+   "extended": false,
+   "picked": false,
+   "why": "theme cap — no tech buy (C 6.35, R/R 1.61) · news: no dated company change found — https://www.webull.com/news/15820128359927808"
+  },
+  {
+   "sym": "NET",
+   "name": "Cloudflare",
+   "theme": "tech",
+   "cluster": "cyber",
+   "tradable": true,
+   "tradableAt": "2026-11-16 07:14 ET",
+   "composite": 6.19,
+   "momentum": 6.65,
+   "rsi": 50.4,
+   "fwdPE": -453.39,
+   "peSource": "trailing",
+   "revGrowth": 39.2,
+   "rr": 1.66,
+   "rrAtStopLimit": 4.13,
+   "vol": null,
+   "entryState": "normal",
+   "orderType": "limit",
+   "multiplier": 1,
+   "newsStatus": "noise",
+   "entry": 298.24,
+   "trigger": 299.13,
+   "limit": 299.13,
+   "maxPx": 301.89,
+   "tp1": 370.35,
+   "stop": 256.25,
+   "stopBasis": "2xATR",
+   "atr": 21.44,
+   "earnings": "2027-02 (not in window)",
+   "extended": false,
+   "picked": false,
+   "why": "theme cap — held, no add (C 6.19, R/R 1.66) · news: Q3 2026 rev +39%, 2026 outlook raised (Finviz, Nov 2026) — https://finviz.com/news/418221/cloudflare-shares-surge-over-14-as-third-quarter-revenue-jumps-39-and-company-raises-2026-outlook"
+  },
+  {
+   "sym": "PLTR",
+   "name": "Palantir Technologies",
+   "theme": "tech",
+   "cluster": "ai-software",
+   "tradable": true,
+   "tradableAt": "2026-11-16 07:14 ET",
+   "composite": 6.07,
+   "momentum": 5.92,
+   "rsi": 39.5,
+   "fwdPE": 117.74,
+   "peSource": "trailing",
+   "revGrowth": 95.9,
+   "rr": 3.44,
+   "rrAtStopLimit": 2.15,
+   "vol": 0.5057,
+   "entryState": "normal",
+   "orderType": "limit",
+   "multiplier": 1,
+   "newsStatus": "noise",
+   "entry": 165.7,
+   "trigger": 166.2,
+   "limit": 166.2,
+   "maxPx": 170.67,
+   "tp1": 212.94,
+   "stop": 152.6,
+   "stopBasis": "swing low",
+   "atr": 8.83,
+   "earnings": "2027-02 (not in window)",
+   "extended": false,
+   "picked": false,
+   "why": "theme cap — held, no add (C 6.07, R/R 3.44) · news: Q3 2026 beat, FY guide raised; valuation/contract-pace worries — https://www.trefis.com/stock/pltr/articles/624108/what-is-driving-palantir-stock/2026-11-10"
+  }
+ ],
+ "heldLevels": [
+  {
+   "sym": "CRWD",
+   "name": "CrowdStrike Holdings",
+   "status": "held-not-target",
+   "theme": "tech",
+   "asOf": "2026-11-16",
+   "levelsSetAt": "2026-11-12T07:16:00-05:00",
+   "carriedForward": true,
+   "composite": 5.88,
+   "entry": 223.0879,
+   "limit": 223.76,
+   "stop": 201.47,
+   "stopBasis": "2xATR",
+   "tp1": 286.99,
+   "rr": 2.24,
+   "atr": 14.14,
+   "newsStatus": "noise",
+   "review": "off the buy list (theme cap: tech 76% of stock outside IREN, cap 40%) — hold, no add"
+  },
+  {
+   "sym": "PLTR",
+   "name": "Palantir Technologies",
+   "status": "held-not-target",
+   "theme": "tech",
+   "asOf": "2026-11-16",
+   "levelsSetAt": "2026-11-11",
+   "carriedForward": true,
+   "composite": 6.07,
+   "entry": 165.7,
+   "limit": 166.2,
+   "stop": 154.5,
+   "stopBasis": "2xATR",
+   "tp1": 212.94,
+   "rr": 3.44,
+   "atr": 8.83,
+   "newsStatus": "noise",
+   "review": "off the buy list (theme cap: tech 76% of stock outside IREN, cap 40%) — hold, no add"
+  },
+  {
+   "sym": "ZS",
+   "name": "Zscaler",
+   "status": "held-not-target",
+   "theme": "tech",
+   "asOf": "2026-11-16",
+   "levelsSetAt": "2026-11-11",
+   "carriedForward": true,
+   "composite": 7.11,
+   "entry": 188.2,
+   "limit": 188.76,
+   "stop": 173.86,
+   "stopBasis": "2xATR",
+   "tp1": 267.87,
+   "rr": 3.27,
+   "atr": 12.09,
+   "newsStatus": "noise",
+   "review": "off the buy list (theme cap: tech 76% of stock outside IREN, cap 40%) — hold, no add"
+  },
+  {
+   "sym": "SNPS",
+   "name": "Synopsys",
+   "status": "held-not-target",
+   "theme": "tech",
+   "asOf": "2026-11-16",
+   "levelsSetAt": "2026-11-11",
+   "carriedForward": true,
+   "composite": 4.69,
+   "entry": 445.55,
+   "limit": 446.89,
+   "stop": 442.5,
+   "stopBasis": "SMA50",
+   "tp1": 512.49,
+   "rr": 1.82,
+   "atr": 17.99,
+   "newsStatus": "noise",
+   "review": "off the buy list (theme cap: tech 76% of stock outside IREN, cap 40%) — hold, no add"
+  },
+  {
+   "sym": "NET",
+   "name": "Cloudflare",
+   "status": "held-not-target",
+   "theme": "tech",
+   "asOf": "2026-11-16",
+   "levelsSetAt": "2026-11-11",
+   "carriedForward": true,
+   "composite": 6.19,
+   "entry": 298.24,
+   "limit": 299.13,
+   "stop": 271.16,
+   "stopBasis": "2xATR",
+   "tp1": 370.35,
+   "rr": 1.66,
+   "atr": 21.44,
+   "newsStatus": "noise",
+   "review": "off the buy list (theme cap: tech 76% of stock outside IREN, cap 40%) — hold, no add"
+  },
+  {
+   "sym": "DXCM",
+   "name": "DexCom",
+   "status": "target",
+   "theme": "health",
+   "asOf": "2026-11-16",
+   "levelsSetAt": "2026-11-16T07:13:00-05:00",
+   "carriedForward": false,
+   "composite": 6.42,
+   "entry": 83.33,
+   "limit": 83.58,
+   "stop": 77.65,
+   "stopBasis": "2xATR",
+   "tp1": 92.59,
+   "rr": 1.52,
+   "atr": 2.97,
+   "newsStatus": "noise",
+   "review": null
+  }
+ ],
+ "vetoed": [
+  {
+   "sym": "REGN",
+   "composite": 7.53,
+   "entry": 968.71,
+   "limit": 971.62,
+   "tp1": 991.73,
+   "stop": 907.72,
+   "stopBasis": "2xATR",
+   "atr": 31.95,
+   "rr": 0.31,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.31 < 1.5"
+  },
+  {
+   "sym": "MCK",
+   "composite": 6.38,
+   "entry": 1103.52,
+   "limit": 1106.83,
+   "tp1": 1121.5,
+   "stop": 1055.26,
+   "stopBasis": "2xATR",
+   "atr": 25.78,
+   "rr": 0.28,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.28 < 1.5"
+  },
+  {
+   "sym": "SPGI",
+   "composite": 4.9,
+   "entry": 476.5,
+   "limit": 477.93,
+   "tp1": 485.99,
+   "stop": 457.14,
+   "stopBasis": "2xATR",
+   "atr": 10.4,
+   "rr": 0.39,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.39 < 1.5; negative revenue growth -5.4%"
+  },
+  {
+   "sym": "ABNB",
+   "composite": 6.53,
+   "entry": 187.4,
+   "limit": 187.96,
+   "tp1": 197.87,
+   "stop": 174.49,
+   "stopBasis": "2xATR",
+   "atr": 6.73,
+   "rr": 0.74,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.74 < 1.5"
+  },
+  {
+   "sym": "COST",
+   "composite": 6.33,
+   "entry": 1112,
+   "limit": 1071.26,
+   "tp1": 1109.5,
+   "stop": 1032.11,
+   "stopBasis": "2xATR",
+   "atr": 19.58,
+   "rr": 0.98,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.98 < 1.5"
+  },
+  {
+   "sym": "VRTX",
+   "composite": 6.31,
+   "entry": 544.7311,
+   "limit": 546.37,
+   "tp1": 568.67,
+   "stop": 522.37,
+   "stopBasis": "SMA50",
+   "atr": 15.49,
+   "rr": 0.93,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.93 < 1.5"
+  },
+  {
+   "sym": "AMZN",
+   "composite": 5.58,
+   "entry": 264.8468,
+   "limit": 265.64,
+   "tp1": 275.34,
+   "stop": 254.81,
+   "stopBasis": "SMA50",
+   "atr": 9.08,
+   "rr": 0.9,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 0.90 < 1.5"
+  },
+  {
+   "sym": "ANET",
+   "composite": 6.12,
+   "entry": 189.5992,
+   "limit": 190.17,
+   "tp1": 217.41,
+   "stop": 166.2,
+   "stopBasis": "2xATR",
+   "atr": 11.99,
+   "rr": 1.14,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 1.14 < 1.5"
+  },
+  {
+   "sym": "URI",
+   "composite": 6.02,
+   "entry": 1119.36,
+   "limit": 1122.72,
+   "tp1": 1202.12,
+   "stop": 1066.21,
+   "stopBasis": "SMA50",
+   "atr": 45.01,
+   "rr": 1.41,
+   "date": "2026-11-16",
+   "source": "Robinhood get_equity_quotes/get_equity_technical_indicators/get_financials/get_equity_fundamentals/get_equity_tradability/get_earnings_results 2026-11-16 07:14–07:40 ET",
+   "why": "R/R at entry 1.41 < 1.5"
+  },
+  {
+   "sym": "TSLA",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "ISRG",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "APP",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "IDXX",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "CMG",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "ORLY",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "RCL",
+   "date": "2026-11-16",
+   "why": "no earnings/catalyst <60d (next report after Jan 15 2027) and SMA50<SMA200"
+  },
+  {
+   "sym": "PANW",
+   "date": "2026-11-16",
+   "why": "3-month RS not in top 40% (3m -14.2% vs cut −6.6%)"
+  },
+  {
+   "sym": "GE",
+   "date": "2026-11-16",
+   "why": "3-month RS not in top 40% (3m -10.2% vs cut −6.6%)"
+  },
+  {
+   "sym": "PH",
+   "date": "2026-11-16",
+   "why": "3-month RS not in top 40% (3m -9.3% vs cut −6.6%)"
+  },
+  {
+   "sym": "NVDA",
+   "date": "2026-11-16",
+   "why": "below SMA200 (156.96 vs 204.19)"
+  },
+  {
+   "sym": "GOOGL",
+   "date": "2026-11-16",
+   "why": "below SMA200 (294.35 vs 338.48)"
+  },
+  {
+   "sym": "AVGO",
+   "date": "2026-11-16",
+   "why": "below SMA200 (333.88 vs 367.42)"
+  },
+  {
+   "sym": "NFLX",
+   "date": "2026-11-16",
+   "why": "below SMA200 (62.5074 vs 80.50)"
+  },
+  {
+   "sym": "ADBE",
+   "date": "2026-11-16",
+   "why": "below SMA200 (244.12 vs 247.67)"
+  },
+  {
+   "sym": "QCOM",
+   "date": "2026-11-16",
+   "why": "below SMA200 (168.8 vs 170.20)"
+  },
+  {
+   "sym": "AMAT",
+   "date": "2026-11-16",
+   "why": "below SMA200 (352.478 vs 446.54)"
+  },
+  {
+   "sym": "LRCX",
+   "date": "2026-11-16",
+   "why": "below SMA200 (215.5 vs 283.87)"
+  },
+  {
+   "sym": "MU",
+   "date": "2026-11-16",
+   "why": "below SMA200 (736.8962 vs 765.61)"
+  },
+  {
+   "sym": "MELI",
+   "date": "2026-11-16",
+   "why": "below SMA200 (1479.0 vs 1783.67)"
+  },
+  {
+   "sym": "KLAC",
+   "date": "2026-11-16",
+   "why": "below SMA200 (146.12 vs 181.77)"
+  },
+  {
+   "sym": "CDNS",
+   "date": "2026-11-16",
+   "why": "below SMA200 (320.85 vs 328.09)"
+  },
+  {
+   "sym": "ASML",
+   "date": "2026-11-16",
+   "why": "below SMA200 (1448.67 vs 1602.21)"
+  },
+  {
+   "sym": "MRVL",
+   "date": "2026-11-16",
+   "why": "below SMA200 (147.7686 vs 187.00)"
+  },
+  {
+   "sym": "FTNT",
+   "date": "2026-11-16",
+   "why": "below SMA200 (125.69 vs 130.71)"
+  },
+  {
+   "sym": "ARM",
+   "date": "2026-11-16",
+   "why": "below SMA200 (180.1669 vs 232.82)"
+  },
+  {
+   "sym": "DDOG",
+   "date": "2026-11-16",
+   "why": "below SMA200 (182.24 vs 201.36)"
+  },
+  {
+   "sym": "TTD",
+   "date": "2026-11-16",
+   "why": "below SMA200 (15.5 vs 19.06)"
+  },
+  {
+   "sym": "ON",
+   "date": "2026-11-16",
+   "why": "below SMA200 (68.75 vs 82.78)"
+  },
+  {
+   "sym": "CEG",
+   "date": "2026-11-16",
+   "why": "below SMA200 (275.0 vs 278.40)"
+  },
+  {
+   "sym": "AXON",
+   "date": "2026-11-16",
+   "why": "below SMA200 (313.0 vs 466.37)"
+  },
+  {
+   "sym": "SMCI",
+   "date": "2026-11-16",
+   "why": "below SMA200 (25.5864 vs 32.54)"
+  },
+  {
+   "sym": "INTC",
+   "date": "2026-11-16",
+   "why": "below SMA200 (56.59 vs 87.40)"
+  },
+  {
+   "sym": "RKLB",
+   "date": "2026-11-16",
+   "why": "below SMA200 (59.25 vs 78.28)"
+  },
+  {
+   "sym": "ASTS",
+   "date": "2026-11-16",
+   "why": "below SMA200 (31.07 vs 73.61)"
+  },
+  {
+   "sym": "LUNR",
+   "date": "2026-11-16",
+   "why": "below SMA200 (12.38 vs 19.30)"
+  },
+  {
+   "sym": "VRT",
+   "date": "2026-11-16",
+   "why": "below SMA200 (191.55 vs 271.58)"
+  },
+  {
+   "sym": "VST",
+   "date": "2026-11-16",
+   "why": "below SMA200 (128.76 vs 151.92)"
+  },
+  {
+   "sym": "NRG",
+   "date": "2026-11-16",
+   "why": "below SMA200 (95.94 vs 132.34)"
+  },
+  {
+   "sym": "OKLO",
+   "date": "2026-11-16",
+   "why": "below SMA200 (22.78 vs 50.58)"
+  },
+  {
+   "sym": "GEV",
+   "date": "2026-11-16",
+   "why": "below SMA200 (773.5 vs 951.79)"
+  },
+  {
+   "sym": "CIFR",
+   "date": "2026-11-16",
+   "why": "below SMA200 (6.36 vs 17.19)"
+  },
+  {
+   "sym": "WULF",
+   "date": "2026-11-16",
+   "why": "below SMA200 (11.88 vs 17.99)"
+  },
+  {
+   "sym": "CORZ",
+   "date": "2026-11-16",
+   "why": "below SMA200 (13.7 vs 19.38)"
+  },
+  {
+   "sym": "HUT",
+   "date": "2026-11-16",
+   "why": "below SMA200 (53.8186 vs 82.35)"
+  },
+  {
+   "sym": "TSM",
+   "date": "2026-11-16",
+   "why": "below SMA200 (379.62 vs 403.05)"
+  },
+  {
+   "sym": "COIN",
+   "date": "2026-11-16",
+   "why": "below SMA200 (117.89 vs 174.05)"
+  },
+  {
+   "sym": "HOOD",
+   "date": "2026-11-16",
+   "why": "below SMA200 (73.0984 vs 91.41)"
+  },
+  {
+   "sym": "MSTR",
+   "date": "2026-11-16",
+   "why": "below SMA200 (102.19 vs 132.78)"
+  },
+  {
+   "sym": "BSX",
+   "date": "2026-11-16",
+   "why": "below SMA200 (44.7978 vs 54.14)"
+  },
+  {
+   "sym": "SYK",
+   "date": "2026-11-16",
+   "why": "below SMA200 (309.32 vs 321.93)"
+  },
+  {
+   "sym": "AXP",
+   "date": "2026-11-16",
+   "why": "below SMA200 (320.85 vs 324.27)"
+  },
+  {
+   "sym": "GS",
+   "date": "2026-11-16",
+   "why": "below SMA200 (907.0 vs 955.78)"
+  },
+  {
+   "sym": "KKR",
+   "date": "2026-11-16",
+   "why": "below SMA200 (97.46 vs 97.66)"
+  },
+  {
+   "sym": "BX",
+   "date": "2026-11-16",
+   "why": "below SMA200 (119.0 vs 122.56)"
+  },
+  {
+   "sym": "SCHW",
+   "date": "2026-11-16",
+   "why": "below SMA200 (93.47 vs 97.01)"
+  },
+  {
+   "sym": "ETN",
+   "date": "2026-11-16",
+   "why": "below SMA200 (342.0 vs 397.80)"
+  },
+  {
+   "sym": "PWR",
+   "date": "2026-11-16",
+   "why": "below SMA200 (590.0 vs 632.21)"
+  },
+  {
+   "sym": "HWM",
+   "date": "2026-11-16",
+   "why": "below SMA200 (219.4 vs 248.61)"
+  },
+  {
+   "sym": "TT",
+   "date": "2026-11-16",
+   "why": "below SMA200 (414.88 vs 455.88)"
+  },
+  {
+   "sym": "TJX",
+   "date": "2026-11-16",
+   "why": "below SMA200 (135.01 vs 150.46)"
+  },
+  {
+   "sym": "BKNG",
+   "date": "2026-11-16",
+   "why": "below SMA200 (160.05 vs 174.65)"
+  },
+  {
+   "sym": "META",
+   "date": "2026-11-16",
+   "why": "held ≥$250 in ••3900"
+  }
+ ],
+ "gatedCount": 17,
+ "universeCount": 80,
+ "record": {
   "rulesVersion": "v2.8",
-  "core": "IREN",
-  "coreOwner": true,
-  "targets": {"DXCM": 20},
-  "pickBudget": 57.1,
-  "themeMapVersion": "themes-v1",
-  "themeCap": {"theme": "tech", "max": 40, "current": 100, "planned": 76.4, "wholeAccount": 100},
-  "themeMap": {"ABNB":"consumer","ADBE":"tech","AMAT":"tech","AMD":"tech","AMZN":"tech","ANET":"tech","APP":"tech","ARM":"tech","ASML":"tech","ASTS":"space","AVGO":"tech","AXON":"tech","AXP":"finance","BKNG":"consumer","BSX":"health","BX":"finance","CDNS":"tech","CEG":"power","CIFR":"tech","CMG":"consumer","COIN":"crypto","CORZ":"tech","COST":"consumer","CRWD":"tech","DDOG":"tech","DXCM":"health","ETN":"industrial","FTNT":"tech","GE":"industrial","GEV":"power","GOOGL":"tech","GS":"finance","HOOD":"crypto","HUT":"tech","HWM":"industrial","IDXX":"health","INTC":"tech","IREN":"tech","ISRG":"health","KKR":"finance","KLAC":"tech","LRCX":"tech","LUNR":"space","MCK":"health","MELI":"tech","META":"tech","MRVL":"tech","MSTR":"crypto","MU":"tech","NET":"tech","NFLX":"tech","NRG":"power","NVDA":"tech","OKLO":"power","ON":"tech","ORLY":"consumer","PANW":"tech","PH":"industrial","PLTR":"tech","PWR":"industrial","QCOM":"tech","RCL":"consumer","REGN":"health","RKLB":"space","S":"tech","SCHW":"finance","SMCI":"tech","SNPS":"tech","SPGI":"finance","SYK":"health","TJX":"consumer","TSLA":"tech","TSM":"tech","TT":"industrial","TTD":"tech","URI":"industrial","VRT":"tech","VRTX":"health","VST":"power","WULF":"tech","ZS":"tech"},
-  "blockedByTheme": [
-    {"sym":"ZS","composite":7.55,"why":"theme cap: tech already 100% of stock outside IREN (cap 40%) — no tech slot"},
-    {"sym":"CRWD","composite":6.75,"why":"theme cap: tech already 100% of stock outside IREN (cap 40%) — no tech slot"},
-    {"sym":"PLTR","composite":6.61,"why":"theme cap: tech already 100% of stock outside IREN (cap 40%) — no tech slot"},
-    {"sym":"S","composite":6.46,"why":"theme cap: tech already 100% of stock outside IREN (cap 40%) — no tech slot"},
-    {"sym":"AMD","composite":5.95,"why":"theme cap: tech already 100% of stock outside IREN (cap 40%) — no tech slot"},
-    {"sym":"SNPS","composite":5.5,"why":"theme cap: tech already 100% of stock outside IREN (cap 40%) — no tech slot"}
-  ],
-  "clusterCap": {"ai": {"cap": 45, "current": 68.1, "room": -23.1, "asShareOfStock": 33.8}},
-  "blockedByCap": [{"sym":"AMD","composite":5.95,"why":"ai-compute 68.1% of equity vs 45% cap (IREN) — also theme-capped"}],
-  "added": ["DXCM"],
-  "removed": [
-    {"sym":"ZS","composite":7.55,"rr":3.08,"held":true,"why":"theme cap: tech at 100% of stock outside IREN (cap 40%) — held, no add"},
-    {"sym":"PLTR","composite":6.61,"rr":2.81,"held":true,"why":"theme cap: tech at 100% of stock outside IREN (cap 40%) — held, no add"},
-    {"sym":"SNPS","composite":5.5,"rr":1.59,"held":true,"why":"theme cap: tech at 100% of stock outside IREN (cap 40%) — held, no add"},
-    {"sym":"CRWD","composite":6.75,"rr":2.23,"held":true,"why":"theme cap: tech at 100% of stock outside IREN (cap 40%) — held, no add"}
-  ],
-  "top5": [
-    {"sym":"DXCM","name":"DexCom","tradable":true,"tradableAt":"2026-11-13 12:49 ET","composite":6.69,"momentum":6.38,"rsi":49.5,"fwdPE":31.49,"peSource":"trailing","revGrowth":11.2,"rr":1.65,"rrAtStopLimit":1.46,"vol":0.359,"cluster":"health","theme":"health","entryState":"normal","orderType":"limit","multiplier":1,"newsStatus":"noise","entry":82.36,"trigger":82.61,"limit":82.61,"maxPx":82.98,"tp1":92.59,"stop":76.57,"stopBasis":"2xATR","atr":3.02,"earnings":">60 days / not in calendar","extended":false,"picked":true,"why":"picked: C 6.69, R/R 1.65, only non-tech name passing · news: Q3 2026 beat; 2026 outlook raised — https://www.sec.gov/Archives/edgar/data/0001093557/000109355726000193/dxcm09302026-exhibit991.htm"},
-    {"sym":"ZS","name":"Zscaler","tradable":true,"tradableAt":"2026-11-13 12:49 ET","composite":7.55,"momentum":6.07,"rsi":35.3,"fwdPE":-488.79,"peSource":"trailing","revGrowth":24.9,"rr":3.08,"rrAtStopLimit":42.09,"vol":0.685,"cluster":"cyber","theme":"tech","entryState":"pullback","orderType":"limit","multiplier":1,"newsStatus":"noise","entry":191.72,"trigger":192.3,"limit":192.3,"maxPx":197.47,"tp1":267.87,"stop":167.78,"stopBasis":"2xATR","atr":12.26,"earnings":"2026-12-02","extended":false,"picked":false,"why":"theme cap: tech 100% outside IREN — held, no add (C 7.55, R/R 3.08) · news: sector selloff, no company news; report Dec 2 — https://www.tikr.com/blog/zscaler-sinks-14-in-a-week-as-fortinets-plunge-and-a-tech-selloff-hit-security-stocks"},
-    {"sym":"CRWD","name":"CrowdStrike Holdings","tradable":true,"tradableAt":"2026-11-13 12:49 ET","composite":6.75,"momentum":7.15,"rsi":41.1,"fwdPE":6438.9,"peSource":"trailing","revGrowth":25.8,"rr":2.23,"rrAtStopLimit":1.81,"vol":0.721,"cluster":"cyber","theme":"tech","entryState":"pullback","orderType":"limit","multiplier":1,"newsStatus":"noise","entry":224.29,"trigger":224.96,"limit":224.96,"maxPx":231.02,"tp1":286.99,"stop":197.09,"stopBasis":"2xATR","atr":13.93,"earnings":"2026-12-01","extended":false,"picked":false,"why":"theme cap — held, no add (C 6.75, R/R 2.23) · news: AI-agent security acquisition + AI-trade unwind; report Dec 1 — https://www.tikr.com/blog/crowdstrike-sinks-10-two-days-after-a-495-million-bet-on-policing-ai-agents"},
-    {"sym":"PLTR","name":"Palantir Technologies","tradable":true,"tradableAt":"2026-11-13 12:49 ET","composite":6.61,"momentum":6.08,"rsi":39.4,"fwdPE":120.26,"peSource":"trailing","revGrowth":95.9,"rr":2.81,"rrAtStopLimit":2.07,"vol":0.506,"cluster":"ai-software","theme":"tech","entryState":"normal","orderType":"limit","multiplier":1,"newsStatus":"noise","entry":167.94,"trigger":168.44,"limit":168.44,"maxPx":172.98,"tp1":212.94,"stop":152.6,"stopBasis":"swing low","atr":8.93,"earnings":">60 days / not in calendar","extended":false,"picked":false,"why":"theme cap — held, no add (C 6.61, R/R 2.81) · news: Q3 beat, FY guide raised — https://www.trefis.com/stock/pltr/articles/624108/what-is-driving-palantir-stock/2026-11-10"},
-    {"sym":"S","name":"SentinelOne","tradable":true,"tradableAt":"2026-11-13 12:49 ET","composite":6.46,"momentum":6.95,"rsi":42.7,"fwdPE":-22.07,"peSource":"trailing","revGrowth":20.6,"rr":1.61,"rrAtStopLimit":4.54,"vol":0.677,"cluster":"cyber","theme":"tech","entryState":"pullback","orderType":"limit","multiplier":1,"newsStatus":"unverified","entry":21.89,"trigger":21.96,"limit":21.96,"maxPx":22.08,"tp1":26.5,"stop":19.14,"stopBasis":"2xATR","atr":1.41,"earnings":"2026-12-03","extended":false,"picked":false,"why":"theme cap + max 2 cyber (C 6.46, R/R 1.61) · news: not news-checked"}
-  ],
-  "heldLevels": [
-    {"sym":"PLTR","name":"Palantir Technologies","composite":6.61,"entry":167.94,"limit":168.44,"tp1":212.94,"stop":154.5,"stopBasis":"2xATR","atr":9.25,"rr":2.81,"newsStatus":"noise","theme":"tech","status":"held-not-target","review":"off the buy list (theme cap: tech 100% of stock outside IREN, cap 40%) — hold, no add","levelsSetAt":"2026-11-11","asOf":"2026-11-13"},
-    {"sym":"ZS","name":"Zscaler","composite":7.55,"entry":191.72,"limit":192.3,"tp1":267.87,"stop":173.86,"stopBasis":"2xATR","atr":12.45,"rr":3.08,"newsStatus":"noise","theme":"tech","status":"held-not-target","review":"off the buy list (theme cap: tech 100% of stock outside IREN, cap 40%) — hold, no add","levelsSetAt":"2026-11-11","asOf":"2026-11-13"},
-    {"sym":"SNPS","name":"Synopsys","composite":5.5,"entry":453.18,"limit":454.54,"tp1":512.49,"stop":442.5,"stopBasis":"SMA50","atr":18.31,"rr":1.59,"newsStatus":"no-new-news","theme":"tech","status":"held-not-target","review":"off the buy list (theme cap: tech 100% of stock outside IREN, cap 40%) — hold, no add","levelsSetAt":"2026-11-11","asOf":"2026-11-13"},
-    {"sym":"CRWD","name":"CrowdStrike Holdings","composite":6.75,"entry":224.29,"limit":224.96,"tp1":286.99,"stop":201.47,"stopBasis":"2xATR","atr":14.04,"rr":2.23,"newsStatus":"noise","theme":"tech","status":"held-not-target","review":"off the buy list (theme cap: tech 100% of stock outside IREN, cap 40%) — hold, no add","levelsSetAt":"2026-11-12T07:16:00-05:00","asOf":"2026-11-13"},
-    {"sym":"NET","name":"Cloudflare","composite":6.14,"entry":306.61,"limit":307.53,"tp1":370.35,"stop":271.16,"stopBasis":"2xATR","atr":21.46,"rr":1.48,"newsStatus":"noise","theme":"tech","status":"held-not-target","review":"off the buy list (theme cap: tech 100% of stock outside IREN, cap 40%) — hold, no add; R/R at entry 1.48","levelsSetAt":"2026-11-11","asOf":"2026-11-13"}
-  ],
-  "vetoed": [
-    {"sym":"AMZN","composite":5.68,"limit":266.4,"tp1":275.34,"stop":254.66,"rr":0.76,"why":"R/R at entry 0.76 < 1.5"},
-    {"sym":"QCOM","composite":4.73,"why":"negative revenue growth -8.4% with no catalyst"},
-    {"sym":"VRTX","composite":6.74,"limit":541.5,"tp1":568.67,"stop":522.75,"rr":1.45,"why":"R/R at entry 1.45 < 1.5"},
-    {"sym":"REGN","composite":7.58,"limit":958.51,"tp1":991.73,"stop":892.78,"rr":0.51,"why":"R/R at entry 0.51 < 1.5"},
-    {"sym":"NET","composite":6.14,"limit":307.53,"tp1":370.35,"stop":265.15,"rr":1.48,"why":"R/R at entry 1.48 < 1.5"},
-    {"sym":"ANET","composite":6.31,"limit":197.24,"tp1":217.41,"stop":174.03,"rr":0.87,"why":"R/R at entry 0.87 < 1.5"},
-    {"sym":"MCK","composite":6.88,"limit":1096.12,"tp1":1121.5,"stop":1044.79,"rr":0.49,"why":"R/R at entry 0.49 < 1.5"},
-    {"sym":"SPGI","composite":5.82,"limit":474.98,"tp1":485.99,"stop":453.6,"rr":0.51,"why":"R/R at entry 0.51 < 1.5"},
-    {"sym":"URI","composite":6.2,"limit":1124.64,"tp1":1202.12,"stop":1063.59,"rr":1.27,"why":"R/R at entry 1.27 < 1.5"},
-    {"sym":"ABNB","composite":6.69,"limit":186.62,"tp1":197.87,"stop":173.02,"rr":0.83,"why":"R/R at entry 0.83 < 1.5"},
-    {"sym":"COST","composite":6.23,"limit":1065.76,"tp1":1102.84,"stop":1026.25,"rr":0.94,"why":"R/R at entry 0.94 < 1.5"},
-    {"sym":"TSLA","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"ISRG","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"APP","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"IDXX","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"CMG","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"ORLY","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"RCL","why":"no earnings/catalyst <60d and SMA50<SMA200"},
-    {"sym":"META","why":"held >=$250 in ••3900"}
-  ],
-  "gatedCount": 18,
-  "universeCount": 79,
-  "record": {"rulesVersion":"v2.8","n5":0,"hit5":null,"avgAlpha5":null,"n30":0,"hit30":null,"avgAlpha30":null,"n90":0,"hit90":null,"avgAlpha90":null,"control":{"n5":0,"n30":0,"n90":0},"controlV1":{"n5":0,"n30":0,"n90":0}},
-  "notes": [
-    "Copied 2026-11-13 ~1:10 PM ET from Jarvis os/apex-targets (v6, the on-demand Fri Nov 13 12:50 ET first v2.8 run). The scan's own copy hit gh 403 again — the Apex scan task has no repo source selected.",
-    "only 1 of 4 slots filled: no other non-tech name passed gates + R/R 1.5 — remaining room stays in cash (rules v2.8)"
-  ]
+  "n5": 4,
+  "hit5": 0.25,
+  "avgAlpha5": -2.86,
+  "n30": 0,
+  "hit30": null,
+  "avgAlpha30": null,
+  "n90": 0,
+  "hit90": null,
+  "avgAlpha90": null,
+  "control": {
+   "n5": 4,
+   "hit5": 0.25,
+   "avgAlpha5": -3.52,
+   "n30": 0,
+   "n90": 0
+  },
+  "controlV1": {
+   "n5": 0,
+   "n30": 0,
+   "n90": 0
+  },
+  "note": "first graded cohort = v2.1 Nov 6 picks at 5 days vs SPY (v2 −2.86pp, v1 control −3.52pp; hit 1 of 4)"
+ },
+ "notes": [
+  "Copied 2026-11-16 ~7:50 AM ET from Jarvis os/apex-targets (v7, Mon Nov 16 07:13 ET v2.8 research run). The scan's own copy did not land in the repo.",
+  "only 1 of 4 slots filled: tech at 76% of stock outside IREN freezes tech buys; no other non-tech name passed gates + R/R 1.5 — room stays in cash (rules v2.8)",
+  "held levels carried forward; Monday check: no research stop higher than the carried stops, no raise; DXCM row set fresh"
+ ]
 }
