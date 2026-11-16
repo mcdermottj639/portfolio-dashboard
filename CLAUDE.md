@@ -1,3 +1,27 @@
+## v233 — Apex ranked opportunities (display only) (2026-11-16)
+
+Jack (Nov 16 12:37 ET, on a zero-buy Monday with the seven top-scored names locked out by the tech cap): "Is apex
+working right? … I don't get how this works"; he then approved (12:41–12:42 ET, with ChatGPT's v2.9 proposal)
+"Publish the ranked opportunity list … why they qualify or fail, and what would make them actionable" and
+"Keep v2.8 running live unchanged … Nothing here authorizes a live strategy change."
+- `ui/apex.js`: new pure `opportunities(T)` (exported) + `oppBlock()`. A re-sort of rows the Monday scan already
+  writes to `data/apex-targets.json` into four buckets under the Research tiles (`[data-apex-opps]`,
+  `[data-apex-opp="qualified|restricted|near|watch"]`): **Buy list** (targets, never the core), **Blocked by a cap**
+  (`blockedByTheme` + `blockedByCap`, one row per name, by score), **Close** (failed ONLY the R/R floor; shows the entry
+  at which R/R reaches `C.RR_MIN` with the scan's target and stop held fixed, `(tp1 + 1.5·stop) ÷ 2.5`, labelled an
+  estimate; closest first), **Watch** (relative-strength or catalyst gate). Names under their 200-day are a count only.
+  Each row is one line (ticker · score · why) and opens to "Actionable when" + the scan's levels.
+- **Display only.** No rule, ticket, size, prompt or gate reads it (test asserts `rules()` output is unchanged with it
+  present). Rules stay v2.8. A row with a second disqualifier (e.g. negative growth) is not "Close".
+- `index.html`: the research object carries `opps`; versions. No scan-prompt, schema or data change — the list is
+  derived from fields already in the file, so it is as old as the last Monday research.
+- **Apex v2.9 is a PAPER track, not in this repo's rules:** a separate scheduled task ("Apex v2.9 paper track")
+  screens a wider market daily and logs paper cohorts beside v2.8. Nothing in `ui/apex.js` reads its output.
+- Files: `ui/apex.js`, `index.html`, `sw.js`, `tests/journey.test.cjs`, `producer/apex.test.mjs` (64/64, +2), `CLAUDE.md`.
+- Verified: all producer suites, tests/*.test.cjs, data validator; Chrome at 390 and 320px with the real Nov 16 file
+  and a synthetic book — 1 / 7 / 8 / 10 rows, scrollWidth = innerWidth, 0 page errors, screenshot read. Not verified:
+  a physical iPhone, live decrypted data. App/cache **v233 / pf-v233**.
+
 ## v232 — Compact Today in the actual Duo web viewport (2026-11-14)
 
 Jack's follow-up screenshot shows v231 loaded and a native controls column still

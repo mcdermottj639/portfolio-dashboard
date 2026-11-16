@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=232"></script>
-<script src="ui/experience-model.js?v=232"></script>
+<script src="ui/theme.js?v=233"></script>
+<script src="ui/experience-model.js?v=233"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -726,13 +726,13 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=232">
-<link rel="stylesheet" href="ui/journey.css?v=232">
-<link rel="stylesheet" href="ui/predictions.css?v=232">
-<link rel="stylesheet" href="ui/smartmoney.css?v=232">
-<link rel="stylesheet" href="ui/ticker.css?v=232">
-<link rel="stylesheet" href="ui/today.css?v=232">
-<link rel="stylesheet" href="ui/duo.css?v=232">
+<link rel="stylesheet" href="ui/experience.css?v=233">
+<link rel="stylesheet" href="ui/journey.css?v=233">
+<link rel="stylesheet" href="ui/predictions.css?v=233">
+<link rel="stylesheet" href="ui/smartmoney.css?v=233">
+<link rel="stylesheet" href="ui/ticker.css?v=233">
+<link rel="stylesheet" href="ui/today.css?v=233">
+<link rel="stylesheet" href="ui/duo.css?v=233">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -797,9 +797,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=232"></script>
-<script src="ui/apex.js?v=232"></script>
-<script src="ui/business.js?v=232"></script>
+<script src="ui/sd-rules.js?v=233"></script>
+<script src="ui/apex.js?v=233"></script>
+<script src="ui/business.js?v=233"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -913,7 +913,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v232'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v233'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2079,7 +2079,7 @@ function renderApexCard(S,opts){
       /* v202: this week's TARGETS first (by score), then the best of the rest — a 14% target (PLTR, 6th by score) used to
          lose its tile to two names the cluster cap had already blocked. */
       const ranked=T.top5.filter(r=>r&&r.sym&&isFinite(+r.composite)).slice().sort((a,b)=>((tg[b.sym]?1:0)-(tg[a.sym]?1:0))||((+b.composite)-(+a.composite)));
-      research={rows:ranked.slice(0,5).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null,atr:+r.atr||null,stopBasis:r.stopBasis||null,wash:(cfg.wash&&cfg.wash[r.sym])?cfg.wash[r.sym].clear:null})),record:T.record||null,vetoed:T.vetoed||[]
+      research={rows:ranked.slice(0,5).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null,atr:+r.atr||null,stopBasis:r.stopBasis||null,wash:(cfg.wash&&cfg.wash[r.sym])?cfg.wash[r.sym].clear:null})),record:T.record||null,vetoed:T.vetoed||[],opps:(typeof Apex.opportunities==='function')?Apex.opportunities(T):null
         ,asOf:T.asOf||'',source:`Weekly research · ${T.gatedCount||'?'}/${T.universeCount||'?'} passed the gates`,
         note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. 🚫 = tax hold (wash sale). ⏳ = near its 20-day high (half size). News is a veto only. Buy tickets are in Jarvis.'};
     } else if(typeof sdMomentum==='function'&&typeof SD_BENCH==='object'){
@@ -8786,16 +8786,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=232"></script>
-<script src="ui/today.js?v=232"></script>
-<script src="ui/predictions-model.js?v=232"></script>
-<script src="ui/predictions.js?v=232"></script>
-<script src="ui/smartmoney-model.js?v=232"></script>
-<script src="ui/smartmoney.js?v=232"></script>
-<script src="ui/experience.js?v=232"></script>
-<script src="ui/ticker.js?v=232"></script>
-<script src="ui/duo.js?v=232"></script>
-<script src="ui/compact.js?v=232"></script>
-<script src="ui/journey.js?v=232"></script>
+<script src="ui/today-model.js?v=233"></script>
+<script src="ui/today.js?v=233"></script>
+<script src="ui/predictions-model.js?v=233"></script>
+<script src="ui/predictions.js?v=233"></script>
+<script src="ui/smartmoney-model.js?v=233"></script>
+<script src="ui/smartmoney.js?v=233"></script>
+<script src="ui/experience.js?v=233"></script>
+<script src="ui/ticker.js?v=233"></script>
+<script src="ui/duo.js?v=233"></script>
+<script src="ui/compact.js?v=233"></script>
+<script src="ui/journey.js?v=233"></script>
 </body>
 </html>
