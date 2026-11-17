@@ -202,6 +202,102 @@ try{
   assert.deepEqual(await page.locator('#app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Buying Power','Day Change','Unrealized','YTD Return','Leverage','Portfolio Beta'],'self-directed snapshot labels');
   await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
  }
+ // ── v236 Dashboard 2.0 Phase 3a: Options leads with what you hold and the income rankers; three secondary cards start folded (display only) ──
+ {
+  const KEY='pf_card_fold_v1';
+  const ORDER=['Options Exposure','Your Options','Upcoming Expirations','Covered-Call Income','Cash-Secured Put Income','Trade Ideas','Options Income & History','Roll Scorecard','Options Knowledge'];
+  const FOLD={'opt-history':'Options Income & History','opt-rolls':'Roll Scorecard','opt-knowledge':'Options Knowledge'};
+  const T=(sym,date,net,opened,exp,strike)=>({symbol:sym,date,net,opening:Math.abs(net)+80,closing:-80,status:'Closed',opened,expiration:exp,strike,type:'call',quantity:1});
+  const rich=()=>{sample.options.rolls=[{symbol:'IREN',date:'2026-10-20',contracts:2,old:{strike:45,expiration:'2026-10-23'},new:{strike:50,expiration:'2026-11-20'},netCredit:0.35,dteAtRoll:3,grade:{verdict:'green',reasons:['Net credit.']},settle:{rollVsDoNothingPerSh:0.12}}];
+   sample.options.rollSummary={vsDoNothing:24,estimated:true,forCredit:1,forDebit:0,settled:1,green:1};
+   sample.options.incomeHistory={version:2,asOf:'2026-11-16',premiumYTD:2498,trades:[T('IREN','2026-11-10',212,'2026-10-20','2026-11-20',50),T('AAPL','2026-10-14',-61,'2026-09-30','2026-10-18',230),T('MSFT','2026-10-02',140,'2026-09-12','2026-10-16',450)],unresolved:0,pendingResolution:0,coverage:'Synthetic ledger.'};};
+  const plain=()=>{delete sample.options.rolls;delete sample.options.rollSummary;delete sample.options.incomeHistory;};
+  const reload=async(keep)=>{await page.evaluate(k=>{if(!k)localStorage.removeItem('pf_card_fold_v1');},keep);await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();await nav('options');await settle();};
+  const opt=()=>page.evaluate(()=>[...document.querySelectorAll('#options-app>.card')].map(c=>{
+   const t=c.querySelector(':scope > .card-title'),b=c.querySelector(':scope > .card-body');
+   const clone=t&&t.cloneNode(true);clone&&clone.querySelectorAll('.chevron,.card-hint,.help-btn,.pin-btn').forEach(x=>x.remove());
+   return {title:clone?clone.textContent.replace(/^\W+/u,'').replace(/\s+/g,' ').trim():'',sec:c.getAttribute('data-sec'),folded:!!b&&b.style.display==='none',aria:t&&t.getAttribute('aria-expanded'),chars:b?(b.textContent||'').trim().length:-1,
+    box:(r=>[Math.round(r.left),Math.round(r.top+scrollY),Math.round(r.width),Math.round(r.height)])(c.getBoundingClientRect())};}));
+  const by=(cards,name)=>cards.find(c=>c.title===name);
+  const hdr=name=>page.locator('#options-app>.card>.card-title',{hasText:name}).first();
+  rich();
+  await page.setViewportSize({width:390,height:844});await nav('options');await reload(false);
+  // (a) the new order, and exactly three cards folded
+  let c=await opt();
+  assert.deepEqual(c.map(x=>x.title),ORDER,'Options card order');
+  for(const x of c){const f=Object.values(FOLD).includes(x.title);assert.equal(x.folded,f,x.title+(f?' starts folded':' stays open'));assert.equal(x.aria,f?'false':'true',x.title+' aria-expanded');}
+  for(const [sec,title] of Object.entries(FOLD))assert.equal(by(c,title).sec,sec,title+' stable data-sec');
+  // (b) every card is still rendered while folded
+  for(const x of c)assert.ok(x.chars>20,x.title+' has rendered content ('+x.chars+' chars)');
+  assert.ok(await page.evaluate(()=>document.querySelectorAll('#options-app canvas').length>0),'payoff canvases still rendered');
+  assert.equal(await page.evaluate(k=>localStorage.getItem(k),KEY),null,'defaults write nothing');
+  // (c) open persists across a re-render and a reload; a closed choice too
+  await hdr('Options Income & History').click();await settle();
+  assert.equal(by(await opt(),'Options Income & History').folded,false);
+  assert.equal(JSON.parse(await page.evaluate(k=>localStorage.getItem(k),KEY))['options:opt-history'],1);
+  await page.evaluate(()=>{window.__old=document.querySelector('#options-app>.card[data-sec="opt-history"]');renderOptions(document.getElementById('options-app'),__DATA.options,__DATA.realized);});await settle();
+  assert.equal(await page.evaluate(()=>document.contains(window.__old)),false,'history card really re-rendered');
+  assert.equal(by(await opt(),'Options Income & History').folded,false,'open survives a re-render');
+  assert.equal(by(await opt(),'Roll Scorecard').folded,true);
+  await reload(true);c=await opt();
+  assert.equal(by(c,'Options Income & History').folded,false,'open survives a reload');assert.equal(by(c,'Options Knowledge').folded,true);
+  await hdr('Options Income & History').click();await settle();await reload(true);
+  assert.equal(by(await opt(),'Options Income & History').folded,true,'closed choice survives a reload');
+  // history scoreboard draws once opened
+  await hdr('Options Income & History').click();await settle();
+  const sb=await page.locator('#options-app .oh-score').boundingBox();assert.ok(sb&&sb.width>100&&sb.x>=0&&sb.x+sb.width<=391,'history scoreboard visible and inside the phone width');
+  // (d) navigation lands on an open, visible card: Covered-Call chip, and each folded card's rail chip
+  await reload(false);
+  const chip=async label=>{await page.locator('#page-options .card-nav-chip',{hasText:label}).first().click();await settle();};
+  const seen=async name=>{const x=by(await opt(),name);assert.equal(x.folded,false,name+' open after navigation');assert.equal(x.aria,'true');
+   const r=await page.evaluate(n=>{const c=[...document.querySelectorAll('#options-app>.card')].find(k=>(k.querySelector('.card-title')?.textContent||'').includes(n));const b=c.getBoundingClientRect();return [b.top,b.bottom];},name);assert.ok(r[0]<844&&r[1]>0,name+' scrolled into view');};
+  await chip('Covered-Call Income');await seen('Covered-Call Income');
+  for(const name of Object.values(FOLD)){await reload(false);assert.equal(by(await opt(),name).folded,true);await chip(name);await seen(name);}
+  await reload(false);await page.evaluate(()=>{const c=document.querySelector('#options-app>.card[data-sec="opt-rolls"]');__pfGoCard(__navTitleOf(c),'options');});await settle();await seen('Roll Scorecard');
+  // rail Expand/Collapse all reaches the folded cards and keeps its label
+  await reload(false);
+  assert.match(await page.locator('#page-options .cn-all').innerText(),/Collapse all/);
+  await page.locator('#page-options .cn-all').click();await settle();assert.ok((await opt()).every(x=>x.folded),'collapse all');
+  await page.locator('#page-options .cn-all').click();await settle();assert.ok((await opt()).every(x=>!x.folded),'expand all');assert.match(await page.locator('#page-options .cn-all').innerText(),/Collapse all/);
+  // a card pinned to My view starts open
+  await page.evaluate(()=>{localStorage.setItem('pf_pins',JSON.stringify([__navTitleOf(document.querySelector('#options-app>.card[data-sec="opt-knowledge"]'))]));localStorage.removeItem('pf_card_fold_v1');});
+  await reload(true);c=await opt();assert.equal(by(c,'Options Knowledge').folded,false,'pinned card starts open');assert.equal(by(c,'Roll Scorecard').folded,true);
+  await page.evaluate(()=>localStorage.removeItem('pf_pins'));
+  // (e) no horizontal overflow at four sizes, folded and expanded; open-Duo pairing keeps the v234 layout
+  const cdp=await page.context().newCDPSession(page);
+  for(const [w,h,inset] of [[390,844,{}],[466,677,{right:84}],[960,676,{right:100}],[677,466,{left:85}]]){
+   await page.setViewportSize({width:w,height:h});await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,right:inset.right||0,left:inset.left||0}});
+   await reload(false);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`options ${w}x${h} folded: page width`);
+   if(w===960){
+    const k=await opt(),cc=by(k,'Covered-Call Income').box,cs=by(k,'Cash-Secured Put Income').box,ex=by(k,'Upcoming Expirations').box,ti=by(k,'Trade Ideas').box;
+    assert.equal(cc[1],cs[1],'the two income rankers sit on one row');assert.equal(cc[2],cs[2],'and are the same width');assert.ok(cs[0]>cc[0]+cc[2]-2,'side by side');
+    assert.ok(cc[2]<ex[2]*0.6,'rankers are half width');assert.ok(ex[2]>=ti[2]-1&&ti[2]>cc[2]*1.8,'Expirations and Trade Ideas stay full width');
+    assert.ok(cc[1]>=ex[1]+ex[3]&&ti[1]>=cc[1]+cc[3],'order down the page: Expirations, rankers, Trade Ideas');
+    for(const t of ['Options Income & History','Roll Scorecard','Options Knowledge'])assert.ok(by(k,t).box[2]>=ti[2]-1,t+' is full width');
+   }
+   await page.locator('#page-options .cn-all').click();await page.locator('#page-options .cn-all').click();await settle();
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`options ${w}x${h} expanded: page width`);
+  }
+  await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,right:0,left:0}});
+  await page.setViewportSize({width:390,height:844});
+  // (f) privacy masking applies to a card opened after being folded
+  await reload(false);
+  assert.equal(by(await opt(),'Options Income & History').folded,true);
+  assert.match(await page.locator('#options-app>.card[data-sec="opt-history"]').evaluate(e=>e.textContent),/\$\d/,'history holds dollar figures while folded');
+  await page.evaluate(()=>setPrivacy(true));await settle();
+  await hdr('Options Income & History').click();await settle();
+  assert.doesNotMatch(await page.locator('#options-app>.card[data-sec="opt-history"] .opt-income-amount').innerText(),/\$\d/,'opened-after-folded history is masked in privacy mode');
+  await page.evaluate(()=>setPrivacy(false));await settle();
+  // (g) empty state: no ledger and no rolls. The history notice stays visible, no Roll Scorecard card, page unchanged otherwise
+  plain();await reload(false);c=await opt();
+  assert.deepEqual(c.map(x=>x.title),ORDER.filter(t=>t!=='Roll Scorecard'),'order without a Roll Scorecard');
+  assert.equal(by(c,'Options Income & History').folded,false,'empty-state history card is left open');
+  assert.match(await page.locator('#options-app>.card[data-sec="opt-history"]').innerText(),/Trade history is not in this snapshot yet/);
+  assert.equal(by(c,'Options Knowledge').folded,true);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
+ }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
- console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; no writes.');
+ console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; Options order, folds, Duo pairing and empty state; no writes.');
 }finally{await browser.close();}

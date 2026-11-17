@@ -183,3 +183,13 @@ card header, or Expand all, is remembered per card and account (`pf_card_fold_v1
 fails); a card pinned to My view does not start folded. Anything that navigates to a card — a rail chip, the hidden routes
 (heatmap, income, technicals, fundamentals, flow, log), Find, My view — opens it first, for the session. Opening the
 Heatmap draws it. Covered by `tests/journey-browser.mjs`.
+
+### v236 — Options leads with what you hold (Dashboard 2.0 Phase 3a)
+
+Nothing is removed. Options now reads: Options Exposure, Your Options, Upcoming Expirations, Covered-Call Income,
+Cash-Secured Put Income, Income Ideas, Trade Ideas, then Options Income & History, Roll Scorecard and Options Knowledge.
+Those last three start **folded** (header visible, every card still rendered). A tap on a header or Expand all is
+remembered (`pf_card_fold_v1`, key `options:<section>`); a card pinned to My view starts open; a rail chip, Find, My view
+or any other jump opens a folded card first. Income & History stays open when it only holds the "history not in this
+snapshot" / reconciliation notice. The two rankers must stay adjacent: the open-Duo two-up pairing is selector based
+(`ui/duo.css`, shared pairing grid) and relies on that. Covered by `tests/journey-browser.mjs`.
