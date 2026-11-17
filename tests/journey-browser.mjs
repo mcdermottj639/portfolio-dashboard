@@ -76,6 +76,132 @@ try{
  await page.screenshot({path:path.join(out,(live?'live-':'')+'research-320-dark.png')});
  await page.setViewportSize({width:390,height:844});await nav('holdings','main');await settle();await page.locator('#pj-clear').click();
  const row=page.locator('#pos-table .pj-row-toggle').first();await row.focus();await page.keyboard.press('Enter');assert.equal(await row.getAttribute('aria-expanded'),'true');
+ // ── v235 Dashboard 2.0 Phase 1a: Accounts leads with decisions; secondary cards start folded (display only) ──
+ {
+  const KEY='pf_card_fold_v1';
+  const FOLDED=['heatmap','allocation','income','technicals','fundamentals','flow','rebalance-log'];   // + 'smalls' where the card exists
+  const OPEN=['holdings','performance','risk'];
+  const reloadFresh=async(keepKey)=>{
+   await page.evaluate(k=>{if(!k)localStorage.removeItem('pf_card_fold_v1');},keepKey);
+   await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();
+  };
+  const cards=acct=>page.evaluate(a=>{
+   const root=document.getElementById(a==='main'?'app':'agentic-app'),out={};
+   root.querySelectorAll(':scope .card[data-sec]').forEach(c=>{
+    const t=c.querySelector(':scope > .card-title'),id=t&&t.getAttribute('data-toggle');
+    const body=id?document.getElementById(id):c.querySelector(':scope > .card-body');
+    out[c.getAttribute('data-sec')]={hasTitle:!!t,hasBody:!!body,folded:!!body&&body.style.display==='none',aria:t&&t.getAttribute('aria-expanded'),
+     chev:(t&&t.querySelector('.chevron')&&t.querySelector('.chevron').style.transform)||'',chars:body?(body.textContent||'').trim().length:-1,
+     tiles:c.querySelectorAll('.hm-tile').length};
+   });
+   return out;
+  },acct);
+  const header=(acct,sec)=>page.locator((acct==='main'?'#app':'#agentic-app')+' .card[data-sec="'+sec+'"] > .card-title');
+  const stored=()=>page.evaluate(k=>localStorage.getItem(k),KEY);
+  await page.setViewportSize({width:390,height:844});
+  await nav('accounts','main');await reloadFresh(false);
+  for(const acct of ['main','agentic']){
+   await nav('accounts',acct);await settle();
+   const c=await cards(acct);
+   const want=FOLDED.concat(c.smalls?['smalls']:[]);
+   // (a) listed cards start folded, everything else stays open exactly as before
+   for(const sec of want){assert.ok(c[sec],acct+' '+sec+' card exists');assert.equal(c[sec].folded,true,acct+' '+sec+' starts folded');assert.equal(c[sec].aria,'false',acct+' '+sec+' aria-expanded=false');assert.match(c[sec].chev,/rotate/,acct+' '+sec+' chevron turned');}
+   for(const sec of OPEN){assert.equal(c[sec].folded,false,acct+' '+sec+' stays open');assert.equal(c[sec].aria,'true',acct+' '+sec+' aria-expanded=true');}
+   assert.equal(c.snapshot.hasTitle,false,acct+' snapshot has no fold control and stays visible');
+   assert.equal(await page.locator((acct==='main'?'#app':'#agentic-app')+' [data-sec="snapshot"] .snap-grid').isVisible(),true);
+   // (b) every card still rendered into the DOM while folded (the renderer ran; only the body is hidden)
+   for(const sec of want.filter(x=>x!=='heatmap')){assert.ok(c[sec].chars>20,acct+' '+sec+' has rendered content while folded ('+c[sec].chars+' chars)');}
+   assert.ok(c.heatmap.hasBody,acct+' heatmap container exists while folded');
+  }
+  assert.ok(await page.evaluate(()=>!!(window.__SNAP&&window.__SNAP.perf&&window.__SNAP.alloc&&window.__SNAP.ovMap)),'renderPerformance / load() still stash __SNAP.perf, alloc, ovMap');
+  assert.equal(await stored(),null,'defaults write nothing to storage');
+  assert.match(await page.locator('#page-portfolio .cn-all').innerText(),/Collapse all/,'rail label: open cards remain');
+  // (b2) the treemap draws when its card opens (it cannot be laid out at zero width)
+  for(const acct of ['main','agentic']){
+   await nav('accounts',acct);await settle();
+   await header(acct,'heatmap').click();await settle();
+   const c=await cards(acct);assert.equal(c.heatmap.folded,false);assert.ok(c.heatmap.tiles>0,acct+' heatmap draws tiles on open ('+c.heatmap.tiles+')');
+   const box=await page.locator((acct==='main'?'#heatmap':'#heatmap-ag')).boundingBox();assert.ok(box.width>100&&box.x>=0&&box.x+box.width<=391,acct+' heatmap fits the phone');
+  }
+  // (c) opening persists across a re-render of the card and across a reload; closing persists too
+  for(const [acct,sec] of [['main','allocation'],['agentic','income']]){
+   await nav('accounts',acct);await settle();
+   await header(acct,sec).click();
+   assert.equal((await cards(acct))[sec].folded,false,acct+' '+sec+' opened by tap');assert.equal((await cards(acct))[sec].aria,'true');
+   assert.equal(JSON.parse(await stored())[acct+':'+sec],1,'open choice saved per card+account');
+   await page.evaluate(([a,s])=>{window.__oldCard=document.querySelector((a==='main'?'#app':'#agentic-app')+' .card[data-sec="'+s+'"]');return a==='main'?load():renderAgenticPage();},[acct,sec]);await settle();
+   assert.equal(await page.evaluate(()=>document.contains(window.__oldCard)),false,acct+' '+sec+' really re-rendered as a new node');
+   assert.equal((await cards(acct))[sec].folded,false,acct+' '+sec+' stays open across a re-render');
+   const other=acct==='main'?'agentic':'main';
+   assert.equal(JSON.parse(await stored())[other+':'+sec],undefined,'the other account is not affected');
+  }
+  await reloadFresh(true);
+  await nav('accounts','main');await settle();assert.equal((await cards('main')).allocation.folded,false,'main allocation open after reload');assert.equal((await cards('main')).income.folded,true,'untouched card still folded');
+  await nav('accounts','agentic');await settle();assert.equal((await cards('agentic')).income.folded,false,'agentic income open after reload');assert.equal((await cards('agentic')).allocation.folded,true,'allocation is per account: agentic still folded');
+  await nav('accounts','agentic');await settle();await header('agentic','income').click();
+  assert.equal(JSON.parse(await stored())['agentic:income'],0);await reloadFresh(true);await nav('accounts','agentic');await settle();assert.equal((await cards('agentic')).income.folded,true,'a closed choice is honoured too');
+  // storage failure = defaults, no error, toggling still works for the session
+  await page.evaluate(()=>{Storage.prototype.setItem=function(){throw new Error('quota');};});
+  await header('agentic','flow').click();assert.equal((await cards('agentic')).flow.folded,false,'toggle works with storage failing');
+  await page.evaluate(()=>{window.__old2=document.querySelector('#agentic-app .card[data-sec="flow"]');renderAgenticPage();});await settle();
+  assert.equal((await cards('agentic')).flow.folded,false,'session memory keeps the choice when storage fails');
+  await reloadFresh(false);
+  // (d) navigation opens a folded card: rail chip, rail expand/collapse-all, hidden routes, Find/My view target
+  const opens=async(acct,how,sec)=>{await reloadFresh(false);await nav('accounts',acct);await settle();assert.equal((await cards(acct))[sec].folded,true,acct+' '+sec+' folded before '+how);await how();await settle();
+   const c=(await cards(acct))[sec];assert.equal(c.folded,false,acct+' '+sec+' opened by '+how.label);assert.equal(c.aria,'true');
+   const y=await page.locator((acct==='main'?'#app':'#agentic-app')+' .card[data-sec="'+sec+'"]').boundingBox();assert.ok(y.y<844&&y.y+y.height>0,acct+' '+sec+' scrolled into view');return c;};
+  const chip=(acct,label)=>{const f=()=>page.locator('#page-portfolio .card-nav-chip',{hasText:label}).first().click();f.label='rail chip '+label;return f;};
+  const route=(name,acct)=>{const f=()=>nav(name,acct);f.label='route '+name;return f;};
+  for(const acct of ['main','agentic']){
+   await opens(acct,chip(acct,'Technical Signals'),'technicals');
+   await opens(acct,chip(acct,'Rebalance Log'),'rebalance-log');
+   const h=await opens(acct,chip(acct,'Holdings Heatmap'),'heatmap');assert.ok(h.tiles>0,acct+' heatmap drawn after chip jump');
+   for(const [r,sec] of [['heatmap','heatmap'],['income','income'],['technicals','technicals'],['fundamentals','fundamentals'],['flow','flow'],['log','rebalance-log']])await opens(acct,route(r,acct),sec);
+   const find=()=>page.evaluate(([a])=>{const c=document.querySelector((a==='main'?'#app':'#agentic-app')+' .card[data-sec="allocation"]');return __pfGoCard(__navTitleOf(c),'portfolio');},[acct]);find.label='Find / My view jump';
+   if(acct==='main')await opens(acct,find,'allocation');   // Find/My view index by title and pick the first match, so a shared title lands on the self-directed card (existing behaviour)
+  }
+  // expand/collapse-all keeps its label in sync and reaches every card
+  await reloadFresh(false);await nav('accounts','main');await settle();
+  await page.locator('#page-portfolio .cn-all').click();await settle();
+  let c=await cards('main');assert.ok(Object.entries(c).filter(([k,v])=>v.hasBody).every(([k,v])=>v.folded),'collapse all folds every card');assert.match(await page.locator('#page-portfolio .cn-all').innerText(),/Expand all/);
+  await page.locator('#page-portfolio .cn-all').click();await settle();
+  c=await cards('main');assert.ok(Object.entries(c).filter(([k,v])=>v.hasBody).every(([k,v])=>!v.folded),'expand all opens every card');assert.match(await page.locator('#page-portfolio .cn-all').innerText(),/Collapse all/);
+  assert.ok(c.heatmap.tiles>0,'expand all draws the heatmap');
+  // a card pinned to My view does not start folded
+  await reloadFresh(false);await nav('accounts','main');await settle();
+  const pinTitle=await page.evaluate(()=>__navTitleOf(document.querySelector('#app .card[data-sec="fundamentals"]')));
+  await page.evaluate(t=>{localStorage.setItem('pf_pins',JSON.stringify([t]));localStorage.removeItem('pf_card_fold_v1');},pinTitle);
+  await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();await nav('accounts','main');await settle();
+  c=await cards('main');assert.equal(c.fundamentals.folded,false,'pinned card starts open');assert.equal(c.technicals.folded,true,'unpinned sibling still folded');
+  await page.evaluate(()=>localStorage.removeItem('pf_pins'));
+  // (e) no horizontal overflow, folded and fully expanded
+  for(const [w,h] of [[390,844],[466,677],[960,676]]){
+   await page.setViewportSize({width:w,height:h});
+   for(const acct of ['main','agentic']){
+    await reloadFresh(false);await nav('accounts',acct);await settle();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${acct} ${w}x${h} folded: page width`);
+    await page.locator('#page-portfolio .cn-all').click();await page.locator('#page-portfolio .cn-all').click();await settle();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${acct} ${w}x${h} expanded: page width`);
+   }
+  }
+  await page.setViewportSize({width:390,height:844});
+  // (f) privacy masking still applies to a card opened after being folded
+  await reloadFresh(false);await nav('accounts','main');await settle();
+  assert.equal((await cards('main')).income.folded,true);
+  assert.match(await page.evaluate(()=>document.getElementById('b-inc').textContent),/\$\d/,'income holds dollar figures while folded');
+  await page.evaluate(()=>setPrivacy(true));await settle();
+  await header('main','income').click();await settle();
+  assert.doesNotMatch(await page.locator('#b-inc').innerText(),/\$\d/,'opened-after-folded income card is masked in privacy mode');
+  await page.evaluate(()=>setPrivacy(false));await settle();assert.match(await page.locator('#b-inc').innerText(),/\$\d/);
+  // (g) the Agentic header and tiles are unchanged (the duplicate-tile removal was NOT done: see CLAUDE.md v235), self-directed snapshot unchanged
+  await nav('accounts','agentic');await settle();
+  assert.match(await page.locator('#agentic-app .header .h-value').first().innerText(),/\$[\d,]+\.\d\d/);
+  assert.match(await page.locator('#agentic-app .header').innerText(),/today/);
+  assert.deepEqual(await page.locator('#agentic-app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Account Value','Day Change','Unrealized','YTD Return','Idle Cash','Portfolio Beta']);
+  await nav('accounts','main');await settle();
+  assert.deepEqual(await page.locator('#app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Buying Power','Day Change','Unrealized','YTD Return','Leverage','Portfolio Beta'],'self-directed snapshot labels');
+  await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
+ }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
- console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; no writes.');
+ console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; no writes.');
 }finally{await browser.close();}

@@ -224,7 +224,7 @@
     const root=$(account()==='agentic'?'agentic-app':'app'), target=root?.querySelector('[data-sec="'+section+'"]');
     if(!target){if(attempts<12)setTimeout(()=>placeSection(section,token,attempts+1),100);return;}
     const title=target.querySelector('.card-title'), body=title?.dataset.toggle?$(title.dataset.toggle):target.querySelector('.card-body');
-    if(body && body.style.display==='none')title?.click();
+    if(body && body.style.display==='none'){if(window.__pfFold)window.__pfFold.open(target);else title?.click();}
     requestAnimationFrame(()=>{if(token!==jumpToken)return;const y=target.getBoundingClientRect().top+window.scrollY-(window.__pfTopOffset?.()||8);window.scrollTo(0,Math.max(0,y));});
   }
   function navigate(key, options={}) {
