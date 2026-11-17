@@ -193,3 +193,22 @@ remembered (`pf_card_fold_v1`, key `options:<section>`); a card pinned to My vie
 or any other jump opens a folded card first. Income & History stays open when it only holds the "history not in this
 snapshot" / reconciliation notice. The two rankers must stay adjacent: the open-Duo two-up pairing is selector based
 (`ui/duo.css`, shared pairing grid) and relies on that. Covered by `tests/journey-browser.mjs`.
+
+### v237 — Agentic header carries Invested; the tape stops repeating account numbers (Dashboard 2.0 Phase 1b)
+
+Jack chose "Proposed" for both changes from the mockup page on Nov 17 2026. Display only.
+
+**Agentic Accounts.** The header (`#agentic-app .header`) keeps its figure (`agenticBook` equity) and today's move, and its
+sub-line now ends `· Invested $X` (same `fmtD`, same privacy masking, which is a text scan of the page). The snapshot is
+the four tiles Unrealized, YTD Return, Idle Cash and Portfolio Beta; the Account Value and Day Change tiles are gone from
+the agentic markup only (`renderSnapshot` with `cashTile`; the stats they used are still computed). Unknown is not zero:
+no priced position value shows `Invested —`, no quote history shows no today line (the old tile showed `$0.00`), an
+account the producer has not captured shows `—` and no tiles, as before. Grid: 2x2 below 740px, one row of four from
+740px (`index.html`, `ui/duo.css`, agentic selector only). The self-directed header and six tiles are unchanged.
+
+**Tape (`#pf-tape`, `ui/ticker.js`).** On Today and the Accounts routes (accounts, holdings, performance, heatmap, risk,
+income; both accounts) the combined "Today" item and the two per-account value items are not drawn. Every other item
+(status pill, Breadth, Markets, Holdings, Options, Earnings, Agentic breaker and ticket, Heads up) stays, and every other
+route is unchanged. Strip height and the page top offset do not depend on the items. It repaints on `pf:route` and
+`pf:render` (tap, hash, Back/Forward, account switch). Classic mode has no `PFExperience`, so it is unchanged.
+Covered by `tests/journey-browser.mjs`.

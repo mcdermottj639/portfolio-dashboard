@@ -58,6 +58,13 @@
   }
   function sec(cls, text) { return '<span class="tk-sec ' + cls + '">' + esc(text) + '</span>'; }
 
+  // Routes whose own page already shows the account values and today's move (PFExperience route ids; both accounts).
+  var BOOK_ROUTES = { today: 1, accounts: 1, holdings: 1, performance: 1, heatmap: 1, risk: 1, income: 1 };
+  function pageShowsBook() {
+    var r; try { r = window.PFExperience && window.PFExperience.route; } catch (e) { r = null; }
+    return !!(r && BOOK_ROUTES[r] === 1);
+  }
+
   function content(d) {
     var model = M(); if (!model) return '';
     var cal = {}; try { if (typeof window._earnMap === 'function') cal = window._earnMap() || {}; } catch (e) {}
@@ -65,12 +72,15 @@
     var out = [];
 
     // Your book — combined day move first, because it is the number the owner opens the app for.
-    var book = [];
-    if (s.day != null) {
+    // v237 (Dashboard 2.0 Phase 1b): on Today and Accounts those account-value / today's-move items repeat numbers
+    // the page itself shows, so only they are left out there; breadth and every other strip item stay. Display only:
+    // the model call above is unchanged and the strip height does not depend on its items.
+    var book = [], quiet = pageShowsBook();
+    if (s.day != null && !quiet) {
       var basis = s.equity != null ? s.equity - s.day : null, pct = basis > 0 ? s.day / basis * 100 : null;
       book.push(item('<span class="tk-sym">Today</span><span class="tk-big">' + money(s.day, true) + '</span>' + chg(pct) + (s.partialDay ? '<span class="tk-muted">partial</span>' : ''), ' data-ex-route="today"', 'Combined day move'));
     }
-    s.accounts.forEach(function (a) {
+    if (!quiet) s.accounts.forEach(function (a) {
       if (a.day == null && a.equity == null) return;
       book.push(item('<span class="tk-sym">' + esc(a.label) + '</span><span class="tk-px">' + money(a.equity) + '</span>' + chg(a.dayPct), ' data-ex-route="accounts" data-ex-account="' + esc(a.account) + '"', a.label));
     });
@@ -177,6 +187,9 @@
     // The self-directed book (window.__SNAP) is assembled a beat after decryption; repaint until it lands.
     var tries = 0, t = setInterval(function () { tries++; render(); if (window.__SNAP || tries > 20) clearInterval(t); }, 500);
     setInterval(render, 60000);
+    // v237: a route change (tap, hash, Back/Forward) or account switch repaints the strip; render() skips identical output.
+    document.addEventListener('pf:route', function () { render(); });
+    document.addEventListener('pf:render', function () { render(); });
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') render(); });
     if (window.MutationObserver) new MutationObserver(function () { render(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   }
