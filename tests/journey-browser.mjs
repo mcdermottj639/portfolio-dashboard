@@ -193,11 +193,11 @@ try{
   await header('main','income').click();await settle();
   assert.doesNotMatch(await page.locator('#b-inc').innerText(),/\$\d/,'opened-after-folded income card is masked in privacy mode');
   await page.evaluate(()=>setPrivacy(false));await settle();assert.match(await page.locator('#b-inc').innerText(),/\$\d/);
-  // (g) the Agentic header and tiles are unchanged (the duplicate-tile removal was NOT done: see CLAUDE.md v235), self-directed snapshot unchanged
+  // (g) v237 contract (supersedes the v235 "unchanged" pin): the Agentic header carries value, today's move and Invested; the snapshot is the four tiles left; self-directed unchanged
   await nav('accounts','agentic');await settle();
   assert.match(await page.locator('#agentic-app .header .h-value').first().innerText(),/\$[\d,]+\.\d\d/);
-  assert.match(await page.locator('#agentic-app .header').innerText(),/today/);
-  assert.deepEqual(await page.locator('#agentic-app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Account Value','Day Change','Unrealized','YTD Return','Idle Cash','Portfolio Beta']);
+  assert.match(await page.locator('#agentic-app .header').innerText(),/today.*Invested \$[\d,]+\.\d\d/s);
+  assert.deepEqual(await page.locator('#agentic-app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Unrealized','YTD Return','Idle Cash','Portfolio Beta']);
   await nav('accounts','main');await settle();
   assert.deepEqual(await page.locator('#app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Buying Power','Day Change','Unrealized','YTD Return','Leverage','Portfolio Beta'],'self-directed snapshot labels');
   await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
@@ -298,6 +298,109 @@ try{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
  }
+
+ // ── v237 Dashboard 2.0 Phase 1b: Agentic header carries Invested, repeated tiles removed; the tape stops repeating account numbers on Today and Accounts (display only) ──
+ {
+  const cdp=await page.context().newCDPSession(page);
+  const AGH='#agentic-app .header', AGT='#agentic-app [data-sec="snapshot"] .snap-lbl';
+  const hdr=async()=>({val:await page.locator(AGH+' .h-value').innerText(),sub:await page.locator(AGH+' .h-sub-ag').count()?await page.locator(AGH+' .h-sub-ag').innerText():null,all:await page.locator(AGH).innerText()});
+  const withAgentic=async(mut)=>{await page.evaluate(m=>{window.__v237bak=window.__v237bak||JSON.stringify({a:__DATA.agentic,g:__DATA.generatedAt});const A=JSON.parse(window.__v237bak).a;const gen=JSON.parse(window.__v237bak).g;__DATA.agentic=A;__DATA.generatedAt=gen;if(m)(new Function('d',m))(__DATA);renderAgenticPage();renderAgenticAnalytics();},mut||'');await settle();};
+  const restore=async()=>{await page.evaluate(()=>{if(window.__v237bak){const b=JSON.parse(window.__v237bak);__DATA.agentic=b.a;__DATA.generatedAt=b.g;renderAgenticPage();renderAgenticAnalytics();}});await settle();};
+  await nav('accounts','agentic');await settle();
+  // (a) every data state: value, today's move and Invested in the header; privacy masks all three
+  const present=await hdr();
+  assert.match(present.val,/^\$793\.14$/);assert.match(present.sub,/^[▲▼] \$[\d,.]+ today \(.*%\) · Invested \$597\.14$/);
+  assert.deepEqual(await page.locator(AGT).allTextContents(),['Unrealized','YTD Return','Idle Cash','Portfolio Beta']);
+  assert.equal(await page.locator('#agentic-app [data-sec="snapshot"] .snap').count(),4);
+  await page.evaluate(()=>setPrivacy(true));await settle();
+  assert.doesNotMatch((await hdr()).all,/\$\d/,'privacy masks the header value, move and Invested');
+  assert.match((await hdr()).all,/Invested/);
+  await page.evaluate(()=>setPrivacy(false));await settle();
+  // invested missing: positions carry no value => Invested is unknown ("—"), never $0.00; value and move stay
+  await withAgentic('d.agentic.positions.forEach(p=>{p.value=0;});');
+  let h=await hdr();assert.match(h.val,/^\$793\.14$/);assert.match(h.sub,/today.* · Invested —$/);assert.doesNotMatch(h.sub,/Invested \$0/);
+  assert.equal(await page.locator('#agentic-app [data-sec="snapshot"] .snap').count(),4);
+  // equity missing: header value falls back to cash + invested (unchanged rule); Invested still shown
+  await withAgentic('delete d.agentic.equity;');
+  h=await hdr();assert.match(h.val,/^\$\d[\d,]*\.\d\d$/);assert.match(h.sub,/Invested \$597\.14$/);
+  // equity below invested (stale equity vs fresher quotes): header keeps the producer equity, Invested shows the priced total
+  await withAgentic('d.agentic.equity=500;');
+  h=await hdr();assert.match(h.val,/^\$500\.00$/);assert.match(h.sub,/Invested \$597\.14$/);
+  // prior close unknown: no invented $0.00 move; Invested alone
+  await withAgentic('d.agentic.positions.forEach(p=>{p.symbol="ZZ"+p.symbol;});');
+  h=await hdr();assert.doesNotMatch(h.all,/today/);
+  // stale snapshot: the same header and four tiles (staleness is the freshness bar's job, as before)
+  await withAgentic('d.generatedAt=new Date(Date.now()-9*3600e3).toISOString();');
+  h=await hdr();assert.match(h.val,/^\$793\.14$/);assert.match(h.sub,/today.* · Invested \$597\.14$/);
+  assert.deepEqual(await page.locator(AGT).allTextContents(),['Unrealized','YTD Return','Idle Cash','Portfolio Beta']);
+  // account not captured: no figure, no today, no Invested, no tiles
+  await withAgentic('d.agentic=null;');
+  h=await hdr();assert.equal(h.val,'—');assert.equal(h.sub,null);assert.equal(await page.locator('#agentic-app [data-sec="snapshot"] .snap').count(),0);
+  await restore();
+  // (b) self-directed header and six tiles unchanged
+  await nav('accounts','main');await settle();
+  assert.deepEqual(await page.locator('#app [data-sec="snapshot"] .snap-lbl').allTextContents(),['Buying Power','Day Change','Unrealized','YTD Return','Leverage','Portfolio Beta']);
+  assert.doesNotMatch(await page.locator('#app .header').first().innerText(),/Invested/);
+  // (c) no horizontal overflow, clean tile layout, at the five widths (with the Duo status inset used by holdings-duo-browser)
+  const VP=[[390,844,{},2],[466,677,{right:84},2],[960,676,{right:100},4],[677,466,{left:85},2],[1280,800,{},4]];
+  const SIX={390:2,466:3,960:6,677:3,1280:5};
+  for(const [w,hh,ins,agCols] of VP){
+   await page.setViewportSize({width:w,height:hh});await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,right:ins.right||0,left:ins.left||0}});await settle();
+   for(const acct of ['agentic','main']){
+    await nav('accounts',acct);await settle();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${acct} ${w}x${hh} page width`);
+    const root=acct==='agentic'?'#agentic-app':'#app';
+    const boxes=await page.locator(root+' [data-sec="snapshot"] .snap').evaluateAll(a=>a.map(e=>{const r=e.getBoundingClientRect();return [Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)];}));
+    const cols=new Set(boxes.map(b=>b[0])).size,grid=await page.locator(root+' [data-sec="snapshot"] .snap-grid').evaluate(e=>e.getBoundingClientRect().right);
+    assert.ok(boxes.every(b=>b[0]+b[2]<=grid+2),`${acct} ${w}x${hh} tiles inside the card`);
+    if(acct==='agentic'){assert.equal(boxes.length,4);assert.equal(cols,agCols,`agentic ${w}x${hh}: ${agCols} tile columns (2x2 or one row of four)`);assert.equal(new Set(boxes.map(b=>b[2])).size,1,'tiles are equal width (no stretched/orphan tile)');assert.equal(new Set(boxes.map(b=>b[1])).size,agCols===4?1:2,`${w}: rows`);}
+    else{assert.equal(boxes.length,6);assert.equal(cols,Math.min(6,SIX[w]),`self-directed ${w}x${hh} keeps its ${SIX[w]}-column grid`);}
+    // header does not overflow its card either
+    assert.equal(await page.locator((acct==='agentic'?'#agentic-app':'#app')+' .header').first().evaluate(e=>e.scrollWidth<=e.clientWidth+1),true,`${acct} ${w}: header fits`);
+   }
+  }
+  await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,right:0,left:0}});await page.setViewportSize({width:390,height:844});await settle();
+  // (d) the tape: account value / today's move items are hidden on Today and the Accounts routes; everything else stays; same strip height and page offset everywhere
+  const tape=()=>page.evaluate(()=>{const t=document.getElementById('pf-tape'),h=t.querySelector('.tk-half'),its=[...h.querySelectorAll('.tk-it')];
+   return {h:Math.round(t.getBoundingClientRect().height*100)/100,pad:getComputedStyle(document.body).paddingTop,fresh:Math.round(document.getElementById('pf-fresh').getBoundingClientRect().top+scrollY),
+    combined:its.filter(x=>x.getAttribute('aria-label')==='Combined day move').length,accts:its.filter(x=>x.matches('[data-ex-route="accounts"]')).length,
+    breadth:its.filter(x=>x.getAttribute('aria-label')==='Holdings up and down').length,syms:its.filter(x=>x.hasAttribute('data-tk-sym')).length,
+    secs:[...h.querySelectorAll('.tk-sec')].map(x=>x.textContent),stat:t.querySelector('.tk-stat-txt').textContent.trim(),n:its.length};});
+  const HIDE=['today','accounts','holdings','performance','heatmap','risk','income'],SHOW=['options','plan','markets','analyze','smartmoney','predictions','activity','decisions'];
+  await page.evaluate(()=>setPrivacy(false));
+  let ref=null;const seen={};
+  for(const r of [...HIDE,...SHOW]){
+   await nav(r,r==='accounts'?'main':undefined);await settle();await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(150);
+   const t=await tape();seen[r]=t;
+   if(HIDE.includes(r)){assert.equal(t.combined,0,r+': no combined day move item');assert.equal(t.accts,0,r+': no per-account value items');}
+   else{assert.equal(t.combined,1,r+': combined day move shown');assert.equal(t.accts,2,r+': both account items shown');}
+   assert.ok(t.breadth===1&&t.syms>=7&&t.secs.includes('Markets')&&t.secs.includes('Holdings')&&t.stat.length>0,r+': market, holdings, breadth and status stay');
+   if(!ref)ref=t;assert.equal(t.h,ref.h,r+': strip height');assert.equal(t.pad,ref.pad,r+': page top padding');
+   if(!['holdings','performance','heatmap','risk','income'].includes(r))assert.equal(t.fresh,ref.fresh,r+': page offset under the strip');
+  }
+  assert.equal(seen.today.n+3,seen.options.n,'exactly the three account items are removed');
+  assert.deepEqual(seen.today.secs,seen.options.secs,'same strip sections on Today and Options');
+  // route change, Back/Forward, account switch and reload keep it in step
+  await nav('today');await settle();assert.equal((await tape()).combined,0);
+  await nav('options');await settle();assert.equal((await tape()).combined,1);
+  await page.goBack();await settle();assert.equal((await state()).route,'today');assert.equal((await tape()).combined,0,'Back to Today hides them');
+  await page.goForward();await settle();assert.equal((await state()).route,'options');assert.equal((await tape()).combined,1,'Forward to Options shows them');
+  await nav('accounts','agentic');await settle();assert.equal((await tape()).accts,0);
+  await page.evaluate(()=>setAccount('main'));await settle();assert.equal((await state()).account,'main');assert.equal((await tape()).accts,0,'account switch on Accounts keeps them hidden');await nav('plan','main');await settle();await page.evaluate(()=>setAccount('agentic'));await settle();assert.equal((await tape()).accts,2,'account switch on Plan keeps them');await nav('accounts','agentic');await settle();
+  await nav('plan','agentic');await settle();assert.equal((await tape()).accts,2,'Plan keeps them, either account');
+  await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();assert.equal((await state()).route,'plan');assert.equal((await tape()).accts,2);
+  await nav('today');await settle();await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();assert.equal((await tape()).combined,0,'reload on Today');
+  // privacy on Today: the strip still has no account dollar figures; on Options it masks them
+  await page.evaluate(()=>setPrivacy(true));await settle();
+  assert.doesNotMatch(await page.locator('#pf-tape .tk-half').first().innerText(),/Self-directed|Agentic\s*\$/);
+  await nav('options');await settle();assert.doesNotMatch(await page.locator('#pf-tape .tk-half').first().locator('[data-ex-account]').first().innerText().catch(()=>''),/\$\d/);
+  await page.evaluate(()=>setPrivacy(false));await settle();
+  // no data / locked states keep their message on every route (unchanged paths)
+  await page.evaluate(()=>{window.__v237d=window.__DATA;window.__DATA={locked:true};PFTape.render();});await nav('today');await settle();
+  assert.match(await page.locator('#pf-tape .tk-half').first().innerText(),/Unlock/);
+  await page.evaluate(()=>{window.__DATA=window.__v237d;PFTape.render();});await settle();
+  await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
+ }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
- console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; Options order, folds, Duo pairing and empty state; no writes.');
+ console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; Options order, folds, Duo pairing and empty state; v237 Agentic header/four tiles in every data state, tape hiding on Today and Accounts; no writes.');
 }finally{await browser.close();}

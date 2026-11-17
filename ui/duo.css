@@ -219,6 +219,8 @@ html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;back
   #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   #page-portfolio [data-sec="snapshot"] .snap{padding:10px;min-width:0}
   #page-portfolio [data-sec="snapshot"] .snap-val{font-size:clamp(14px,3.7vw,18px);white-space:nowrap}
+  /* v237: the agentic snapshot has four tiles, so 2x2 here (three columns would leave an orphan). */
+  #page-portfolio #agentic-app [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 /* 6c · Open (740–1100): use the width. */
@@ -227,6 +229,8 @@ html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;back
   #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
   #page-portfolio [data-sec="snapshot"] .snap{padding:10px;min-width:0}
   #page-portfolio [data-sec="snapshot"] .snap-val{font-size:clamp(14px,1.75vw,18px);white-space:nowrap}
+  /* v237: agentic: four tiles on one row */
+  #page-portfolio #agentic-app [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 
   /* Shared pairing grid: a page's cards sit two-up; wide ones opt back to full width. */
   #markets-app,#options-app,#plan-agentic-app,#az-result{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:start}
