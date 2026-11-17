@@ -172,3 +172,14 @@ content viewport tests from synthetic inset tests. Retain one narrow Today toolb
 44px Back/Classic/account links, sticky date/stale/appearance controls and all five
 tabs. Account context stays visible on the other routes. Agentic details and all
 account/model/confirmation boundaries from v231 remain protected.
+
+### v235 — Accounts starts with the decisions (Dashboard 2.0 Phase 1a)
+
+Nothing is removed. On Portfolio › Accounts, for both accounts, Holdings Heatmap, Allocation, Income & Tax, Technical
+Signals, Fundamentals, Positions Under $250, Flow & Positioning and Rebalance Log start **folded** (header visible).
+Every card is still rendered into the DOM; All Positions, Performance, Risk & Diversification, the snapshot tiles, margin
+banner, the Agentic Target comparison & trade review block, notices and pointer cards stay open as before. A tap on a
+card header, or Expand all, is remembered per card and account (`pf_card_fold_v1`, falls back to defaults if storage
+fails); a card pinned to My view does not start folded. Anything that navigates to a card — a rail chip, the hidden routes
+(heatmap, income, technicals, fundamentals, flow, log), Find, My view — opens it first, for the session. Opening the
+Heatmap draws it. Covered by `tests/journey-browser.mjs`.

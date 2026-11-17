@@ -1,3 +1,38 @@
+## v235 — Accounts leads with decisions; secondary cards start folded (2026-11-17)
+
+Dashboard 2.0 Phase 1a, Jack's Nov 17 2026 redesign handoff: reduce routine clutter, nothing removed. Display only.
+- On Portfolio › Accounts, for BOTH accounts (`#app`, `#agentic-app`), these cards now start **folded** (header visible,
+  body hidden): Holdings Heatmap, Allocation, Income & Tax, Technical Signals, Fundamentals, Positions Under $250 (where
+  it exists), Flow & Positioning, Rebalance Log. Margin banner, header, snapshot tiles, All Positions, Performance /
+  Account Performance, Risk & Diversification, the Agentic Target comparison & trade review block, notices and the
+  pointer cards are unchanged and stay open. Every card is still rendered into the DOM by the same renderer; only the
+  body's `display` differs, through the existing collapse mechanisms (`toggleSection` data-toggle bodies, the enhancer's
+  `.card-body`), with `aria-expanded` and the chevron kept correct.
+- **How.** New `window.__pfFold` (index.html, just above the card enhancer). Cards are matched by `data-sec` inside
+  `#app` / `#agentic-app`, not by title. The enhancer calls `apply(card)` once per NEW card node (a re-render replaces the
+  node), honouring in order: this session's choice, the saved choice, a My view pin (pinned = not folded), else folded.
+  Saved choice = localStorage `pf_card_fold_v1`, one JSON map `{"main:allocation":1,"agentic:income":0}` (1 open, 0 closed,
+  per account + card); every read/write is try/catch, a storage failure just uses defaults (session memory still holds).
+  A header tap, `toggleSection` and the rail's Expand/Collapse all are the user's choice and are saved.
+- **Navigation opens a folded card (session only, not saved):** rail chips (`jump()` only opened `.card-body` cards, so it
+  now also opens data-toggle bodies — most cards), the hidden routes holdings/performance/heatmap/risk/income/technicals/
+  fundamentals/flow/log (`placeSection` in ui/experience.js), Find and My view (`scrollToCard`). The rail's Expand/Collapse
+  all label is re-synced. The treemap cannot lay out at zero width (`renderHeatmap` skips a hidden container, as it always
+  has for a hidden tab), so opening the Heatmap card calls `renderHeatmap` once; its drawing code is untouched. A folded
+  self-directed Heatmap therefore has an empty container until it is opened — the one card whose body is not pre-drawn.
+- **Not done: removing the duplicate Account Value / Day Change tiles from the Agentic snapshot.** The Account Value tile
+  shows `book = max(equity, invested)` with an "Invested $X" sub-line the header (`equity` only) does not carry, and
+  the 5/6/3-column snapshot grids (index.html, duo.css) assume six tiles. Day Change would be safe in isolation but the
+  pair was one request. Needs a design decision; both tiles and the header are unchanged and pinned by a test.
+- Files: `index.html`, `ui/experience.js`, `sw.js`, `tests/journey.test.cjs`, `tests/journey-browser.mjs`,
+  `UI-PRESERVATION.md`, `CLAUDE.md`.
+- Verified (synthetic preview, Chromium 153 via `executablePath`; Playwright 1.57): `journey-browser` covers default folds on
+  both accounts, content present while folded, persistence across a re-render and a reload (open and closed), storage
+  failure, rail chip / Expand all / hidden routes / Find, a pinned card, no horizontal overflow at 390, 466x677 and
+  960x676 folded and expanded, and privacy masking after opening. Not verified: a physical iPhone Duo, WebKit (not
+  available here), real decrypted data. Known existing quirk, unchanged: Find/My view match a card by title, so a title
+  shared by both accounts lands on the self-directed card. App/cache **v235 / pf-v235**.
+
 ## v234 — Open Duo follow-up from Jack's screen recording (2026-11-17)
 
 Jack (Nov 17 00:54 ET, 37-second screen recording of v233 on the open Duo, dark theme): "Peak into wide screen duo

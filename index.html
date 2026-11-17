@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=234"></script>
-<script src="ui/experience-model.js?v=234"></script>
+<script src="ui/theme.js?v=235"></script>
+<script src="ui/experience-model.js?v=235"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -726,13 +726,13 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=234">
-<link rel="stylesheet" href="ui/journey.css?v=234">
-<link rel="stylesheet" href="ui/predictions.css?v=234">
-<link rel="stylesheet" href="ui/smartmoney.css?v=234">
-<link rel="stylesheet" href="ui/ticker.css?v=234">
-<link rel="stylesheet" href="ui/today.css?v=234">
-<link rel="stylesheet" href="ui/duo.css?v=234">
+<link rel="stylesheet" href="ui/experience.css?v=235">
+<link rel="stylesheet" href="ui/journey.css?v=235">
+<link rel="stylesheet" href="ui/predictions.css?v=235">
+<link rel="stylesheet" href="ui/smartmoney.css?v=235">
+<link rel="stylesheet" href="ui/ticker.css?v=235">
+<link rel="stylesheet" href="ui/today.css?v=235">
+<link rel="stylesheet" href="ui/duo.css?v=235">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -797,9 +797,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=234"></script>
-<script src="ui/apex.js?v=234"></script>
-<script src="ui/business.js?v=234"></script>
+<script src="ui/sd-rules.js?v=235"></script>
+<script src="ui/apex.js?v=235"></script>
+<script src="ui/business.js?v=235"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -913,7 +913,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v234'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v235'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1475,6 +1475,7 @@ function toggleSection(bodyId){ const body=document.getElementById(bodyId); cons
   // few whose header wasn't already .collapsible), so both the screen-reader state and the section
   // rail's Expand/Collapse-all label have to be maintained here as well as there.
   if(head)head.setAttribute('aria-expanded',hiding?'false':'true');
+  try{ if(head&&window.__pfFold)window.__pfFold.note(head.parentElement,!hiding,true); }catch(e){}   // v235: remember a fold-set card's open/closed choice
   try{ const pg=body.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(e){} }
 window.toggleSection=toggleSection;
 function toast(msg){ const t=document.getElementById('toast'); if(!t)return; if(msg)t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2800); }
@@ -5061,6 +5062,48 @@ function switchTab(tab){
 }
 window.switchTab=switchTab;
 
+/* v235 — Dashboard 2.0 Phase 1a: on Portfolio > Accounts the secondary cards START folded, on BOTH accounts.
+   Display only: every card is still rendered into the DOM (its renderer runs exactly as before); only whether
+   the body starts hidden changes, through the same two collapse mechanisms below (toggleSection's data-toggle
+   bodies and the enhancer's .card-body). Cards are identified by data-sec inside #app / #agentic-app, not by
+   title. A card re-renders as a NEW node (load() / renderAgenticPage), so apply() runs once per new node, before
+   first paint, and honours — in order — the choice made this session, the choice saved in localStorage
+   `pf_card_fold_v1` ({"main:allocation":1|0,...}, 1 = open), a My view pin (a pinned card does not start
+   folded), else the default (folded). Anything that navigates to a card calls open(), which unfolds it for the
+   session only; a header tap / Expand-all is the user's choice and is saved. Storage failure = defaults. */
+(function(){
+  var KEY='pf_card_fold_v1';
+  var SECS={heatmap:1,allocation:1,income:1,technicals:1,fundamentals:1,smalls:1,flow:1,'rebalance-log':1};
+  var mem={};
+  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':null); }
+  function keyOf(c){ var s=c&&c.getAttribute&&c.getAttribute('data-sec'), a=c&&acctOf(c); return (a&&s&&SECS[s])?a+':'+s:null; }
+  function read(){ try{ var v=JSON.parse(localStorage.getItem(KEY)||'null'); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }catch(e){ return {}; } }
+  function save(k,open){ try{ var m=read(); m[k]=open?1:0; localStorage.setItem(KEY,JSON.stringify(m)); }catch(e){} }
+  function bodyOf(c){ var b=c.querySelector(':scope > .card-body'); if(b)return b;
+    var t=c.querySelector(':scope > .card-title'), id=t&&t.getAttribute('data-toggle'); return id?document.getElementById(id):null; }
+  function pinned(c){ try{ var t=window.__navTitleOf&&window.__navTitleOf(c); if(!t)return false;
+    var a=JSON.parse(localStorage.getItem('pf_pins')||'[]'); return Array.isArray(a)&&a.indexOf(t)>=0; }catch(e){ return false; } }
+  function paint(c,open){
+    var b=bodyOf(c), t=c.querySelector(':scope > .card-title'); if(!b)return false;
+    b.style.display=open?'':'none';
+    var ch=t&&t.querySelector('.chevron'); if(ch)ch.style.transform=open?'':'rotate(-90deg)';
+    if(t)t.setAttribute('aria-expanded',open?'true':'false');
+    return true;
+  }
+  /* A hidden treemap has no width: renderHeatmap skips a zero-width container, so draw it when it opens. */
+  function opened(c){ try{ if(c.getAttribute('data-sec')==='heatmap'&&typeof renderHeatmap==='function')renderHeatmap(acctOf(c)==='agentic'?'-ag':''); }catch(e){} }
+  function sync(c){ try{ var pg=c.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(e){} }
+  window.__pfFold={
+    key:keyOf,
+    apply:function(c){ try{ var k=keyOf(c); if(!k)return;
+      var want=mem[k]!==undefined?mem[k]:(function(){ var m=read(); return (m[k]===1||m[k]===0)?m[k]===1:pinned(c); })();
+      if(!want)paint(c,false); }catch(e){} },
+    note:function(c,open,persist){ try{ var k=keyOf(c); if(!k)return; mem[k]=!!open; if(persist)save(k,open); if(open)opened(c); }catch(e){} },
+    open:function(c){ try{ var k=keyOf(c), b=bodyOf(c); if(!b||b.style.display!=='none')return;
+      paint(c,true); if(k)mem[k]=true; opened(c); sync(c); }catch(e){} }
+  };
+})();
+
 /* Make every card collapsible (cards rendered later are caught via MutationObserver). */
 (function(){
   function enhance(card){
@@ -5071,6 +5114,7 @@ window.switchTab=switchTab;
       // Already wired — it owns its own toggleSection body. Still stamp the initial ARIA state
       // here, since that is the only place every card passes through exactly once; toggleSection
       // maintains it from then on.
+      try{ if(window.__pfFold)window.__pfFold.apply(card); }catch(e){}   // v235: default-fold secondary Accounts cards
       if(!title.hasAttribute('aria-expanded')){
         var ob=title.getAttribute('data-toggle'); var oe=ob?document.getElementById(ob):null;
         title.setAttribute('aria-expanded',(oe&&oe.style.display==='none')?'false':'true');
@@ -5083,6 +5127,7 @@ window.switchTab=switchTab;
     if(!title.querySelector('.chevron')){ var ch=document.createElement('span'); ch.className='chevron'; ch.textContent='▼'; title.appendChild(ch); }
     title.classList.add('collapsible');
     title.setAttribute('aria-expanded','true');   // cards render expanded
+    try{ if(window.__pfFold)window.__pfFold.apply(card); }catch(e){}   // v235: the heatmap card folds here
     title.addEventListener('click',function(e){
       // Only a bare-header tap collapses. Ignore taps on interactive controls that live in the
       // header (e.g. the heatmap "Day / vs S&P YTD" toggles, and v131's pin star) — otherwise one
@@ -5091,6 +5136,7 @@ window.switchTab=switchTab;
       var hide=body.style.display!=='none'; body.style.display=hide?'none':'';
       var c=title.querySelector('.chevron'); if(c)c.style.transform=hide?'rotate(-90deg)':'';
       title.setAttribute('aria-expanded',hide?'false':'true');
+      try{ if(window.__pfFold)window.__pfFold.note(card,!hide,true); }catch(err){}
       // The rail's expand/collapse-all label reflects live state, so an individual toggle moves it.
       try{ var pg=card.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(err){}
     });
@@ -5156,6 +5202,7 @@ window.switchTab=switchTab;
   function jump(id){
     var card=document.getElementById(id); if(!card)return;
     for(var dd=card.parentElement; dd; dd=dd.parentElement){ if(dd.tagName==='DETAILS'&&!dd.open)dd.open=true; else if(dd.id&&dd.style&&dd.style.display==='none'&&window.toggleSection&&document.querySelector('[data-toggle="'+dd.id+'"]'))window.toggleSection(dd.id); }   // v202: a card inside a folded section ("Other screens") opens it first
+    try{ if(window.__pfFold)window.__pfFold.open(card); }catch(e){}   // v235: a data-toggle body (most cards) opens here too
     var body=card.querySelector(':scope > .card-body');
     if(body&&body.style.display==='none'){ body.style.display=''; var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform=''; }
     var y=card.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-topOffset();
@@ -5233,6 +5280,7 @@ window.switchTab=switchTab;
       if(ch)ch.style.transform=collapse?'rotate(-90deg)':'';
       var t=c.querySelector(':scope > .card-title');
       if(t)t.setAttribute('aria-expanded',collapse?'false':'true');
+      try{ if(window.__pfFold)window.__pfFold.note(c,!collapse,true); }catch(e){}
     });
     syncAllLabel(pageEl);
   };
@@ -6078,6 +6126,7 @@ window.switchTab=switchTab;
   }
   function scrollToCard(card){
     for(var dd=card.parentElement; dd; dd=dd.parentElement){ if(dd.tagName==='DETAILS'&&!dd.open)dd.open=true; else if(dd.id&&dd.style&&dd.style.display==='none'&&window.toggleSection&&document.querySelector('[data-toggle="'+dd.id+'"]'))window.toggleSection(dd.id); }   // v202: open a folded section first
+    try{ if(window.__pfFold)window.__pfFold.open(card); }catch(e){}   // v235: a data-toggle body (most cards) opens here too
     var body=card.querySelector(':scope > .card-body');
     if(body&&body.style.display==='none'){ body.style.display='';
       var ch=card.querySelector(':scope > .card-title .chevron'); if(ch)ch.style.transform='';
@@ -8786,16 +8835,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=234"></script>
-<script src="ui/today.js?v=234"></script>
-<script src="ui/predictions-model.js?v=234"></script>
-<script src="ui/predictions.js?v=234"></script>
-<script src="ui/smartmoney-model.js?v=234"></script>
-<script src="ui/smartmoney.js?v=234"></script>
-<script src="ui/experience.js?v=234"></script>
-<script src="ui/ticker.js?v=234"></script>
-<script src="ui/duo.js?v=234"></script>
-<script src="ui/compact.js?v=234"></script>
-<script src="ui/journey.js?v=234"></script>
+<script src="ui/today-model.js?v=235"></script>
+<script src="ui/today.js?v=235"></script>
+<script src="ui/predictions-model.js?v=235"></script>
+<script src="ui/predictions.js?v=235"></script>
+<script src="ui/smartmoney-model.js?v=235"></script>
+<script src="ui/smartmoney.js?v=235"></script>
+<script src="ui/experience.js?v=235"></script>
+<script src="ui/ticker.js?v=235"></script>
+<script src="ui/duo.js?v=235"></script>
+<script src="ui/compact.js?v=235"></script>
+<script src="ui/journey.js?v=235"></script>
 </body>
 </html>
