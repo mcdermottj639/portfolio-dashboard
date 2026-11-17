@@ -419,6 +419,12 @@ try{
   await runTicketStatusChecks({browser,base,sample,stub,writes,
    apex:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}});
  }
+ // ── v243: Apex v2.9 PAPER research view (display only; the live Apex card, rules and Confirm must not change) ──
+ {
+  const {runApexPaperChecks}=await import('./apex-paper-checks.mjs');
+  await runApexPaperChecks({browser,base,sample,stub,writes,shots:out,
+   apex:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}});
+ }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);
- console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; Options order, folds, Duo pairing and empty state; Plan/Screens/Predict folds (v239); ticket-status wording (v240); Navigation B (five areas, 21 routes x both accounts, tap counts, deep links, stored prefs, Back/Forward, account sync, Classic, layouts); no writes.');
+ console.log('journey-browser PASS: Back/Forward/reload, scroll, account-local selection, search/evidence filters, expansion, privacy, keyboard, 12 destinations × 5 widths, themes; Accounts default-fold, persistence and navigation; Options order, folds, Duo pairing and empty state; Plan/Screens/Predict folds (v239); ticket-status wording (v240); Apex v2.9 paper view (v243); Navigation B (five areas, 21 routes x both accounts, tap counts, deep links, stored prefs, Back/Forward, account sync, Classic, layouts); no writes.');
 }finally{await browser.close();}

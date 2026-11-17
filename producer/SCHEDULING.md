@@ -372,3 +372,7 @@ Step 1: `node producer/agentic-due.mjs`. AGENTIC_NOT_DUE → reply one line and 
 FAILURE RULE: if you stop before committing a target for any reason other than NOT_DUE, PushNotification one line naming the failed step. Never run producer/run.mjs or preflight here.
 ```
 </details>
+
+## Apex v2.9 paper track (added 2026-11-17)
+
+The "Apex v2.9 paper track · 0741" scheduled task (weekdays 7:52 AM ET) is separate from the producer. It calls Robinhood `preview_scan` for the 12 slices printed by `node producer/apex-paper.mjs --print-batches`, runs the engine, and publishes only `data/apex-paper-v29.json` through a data-only PR. Paper only: it never touches `data.json`, `data/apex-targets.json`, orders, alerts or saved scans. The rules live in `producer/apex-paper.mjs`, never in the task prompt.

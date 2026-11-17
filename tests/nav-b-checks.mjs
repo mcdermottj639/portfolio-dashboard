@@ -4,15 +4,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-export const ROUTES=['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','scenario','activity','log','smartmoney','predictions'];
+export const ROUTES=['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','scenario','activity','log','smartmoney','predictions','apexpaper'];
 const SCOPED=['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'];
-const STATIC={today:'today',markets:'research',screens:'research',analyze:'research',smartmoney:'research',predictions:'research',options:'more',decisions:'more',log:'more',activity:'more'};
+// v243: apexpaper (Apex v2.9 paper research) is Apex-only: it pins the self-directed account whatever pf_acct was.
+const PINNED={apexpaper:'main'};
+export const accountAfter=(route,acct)=>PINNED[route]||acct;
+const STATIC={apexpaper:'apex',today:'today',markets:'research',screens:'research',analyze:'research',smartmoney:'research',predictions:'research',options:'more',decisions:'more',log:'more',activity:'more'};
 export const expectedArea=(route,acct)=>SCOPED.includes(route)?(acct==='agentic'?'agentic':'apex'):STATIC[route];
-const CHIPS={today:['Daily brief'],apex:['Plan','Account','Research','What if?'],agentic:['Plan','Account','Research','What if?'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity']};
+const CHIPS={today:['Daily brief'],apex:['Plan','Account','Research','What if?','v2.9 Paper'],agentic:['Plan','Account','Research','What if?'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity']};
 // Section routes with no chip: the card they scroll to, and its rail-chip text.
 const RAIL={performance:'Performance',heatmap:'Heatmap',risk:'Risk',income:'Income',technicals:'Technical',fundamentals:'Fundamentals',flow:'Flow'};
+// apexpaper is new in v243 and has no v236 baseline: its entry (1) is only the budget that admits the two taps it takes (Apex, then its chip).
 // Taps from a fresh load (Today, self-directed) on v236 (measured with the same paths on the v236 shell, audit/nav/old.json).
-const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,scenario:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1},
+const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,scenario:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1,apexpaper:1},
   agentic:{plan:2,accounts:2,holdings:3,performance:3,heatmap:3,risk:3,income:3,technicals:3,fundamentals:3,flow:3,scenario:3,decisions:3,log:3,activity:2}};
 // Smallest v236 nav / sub-nav chip boxes per viewport (width, height), measured on the v236 shell.
 const OLD_MIN={'320x568':{item:[59,50],chip:44},'390x844':{item:[73,50],chip:44},'466x677':{item:[88,50],chip:44},'960x676':{item:[64,58],chip:42},'677x466':{item:[62,52],chip:42},'1280x800':{item:[159,48],chip:42}};
@@ -105,7 +109,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     const PATH=(r,a)=>{const ag=a==='agentic',A=ag?'agentic':'apex',sel=ag?['SELECT']:[];
       const m={today:[],plan:[area(A)],accounts:[area(A),chip('accounts')],scenario:[area(A),chip('scenario')],holdings:[area(A),step('holdings')],
         options:[area('more')],markets:[area('research')],screens:[area('research'),chip('screens')],analyze:[area('research'),chip('analyze')],
-        smartmoney:[area('research'),chip('smartmoney')],predictions:[area('research'),chip('predictions')],
+        apexpaper:[area('apex'),chip('apexpaper')],smartmoney:[area('research'),chip('smartmoney')],predictions:[area('research'),chip('predictions')],
         decisions:[area('more'),chip('decisions'),...sel],log:[area('more'),chip('log'),...(ag?['#acct-tg-agentic']:[])],activity:[area('more'),chip('activity'),...sel]};
       for(const k of Object.keys(RAIL))m[k]=[area(A),chip('accounts'),rail(RAIL[k])];return m[r];};
     for(const acct of ['main','agentic'])for(const route of ROUTES){
@@ -132,11 +136,11 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
   // ── 3. Every route's hash loads on refresh and highlights the right area for BOTH accounts ──
   for(const acct of ['main','agentic'])for(const route of ROUTES){
     const label=`deep link ${acct}:${route}`,{ctx,p}=await open({seed:{pf_acct:acct},hash:'#view='+route});
-    const s=await st(p);assert.equal(s.route,route,label);assert.equal(s.account,acct,label+': account kept');
+    const s=await st(p);assert.equal(s.route,route,label);assert.equal(s.account,accountAfter(route,acct),label+': account kept (an Apex-only route pins the self-directed account)');
     assert.equal(await areas(p).then(a=>a.length),1,label+': exactly one highlighted area');
     assert.deepEqual(await areas(p),[expectedArea(route,acct)],label+': area');
     if(SCOPED.includes(route))await assertContent(p,route,acct,label);
-    assert.ok((await p.locator('body').innerText()).length>400,label+': page is not blank');
+    assert.ok((await p.locator('body').innerText()).length>(route==='apexpaper'?150:400),label+': page is not blank');
     // refresh keeps the same route and area
     await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
     assert.equal((await st(p)).route,route,label+': after refresh');assert.deepEqual(await areas(p),[expectedArea(route,acct)],label+': area after refresh');
@@ -147,7 +151,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
   for(const [i,route] of ROUTES.entries()){
     const acct=i%2?'agentic':'main',label=`stored pf_experience_route=${route} (${acct})`,{ctx,p}=await open({seed:{pf_acct:acct,pf_experience_route:route}});
     assert.equal((await st(p)).route,route,label);assert.deepEqual(await areas(p),[expectedArea(route,acct)],label);
-    assert.ok((await p.locator('body').innerText()).length>400,label+': not blank');await ctx.close();
+    assert.ok((await p.locator('body').innerText()).length>(route==='apexpaper'?150:400),label+': not blank');await ctx.close();
   }
   for(const bad of ['constructor','__proto__','toString','','zzz','Plan'])for(const acct of ['weird','agentic']){
     const {ctx,p}=await open({seed:{pf_acct:acct,pf_experience_route:bad}});
