@@ -11,12 +11,12 @@ const PINNED={apexpaper:'main'};
 export const accountAfter=(route,acct)=>PINNED[route]||acct;
 const STATIC={apexpaper:'apex',today:'today',markets:'research',screens:'research',analyze:'research',smartmoney:'research',predictions:'research',options:'more',decisions:'more',log:'more',activity:'more'};
 export const expectedArea=(route,acct)=>SCOPED.includes(route)?(acct==='agentic'?'agentic':'apex'):STATIC[route];
-const CHIPS={today:['Daily brief'],apex:['Plan','Account','Research','What if?','v2.9 Paper'],agentic:['Plan','Account','Research','What if?'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity']};
+const CHIPS={today:['Daily brief'],apex:['Overview','Positions','Research','Actions'],agentic:['Overview','Positions','Research','Actions'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity','Classic view']};
 // Section routes with no chip: the card they scroll to, and its rail-chip text.
 const RAIL={performance:'Performance',heatmap:'Heatmap',risk:'Risk',income:'Income',technicals:'Technical',fundamentals:'Fundamentals',flow:'Flow'};
-// apexpaper is new in v244 and has no v236 baseline: its entry (1) is only the budget that admits the two taps it takes (Apex, then its chip).
+// apexpaper is new in v244 and has no v236 baseline: its entry (2) is only the budget that admits the three taps it takes in v242 (Apex, Overview, the "v2.9 Paper research" row).
 // Taps from a fresh load (Today, self-directed) on v236 (measured with the same paths on the v236 shell, audit/nav/old.json).
-const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,scenario:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1,apexpaper:1},
+const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,scenario:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1,apexpaper:2},
   agentic:{plan:2,accounts:2,holdings:3,performance:3,heatmap:3,risk:3,income:3,technicals:3,fundamentals:3,flow:3,scenario:3,decisions:3,log:3,activity:2}};
 // Smallest v236 nav / sub-nav chip boxes per viewport (width, height), measured on the v236 shell.
 const OLD_MIN={'320x568':{item:[59,50],chip:44},'390x844':{item:[73,50],chip:44},'466x677':{item:[88,50],chip:44},'960x676':{item:[64,58],chip:42},'677x466':{item:[62,52],chip:42},'1280x800':{item:[159,48],chip:42}};
@@ -68,7 +68,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
       for(const [i,id] of tg.entries())assert.equal(await p.locator(id).getAttribute('aria-selected'),String((i===0)===(acct==='main')),`${label}: ${id} aria-selected in step`);
       if(route!=='scenario')await assertTogglesHidden(p,label);
     }
-    if(route==='scenario')assert.match(await p.locator('#ex-context').innerText(),acct==='main'?/^Apex \(self-directed\)/:/^Agentic \(automated\)/,`${label}: scenario names its account`);
+    if(route==='scenario')assert.match(await p.locator('#ex-context').innerText(),acct==='main'?/^Self-directed · ••••0741/:/^Automated · ••••3900/,`${label}: scenario names its account`);
     assert.equal(await p.locator('#ex-account').inputValue(),acct,`${label}: header select agrees`);
   }
   // What names the account on the Accounts / Plan pages now that the switch is gone: caption + hero.
@@ -76,13 +76,13 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     const cap=await p.locator('#ex-context').innerText(),vis=await p.locator('#ex-context').isVisible();
     assert.equal(vis,true,`${label}: caption visible`);
     if(route==='accounts'){
-      assert.match(cap,acct==='main'?/^Apex \(self-directed\) · Account$/:/^Agentic \(automated\) · Account$/,`${label}: caption names the account`);
+      assert.match(cap,acct==='main'?/^Self-directed · ••••0741$/:/^Automated · ••••3900$/,`${label}: caption names the account`);
       const tag=await p.locator(acct==='main'?'#app .h-tag':'#agentic-app .h-tag').first();
       assert.equal(await tag.isVisible(),true,`${label}: hero pill visible`);
       const shown=await tag.evaluate(e=>e.innerText+JSON.parse(getComputedStyle(e,'::after').content.replace(/^none$/,'""')));
       assert.match(shown,acct==='main'?/Individual Margin · ••••0741$/:/Agentic ••••3900 · limited margin/,`${label}: hero pill names the account suffix and type`);
     }else if(route==='plan'){
-      assert.match(cap,acct==='main'?/^Apex \(self-directed\) · Plan$/:/^Agentic \(automated\) · Plan$/,`${label}: caption names the account`);
+      assert.match(cap,acct==='main'?/^Self-directed · ••••0741$/:/^Automated · ••••3900$/,`${label}: caption names the account`);
       if(acct==='agentic')assert.match(await p.locator('#plan-agentic-app .ph-label').first().innerText(),/Agentic Strategy · ••••3900/i,`${label}: plan hero names the account`);
     }
   }
@@ -105,13 +105,13 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
   // ── 2. Tap paths from a fresh load: every route reachable within (v236 taps + 1) ──
   const tapTable={};
   {
-    const step=r=>`[data-pj-go="${r}"]`, rail=l=>`#page-portfolio .card-nav-chip:has-text("${l}")`;
+    const SCEN='.ws-row[data-ex-route="scenario"]', rail=null;
     const PATH=(r,a)=>{const ag=a==='agentic',A=ag?'agentic':'apex',sel=ag?['SELECT']:[];
-      const m={today:[],plan:[area(A)],accounts:[area(A),chip('accounts')],scenario:[area(A),chip('scenario')],holdings:[area(A),step('holdings')],
+      const m={today:[],plan:[area(A)],accounts:[area(A),chip('accounts')],scenario:[area(A),chip('accounts'),SCEN],holdings:[area(A),chip('holdings')],
         options:[area('more')],markets:[area('research')],screens:[area('research'),chip('screens')],analyze:[area('research'),chip('analyze')],
-        apexpaper:[area('apex'),chip('apexpaper')],smartmoney:[area('research'),chip('smartmoney')],predictions:[area('research'),chip('predictions')],
+        apexpaper:[area('apex'),chip('accounts'),'.ws-row[data-ex-route="apexpaper"]'],smartmoney:[area('research'),chip('smartmoney')],predictions:[area('research'),chip('predictions')],
         decisions:[area('more'),chip('decisions'),...sel],log:[area('more'),chip('log'),...(ag?['#acct-tg-agentic']:[])],activity:[area('more'),chip('activity'),...sel]};
-      for(const k of Object.keys(RAIL))m[k]=[area(A),chip('accounts'),rail(RAIL[k])];return m[r];};
+      for(const k of Object.keys(RAIL))m[k]=[area(A),chip('accounts')];return m[r];};
     for(const acct of ['main','agentic'])for(const route of ROUTES){
       if(acct==='agentic'&&!(route in OLD_TAPS.agentic))continue;
       const path=PATH(route,acct),{ctx,p}=await open(),label=`tap path ${acct}:${route}`;
@@ -124,7 +124,8 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
       if(RAIL[route]||route==='holdings'){
         const sec=route==='holdings'?'holdings':{performance:'performance',heatmap:'heatmap',risk:'risk',income:'income',technicals:'technicals',fundamentals:'fundamentals',flow:'flow'}[route];
         const box=await p.locator((acct==='main'?'#app':'#agentic-app')+` .card[data-sec="${sec}"]`).first().boundingBox();
-        assert.ok(box&&box.y<844&&box.y+box.height>0,`${label}: card is on screen`);
+        assert.ok(box&&box.height>0,`${label}: card is rendered (v242: sections stay on Overview, the rail chips are gone)`);
+        if(route==='holdings'){const pb=await p.locator('.ws-pos').first().boundingBox();assert.ok(pb&&pb.y<844&&pb.y+pb.height>0,`${label}: first position card is on screen`);}
       }
       if(!RAIL[route]&&route!=='holdings')await assertArea(p,route,acct,label);
       else assert.deepEqual(await areas(p),[expectedArea(route,acct)],label+': area');
@@ -172,7 +173,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     ({ctx,p}=await open());
     await p.locator(area('apex')).click();await p.locator(chip('accounts')).click();await settle(p);
     await p.locator(area('agentic')).click();await settle(p);assert.equal((await st(p)).route,'plan','Agentic has its own memory (default plan)');
-    await p.locator(chip('scenario')).click();await settle(p);
+    await p.evaluate(()=>PFExperience.navigate('scenario'));await settle(p);
     await p.locator(area('apex')).click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account],['accounts','main'],'Apex reopens its last-used route');
     await p.locator(area('agentic')).click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account],['scenario','agentic'],'Agentic reopens its last-used route');
     await ctx.close();
@@ -226,7 +227,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await p.evaluate(()=>setPlanAccount('main'));await settle(p);
     assert.equal(await p.locator('#plan-tg-main').getAttribute('aria-selected'),'true','setPlanAccount still updates the hidden plan switch');
     await p.evaluate(()=>setPlanAccount('agentic'));await settle(p);
-    await p.locator(chip('scenario')).click();await settle(p);
+    await p.evaluate(()=>PFExperience.navigate('scenario'));await settle(p);
     assert.equal(await p.locator('#ex-account').isVisible(),true,'header select is the account control on What if?');
     await p.locator('#ex-account').selectOption('main');await settle(p);
     assert.deepEqual(await areas(p),['apex'],'header select flips Agentic to Apex');await assertContent(p,'scenario','main','header select');
@@ -254,15 +255,16 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await p.evaluate(([a,b])=>localStorage.setItem('pf-journey-ui-v1',JSON.stringify({main:{symbol:a},agentic:{symbol:b}})),[onlyMain,onlyAg]);await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
     for(const [acct,A,own,other] of [['main','apex',onlyMain,onlyAg],['agentic','agentic',onlyAg,onlyMain]]){
       await p.locator(area(A)).click();await settle(p);
-      assert.deepEqual(await chipsOf(p),CHIPS[A],A+': chips Plan · Account · Research · What if?');
+      assert.deepEqual(await chipsOf(p),CHIPS[A],A+': chips Overview · Positions · Research · Actions');
       assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),1,A+': one Research chip');
-      const order=await chipsOf(p);assert.equal(order.indexOf('Research'),order.indexOf('Account')+1,A+': Research sits right after Account');
+      const order=await chipsOf(p);assert.equal(order.indexOf('Research'),order.indexOf('Positions')+1,A+': Research sits right after Positions');
       await p.locator(chip('accounts')).click();await settle(p);
       const j=(await st(p)).j;
       await p.locator('#ex-subnav [data-ex-research]').focus();assert.equal(await p.evaluate(()=>document.activeElement.hasAttribute('data-ex-research')),true,A+': Research chip is keyboard focusable');
       await p.keyboard.press('Enter');await settle(p);
       const s=await st(p);assert.deepEqual([s.route,s.account],['analyze',acct],A+': Research chip opens Analyze in the same account');
-      assert.deepEqual(await areas(p),['research'],A+': Research tab highlighted after the tap');
+      assert.deepEqual(await areas(p),[A],A+': v242 Research keeps its own area highlighted when entered from it');
+      assert.equal(await p.locator('#ex-subnav [data-ex-research]').getAttribute('aria-current'),'page',A+': Research tab is the current tab');
       assert.equal(s.j.index,j.index+1,A+': one history step');
       assert.equal(await p.locator('#pj-symbol').inputValue(),own,A+': Analyze opens the selected holding of this account');
       assert.notEqual(await p.locator('#pj-symbol').inputValue(),other,A+': never the other account\'s holding');
@@ -273,8 +275,10 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await p.evaluate(()=>localStorage.setItem('pf-journey-ui-v1','{}'));await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
     await p.locator(area('apex')).click();await p.locator('#ex-subnav [data-ex-research]').click();await settle(p);
     assert.deepEqual([(await st(p)).route,(await st(p)).account],['analyze','main'],'no selection: Analyze opens with its normal picker');
-    // Research's own row does not carry a second Research chip.
-    assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),0,'no duplicate Research chip in Research');
+    // A bare Analyze (no Apex/Agentic origin) is a Research-area page: its own row, no workspace Research tab.
+    await p.evaluate(()=>PFExperience.navigate('markets'));await settle(p);await p.locator(area('research')).click();await p.evaluate(()=>PFExperience.navigate('analyze'));await settle(p);
+    assert.deepEqual(await areas(p),['research'],'bare Analyze highlights Research');
+    assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),0,'no workspace Research tab in the Research area');
     assert.deepEqual(await chipsOf(p),CHIPS.research);
     await ctx.close();
   }
@@ -301,11 +305,12 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await settle(p);assert.deepEqual([(await st(p)).route,...(await areas(p))],['accounts',A],'Find / My view target lands in the account area');
     // Journey step buttons keep the account of the area.
     await p.evaluate(()=>PFExperience.navigate('plan'));await settle(p);
-    await p.locator('[data-pj-go="holdings"]').first().click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['holdings',acct,A]);
-    await p.evaluate(()=>PFExperience.navigate('plan'));await settle(p);
+    assert.equal(await p.locator('#pj-context').isVisible(),false,'Actions has no journey block (v242: one tab row, no step buttons)');
+    assert.equal(await p.locator('.pj-steps').count(),0,'the three big step buttons are gone');
+    await p.locator(chip('holdings')).click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['holdings',acct,A]);
     const sym=await p.locator('#pj-symbol option:not([disabled])').first().getAttribute('value')||await p.locator('#pj-symbol option:not([disabled])').first().innerText();
     await p.locator('#pj-symbol').selectOption(sym);await settle(p);
-    await p.locator('[data-pj-go="analyze"]').first().click();await settle(p);assert.deepEqual([(await st(p)).route,...(await areas(p))],['analyze','research'],'2 · Research');
+    await p.locator('[data-pj-go="analyze"]').first().click();await settle(p);assert.deepEqual([(await st(p)).route,...(await areas(p))],['analyze',A],'Research tab entered from the area keeps the area highlighted');
     await p.locator('[data-pj-go="decisions"]').first().click();await settle(p);assert.deepEqual([(await st(p)).route,...(await areas(p))],['decisions','more'],'Sources →');
     await p.evaluate(()=>PFExperience.navigate('analyze'));await settle(p);await p.locator('[data-pj-go="plan"]').first().click();await settle(p);
     assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['plan',acct,A],'3 · Plan returns to the area of the selected account');
@@ -378,7 +383,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
           // Above the page: the sub-nav, or on Plan the journey context block that follows it.
           let prev=page.previousElementSibling;while(prev&&!(prev.offsetHeight>0&&getComputedStyle(prev).position!=='fixed'))prev=prev.previousElementSibling;
           const sb=(prev||document.getElementById('ex-subnav')).getBoundingClientRect().bottom;
-          const first=[...page.children].find(e=>e.offsetHeight>0&&getComputedStyle(e).position!=='absolute');
+          const vis=[...page.querySelectorAll('.ws-block, .card, .header, .picks-hero')].filter(e=>e.offsetHeight>0&&getComputedStyle(e).position!=='absolute'),first=vis.sort((x,y)=>x.getBoundingClientRect().top-y.getBoundingClientRect().top)[0]||[...page.children].find(e=>e.offsetHeight>0);
           return {sw:document.documentElement.scrollWidth,iw:innerWidth,gap:first?first.getBoundingClientRect().top-sb:null,wraps:[...document.querySelectorAll('.acct-seg-wrap')].map(e=>e.offsetHeight),cap:document.getElementById('ex-context').scrollWidth<=document.getElementById('ex-context').parentElement.clientWidth+1};});
         const l2=`${label} ${route}`;
         assert.ok(g.sw<=g.iw,l2+': no horizontal overflow');assert.deepEqual(g.wraps,[0,0],l2+': no switch space');

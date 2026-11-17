@@ -130,18 +130,17 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   // (d) navigation opens a folded card: rail chip, Find / My view jump, Expand/Collapse all
   await fresh('ag');
   assert.equal(find(await cardsOf(AG),/How the loop runs/).folded,true);
-  await page.locator('#page-picks .card-nav-chip',{hasText:'How the loop runs'}).first().click();await settle();
-  let x=find(await cardsOf(AG),/How the loop runs/);assert.equal(x.folded,false,'rail chip opens it');assert.equal(x.aria,'true');
-  assert.equal(await stored(),null,'navigation opens for the session only, nothing is saved');
+  assert.equal(await page.locator('#page-picks .card-nav-chip:visible').count(),0,'v242: the card rail is not shown on Apex / Agentic Actions');
+  await page.locator('#plan-agentic-app [data-sec="agp-loop"] > .card-title').click();await settle();
+  let x=find(await cardsOf(AG),/How the loop runs/);assert.equal(x.folded,false,'its own header opens it');assert.equal(x.aria,'true');
+  assert.deepEqual(await stored(),{'plan-agentic:agp-loop':1},'a header tap is the owner\'s own choice and is saved (v242: the rail chip that opened it for the session only is gone)');
   await fresh('ag');
   await page.evaluate(()=>{const c=document.querySelector('#plan-agentic-app [data-sec="agp-loop"]');__pfGoCard(__navTitleOf(c),'picks');});await settle();
   assert.equal(find(await cardsOf(AG),/How the loop runs/).folded,false,'Find / My view jump opens it');
   await page.waitForTimeout(700);
   const top=await page.evaluate(()=>{const r=document.querySelector('#plan-agentic-app [data-sec="agp-loop"]').getBoundingClientRect();return [r.top,r.bottom];});assert.ok(top[0]<844&&top[1]>0,'scrolled into view');
   await fresh('ag');
-  assert.match(await page.locator('#page-picks .cn-all').innerText(),/Collapse all/,'rail label while cards are open');
-  await page.locator('#page-picks .cn-all').click();await settle();assert.ok((await cardsOf(AG)).every(y=>!y.hasBody||y.folded),'collapse all reaches every card');
-  await page.locator('#page-picks .cn-all').click();await settle();assert.ok((await cardsOf(AG)).every(y=>!y.folded),'expand all opens the folded one too');assert.match(await page.locator('#page-picks .cn-all').innerText(),/Collapse all/);
+  await page.evaluate(()=>document.querySelectorAll('#page-picks [data-sec] > .card-title[aria-expanded="false"]').forEach(t=>t.click()));await settle();assert.ok((await cardsOf(AG)).every(y=>!y.folded),'every folded card opens from its own header');
   // Research > Screens has no section rail and is not in Find / My view's page index (existing), so the card's header is only reached by opening the page.
 
   // (e) a card pinned to My view starts open (both pages)
@@ -180,8 +179,7 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   for(const [w,h,ins] of VP){
     await page.setViewportSize({width:w,height:h});await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,right:ins.right||0,left:ins.left||0}});await quick();
     await toPlanAg();await noOverflow(`plan agentic ${w}x${h} folded`);
-    await page.locator('#page-picks .cn-all').click();await quick();await noOverflow(`plan agentic ${w}x${h} expanded`);
-    await page.locator('#page-picks .cn-all').click();await quick();   // back to collapse-all, then restore defaults below
+    await page.evaluate(()=>document.querySelectorAll('#page-picks [data-sec] > .card-title[aria-expanded="false"]').forEach(t=>t.click()));await quick();await noOverflow(`plan agentic ${w}x${h} expanded`);
     await nav('plan','main');await quick();await noOverflow(`plan self-directed ${w}x${h}`);
     await toScreens();await noOverflow(`screens ${w}x${h} folded`);
     await hdr(SC,/Scoring Breakdown/).click();await quick();await noOverflow(`screens ${w}x${h} expanded`);

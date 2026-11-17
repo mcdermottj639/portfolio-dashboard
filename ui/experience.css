@@ -387,3 +387,80 @@ html.experience-on,html.experience-on body{overflow-x:clip}
 html.experience-on .acct-seg-wrap[hidden]{display:none!important}
 /* The hidden switch carried the account suffix and type ("••••0741 · margin" / "••••3900 · automated"). The agentic header pill already reads "Agentic ••••3900 · limited margin"; the self-directed one gets its suffix here so Account still names ••••0741. */
 html.experience-on #app .h-tag::after{content:" · ••••0741"}
+
+/* ── v242 · Apex / Agentic workspace (owner, Nov 17 2026: "I see more navigation than investment information") ────────────────────
+   One compact header, one tab row, freshness stamps, position cards and an action list. Display only. Colours are the app's own tokens
+   (--ex-*) and the existing pos/neg classes; the stale stamp reuses the freshness bar's warning colours. Scoped to html.ws-chrome (every
+   page but Today) and html.ws-on (Apex / Agentic), so Today's header and Classic view are untouched. */
+html.ws-chrome #ex-top{align-items:center!important;gap:8px!important;padding:6px 0!important;flex-wrap:wrap!important}
+html.ws-chrome #ex-top>div:first-of-type{flex:1 1 120px!important;min-width:0}
+html.ws-chrome #ex-top>.ws-stamps{flex:0 1 auto!important}
+html.ws-chrome #ex-top .ex-brand{font-size:20px!important;line-height:1.15;margin:0;letter-spacing:-.4px}
+html.ws-chrome #ex-top #ex-context{font-size:12px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.ws-chrome #pj-back{min-width:44px!important;width:44px;padding:0;font-size:20px;line-height:1}
+html.ws-chrome #pj-back[hidden]{display:none!important}
+html.ws-chrome #ex-top .ex-tools{width:auto!important;flex:0 0 auto!important}
+html.ws-chrome #ex-top .ex-tools:not(:has(>:not([hidden]))){display:none}
+.ws-stamps{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:11px;line-height:1.3;color:var(--ex-muted);min-width:0;flex:0 1 auto}
+.ws-stamps[hidden]{display:none!important}
+.ws-stamp{white-space:nowrap}.ws-stamp i{font-style:normal}.ws-stamp b{font-weight:650;color:var(--ex-text);font-variant-numeric:tabular-nums}.ws-stamp em{font-style:normal;font-weight:500;color:var(--ex-muted)}
+.ws-stamp[data-state="stale"]{color:#7c2d12;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:0 5px}.ws-stamp[data-state="stale"] b{color:#7c2d12}
+.ws-stamp[data-state="unknown"] b{color:var(--ex-muted)}
+@media(max-width:420px){.ws-stamps{align-items:flex-start;flex-basis:100%;flex-direction:row;flex-wrap:wrap;gap:1px 10px}}
+html.ws-on .ex-subnav{margin-bottom:6px!important}
+html.ws-on #ex-subnav button{flex:1 1 0!important;text-align:center;padding-left:6px!important;padding-right:6px!important}
+.ws-classic{font:inherit;font-size:12px;margin-left:auto;color:var(--ex-muted)!important}
+/* The card rail ("Collapse all · Apex · Action Center") is replaced by the tab row; the cards, their folds and Find / My view are untouched. */
+html.ws-on #page-portfolio>.card-nav,html.ws-on #page-picks>.card-nav{display:none!important}
+/* Pure pointer cards (Plan tab →, Rebalance Log →, Screens →, Agentic account →) were navigation layers; the bottom nav and tab row reach those places. */
+html.ws-on #app>.card:has(>.dp-link),html.ws-on #agentic-app>.card:has(>.dp-link),html.ws-on #picks-app>.card:has(>.dp-link):not(:has([data-apx-pointer])){display:none!important}
+/* One page, three tabs: the Accounts page is shown as Overview (summary, actions, then the existing cards) or Positions (cards, then All Positions). */
+html.ws-on #page-portfolio:not([style*="display: none"]):not([style*="display:none"]),html.ws-on #page-picks:not([style*="display: none"]):not([style*="display:none"]){display:flex!important;flex-direction:column}
+html.ws-on #page-portfolio>#app:not([style*="display: none"]):not([style*="display:none"]),html.ws-on #page-portfolio>#agentic-app:not([style*="display: none"]):not([style*="display:none"]){display:contents!important}
+html.ws-on #page-portfolio>*,html.ws-on #app>*,html.ws-on #agentic-app>*,html.ws-on #page-picks>*{order:60}
+html.ws-on #page-portfolio>.acct-seg-wrap,html.ws-on #page-picks>.acct-seg-wrap{order:0}
+html.ws-on #app>.header,html.ws-on #agentic-app>.header{order:10}
+html.ws-on #ws-strip{order:20}html.ws-on #ws-actions{order:30}html.ws-on #ws-more{order:40}html.ws-on #ws-poscards{order:10}
+html.ws-on #page-portfolio>.myview{order:45}html.ws-on #page-picks>.myview{order:90}
+html.ws-on #app>[data-sec="snapshot"],html.ws-on #agentic-app>[data-sec="snapshot"]{order:50}
+html.ws-on #app>.disclaimer,html.ws-on #agentic-app>.disclaimer{order:99}
+html[data-ws-tab="overview"] #app>[data-sec="holdings"],html[data-ws-tab="overview"] #agentic-app>[data-sec="holdings"]{display:none!important}
+html[data-ws-tab="positions"] #page-portfolio>.myview{order:80}
+html[data-ws-tab="positions"] #app>[data-sec="holdings"],html[data-ws-tab="positions"] #agentic-app>[data-sec="holdings"]{order:20}
+html[data-ws-tab="positions"] #app>:not(.ws-block):not([data-sec="holdings"]):not(.disclaimer),html[data-ws-tab="positions"] #agentic-app>:not(.ws-block):not([data-sec="holdings"]):not(.disclaimer){display:none!important}
+/* Overview: the account header sits tight above the summary so value, today and leverage share the first screen. */
+html.ws-on #app>.header,html.ws-on #agentic-app>.header{margin-bottom:8px!important}
+html[data-ws-tab="overview"] #app>.header,html[data-ws-tab="overview"] #agentic-app>.header{padding-top:10px!important;padding-bottom:10px!important}
+.ws-block{font-variant-numeric:tabular-nums;color:var(--ex-text)}
+.ws-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 8px}
+.ws-strip .snap{padding:8px 12px;min-width:0}.ws-strip .snap-val{font-size:18px;margin-top:2px}.ws-strip .snap-sub{margin-top:1px}.ws-strip .gauge{margin-top:4px}
+#agentic-app .ws-strip{grid-template-columns:minmax(0,1fr)}
+.ws-h{font-size:13px;font-weight:700;letter-spacing:0;margin:2px 0 6px;color:var(--ex-text);display:flex;align-items:center;gap:6px}
+.ws-count{font-size:11px;font-weight:700;min-width:20px;text-align:center;padding:1px 6px;border-radius:10px;background:var(--ex-soft);color:var(--ex-accent)}
+.ws-acts,.ws-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.ws-act,.ws-row{font:inherit;text-align:left;display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--ex-border);border-radius:10px;background:var(--ex-panel);color:var(--ex-text);cursor:pointer}
+.ws-act em{font-style:normal;font-size:11px;font-weight:700;width:20px;height:20px;border-radius:10px;background:var(--ex-soft);color:var(--ex-accent);display:grid;place-items:center;flex:0 0 auto}
+.ws-act[data-warn="1"] em{background:#fff7ed;color:#7c2d12}
+.ws-act-t{flex:1 1 auto;min-width:0;font-size:13.5px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.ws-act-t small{display:block;font-size:11px;font-weight:500;color:var(--ex-muted);margin-top:1px}
+.ws-px{font-weight:500;color:var(--ex-muted)}.ws-chev{color:var(--ex-muted);flex:0 0 auto}
+.ws-row{justify-content:space-between;font-size:13.5px;font-weight:600}
+.ws-empty{display:flex;flex-direction:column;gap:2px;padding:10px 12px;margin:0 0 10px;border:1px solid var(--ex-border);border-radius:10px;background:var(--ex-panel)}
+.ws-empty strong{font-size:14px}.ws-empty span{font-size:12px;color:var(--ex-muted)}
+.ws-pos{display:block;width:100%;text-align:left;font:inherit;border:1px solid var(--ex-border);border-radius:12px;background:var(--ex-panel);color:var(--ex-text);padding:10px 12px;margin:0 0 8px}
+.ws-pos.ws-compact{cursor:pointer;min-height:44px}
+.ws-pos[data-selected="1"]{border-color:var(--ex-accent)}
+.ws-pos-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.ws-sym{font-size:17px;letter-spacing:-.2px}.ws-pos-px{font-size:13px;font-weight:600}.ws-pos-w{font-size:12px;color:var(--ex-muted);margin-left:auto}
+.ws-pos-s{display:flex;gap:12px;font-size:12.5px;margin-top:2px}
+.ws-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px;margin:8px 0 6px}
+.ws-grid dt{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ex-muted)}.ws-grid dd{margin:1px 0 0;font-size:14px;font-weight:650;overflow-wrap:anywhere}
+.ws-next,.ws-research{display:flex;gap:8px;align-items:baseline;margin:4px 0 0;font-size:12.5px}.ws-next span,.ws-research span{flex:0 0 52px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--ex-muted)}.ws-next b,.ws-research b{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.ws-stage,.pj-stage{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin-top:8px}
+.ws-stage i,.pj-stage i{flex:0 0 14px;height:1px;background:var(--ex-border)}
+.ws-stage [aria-current="step"],.pj-stage [aria-current="step"]{font-weight:700;color:var(--ex-text);padding:6px 2px}.ws-stage [aria-current="step"]::before,.pj-stage [aria-current="step"]::before{content:'● ';color:var(--ex-accent)}
+.ws-stage button,.pj-stage button{font:inherit;font-size:12px;background:transparent;border:0;color:var(--ex-accent);min-height:44px;padding:0 4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.pj-stage{margin:2px 0 0}.pj-stage button:disabled{opacity:.45;text-decoration:none}
+html.ws-on .pj-context{padding:6px 12px;margin:0 0 8px}
+html.ws-on .pj-context-head select{min-height:40px}
+@media(max-width:340px){.ws-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:740px){.ws-strip{max-width:560px}#agentic-app .ws-strip{max-width:280px}.ws-acts,.ws-rows{max-width:640px}}

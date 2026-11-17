@@ -80,4 +80,16 @@ const css=fs.readFileSync(path.join(root,'ui/experience.css'),'utf8');
 assert.match(css,/\.ex-brief-hero\{display:grid/);
 assert.match(css,/\.ex-ring\{width:112px/);
 assert.match(css,/\.ex-cta\{display:block/);
+// Workspace stamps: full date + time + AM/PM + ET from the same toLocaleString options as Today/journey; a day-only source shows no invented time; no source = omitted.
+assert.deepEqual(M.stamp('2026-11-17T14:41:00Z'),{text:'Nov 17, 9:41 AM ET',dateOnly:false});
+assert.match(M.stamp('2026-07-04T22:05:00Z').text,/^Jul 4, 6:05 PM ET$/);
+assert.deepEqual(M.stamp('2026-11-11'),{text:'Nov 11',dateOnly:true});
+assert.equal(M.stamp('garbage'),null);assert.equal(M.stamp(null),null);
+{const now=Date.parse('2026-11-17T17:00:00Z');
+ const d={generatedAt:'2026-11-17T14:41:00Z',picks:{ts:'2026-11-16'},agentic:{target:{asOf:'2026-11-01'}}};
+ const mainS=M.freshnessStamps(d,'main',{now,apexTarget:{asOf:'2026-11-17T12:00:00Z'}});
+ assert.deepEqual(mainS.map(x=>x.key),['research','scan'],'no Account stamp: the freshness bar is the one account time');assert.equal(mainS[0].text,'Nov 17, 7:00 AM ET');assert.equal(mainS[1].dateOnly,true);
+ const agS=M.freshnessStamps(d,'agentic',{now});assert.deepEqual(agS.map(x=>x.key),['research'],'Agentic has no Last scan and no Account stamp');assert.equal(agS[0].state,'stale','a target older than 7 days is stale');
+ assert.deepEqual(M.freshnessStamps({generatedAt:'2026-11-17T10:00:00Z'},'main',{now}),[],'the account time is never a workspace stamp');
+ assert.deepEqual(M.freshnessStamps({},'main',{now}),[],'no sources, no stamps');}
 console.log('PASS: display models, missing data, scenarios, source links, preserved destinations, script syntax, cache versions, today brief visuals');

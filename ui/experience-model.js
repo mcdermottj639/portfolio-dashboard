@@ -302,5 +302,37 @@
         href: typeof e.source === 'string' && /^https:\/\//i.test(e.source) ? e.source : null
       })));
   }
-  return { number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence, ticketStatus, ticketStatusFor, TICKET_STATUS };
+  // v242 — one clock for the workspace stamps: "Nov 17, 9:41 AM ET", the same toLocaleString options (and ' ET' suffix) as ui/today.js and
+  // ui/journey.js, so the gray header and these stamps read alike. A date-only source (the agentic target and the daily scan record only
+  // a day) is shown as a date and flagged dateOnly; no time is invented.
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function stamp(value) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+      const [, , m, d] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+      return MONTHS[Number(m) - 1] ? {text: MONTHS[Number(m) - 1] + ' ' + Number(d), dateOnly: true} : null;
+    }
+    const t = typeof value === 'string' || typeof value === 'number' ? Date.parse(value) : NaN;
+    if (!Number.isFinite(t)) return null;
+    return {text: new Date(t).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit', timeZone:'America/New_York'}) + ' ET', dateOnly: false};
+  }
+  // The three clocks the owner asked to tell apart. Every threshold already exists in the app: the account snapshot is stale at
+  // 3 hours (the freshness bar), Apex entry research at 8 days (cfg.researchReady), the agentic target at more than 7 days (the
+  // plan's age colour), the daily scan at 2 days (the Screens hero). A stamp with no real source is omitted, never invented.
+  function freshnessStamps(data, account, ctx = {}) {
+    const now = ctx.now === undefined ? Date.now() : ctx.now, agentic = account === 'agentic', out = [];
+    const add = (key, label, source, isStale) => {
+      if (source === null || source === undefined || source === '') return;
+      const s = stamp(source); if (!s) return;
+      out.push({key, label, text: s.text, dateOnly: s.dateOnly, iso: String(source), state: isStale(source) ? 'stale' : 'ok'});
+    };
+    const minutes = v => age(v, now), days = v => { const t = Date.parse(v); return Number.isFinite(t) ? (now - t) / 86400000 : null; };
+    // The account snapshot time is NOT repeated here: the gray freshness bar is its one authoritative stamp, with its own stale warning (Jack, Nov 17: one date/time stamp, no duplicates).
+    if (agentic) add('research', 'Research', data?.agentic?.target?.asOf, v => { const d = days(v); return d !== null && d > 7; });
+    else {
+      add('research', 'Research', ctx.apexTarget?.asOf, v => { const m = minutes(v); return m === null || m > 8 * 1440 || m < -5; });
+      add('scan', 'Last scan', data?.picks?.ts, v => { const t = Date.parse(v + 'T00:00:00'); return Number.isFinite(t) && Math.round((now - t) / 86400000) >= 2; });
+    }
+    return out;
+  }
+  return { stamp, freshnessStamps, number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence, ticketStatus, ticketStatusFor, TICKET_STATUS };
 });
