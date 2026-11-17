@@ -34,10 +34,10 @@ test('selection choices deduplicate but retain a researched, unheld name',()=>{
 test('missing source coverage creates no invented holding',()=>assert.deepEqual(M.choices(null,null,''),[]));
 test('new assets, version and offline shell move together',()=>{
  const html=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const name of ['journey.js','journey.css','theme.js','today-model.js','today.js','today.css']){assert.ok(html.includes('ui/'+name+'?v=235'));assert.ok(sw.includes('ui/'+name+'?v=235'));}
- assert.ok(html.includes('ui/duo.css?v=235')&&sw.includes('ui/duo.css?v=235'),'Duo layouts are linked and precached');
- assert.ok(html.includes('ui/duo.js?v=235')&&sw.includes('ui/duo.js?v=235'),'side-status measure script is linked and precached');
- assert.ok(html.includes("APP_VERSION='v235'"));assert.ok(sw.includes("'pf-v235'"));
+ for(const name of ['journey.js','journey.css','theme.js','today-model.js','today.js','today.css']){assert.ok(html.includes('ui/'+name+'?v=236'));assert.ok(sw.includes('ui/'+name+'?v=236'));}
+ assert.ok(html.includes('ui/duo.css?v=236')&&sw.includes('ui/duo.css?v=236'),'Duo layouts are linked and precached');
+ assert.ok(html.includes('ui/duo.js?v=236')&&sw.includes('ui/duo.js?v=236'),'side-status measure script is linked and precached');
+ assert.ok(html.includes("APP_VERSION='v236'"));assert.ok(sw.includes("'pf-v236'"));
 });
 test('freshness header shows the date and time without a meridiem label',()=>{
  const html=fs.readFileSync('index.html','utf8');

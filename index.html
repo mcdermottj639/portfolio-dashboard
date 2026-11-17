@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=235"></script>
-<script src="ui/experience-model.js?v=235"></script>
+<script src="ui/theme.js?v=236"></script>
+<script src="ui/experience-model.js?v=236"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -726,13 +726,13 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=235">
-<link rel="stylesheet" href="ui/journey.css?v=235">
-<link rel="stylesheet" href="ui/predictions.css?v=235">
-<link rel="stylesheet" href="ui/smartmoney.css?v=235">
-<link rel="stylesheet" href="ui/ticker.css?v=235">
-<link rel="stylesheet" href="ui/today.css?v=235">
-<link rel="stylesheet" href="ui/duo.css?v=235">
+<link rel="stylesheet" href="ui/experience.css?v=236">
+<link rel="stylesheet" href="ui/journey.css?v=236">
+<link rel="stylesheet" href="ui/predictions.css?v=236">
+<link rel="stylesheet" href="ui/smartmoney.css?v=236">
+<link rel="stylesheet" href="ui/ticker.css?v=236">
+<link rel="stylesheet" href="ui/today.css?v=236">
+<link rel="stylesheet" href="ui/duo.css?v=236">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -797,9 +797,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=235"></script>
-<script src="ui/apex.js?v=235"></script>
-<script src="ui/business.js?v=235"></script>
+<script src="ui/sd-rules.js?v=236"></script>
+<script src="ui/apex.js?v=236"></script>
+<script src="ui/business.js?v=236"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -913,7 +913,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v235'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v236'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5075,8 +5075,17 @@ window.switchTab=switchTab;
   var KEY='pf_card_fold_v1';
   var SECS={heatmap:1,allocation:1,income:1,technicals:1,fundamentals:1,smalls:1,flow:1,'rebalance-log':1};
   var mem={};
-  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':null); }
-  function keyOf(c){ var s=c&&c.getAttribute&&c.getAttribute('data-sec'), a=c&&acctOf(c); return (a&&s&&SECS[s])?a+':'+s:null; }
+  /* v236 (Phase 3a): the Options page ('options' scope, #options-app) folds Income & History, Roll Scorecard and Options
+     Knowledge the same way. Sections are checked per scope so no key can leak between the Accounts and Options pages. */
+  var OSECS={'opt-history':1,'opt-rolls':1,'opt-knowledge':1};
+  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':(c.closest('#options-app')?'options':null)); }
+  function keyOf(c){ var s=c&&c.getAttribute&&c.getAttribute('data-sec'), a=c&&acctOf(c); if(!a||!s)return null;
+    if(a==='options'){ if(!OSECS[s])return null;
+      /* Income & History folds only when it holds contract history; with no ledger (or no rows) the card is just an
+         empty-state / reconciliation notice, which stays visible. */
+      if(s==='opt-history'&&!c.querySelector('.oh-hist,.oh-list'))return null;
+      return a+':'+s; }
+    return SECS[s]?a+':'+s:null; }
   function read(){ try{ var v=JSON.parse(localStorage.getItem(KEY)||'null'); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }catch(e){ return {}; } }
   function save(k,open){ try{ var m=read(); m[k]=open?1:0; localStorage.setItem(KEY,JSON.stringify(m)); }catch(e){} }
   function bodyOf(c){ var b=c.querySelector(':scope > .card-body'); if(b)return b;
@@ -6434,7 +6443,7 @@ function optRollScorecard(o){
   const rolls=(o&&o.rolls)||[]; if(!rolls.length)return '';
   const s=o.rollSummary||{};
   const vs=s.vsDoNothing!=null?'<span style="color:'+(s.vsDoNothing>=0?'#059669':'#dc2626')+'">'+(s.vsDoNothing>=0?'+':'−')+'<span data-priv="on">'+fmtD(Math.abs(s.vsDoNothing))+'</span></span>'+(s.estimated?' <span style="font-size:9.5px;color:#9ca3af">est.</span>':''):'—';
-  let h='<div class="card"><div class="card-title"><span>📒 Roll Scorecard <span class="card-hint">'+rolls.length+' roll'+(rolls.length===1?'':'s')+' · '+(s.forCredit||0)+' credit / '+(s.forDebit||0)+' debit · '+(s.settled||0)+' settled</span></span></div>';
+  let h='<div class="card" data-sec="opt-rolls"><div class="card-title"><span>📒 Roll Scorecard <span class="card-hint">'+rolls.length+' roll'+(rolls.length===1?'':'s')+' · '+(s.forCredit||0)+' credit / '+(s.forDebit||0)+' debit · '+(s.settled||0)+' settled</span></span></div>';
   h+='<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)"><div class="pk-m"><div class="pk-m-l">vs do-nothing</div><div class="pk-m-v">'+vs+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">settled rolls · estimate</div></div>'+
     '<div class="pk-m"><div class="pk-m-l">Graded green</div><div class="pk-m-v">'+(s.green||0)+' / '+rolls.length+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">all four gates passed</div></div>'+
     '<div class="pk-m"><div class="pk-m-l">For a debit</div><div class="pk-m-v" style="color:'+((s.forDebit||0)>0?'#dc2626':'inherit')+'">'+(s.forDebit||0)+'</div><div style="font-size:9.5px;color:#9ca3af;margin-top:2px">rule 1 broken</div></div></div>';
@@ -6528,7 +6537,7 @@ function optIncomeHistory(o,realized){
   const total=valid.length?valid.reduce((s,r)=>s+r.net,0):null;
   const premium=ledger&&String(ledger.asOf).slice(0,4)===year?num(ledger.premiumYTD):null;
   const difference=broker!=null&&total!=null?Math.round((broker-total)*100)/100:null;
-  let h='<div class="card"><div class="card-title"><span>📒 Options Income &amp; History <span class="card-hint">self-directed</span></span></div>';
+  let h='<div class="card" data-sec="opt-history"><div class="card-title"><span>📒 Options Income &amp; History <span class="card-hint">self-directed</span></span></div>';
   h+='<div class="opt-income-summary"><span class="opt-income-label">'+esc(year)+' YTD realized profit / loss</span><strong class="opt-income-amount">'+money(broker)+'</strong><span class="opt-income-note">'+(broker==null?'Broker total unavailable in this snapshot.':'Broker-reported options P&amp;L · '+esc(realized&&realized.asOf?realized.asOf.slice(0,10):null))+'</span></div>';
   const metrics=[];
   if(premium!=null)metrics.push(['Gross opening premiums · '+esc(year),premium,'Recorded sales, including open trades · not profit']);
@@ -6617,35 +6626,41 @@ function renderOptions(app,o,realized){
   _optCharts=[];
   let h='<div class="picks-hero"><div><div class="ph-label">Options</div><div class="ph-date">Contracts · Ideas · Knowledge</div><div class="ph-stale">Research &amp; education only — not financial advice.</div></div></div>';
   const pend=(o&&o.pending)||[], pos=(o&&o.positions)||[];
+  /* v236 (Dashboard 2.0 Phase 3a): each card is still BUILT in the original order, by the same builders, into its own string;
+     only the order they are placed on the page changes (see the assembly just before the disclaimer). */
+  let hHist='',hRoll='',hYour='',hExpiry='',hIdeas='',hCC='',hCSP='',hInc='',hKnow='';
   // Exposure roll-up (when you hold/await any contracts)
   h+=optExposureStrip(o&&o.exposure);
-  h+=optIncomeHistory(o,realized);
-  h+=optRollScorecard(o);
+  hHist+=optIncomeHistory(o,realized);
+  hRoll+=optRollScorecard(o);
   // Your options
-  h+='<div class="card"><div class="card-title"><span>📂 Your Options</span></div>';
-  if(!pend.length&&!pos.length){ h+='<div class="tech-empty">No open or pending option contracts in the snapshot. Any covered calls, cash-secured puts or long options you place will appear here on the next producer run.</div>'; }
-  else { if(pos.length)h+='<div class="picks-grid2">'+pos.map(function(p,k){return optCard(p,'pf-pos-'+k);}).join('')+'</div>'; if(pend.length){ h+='<div style="font-size:12px;font-weight:700;color:#9ca3af;margin:'+(pos.length?'12px':'2px')+' 0 8px">Pending orders</div><div class="picks-grid2">'+pend.map(function(p,k){return optCard(p,'pf-pend-'+k);}).join('')+'</div>'; } }
-  h+='</div>';
+  hYour+='<div class="card"><div class="card-title"><span>📂 Your Options</span></div>';
+  if(!pend.length&&!pos.length){ hYour+='<div class="tech-empty">No open or pending option contracts in the snapshot. Any covered calls, cash-secured puts or long options you place will appear here on the next producer run.</div>'; }
+  else { if(pos.length)hYour+='<div class="picks-grid2">'+pos.map(function(p,k){return optCard(p,'pf-pos-'+k);}).join('')+'</div>'; if(pend.length){ hYour+='<div style="font-size:12px;font-weight:700;color:#9ca3af;margin:'+(pos.length?'12px':'2px')+' 0 8px">Pending orders</div><div class="picks-grid2">'+pend.map(function(p,k){return optCard(p,'pf-pend-'+k);}).join('')+'</div>'; } }
+  hYour+='</div>';
   // Upcoming expirations
-  h+=optExpiryCalendar([...pos,...pend]);
+  hExpiry+=optExpiryCalendar([...pos,...pend]);
   // Ideas (filterable + sortable)
   const ideas=(o&&o.ideas&&o.ideas.ideas)||[];
   window._optIdeas=ideas; _optIdeaState={dir:'all',sort:'conf'};
-  h+='<div class="card" data-priv="market"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · spreads · collars · est. premiums</span></span></div>';
-  if(!ideas.length)h+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls + a defined-risk debit spread from the oversold scan, covered-call income, cash-secured puts, and a collar on your largest holding).</div>';
-  else h+=optIdeaControls(ideas)+'<div id="opt-idea-grid">'+optIdeaGridHtml()+'</div><div class="fund-note">Estimated premiums (spreads/collars are always modeled) — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
-  h+='</div>';
+  hIdeas+='<div class="card" data-priv="market"><div class="card-title"><span>🎯 Trade Ideas <span class="card-hint">directional · spreads · collars · est. premiums</span></span></div>';
+  if(!ideas.length)hIdeas+='<div class="tech-empty">Ideas populate on the next producer run (bullish calls + a defined-risk debit spread from the oversold scan, covered-call income, cash-secured puts, and a collar on your largest holding).</div>';
+  else hIdeas+=optIdeaControls(ideas)+'<div id="opt-idea-grid">'+optIdeaGridHtml()+'</div><div class="fund-note">Estimated premiums (spreads/collars are always modeled) — confirm the live ask/bid and open interest in the chain. Not a recommendation to trade.</div>';
+  hIdeas+='</div>';
   // Covered-call income ranker (your 100+ share holdings, by annualized yield)
   const ccs=ideas.filter(function(i){return i.strategy==='Covered call';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
-  if(ccs.length){ h+='<div class="card" data-priv="market"><div class="card-title"><span>💰 Covered-Call Income <span class="card-hint">your 100+ share holdings · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+ccs.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr"><b style="color:#10b981">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ price × (365 ÷ days). Caps upside at the strike; the premium is yours to keep.</div></div>'; }
+  if(ccs.length){ hCC+='<div class="card" data-priv="market"><div class="card-title"><span>💰 Covered-Call Income <span class="card-hint">your 100+ share holdings · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+ccs.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr"><b style="color:#10b981">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ price × (365 ÷ days). Caps upside at the strike; the premium is yours to keep.</div></div>'; }
   // Cash-secured put income ranker (oversold names, by annualized yield)
   const csps=ideas.filter(function(i){return i.strategy==='Cash-secured put';}).sort(function(a,b){return (b.annYield||0)-(a.annYield||0);});
-  if(csps.length){ h+='<div class="card" data-priv="market"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
+  if(csps.length){ hCSP+='<div class="card" data-priv="market"><div class="card-title"><span>💵 Cash-Secured Put Income <span class="card-hint">oversold names · annualized</span></span></div><div style="overflow-x:auto"><table><thead><tr><th>Stock</th><th class="tr">Strike</th><th class="tr">Premium</th><th class="tr">Income</th><th class="tr">Cash req</th><th class="tr">Ann. yield</th></tr></thead><tbody>'+csps.map(function(i){var p=i.live?i.premium:i.estPremium;return '<tr><td class="sym">'+i.underlying+'</td><td class="tr">$'+i.strike+'</td><td class="tr">$'+(p!=null?(+p).toFixed(2):'—')+'</td><td class="tr">~$'+(i.income||'—')+'</td><td class="tr">'+(i.cashSecured!=null?fmtD(i.cashSecured):'—')+'</td><td class="tr"><b style="color:#0ea5e9">'+(i.annYield!=null?i.annYield+'%':'—')+'</b></td></tr>';}).join('')+'</tbody></table></div><div class="fund-note">Annualized = premium ÷ strike × (365 ÷ days). You set aside the cash; if it stays above the strike you keep the premium.</div></div>'; }
   // v203: the scan's covered-call Income Ideas moved here from the Plan page (same PICK_INCOME rows, now beside the rankers)
-  h+=optPickIncomeHtml();
+  hInc+=optPickIncomeHtml();
   // Knowledge
-  h+='<div class="card" data-priv="off"><div class="card-title"><span>📚 Options Knowledge</span></div><div class="gr-list">'+
+  hKnow+='<div class="card" data-priv="off" data-sec="opt-knowledge"><div class="card-title"><span>📚 Options Knowledge</span></div><div class="gr-list">'+
      OPT_KNOWLEDGE.map(function(k){return '<details class="gr-row"><summary><b>'+k[0]+'</b><i class="oh-chev"></i></summary><p style="padding-left:12px">'+k[1]+'</p></details>';}).join('')+'</div></div>';
+  /* v236 order: what you hold (Your Options, Upcoming Expirations), then the income rankers and Income Ideas, then Trade Ideas,
+     then the secondary reference cards (Options Income & History, Roll Scorecard, Options Knowledge), which start folded. */
+  h+=hYour+hExpiry+hCC+hCSP+hInc+hIdeas+hHist+hRoll+hKnow;
   h+='<div class="disclaimer">Options involve substantial risk and are not suitable for all investors. This page is research/education from your Robinhood data — not financial advice. You trade in the Robinhood app.</div>';
   app.innerHTML=h;
   // draw payoff charts after the DOM is in place
@@ -7942,7 +7957,7 @@ async function loadPicksData(){
       if(Array.isArray(d.add))PICK_ADD=d.add;
       if(Array.isArray(d.income))PICK_INCOME=d.income;
       // v203: Income Ideas live on the Options page; if that page rendered before the picks file landed, slot the card in now
-      try{ if(PICK_INCOME.length&&!document.querySelector("[data-opt-pick-income]")){ const kn=[...document.querySelectorAll('#options-app .card')].find(c=>/Options Knowledge/.test(c.textContent)); if(kn)kn.insertAdjacentHTML('beforebegin',optPickIncomeHtml()); } }catch(e){}
+      try{ if(PICK_INCOME.length&&!document.querySelector("[data-opt-pick-income]")){ const kn=[...document.querySelectorAll('#options-app>.card')].find(c=>{ const t=c.querySelector(':scope > .card-title'); return t&&/Trade Ideas/.test(t.textContent); }); if(kn)kn.insertAdjacentHTML('beforebegin',optPickIncomeHtml());   /* v236: Income Ideas sit right before Trade Ideas now (they used to sit right before Options Knowledge) */ } }catch(e){}
       if(Array.isArray(d.history))PICK_HISTORY=d.history;
       if(d.grades&&Array.isArray(d.grades.episodes))PICK_GRADES=d.grades;
       if(d.markets)MKTX=d.markets;
@@ -8835,16 +8850,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=235"></script>
-<script src="ui/today.js?v=235"></script>
-<script src="ui/predictions-model.js?v=235"></script>
-<script src="ui/predictions.js?v=235"></script>
-<script src="ui/smartmoney-model.js?v=235"></script>
-<script src="ui/smartmoney.js?v=235"></script>
-<script src="ui/experience.js?v=235"></script>
-<script src="ui/ticker.js?v=235"></script>
-<script src="ui/duo.js?v=235"></script>
-<script src="ui/compact.js?v=235"></script>
-<script src="ui/journey.js?v=235"></script>
+<script src="ui/today-model.js?v=236"></script>
+<script src="ui/today.js?v=236"></script>
+<script src="ui/predictions-model.js?v=236"></script>
+<script src="ui/predictions.js?v=236"></script>
+<script src="ui/smartmoney-model.js?v=236"></script>
+<script src="ui/smartmoney.js?v=236"></script>
+<script src="ui/experience.js?v=236"></script>
+<script src="ui/ticker.js?v=236"></script>
+<script src="ui/duo.js?v=236"></script>
+<script src="ui/compact.js?v=236"></script>
+<script src="ui/journey.js?v=236"></script>
 </body>
 </html>
