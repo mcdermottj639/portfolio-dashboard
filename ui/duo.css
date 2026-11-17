@@ -290,3 +290,45 @@ html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;back
   #pj-context>.pj-context-head{grid-column:1}
   #pj-context>.pj-context-head+.pj-steps{grid-column:2;margin-top:0}
 }
+
+/* ───────── 8 · v234: fixes from Jack's screen recording of v233 on the open Duo (Nov 17 2026) ─────────
+   "Peak into wide screen duo portfolio dashboard so u can further optimized". Layout and legibility only:
+   no card, number, rule or copy change. */
+
+/* 8a · iOS inflates paragraph text on a landscape-shaped screen unless told not to. The recording showed 11–13px
+   notes and "How to read this" lines drawn at about 20px on the open Duo. Every size is now the size the CSS says. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* 8b · Dark theme: --card was never defined, so the Apex Entry / Target / Stop / R/R tiles fell back to white and
+   printed their light value text on it (unreadable). Also lift the inline dark reds and blues that were written
+   for a white card. */
+html[data-theme="gold"],html[data-theme="dark"]{--card:rgba(255,255,255,.06)}
+html[data-theme="gold"] .card [style*=";color:#b91c1c"],html[data-theme="gold"] .card [style^="color:#b91c1c"],
+html[data-theme="gold"] .card [style*=";color:#991b1b"],html[data-theme="gold"] .card [style^="color:#991b1b"],
+html[data-theme="gold"] .card [style*=";color:#dc2626"],html[data-theme="gold"] .card [style^="color:#dc2626"]{color:#f08a80!important}
+html[data-theme="gold"] .card [style*=";color:#2563eb"],html[data-theme="gold"] .card [style^="color:#2563eb"],
+html[data-theme="gold"] .card [style*=";color:#075985"],html[data-theme="gold"] .card [style^="color:#075985"]{color:#8ab8ff!important}
+
+/* 8c · Holdings map: a sliver tile clipped its ticker and percent ("PEI", "+0."). Labels now shrink with the
+   tile, and the percent is dropped when the tile is too narrow to show it whole. */
+@container td-holding (max-width: 46px) {
+  #page-ex-today .td-shell .td-tile .td-tile-content{padding:5px 2px;border-radius:10px}
+  #page-ex-today .td-shell .td-tile .td-ticker{font-size:10.5px;letter-spacing:-.04em}
+  #page-ex-today .td-shell .td-tile .td-tile-change{font-size:9.5px;letter-spacing:-.03em;padding-top:2px}
+}
+@container td-holding (max-width: 34px) {
+  #page-ex-today .td-shell .td-tile .td-ticker{font-size:9px}
+  #page-ex-today .td-shell .td-tile .td-tile-change{display:none}
+}
+
+@media (min-width:740px) and (max-width:1100px) {
+  /* 8d · Today: "Out of your hands" sat beside Market backdrop, which left an empty block under Waiting on you.
+     It now follows Waiting on you in the right column and Market backdrop takes the full width below. */
+  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero waiting" "holdings waiting" "links monitor" "market market"}
+  #page-ex-today .td-shell .td-monitor{align-self:stretch}
+
+  /* 8e · Options: the two income rankers are half width, so their grey title hint pushed ? ☆ ▼ to a second line
+     and the six-column put table lost its last column. */
+  #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income])>.card-title .card-hint{display:none}
+  #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income]) table :is(th,td){padding-left:3px;padding-right:3px;font-size:11px}
+}

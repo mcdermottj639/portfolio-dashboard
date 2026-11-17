@@ -1,3 +1,30 @@
+## v234 — Open Duo follow-up from Jack's screen recording (2026-11-17)
+
+Jack (Nov 17 00:54 ET, 37-second screen recording of v233 on the open Duo, dark theme): "Peak into wide screen duo
+portfolio dashboard so u can further optimized". Read frame by frame. Layout and legibility only, all in `ui/duo.css`
+section 8: no card, number, rule, prompt or copy change.
+- **Oversized grey text.** Notes, "How to read this" lines and card intros drew at about 20px on the phone but
+  11–13px in Chromium. The app never set `text-size-adjust`, and iOS inflates paragraph text on a landscape-shaped
+  screen. `html{-webkit-text-size-adjust:100%}` now applies everywhere. Cause inferred from the recording vs the
+  preview; not confirmed on the phone.
+- **Unreadable Apex ticket tiles in dark.** `levelsHtml` cells use `var(--card,#fff)` with `var(--text)`; `--card`
+  was never defined, so dark theme printed light values on white tiles. `--card` is now defined for the dark
+  themes. Inline dark reds (#b91c1c, #991b1b, #dc2626) and blues (#2563eb, #075985) inside `.card` are lifted in
+  the gold theme ("Open in Robinhood", "Flunks if", % from cost).
+- **Today, 740–1100px.** "Out of your hands" follows "Waiting on you" in the right column and Market backdrop is
+  full width, closing a ~300px empty block (page 1,674 → 1,656px in the preview). Sliver holdings-map tiles shrink
+  their label and drop the percent under 34px instead of clipping it.
+- **Options, 740–1100px.** The two half-width income rankers hide the grey title hint (title row 43 → 19px) and
+  the six-column put table fits (scrollWidth 408 → 374 in a 374px box).
+- Not changed: a card's right edge still passes under the status icons while it scrolls through the top ~160px
+  (the v220 trade-off; the count badge and Review link are clear at rest).
+- Files: `ui/duo.css`, `index.html`, `sw.js`, `tests/journey.test.cjs`, `CLAUDE.md`.
+- Verified (synthetic preview, Chromium, side inset forced by hand): Today / Options / Plan at 960×676 dark and
+  light plus 320, 390, 466×677, 678×453, 739, 740, 1100, 1101, 1280 — scrollWidth = innerWidth, 0 page errors,
+  screenshots read; tests/*.test.cjs 63/63, apex 64/64, business 18/18; today-viewport, holdings-duo, journey,
+  sd-plan and apex browser suites PASS. `brief-browser` fails one label-fit assertion at 678×453 identically on
+  unmodified main in this session. Not verified: a physical iPhone Duo. App/cache **v234 / pf-v234**.
+
 ## v233 — Apex ranked opportunities (display only) (2026-11-16)
 
 Jack (Nov 16 12:37 ET, on a zero-buy Monday with the seven top-scored names locked out by the tech cap): "Is apex
