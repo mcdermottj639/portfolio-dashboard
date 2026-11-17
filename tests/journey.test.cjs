@@ -34,16 +34,16 @@ test('selection choices deduplicate but retain a researched, unheld name',()=>{
 test('missing source coverage creates no invented holding',()=>assert.deepEqual(M.choices(null,null,''),[]));
 test('new assets, version and offline shell move together',()=>{
  const html=fs.readFileSync('index.html','utf8'),sw=fs.readFileSync('sw.js','utf8');
- for(const name of ['journey.js','journey.css','theme.js','today-model.js','today.js','today.css','apex-paper.js','apex-paper.css']){assert.ok(html.includes('ui/'+name+'?v=243'));assert.ok(sw.includes('ui/'+name+'?v=243'));}
- assert.ok(html.includes('ui/duo.css?v=243')&&sw.includes('ui/duo.css?v=243'),'Duo layouts are linked and precached');
- assert.ok(html.includes('ui/duo.js?v=243')&&sw.includes('ui/duo.js?v=243'),'side-status measure script is linked and precached');
- assert.ok(html.includes("APP_VERSION='v243'"));assert.ok(sw.includes("'pf-v243'"));
+ for(const name of ['journey.js','journey.css','theme.js','today-model.js','today.js','today.css','apex-paper.js','apex-paper.css']){assert.ok(html.includes('ui/'+name+'?v=244'));assert.ok(sw.includes('ui/'+name+'?v=244'));}
+ assert.ok(html.includes('ui/duo.css?v=244')&&sw.includes('ui/duo.css?v=244'),'Duo layouts are linked and precached');
+ assert.ok(html.includes('ui/duo.js?v=244')&&sw.includes('ui/duo.js?v=244'),'side-status measure script is linked and precached');
+ assert.ok(html.includes("APP_VERSION='v244'"));assert.ok(sw.includes("'pf-v244'"));
 });
-test('freshness header shows the date and time without a meridiem label',()=>{
+test('freshness header shows the full date and time with AM/PM and ET (Jack, Nov 17 2026)',()=>{
  const html=fs.readFileSync('index.html','utf8');
- assert.ok(html.includes("replace(/(\\d{1,2}:\\d{2})\\s*(?:AM|PM)\\b/gi,'$1')"));
+ assert.ok(!html.includes("replace(/(\\d{1,2}:\\d{2})\\s*(?:AM|PM)\\b/gi,'$1')"),'header keeps AM/PM');
  assert.ok(!html.includes('<span class="pf-fl-word">Snapshot: </span>'));
- assert.ok(html.includes(".replace(/\\s+(?:ET|EST|EDT)\\s*$/i,'')"),'remove display-only timezone suffix');
+ assert.ok(!html.includes(".replace(/\\s+(?:ET|EST|EDT)\\s*$/i,'')"),'header keeps the ET suffix');
  assert.ok(html.includes('class="pf-fresh-actions"'),'phone controls use compact layout');
  assert.ok(html.includes('.pf-find-word')&&html.includes('.pf-refresh-word'),'controls retain icon-only mode');
 });

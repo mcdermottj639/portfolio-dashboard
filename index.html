@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=243"></script>
-<script src="ui/experience-model.js?v=243"></script>
+<script src="ui/theme.js?v=244"></script>
+<script src="ui/experience-model.js?v=244"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,14 +729,14 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=243">
-<link rel="stylesheet" href="ui/journey.css?v=243">
-<link rel="stylesheet" href="ui/predictions.css?v=243">
-<link rel="stylesheet" href="ui/apex-paper.css?v=243">
-<link rel="stylesheet" href="ui/smartmoney.css?v=243">
-<link rel="stylesheet" href="ui/ticker.css?v=243">
-<link rel="stylesheet" href="ui/today.css?v=243">
-<link rel="stylesheet" href="ui/duo.css?v=243">
+<link rel="stylesheet" href="ui/experience.css?v=244">
+<link rel="stylesheet" href="ui/journey.css?v=244">
+<link rel="stylesheet" href="ui/predictions.css?v=244">
+<link rel="stylesheet" href="ui/apex-paper.css?v=244">
+<link rel="stylesheet" href="ui/smartmoney.css?v=244">
+<link rel="stylesheet" href="ui/ticker.css?v=244">
+<link rel="stylesheet" href="ui/today.css?v=244">
+<link rel="stylesheet" href="ui/duo.css?v=244">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -791,7 +791,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 <div id="page-screens" style="display:none" data-priv="market">
   <div id="screens-app"><div class="loading-wrap"><div class="spinner"></div>Loading screens…</div></div>
 </div>
-<!-- v243 Apex v2.9 PAPER research: one public file (data/apex-paper-v29.json) drawn by ui/apex-paper.js. Display only;
+<!-- v244 Apex v2.9 PAPER research: one public file (data/apex-paper-v29.json) drawn by ui/apex-paper.js. Display only;
      never feeds the live Apex card, targets, Confirm or any ticket. Market prices only, so it sits outside the privacy mask. -->
 <div id="page-apexpaper" style="display:none" data-priv="off">
   <div id="apexpaper-app"><div class="loading-wrap">Loading paper research…</div></div>
@@ -806,10 +806,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=243"></script>
-<script src="ui/apex.js?v=243"></script>
-<script src="ui/business.js?v=243"></script>
-<script src="ui/apex-paper.js?v=243"></script>
+<script src="ui/sd-rules.js?v=244"></script>
+<script src="ui/apex.js?v=244"></script>
+<script src="ui/business.js?v=244"></script>
+<script src="ui/apex-paper.js?v=244"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -923,7 +923,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v243'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v244'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -960,7 +960,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
         var warn=locked||err||stale||!!nudge;
         bar.style.color=warn?'#7c2d12':'#475569'; bar.style.background=warn?'#fff7ed':'#eef2f7'; bar.style.borderColor=warn?'#fed7aa':'#dbe2ea';
         var l=document.getElementById('pf-fresh-left'); if(!l) return;
-        var displayDate=String(lab).replace(/ (\d{4}),/,function(m,y){return y==String(new Date().getFullYear())?',':m;}).replace(/(\d{1,2}:\d{2})\s*(?:AM|PM)\b/gi,'$1').replace(/\s+(?:ET|EST|EDT)\s*$/i,'');
+        var displayDate=String(lab).replace(/ (\d{4}),/,function(m,y){return y==String(new Date().getFullYear())?',':m;});  // v244 (Jack, Nov 17): full date + time with AM/PM and ET, as before v227/v228/v230 trimmed it
         l.innerHTML = nudge ? nudge
           : locked ? '🔒 Locked — enter your passphrase to view'
           : err    ? '⚠️ Couldn’t load data ('+err+')'
@@ -2032,7 +2032,7 @@ function bizPaint(slot,symbols,positions,core){
     Business.render(slot,Business.forSymbols(symbols,bizLoad(),{positions,core,today}));
   }catch(e){ slot.innerHTML='<div class="tech-empty">Business check couldn\'t render: '+String(e&&e.message||e).replace(/</g,'&lt;')+'</div>'; }
 }
-/* v243 — Apex v2.9 PAPER research (ui/apex-paper.js, data/apex-paper-v29.json). DISPLAY ONLY.
+/* v244 — Apex v2.9 PAPER research (ui/apex-paper.js, data/apex-paper-v29.json). DISPLAY ONLY.
    apexPaperLoad() fetches the one public file once into window.__APEX_PAPER (null + window.__APEX_PAPER_ERR on
    failure) and repaints the paper page and the pointer row under the Apex card. Nothing here is passed to
    Apex.render, Apex.rules, the Confirm prompt, a ticket or any agentic surface, and ui/apex.js never reads it.
@@ -8131,7 +8131,7 @@ function renderPicksStatic(){
   const pScreensLink=`
     <div class="card" style="text-align:center" data-sd-screens-link><span class="dp-link" onclick="switchTab('screens')">🗂 Screens — the daily oversold scan, scores &amp; track record →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Reference only. It doesn't drive buys on ••0741 — Apex's Monday research does — and it has its own page under Research.</div></div>
 `;
-  /* v243: pointer to the Apex v2.9 PAPER research page. Display only; the Apex card above is the only live source. */
+  /* v244: pointer to the Apex v2.9 PAPER research page. Display only; the Apex card above is the only live source. */
   const pPaperLink=`
     <div class="card" style="text-align:center" data-apex-paper-link data-priv="off"><span class="dp-link" data-apx-pointer onclick="switchTab('apexpaper')">🧪 v2.9 paper research: loading… →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Paper only. It never feeds the Apex card above, its targets or Confirm.</div></div>
 `;
@@ -8910,16 +8910,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=243"></script>
-<script src="ui/today.js?v=243"></script>
-<script src="ui/predictions-model.js?v=243"></script>
-<script src="ui/predictions.js?v=243"></script>
-<script src="ui/smartmoney-model.js?v=243"></script>
-<script src="ui/smartmoney.js?v=243"></script>
-<script src="ui/experience.js?v=243"></script>
-<script src="ui/ticker.js?v=243"></script>
-<script src="ui/duo.js?v=243"></script>
-<script src="ui/compact.js?v=243"></script>
-<script src="ui/journey.js?v=243"></script>
+<script src="ui/today-model.js?v=244"></script>
+<script src="ui/today.js?v=244"></script>
+<script src="ui/predictions-model.js?v=244"></script>
+<script src="ui/predictions.js?v=244"></script>
+<script src="ui/smartmoney-model.js?v=244"></script>
+<script src="ui/smartmoney.js?v=244"></script>
+<script src="ui/experience.js?v=244"></script>
+<script src="ui/ticker.js?v=244"></script>
+<script src="ui/duo.js?v=244"></script>
+<script src="ui/compact.js?v=244"></script>
+<script src="ui/journey.js?v=244"></script>
 </body>
 </html>

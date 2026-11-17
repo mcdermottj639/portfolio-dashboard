@@ -44,11 +44,15 @@
     return { wd: o.weekday, min: (Number(o.hour) % 24) * 60 + Number(o.minute) };
   }
   function marketOpen(now) { var e = etParts(now); return !/Sat|Sun/.test(e.wd) && e.min >= 570 && e.min < 960; }
-  function timeLabel(iso) {
-    var t = Date.parse(iso); if (!Number.isFinite(t)) return '';
-    var s = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }).format(t);
-    var sameDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(t) === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(Date.now());
-    return sameDay ? s : new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(t) + ' ' + s;
+  // The full snapshot date/time has one home: the sticky header below the market tape.
+  // The tape keeps its freshness status without repeating a timestamp or losing scroll width.
+  function tapeState(d, now) {
+    if (!d || d.locked) return { label: 'Locked', kind: '' };
+    if (d.error) return { label: 'Offline', kind: 'is-stale' };
+    var gen = Date.parse(d.generatedAt), ageMin = Number.isFinite(gen) ? (now.getTime() - gen) / 60000 : null;
+    if (marketOpen(now)) return ageMin != null && ageMin <= LIVE_MAX_MIN
+      ? { label: 'Live', kind: 'is-live' } : { label: 'Delayed', kind: 'is-stale' };
+    return { label: 'Closed', kind: '' };
   }
 
   function item(inner, attrs, label) { return '<span class="tk-it" role="button" tabindex="-1"' + (attrs || '') + (label ? ' aria-label="' + esc(label) + '"' : '') + '>' + inner + '</span>'; }
@@ -156,13 +160,11 @@
   }
   function paintStat(d) {
     if (!stat) return;
-    var t = stat.querySelector('.tk-stat-txt'), now = Date.now();
+    var s = tapeState(d, new Date()), t = stat.querySelector('.tk-stat-txt');
     stat.classList.remove('is-live', 'is-stale');
-    if (!d || d.locked) { t.innerHTML = 'Locked'; return; }
-    if (d.error) { stat.classList.add('is-stale'); t.innerHTML = 'Offline'; return; }
-    var gen = Date.parse(d.generatedAt), ageMin = Number.isFinite(gen) ? (now - gen) / 60000 : null;
-    if (marketOpen(now) && ageMin != null && ageMin <= LIVE_MAX_MIN) { stat.classList.add('is-live'); t.innerHTML = 'Live <b>' + esc(timeLabel(d.generatedAt)) + '</b>'; }
-    else { if (marketOpen(now)) stat.classList.add('is-stale'); t.innerHTML = (marketOpen(now) ? 'As of' : 'Close') + ' <b>' + esc(timeLabel(d.generatedAt)) + '</b>'; }
+    if (s.kind) stat.classList.add(s.kind);
+    t.textContent = s.label;
+    stat.setAttribute('aria-label', s.label + ' market tape; tap to pause or play. Snapshot date and time in the header below.');
   }
   function render() {
     var d = window.__DATA;
@@ -199,6 +201,6 @@
     if (window.__dataReady && typeof window.__dataReady.then === 'function') window.__dataReady.then(schedule, schedule);
     else schedule();
   }
-  window.PFTape = { render: render, _content: content, _marketOpen: marketOpen };
+  window.PFTape = { render: render, _content: content, _marketOpen: marketOpen, _state: tapeState };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();

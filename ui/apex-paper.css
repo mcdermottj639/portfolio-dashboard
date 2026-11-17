@@ -1,4 +1,4 @@
-/* v243 — Apex v2.9 PAPER research view (ui/apex-paper.js). Scoped to .apx / #apexpaper-app.
+/* v244 — Apex v2.9 PAPER research view (ui/apex-paper.js). Scoped to .apx / #apexpaper-app.
    Colours are the shell's own theme variables (ui/experience.css --sl-* / --ex-*), so Light and Dark follow. */
 #page-apexpaper{min-width:0}
 .apx{--apx-text:var(--ex-text,#142139);--apx-muted:var(--ex-muted,#596578);--apx-rule:var(--ex-border,#e1e5e5);--apx-soft:var(--sl-panel-muted,#f8f9f7);

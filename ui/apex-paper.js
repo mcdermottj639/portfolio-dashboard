@@ -1,4 +1,4 @@
-/* v243 — Apex v2.9 PAPER research view (pure + render).
+/* v244 — Apex v2.9 PAPER research view (pure + render).
    Reads ONE public file, data/apex-paper-v29.json (schema 1), and draws it. Nothing else.
 
    PAPER ONLY. This module never feeds, replaces or changes the live Apex v2.8 card, its targets,

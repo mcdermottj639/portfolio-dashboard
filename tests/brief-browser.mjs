@@ -54,7 +54,7 @@ try {
     await page.setViewportSize({width,height:900});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'no horizontal overflow at '+width);
     if(width<=390){
-      assert.equal(await page.locator('#pf-fresh-left').innerText(),'Nov 13, 12:40','whole timestamp at '+width);
+      assert.equal(await page.locator('#pf-fresh-left').innerText(),'Nov 13, 12:40 PM ET','whole timestamp at '+width);
       const fits=await page.evaluate(()=>{
         const left=document.querySelector('#pf-fresh-left').getBoundingClientRect();
         const right=document.querySelector('#pf-fresh .pf-fresh-actions').getBoundingClientRect();

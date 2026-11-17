@@ -1,4 +1,4 @@
-// v243: Apex v2.9 PAPER research view. Called from journey-browser.mjs (the CI suite); also runnable alone:
+// v244: Apex v2.9 PAPER research view. Called from journey-browser.mjs (the CI suite); also runnable alone:
 //   node tests/apex-paper-checks.mjs   (against tests/preview.mjs)
 // Synthetic fixture only, fed by intercepting data/apex-paper-v29.json; the committed file is never read here.
 // Nothing here submits an order; the suite asserts no non-GET requests.

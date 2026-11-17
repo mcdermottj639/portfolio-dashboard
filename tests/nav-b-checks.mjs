@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 export const ROUTES=['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','scenario','activity','log','smartmoney','predictions','apexpaper'];
 const SCOPED=['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'];
-// v243: apexpaper (Apex v2.9 paper research) is Apex-only: it pins the self-directed account whatever pf_acct was.
+// v244: apexpaper (Apex v2.9 paper research) is Apex-only: it pins the self-directed account whatever pf_acct was.
 const PINNED={apexpaper:'main'};
 export const accountAfter=(route,acct)=>PINNED[route]||acct;
 const STATIC={apexpaper:'apex',today:'today',markets:'research',screens:'research',analyze:'research',smartmoney:'research',predictions:'research',options:'more',decisions:'more',log:'more',activity:'more'};
@@ -14,7 +14,7 @@ export const expectedArea=(route,acct)=>SCOPED.includes(route)?(acct==='agentic'
 const CHIPS={today:['Daily brief'],apex:['Plan','Account','Research','What if?','v2.9 Paper'],agentic:['Plan','Account','Research','What if?'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity']};
 // Section routes with no chip: the card they scroll to, and its rail-chip text.
 const RAIL={performance:'Performance',heatmap:'Heatmap',risk:'Risk',income:'Income',technicals:'Technical',fundamentals:'Fundamentals',flow:'Flow'};
-// apexpaper is new in v243 and has no v236 baseline: its entry (1) is only the budget that admits the two taps it takes (Apex, then its chip).
+// apexpaper is new in v244 and has no v236 baseline: its entry (1) is only the budget that admits the two taps it takes (Apex, then its chip).
 // Taps from a fresh load (Today, self-directed) on v236 (measured with the same paths on the v236 shell, audit/nav/old.json).
 const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,scenario:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1,apexpaper:1},
   agentic:{plan:2,accounts:2,holdings:3,performance:3,heatmap:3,risk:3,income:3,technicals:3,fundamentals:3,flow:3,scenario:3,decisions:3,log:3,activity:2}};

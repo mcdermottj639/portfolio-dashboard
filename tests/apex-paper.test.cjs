@@ -1,4 +1,4 @@
-// v243: Apex v2.9 PAPER research view. Pure status/model tests on synthetic documents; no network, no account data.
+// v244: Apex v2.9 PAPER research view. Pure status/model tests on synthetic documents; no network, no account data.
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');

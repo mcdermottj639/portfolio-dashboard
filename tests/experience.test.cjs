@@ -54,8 +54,8 @@ for(const route of ['technicals','fundamentals','flow']){
 }
 assert.match(experience,/const defaults = \{today:'today',apex:'plan',agentic:'plan',research:'markets',more:'options'\}/,'five areas, in order, with their defaults');
 const routeIds=[...experience.matchAll(/^    (\w+): \{area:'(\w+)'/gm)].map(m=>m[1]);
-assert.deepEqual(routeIds.slice().sort(),['accounts','activity','analyze','apexpaper','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','scenario','screens','smartmoney','technicals','today'],'all 21 Navigation B route ids are kept, plus apexpaper (v243)');
-// v243: the Apex v2.9 paper page is an Apex-only route (not account-scoped, pinned to the self-directed account, never the area's remembered route).
+assert.deepEqual(routeIds.slice().sort(),['accounts','activity','analyze','apexpaper','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','scenario','screens','smartmoney','technicals','today'],'all 21 Navigation B route ids are kept, plus apexpaper (v244)');
+// v244: the Apex v2.9 paper page is an Apex-only route (not account-scoped, pinned to the self-directed account, never the area's remembered route).
 assert.match(experience,/    apexpaper: \{area:'apex', account:'main', transient:true, label:'v2.9 Paper', tab:'apexpaper'\}/);
 assert.ok(html.includes('id="page-apexpaper"')&&html.includes('id="apexpaper-app"'),'paper research page container');
 for(const id of routeIds)assert.match(require('../ui/journey.js').pageRoute('#view='+id)||'',new RegExp('^'+id+'$'),'journey admits #view='+id);

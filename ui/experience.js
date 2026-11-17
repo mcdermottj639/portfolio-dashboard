@@ -38,7 +38,7 @@
     fundamentals: {area:'apex', scoped:true, hidden:true, label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
     flow: {area:'apex', scoped:true, hidden:true, label:'Flow & positioning', tab:'portfolio', section:'flow'},
     scenario: {area:'apex', scoped:true, label:'What if?', custom:'scenario'},
-    // v243: Apex v2.9 PAPER research (display only). Apex-only: `account:'main'` pins the self-directed account, so it
+    // v244: Apex v2.9 PAPER research (display only). Apex-only: `account:'main'` pins the self-directed account, so it
     // never shows under Agentic; `transient` keeps it out of the area's "last route" memory, so tapping Apex always
     // reopens a LIVE page (Plan by default), never the paper one.
     apexpaper: {area:'apex', account:'main', transient:true, label:'v2.9 Paper', tab:'apexpaper'},
