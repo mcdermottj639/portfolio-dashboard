@@ -26,7 +26,7 @@ test('tape shows freshness words without a second visible date or time', () => {
   for (const [result, expected, kind] of cases) {
     assert.equal(result.label, expected);
     assert.equal(result.kind, kind);
-    assert.doesNotMatch(result.label, /\\b(?:as of|\\d{1,2}:\\d{2}|nov)\\b/i);
+    assert.doesNotMatch(result.label, /\b(?:as of|\d{1,2}:\d{2}|nov)\b/i);
   }
 });
 
@@ -35,6 +35,6 @@ test('single snapshot date/time stays in the lower sticky header', () => {
   const tape = fs.readFileSync(require.resolve('../ui/ticker.js'), 'utf8');
   assert.match(index, /id='pf-fresh'/);
   assert.match(index, /id="pf-fresh-left"/);
-  assert.match(index, /var displayDate=String\\(lab\\)/);
-  assert.doesNotMatch(tape, /\\bAs of\\b.*timeLabel|timeLabel\\(d\\.generatedAt\\)/i);
+  assert.match(index, /var displayDate=String\(lab\)/);
+  assert.doesNotMatch(tape, /\bAs of\b.*timeLabel|timeLabel\(d\.generatedAt\)/i);
 });
