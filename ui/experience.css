@@ -383,3 +383,7 @@ html.experience-on .cn-all{background:var(--ex-soft);color:var(--ex-accent);bord
 /* v185: Jack's rule — no sideways drift / "abyss" on a phone. Several pages ran 3–65px wide at 320–390px
    (pre-existing, measured on main). clip (not hidden) keeps position:sticky working. */
 html.experience-on,html.experience-on body{overflow-x:clip}
+/* Navigation B follow-up: the old Self-directed / Agentic switches inside Accounts and Plan are replaced by the Apex / Agentic nav items. Hidden with the hidden attribute (also out of the accessibility tree and tab order); this keeps a later display rule from showing it again. */
+html.experience-on .acct-seg-wrap[hidden]{display:none!important}
+/* The hidden switch carried the account suffix and type ("••••0741 · margin" / "••••3900 · automated"). The agentic header pill already reads "Agentic ••••3900 · limited margin"; the self-directed one gets its suffix here so Account still names ••••0741. */
+html.experience-on #app .h-tag::after{content:" · ••••0741"}

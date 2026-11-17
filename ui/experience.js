@@ -101,6 +101,11 @@
   document.documentElement.classList.add('experience-on');
   function header() {
     const r=routes[routeKey]; $('ex-account').value=account();
+    // Navigation B follow-up: on the account-scoped pages under Apex / Agentic (Plan, Account and its section routes) the account is
+    // chosen with the bottom nav, so the old Self-directed / Agentic switch is redundant there. It stays in the DOM (setAccount /
+    // setPlanAccount / syncToggles keep .active and aria-selected in step; Classic view shows it) but is `hidden`: out of sight, the
+    // accessibility tree and the tab order. The Rebalance log (More) is not scoped and has no header select, so its switch stays.
+    document.querySelectorAll('.acct-seg-wrap').forEach(w=>{w.hidden=!!(r.scoped&&r.tab);});
     // Accounts and Plan carry their own Self-directed/Agentic switch, and Options is self-directed only,
     // so the header dropdown there was a second control for the same choice (v185).
     $('ex-account-label').hidden=['today','predictions','smartmoney'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab); $('ex-all-accounts').hidden=routeKey!=='today';
@@ -113,7 +118,9 @@
     // Exception: a section route in ANOTHER area (Activity › Rebalance log) is a cross-page link.
     // Navigation B: the chips are the routes of the highlighted area (account-scoped routes follow pf_acct).
     const area=areaOf(routeKey,account());
-    sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
+    // Apex / Agentic rows also carry a Research chip after Account (owner, Nov 17): it is the journey's "2 · Research" step
+    // (data-pj-go="analyze" in ui/journey.js: opens Analyze for the area's selected holding, or the normal picker) — no new route.
+    sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>'+(k==='accounts'&&(area==='apex'||area==='agentic')?'<button type="button" data-pj-go="analyze" data-ex-research aria-current="false">Research</button>':'')).join('');
     $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }
@@ -285,6 +292,8 @@
   window.setPlanAccount=function(...args){const changed=!navigating&&args[0]!==account();if(changed)document.dispatchEvent(new Event('pf:before-account'));const value=nativePlanAccount.apply(this,args);queueRefresh();if(changed)document.dispatchEvent(new Event('pf:account'));return value;};
   $('ex-account').addEventListener('change',e=>navigate(routeKey,{account:e.target.value}));
   document.addEventListener('click',e=>{
+    // Without the journey module the Research chip still opens Analyze (journey.js handles it, with the selected holding, when present).
+    if(!window.PFJourney){const g=e.target.closest('[data-ex-research]');if(g)navigate('analyze');}
     const b=e.target.closest('[data-ex-route],[data-ex-area]');if(!b)return;
     const area=b.dataset.exArea;
     // Apex always means pf_acct='main' and Agentic always 'agentic'; the existing switchTab reconciliation

@@ -256,6 +256,21 @@ accounts, stored preferences, Back/Forward across areas and an account flip, the
 Light/Dark/System, the fallback Today renderer, and no overflow at 320x568, 390x844, 466x677, 960x676, 677x466 and 1280x800.
 Also fixed: returning to Accounts after flipping the Plan toggle left the Accounts toggle on the other account (the Plan toggle mirrors
 the Accounts toggle without swapping its pages); `navigate` now brings the visible page's toggle into line through the native setters.
+
+**Follow-up (Nov 17, owner): no second account switch inside Apex / Agentic, plus a Research chip.**
+- On the account-scoped routes under Apex / Agentic (Plan, Account and its section routes) the old `Self-directed | Agentic` switches
+  (`#acct-tg-*` on Accounts, `#plan-tg-*` on Plan) are `hidden` by the experience layer (`header()` in `ui/experience.js`, plus
+  `html.experience-on .acct-seg-wrap[hidden]{display:none!important}`): out of sight, the accessibility tree and the tab order, taking no
+  space. Elements, handlers, `setAccount` / `setPlanAccount` / `syncToggles` and aria-selected stay in step; Classic view shows them
+  as before. Switching account there is the Apex / Agentic nav item (one history step, Back undoes it). The Rebalance log (More) is not
+  account-scoped and has no header select, so its switch stays. The header select was already hidden on Plan / Account (v185) and is unchanged elsewhere.
+- Account identity on those pages: caption "Apex (self-directed) · Account" / "Agentic (automated) · Account" (Plan likewise), hero pill
+  "Robinhood · Individual Margin · ••••0741" (the ••••0741 suffix is added by CSS in the experience layer) / "Robinhood · Agentic ••••3900 · limited margin (1×)",
+  and on Agentic Plan the hero label "Agentic Strategy · ••••3900".
+- Research chip: Apex and Agentic rows read Plan · Account · Research · What if?. It is the journey's "2 · Research" step
+  (`data-pj-go="analyze"`, handled by `ui/journey.js`): it opens the existing Analyze page for that area's selected holding, or Analyze's own
+  picker when none is selected, in the same account; no new route (still 21), Analyze is unchanged. It navigates to `analyze`, so the Research
+  tab is highlighted afterwards and Back returns to the Apex / Agentic page. Research's own row does not repeat it.
 Not verified: WebKit (not installed here), a physical iPhone Duo.
 
 

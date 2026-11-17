@@ -8,7 +8,7 @@ export const ROUTES=['today','accounts','holdings','performance','heatmap','risk
 const SCOPED=['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'];
 const STATIC={today:'today',markets:'research',screens:'research',analyze:'research',smartmoney:'research',predictions:'research',options:'more',decisions:'more',log:'more',activity:'more'};
 export const expectedArea=(route,acct)=>SCOPED.includes(route)?(acct==='agentic'?'agentic':'apex'):STATIC[route];
-const CHIPS={today:['Daily brief'],apex:['Plan','Account','What if?'],agentic:['Plan','Account','What if?'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity']};
+const CHIPS={today:['Daily brief'],apex:['Plan','Account','Research','What if?'],agentic:['Plan','Account','Research','What if?'],research:['Markets','Screens','Analyze','Smart $','Predict'],more:['Options','Decision evidence','Rebalance log','Activity']};
 // Section routes with no chip: the card they scroll to, and its rail-chip text.
 const RAIL={performance:'Performance',heatmap:'Heatmap',risk:'Risk',income:'Income',technicals:'Technical',fundamentals:'Fundamentals',flow:'Flow'};
 // Taps from a fresh load (Today, self-directed) on v236 (measured with the same paths on the v236 shell, audit/nav/old.json).
@@ -16,6 +16,7 @@ const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap
   agentic:{plan:2,accounts:2,holdings:3,performance:3,heatmap:3,risk:3,income:3,technicals:3,fundamentals:3,flow:3,scenario:3,decisions:3,log:3,activity:2}};
 // Smallest v236 nav / sub-nav chip boxes per viewport (width, height), measured on the v236 shell.
 const OLD_MIN={'320x568':{item:[59,50],chip:44},'390x844':{item:[73,50],chip:44},'466x677':{item:[88,50],chip:44},'960x676':{item:[64,58],chip:42},'677x466':{item:[62,52],chip:42},'1280x800':{item:[159,48],chip:42}};
+const GAP_MAX=40;
 const VIEWPORTS=[['320x568',320,568,{}],['390x844',390,844,{}],['466x677',466,677,{right:84}],['960x676',960,676,{right:100}],['677x466',677,466,{left:85}],['1280x800',1280,800,{}]];
 
 export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapOut}){
@@ -41,6 +42,16 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
   const chipsOf=p=>p.evaluate(()=>[...document.querySelectorAll('#ex-subnav button')].map(b=>b.textContent.trim()));
   const area=a=>`.ex-main [data-ex-area="${a}"]`, chip=r=>`#ex-subnav [data-ex-route="${r}"]`;
   const vis=(p,sel)=>p.locator(sel).first().isVisible();
+  // Navigation B follow-up: inside Apex / Agentic the old two-account switches are hidden (display:none, so also out of the
+  // accessibility tree and the tab order) but stay in the DOM and in step with the account.
+  async function assertTogglesHidden(p,label){
+    const m=await p.evaluate(()=>['acct-seg-wrap','plan-seg-wrap'].map(id=>{const w=document.getElementById(id);
+      const ids=[...w.querySelectorAll('button')].map(b=>{b.focus();return {id:b.id,focused:document.activeElement===b,vis:!!(b.offsetWidth||b.offsetHeight||b.getClientRects().length)};});
+      return {id,hiddenAttr:w.hidden,display:getComputedStyle(w).display,h:w.offsetHeight,ids};}));
+    for(const w of m){assert.equal(w.hiddenAttr,true,`${label}: #${w.id} has the hidden attribute`);assert.equal(w.display,'none',`${label}: #${w.id} is display:none`);assert.equal(w.h,0,`${label}: #${w.id} takes no space`);
+      assert.equal(w.ids.length,2,`${label}: #${w.id} keeps its two buttons in the DOM`);
+      for(const b of w.ids){assert.equal(b.vis,false,`${label}: #${b.id} not rendered`);assert.equal(b.focused,false,`${label}: #${b.id} cannot take focus`);}}
+  }
   // The account whose content a scoped page shows. Apex = main only, Agentic = agentic only.
   async function assertContent(p,route,acct,label){
     const [mainSel,agSel]=route==='plan'?['#picks-app','#plan-agentic-app']:SCOPED.includes(route)&&route!=='scenario'?['#app','#agentic-app']:[null,null];
@@ -50,9 +61,26 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
       const tg=route==='plan'?['#plan-tg-main','#plan-tg-agentic']:['#acct-tg-main','#acct-tg-agentic'];
       assert.match(await p.locator(acct==='main'?tg[0]:tg[1]).getAttribute('class'),/\bactive\b/,`${label}: own toggle shows ${acct}`);
       assert.doesNotMatch(await p.locator(acct==='main'?tg[1]:tg[0]).getAttribute('class'),/\bactive\b/,`${label}: other toggle is not active`);
+      for(const [i,id] of tg.entries())assert.equal(await p.locator(id).getAttribute('aria-selected'),String((i===0)===(acct==='main')),`${label}: ${id} aria-selected in step`);
+      if(route!=='scenario')await assertTogglesHidden(p,label);
     }
     if(route==='scenario')assert.match(await p.locator('#ex-context').innerText(),acct==='main'?/^Apex \(self-directed\)/:/^Agentic \(automated\)/,`${label}: scenario names its account`);
     assert.equal(await p.locator('#ex-account').inputValue(),acct,`${label}: header select agrees`);
+  }
+  // What names the account on the Accounts / Plan pages now that the switch is gone: caption + hero.
+  async function assertIdentity(p,route,acct,label){
+    const cap=await p.locator('#ex-context').innerText(),vis=await p.locator('#ex-context').isVisible();
+    assert.equal(vis,true,`${label}: caption visible`);
+    if(route==='accounts'){
+      assert.match(cap,acct==='main'?/^Apex \(self-directed\) · Account$/:/^Agentic \(automated\) · Account$/,`${label}: caption names the account`);
+      const tag=await p.locator(acct==='main'?'#app .h-tag':'#agentic-app .h-tag').first();
+      assert.equal(await tag.isVisible(),true,`${label}: hero pill visible`);
+      const shown=await tag.evaluate(e=>e.innerText+JSON.parse(getComputedStyle(e,'::after').content.replace(/^none$/,'""')));
+      assert.match(shown,acct==='main'?/Individual Margin · ••••0741$/:/Agentic ••••3900 · limited margin/,`${label}: hero pill names the account suffix and type`);
+    }else if(route==='plan'){
+      assert.match(cap,acct==='main'?/^Apex \(self-directed\) · Plan$/:/^Agentic \(automated\) · Plan$/,`${label}: caption names the account`);
+      if(acct==='agentic')assert.match(await p.locator('#plan-agentic-app .ph-label').first().innerText(),/Agentic Strategy · ••••3900/i,`${label}: plan hero names the account`);
+    }
   }
   async function assertArea(p,route,acct,label){
     const want=expectedArea(route,acct);
@@ -166,33 +194,84 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await ctx.close();
   }
   {
-    // An account flip through each native control moves the highlight; it is ONE history step (its own entry, as before), so Back undoes the flip.
+    // Switching account on Plan and Account is done with the Apex / Agentic nav items: ONE history step each (its own entry), Back undoes it.
     const {ctx,p}=await open();
-    await p.locator(area('apex')).click();await settle(p);
-    await p.locator('#plan-tg-agentic').click();await settle(p);
-    assert.deepEqual(await areas(p),['agentic'],'Plan toggle flips the highlighted area to Agentic');await assertContent(p,'plan','agentic','plan toggle');
-    const j=(await st(p)).j;
+    await p.locator(area('agentic')).click();await p.locator(chip('accounts')).click();await settle(p);
+    await p.locator(area('apex')).click();await p.locator(chip('accounts')).click();await settle(p);
+    await assertContent(p,'accounts','main','apex account');await assertIdentity(p,'accounts','main','apex account');
+    let j=(await st(p)).j;
+    await p.locator(area('agentic')).click();await settle(p);
+    assert.deepEqual([(await st(p)).route,(await st(p)).account],['accounts','agentic'],'Agentic nav item switches the Account page to the agentic account');
+    assert.deepEqual(await areas(p),['agentic']);await assertContent(p,'accounts','agentic','agentic account');await assertIdentity(p,'accounts','agentic','agentic account');
+    assert.equal((await st(p)).j.index,j.index+1,'exactly one history step for the flip');
     await p.locator('#pj-back').click();await settle(p);
-    assert.deepEqual(await areas(p),['apex'],'Back undoes the flip');await assertContent(p,'plan','main','Back after plan-toggle flip');
-    assert.equal((await st(p)).j.index,j.index-1,'exactly one history step for the flip');
-    await p.goForward();await settle(p);assert.deepEqual(await areas(p),['agentic']);await assertContent(p,'plan','agentic','Forward after flip');
-    await p.locator(chip('accounts')).click();await settle(p);
-    await p.locator('#acct-tg-main').click();await settle(p);
-    assert.deepEqual(await areas(p),['apex'],'Accounts toggle flips Agentic to Apex');await assertContent(p,'accounts','main','accounts toggle');
-    await p.locator('#acct-tg-agentic').click();await settle(p);assert.deepEqual(await areas(p),['agentic']);
+    assert.deepEqual(await areas(p),['apex'],'Back undoes the flip');await assertContent(p,'accounts','main','Back after account flip');assert.equal((await st(p)).j.index,j.index);
+    await p.goForward();await settle(p);assert.deepEqual(await areas(p),['agentic']);await assertContent(p,'accounts','agentic','Forward after account flip');
+    // Plan
+    await p.locator(chip('plan')).click();await settle(p);await assertContent(p,'plan','agentic','agentic plan');await assertIdentity(p,'plan','agentic','agentic plan');
+    await p.locator(area('apex')).click();await settle(p);await p.locator(chip('plan')).click();await settle(p);
+    await assertContent(p,'plan','main','apex plan');await assertIdentity(p,'plan','main','apex plan');
+    j=(await st(p)).j;
+    await p.locator(area('agentic')).click();await settle(p);
+    assert.deepEqual(await areas(p),['agentic'],'Agentic nav item flips the plan');await assertContent(p,'plan','agentic','plan flip');
+    assert.equal((await st(p)).j.index,j.index+1,'exactly one history step for the plan flip');
+    await p.locator('#pj-back').click();await settle(p);
+    assert.deepEqual(await areas(p),['apex'],'Back undoes the plan flip');await assertContent(p,'plan','main','Back after plan flip');assert.equal((await st(p)).j.index,j.index);
+    await p.goForward();await settle(p);assert.deepEqual(await areas(p),['agentic']);await assertContent(p,'plan','agentic','Forward after plan flip');
+    // The hidden switches still work programmatically (legacy code, tests and journey steps call setAccount / setPlanAccount).
+    await p.evaluate(()=>setPlanAccount('main'));await settle(p);
+    assert.equal(await p.locator('#plan-tg-main').getAttribute('aria-selected'),'true','setPlanAccount still updates the hidden plan switch');
+    await p.evaluate(()=>setPlanAccount('agentic'));await settle(p);
     await p.locator(chip('scenario')).click();await settle(p);
     assert.equal(await p.locator('#ex-account').isVisible(),true,'header select is the account control on What if?');
     await p.locator('#ex-account').selectOption('main');await settle(p);
     assert.deepEqual(await areas(p),['apex'],'header select flips Agentic to Apex');await assertContent(p,'scenario','main','header select');
     await p.goBack();await settle(p);assert.deepEqual(await areas(p),['agentic']);await assertContent(p,'scenario','agentic','Back after header-select flip');
+    // The header select is not shown on Plan / Account (it was already hidden there before this change).
+    for(const r of ['plan','accounts','holdings'])for(const a of ['main','agentic']){await p.evaluate(([r,a])=>PFExperience.navigate(r,{account:a}),[r,a]);await settle(p);
+      assert.equal(await p.locator('#ex-account-label').isVisible(),false,`header select hidden on ${a}:${r}`);}
     // Non-scoped, account-aware pages keep their area and show the account in the caption, as before.
     await p.locator(area('more')).click();await p.locator(chip('decisions')).click();await settle(p);
     assert.deepEqual(await areas(p),['more']);assert.match(await p.locator('#ex-context').innerText(),/^Lab · Agentic · Decision evidence/);
     await p.locator('#ex-account').selectOption('main');await settle(p);
     assert.deepEqual(await areas(p),['more'],'flipping the account on Decision evidence stays in More');assert.match(await p.locator('#ex-context').innerText(),/^Lab · Self-directed · Decision evidence/);
     await p.locator(chip('log')).click();await settle(p);assert.deepEqual(await areas(p),['more']);assert.match(await p.locator('#ex-context').innerText(),/^Lab · /);
+    assert.equal(await p.locator('#acct-tg-agentic').isVisible(),true,'Rebalance log (More, not account-scoped, no header select) keeps its account switch');
     await p.locator('#acct-tg-agentic').click();await settle(p);assert.deepEqual(await areas(p),['more'],'Rebalance log toggle stays in More');
     await p.locator(chip('options')).click();await settle(p);assert.match(await p.locator('#ex-context').innerText(),/^Options · self-directed source/);
+    await ctx.close();
+  }
+  // Research chip (Apex / Agentic rows): the journey's "2 · Research" step as a sub-nav chip. It opens Analyze for THIS area's selected holding.
+  {
+    const {ctx,p}=await open();
+    const syms=await p.evaluate(()=>({main:PFExperienceModel.snapshot(__DATA,__SNAP,'main').positions.map(x=>x.symbol),ag:PFExperienceModel.snapshot(__DATA,__SNAP,'agentic').positions.map(x=>x.symbol)}));
+    const onlyMain=syms.main.find(x=>!syms.ag.includes(x)),onlyAg=syms.ag.find(x=>!syms.main.includes(x));
+    assert.ok(onlyMain&&onlyAg,'sample has a holding unique to each account');
+    await p.evaluate(([a,b])=>localStorage.setItem('pf-journey-ui-v1',JSON.stringify({main:{symbol:a},agentic:{symbol:b}})),[onlyMain,onlyAg]);await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
+    for(const [acct,A,own,other] of [['main','apex',onlyMain,onlyAg],['agentic','agentic',onlyAg,onlyMain]]){
+      await p.locator(area(A)).click();await settle(p);
+      assert.deepEqual(await chipsOf(p),CHIPS[A],A+': chips Plan · Account · Research · What if?');
+      assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),1,A+': one Research chip');
+      const order=await chipsOf(p);assert.equal(order.indexOf('Research'),order.indexOf('Account')+1,A+': Research sits right after Account');
+      await p.locator(chip('accounts')).click();await settle(p);
+      const j=(await st(p)).j;
+      await p.locator('#ex-subnav [data-ex-research]').focus();assert.equal(await p.evaluate(()=>document.activeElement.hasAttribute('data-ex-research')),true,A+': Research chip is keyboard focusable');
+      await p.keyboard.press('Enter');await settle(p);
+      const s=await st(p);assert.deepEqual([s.route,s.account],['analyze',acct],A+': Research chip opens Analyze in the same account');
+      assert.deepEqual(await areas(p),['research'],A+': Research tab highlighted after the tap');
+      assert.equal(s.j.index,j.index+1,A+': one history step');
+      assert.equal(await p.locator('#pj-symbol').inputValue(),own,A+': Analyze opens the selected holding of this account');
+      assert.notEqual(await p.locator('#pj-symbol').inputValue(),other,A+': never the other account\'s holding');
+      await p.locator('#pj-back').click();await settle(p);
+      assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['accounts',acct,A],A+': Back returns to the account page it came from');
+    }
+    // No holding selected: Analyze opens with its normal picker, still in the same account.
+    await p.evaluate(()=>localStorage.setItem('pf-journey-ui-v1','{}'));await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
+    await p.locator(area('apex')).click();await p.locator('#ex-subnav [data-ex-research]').click();await settle(p);
+    assert.deepEqual([(await st(p)).route,(await st(p)).account],['analyze','main'],'no selection: Analyze opens with its normal picker');
+    // Research's own row does not carry a second Research chip.
+    assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),0,'no duplicate Research chip in Research');
+    assert.deepEqual(await chipsOf(p),CHIPS.research);
     await ctx.close();
   }
   // Apex never renders agentic content and vice versa: scan every scoped route in both areas.
@@ -244,6 +323,15 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     const {ctx,p}=await open();
     await p.locator('#ex-classic').click();await p.waitForFunction(()=>document.querySelector('.ex-classic-return'));await settle(p);
     assert.equal(await p.locator('#tabbar').isVisible(),true,'classic tab bar returns');assert.equal(await p.locator('.ex-main').count(),0,'new navigation is not built in Classic');
+    // Classic view is unchanged: both switches are visible, focusable and working.
+    for(const id of ['#acct-tg-main','#acct-tg-agentic'])assert.equal(await p.locator(id).isVisible(),true,'Classic: '+id+' visible');
+    await p.locator('#acct-tg-agentic').click();await settle(p);assert.equal(await p.locator('#agentic-app').isVisible(),true,'Classic: Accounts switch shows the agentic account');
+    await p.locator('#acct-tg-main').click();await settle(p);assert.equal(await p.locator('#app').isVisible(),true,'Classic: Accounts switch shows the self-directed account');
+    await p.evaluate(()=>switchTab('picks'));await settle(p);
+    for(const id of ['#plan-tg-main','#plan-tg-agentic'])assert.equal(await p.locator(id).isVisible(),true,'Classic: '+id+' visible');
+    await p.locator('#plan-tg-agentic').focus();assert.equal(await p.evaluate(()=>document.activeElement.id),'plan-tg-agentic','Classic: plan switch is focusable');
+    await p.locator('#plan-tg-agentic').click();await settle(p);assert.equal(await p.locator('#plan-agentic-app').isVisible(),true,'Classic: Plan switch shows the agentic plan');
+    await p.locator('#plan-tg-main').click();await settle(p);assert.equal(await p.locator('#picks-app').isVisible(),true,'Classic: Plan switch shows the self-directed plan');
     await p.locator('.ex-classic-return').click();await p.waitForFunction(()=>document.querySelectorAll('.ex-main [data-ex-area]').length===5);await settle(p);
     assert.deepEqual(await areas(p).then(a=>a.length),1);
     await p.locator(area('agentic')).click();await settle(p);assert.deepEqual(await areas(p),['agentic']);
@@ -280,6 +368,19 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
       assert.equal(m.items.length,5,label+': five items');assert.ok(m.sw<=m.iw,label+': no horizontal overflow');
       for(const it of m.items){assert.ok(it.w>=OLD_MIN[name].item[0]-1&&it.h>=OLD_MIN[name].item[1]-1,`${label}: nav item ${Math.round(it.w)}x${Math.round(it.h)} not smaller than v236`);assert.ok(it.l>=-1&&it.r<=w+1,label+': nav item inside the viewport');}
       for(const c of m.chips)assert.ok(c>=OLD_MIN[name].chip-1,`${label}: sub-nav chip height ${c}`);
+      if(a==='apex'||a==='agentic')for(const route of ['plan','accounts']){
+        await p.evaluate(r=>PFExperience.navigate(r),route);await p.waitForTimeout(250);
+        const g=await p.evaluate(()=>{const page=document.querySelector('#page-picks').style.display==='none'?document.getElementById('page-portfolio'):document.getElementById('page-picks');
+          // Above the page: the sub-nav, or on Plan the journey context block that follows it.
+          let prev=page.previousElementSibling;while(prev&&!(prev.offsetHeight>0&&getComputedStyle(prev).position!=='fixed'))prev=prev.previousElementSibling;
+          const sb=(prev||document.getElementById('ex-subnav')).getBoundingClientRect().bottom;
+          const first=[...page.children].find(e=>e.offsetHeight>0&&getComputedStyle(e).position!=='absolute');
+          return {sw:document.documentElement.scrollWidth,iw:innerWidth,gap:first?first.getBoundingClientRect().top-sb:null,wraps:[...document.querySelectorAll('.acct-seg-wrap')].map(e=>e.offsetHeight),cap:document.getElementById('ex-context').scrollWidth<=document.getElementById('ex-context').parentElement.clientWidth+1};});
+        const l2=`${label} ${route}`;
+        assert.ok(g.sw<=g.iw,l2+': no horizontal overflow');assert.deepEqual(g.wraps,[0,0],l2+': no switch space');
+        assert.ok(g.gap!==null&&g.gap<=GAP_MAX,l2+': no empty gap above the first card/rail ('+Math.round(g.gap)+'px)');
+        await assertTogglesHidden(p,l2);
+      }
     }
     await ctx.close();
   }
