@@ -1,3 +1,11 @@
+## v241 — Apex/Agentic pages drop the old two-account toggle; Research chip (Navigation B follow-up, 2026-11-17)
+
+Jack sent a v239 phone screenshot asking "Why is agentic still in apex": the Accounts and Plan pages still carried the Self-directed | Agentic segmented switch inside Apex and Agentic. He also said yes to a Research chip.
+- `ui/experience.js` header(): on account-scoped routes with a tab (plan, accounts, section routes) both `.acct-seg-wrap` get `hidden`; `ui/experience.css` `html.experience-on .acct-seg-wrap[hidden]{display:none!important}`. The elements, handlers, setAccount/setPlanAccount/syncToggles and aria-selected stay; Classic view unchanged. Account is switched with the Apex / Agentic nav items (one history step, Back undoes it). The Rebalance log (More) is not scoped and has no header select, so its switch stays. The header select was already hidden on Plan/Account (v185).
+- Identity kept: caption "Apex (self-directed) · …" / "Agentic (automated) · …"; Accounts hero pill "Robinhood · Individual Margin · ••••0741" (suffix via CSS ::after in the experience layer) / "Robinhood · Agentic ••••3900 · limited margin (1×)"; Agentic Plan hero "Agentic Strategy · ••••3900".
+- Research chip: Apex and Agentic rows are Plan · Account · Research · What if?. It is the journey's "2 · Research" step (`data-pj-go="analyze"`): opens Analyze for the area's selected holding (or its picker) in the same account; navigates to `analyze`, so Research is highlighted and Back returns. No new route (21); Analyze unchanged.
+- Tests: tests/nav-b-checks.mjs (toggles hidden and unfocusable, flips via nav with one history step, identity, Classic toggles, layouts at six viewports, Research chip), tests/brief-browser.mjs updated. Not verified: physical iPhone Duo.
+
 ## v240 — Order-status wording unified; finished tickets no longer shown as in flight (2026-11-17)
 
 Jack said "Unify" Nov 17 2026 (after the order-status comparison: four different words for "needs approval", three for "submitted", three for "done"; approved action: "make every screen use Today's wording and fix the strip"). Wording/display only: no ticket state logic, eligibility, executor behaviour, producer, data, schedule, Apex confirmation flow or number changed.
