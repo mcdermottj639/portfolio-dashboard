@@ -14,41 +14,62 @@
   const icon = name => {
     const paths={today:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',portfolio:'M12 3v9h9M9 3.5A9 9 0 1 0 20.5 15H9Z',research:'M5 3h10l4 4v14H5ZM9 11h6M9 15h6',predictions:'M12 3 3 8l9 5 9-5-9-5ZM3 12l9 5 9-5M3 16l9 5 9-5',activity:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2',smartmoney:'M3 21h18M5 21v-9M9.5 21v-9M14.5 21v-9M19 21v-9M2.5 9 12 3.5 21.5 9Z'};
     paths.signals=paths.smartmoney;
+    // Navigation B (Nov 17 2026): Apex reuses the portfolio chart mark; Agentic is a chip outline; More is three dots (same 24px / 1.6 stroke set).
+    paths.apex=paths.portfolio;
+    paths.agentic='M8 8h8v8H8ZM10 3v3M14 3v3M10 18v3M14 18v3M3 10h3M3 14h3M18 10h3M18 14h3';
+    paths.more='M5 12a1.2 1.2 0 1 0 .01 0M12 12a1.2 1.2 0 1 0 .01 0M19 12a1.2 1.2 0 1 0 .01 0';
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+paths[name]+'"/></svg>';
   };
+  // Navigation B (Jack, Nov 17 2026, "Option B · by strategy"): Today · Apex · Agentic · Research · More.
+  // The route ids, hashes, pages and renderers are unchanged; only the grouping moved. A `scoped` route
+  // belongs to Apex when pf_acct='main' and to Agentic when pf_acct='agentic' (see areaOf), so an
+  // account area can never show the other account's plan, positions or actions. Entries are listed in
+  // sub-nav chip order. `hidden` routes are deep links / card-rail targets with no chip.
   const routes = {
-    // v184 (Jack, 2026-11-04): Smart $ and Predict are one bottom-nav area, "Signals", with two sub-tabs.
-    smartmoney: {area:'signals', label:'Smart Money', tab:'smartmoney'},
-    predictions: {area:'signals', label:'Prediction markets', tab:'predictions'},
     today: {area:'today', label:'Daily brief', custom:'today'},
-    accounts: {area:'portfolio', label:'Accounts', tab:'portfolio'},
-    holdings: {area:'portfolio', label:'All positions', tab:'portfolio', section:'holdings'},
-    performance: {area:'portfolio', label:'Performance', tab:'portfolio', section:'performance'},
-    heatmap: {area:'portfolio', label:'Heatmap', tab:'portfolio', section:'heatmap'},
-    risk: {area:'portfolio', label:'Risk & allocation', tab:'portfolio', section:'risk'},
-    income: {area:'portfolio', label:'Income & tax', tab:'portfolio', section:'income'},
-    options: {area:'portfolio', label:'Options', tab:'options'},
-    plan: {area:'research', label:'Plan & Action Center', tab:'picks'},
+    plan: {area:'apex', scoped:true, label:'Plan', tab:'picks'},
+    accounts: {area:'apex', scoped:true, label:'Account', tab:'portfolio'},
+    holdings: {area:'apex', scoped:true, hidden:true, label:'All positions', tab:'portfolio', section:'holdings'},
+    performance: {area:'apex', scoped:true, hidden:true, label:'Performance', tab:'portfolio', section:'performance'},
+    heatmap: {area:'apex', scoped:true, hidden:true, label:'Heatmap', tab:'portfolio', section:'heatmap'},
+    risk: {area:'apex', scoped:true, hidden:true, label:'Risk & allocation', tab:'portfolio', section:'risk'},
+    income: {area:'apex', scoped:true, hidden:true, label:'Income & tax', tab:'portfolio', section:'income'},
+    technicals: {area:'apex', scoped:true, hidden:true, label:'Technicals', tab:'portfolio', section:'technicals'},
+    fundamentals: {area:'apex', scoped:true, hidden:true, label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
+    flow: {area:'apex', scoped:true, hidden:true, label:'Flow & positioning', tab:'portfolio', section:'flow'},
+    scenario: {area:'apex', scoped:true, label:'What if?', custom:'scenario'},
+    // v204 (Jack, Nov 9): Markets · Screens · Analyze first, then (Nav B) Smart $ and Predict.
     markets: {area:'research', label:'Markets', tab:'markets'},
-    // v204 (Jack, Nov 9 01:53 ET: "Move screens to 3rd and bunk analyze to 4"): Research row = Plan · Markets · Screens · Analyze · …
     screens: {area:'research', label:'Screens', tab:'screens'},
     analyze: {area:'research', label:'Analyze', tab:'analyze'},
-    technicals: {area:'portfolio', label:'Technicals', tab:'portfolio', section:'technicals'},
-    fundamentals: {area:'portfolio', label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
-    flow: {area:'portfolio', label:'Flow & positioning', tab:'portfolio', section:'flow'},
-    decisions: {area:'research', label:'Decision evidence', custom:'decisions'},
-    scenario: {area:'research', label:'What if?', custom:'scenario'},
-    activity: {area:'activity', label:'Snapshot & routine status', custom:'activity'},
-    log: {area:'activity', label:'Rebalance log', tab:'portfolio', section:'rebalance-log'}
+    smartmoney: {area:'research', label:'Smart $', tab:'smartmoney'},
+    predictions: {area:'research', label:'Predict', tab:'predictions'},
+    // More = Options + Lab (the existing evidence routes Decision evidence and Rebalance log) + Activity.
+    options: {area:'more', label:'Options', tab:'options'},
+    decisions: {area:'more', lab:true, label:'Decision evidence', custom:'decisions'},
+    log: {area:'more', lab:true, label:'Rebalance log', tab:'portfolio', section:'rebalance-log'},
+    activity: {area:'more', label:'Activity', custom:'activity'}
   };
-  const defaults = {today:'today',portfolio:'accounts',research:'plan',signals:'smartmoney',activity:'activity'};
-  // Tapping Signals reopens whichever sub-tab was used last.
-  const areaDefault = a => { const key=read('pf_area_'+a,a==='signals'?read('pf_signals_last','smartmoney'):defaults[a]); return routes[key]?.area===a?key:defaults[a]; };
+  const defaults = {today:'today',apex:'plan',agentic:'plan',research:'markets',more:'options'};
+  const accountArea = {main:'apex',agentic:'agentic'};
+  // The area a route lives in, for a given account. Only `scoped` routes depend on the account.
+  const known = key => typeof key==='string'&&Object.prototype.hasOwnProperty.call(routes,key);
+  const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 'today'; return r.scoped?accountArea[acct==='agentic'?'agentic':'main']:r.area; };
+  const inArea = (key, a) => { const r=known(key)&&routes[key]; return !!r&&(r.scoped?(a==='apex'||a==='agentic'):r.area===a); };
+  // Tapping an area reopens the route last used there. Stored values from the five-area navigation
+  // (pf_area_portfolio / _signals / _activity / old _research ids, pf_signals_last) are tolerated:
+  // a value that does not belong to the area is ignored; the old Signals memory now maps into Research.
+  const areaDefault = a => {
+    const saved=[read('pf_area_'+a,'')];
+    if(a==='research')saved.push(read('pf_signals_last',''));
+    for(const key of saved)if(key&&inArea(key,a))return key;
+    return defaults[a];
+  };
   const legacyTabs = ['portfolio','markets','picks','options','analyze','screens','predictions','smartmoney'];
   const nativeSwitch = window.switchTab;
   const nativeAccount = window.setAccount;
   const nativePlanAccount = window.setPlanAccount;
-  let routeKey = routes[read('pf_experience_route','today')] ? read('pf_experience_route','today') : 'today';
+  let routeKey = known(read('pf_experience_route','today')) ? read('pf_experience_route','today') : 'today';
   let navigating = false, refreshTimer, jumpToken = 0;
   const account = () => read('pf_acct','main') === 'agentic' ? 'agentic' : 'main';
   const model = () => M.snapshot(window.__DATA, window.__SNAP, account());
@@ -83,15 +104,17 @@
     // Accounts and Plan carry their own Self-directed/Agentic switch, and Options is self-directed only,
     // so the header dropdown there was a second control for the same choice (v185).
     $('ex-account-label').hidden=['today','predictions','smartmoney'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab); $('ex-all-accounts').hidden=routeKey!=='today';
-    main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===r.area?'page':'false'));
+    main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===areaOf(routeKey,account())?'page':'false'));
     sub.hidden=false;
     // v185 (Jack, 2026-11-04: "nav widgets split between the buttons and the scroll bar"): this row
     // lists PAGES only. In-page sections (holdings, heatmap, risk…) are the card rail's job — it is
     // built from the cards actually on screen, so it covers every card and never drifts. The section
     // routes stay in the table for deep links (Today's "Review" buttons, the tape) but get no chip.
     // Exception: a section route in ANOTHER area (Activity › Rebalance log) is a cross-page link.
-    sub.innerHTML=Object.entries(routes).filter(([,v])=>v.area===r.area&&!(v.section&&v.area==='portfolio')).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
-    $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(account()==='agentic'?'Agentic':'Self-directed')+' · '+r.label;
+    // Navigation B: the chips are the routes of the highlighted area (account-scoped routes follow pf_acct).
+    const area=areaOf(routeKey,account());
+    sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>').join('');
+    $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }
   function historyChart(points=M.valueHistory(window.__DATA,account()),combined=false) {
@@ -227,14 +250,22 @@
     if(body && body.style.display==='none'){if(window.__pfFold)window.__pfFold.open(target);else title?.click();}
     requestAnimationFrame(()=>{if(token!==jumpToken)return;const y=target.getBoundingClientRect().top+window.scrollY-(window.__pfTopOffset?.()||8);window.scrollTo(0,Math.max(0,y));});
   }
+  // The Plan toggle mirrors the Accounts toggle without swapping #app / #agentic-app (v108), so after
+  // Plan -> Back to Accounts the original reconciliation in switchTab saw the right page and left a
+  // stale toggle. In a strategy-grouped nav a stale toggle would label one account over the other's
+  // positions, so the visible page's toggle is brought into line with pf_acct through the native setters.
+  function syncToggles(tab) {
+    const pair=tab==='portfolio'?['acct-tg-agentic',nativeAccount]:tab==='picks'?['plan-tg-agentic',nativePlanAccount]:null,btn=pair&&$(pair[0]);
+    if(btn&&btn.classList.contains('active')!==(account()==='agentic'))pair[1](account());
+  }
   function navigate(key, options={}) {
-    if(!routes[key])return; document.dispatchEvent(new CustomEvent('pf:before-route',{detail:{from:routeKey,to:key}}));
+    if(!known(key))return; document.dispatchEvent(new CustomEvent('pf:before-route',{detail:{from:routeKey,to:key}}));
     if(options.account==='main'||options.account==='agentic')save('pf_acct',options.account);
-    routeKey=key; save('pf_area_'+routes[key].area,key); save('pf_experience_route',key); if(routes[key].area==='signals')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
+    routeKey=key; save('pf_area_'+areaOf(key,account()),key); save('pf_experience_route',key); if(key==='smartmoney'||key==='predictions')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
     ['today','activity','decisions','scenario'].forEach(n=>$('page-ex-'+n).hidden=r.custom!==n);
     navigating=true;
     try {
-      if(r.tab)nativeSwitch(r.tab);
+      if(r.tab){nativeSwitch(r.tab);syncToggles(r.tab);}
       else legacyTabs.forEach(t=>{const page=$('page-'+t);if(page)page.style.display='none';});
     } finally {navigating=false;}
     header();renderCustom();
@@ -255,7 +286,11 @@
   $('ex-account').addEventListener('change',e=>navigate(routeKey,{account:e.target.value}));
   document.addEventListener('click',e=>{
     const b=e.target.closest('[data-ex-route],[data-ex-area]');if(!b)return;
-    navigate(b.dataset.exRoute||areaDefault(b.dataset.exArea),{account:b.dataset.exAccount});
+    const area=b.dataset.exArea;
+    // Apex always means pf_acct='main' and Agentic always 'agentic'; the existing switchTab reconciliation
+    // then drives setAccount / setPlanAccount so the Accounts toggle, Plan toggle and header select agree.
+    if(area)navigate(areaDefault(area),{account:area==='apex'?'main':area==='agentic'?'agentic':undefined});
+    else navigate(b.dataset.exRoute,{account:b.dataset.exAccount});
   });
   $('ex-find').addEventListener('click',()=>{if(window.__pfFind)window.__pfFind();});
   $('ex-classic').addEventListener('click',goClassic);

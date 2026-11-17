@@ -1,3 +1,12 @@
+## v238 — Navigation B: Today / Apex / Agentic / Research / More (2026-11-17)
+
+Jack's Nov 17 2026 choice "Option B · by strategy" (mockup page, 05:42 ET) supersedes the five-area labels only. Grouping only: 21 route ids, `#view=` hashes, pages and renderers unchanged; no card, calculation, data or confirmation change.
+- `ui/experience.js`: account-scoped routes (plan, accounts + section routes, scenario) have `scoped:true`; `areaOf(route, account)` puts them in Apex (pf_acct main) or Agentic (agentic). Apex/Agentic taps pass the account to navigate (native setAccount/setPlanAccount via switchTab) and reopen the area's last route (default Plan). Research = Markets, Screens, Analyze, Smart $, Predict (default Markets; pf_signals_last seeds it). More = Options (default), Decision evidence, Rebalance log ("Lab" caption prefix), Activity. Account flips are one history step as before (Back undoes).
+- Stored prefs: old pf_area_* ignored, new pf_area_apex/_agentic/_research/_more; unknown route values fall back (hasOwnProperty).
+- Fixed: stale Accounts toggle after Plan flip + Back (syncToggles).
+- Taps vs v236 (tests assert max +1): self-directed Account, its section cards, Activity and Smart $ are one tap deeper; Options, Markets, Agentic plan and Agentic What if? are one tap closer.
+- Tests: tests/nav-b-checks.mjs via journey-browser; experience.test.cjs, today/predictions browser labels updated. Docs: UI-PRESERVATION.md, UX_REVIEW.md (old→new map), ui/TODAY.md supersession note. Not verified: physical iPhone Duo.
+
 ## v237 — Agentic header carries Invested, repeated tiles removed; ticker stops repeating account numbers on Today and Accounts (2026-11-17)
 
 Dashboard 2.0 Phase 1b; Jack chose "Proposed" for both from the mockup page on Nov 17 2026. Display only; no calculation, threshold, data fetch, producer, schedule, confirmation flow or account separation changed, and the self-directed header and six tiles are untouched.

@@ -212,3 +212,48 @@ income; both accounts) the combined "Today" item and the two per-account value i
 route is unchanged. Strip height and the page top offset do not depend on the items. It repaints on `pf:route` and
 `pf:render` (tap, hash, Back/Forward, account switch). Classic mode has no `PFExperience`, so it is unchanged.
 Covered by `tests/journey-browser.mjs`.
+## Navigation B (Jack, Nov 17 2026)
+
+Jack reviewed the Nov 17 mockup and chose **"Option B · by strategy"**: bottom bar **Today · Apex · Agentic · Research · More**.
+This supersedes ONLY the five-area labels (Today / Portfolio / Research / Signals / Activity) recorded above, in `ui/TODAY.md`
+and in the earlier notes of this file; those entries are history and are left as written. Grouping only: the 21 route ids, their
+`#view=<route>` hashes, pages, renderers and page ids, every card and calculation, Back/Forward, Find, Classic view, privacy and
+the Today brief are unchanged. The nav stays five items; it is not extended.
+
+- **Apex** (`pf_acct='main'`, self-directed) and **Agentic** (`pf_acct='agentic'`, automated) each hold Plan, Account and What if?
+  (chips) plus the hidden section routes. The area of an account-scoped route is a function of the route AND the account
+  (`areaOf` in `ui/experience.js`), so Apex always means the self-directed account and Agentic the agentic one; neither shows the
+  other's plan, positions or actions. Tapping Apex / Agentic selects the account and reopens that area's last-used route (default Plan).
+  Flipping the Accounts toggle, the Plan toggle or the header select moves the highlight (Apex <-> Agentic); the flip is its own history
+  step exactly as before, so Back undoes it.
+- **Research**: Markets · Screens · Analyze · Smart $ · Predict (default Markets). The old Signals memory (`pf_signals_last`) maps in.
+- **More**: Options · Decision evidence · Rebalance log · Activity (default Options). "Lab" is the group of the two existing evidence
+  routes (Decision evidence, Rebalance log); there is no new page. It appears in the header caption ("Lab · Agentic · Decision evidence"),
+  not as a new nav pattern. Account-aware More pages keep the selected account and name it in the caption, as before.
+- Stored values: `pf_experience_route` (any old route id) and `pf_acct` load as before; `pf_area_<old area>` values that do not belong
+  to a new area are ignored (new keys `pf_area_apex/_agentic/_research/_more`); `pf_signals_last` seeds Research; unknown values fall back.
+
+| Route id (hash `#view=`) | v236 area · chip | Navigation B area · chip |
+| --- | --- | --- |
+| `today` | Today | Today |
+| `plan` | Research › Plan & Action Center | Apex or Agentic (by account) › Plan |
+| `accounts` | Portfolio › Accounts | Apex or Agentic › Account |
+| `holdings` `performance` `heatmap` `risk` `income` `technicals` `fundamentals` `flow` | Portfolio (no chip) | Apex or Agentic (no chip; Account page cards and rail) |
+| `scenario` | Research › What if? | Apex or Agentic › What if? |
+| `markets` `screens` `analyze` | Research | Research (unchanged chips) |
+| `smartmoney` | Signals › Smart Money | Research › Smart $ |
+| `predictions` | Signals › Prediction markets | Research › Predict |
+| `options` | Portfolio › Options | More › Options |
+| `decisions` | Research › Decision evidence | More › Decision evidence (Lab) |
+| `log` | Activity › Rebalance log | More › Rebalance log (Lab) |
+| `activity` | Activity | More › Activity |
+
+Moves and why: What if? is account-aware (it reads the selected account's positions), so it sits in both account areas rather
+than one. Options is self-directed source data and stays account-neutral. Every destination is reachable in at most one more tap
+than in v236 (Account +1, Activity +1, Smart $ +1, section cards +1; Options, Markets, Agentic plan and agentic scenario are one tap
+fewer). Covered by `tests/nav-b-checks.mjs` (run from `tests/journey-browser.mjs` in CI): all 21 routes by tap path, deep links for both
+accounts, stored preferences, Back/Forward across areas and an account flip, the three account controls, Classic both ways, privacy,
+Light/Dark/System, the fallback Today renderer, and no overflow at 320x568, 390x844, 466x677, 960x676, 677x466 and 1280x800.
+Also fixed: returning to Accounts after flipping the Plan toggle left the Accounts toggle on the other account (the Plan toggle mirrors
+the Accounts toggle without swapping its pages); `navigate` now brings the visible page's toggle into line through the native setters.
+Not verified: WebKit (not installed here), a physical iPhone Duo.
