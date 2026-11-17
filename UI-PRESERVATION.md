@@ -257,3 +257,21 @@ Light/Dark/System, the fallback Today renderer, and no overflow at 320x568, 390x
 Also fixed: returning to Accounts after flipping the Plan toggle left the Accounts toggle on the other account (the Plan toggle mirrors
 the Accounts toggle without swapping its pages); `navigate` now brings the visible page's toggle into line through the native setters.
 Not verified: WebKit (not installed here), a physical iPhone Duo.
+
+
+### v239 — Plan, Screens and Predict keep decisions open (Dashboard 2.0 Phase 3b)
+
+Nothing is removed; every card is rendered into the DOM. Reuses `window.__pfFold` (same contract as v235/v236: saved choice in
+`pf_card_fold_v1`, My view pin starts open, rail chip / Find / Expand all open a folded card, `aria-expanded` kept).
+
+| Page | Starts folded | Always open |
+| --- | --- | --- |
+| Plan, self-directed (`#picks-app`) | none | Apex card (leverage band, margin, ranked opportunities, Confirm, held-position review), Action Center, pointer cards |
+| Plan, agentic (`#plan-agentic-app`) | How the loop runs (`agp-loop`, key `plan-agentic:agp-loop`) | Where the plan stands, Model correctness & forward record, The target, Business check, What's blocked, The waiting ground, Guardrails |
+| Screens (`#screens-app`) | Scoring Breakdown (`scr-breakdown`, key `screens:scr-breakdown`) | Top 3 Picks, Composite Scores, Track Record, reference note, scan hero, Earnings Preview |
+| Predict (`#predictions-app`) | none (Browse more markets, Sources & coverage and the per-result rows were already closed `<details>`) | Positions, Ideas, Watchlist, Results, Settled |
+
+Keys are per page and account, so the agentic choice never reaches the self-directed Plan or the Accounts folds. The
+"Not financial advice … monitor-only" line stays outside the folded loop body. Scoring Breakdown stays open when it holds no
+candidate rows. Screens has no rail or Find entry, so its card is only reached by opening the page. Covered by
+`tests/research-folds-checks.mjs` via `tests/journey-browser.mjs`.
