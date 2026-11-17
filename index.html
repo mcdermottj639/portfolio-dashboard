@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=238"></script>
-<script src="ui/experience-model.js?v=238"></script>
+<script src="ui/theme.js?v=239"></script>
+<script src="ui/experience-model.js?v=239"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,13 +729,13 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=238">
-<link rel="stylesheet" href="ui/journey.css?v=238">
-<link rel="stylesheet" href="ui/predictions.css?v=238">
-<link rel="stylesheet" href="ui/smartmoney.css?v=238">
-<link rel="stylesheet" href="ui/ticker.css?v=238">
-<link rel="stylesheet" href="ui/today.css?v=238">
-<link rel="stylesheet" href="ui/duo.css?v=238">
+<link rel="stylesheet" href="ui/experience.css?v=239">
+<link rel="stylesheet" href="ui/journey.css?v=239">
+<link rel="stylesheet" href="ui/predictions.css?v=239">
+<link rel="stylesheet" href="ui/smartmoney.css?v=239">
+<link rel="stylesheet" href="ui/ticker.css?v=239">
+<link rel="stylesheet" href="ui/today.css?v=239">
+<link rel="stylesheet" href="ui/duo.css?v=239">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -800,9 +800,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=238"></script>
-<script src="ui/apex.js?v=238"></script>
-<script src="ui/business.js?v=238"></script>
+<script src="ui/sd-rules.js?v=239"></script>
+<script src="ui/apex.js?v=239"></script>
+<script src="ui/business.js?v=239"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -916,7 +916,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v238'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v239'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -4356,7 +4356,7 @@ function renderAgenticPlan(){
   // ── 6. how the loop runs ─────────────────────────────────────────────────────────────────────
   const step=(n,title,body)=>`<details class="gr-row"><summary><span class="gr-ic lp-n">${n}</span><b>${title}</b><i class="oh-chev"></i></summary><p>${body}</p></details>`;
   const loopCard=`
-    <div class="card" data-priv="off"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
+    <div class="card" data-priv="off" data-sec="agp-loop"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
       <div class="gr-list">
         ${step('1','Research — weekly, or early','A multi-sleeve deep research run (momentum · quality · growth · catalyst, with an adversarial verify pass) proposes names and weights. It also runs early when a deposit lands or a held name gaps ≥6% — the system reacts to events, not just the calendar.')}
         ${step('2','Finalize — caps re-enforced','<code>finalize-target.mjs</code> re-applies the cluster and vol-scaled caps to whatever the research returned, and a held name the research dropped is retained one cycle as a <b>phase-out</b> (zero trades) unless the verdict was explicitly business-broken. A target refresh expresses intent; it is not an execution order.')}
@@ -4365,8 +4365,8 @@ function renderAgenticPlan(){
         ${step('5','Grade — the account\'s own record','Every confirmed rebalance is logged and graded against what happened next and against SPY, so the strategy can be judged rather than just repeated.')}
       </div>
       <div style="text-align:center;margin-top:12px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🧾 Rebalance log &amp; account performance →</span></div>
-      <div class="disclaimer" style="margin-top:12px">⚠️ Not financial advice. This page reports what the automated system intends and why; it places nothing. Levels are monitor-only — fractional positions can't carry resting stops.</div>
-    </div></div>`;
+    </div>
+    <div class="disclaimer" style="margin-top:12px">⚠️ Not financial advice. This page reports what the automated system intends and why; it places nothing. Levels are monitor-only — fractional positions can't carry resting stops.</div></div>`;   // v239: the disclaimer sits OUTSIDE the foldable body, so it stays visible when the explainer is folded
 
   /* v192 — Business check for the agentic book (display only: the executor, Mandate A and every
      rule above never read it). Held names first, then the research target's names. */
@@ -5085,8 +5085,17 @@ window.switchTab=switchTab;
   /* v236 (Phase 3a): the Options page ('options' scope, #options-app) folds Income & History, Roll Scorecard and Options
      Knowledge the same way. Sections are checked per scope so no key can leak between the Accounts and Options pages. */
   var OSECS={'opt-history':1,'opt-rolls':1,'opt-knowledge':1};
-  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':(c.closest('#options-app')?'options':null)); }
+  /* v239 (Phase 3b): the agentic Plan ('plan-agentic', #plan-agentic-app) folds its "How the loop runs" explainer and Research >
+     Screens ('screens', #screens-app) folds the full Scoring Breakdown table. The self-directed Plan has no folded card, so
+     it has no scope here and one account's choice can never reach the other. Predict has none (see UI-PRESERVATION.md). */
+  var PSECS={'agp-loop':1}, SCSECS={'scr-breakdown':1};
+  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':(c.closest('#options-app')?'options':(c.closest('#plan-agentic-app')?'plan-agentic':(c.closest('#screens-app')?'screens':null)))); }
   function keyOf(c){ var s=c&&c.getAttribute&&c.getAttribute('data-sec'), a=c&&acctOf(c); if(!a||!s)return null;
+    if(a==='plan-agentic')return PSECS[s]?a+':'+s:null;
+    if(a==='screens'){ if(!SCSECS[s])return null;
+      /* With no candidate rows the card is only an empty-state notice; it stays open. */
+      if(s==='scr-breakdown'&&!c.querySelector('#picks-table .sym'))return null;
+      return a+':'+s; }
     if(a==='options'){ if(!OSECS[s])return null;
       /* Income & History folds only when it holds contract history; with no ledger (or no rows) the card is just an
          empty-state / reconciliation notice, which stays visible. */
@@ -5113,7 +5122,8 @@ window.switchTab=switchTab;
     key:keyOf,
     apply:function(c){ try{ var k=keyOf(c); if(!k)return;
       var want=mem[k]!==undefined?mem[k]:(function(){ var m=read(); return (m[k]===1||m[k]===0)?m[k]===1:pinned(c); })();
-      if(!want)paint(c,false); }catch(e){} },
+      if(!want)paint(c,false);
+      else{ var t=c.querySelector(':scope > .card-title'); if(t&&!t.hasAttribute('aria-expanded'))t.setAttribute('aria-expanded','true'); } }catch(e){} },
     note:function(c,open,persist){ try{ var k=keyOf(c); if(!k)return; mem[k]=!!open; if(persist)save(k,open); if(open)opened(c); }catch(e){} },
     open:function(c){ try{ var k=keyOf(c), b=bodyOf(c); if(!b||b.style.display!=='none')return;
       paint(c,true); if(k)mem[k]=true; opened(c); sync(c); }catch(e){} }
@@ -8004,7 +8014,7 @@ function screensCardsHtml(top3Hint){
       <div class="card-title"><span>🏆 Composite Scores <span class="card-hint">tech 33% · fundamentals 28% · R/R 19% · social 20%</span></span></div>
       <div class="chart-wrap" style="height:300px"><canvas id="picks-chart"></canvas></div>
     </div>
-    <div class="card" data-priv="market">
+    <div class="card" data-priv="market" data-sec="scr-breakdown">
       <div class="card-title collapsible" data-toggle="body-picktable" onclick="toggleSection('body-picktable')"><span>📋 Scoring Breakdown</span><span class="chevron">▼</span></div>
       <div id="body-picktable"><div id="picks-filters"></div><div id="picks-table"></div></div>
     </div>
@@ -8042,6 +8052,7 @@ function renderScreensPage(){
     <div class="card" data-sd-screens-note style="border-left:3px solid #f59e0b;border-radius:0 10px 10px 0"><div style="font-size:12.5px;line-height:1.55"><b>Reference screen, not your buy list.</b> ••0741's buys come from the <span class="dp-link" onclick="switchTab('picks');setPlanAccount('main')">Apex card on the Plan page</span>. Nothing below is checked against Apex's leverage band, 2-per-cluster cap or tax holds, and none of it reaches the Confirm button. Found something here? Run it through <span class="dp-link" onclick="switchTab('analyze')">Analyze</span> first.</div></div>
 `+screensHeroHtml()+screensCardsHtml('oversold RSI&lt;45 screen · reference')+screensDiscHtml();
   screensRenderAll();
+  try{ if(window.__pfFold)app.querySelectorAll('.card[data-sec]').forEach(window.__pfFold.apply); }catch(e){}   // v239: this page has no card enhancer, so the fold is applied here, after the table has rows
 }
 
 function renderPicksStatic(){
@@ -8857,16 +8868,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=238"></script>
-<script src="ui/today.js?v=238"></script>
-<script src="ui/predictions-model.js?v=238"></script>
-<script src="ui/predictions.js?v=238"></script>
-<script src="ui/smartmoney-model.js?v=238"></script>
-<script src="ui/smartmoney.js?v=238"></script>
-<script src="ui/experience.js?v=238"></script>
-<script src="ui/ticker.js?v=238"></script>
-<script src="ui/duo.js?v=238"></script>
-<script src="ui/compact.js?v=238"></script>
-<script src="ui/journey.js?v=238"></script>
+<script src="ui/today-model.js?v=239"></script>
+<script src="ui/today.js?v=239"></script>
+<script src="ui/predictions-model.js?v=239"></script>
+<script src="ui/predictions.js?v=239"></script>
+<script src="ui/smartmoney-model.js?v=239"></script>
+<script src="ui/smartmoney.js?v=239"></script>
+<script src="ui/experience.js?v=239"></script>
+<script src="ui/ticker.js?v=239"></script>
+<script src="ui/duo.js?v=239"></script>
+<script src="ui/compact.js?v=239"></script>
+<script src="ui/journey.js?v=239"></script>
 </body>
 </html>
