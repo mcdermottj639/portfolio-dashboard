@@ -1,0 +1,215 @@
+{
+ "about": "Apex v2.9 paper (rules v2.9-paper-1): the Robinhood scanner pull that covers the whole eligible universe. The scanner returns at most 200 rows a query, so the universe is pulled in 12 sector / market-cap slices; every slice must return rows == total_items. If a slice ever reports more than 200, split it at a market cap between its bounds and pull both halves. Read-only previews: nothing is saved in Robinhood.",
+ "universe": {
+  "instrumentType": "STOCK",
+  "minMarketCap": 2000000000,
+  "minAvgVolume30d": 500000,
+  "minLast": 10
+ },
+ "columns": [
+  {
+   "display_name": "px",
+   "expression": "tradeAllDay.price"
+  },
+  {
+   "display_name": "lastClose",
+   "expression": "price"
+  },
+  {
+   "display_name": "sma20",
+   "expression": "closeAvg(candleCount=20, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "sma50",
+   "expression": "closeAvg(candleCount=50, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "sma70",
+   "expression": "closeAvg(candleCount=70, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "sma100",
+   "expression": "closeAvg(candleCount=100, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "sma200",
+   "expression": "closeAvg(candleCount=200, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "c63",
+   "expression": "close(candleCount=63, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "c126",
+   "expression": "close(candleCount=126, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "h20",
+   "expression": "high(candleCount=20, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "l20",
+   "expression": "low(candleCount=20, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "h63",
+   "expression": "high(candleCount=63, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "l63",
+   "expression": "low(candleCount=63, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "h126",
+   "expression": "high(candleCount=126, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "rsi14",
+   "expression": "rsi(candleCount=14, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "atr14",
+   "expression": "atr(candleCount=14, candlePeriod=\"1d\", session=\"all\")"
+  },
+  {
+   "display_name": "revG",
+   "expression": "fundamental.quarterlyRevenueGrowth"
+  },
+  {
+   "display_name": "pe",
+   "expression": "fundamental.peRatio"
+  },
+  {
+   "display_name": "fpe",
+   "expression": "fundamental.forwardPeRatio"
+  },
+  {
+   "display_name": "earn",
+   "expression": "fundamental.earningsYmd"
+  },
+  {
+   "display_name": "sector",
+   "expression": "fundamental.morningstarSectorLabel"
+  },
+  {
+   "display_name": "mcap",
+   "expression": "fundamental.marketCap"
+  },
+  {
+   "display_name": "vol30",
+   "expression": "volumeAvg(candleCount=30, candlePeriod=\"1d\", session=\"all\")"
+  }
+ ],
+ "batches": [
+  {
+   "label": "01-energy-realestate",
+   "sectors": [
+    "Energy",
+    "Real Estate"
+   ]
+  },
+  {
+   "label": "02-materials-defensive",
+   "sectors": [
+    "Basic Materials",
+    "Consumer Defensive"
+   ]
+  },
+  {
+   "label": "03-comm-utilities",
+   "sectors": [
+    "Communication Services",
+    "Utilities"
+   ]
+  },
+  {
+   "label": "04-consumer-cyclical",
+   "sectors": [
+    "Consumer Cyclical"
+   ]
+  },
+  {
+   "label": "05-financial-2to7b",
+   "sectors": [
+    "Financial Services"
+   ],
+   "cap": [
+    2000000000,
+    7000000000
+   ]
+  },
+  {
+   "label": "06-financial-7b-up",
+   "sectors": [
+    "Financial Services"
+   ],
+   "cap": [
+    7000000000,
+    null
+   ]
+  },
+  {
+   "label": "07-healthcare-2to7b",
+   "sectors": [
+    "Healthcare"
+   ],
+   "cap": [
+    2000000000,
+    7000000000
+   ]
+  },
+  {
+   "label": "08-healthcare-7b-up",
+   "sectors": [
+    "Healthcare"
+   ],
+   "cap": [
+    7000000000,
+    null
+   ]
+  },
+  {
+   "label": "09-industrials-2to7b",
+   "sectors": [
+    "Industrials"
+   ],
+   "cap": [
+    2000000000,
+    7000000000
+   ]
+  },
+  {
+   "label": "10-industrials-7b-up",
+   "sectors": [
+    "Industrials"
+   ],
+   "cap": [
+    7000000000,
+    null
+   ]
+  },
+  {
+   "label": "11-technology-2to7b",
+   "sectors": [
+    "Technology"
+   ],
+   "cap": [
+    2000000000,
+    7000000000
+   ]
+  },
+  {
+   "label": "12-technology-7b-up",
+   "sectors": [
+    "Technology"
+   ],
+   "cap": [
+    7000000000,
+    null
+   ]
+  }
+ ],
+ "bench": [
+  "SPY"
+ ]
+}

@@ -319,3 +319,7 @@ Rules that stay: a submitted or completed ticket is never worded as a confirmed 
 "Last ticket", like Plan); an unknown status is shown with its raw value, not hidden. Out of scope and unchanged: ticket state logic,
 producer, Apex "Confirm with Claude" flow, Options broker-state badges (CONFIRMED / QUEUED / PARTIALLY_FILLED are the broker's own
 words), the Plan help glossary of stored producer words. Covered by `tests/ticket-status-checks.mjs` via `tests/journey-browser.mjs`.
+
+## v244 — Apex v2.9 paper research view (2026-11-17)
+
+Added, nothing removed: route `apexpaper` ("v2.9 Paper", Apex area) and a pointer row under the live Apex card. The live Apex card, its targets, Recommended trades, Confirm button, tickets and every agentic surface are unchanged and never read `data/apex-paper-v29.json`. The view is display only and names missing / unreadable / failed / partial / stale states.

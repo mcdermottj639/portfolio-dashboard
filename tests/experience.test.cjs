@@ -54,7 +54,10 @@ for(const route of ['technicals','fundamentals','flow']){
 }
 assert.match(experience,/const defaults = \{today:'today',apex:'plan',agentic:'plan',research:'markets',more:'options'\}/,'five areas, in order, with their defaults');
 const routeIds=[...experience.matchAll(/^    (\w+): \{area:'(\w+)'/gm)].map(m=>m[1]);
-assert.deepEqual(routeIds.slice().sort(),['accounts','activity','analyze','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','scenario','screens','smartmoney','technicals','today'],'all 21 route ids are kept');
+assert.deepEqual(routeIds.slice().sort(),['accounts','activity','analyze','apexpaper','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','scenario','screens','smartmoney','technicals','today'],'all 21 Navigation B route ids are kept, plus apexpaper (v244)');
+// v244: the Apex v2.9 paper page is an Apex-only route (not account-scoped, pinned to the self-directed account, never the area's remembered route).
+assert.match(experience,/    apexpaper: \{area:'apex', account:'main', transient:true, label:'v2.9 Paper', tab:'apexpaper'\}/);
+assert.ok(html.includes('id="page-apexpaper"')&&html.includes('id="apexpaper-app"'),'paper research page container');
 for(const id of routeIds)assert.match(require('../ui/journey.js').pageRoute('#view='+id)||'',new RegExp('^'+id+'$'),'journey admits #view='+id);
 for(const route of ['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'])assert.match(experience,new RegExp('    '+route+": \\{area:'apex', scoped:true"),route+' is account-scoped');
 for(const route of ['markets','screens','analyze','smartmoney','predictions'])assert.match(experience,new RegExp('    '+route+": \\{area:'research'"),route+' is in Research');
@@ -63,7 +66,7 @@ assert.match(experience,/areaOf = \(key, acct\)/);assert.match(experience,/accou
 assert.match(experience,/area==='apex'\?'main':area==='agentic'\?'agentic':undefined/,'Apex always selects the self-directed account, Agentic the agentic one');
 const version=html.match(/APP_VERSION='v(\d+)'/)[1];
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v"+version+"'"));
-for(const asset of ['experience.css','experience-model.js','experience.js','sd-rules.js','predictions.css','predictions-model.js','predictions.js']){
+for(const asset of ['experience.css','experience-model.js','experience.js','sd-rules.js','predictions.css','predictions-model.js','predictions.js','apex-paper.js','apex-paper.css']){
   assert.ok(html.includes('ui/'+asset+'?v='+version));assert.ok(sw.includes('ui/'+asset+'?v='+version));
 }
 assert.doesNotMatch(experience,/01 \/ What moved|02 \/ Where|03 \/ Your next/);

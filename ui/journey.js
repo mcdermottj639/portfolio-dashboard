@@ -6,7 +6,7 @@
   if (root.document) api.mount(root);
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const ROUTES = ['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','scenario','activity','log','smartmoney','predictions'];
+  const ROUTES = ['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','scenario','activity','log','smartmoney','predictions','apexpaper'];
   const symbol = value => typeof value === 'string' && /^[A-Z][A-Z0-9.-]{0,14}$/.test(value.trim().toUpperCase()) ? value.trim().toUpperCase() : '';
   const account = value => value === 'agentic' ? 'agentic' : 'main';
   const num = value => (typeof value === 'number' || (typeof value === 'string' && value.trim())) && Number.isFinite(Number(value)) ? Number(value) : null;

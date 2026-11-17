@@ -38,6 +38,10 @@
     fundamentals: {area:'apex', scoped:true, hidden:true, label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
     flow: {area:'apex', scoped:true, hidden:true, label:'Flow & positioning', tab:'portfolio', section:'flow'},
     scenario: {area:'apex', scoped:true, label:'What if?', custom:'scenario'},
+    // v244: Apex v2.9 PAPER research (display only). Apex-only: `account:'main'` pins the self-directed account, so it
+    // never shows under Agentic; `transient` keeps it out of the area's "last route" memory, so tapping Apex always
+    // reopens a LIVE page (Plan by default), never the paper one.
+    apexpaper: {area:'apex', account:'main', transient:true, label:'v2.9 Paper', tab:'apexpaper'},
     // v204 (Jack, Nov 9): Markets · Screens · Analyze first, then (Nav B) Smart $ and Predict.
     markets: {area:'research', label:'Markets', tab:'markets'},
     screens: {area:'research', label:'Screens', tab:'screens'},
@@ -62,10 +66,10 @@
   const areaDefault = a => {
     const saved=[read('pf_area_'+a,'')];
     if(a==='research')saved.push(read('pf_signals_last',''));
-    for(const key of saved)if(key&&inArea(key,a))return key;
+    for(const key of saved)if(key&&inArea(key,a)&&!routes[key].transient)return key;
     return defaults[a];
   };
-  const legacyTabs = ['portfolio','markets','picks','options','analyze','screens','predictions','smartmoney'];
+  const legacyTabs = ['portfolio','markets','picks','options','analyze','screens','predictions','smartmoney','apexpaper'];
   const nativeSwitch = window.switchTab;
   const nativeAccount = window.setAccount;
   const nativePlanAccount = window.setPlanAccount;
@@ -108,7 +112,7 @@
     document.querySelectorAll('.acct-seg-wrap').forEach(w=>{w.hidden=!!(r.scoped&&r.tab);});
     // Accounts and Plan carry their own Self-directed/Agentic switch, and Options is self-directed only,
     // so the header dropdown there was a second control for the same choice (v185).
-    $('ex-account-label').hidden=['today','predictions','smartmoney'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab); $('ex-all-accounts').hidden=routeKey!=='today';
+    $('ex-account-label').hidden=['today','predictions','smartmoney','apexpaper'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab); $('ex-all-accounts').hidden=routeKey!=='today';
     main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===areaOf(routeKey,account())?'page':'false'));
     sub.hidden=false;
     // v185 (Jack, 2026-11-04: "nav widgets split between the buttons and the scroll bar"): this row
@@ -121,7 +125,7 @@
     // Apex / Agentic rows also carry a Research chip after Account (owner, Nov 17): it is the journey's "2 · Research" step
     // (data-pj-go="analyze" in ui/journey.js: opens Analyze for the area's selected holding, or the normal picker) — no new route.
     sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>'+(k==='accounts'&&(area==='apex'||area==='agentic')?'<button type="button" data-pj-go="analyze" data-ex-research aria-current="false">Research</button>':'')).join('');
-    $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
+    $('ex-context').textContent=routeKey==='apexpaper'?'Apex v2.9 · paper research · not live':routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
   }
   function protect() { if(window.__privScan)window.__privScan(); }
   function historyChart(points=M.valueHistory(window.__DATA,account()),combined=false) {
@@ -268,7 +272,8 @@
   function navigate(key, options={}) {
     if(!known(key))return; document.dispatchEvent(new CustomEvent('pf:before-route',{detail:{from:routeKey,to:key}}));
     if(options.account==='main'||options.account==='agentic')save('pf_acct',options.account);
-    routeKey=key; save('pf_area_'+areaOf(key,account()),key); save('pf_experience_route',key); if(key==='smartmoney'||key==='predictions')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
+    if(routes[key].account)save('pf_acct',routes[key].account);
+    routeKey=key; if(!routes[key].transient)save('pf_area_'+areaOf(key,account()),key); save('pf_experience_route',key); if(key==='smartmoney'||key==='predictions')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
     ['today','activity','decisions','scenario'].forEach(n=>$('page-ex-'+n).hidden=r.custom!==n);
     navigating=true;
     try {
@@ -285,7 +290,7 @@
   // Existing Find, heatmap drill-downs, pins, and Plan links continue through the same entry point.
   window.switchTab=function(tab){
     if(navigating)return nativeSwitch(tab);
-    const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',screens:'screens',predictions:'predictions',smartmoney:'smartmoney'}[tab];
+    const key={portfolio:'accounts',picks:'plan',markets:'markets',options:'options',analyze:'analyze',screens:'screens',predictions:'predictions',smartmoney:'smartmoney',apexpaper:'apexpaper'}[tab];
     return key?navigate(key):nativeSwitch(tab);
   };
   window.setAccount=function(...args){const changed=!navigating&&args[0]!==account();if(changed)document.dispatchEvent(new Event('pf:before-account'));const value=nativeAccount.apply(this,args);queueRefresh();if(changed)document.dispatchEvent(new Event('pf:account'));return value;};
