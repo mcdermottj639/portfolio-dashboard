@@ -405,7 +405,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const file = args.find((a) => !a.startsWith('--'));
   const flag = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
-  if (!file || !existsSync(file)) { console.error('usage: node producer/finalize-target.mjs <raw-allocation.json> [--book N] [--asOf YYYY-MM-DD] [--held SYM,SYM,…] [--no-prior] [--write]'); process.exit(1); }
+  if (!file || !existsSync(file)) { console.error('usage: node producer/finalize-target.mjs <raw-allocation.json> [--book N] [--asOf YYYY-MM-DD] [--held SYM,SYM,…] [--no-prior] [--spy PRICE] [--write]'); process.exit(1); }
   const raw = JSON.parse(readFileSync(file, 'utf8'));
   const allocation = raw.allocation || raw; // accept the whole workflow return or just .allocation
   // CHURN GOVERNOR: the committed target IS the prior by definition — read it unless told not to.
@@ -444,6 +444,25 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (dropped.length) console.log('dropped:', dropped.map((d) => `${d.ticker} (${d.reason})`).join(', '));
   console.log(JSON.stringify(target, null, 2));
   if (args.includes('--write')) {
+    // Momentum-off PAPER shadow (momentum-shadow.mjs): a research log stored on the target as
+    // `momentumShadow`, carried forward from the committed file (read here directly so --no-prior cannot
+    // drop history). Outside targetIdentity; nothing allocates from it. Wrapped so it can never fail a
+    // refresh — on any error the committed log is kept as it was.
+    let committedShadow = null;
+    try {
+      const cf = join(__dirname, 'agentic-target.json');
+      const committed = existsSync(cf) ? JSON.parse(readFileSync(cf, 'utf8')) : null;
+      committedShadow = committed?.momentumShadow || null;
+      const { nextShadow } = await import('./momentum-shadow.mjs');
+      const shadow = nextShadow(committed, raw.ranking || null, { asOf: target.asOf, spyAt: flag('spy') != null ? +flag('spy') : null });
+      target.momentumShadow = shadow.momentumShadow;
+      console.log(shadow.added
+        ? `momentum-off paper shadow recorded for ${target.asOf}: ${shadow.cohort.onlyNoMomentum.length} of ${shadow.cohort.n} names differ (in without momentum: ${shadow.cohort.onlyNoMomentum.join(', ') || 'none'}; out: ${shadow.cohort.onlyLive.join(', ') || 'none'})`
+        : `momentum-off paper shadow: nothing recorded (${shadow.cohort ? 'cohort for this asOf already frozen' : 'no usable ranking'})`);
+    } catch (error) {
+      if (committedShadow) target.momentumShadow = committedShadow;
+      console.warn('momentum-off paper shadow skipped:', error.message);
+    }
     mkdirSync(join(__dirname, 'raw'), { recursive: true });
     const tmp = join(__dirname, 'raw', 'agentic-target.candidate.json');
     // Validate before touching the canonical file. A rejected candidate leaves it byte-for-byte intact.
