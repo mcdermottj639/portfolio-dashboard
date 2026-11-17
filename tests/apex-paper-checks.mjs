@@ -231,8 +231,8 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
       assert.ok(o.sw<=o.iw,`${label} ${mode}: scrollWidth ${o.sw} > ${o.iw}`);assert.equal(o.sx,0,`${label} ${mode}: page cannot be dragged sideways`);
       assert.deepEqual(o.bad,[],`${label} ${mode}: element outside the viewport`);assert.deepEqual(o.clipped,[],`${label} ${mode}: clipped figure`);
     }
-    const cols=await p.evaluate(()=>{const l=document.querySelector('#apexpaper-app [data-apx-sec="funnel"]').getBoundingClientRect(),r=document.querySelector('#apexpaper-app [data-apx-sec="ranked"]').getBoundingClientRect();return {two:r.left>=l.right-1,lw:l.width,rw:r.width,bg:getComputedStyle(document.body).backgroundColor,html:getComputedStyle(document.documentElement).backgroundColor};});
-    if(w>=740){assert.equal(cols.two,true,label+': candidates sit in the right column');assert.ok(Math.abs(cols.lw-cols.rw)<4,label+': two equal columns');}
+    const cols=await p.evaluate(()=>{const l=document.querySelector('#apexpaper-app [data-apx-sec="ranked"]').getBoundingClientRect(),de=document.querySelector('#apexpaper-app [data-apx-sec="detail"]'),r=de&&de.offsetParent?de.getBoundingClientRect():null;return {two:!!r&&r.left>=l.right-1,lw:l.width,rw:r?r.width:0,bg:getComputedStyle(document.body).backgroundColor,html:getComputedStyle(document.documentElement).backgroundColor};});
+    if(w>=740){assert.equal(cols.two,true,label+': v246 (#235) candidate list left, selected stock right');assert.ok(cols.lw>=200&&cols.rw>=200,label+': both panes usable');}
     else assert.equal(cols.two,false,label+': single column');
     assert.equal(cols.bg,cols.html,label+': page and overscroll background match');
     if(shots&&theme==='light'){fs.mkdirSync(shots,{recursive:true});await p.evaluate(()=>{document.querySelectorAll('#apexpaper-app details').forEach(d=>{d.open=false;});scrollTo(0,0);});await p.screenshot({path:`${shots}/apex-paper-${w}x${h}.png`});}
