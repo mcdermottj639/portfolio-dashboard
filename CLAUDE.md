@@ -1,3 +1,7 @@
+## v243 — Header shows the full date and time again: "Nov 17, 9:41 AM ET" (2026-11-17)
+
+Jack (12:38 ET, Duo screenshot of Today at v242): "Bring back the am/pm ET the full date and time like u had originally in the grey we have the space". `paintBar()` in index.html no longer strips the AM/PM (added in v228) or the ET suffix (v230) from `generatedAtLabel`; the current year is still dropped as before. The black tape stays time-free (v242). Verified fitting beside the header icons at 320, 390, 466x677 and 960x676 with no clipping or overflow. Tests: tests/journey.test.cjs (now asserts the strip code is gone), tests/brief-browser.mjs (whole stamp "Nov 13, 12:40 PM ET" at 320/390). Supersedes the v228 and v230 entries below on this point.
+
 ## v241 — Apex/Agentic pages drop the old two-account toggle; Research chip (Navigation B follow-up, 2026-11-17)
 
 Jack sent a v239 phone screenshot asking "Why is agentic still in apex": the Accounts and Plan pages still carried the Self-directed | Agentic segmented switch inside Apex and Agentic. He also said yes to a Research chip.
