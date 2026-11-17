@@ -323,3 +323,8 @@ words), the Plan help glossary of stored producer words. Covered by `tests/ticke
 ## v244 — Apex v2.9 paper research view (2026-11-17)
 
 Added, nothing removed: route `apexpaper` ("v2.9 Paper", Apex area) and a pointer row under the live Apex card. The live Apex card, its targets, Recommended trades, Confirm button, tickets and every agentic surface are unchanged and never read `data/apex-paper-v29.json`. The view is display only and names missing / unreadable / failed / partial / stale states.
+**Superseded in part, 2026-11-17 (Apex workspace; owner: "Build it", after the folded-Duo screenshot of Apex > Plan).** Inside Apex and Agentic the
+Plan · Account · Research · What if? sub-nav, the card rail (chips + Expand/Collapse all) and the journey's three large step buttons are replaced by ONE
+tab row: **Overview · Positions · Research · Actions** (Overview = `accounts`, Positions = `holdings`, Research = `analyze` entered from the area and kept
+highlighted via history-state `origin`, Actions = `plan`; `scenario` is an Overview row; the 22 routes and hashes are unchanged). Back is icon-only and
+Classic view moved into More. A bare `#view=analyze` is still a Research-area page. Everything above this note stays as history.

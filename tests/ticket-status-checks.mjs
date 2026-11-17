@@ -72,7 +72,8 @@ export async function runTicketStatusChecks({browser,base,sample,stub,apex,write
       assert.ok(plan.includes(t.compact),name+': Plan shows "'+t.compact+'" got '+plan.slice(0,300));
       assert.ok(plan.includes(t.terminal?'Last ticket':t.key==='unknown'?'Latest ticket':'Rebalance in flight'),name+': Plan heading');
       // Agentic Accounts strip
-      await nav('accounts','agentic');await page.evaluate(()=>renderAgenticCard());await openStrip();await settle();
+      // v245 workspace: the trade review (with this strip) lives with All Positions, i.e. Agentic > Positions; Overview carries the ticket in its action list.
+      await nav('holdings','agentic');await page.evaluate(()=>renderAgenticCard());await page.evaluate(()=>{const c=document.querySelector('#agentic-app>[data-sec="holdings"]');if(c&&window.__pfFold&&__pfFold.open)__pfFold.open(c);});await openStrip();await settle();
       const strip=await text('#agentic-content .fund-note');
       assert.equal(await page.locator('#agentic-content .fund-note').first().isVisible(),true,name+': the strip is visible');
       assert.ok(strip.includes(t.compact),name+': strip shows "'+t.compact+'" got '+strip.slice(0,300));

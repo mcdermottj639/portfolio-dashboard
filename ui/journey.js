@@ -12,7 +12,7 @@
   const num = value => (typeof value === 'number' || (typeof value === 'string' && value.trim())) && Number.isFinite(Number(value)) ? Number(value) : null;
   function clean(value) {
     if (!value || value.v !== 1 || !ROUTES.includes(value.route)) return null;
-    return {v:1, route:value.route, account:account(value.account), symbol:symbol(value.symbol), index:Math.max(0,Math.min(10000,Math.trunc(num(value.index)||0))),
+    return {v:1, route:value.route, account:account(value.account), origin:value.route==='analyze'&&(value.origin==='main'||value.origin==='agentic')?value.origin:'', symbol:symbol(value.symbol), index:Math.max(0,Math.min(10000,Math.trunc(num(value.index)||0))),
       y:Math.max(0,Math.min(1000000,num(value.y)||0)), details:Array.isArray(value.details)?value.details.filter(n=>Number.isInteger(n)&&n>=0&&n<1000).slice(0,1000):[]};
   }
   function pageRoute(hash) {
@@ -33,7 +33,7 @@
     const savedPrefs=read('localStorage','pf-journey-ui-v1',{});
     const prefs=savedPrefs&&typeof savedPrefs==='object'&&!Array.isArray(savedPrefs)?savedPrefs:{};
     const pref=a=>{if(!prefs[a]||typeof prefs[a]!=='object')prefs[a]={};return prefs[a];};
-    let current={v:1,route:E.route,account:E.account,symbol:symbol(pref(E.account).symbol),index:0,y:0,details:[]};
+    let current={v:1,route:E.route,account:E.account,origin:E.origin||'',symbol:symbol(pref(E.account).symbol),index:0,y:0,details:[]};
     let ready=false,replay=false,restoring=false,restoreToken=0,refreshTimer,scrollTimer,lastContext='';
     const visibleRoot=()=> d.querySelector('.ex-page:not([hidden])') || [...d.querySelectorAll('body > [id^="page-"]')].find(el=>el.style.display!=='none') || $('page-'+({accounts:'portfolio',holdings:'portfolio',plan:'picks'}[E.route]||E.route));
     const allDetails=()=>[...(visibleRoot()?.querySelectorAll('details')||[])];
@@ -54,8 +54,8 @@
     function after() {
       if(!ready){schedule();return;}
       if(!replay){
-        const changed=current.route!==E.route||current.account!==E.account;
-        current={v:1,route:E.route,account:E.account,symbol:symbol(pref(E.account).symbol),index:current.index+(changed?1:0),y:0,details:[]};
+        const changed=current.route!==E.route||current.account!==E.account||(current.origin||'')!==(E.origin||'');
+        current={v:1,route:E.route,account:E.account,origin:E.origin||'',symbol:symbol(pref(E.account).symbol),index:current.index+(changed?1:0),y:0,details:[]};
         store(!changed);
       }
       schedule();
@@ -78,7 +78,7 @@
     function use(entry) {
       if(!entry)return;
       replay=true;current=entry;pref(entry.account).symbol=entry.symbol;
-      E.navigate(entry.route,{account:entry.account,keepScroll:true});
+      E.navigate(entry.route,{account:entry.account,keepScroll:true,origin:entry.origin||null});
       if(entry.route==='analyze'&&entry.symbol)w.runAnalysis?.(entry.symbol);
       replay=false;render();restore(entry);
     }
@@ -96,20 +96,22 @@
       pref(E.account).symbol=s;write('localStorage','pf-journey-ui-v1',prefs);
       current.symbol=s;store();schedule();
     }
+    // Apex / Agentic is a workspace of its own (v242): Analyze opened from inside it keeps that area highlighted. Anywhere else it stays in Research.
+    const inWorkspace=()=>E.area==='apex'||E.area==='agentic';
     const nativeRun=w.runAnalysis;
     if(nativeRun)w.runAnalysis=function(sym){const s=symbol(sym);if(!s)return;const value=nativeRun(s);if(E.route==='analyze')select(s);return value;};
     function openResearch(sym) {
       const s=symbol(sym);if(!s)return;
       // Reading research is not a trade and needs no confirmation modal.
       before();pref(E.account).symbol=s;write('localStorage','pf-journey-ui-v1',prefs);
-      E.navigate('analyze');w.runAnalysis?.(s);
+      E.navigate('analyze',inWorkspace()?{origin:E.account}:{});w.runAnalysis?.(s);
     }
     w.azConfirm=openResearch; // Trade/whole-book confirmation functions remain untouched.
     const money=v=>num(v)===null?'Unavailable':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(Number(v));
     const time=v=>v&&Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/New_York'})+' ET':'Date unavailable';
     const scope=a=>a==='agentic'?'Agentic':'Self-directed';
     function context() {
-      const show=['analyze','decisions','plan'].includes(E.route), host=$('pj-context');
+      const show=['analyze','decisions','holdings'].includes(E.route), host=$('pj-context');
       d.documentElement.classList.toggle('pj-analyzing',E.route==='analyze');
       if(!show){if(host)host.hidden=true;return;}
       const s=snap(), selected=symbol(pref(E.account).symbol), p=s.positions.find(p=>p.symbol===selected);
@@ -122,10 +124,13 @@
       if(host&&signature===lastContext){host.hidden=false;return;}
       lastContext=signature;
       const el=host||d.createElement('section');el.id='pj-context';el.className='pj-context';el.hidden=false;el.setAttribute('aria-label','Holding research journey');
-      el.innerHTML='<div class="pj-context-head"><strong>'+scope(E.account)+'</strong><label>Selected name<select id="pj-symbol" aria-label="Selected holding or research name"><option value="" disabled>Choose a name</option>'+list.map(t=>'<option'+(t===ticker?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></label></div>'+
-        (ticker?'<div class="pj-metrics" data-priv="on"><div><span>Position value</span><b>'+ (p?esc(money(p.value)):'Not held here')+'</b></div><div><span>Day contribution</span><b>'+esc(p?money(p.day):'Not held here')+'</b></div></div>':'')+
-        '<div class="pj-steps" aria-label="Research progression"><button type="button" data-pj-go="holdings">1 · Holding</button><button type="button" data-pj-go="analyze"'+(!ticker?' disabled':'')+' aria-current="'+(E.route==='analyze'?'step':'false')+'">2 · Research</button><button type="button" data-pj-go="plan" aria-current="'+(E.route==='plan'?'step':'false')+'">3 · Plan</button></div>'+
-        '<details class="pj-source"><summary>Snapshot · '+esc(status)+'</summary><p>Published '+esc(time(s.generatedAt))+'. These are saved observations, not live quotes. Day contribution is the selected holding’s recorded dollar move, not account return.</p>'+(E.route==='analyze'?'<p>Analyze is a general research screen. Its legacy position, sizing and correlation sections use the self-directed book; they are not the Agentic plan. Use Account plan for account-specific eligibility and the existing confirmation controls.</p>':'<p>Research selection changes only this view. The existing account plan and confirmation remain authoritative; no order is submitted here.</p>')+'</details>'+
+      // v242: one slim row (the selector) on Positions; on Research / Decision evidence the three stages as one text line instead of three
+      // large buttons. The position card on Positions replaced the value / day tiles. The source line names WHICH clock this is: the account
+      // snapshot's own time, the same stamp the header shows ("Account"), with the relative age only as a hint.
+      const stage=E.route==='holdings'?'':'<nav class="pj-stage" aria-label="Research progression"><button type="button" data-pj-go="holdings">Holding</button><i aria-hidden="true"></i>'+(E.route==='analyze'?'<span aria-current="step">Research</span>':'<button type="button" data-pj-go="analyze"'+(!ticker?' disabled':'')+'>Research</button>')+'<i aria-hidden="true"></i><button type="button" data-pj-go="plan">Plan</button></nav>';
+      const acctStamp=M.stamp(s.generatedAt);
+      el.innerHTML='<div class="pj-context-head"><strong>'+scope(E.account)+'</strong><label>Selected name<select id="pj-symbol" aria-label="Selected holding or research name"><option value="" disabled>Choose a name</option>'+list.map(t=>'<option'+(t===ticker?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></label></div>'+stage+
+        (E.route==='holdings'?'':'<details class="pj-source"><summary>Account data · '+esc(acctStamp?acctStamp.text:'Date unavailable')+' · '+esc(status)+'</summary><p>Published '+esc(time(s.generatedAt))+'. These are saved observations, not live quotes; the header also shows when the research and the last scan ran. '+(E.route==='analyze'?'Analyze is a general research screen. Its legacy position, sizing and correlation sections use the self-directed book; they are not the Agentic plan. Use Actions for account-specific eligibility and the existing confirmation controls.':'Research selection changes only this view. The account plan and its confirmation remain authoritative; no order is submitted here.')+'</p></details>')+
         (E.route==='analyze'?'<p class="pj-notice"><span>General screen · self-directed context</span><button type="button" data-pj-go="decisions">Sources →</button></p>':'');
       if(!host)$('ex-subnav').after(el);
       w.__privScan?.();
@@ -184,7 +189,10 @@
     function render() {
       if(!$('pj-back')){const b=d.createElement('button');b.type='button';b.id='pj-back';b.textContent='← Back';b.setAttribute('aria-label','Back to previous dashboard view');b.disabled=current.index===0;b.addEventListener('click',()=>{if(current.index>0)w.history.back();});$('ex-top')?.prepend(b);}
       if($('pf-fresh')?.querySelector('.pf-find')&&$('ex-find'))$('ex-find').hidden=true;
-      if($('pj-back'))$('pj-back').disabled=current.index===0;
+      if($('pj-back')){const b=$('pj-back'),today=E.route==='today';b.disabled=current.index===0;
+        // v242: on Apex / Agentic / Research / More Back is a small icon-only arrow shown only when there is in-app history (the app can
+        // run as a home-screen app without browser Back). Same click, same aria-label; Today's own header keeps "← Back".
+        b.textContent=today?'← Back':'←';b.hidden=!today&&current.index===0;}
       context();mainEvidence();filterEvidence();enhanceHoldings();accessible();
       const selected=d.querySelector('#ex-subnav [aria-current="page"]');if(selected){const rail=$('ex-subnav');if(selected.offsetLeft<rail.scrollLeft||selected.offsetLeft+selected.offsetWidth>rail.scrollLeft+rail.clientWidth)rail.scrollLeft=selected.offsetLeft;}
     }
@@ -198,8 +206,11 @@
       const clear=e.target.closest('[data-pj-clear-account]');
       if(clear){const key=account(clear.dataset.pjClearAccount), input=$('pj-holding-search'+(key==='agentic'?'-ag':''));pref(key).query='';write('localStorage','pf-journey-ui-v1',prefs);input.value='';enhanceHoldings();input.focus();}
       const b=e.target.closest('[data-pj-go]');if(!b)return;
-      const route=b.dataset.pjGo,s=symbol(pref(E.account).symbol);if(route==='decisions'&&s){pref(E.account).evidence='selected';write('localStorage','pf-journey-ui-v1',prefs);}E.navigate(route);
+      if(b.dataset.pjSym&&symbol(b.dataset.pjSym))select(b.dataset.pjSym);   // a position card's stage link names its own holding
+      const route=b.dataset.pjGo,s=symbol(pref(E.account).symbol);if(route==='decisions'&&s){pref(E.account).evidence='selected';write('localStorage','pf-journey-ui-v1',prefs);}
+      E.navigate(route,route==='analyze'&&inWorkspace()?{origin:E.account}:{});
       if(route==='analyze'&&s)w.runAnalysis?.(s);
+      if(b.dataset.pjFocus)E.focusPlan?.(b.dataset.pjFocus);
     });
     // Observe only native content roots, never this module's own context/filter nodes.
     ['app','agentic-app','analyze-app','picks-app','plan-agentic-app','page-ex-decisions'].forEach(id=>{const el=$(id);if(el)new MutationObserver(records=>{if(records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&!n.matches?.('.pj-filter,.pj-row-toggle,.priv-m,#pj-evidence-filter'))))schedule();}).observe(el,{childList:true,subtree:true});});
@@ -208,7 +219,7 @@
       const saved=clean(w.history.state?.pfJourney), requested=pageRoute(w.location.hash);
       ready=true;
       if(saved&&(!requested||requested===saved.route)){current=saved;use(saved);}
-      else {const route=requested||E.route;E.navigate(route,{keepScroll:true});current={...current,route,account:E.account,index:0};store();render();}
+      else {const route=requested||E.route;E.navigate(route,{keepScroll:true});current={...current,route,account:E.account,origin:E.origin||'',index:0};store();render();}
     }
     w.PFJourney=Object.freeze({select,openResearch,refresh:schedule,get state(){return {...current};}});
     if(w.__dataReady?.then)w.__dataReady.then(init,init);else init();

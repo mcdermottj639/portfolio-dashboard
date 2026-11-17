@@ -27,7 +27,7 @@ try{
  await nav('holdings','main');await settle();
  await page.locator('#pj-holding-search').fill('AAPL');
  assert.equal(await page.locator('#pos-table tbody tr:not([hidden]) .sym').count(),1);
- await page.evaluate(()=>window.scrollBy(0,160));await page.waitForTimeout(250);const before=await state();
+ await page.locator('#pos-table tbody tr:not([hidden]) .az-link').first().scrollIntoViewIfNeeded();await page.evaluate(()=>window.scrollBy(0,40));await page.waitForTimeout(250);const before=await state();   // v242: the table sits below the position cards, so scroll to it first
  await page.locator('#pos-table tbody tr:not([hidden]) .az-link').first().click();await settle();
  assert.equal((await state()).route,'analyze');assert.equal((await state()).symbol,'AAPL');
  assert.equal(await page.locator('#az-confirm:visible').count(),0,'read-only analysis does not add a confirmation');
@@ -40,17 +40,18 @@ try{
  await page.goForward();await settle();assert.equal((await state()).symbol,'AAPL');
  await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();
  assert.equal((await state()).route,'analyze');assert.equal((await state()).symbol,'AAPL');assert.equal(await page.locator('#pj-symbol').inputValue(),'AAPL');
- await page.locator('#ex-account').selectOption('agentic');await settle();assert.equal((await state()).account,'agentic');
+ await page.locator('.ex-main [data-ex-area="agentic"]').click();await settle();await page.evaluate(()=>PFExperience.navigate('analyze',{account:'agentic'}));await settle();   // v242: Research entered from Apex hides the header select; the Agentic nav item switches the accountassert.equal((await state()).account,'agentic');
  const ag=await page.evaluate(()=>PFExperienceModel.snapshot(__DATA,__SNAP,'agentic').positions[0]?.symbol);
  assert.ok(ag);await page.locator('#pj-symbol').selectOption(ag);await settle();
  const expected=await page.evaluate(sym=>PFExperienceModel.snapshot(__DATA,__SNAP,'agentic').positions.find(p=>p.symbol===sym).value,ag);
- assert.match(await page.locator('#pj-context').innerText(),new RegExp(expected.toLocaleString('en-US',{style:'currency',currency:'USD'}).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+ assert.ok(expected>0);assert.equal(await page.locator('#pj-context .pj-metrics').count(),0,'v242: the metric tiles moved onto the position card');
  await page.locator('[data-pj-go="plan"]').first().click();await settle();
  assert.equal(await page.locator('#plan-agentic-app').isVisible(),true);assert.equal(await page.locator('#picks-app').isVisible(),false);
  await nav('analyze','main');await settle();assert.equal(await page.locator('#pj-symbol').inputValue(),'AAPL','selection is account-local');
  await page.evaluate(()=>setPrivacy(true));await settle();
- assert.doesNotMatch(await page.locator('#pj-context .pj-metrics').innerText(),/\$\d/);await page.evaluate(()=>setPrivacy(false));await settle();
- assert.match(await page.locator('#pj-context .pj-metrics').innerText(),/\$\d/);
+ await nav('holdings','main');await settle();
+ assert.doesNotMatch(await page.locator('.ws-pos').first().innerText(),/\$\d/,'position card is masked in privacy mode');await page.evaluate(()=>setPrivacy(false));await settle();
+ assert.match(await page.locator('.ws-pos').first().innerText(),/\$\d/);
  await nav('plan','main');await settle();await nav('decisions','main');await settle();
  assert.match(await page.locator('#pj-apex-evidence').innerText(),/Synthetic entry research/);
  await page.locator('#pj-evidence-filter select').selectOption('selected');await settle();
@@ -115,7 +116,6 @@ try{
   }
   assert.ok(await page.evaluate(()=>!!(window.__SNAP&&window.__SNAP.perf&&window.__SNAP.alloc&&window.__SNAP.ovMap)),'renderPerformance / load() still stash __SNAP.perf, alloc, ovMap');
   assert.equal(await stored(),null,'defaults write nothing to storage');
-  assert.match(await page.locator('#page-portfolio .cn-all').innerText(),/Collapse all/,'rail label: open cards remain');
   // (b2) the treemap draws when its card opens (it cannot be laid out at zero width)
   for(const acct of ['main','agentic']){
    await nav('accounts',acct);await settle();
@@ -153,26 +153,21 @@ try{
   const chip=(acct,label)=>{const f=()=>page.locator('#page-portfolio .card-nav-chip',{hasText:label}).first().click();f.label='rail chip '+label;return f;};
   const route=(name,acct)=>{const f=()=>nav(name,acct);f.label='route '+name;return f;};
   for(const acct of ['main','agentic']){
-   await opens(acct,chip(acct,'Technical Signals'),'technicals');
-   await opens(acct,chip(acct,'Rebalance Log'),'rebalance-log');
-   const h=await opens(acct,chip(acct,'Holdings Heatmap'),'heatmap');assert.ok(h.tiles>0,acct+' heatmap drawn after chip jump');
-   for(const [r,sec] of [['heatmap','heatmap'],['income','income'],['technicals','technicals'],['fundamentals','fundamentals'],['flow','flow'],['log','rebalance-log']])await opens(acct,route(r,acct),sec);
+   // v242: the card rail (chips + Expand/Collapse all) is gone from Apex / Agentic; the same open-on-navigation is exercised by the route jumps.
+   assert.equal(await page.locator('#page-portfolio .card-nav-chip:visible').count(),0,acct+': no card rail chips in the workspace');
+   const h=await opens(acct,route('heatmap',acct),'heatmap');assert.ok(h.tiles>0,acct+' heatmap drawn after route jump');
+   for(const [r,sec] of [['income','income'],['technicals','technicals'],['fundamentals','fundamentals'],['flow','flow'],['log','rebalance-log']])await opens(acct,route(r,acct),sec);
    const find=()=>page.evaluate(([a])=>{const c=document.querySelector((a==='main'?'#app':'#agentic-app')+' .card[data-sec="allocation"]');return __pfGoCard(__navTitleOf(c),'portfolio');},[acct]);find.label='Find / My view jump';
    if(acct==='main')await opens(acct,find,'allocation');   // Find/My view index by title and pick the first match, so a shared title lands on the self-directed card (existing behaviour)
   }
-  // expand/collapse-all keeps its label in sync and reaches every card
   await reloadFresh(false);await nav('accounts','main');await settle();
-  await page.locator('#page-portfolio .cn-all').click();await settle();
-  let c=await cards('main');assert.ok(Object.entries(c).filter(([k,v])=>v.hasBody).every(([k,v])=>v.folded),'collapse all folds every card');assert.match(await page.locator('#page-portfolio .cn-all').innerText(),/Expand all/);
-  await page.locator('#page-portfolio .cn-all').click();await settle();
-  c=await cards('main');assert.ok(Object.entries(c).filter(([k,v])=>v.hasBody).every(([k,v])=>!v.folded),'expand all opens every card');assert.match(await page.locator('#page-portfolio .cn-all').innerText(),/Collapse all/);
-  assert.ok(c.heatmap.tiles>0,'expand all draws the heatmap');
+  assert.equal(await page.locator('#page-portfolio .cn-all:visible').count(),0,'v242: Expand/Collapse all rail is not shown in the workspace');
   // a card pinned to My view does not start folded
   await reloadFresh(false);await nav('accounts','main');await settle();
   const pinTitle=await page.evaluate(()=>__navTitleOf(document.querySelector('#app .card[data-sec="fundamentals"]')));
   await page.evaluate(t=>{localStorage.setItem('pf_pins',JSON.stringify([t]));localStorage.removeItem('pf_card_fold_v1');},pinTitle);
   await page.reload();await page.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle();await nav('accounts','main');await settle();
-  c=await cards('main');assert.equal(c.fundamentals.folded,false,'pinned card starts open');assert.equal(c.technicals.folded,true,'unpinned sibling still folded');
+  let c=await cards('main');assert.equal(c.fundamentals.folded,false,'pinned card starts open');assert.equal(c.technicals.folded,true,'unpinned sibling still folded');
   await page.evaluate(()=>localStorage.removeItem('pf_pins'));
   // (e) no horizontal overflow, folded and fully expanded
   for(const [w,h] of [[390,844],[466,677],[960,676]]){
@@ -180,7 +175,7 @@ try{
    for(const acct of ['main','agentic']){
     await reloadFresh(false);await nav('accounts',acct);await settle();
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${acct} ${w}x${h} folded: page width`);
-    await page.locator('#page-portfolio .cn-all').click();await page.locator('#page-portfolio .cn-all').click();await settle();
+    await page.evaluate(a=>document.querySelectorAll((a==='main'?'#app':'#agentic-app')+' .card[data-sec] > .card-title[aria-expanded="false"]').forEach(t=>t.click()),acct);await settle();
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${acct} ${w}x${h} expanded: page width`);
    }
   }
@@ -423,6 +418,12 @@ try{
  {
   const {runApexPaperChecks}=await import('./apex-paper-checks.mjs');
   await runApexPaperChecks({browser,base,sample,stub,writes,shots:out,
+   apex:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}});
+ }
+ // ── v242 Apex / Agentic workspace: one header + tab row, stamps, position cards, action list (lean; reuses this browser) ──
+ {
+  const {runWorkspaceChecks}=await import('./workspace-checks.mjs');
+  await runWorkspaceChecks({browser,base,sample,stub,writes,
    apex:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}});
  }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[]);

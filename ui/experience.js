@@ -58,7 +58,10 @@
   const accountArea = {main:'apex',agentic:'agentic'};
   // The area a route lives in, for a given account. Only `scoped` routes depend on the account.
   const known = key => typeof key==='string'&&Object.prototype.hasOwnProperty.call(routes,key);
-  const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 'today'; return r.scoped?accountArea[acct==='agentic'?'agentic':'main']:r.area; };
+  // v242: Analyze opened FROM Apex or Agentic keeps that area highlighted (origin 'main' | 'agentic', carried in the journey's history
+// state so refresh, Back and Forward agree). A bare #view=analyze, or the bottom-nav Research item, has no origin and stays in Research.
+let origin = null;
+const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 'today'; if(key==='analyze'&&origin)return accountArea[origin]; return r.scoped?accountArea[acct==='agentic'?'agentic':'main']:r.area; };
   const inArea = (key, a) => { const r=known(key)&&routes[key]; return !!r&&(r.scoped?(a==='apex'||a==='agentic'):r.area===a); };
   // Tapping an area reopens the route last used there. Stored values from the five-area navigation
   // (pf_area_portfolio / _signals / _activity / old _research ids, pf_signals_last) are tolerated:
@@ -94,7 +97,7 @@
     back.addEventListener('click',()=>{ save('pf_classic','0'); location.reload(); }); document.body.append(back); return;
   }
   const top = document.createElement('header'); top.className='ex-top'; top.id='ex-top';
-  top.innerHTML='<div><h1 class="ex-today-title">Today</h1><div class="ex-brand">Portfolio <span>/</span></div><div class="ex-caption" id="ex-context">Your accounts, research, and activity</div></div><div class="ex-tools"><span id="ex-all-accounts" class="ex-badge" hidden>Both accounts</span><label id="ex-account-label">Account <select id="ex-account" aria-label="Account"><option value="main">Self-directed</option><option value="agentic">Agentic</option></select></label><button type="button" id="ex-find">Find a feature</button><button type="button" id="ex-classic" title="Return to the classic tab layout">Classic view</button></div>';
+  top.innerHTML='<div><h1 class="ex-today-title">Today</h1><div class="ex-brand">Portfolio <span>/</span></div><div class="ex-caption" id="ex-context">Your accounts, research, and activity</div></div><div id="ws-stamps" class="ws-stamps" aria-label="Data freshness" hidden></div><div class="ex-tools"><span id="ex-all-accounts" class="ex-badge" hidden>Both accounts</span><label id="ex-account-label">Account <select id="ex-account" aria-label="Account"><option value="main">Self-directed</option><option value="agentic">Agentic</option></select></label><button type="button" id="ex-find">Find a feature</button><button type="button" id="ex-classic" title="Return to the classic tab layout">Classic view</button></div>';
   const main = document.createElement('nav'); main.className='ex-main'; main.setAttribute('aria-label','Main navigation');
   main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+icon(a)+'<span>'+(a[0].toUpperCase()+a.slice(1))+'</span></button>').join('');
   const sub = document.createElement('nav'); sub.id='ex-subnav'; sub.className='ex-subnav'; sub.setAttribute('aria-label','Section navigation');
@@ -112,7 +115,7 @@
     document.querySelectorAll('.acct-seg-wrap').forEach(w=>{w.hidden=!!(r.scoped&&r.tab);});
     // Accounts and Plan carry their own Self-directed/Agentic switch, and Options is self-directed only,
     // so the header dropdown there was a second control for the same choice (v185).
-    $('ex-account-label').hidden=['today','predictions','smartmoney','apexpaper'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab); $('ex-all-accounts').hidden=routeKey!=='today';
+    $('ex-account-label').hidden=['today','predictions','smartmoney','apexpaper'].includes(routeKey)||['portfolio','picks','options'].includes(r.tab)||(routeKey==='analyze'&&!!origin); $('ex-all-accounts').hidden=routeKey!=='today';
     main.querySelectorAll('[data-ex-area]').forEach(b=>b.setAttribute('aria-current',b.dataset.exArea===areaOf(routeKey,account())?'page':'false'));
     sub.hidden=false;
     // v185 (Jack, 2026-11-04: "nav widgets split between the buttons and the scroll bar"): this row
@@ -124,8 +127,18 @@
     const area=areaOf(routeKey,account());
     // Apex / Agentic rows also carry a Research chip after Account (owner, Nov 17): it is the journey's "2 · Research" step
     // (data-pj-go="analyze" in ui/journey.js: opens Analyze for the area's selected holding, or the normal picker) — no new route.
-    sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>'+(k==='accounts'&&(area==='apex'||area==='agentic')?'<button type="button" data-pj-go="analyze" data-ex-research aria-current="false">Research</button>':'')).join('');
-    $('ex-context').textContent=routeKey==='apexpaper'?'Apex v2.9 · paper research · not live':routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
+    const wsMode=(area==='apex'||area==='agentic')&&routeKey!=='today';
+    // v242 (owner, Nov 17 2026): ONE tab row for Apex and Agentic: Overview · Positions · Research · Actions. It replaces the Plan · Account ·
+    // Research · What if? chips, the per-page card rail and the journey's three step buttons. Same route ids (accounts / holdings / analyze /
+    // plan), no new route; What if? (scenario) is a row inside Overview. Research is the journey's data-pj-go="analyze" step.
+    if(wsMode)sub.innerHTML=WS_TABS.map(([id,label,route])=>(id==='research'
+      ?'<button type="button" data-pj-go="analyze" data-ex-research data-ws-tab="research" aria-current="'+(wsTab(routeKey)===id?'page':'false')+'">'+label+'</button>'
+      :'<button type="button" data-ex-route="'+route+'" data-ws-tab="'+id+'" aria-current="'+(wsTab(routeKey)===id?'page':'false')+'">'+label+'</button>')).join('');
+    else sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>'+(k==='accounts'&&(area==='apex'||area==='agentic')?'<button type="button" data-pj-go="analyze" data-ex-research aria-current="false">Research</button>':'')).join('')+(area==='more'?'<button type="button" id="ex-classic-more" class="ws-classic" title="Return to the classic tab layout">Classic view</button>':'');
+    $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
+    if(wsMode&&routeKey!=='apexpaper')$('ex-context').textContent=IDENT[account()];
+    if(routeKey==='apexpaper')$('ex-context').textContent='Apex v2.9 · paper research · not live';
+    wsChrome(area,wsMode);
   }
   function protect() { if(window.__privScan)window.__privScan(); }
   function historyChart(points=M.valueHistory(window.__DATA,account()),combined=false) {
@@ -252,7 +265,7 @@
     if(r.tab==='smartmoney')window.PFSmartMoney?.mount($('smartmoney-app'));
     protect();
   }
-  function queueRefresh() { clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{header();renderCustom();document.dispatchEvent(new Event('pf:render'));},60); }
+  function queueRefresh() { clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{header();renderCustom();wsBlocks();document.dispatchEvent(new Event('pf:render'));},60); }
   function placeSection(section, token, attempts=0) {
     if(token!==jumpToken)return;
     const root=$(account()==='agentic'?'agentic-app':'app'), target=root?.querySelector('[data-sec="'+section+'"]');
@@ -272,16 +285,18 @@
   function navigate(key, options={}) {
     if(!known(key))return; document.dispatchEvent(new CustomEvent('pf:before-route',{detail:{from:routeKey,to:key}}));
     if(options.account==='main'||options.account==='agentic')save('pf_acct',options.account);
-    if(routes[key].account)save('pf_acct',routes[key].account);
-    routeKey=key; if(!routes[key].transient)save('pf_area_'+areaOf(key,account()),key); save('pf_experience_route',key); if(key==='smartmoney'||key==='predictions')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
+    origin=key==='analyze'&&(options.origin==='main'||options.origin==='agentic')?options.origin:null;
+    routeKey=key; if(routes[key].account)save('pf_acct',routes[key].account);
+    if(!routes[key].transient&&!(key==='analyze'&&origin))save('pf_area_'+areaOf(key,account()),key); save('pf_experience_route',key); if(key==='smartmoney'||key==='predictions')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
     ['today','activity','decisions','scenario'].forEach(n=>$('page-ex-'+n).hidden=r.custom!==n);
     navigating=true;
     try {
       if(r.tab){nativeSwitch(r.tab);syncToggles(r.tab);}
       else legacyTabs.forEach(t=>{const page=$('page-'+t);if(page)page.style.display='none';});
     } finally {navigating=false;}
-    header();renderCustom();
-    if(r.section)placeSection(r.section,token);
+    header();renderCustom();wsBlocks();
+    // The Positions tab IS the holdings section now (cards, then the All Positions table): open at the top of it.
+    if(r.section&&!(key==='holdings'&&wsOn()))placeSection(r.section,token);
     else if(!options.keepScroll)window.scrollTo(0,0);
     document.dispatchEvent(new CustomEvent('pf:route',{detail:{route:key,account:account()}}));
     // Existing Chart.js instances resize when their original page becomes visible.
@@ -299,6 +314,11 @@
   document.addEventListener('click',e=>{
     // Without the journey module the Research chip still opens Analyze (journey.js handles it, with the selected holding, when present).
     if(!window.PFJourney){const g=e.target.closest('[data-ex-research]');if(g)navigate('analyze');}
+    if(e.target.closest('#ex-classic-more')){goClassic();return;}
+    const wc=e.target.closest('[data-ws-card]');
+    if(wc){ if(typeof window.__pfGoCard==='function')window.__pfGoCard(wc.dataset.wsCard.replace(/&amp;/g,'&'),wc.dataset.wsCardTab); return; }
+    const wp=e.target.closest('[data-ws-pos]');
+    if(wp){ if(window.PFJourney)window.PFJourney.select(wp.dataset.wsPos); wsRefresh(); return; }
     const b=e.target.closest('[data-ex-route],[data-ex-area]');if(!b)return;
     const area=b.dataset.exArea;
     // Apex always means pf_acct='main' and Agentic always 'agentic'; the existing switchTab reconciliation
@@ -315,13 +335,204 @@
     else return;updateScenario();
   });
   $('page-ex-scenario').addEventListener('change',e=>{if(e.target.id==='ex-scenario-symbol'){scenarioState.symbol=e.target.value;updateScenario();}});
+  // ── v242 workspace (owner, Nov 17 2026: "I see more navigation than investment information") ─────────────────────────────────
+  // Display and organisation only. One compact header, one tab row (Overview · Positions · Research · Actions) for Apex and Agentic,
+  // freshness stamps, a position card, and an action list. Nothing here calculates a number the app does not already calculate: it reads
+  // the table's own rows (window.__pfPosRows), the Apex review (window.__PF_APEX_REVIEW through Apex.bookLines / bookReviews / exitLevelsFor),
+  // the agentic target rows the plan already shows (window.__PF_AG_TARGET), the existing snapshot tiles (cloned) and Today's read-only model.
+  const AREA_NAME = {apex:'Apex', agentic:'Agentic', research:'Research', more:'More'};
+  const IDENT = {main:'Self-directed · ••••0741', agentic:'Automated · ••••3900'};
+  const WS_TABS = [['overview','Overview','accounts'],['positions','Positions','holdings'],['research','Research','analyze'],['actions','Actions','plan']];
+  const wsTab = key => key==='holdings'?'positions':key==='plan'?'actions':key==='analyze'?'research':key==='apexpaper'?'':'overview';
+  const wsOn = () => { const a=areaOf(routeKey,account()); return (a==='apex'||a==='agentic')&&routeKey!=='today'&&routeKey!=='apexpaper'; };
+  const fD = n => typeof window.fmtD==='function'?window.fmtD(n):'—';
+  const fP = n => typeof window.fmtP==='function'?window.fmtP(n):'—';
+  const fN = (n,d) => typeof window.fmt==='function'?window.fmt(n,d):'—';
+  const fS = n => typeof window.sc==='function'?window.sc(n):'neu';
+  let stampList = [];
+  function wsChrome(area, ws) {
+    const root=document.documentElement, today=routeKey==='today';
+    root.classList.toggle('ws-on',ws); root.classList.toggle('ws-chrome',!today);
+    if(ws)root.dataset.wsTab=wsTab(routeKey); else delete root.dataset.wsTab;
+    const brand=top.querySelector('.ex-brand'), want=today?'today':area;
+    if(brand&&brand.dataset.wsFor!==want){brand.dataset.wsFor=want;brand.innerHTML=today?'Portfolio <span>/</span>':esc(AREA_NAME[area]||'Portfolio');}
+    $('ex-classic').hidden=!today; // Classic view now lives in More; Today's own header is unchanged.
+    wsStamps(ws);
+  }
+  // Three clocks, never blended: the account snapshot, the research behind the plan, the last completed scan. A stamp with no real
+  // source for this account is not drawn. Stale ones keep the freshness bar's warning colours and a ⚠.
+  function wsStamps(ws) {
+    const box=$('ws-stamps'); if(!box)return; box.hidden=!ws; if(!ws){stampList=[];return;}
+    stampList=M.freshnessStamps(window.__DATA,account(),{apexTarget:window.__APEX_TGT});
+    const html=stampList.map(s=>'<span class="ws-stamp" data-stamp="'+s.key+'" data-state="'+s.state+'"><i>'+esc(s.label)+'</i> <b>'+(s.state==='stale'?'⚠ ':'')+esc(s.text)+(s.dateOnly?' <em>(date only)</em>':'')+'</b></span>').join('');
+    if(box.innerHTML!==html)box.innerHTML=html;
+  }
+  const stampOf = key => stampList.find(s=>s.key===key)||null;
+  let apexTried = '';
+  // The Apex review the Plan and Today already compute. Read-only; renders the card once only if nothing has yet.
+  function apexBook() {
+    try {
+      if(!window.Apex||!window.__SNAP||!window.__DATA)return null;
+      const ok=c=>c&&c.sourceData===window.__DATA&&c.sourceSnap===window.__SNAP&&c.generatedAt===window.__DATA.generatedAt;
+      let c=window.__PF_APEX_REVIEW;
+      if(!ok(c)&&typeof window.renderApexCard==='function'&&apexTried!==window.__DATA.generatedAt){apexTried=window.__DATA.generatedAt;window.renderApexCard(window.__SNAP,{fromToday:true});c=window.__PF_APEX_REVIEW;}
+      if(!ok(c))return null;
+      return {c,lines:window.Apex.bookLines(c.st,c.out,c.cfg),reviews:window.Apex.bookReviews(c.st,c.out,c.cfg)};
+    } catch(_) { return null; }
+  }
+  const qtyLabel = line => { const m=/^(Buy|Add|Sell) (\d[\d,.]*)( .+)$/.exec(line.text); return m?esc(m[1])+' <span data-priv="val">'+esc(m[2])+'</span>'+esc(m[3]):'<span data-priv="val">'+esc(line.text)+'</span>'; };
+  const dataAttr = (route, acct) => 'data-ex-route="'+route+'"'+(acct?' data-ex-account="'+acct+'"':'');
+  // The prioritised list. Every row comes from an item the app already produces for THIS account; each is one line, a small source
+  // label and a tap target into the existing destination. Order: waiting on you, out of your hands, risk, options. No research-change
+  // category: the app has no research-change notice to read.
+  function actionItems() {
+    const d=window.__DATA, acct=account(), items=[]; if(!d)return items;
+    const calendar=typeof window._earnMap==='function'?window._earnMap():{};
+    const brief=M.dailyBrief(d,window.__SNAP,{calendar}), T=window.PFTodayModel, label=acct==='agentic'?'Agentic':'Self-directed';
+    const mine=a=>!a.account||a.account===acct;
+    if(acct==='main') {
+      const book=apexBook();
+      if(book) {
+        book.lines.slice(0,3).forEach(l=>items.push({cat:'waiting',html:qtyLabel(l)+(l.px?' <span class="ws-px">· '+esc(l.px)+'</span>':''),src:'Waiting on you · Confirm with Claude',go:dataAttr('plan')}));
+        if(book.lines.length>3)items.push({cat:'waiting',html:'+'+(book.lines.length-3)+' more proposed trade'+(book.lines.length-3===1?'':'s'),src:'Waiting on you · Confirm with Claude',go:dataAttr('plan')});
+        if(book.reviews.length)items.push({cat:'waiting',html:book.reviews.length+' review-only item'+(book.reviews.length===1?'':'s')+' · no orders',src:'Waiting on you · Apex review',go:dataAttr('plan')});
+      }
+    } else if(T) {
+      const t=T.ticket(brief.pending);
+      if(brief.pending?.status&&t.group==='waiting')items.push({cat:'waiting',html:esc(t.label),src:'Waiting on you · Agentic ticket',go:dataAttr('plan','agentic')});
+      else if(brief.pending?.status&&t.group==='monitor')items.push({cat:'flight',html:esc(t.compact),src:'Out of your hands · recorded status',go:dataAttr('plan','agentic')});
+    }
+    brief.earnings.filter(e=>e.days<=7&&(e.accounts||[]).includes(label)).forEach(e=>items.push({cat:'waiting',html:esc(e.symbol)+' earnings · '+esc(e.days===0?'Today':e.days===1?'Tomorrow':'In '+e.days+' days'),src:'Waiting on you · Calendar',go:'data-pj-go="analyze" data-pj-sym="'+esc(e.symbol)+'"'}));
+    brief.attention.filter(a=>mine(a)&&!a.title.startsWith('Agentic ticket:')&&a.title!=='Earnings in the week ahead').forEach(a=>{
+      const opt=a.route==='options';
+      if(opt&&acct!=='main')return;
+      items.push({cat:opt?'options':'risk',html:esc(a.title),src:(opt?'Options · ':'Risk · ')+(opt?'self-directed':a.route==='activity'?'data check':'guard'),go:dataAttr(a.route==='markets'?'plan':a.route,a.account||undefined),warn:a.tone==='warn'});
+    });
+    if(acct==='main') {
+      const book=apexBook();
+      if(book){
+        book.c.out.filter(r=>(r.kind==='risk'||r.kind==='lev')).forEach(r=>items.push({cat:'risk',html:esc(r.title),src:'Risk · Apex',go:dataAttr('plan'),warn:true}));
+        try{ const th=window.Apex.themeShare(book.c.st,book.c.cfg); if(book.c.cfg.themeCap!==false&&th&&th.over)items.push({cat:'risk',html:'Tech outside '+esc(book.c.cfg.core||'core')+' over its '+Math.round(window.Apex.C.THEME_MAX*100)+'% cap',src:'Risk · Apex theme cap',go:dataAttr('plan'),warn:true}); }catch(_){}
+      }
+      brief.options.expirations.filter(p=>p.days>=0&&p.days<=7).forEach(p=>items.push({cat:'options',html:esc(p.underlying)+' '+esc(M.number(p.strike)===null?'':'$'+M.number(p.strike))+' '+esc(String(p.type||'').toLowerCase())+' · expires '+esc(p.days===0?'today':p.expiration),src:'Options · expiration is a calendar event',go:dataAttr('options','main')}));
+    } else {
+      const dd=brief.drawdown; if(dd&&!dd.insufficient&&['soft','hard'].includes(dd.level)&&!items.some(i=>/deployment guard/i.test(i.html)))items.push({cat:'risk',html:'Agentic deployment guard is active',src:'Risk · Agentic',go:dataAttr('plan','agentic'),warn:true});
+    }
+    const rank={waiting:0,flight:1,risk:2,options:3};
+    return items.map((it,i)=>({...it,i})).sort((a,b)=>rank[a.cat]-rank[b.cat]||a.i-b.i);
+  }
+  const catLabel = {waiting:'Waiting on you',flight:'Out of your hands',risk:'Risk',options:'Options'};
+  function actionsHTML() {
+    const items=actionItems();
+    return '<h2 class="ws-h">Action Center'+(items.length?' <span class="ws-count" aria-label="'+items.length+' items">'+items.length+'</span>':'')+'</h2>'+(items.length
+      ?'<div class="ws-acts" role="list">'+items.map((it,n)=>'<button type="button" role="listitem" class="ws-act" data-cat="'+it.cat+'"'+(it.warn?' data-warn="1"':'')+' '+it.go+'><em aria-hidden="true">'+(n+1)+'</em><span class="ws-act-t">'+it.html+'<small>'+esc(it.src)+'</small></span><span aria-hidden="true" class="ws-chev">›</span></button>').join('')+'</div>'
+      :'<p class="ws-empty"><strong>Nothing needs you</strong><span>No waiting, risk or options items in the published records.</span></p>');
+  }
+  function moreHTML() {
+    const acct=account();
+    return '<h2 class="ws-h">More in Overview</h2><div class="ws-rows">'+(acct==='main'?'<button type="button" class="ws-row" data-ws-card="Options Income &amp; History" data-ws-card-tab="options"><span>Options income &amp; history</span><span aria-hidden="true">›</span></button>':'')+(acct==='main'?'<button type="button" class="ws-row" '+dataAttr('apexpaper')+'><span>v2.9 Paper research</span><span aria-hidden="true">›</span></button>':'')+'<button type="button" class="ws-row" '+dataAttr('scenario')+'><span>What if?</span><span aria-hidden="true">›</span></button></div>';
+  }
+  // ── Position card ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  function posCard(r, o) {
+    const sym=esc(r.symbol), acct=account(), open=o.open;
+    const next=o.next?'<p class="ws-next"><span>Next</span><b>'+o.next+'</b></p>':'<p class="ws-next"><span>Next</span><b>—</b></p>';
+    const head='<div class="ws-pos-h"><b class="ws-sym">'+sym+'</b><span class="ws-pos-px">'+(r.px?'$'+fN(r.px):'—')+'</span><span class="ws-pos-w">'+(r.pct!=null?fN(r.pct,1)+'% of book':'— of book')+'</span></div>';
+    if(!open)return '<button type="button" class="ws-pos ws-compact" data-ws-pos="'+sym+'" aria-label="Show '+sym+' details">'+head+'<div class="ws-pos-s"><span class="'+fS(r.pnlP)+'">'+(r.pnlP==null?'—':fP(r.pnlP))+'</span><span>'+fD(r.val)+'</span></div>'+next+'</button>';
+    const cell=(l,v,cls)=>'<div><dt>'+l+'</dt><dd'+(cls?' class="'+cls+'"':'')+'>'+v+'</dd></div>';
+    const day=(r.dayD!=null?fD(r.dayD):'—')+(r.dayP!=null?' · '+fP(r.dayP):'');
+    const grid=cell('Value',fD(r.val))+cell('Total gain',fD(r.pnlD),fS(r.pnlD))+cell('Return',r.pnlP==null?'—':fP(r.pnlP),fS(r.pnlP))+cell('Today',day,fS(r.dayD!=null?r.dayD:r.dayP))
+      +cell('Risk',r.r?'<span title="Position concentration label; not a trading instruction">'+esc(r.r.level)+'</span>':'—')
+      +(acct==='agentic'?cell('Target · drift',o.tgt?fN(o.tgt.tgt,1)+'% · '+(o.tgt.drift>0?'+':'')+fN(o.tgt.drift,1)+'pp':'—')
+        :cell('Stop · target',o.levels?(o.levels.stop>0?fD(o.levels.stop):'—')+' · '+(o.levels.tp1>0?fD(o.levels.tp1):'—'):'—'));
+    return '<article class="ws-pos ws-open" data-ws-sym="'+sym+'"'+(o.selected?' data-selected="1"':'')+'>'+head+'<dl class="ws-grid">'+grid+'</dl>'+next
+      +'<p class="ws-research"><span>Research</span><b>'+(o.research||'—')+'</b></p>'
+      +'<nav class="ws-stage" aria-label="'+sym+' stages"><span aria-current="step">Holding</span><i aria-hidden="true"></i><button type="button" data-pj-go="analyze" data-pj-sym="'+sym+'">Research · View thesis</button><i aria-hidden="true"></i><button type="button" data-pj-go="plan" data-pj-sym="'+sym+'" data-pj-focus="'+sym+'">Plan · Review plan</button></nav></article>';
+  }
+  function posCards() {
+    const acct=account(), rows=(typeof window.__pfPosRows==='function'?window.__pfPosRows(acct):[]).filter(r=>r&&r.symbol);
+    if(!rows.length)return '<p class="ws-empty"><strong>No open positions</strong><span>'+(acct==='agentic'&&!Array.isArray(window.__DATA?.agentic?.positions)?'Agentic holdings unavailable in this snapshot.':'Nothing to show for this account.')+'</span></p>';
+    const sel=window.PFJourney?.state?.symbol||'';
+    const ordered=rows.slice().sort((a,b)=>(a.symbol===sel?-1:b.symbol===sel?1:0)||((b.val==null?-1:b.val)-(a.val==null?-1:a.val)));
+    const book=acct==='main'?apexBook():null, T=window.__APEX_TGT, agT=window.__PF_AG_TARGET;
+    const rs=stampOf('research'), rsTxt=rs?(rs.state==='stale'?'⚠ ':'')+esc(rs.text)+(rs.dateOnly?' (date only)':''):'';
+    const inT=(arr,k)=>Array.isArray(arr)&&arr.some(x=>x&&x[k]);
+    return '<h2 class="ws-h">Positions <span class="ws-count">'+rows.length+'</span></h2>'+ordered.map((r,n)=>{
+      const o={open:n===0,selected:r.symbol===sel};
+      if(acct==='main'){
+        const line=book?.lines.find(l=>l.sym===r.symbol), core=book?.c.out.find(x=>x.kind==='core'&&String(x.title).startsWith(r.symbol+' ')), rev=book?.reviews.find(x=>x.sym===r.symbol);
+        o.next=line?qtyLabel(line)+(line.px?' <span class="ws-px">· '+esc(line.px)+'</span>':''):core?esc(core.title):rev?esc(rev.why):'';
+        try{ o.levels=book?window.Apex.exitLevelsFor(book.c.cfg,r.symbol):null; }catch(_){ o.levels=null; }
+        const held=Array.isArray(T?.heldLevels)&&T.heldLevels.some(x=>x&&x.sym===r.symbol), entry=Array.isArray(T?.top5)&&T.top5.some(x=>x&&x.sym===r.symbol);
+        o.research=(held||entry)&&rsTxt?(held?'Held-name research record':'New-entry research')+' · '+rsTxt:'';
+      } else {
+        o.tgt=agT?.rows?.find(x=>x.sym===r.symbol)||null;
+        o.next=o.tgt?esc(o.tgt.status):'';
+        const names=window.__DATA?.agentic?.target?.names;
+        o.research=o.tgt&&rsTxt&&inT(names,'ticker')&&names.some(x=>x&&x.ticker===r.symbol)?'Target research · '+rsTxt:'';
+      }
+      return posCard(r,o);
+    }).join('');
+  }
+  // ── placing the blocks (inside the active account's root, so a re-render of that root removes them and they are re-added) ──────
+  function placeBlock(root, id, html, after) {
+    let el=root.querySelector(':scope>#'+id);
+    if(html===null){ if(el)el.remove(); return null; }
+    if(!el){ el=document.createElement('section'); el.id=id; el.className='ws-block ws-'+id.slice(3); }
+    if(el.dataset.src!==html){el.innerHTML=html;el.dataset.src=html;}   // privacy masking rewrites the text in place; compare the source, not the DOM
+    if(el.previousElementSibling!==after)after.after(el);
+    return el;
+  }
+  let blocksBusy = false;
+  function wsBlocks() {
+    if(blocksBusy)return; blocksBusy=true;
+    try {
+      const ws=wsOn(), acct=account();
+      document.querySelectorAll('#app>.ws-block,#agentic-app>.ws-block').forEach(n=>{ if(!ws||n.parentElement.id!==(acct==='agentic'?'agentic-app':'app'))n.remove(); });
+      if(!ws)return;
+      const root=$(acct==='agentic'?'agentic-app':'app'), hdr=root?.querySelector(':scope>.header'); if(!root||!hdr)return;
+      const tab=wsTab(routeKey);
+      if(tab==='overview') {
+        // The snapshot's own Day change / Leverage (or Idle cash) tiles, cloned: the same rendered figures, no second calculation.
+        const labels=acct==='agentic'?['Idle Cash']:['Day Change','Leverage'];
+        const tiles=[...(root.querySelectorAll(':scope>[data-sec="snapshot"] .snap'))].filter(t=>labels.includes((t.querySelector('.snap-lbl')?.textContent||'').trim()));
+        let strip=root.querySelector(':scope>#ws-strip'), sig=tiles.map(t=>t.outerHTML).join('');
+        if(!strip||strip.dataset.sig!==sig){ const n=document.createElement('section'); n.id='ws-strip'; n.className='ws-block ws-strip'; n.dataset.sig=sig; n.setAttribute('aria-label','Account summary'); tiles.forEach(t=>n.appendChild(t.cloneNode(true))); if(strip)strip.replaceWith(n); else hdr.after(n); strip=n; }
+        if(!tiles.length)strip.remove();
+        const prev=tiles.length?strip:hdr;
+        const act=placeBlock(root,'ws-actions',actionsHTML(),prev), more=placeBlock(root,'ws-more',moreHTML(),act);
+        placeBlock(root,'ws-poscards',null,more);
+      } else if(tab==='positions') {
+        ['ws-strip','ws-actions','ws-more'].forEach(id=>placeBlock(root,id,null,hdr));
+        placeBlock(root,'ws-poscards',posCards(),hdr);
+      } else ['ws-strip','ws-actions','ws-more','ws-poscards'].forEach(id=>placeBlock(root,id,null,hdr));
+      protect();
+    } finally { blocksBusy=false; }
+  }
+  let blocksTimer;
+  const wsRefresh = () => { clearTimeout(blocksTimer); blocksTimer=setTimeout(wsBlocks,60); };
+  // Plan scrolled to a holding: the first visible row that names it, in the account's own plan page.
+  function focusPlan(sym, attempts=0) {
+    const root=$(account()==='agentic'?'plan-agentic-app':'picks-app'); if(!root||!sym)return;
+    const re=new RegExp('(^|[^A-Za-z0-9.])'+String(sym).replace(/[.]/g,'\\.')+'($|[^A-Za-z0-9])');
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT); let n, hit=null;
+    while((n=walker.nextNode())){ if(!re.test(n.nodeValue))continue; const el=n.parentElement; if(!el||!el.offsetParent)continue; hit=el.closest('tr,li,details.tg-row,.ac-row,.xr-row')||el; break; }
+    if(!hit){ if(attempts<15)setTimeout(()=>focusPlan(sym,attempts+1),120); return; }
+    const y=hit.getBoundingClientRect().top+window.scrollY-(window.__pfTopOffset?.()||8)-8;
+    window.scrollTo(0,Math.max(0,y));
+    const prev=hit.style.boxShadow; hit.style.boxShadow='0 0 0 2px #6366f1'; setTimeout(()=>{hit.style.boxShadow=prev;},900);
+  }
   const observe=new MutationObserver(queueRefresh);
   ['app','agentic-app'].forEach(id=>{if($(id))observe.observe($(id),{childList:true});});
+  // The blocks read renderers that finish after the page root is replaced (the position table, the Apex card, the agentic target), so a
+  // late change anywhere under the four account roots refreshes them. Our own writes are ignored.
+  const wsWatch=new MutationObserver(records=>{ if(records.some(r=>!r.target.closest?.('.ws-block')&&![...r.addedNodes,...r.removedNodes].every(n=>n.nodeType===1&&n.classList?.contains('ws-block'))))wsRefresh(); });
+  ['app','agentic-app','picks-app','plan-agentic-app'].forEach(id=>{if($(id))wsWatch.observe($(id),{childList:true,subtree:true});});
+  document.addEventListener('change',e=>{if(e.target.id==='pj-symbol')wsRefresh();});
   if(window.__dataReady?.then)window.__dataReady.then(queueRefresh,queueRefresh);
   // Keep ET event countdowns and snapshot age current in a resident PWA.
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&routeKey==='today')queueRefresh();});
   setInterval(()=>{if(!document.hidden&&routeKey==='today')queueRefresh();},60000);
   window.__experienceRefresh=queueRefresh;
-  window.PFExperience=Object.freeze({navigate,get route(){return routeKey;},get account(){return account();}});
+  window.PFExperience=Object.freeze({navigate,focusPlan,refreshBlocks:wsBlocks,get route(){return routeKey;},get account(){return account();},get origin(){return origin;},get area(){return areaOf(routeKey,account());}});
   navigate(routeKey,{keepScroll:true});
 })();

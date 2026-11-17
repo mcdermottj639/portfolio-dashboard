@@ -77,3 +77,6 @@ source or trade action is removed. `tests/today-viewport-browser.mjs` runs with
 Chromium and desktop WebKit at actual content widths, locally and against the
 served shell. This cannot certify installed iPhone/PWA chrome. Apple's native
 Duo control column is outside that content viewport; it is not CSS padding.
+
+> **Superseded in part, 2026-11-17 (Apex workspace).** The Apex / Agentic sub-nav (Plan · Account · Research · What if?), the card rail and the journey step buttons
+> are replaced by one tab row Overview · Positions · Research · Actions; the header gains dated Account / Research / Last scan stamps. Today's own layout is unchanged.

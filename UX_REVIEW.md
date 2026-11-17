@@ -191,3 +191,9 @@ Light/Dark/System, the fallback Today renderer, and no overflow at 320x568, 390x
 Also fixed: returning to Accounts after flipping the Plan toggle left the Accounts toggle on the other account (the Plan toggle mirrors
 the Accounts toggle without swapping its pages); `navigate` now brings the visible page's toggle into line through the native setters.
 Not verified: WebKit (not installed here), a physical iPhone Duo.
+
+**Superseded in part, 2026-11-17 (Apex workspace; owner: "Build it", after the folded-Duo screenshot of Apex > Plan).** Inside Apex and Agentic the
+Plan · Account · Research · What if? sub-nav, the card rail (chips + Expand/Collapse all) and the journey's three large step buttons are replaced by ONE
+tab row: **Overview · Positions · Research · Actions** (Overview = `accounts`, Positions = `holdings`, Research = `analyze` entered from the area and kept
+highlighted via history-state `origin`, Actions = `plan`; `scenario` is an Overview row; the 22 routes and hashes are unchanged). Back is icon-only and
+Classic view moved into More. A bare `#view=analyze` is still a Research-area page. Everything above this note stays as history.

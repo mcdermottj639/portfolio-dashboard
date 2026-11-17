@@ -63,17 +63,18 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
     window.scrollTo(400,scrollY);const sx=scrollX;window.scrollTo(0,scrollY);
     return {sw:document.documentElement.scrollWidth,iw:innerWidth,bad:bad.slice(0,6),clipped:clipped.slice(0,6),sx};});
 
-  // ── 1. Reachable from the Apex sub-nav as the fifth chip; never under Agentic; Apex always reopens a live page ──
+  // ── 1. Reachable from Apex > Overview ("v2.9 Paper research" row) and the pointer under the live Apex card; no fifth tab (v245 workspace); never under Agentic; Apex always reopens a live page ──
   {
     const {ctx,p,hits}=await open();
     await p.locator(area('apex')).click();await settle(p);
-    assert.deepEqual(await chips(p),['Plan','Account','Research','What if?','v2.9 Paper'],'Apex sub-nav carries the paper chip last');
-    await p.locator(chip('apexpaper')).click();await settle(p);
+    assert.deepEqual(await chips(p),['Overview','Positions','Research','Actions'],'four Apex tabs, no paper tab');
+    await p.locator(chip('accounts')).click();await settle(p);
+    await p.locator('.ws-row[data-ex-route="apexpaper"]').click();await settle(p);
     assert.deepEqual(await st(p),{route:'apexpaper',account:'main'});
     assert.equal(await p.locator('#page-apexpaper').isVisible(),true,'paper page visible');
     assert.equal(await p.locator('#picks-app').isVisible(),false,'the live plan is not on the paper page');
     assert.equal(await p.locator('#apexpaper-app [data-apex-confirm], #apexpaper-app a[href*="claude.ai"], #apexpaper-app button').count(),0,'no confirm, link-out or button on the paper page');
-    assert.equal(await p.locator(chip('apexpaper')).getAttribute('aria-current'),'page');
+    assert.deepEqual(await p.evaluate(()=>[...document.querySelectorAll('.ex-main [aria-current="page"][data-ex-area]')].map(b=>b.dataset.exArea)),['apex'],'Apex stays highlighted on the paper page');
     assert.match(await p.locator('#ex-context').innerText(),/^Apex v2\.9 · paper research · not live$/);
     assert.equal(await p.locator('#ex-account-label').isVisible(),false,'no account picker on an Apex-only page');
     assert.match(p.url(),/#view=apexpaper$/,'route-only hash');
@@ -93,14 +94,15 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
     assert.equal(await p.locator('#apexpaper-app .apx').getAttribute('data-apx-state'),'fresh','renders after a reload');
     // Agentic never shows it
     await p.locator(area('agentic')).click();await settle(p);
-    assert.deepEqual(await chips(p),['Plan','Account','Research','What if?'],'no paper chip under Agentic');
+    assert.deepEqual(await chips(p),['Overview','Positions','Research','Actions'],'four Agentic tabs');
+    assert.equal(await p.locator('.ws-row[data-ex-route="apexpaper"]').count(),0,'no paper row under Agentic');
     assert.equal(await p.locator('#page-apexpaper').isVisible(),false);
     assert.equal(await p.locator('#plan-agentic-app [data-apex-paper-link], #agentic-app [data-apex-paper-link]').count(),0,'no paper pointer on any agentic page');
     // Apex reopens Plan, not the paper page, even though the paper page was the last Apex page opened
     await p.locator(area('apex')).click();await settle(p);
-    assert.deepEqual(await st(p),{route:'plan',account:'main'},'Apex reopens a live page');
-    await p.locator(chip('apexpaper')).click();await settle(p);await p.goBack();await settle(p);
-    assert.deepEqual(await st(p),{route:'plan',account:'main'},'Back from the paper page');
+    assert.deepEqual(await st(p),{route:'accounts',account:'main'},'Apex reopens a live page (its last live tab, Overview), never the paper page');
+    await p.locator(chip('accounts')).click();await settle(p);await p.locator('.ws-row[data-ex-route="apexpaper"]').click();await settle(p);await p.goBack();await settle(p);
+    assert.deepEqual(await st(p),{route:'accounts',account:'main'},'Back from the paper page returns to Overview');
     await ctx.close();
   }
   // A deep link while the agentic account is selected lands in Apex on the self-directed account.
@@ -205,10 +207,10 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
   // Missing / unreadable file: an explicit line on the page and on the pointer, never a spinner.
   for(const [paper,state,words] of [['missing','missing',/Research file missing[\s\S]*HTTP 404/],['garbage','unreadable',/Research file unreadable[\s\S]*not valid JSON/],['array','unreadable',/Research file unreadable[\s\S]*not a JSON object/]]){
     const {ctx,p}=await open({paper});
-    await p.locator(area('apex')).click();await settle(p);
+    await p.locator(area('apex')).click();await settle(p);await p.locator(chip('plan')).click();await settle(p); // v245: the pointer sits under the live Apex card on Actions
     assert.match(await p.locator('[data-apx-pointer]').innerText(),state==='missing'?/file missing — nothing to show yet/:/file unreadable — nothing to show yet/,paper+': pointer');
     assert.equal(await p.locator('#apex-content [data-apex-confirm], #apex-content [data-apex-lev]').count()>0,true,paper+': the live Apex card still renders');
-    await p.locator(chip('apexpaper')).click();await settle(p);
+    await p.locator('[data-apx-pointer]').click();await settle(p);
     assert.equal(await p.locator('#apexpaper-app .apx').getAttribute('data-apx-state'),state,paper+': state');
     assert.match(await pageText(p),words,paper+': reason shown');
     assert.equal(await p.locator('#apexpaper-app .spinner, #apexpaper-app .loading-wrap, #apexpaper-app .spin-sm').count(),0,paper+': no spinner');
