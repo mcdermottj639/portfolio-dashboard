@@ -4,6 +4,8 @@ Source: Jack's "Portfolio Dashboard 2.0 — Investment Intelligence Redesign" bu
 Audited read-only at main `e442092` (app v233) on 2026-11-17 ET; v234 (`f8c8923`, layout/theme only) merged during the audit.
 Line numbers in the appendices are v233 line numbers. No file other than this one was changed by the audit.
 
+Update 2026-11-17 (v238): Jack chose Navigation B after this audit. The primary areas are now Today / Apex / Agentic / Research / More; the 21 routes are unchanged. Where this audit says "five areas: Today / Portfolio / Research / Signals / Activity" it describes v233-v237. See UI-PRESERVATION.md for the old-to-new map.
+
 How it was made: four delegated read-only passes (inventory, data/contracts, layout baseline, Robinhood documentation),
 then spot-checks of their claims against the code by the supervising session. Items marked **unverified** were not re-checked.
 

@@ -47,9 +47,20 @@ for(const script of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)){
 }
 new Function(fs.readFileSync(path.join(root,'ui/experience.js'),'utf8'));
 const experience=fs.readFileSync(path.join(root,'ui/experience.js'),'utf8');
+// Navigation B (Jack, Nov 17 2026) supersedes the five-area labels Today / Portfolio / Research / Signals / Activity.
+// Areas are Today / Apex / Agentic / Research / More; account-scoped routes live in Apex (pf_acct main) or Agentic (agentic).
 for(const route of ['technicals','fundamentals','flow']){
-  assert.match(experience,new RegExp(route+": \\{area:'portfolio'"),'portfolio nav owns '+route);
+  assert.match(experience,new RegExp(route+": \\{area:'apex', scoped:true, hidden:true"),'account area owns '+route);
 }
+assert.match(experience,/const defaults = \{today:'today',apex:'plan',agentic:'plan',research:'markets',more:'options'\}/,'five areas, in order, with their defaults');
+const routeIds=[...experience.matchAll(/^    (\w+): \{area:'(\w+)'/gm)].map(m=>m[1]);
+assert.deepEqual(routeIds.slice().sort(),['accounts','activity','analyze','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','scenario','screens','smartmoney','technicals','today'],'all 21 route ids are kept');
+for(const id of routeIds)assert.match(require('../ui/journey.js').pageRoute('#view='+id)||'',new RegExp('^'+id+'$'),'journey admits #view='+id);
+for(const route of ['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'])assert.match(experience,new RegExp('    '+route+": \\{area:'apex', scoped:true"),route+' is account-scoped');
+for(const route of ['markets','screens','analyze','smartmoney','predictions'])assert.match(experience,new RegExp('    '+route+": \\{area:'research'"),route+' is in Research');
+for(const route of ['options','decisions','log','activity'])assert.match(experience,new RegExp('    '+route+": \\{area:'more'"),route+' is in More');
+assert.match(experience,/areaOf = \(key, acct\)/);assert.match(experience,/accountArea = \{main:'apex',agentic:'agentic'\}/);
+assert.match(experience,/area==='apex'\?'main':area==='agentic'\?'agentic':undefined/,'Apex always selects the self-directed account, Agentic the agentic one');
 const version=html.match(/APP_VERSION='v(\d+)'/)[1];
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');assert.ok(sw.includes("'pf-v"+version+"'"));
 for(const asset of ['experience.css','experience-model.js','experience.js','sd-rules.js','predictions.css','predictions-model.js','predictions.js']){

@@ -9,7 +9,7 @@ confirmation button with dark text. Financial headline figures remain dark or wh
 
 The owner's November 13 corrections supersede earlier concept images: **no intraday
 account chart, gold glow, gradient buttons, four-tab navigation, Today account switch,
-or ticker logos.** Keep all five tabs: Today, Portfolio, Research, Signals, Activity.
+or ticker logos.** Keep five primary areas. Since v238 (Jack, Nov 17 2026, Navigation B) they are Today, Apex, Agentic, Research, More; before that they were Today, Portfolio, Research, Signals, Activity.
 
 ## Layout and interaction contract
 

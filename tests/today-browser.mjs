@@ -43,7 +43,7 @@ export async function runTodayChecks(page) {
   const initialTheme = await page.evaluate(() => PFTheme.preference());
   try {
     assert.deepEqual(await page.locator('.ex-main [data-ex-area]').evaluateAll(nodes => nodes.map(n => n.dataset.exArea)),
-      ['today', 'portfolio', 'research', 'signals', 'activity'], 'all five established destinations remain');
+      ['today', 'apex', 'agentic', 'research', 'more'], 'five areas: Navigation B (Jack, Nov 17 2026) supersedes Portfolio / Signals / Activity labels');
     assert.equal(await page.locator('#ex-account').isVisible(), false, 'Today stays a combined overview');
     assert.equal(await page.locator('#page-ex-today').getByRole('button', { name: 'All accounts', exact: true }).count(), 0);
     assert.match(await page.locator('.td-waiting').innerText(), /Waiting on you/i);
@@ -146,7 +146,7 @@ export async function runTodayChecks(page) {
         await page.waitForTimeout(80);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Today has no horizontal overflow in ' + theme + ' at ' + width + '×' + height);
         await checkCompactLabels(page, theme + ' at ' + width + '×' + height);
-        assert.equal(await page.locator('.ex-main [data-ex-area="signals"]').isVisible(), true, 'Signals stays reachable');
+        assert.equal(await page.locator('.ex-main [data-ex-area="more"]').isVisible(), true, 'More stays reachable');
       }
     }
 
