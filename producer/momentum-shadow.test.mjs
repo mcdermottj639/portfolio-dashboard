@@ -1,10 +1,12 @@
-// Synthetic tests for the momentum-off paper shadow. No broker calls, no writes to the committed ledger.
+// Synthetic tests for the momentum-off paper shadow. No broker calls; the CLI test writes only to a temp copy.
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { shadowWeights, compositeWith, shadowCohort, appendCohort, gradeShadow, recordShadow, SHADOW_MIN_COHORTS } from './momentum-shadow.mjs';
-import { FACTOR_WEIGHTS } from './agentic-model.mjs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { shadowWeights, compositeWith, shadowCohort, appendCohort, gradeShadow, nextShadow, SHADOW_MIN_COHORTS } from './momentum-shadow.mjs';
+import { FACTOR_WEIGHTS, targetIdentity } from './agentic-model.mjs';
 
 let passed = 0, failed = 0;
 const test = (label, fn) => { try { fn(); passed++; console.log('ok', label); } catch (e) { failed++; console.error('FAIL', label, e.message); } };
@@ -60,14 +62,49 @@ test('grading: diff is noMomentum minus live, missing price voids the basket, th
   delete quotes.QUAL1;
   assert.equal(gradeShadow(ledger, quotes, '2026-12-15').cohorts[0].diffPp, null);
 });
-test('recordShadow writes once to the given file and never touches the committed ledger', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'shadow-')); const file = join(dir, 'shadow.json');
+test('nextShadow carries the committed log forward, adds once, and survives a missing ranking', () => {
+  const first = nextShadow(null, ranking, { asOf: '2026-11-18' });
+  assert.equal(first.added, true); assert.equal(first.momentumShadow.cohorts.length, 1);
+  const committed = { names: [], momentumShadow: first.momentumShadow };
+  const again = nextShadow(committed, ranking, { asOf: '2026-11-18' });
+  assert.equal(again.added, false); assert.deepEqual(again.momentumShadow.cohorts, first.momentumShadow.cohorts);
+  const second = nextShadow(committed, ranking, { asOf: '2026-11-25' });
+  assert.deepEqual(second.momentumShadow.cohorts.map((c) => c.asOf), ['2026-11-18', '2026-11-25']);
+  const none = nextShadow(committed, null, { asOf: '2026-12-02' });
+  assert.equal(none.added, false); assert.equal(none.momentumShadow.cohorts.length, 1);
+});
+test('the shadow log is outside the target identity', () => {
+  const t = { asOf: '2026-11-18', names: [{ ticker: 'A', weightPct: 100 }] };
+  assert.equal(targetIdentity(t), targetIdentity({ ...t, momentumShadow: nextShadow(null, ranking, { asOf: t.asOf }).momentumShadow }));
+});
+test('finalize CLI: stores the log on the target, keeps it across --no-prior, never changes the targetId', () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+  const temp = mkdtempSync(join(tmpdir(), 'momentum-shadow-'));
   try {
-    assert.equal(recordShadow(ranking, { asOf: '2026-11-18' }, file).added, true);
-    assert.equal(recordShadow(ranking, { asOf: '2026-11-18' }, file).added, false);
-    assert.equal(recordShadow(null, { asOf: '2026-11-19' }, file).added, false);
-    assert.equal(JSON.parse(readFileSync(file, 'utf8')).cohorts.length, 1);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+    cpSync(root, join(temp, 'producer'), { recursive: true, filter: (p) => !p.includes('/raw') });
+    const build = (asOf) => { const evidence = [{ source: 'mcp:test/synthetic-fixture', asOf, claim: 'Synthetic test quote, range and research evidence' }];
+    const secs = ['Energy Minerals', 'Finance', 'Health Technology', 'Producer Manufacturing', 'Transportation', 'Retail Trade', 'Non-Energy Minerals', 'Process Industries', 'Consumer Services', 'Commercial Services', 'Distribution Services', 'Industrial Services'];
+    const syms = ['XOM', 'JPM', 'LLY', 'CAT', 'UNP', 'COST', 'NEM', 'LIN', 'BKNG', 'SPGI', 'MCK', 'SLB'];
+    const rows = syms.map((t, i) => ({ ...row(t, i < 2 ? 10 : 5, i < 2 ? 5 : 8 - i / 100), sec: secs[i], hi: 120, lo: 90, evidence }));
+    return { researchVersion: 'evidence-v1', ranking: [...rows, { ...row('SPY', 7, 7, 7, 7, 7, 700), sec: 'Index', hi: 760, lo: 600, evidence }],
+      research: { evidence: Object.fromEntries(syms.map((t) => [t, Object.fromEntries(['quality', 'momentum', 'growth', 'catalyst'].map((k) => [k, { score: 8, status: 'observed', evidence }]))])) },
+      verdicts: syms.map((t) => ({ t, businessOk: true, rec: 'buy', evidence })),
+      allocation: { picks: [...syms.slice(0, 9).map((ticker) => ({ ticker, weightPct: 10 })), { ticker: 'SPY', weightPct: 10 }] } };
+    };
+    const candidate = join(temp, 'candidate.json'), canonical = join(temp, 'producer/agentic-target.json');
+    rmSync(canonical, { force: true });
+    const run = (asOf, extra = []) => { writeFileSync(candidate, JSON.stringify(build(asOf))); return spawnSync(process.execPath, [join(temp, 'producer/finalize-target.mjs'), candidate, '--asOf', asOf, '--write', ...extra], { encoding: 'utf8' }); };
+    const a = run('2026-11-18'); assert.equal(a.status, 0, a.stderr);
+    const t1 = JSON.parse(readFileSync(canonical, 'utf8'));
+    assert.equal(t1.momentumShadow.cohorts.length, 1);
+    assert.equal(t1.momentumShadow.cohorts[0].spyAt, 700);
+    assert.equal(t1.targetId, targetIdentity(t1));
+    const { momentumShadow, ...bare } = t1; assert.equal(targetIdentity(bare), t1.targetId);
+    const b = run('2026-11-25', ['--no-prior']); assert.equal(b.status, 0, b.stderr);
+    const t2 = JSON.parse(readFileSync(canonical, 'utf8'));
+    assert.deepEqual(t2.momentumShadow.cohorts.map((c) => c.asOf), ['2026-11-18', '2026-11-25']);
+    assert.deepEqual(t2.momentumShadow.cohorts[0], t1.momentumShadow.cohorts[0]);
+  } finally { rmSync(temp, { recursive: true, force: true }); }
 });
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

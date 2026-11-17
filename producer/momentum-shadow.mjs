@@ -9,21 +9,19 @@
 // What this records, once per research refresh, from the SAME `ranking` the live composite used:
 //   live       — top N single names by the live composite (momentum at its real weight)
 //   noMomentum — top N by a composite with momentum weight 0 and the other sleeves renormalized
-// Both baskets are equal-weight, frozen at the refresh price, and never edited afterwards. Index
+// Both baskets are equal-weight, frozen at the refresh price, and never edited afterwards. The log
+// lives INSIDE agentic-target.json as `momentumShadow` and is carried forward from the committed file at
+// every refresh, so the research Routine (which commits only that one file) persists it with no extra step.
+// It is outside targetIdentity, so it cannot change a targetId. Index
 // vehicles are excluded from both (they are the benchmark, not a pick). Grading marks both to a later
 // price; the number that matters is noMomentum minus live. Fewer than SHADOW_MIN_COHORTS graded
 // cohorts is reported as `thin` — a curiosity, not a finding (same posture as SLEEVE_MIN_N).
 //
 // This isolates SELECTION by the composite. It does not replay the adversarial verify or the
 // allocator's sizing, so it is evidence about the factor, not a simulated account.
-import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { FACTOR_WEIGHTS } from './agentic-model.mjs';
 import { INDEX_SYMS } from './riskweights.mjs';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-export const SHADOW_FILE = join(__dirname, 'agentic-shadow.json');
 export const SHADOW_N = 10;
 export const SHADOW_MIN_COHORTS = 4;
 export const SHADOW_MIN_DAYS = 5;
@@ -93,11 +91,11 @@ export function gradeShadow(ledger, quotes = {}, asOf) {
     thin: graded.length < SHADOW_MIN_COHORTS };   // true => "not yet measurable", never a verdict
 }
 
-export function recordShadow(ranking, opts, file = SHADOW_FILE) {
-  const ledger = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { version: 1, cohorts: [] };
+// Carry the committed log forward and add this refresh's cohort. `committed` is the target currently on
+// disk (may be null). Returns the object to store as target.momentumShadow, plus what happened.
+export function nextShadow(committed, ranking, opts) {
+  const prior = committed?.momentumShadow || { version: 1, cohorts: [] };
   const cohort = shadowCohort(ranking, opts);
-  const next = appendCohort(ledger, cohort);
-  const added = next.cohorts.length > (ledger.cohorts || []).length;
-  if (added) { const tmp = file + '.tmp'; writeFileSync(tmp, JSON.stringify(next, null, 2) + '\n'); renameSync(tmp, file); }
-  return { added, cohort };
+  const next = appendCohort(prior, cohort);
+  return { momentumShadow: next, cohort, added: next.cohorts.length > (prior.cohorts || []).length };
 }
