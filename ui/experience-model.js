@@ -207,7 +207,7 @@
     if(soon.length)add('Options expire within 7 days',[...new Set(soon.map(p=>p.underlying))].join(', ')+' · review open contracts and collateral.','options','main','warn');
     if(earnings.some(e=>e.days<=7))add('Earnings in the week ahead',earnings.filter(e=>e.days<=7).map(e=>e.symbol).join(', ')+' · dates from the published calendar.','markets',null);
     if(drawdown&&!drawdown.insufficient&&['soft','hard'].includes(drawdown.level))add('Agentic deployment guard is active','Recorded '+drawdown.level+' drawdown state · review the agentic plan.','plan','agentic','warn');
-    if(pending?.status&&!['done','aborted','cancelled'].includes(pending.status))add('Agentic ticket: '+String(pending.status).replace(/-/g,' '),'Recorded ticket status · not a live execution confirmation.','plan','agentic');
+    if(pending?.status&&!['done','aborted','cancelled'].includes(pending.status))add('Agentic ticket: '+ticketStatus(pending).text,'Recorded ticket status · not a live execution confirmation.','plan','agentic');
     if(broker!==null&&!optionSummary.reconciled)add('Options history needs reconciliation','The broker total is available; matched contract history does not fully explain it.','options','main');
     return {accounts,equity,available:accounts.some(a=>a.available),positions,pricedCount:positions.filter(p=>p.value!==null).length,
       positiveCash:cashKnown?accounts.reduce((n,a)=>n+Math.max(0,a.cash),0):null,
@@ -217,6 +217,70 @@
       vix:{value:number(data?.vix?.v),asOf:data?.vix?.asOf||null},
       contributors:positions.filter(p=>p.day!==null).sort((a,b)=>Math.abs(b.day)-Math.abs(a.day)).slice(0,6),
       breadth:breadth(positions.map(p=>({...p,day:p.partialDay?null:p.day})))};
+  }
+  // One status -> words map for AGENTIC TICKET statuses. Today, Agentic Plan ("Where the plan stands"),
+  // the Agentic Accounts strip, the market tape, Activity and the attention rows all render ticket state
+  // through ticketStatus(); none prints the stored status word. label/detail are Today's canonical text.
+  // This is display only: it never decides which state a ticket is in (the producer owns that).
+  const TICKET_STATUS = {
+    'proposed-confirm': {group:'waiting', tone:'warn', label:'Awaiting your confirmation',
+      detail:'Proposed ticket. Review the full plan before confirming.',
+      next:'confirm with one command, or a reply in Claude'},
+    'proposed-auto': {group:'monitor', label:'Queued for executor',
+      detail:'Automatically eligible proposal. Broker submission has not been confirmed.',
+      next:'the executor places it unattended at its next pass'},
+    confirmed: {group:'monitor', label:'Queued for executor · confirmation recorded',
+      detail:'Confirmation is recorded. Broker submission has not been confirmed.',
+      next:'executes at the next executor pass'},
+    'sells-placed': {group:'monitor', label:'Submission reported · sells',
+      detail:'The recorded ticket reports submitted sell orders. Fill status is not confirmed.',
+      caveat:'fill status is not confirmed',
+      next:'the buys follow once the sells fill (limited margin: proceeds are spendable on fill)'},
+    'buys-placed': {group:'monitor', label:'Submission reported · buys',
+      detail:'The recorded ticket reports submitted buy orders. Fill status is not confirmed.',
+      caveat:'fill status is not confirmed',
+      next:'the ticket closes once the buys fill'},
+    'partial-fill': {group:'monitor', tone:'warn', label:'Partial fill reported',
+      detail:'The recorded ticket reports a partial fill. Check the remaining quantity and latest broker status.',
+      caveat:'check the latest broker status'},
+    done: {group:'complete', terminal:true, label:'Recorded ticket complete',
+      detail:'The ticket is marked complete. This does not independently confirm broker fills.',
+      caveat:'does not independently confirm broker fills'},
+    cancelled: {group:'complete', terminal:true, label:'Ticket cancelled',
+      detail:'Cancellation is recorded. Broker cancellation status is not independently verified.',
+      caveat:'broker cancellation is not independently verified'},
+    aborted: {group:'waiting', tone:'warn', terminal:true, label:'Ticket needs review', tag:'aborted',
+      detail:'The recorded ticket was aborted. Review the reason and any remaining order status.'},
+    rejected: {group:'waiting', tone:'warn', terminal:true, label:'Ticket needs review', tag:'rejected',
+      detail:'The recorded ticket was rejected. Review the reason and any remaining order status.'}
+  };
+  TICKET_STATUS['partially-filled'] = TICKET_STATUS['partial-fill'];
+  function ticketStatus(pending) {
+    const none = {key:'none', known:false, terminal:false, group:'none', label:'', detail:'', tone:'neutral', text:'', compact:'', next:'', caveat:'', heading:''};
+    if (!pending || typeof pending !== 'object' || Array.isArray(pending)
+      || !Object.values(pending).some(value => value !== null && value !== undefined && value !== '')) return none;
+    const rawStatus = typeof pending.status === 'string' ? pending.status.trim() : '';
+    const status = rawStatus.toLowerCase();
+    const key = status === 'proposed' ? (pending.autoEligible === true ? 'proposed-auto' : 'proposed-confirm') : status;
+    return describeTicket(Object.prototype.hasOwnProperty.call(TICKET_STATUS, key) ? key : '', rawStatus);
+  }
+  // A history event or a bare status string (Activity timeline), with the ticket's own auto flag for "proposed".
+  function ticketStatusFor(status, pending) {
+    return ticketStatus({...(pending && typeof pending === 'object' ? pending : {}), status});
+  }
+  function describeTicket(key, rawStatus) {
+    const e = key ? TICKET_STATUS[key] : null;
+    if (!e) {
+      const shown = rawStatus ? '“' + rawStatus.slice(0, 40) + '”' : 'no status recorded';
+      const text = 'Status needs review';
+      return {key:'unknown', known:false, terminal:false, group:'waiting', tone:'warn', label:text,
+        detail:'The recorded ticket status is unrecognized' + (rawStatus ? ' (' + shown + ')' : '') + '. Open Activity to verify the next step.',
+        text, compact:text + ': ' + shown, next:'', caveat:'', heading:'Latest ticket'};
+    }
+    const text = e.label + (e.tag ? ' · ' + e.tag : '');
+    return {key, known:true, terminal:e.terminal === true, group:e.group, tone:e.tone || 'neutral', label:e.label,
+      detail:e.detail, text, compact:text + (e.caveat ? ' (' + e.caveat + ')' : ''), next:e.next || '', caveat:e.caveat || '',
+      heading:e.terminal ? 'Last ticket' : 'Rebalance in flight'};
   }
   function scenario({ equity, positionValue, shockPct, shiftPct, costBps }) {
     const values = [equity, positionValue, shockPct, shiftPct, costBps].map(number);
@@ -238,5 +302,5 @@
         href: typeof e.source === 'string' && /^https:\/\//i.test(e.source) ? e.source : null
       })));
   }
-  return { number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence };
+  return { number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence, ticketStatus, ticketStatusFor, TICKET_STATUS };
 });

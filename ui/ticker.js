@@ -118,7 +118,7 @@
     var dd = s.drawdown;
     if (dd && !dd.insufficient && dd.level) ag.push(item('<span class="tk-sym">Breaker</span><span class="tk-pill ' + (dd.level === 'hard' ? 'r' : dd.level === 'soft' ? 'a' : 'g') + '">' + esc(dd.level === 'ok' ? 'Clear' : dd.level) + '</span>' + (num(dd.relDd) != null ? '<span class="tk-muted">vs SPY ' + (dd.relDd * 100).toFixed(1) + 'pp</span>' : ''), ' data-ex-route="plan" data-ex-account="agentic"', 'Drawdown breaker'));
     var pend = s.pending;
-    if (pend && pend.status && ['done', 'aborted', 'cancelled'].indexOf(pend.status) < 0) ag.push(item('<span class="tk-sym">Ticket</span><span class="tk-pill b">' + esc(String(pend.status).replace(/-/g, ' ')) + '</span>', ' data-ex-route="plan" data-ex-account="agentic"', 'Agentic ticket'));
+    if (pend && pend.status && ['done', 'aborted', 'cancelled'].indexOf(pend.status) < 0) ag.push(item('<span class="tk-sym">Ticket</span><span class="tk-pill b">' + esc(M().ticketStatus(pend).compact) + '</span>', ' data-ex-route="plan" data-ex-account="agentic"', 'Agentic ticket'));
     if (ag.length) out.push(sec('s-agent', 'Agentic') + ag.join(''));
 
     // Needs a look — the Today radar's warnings, shortest form.

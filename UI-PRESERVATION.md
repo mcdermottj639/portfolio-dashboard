@@ -275,3 +275,32 @@ Keys are per page and account, so the agentic choice never reaches the self-dire
 "Not financial advice … monitor-only" line stays outside the folded loop body. Scoring Breakdown stays open when it holds no
 candidate rows. Screens has no rail or Find entry, so its card is only reached by opening the page. Covered by
 `tests/research-folds-checks.mjs` via `tests/journey-browser.mjs`.
+
+### v240 — One wording for agentic ticket status (Jack: "Unify", Nov 17 2026)
+
+The contract is `PFExperienceModel.ticketStatus` (`ui/experience-model.js`). Today, Agentic Plan "Where the plan stands" (and "Last ticket"),
+the Agentic Accounts strip, the market-tape Ticket pill, Activity (strip, record row, timeline) and the attention title all render ticket
+state through it; a stored status word is never printed. Changing a string here changes every screen, so change it in one place and
+update `tests/ticket-status.test.cjs`, `tests/today.test.cjs` and this table together.
+
+| Stored status | Label (Today's text) | Compact form (Plan, strip, tape pill, Activity, timeline, attention title) | Next-step clause (Plan, strip) |
+| --- | --- | --- | --- |
+| `proposed`, not auto-eligible (or flag missing) | Awaiting your confirmation | Awaiting your confirmation | confirm with one command, or a reply in Claude (Plan adds "turnover is over the $X auto tier") |
+| `proposed`, `autoEligible: true` | Queued for executor | Queued for executor | the executor places it unattended at its next pass (Plan adds "turnover is under the $X auto tier") |
+| `confirmed` | Queued for executor · confirmation recorded | same | executes at the next executor pass |
+| `sells-placed` | Submission reported · sells | Submission reported · sells (fill status is not confirmed) | the buys follow once the sells fill (limited margin: proceeds are spendable on fill) |
+| `buys-placed` | Submission reported · buys | Submission reported · buys (fill status is not confirmed) | the ticket closes once the buys fill |
+| `partial-fill`, `partially-filled` | Partial fill reported | Partial fill reported (check the latest broker status) | none |
+| `done` | Recorded ticket complete | Recorded ticket complete (does not independently confirm broker fills) | none; terminal |
+| `cancelled` | Ticket cancelled | Ticket cancelled (broker cancellation is not independently verified) | none; terminal |
+| `aborted` | Ticket needs review | Ticket needs review · aborted | none; terminal |
+| `rejected` | Ticket needs review | Ticket needs review · rejected | none; terminal |
+| anything else, or no status | Status needs review | Status needs review: “raw value” (or "no status recorded") | none; not terminal |
+
+Long text (Today's detail line) is the map's `detail` field. Headings: terminal states read "Last ticket"; in-flight states read "Rebalance in flight"; an unknown status reads "Latest ticket".
+
+Rules that stay: a submitted or completed ticket is never worded as a confirmed fill (caveats above travel with the label); queued
+(auto-eligible) and queued (owner-confirmed) stay distinct; a finished ticket is never headed "Rebalance in flight" (the strip reads
+"Last ticket", like Plan); an unknown status is shown with its raw value, not hidden. Out of scope and unchanged: ticket state logic,
+producer, Apex "Confirm with Claude" flow, Options broker-state badges (CONFIRMED / QUEUED / PARTIALLY_FILLED are the broker's own
+words), the Plan help glossary of stored producer words. Covered by `tests/ticket-status-checks.mjs` via `tests/journey-browser.mjs`.
