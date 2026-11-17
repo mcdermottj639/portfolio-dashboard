@@ -66,14 +66,15 @@ test('a proposed ticket never manufactures broker execution',()=>{
   const waiting=T.ticket({status:'proposed',autoEligible:false});
   assert.equal(waiting.group,'waiting');assert.equal(waiting.label,'Awaiting your confirmation');
   assert.equal(T.ticket({status:'proposed'}).group,'waiting','missing eligibility never becomes permission');
-  for(const ticket of [{status:'proposed',autoEligible:true},{status:'confirmed'}]){
-    const result=T.ticket(ticket);assert.equal(result.group,'monitor');assert.equal(result.label,'Queued for executor');
+  // v240: auto-eligible and owner-confirmed are distinct states with distinct words (the second extends the first).
+  for(const [ticket,label] of [[{status:'proposed',autoEligible:true},'Queued for executor'],[{status:'confirmed'},'Queued for executor · confirmation recorded']]){
+    const result=T.ticket(ticket);assert.equal(result.group,'monitor');assert.equal(result.label,label);
     assert.match(result.detail,/submission has not been confirmed/);
   }
 });
 test('submitted, partial and completed ticket states distinguish reports from broker fills',()=>{
-  for(const status of ['sells-placed','buys-placed']){
-    const result=T.ticket({status});assert.equal(result.group,'monitor');assert.equal(result.label,'Submission reported');
+  for(const [status,label] of [['sells-placed','Submission reported · sells'],['buys-placed','Submission reported · buys']]){
+    const result=T.ticket({status});assert.equal(result.group,'monitor');assert.equal(result.label,label);
     assert.match(result.detail,/Fill status is not confirmed/);
   }
   for(const status of ['partial-fill','partially-filled'])assert.equal(T.ticket({status}).label,'Partial fill reported');

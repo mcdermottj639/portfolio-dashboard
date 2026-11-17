@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=239"></script>
-<script src="ui/experience-model.js?v=239"></script>
+<script src="ui/theme.js?v=240"></script>
+<script src="ui/experience-model.js?v=240"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,13 +729,13 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=239">
-<link rel="stylesheet" href="ui/journey.css?v=239">
-<link rel="stylesheet" href="ui/predictions.css?v=239">
-<link rel="stylesheet" href="ui/smartmoney.css?v=239">
-<link rel="stylesheet" href="ui/ticker.css?v=239">
-<link rel="stylesheet" href="ui/today.css?v=239">
-<link rel="stylesheet" href="ui/duo.css?v=239">
+<link rel="stylesheet" href="ui/experience.css?v=240">
+<link rel="stylesheet" href="ui/journey.css?v=240">
+<link rel="stylesheet" href="ui/predictions.css?v=240">
+<link rel="stylesheet" href="ui/smartmoney.css?v=240">
+<link rel="stylesheet" href="ui/ticker.css?v=240">
+<link rel="stylesheet" href="ui/today.css?v=240">
+<link rel="stylesheet" href="ui/duo.css?v=240">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -800,9 +800,9 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=239"></script>
-<script src="ui/apex.js?v=239"></script>
-<script src="ui/business.js?v=239"></script>
+<script src="ui/sd-rules.js?v=240"></script>
+<script src="ui/apex.js?v=240"></script>
+<script src="ui/business.js?v=240"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -916,7 +916,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v239'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v240'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3767,6 +3767,8 @@ function renderAgenticPerf(){
 }
 window.renderAgenticPerf=renderAgenticPerf;
 
+// Ticket-status text for the agentic cards: one map (PFExperienceModel.ticketStatus), escaped for HTML.
+function agTicketSt(t){ const st=window.PFExperienceModel.ticketStatus(t), e=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); return {...st,textH:e(st.text),compactH:e(st.compact),nextH:e(st.next)}; }
 function renderAgenticCard(){
   const el=document.getElementById('agentic-content'); if(!el)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
@@ -3992,7 +3994,7 @@ function renderAgenticCard(){
   el.innerHTML=`
     <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as what the move was worth on your position over the percentage move itself; the dollars sum to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The producer hasn't captured ••••3900 yet — the account's live cash, holdings and performance appear here after the next scheduled run picks it up. The target itself is on the Plan tab.</div>`}
-    ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary;return `<div class="fund-note" style="background:#eff6ff;border-color:#bfdbfe;margin:0 0 8px"><b>🤖 Rebalance in flight</b> — ticket <span style="font-family:monospace;font-size:10.5px">${T.id||''}</span> · <b>${T.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${T.status==='proposed'?(T.autoEligible?' · auto tier — executes at the next executor pass':' · <b>awaiting your confirm</b> (one command, or a reply in Claude)'):T.status==='sells-placed'?' · sells placed — buys follow as soon as they fill':T.status==='confirmed'?' · confirmed — executes at the next executor pass':''}. The table below reflects the book <i>before</i> this ticket fills.</div>`;})():''}
+    ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary,st=agTicketSt(T);return `<div class="fund-note" style="${st.terminal?'':'background:#eff6ff;border-color:#bfdbfe;'}margin:0 0 8px"><b>${st.heading==='Rebalance in flight'?'🤖 ':''}${st.heading}</b> — ticket <span style="font-family:monospace;font-size:10.5px">${String(T.id||'').replace(/[&<>"']/g,'')}</span> · <b>${st.compactH}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${st.next?' — '+st.nextH:''}.${st.terminal?'':' The table below reflects the book <i>before</i> this ticket fills.'}</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The target it would deploy into is on the Plan tab — the button below places it.</div>`:'')}
     ${washBlocked.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⚠️ Wash-sale hold:</b> ${washBlocked.map(x=>'<b>'+x.sym+'</b> ('+(washMap[x.sym]&&washMap[x.sym].account==='main'?'loss in ••••0741':'loss in ••••3900')+' · until '+washUntilLbl(x.sym)+')').join(' · ')} — a taxable account of yours realized a loss on ${washBlocked.length>1?'these':'this'} within the last 30 days; the IRS wash-sale window spans your accounts, so a rebuy here would disallow the loss. Target weight kept; the buy is deferred (and left out of the hand-off) until the window clears. Not tax advice.</div>`:''}
     ${execDeferred.length?`<div class="fund-note" style="background:#fffbeb;border-color:#fde68a"><b>⏸ Deferred — execution discipline:</b> ${execDeferred.map(x=>'<b>'+x.sym+'</b> ('+(execMap[x.sym].reason==='earnings'?'earnings ≤'+EARN_BLACKOUT_D+'d':execMap[x.sym].reason==='below-stop'?'below stop':execMap[x.sym].reason==='above-entry'?'above entry zone':'below entry zone')+')').join(' · ')} — new money is held back on ${execDeferred.length>1?'these':'this'} and left out of the hand-off. An earnings name waits for the print; a name that gapped through its entry/stop waits for a thesis re-verify; a name trading above its entry zone waits for the pullback the research priced in. Small misses are tolerated (±${ENTRY_TOL_PCT}%/${ENTRY_PREM_PCT}%) and zones older than ${ENTRY_STALE_D}d go advisory on the BELOW side only${_zonesStale?` — <b>the current zones are ${_zoneAge}d old, so a pullback under the zone no longer defers, but paying up above it still does</b>`:''}. Deferred weight waits in the ${'VTI'} placeholder rather than cash. Target weight unchanged. Education only.</div>`:''}
@@ -4194,14 +4196,10 @@ function renderAgenticPlan(){
   const pendLine=(()=>{
     if(!pend)return `<div class="fund-note" style="margin:0">No rebalance ticket outstanding. The executor re-plans every hour the market is open; it opens a ticket when the target and the book have drifted far enough apart to be worth the trades.</div>`;
     const lg=pend.legs||{}, ns=(lg.sells||[]).length, nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length, tax=pend.taxSummary;
-    const done=pend.status==='done'||pend.status==='aborted';
-    const next=done?'':(pend.status==='proposed'?(pend.autoEligible
-        ?`turnover is under the ${fmtD(AG_AUTO_CAP)} auto tier — the executor places it unattended at its next pass`
-        :`turnover is over the ${fmtD(AG_AUTO_CAP)} auto tier — <b>waiting on your confirm</b> (one command, or a reply in Claude)`)
-      :pend.status==='confirmed'?'confirmed — executes at the next executor pass'
-      :pend.status==='sells-placed'?'sells are in — the buys follow as soon as they fill (limited margin: proceeds are spendable on fill)'
-      :pend.status==='buys-placed'?'buys are in — the ticket closes once they fill':'');
-    return `<div class="fund-note" style="margin:0;${done?'':'background:#eff6ff;border-color:#bfdbfe'}"><b>${done?'Last ticket':'🤖 Rebalance in flight'}</b> — <span style="font-family:monospace;font-size:10.5px">${pend.id||''}</span> · <b>${pend.status}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(pend.turnover||0)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${next?` — ${next}`:''}.</div>`;
+    const st=agTicketSt(pend);
+    const tier=st.key.indexOf('proposed')===0?`turnover is ${st.key==='proposed-auto'?'under':'over'} the ${fmtD(AG_AUTO_CAP)} auto tier`:'';
+    const next=st.next?(tier?tier+' — ':'')+st.nextH:'';
+    return `<div class="fund-note" style="margin:0;${st.terminal?'':'background:#eff6ff;border-color:#bfdbfe'}"><b>${st.heading==='Rebalance in flight'?'🤖 ':''}${st.heading}</b> — <span style="font-family:monospace;font-size:10.5px">${String(pend.id||'').replace(/[&<>"']/g,'')}</span> · <b>${st.compactH}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(pend.turnover||0)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${next?` — ${next}`:''}.</div>`;
   })();
   const statusCard=`
     <div class="card"><div class="card-title collapsible" data-toggle="b-agp-status" onclick="toggleSection('b-agp-status')"><span>🤖 Where the plan stands <span class="card-hint">(ticket · cash · next action)</span></span><span class="chevron">▼</span></div><div id="b-agp-status">
@@ -4303,7 +4301,7 @@ function renderAgenticPlan(){
       ${agDrawdownBanner()}${agRegimeBanner()}
       ${(blockList.length||sellBlockHtml)?'':`<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
       ${blockList.length?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:0 0 6px">🛒 Buys deferred</div>`+`<div class="xr-list">${blockList.map(b=>`<details class="xr-row bk-row"><summary><span class="xr-tk" style="background:${b.col}">${b.sym}</span><span class="xr-m"><b>${b.tag}</b><small>${b.clears}</small></span><i class="oh-chev"></i></summary><p>${b.why}</p></details>`).join('')}</div>`:''}
-      ${sellBlockHtml?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:${blockList.length?'12px':'0'} 0 6px">💸 Sells held back <span style="color:#9ca3af;font-weight:400">· from the ${blkSrc&&blkSrc.created?dLbl(blkSrc.created):'latest'} ticket${blkSrc&&(blkSrc.status==='done'||blkSrc.status==='aborted')?' ('+blkSrc.status+')':''}</span></div>`+'<div class="xr-list">'+sellBlockHtml+'</div>'
+      ${sellBlockHtml?`<div style="font-size:11.5px;font-weight:700;color:var(--text);opacity:.7;margin:${blockList.length?'12px':'0'} 0 6px">💸 Sells held back <span style="color:#9ca3af;font-weight:400">· from the ${blkSrc&&blkSrc.created?dLbl(blkSrc.created):'latest'} ticket${blkSrc&&agTicketSt({status:blkSrc.status}).terminal?' ('+agTicketSt({status:blkSrc.status}).textH+')':''}</span></div>`+'<div class="xr-list">'+sellBlockHtml+'</div>'
         +`<details class="sd-more"><summary>Why sells get held</summary><div class="fund-note" style="margin:8px 0 0">These are sells the planner <b>wanted</b> to make and a guard stopped — not failures. The weight is unchanged; the trade re-plans on the first pass after the date above. The min-hold is <b>per lot</b>: only the shares bought inside the window wait, so a recent top-up no longer freezes a position you have held for months. De-risking is never blocked this way either: a business-broken verdict or a loss past −10% overrides the min-hold, and the drawdown breaker never blocks a sell at all.</div></details>`:''}
       ${zonesStale?`<div class="fund-note" style="margin:10px 0 0;background:#fffbeb;border-color:#fde68a"><b>⚠️ Entry zones are advisory:</b> this target is <b>${zoneAge}d</b> old (over the ${AG_ENTRY_STALE_D}-day limit), so the entry-band checks are <b>off</b>. When a whole target reads out-of-band at once, the guard is measuring its own staleness rather than the companies. <b>Below-stop</b> still binds — that one is the real thesis-broken signal.</div>`:
         `<details class="sd-more"><summary>✓ Entry checks live — how they work</summary><div class="fund-note" style="margin:6px 0 0">Entry checks are <b>live</b> (target is ${zoneAge==null?'—':zoneAge+'d'} old, limit ${AG_ENTRY_STALE_D}d): a name more than <b>${AG_ENTRY_TOL_PCT}%</b> below its entry floor defers for a re-verify, more than <b>${AG_ENTRY_PREM_PCT}%</b> above its ceiling waits for a pullback. Small misses are tolerated on purpose — a 0.2% miss parking a position is how cash gets stranded.</div></details>`}
@@ -8868,16 +8866,16 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=239"></script>
-<script src="ui/today.js?v=239"></script>
-<script src="ui/predictions-model.js?v=239"></script>
-<script src="ui/predictions.js?v=239"></script>
-<script src="ui/smartmoney-model.js?v=239"></script>
-<script src="ui/smartmoney.js?v=239"></script>
-<script src="ui/experience.js?v=239"></script>
-<script src="ui/ticker.js?v=239"></script>
-<script src="ui/duo.js?v=239"></script>
-<script src="ui/compact.js?v=239"></script>
-<script src="ui/journey.js?v=239"></script>
+<script src="ui/today-model.js?v=240"></script>
+<script src="ui/today.js?v=240"></script>
+<script src="ui/predictions-model.js?v=240"></script>
+<script src="ui/predictions.js?v=240"></script>
+<script src="ui/smartmoney-model.js?v=240"></script>
+<script src="ui/smartmoney.js?v=240"></script>
+<script src="ui/experience.js?v=240"></script>
+<script src="ui/ticker.js?v=240"></script>
+<script src="ui/duo.js?v=240"></script>
+<script src="ui/compact.js?v=240"></script>
+<script src="ui/journey.js?v=240"></script>
 </body>
 </html>

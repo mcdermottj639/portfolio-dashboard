@@ -1,3 +1,33 @@
+## v240 — Order-status wording unified; finished tickets no longer shown as in flight (2026-11-17)
+
+Jack said "Unify" Nov 17 2026 (after the order-status comparison: four different words for "needs approval", three for "submitted", three for "done"; approved action: "make every screen use Today's wording and fix the strip"). Wording/display only: no ticket state logic, eligibility, executor behaviour, producer, data, schedule, Apex confirmation flow or number changed.
+- **One map.** `PFExperienceModel.ticketStatus(pending)` (and `ticketStatusFor(status, pending)` for history events) in `ui/experience-model.js`, loaded before every consumer, so no script order changed and no file was added. `PFTodayModel.ticket()` now delegates to it. Today's existing phrases are the canonical text; every agentic ticket surface renders through it: Today (Waiting on you / Out of your hands), Agentic Plan "Where the plan stands" (including "Last ticket" and "Sells held back · from the … ticket"), the Agentic Accounts strip, the market-tape "Ticket" pill, Activity (status strip, Research & execution record, "Recorded ticket complete" row, ticket timeline) and the "Agentic ticket: …" attention title. No surface prints a stored status word any more.
+- **Final status → text table** (the contract; mirrored in UI-PRESERVATION.md):
+
+| Stored status | Label (Today's text) | Compact form (Plan, strip, tape pill, Activity, timeline, attention title) | Next-step clause (Plan, strip) |
+| --- | --- | --- | --- |
+| `proposed`, not auto-eligible (or flag missing) | Awaiting your confirmation | Awaiting your confirmation | confirm with one command, or a reply in Claude (Plan adds "turnover is over the $X auto tier") |
+| `proposed`, `autoEligible: true` | Queued for executor | Queued for executor | the executor places it unattended at its next pass (Plan adds "turnover is under the $X auto tier") |
+| `confirmed` | Queued for executor · confirmation recorded | same | executes at the next executor pass |
+| `sells-placed` | Submission reported · sells | Submission reported · sells (fill status is not confirmed) | the buys follow once the sells fill (limited margin: proceeds are spendable on fill) |
+| `buys-placed` | Submission reported · buys | Submission reported · buys (fill status is not confirmed) | the ticket closes once the buys fill |
+| `partial-fill`, `partially-filled` | Partial fill reported | Partial fill reported (check the latest broker status) | none |
+| `done` | Recorded ticket complete | Recorded ticket complete (does not independently confirm broker fills) | none; terminal |
+| `cancelled` | Ticket cancelled | Ticket cancelled (broker cancellation is not independently verified) | none; terminal |
+| `aborted` | Ticket needs review | Ticket needs review · aborted | none; terminal |
+| `rejected` | Ticket needs review | Ticket needs review · rejected | none; terminal |
+| anything else, or no status | Status needs review | Status needs review: “raw value” (or "no status recorded") | none; not terminal |
+
+Long text (Today's detail line) is the map's `detail` field. Headings: terminal states read "Last ticket"; in-flight states read "Rebalance in flight"; an unknown status reads "Latest ticket".
+
+- **Two queued states stay distinct.** Today used "Queued for executor" for both an auto-eligible proposal and an owner-confirmed ticket. Now auto-eligible is "Queued for executor" and owner-confirmed is "Queued for executor · confirmation recorded". Sells and buys submission are likewise distinct ("Submission reported · sells" / "· buys") and aborted/rejected carry their own tag.
+- **A finished ticket is a record, not a fill.** Every surface that shows `done` carries Today's caveat ("does not independently confirm broker fills"); submitted states carry "fill status is not confirmed". Retired phrases: "sells are in", "buys are in", "sells placed", "buys placed", "Ticket completed", "waiting on your confirm", "awaiting your confirm", the bare words `proposed` / `confirmed` / `done` / `aborted` and the raw `sells-placed` / `buys-placed` as status text.
+- **Strip bug fixed.** The Agentic Accounts strip (renderAgenticCard) listed a done, aborted, cancelled or rejected ticket under "Rebalance in flight". It now reads like Plan: a terminal ticket shows under "Last ticket" (neutral background, no robot icon), with the same text, id, leg counts, turnover and tax figure as before, and without the sentence "The table below reflects the book before this ticket fills" (untrue for a finished ticket). Nothing the owner saw is lost; the strip still reads the same `A.pending`. Terminal = done, aborted, cancelled, rejected (Plan now uses the same flag, so a cancelled or rejected ticket, which the producer never writes, also reads "Last ticket").
+- **Unknown status** is shown, never hidden or treated as zero: Today keeps its "Status needs review" label (its detail now names the raw value); the other surfaces print "Status needs review: “<raw>”" (reusing Today's unknown-state words rather than a second phrase).
+- **Not changed (known separate vocabulary).** Options order-state badges CONFIRMED / QUEUED / UNCONFIRMED / PARTIALLY_FILLED are the broker's own states; Apex "armed", "Confirm with Claude", "Waiting on you" / "Out of your hands"; the Plan help text "Ticket statuses" glossary, which names the producer's stored words on purpose; Rebalance-log chips.
+- **Tests.** New `tests/ticket-status.test.cjs` (every status, both queued variants, unknown, terminal flags) and `tests/ticket-status-checks.mjs` (called from `tests/journey-browser.mjs`: 11 ticket fixtures across Today, Plan, strip, tape, Activity; no raw or retired text; strip heading; no overflow at 320x568, 390x844, 466x677, 960x676, 677x466). Updated for the new words only: `tests/today.test.cjs` (queued and submitted labels).
+- Files: `index.html`, `sw.js`, `ui/experience-model.js`, `ui/today-model.js`, `ui/ticker.js`, `ui/experience.js`, `tests/ticket-status.test.cjs`, `tests/ticket-status-checks.mjs`, `tests/today.test.cjs`, `tests/journey-browser.mjs`, `tests/journey.test.cjs`, `UI-PRESERVATION.md`, `ui/TODAY.md`, `CLAUDE.md`. App/cache **v240 / pf-v240**. Not verified: WebKit, a physical iPhone Duo, real decrypted data.
+
 ## v239 — Plan (agentic), Screens and Predict keep decisions open; reference cards start folded (2026-11-17)
 
 Dashboard 2.0 Phase 3b; Jack said "keep going" Nov 17 2026. Display only: nothing removed, every card still renders (all renderers run unchanged, `__PF_APEX_REVIEW`, `#picks-cards`, `#sd-stock-ideas`, `#screens-app`, `#apex-content` untouched); no calculation, ranking, eligibility, stop/target, guardrail, data fetch, label or confirmation flow changed.

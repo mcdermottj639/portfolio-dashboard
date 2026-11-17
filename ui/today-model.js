@@ -70,25 +70,10 @@
     return output;
   }
 
+  // Wording lives in PFExperienceModel.ticketStatus (one map for every screen); Today adds nothing of its own.
   function ticket(pending) {
-    const result = (group, label, detail, tone = 'neutral') => ({group, label, detail, tone});
-    if (!pending || typeof pending !== 'object' || Array.isArray(pending)
-      || !Object.values(pending).some(value => value !== null && value !== undefined && value !== '')) {
-      return result('none', '', '');
-    }
-    const status = typeof pending.status === 'string' ? pending.status.trim().toLowerCase() : '';
-    if (status === 'proposed') {
-      return pending.autoEligible === true
-        ? result('monitor', 'Queued for executor', 'Automatically eligible proposal. Broker submission has not been confirmed.')
-        : result('waiting', 'Awaiting your confirmation', 'Proposed ticket. Review the full plan before confirming.', 'warn');
-    }
-    if (status === 'confirmed') return result('monitor', 'Queued for executor', 'Confirmation is recorded. Broker submission has not been confirmed.');
-    if (status === 'sells-placed' || status === 'buys-placed') return result('monitor', 'Submission reported', 'The recorded ticket reports submitted orders. Fill status is not confirmed.');
-    if (status === 'partial-fill' || status === 'partially-filled') return result('monitor', 'Partial fill reported', 'The recorded ticket reports a partial fill. Check the remaining quantity and latest broker status.', 'warn');
-    if (status === 'done') return result('complete', 'Recorded ticket complete', 'The ticket is marked complete. This does not independently confirm broker fills.');
-    if (status === 'cancelled') return result('complete', 'Ticket cancelled', 'Cancellation is recorded. Broker cancellation status is not independently verified.');
-    if (status === 'aborted' || status === 'rejected') return result('waiting', 'Ticket needs review', 'The recorded ticket was ' + status + '. Review the reason and any remaining order status.', 'warn');
-    return result('waiting', 'Status needs review', 'The recorded ticket status is unrecognized. Open Activity to verify the next step.', 'warn');
+    const t = M.ticketStatus(pending);
+    return {group:t.group, label:t.label, detail:t.detail, tone:t.tone, key:t.key, text:t.text, compact:t.compact};
   }
 
   function levels(value) {
