@@ -1,3 +1,11 @@
+## Producer-only — momentum-off paper shadow starts recording at the next research refresh (2026-11-17)
+
+Jack approved this Nov 17 2026 after ChatGPT's "momentum on probation" note. No UI, version, target, weight, executor or trade change.
+- **Why.** Sleeve attribution can't isolate momentum (34 of 37 momentum-tagged buys also carry quality), and past targets never stored per-name sleeve scores, so the with/without question can only be answered forward.
+- **What.** New `producer/momentum-shadow.mjs`; `finalize-target.mjs --write` now also appends one frozen cohort per refresh to `producer/agentic-shadow.json` (top 10 by live composite vs top 10 with momentum weight 0, equal weight, index vehicles excluded). `gradeShadow` reports `noMomentum − live`; `thin` until 4 graded cohorts. Wrapped in try/catch after the target write, so it cannot fail a refresh. Optional `--spy PRICE`.
+- **Rule.** Paper only: nothing allocates from the shadow, cohorts are never edited, and `FACTOR_WEIGHTS` stays as is until Jack decides on enough cohorts. The research Routine now commits `producer/agentic-shadow.json` beside the target (`producer/SCHEDULING.md` step 5).
+- Files: `producer/momentum-shadow.mjs` (new), `producer/momentum-shadow.test.mjs` (new, 7/7), `producer/finalize-target.mjs`, `producer/AGENTIC.md`, `producer/SCHEDULING.md`, `CLAUDE.md`.
+
 ## v236 — Options leads with holdings and income rankers; history and knowledge start folded (2026-11-17)
 
 Dashboard 2.0 Phase 3a, Jack's Nov 17 2026 redesign handoff. Display only; nothing removed, no option math, idea ranking/filter, premium/yield/assignment figure, guardrail note, data fetch or label (hypothetical / estimated / LIVE / pending / filled) changed.

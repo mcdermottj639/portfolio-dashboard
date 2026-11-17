@@ -405,7 +405,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   const file = args.find((a) => !a.startsWith('--'));
   const flag = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
-  if (!file || !existsSync(file)) { console.error('usage: node producer/finalize-target.mjs <raw-allocation.json> [--book N] [--asOf YYYY-MM-DD] [--held SYM,SYM,…] [--no-prior] [--write]'); process.exit(1); }
+  if (!file || !existsSync(file)) { console.error('usage: node producer/finalize-target.mjs <raw-allocation.json> [--book N] [--asOf YYYY-MM-DD] [--held SYM,SYM,…] [--no-prior] [--spy PRICE] [--write]'); process.exit(1); }
   const raw = JSON.parse(readFileSync(file, 'utf8'));
   const allocation = raw.allocation || raw; // accept the whole workflow return or just .allocation
   // CHURN GOVERNOR: the committed target IS the prior by definition — read it unless told not to.
@@ -451,5 +451,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     writeFileSync(tmp, JSON.stringify(target, null, 2) + '\n');
     renameSync(tmp, join(__dirname, 'agentic-target.json'));
     console.log('→ wrote producer/agentic-target.json');
+    // Momentum-off PAPER shadow (momentum-shadow.mjs). Recorded AFTER the target is safely written and
+    // wrapped so it can never fail a refresh: it is a research log, and nothing reads it for allocation.
+    try {
+      const { recordShadow } = await import('./momentum-shadow.mjs');
+      const spy = flag('spy') != null ? +flag('spy') : null;
+      const shadow = recordShadow(raw.ranking || null, { asOf: target.asOf, spyAt: spy });
+      console.log(shadow.added
+        ? `→ momentum-off paper shadow recorded for ${target.asOf}: ${shadow.cohort.onlyNoMomentum.length} of ${shadow.cohort.n} names differ (in without momentum: ${shadow.cohort.onlyNoMomentum.join(', ') || 'none'}; out: ${shadow.cohort.onlyLive.join(', ') || 'none'})`
+        : `momentum-off paper shadow: nothing recorded (${shadow.cohort ? 'cohort for this asOf already frozen' : 'no usable ranking'})`);
+    } catch (error) { console.warn('momentum-off paper shadow skipped:', error.message); }
   }
 }

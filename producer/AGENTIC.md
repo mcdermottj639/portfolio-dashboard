@@ -425,6 +425,19 @@ grades each vs live quotes + SPY (dollar-weighted contribution, alpha, ahead/beh
 actually worked, the same way the picks screen grades its Track Record. **When you place a confirmed rebalance,
 append the record** (record `spyAt` = SPY's price at decision time so alpha can be graded).
 
+## Momentum-off paper shadow (2026-11-17, owner-approved) — PAPER ONLY
+Sleeve attribution cannot say whether momentum earns its 22%: `drivers` tags a buy with every sleeve that
+scored ≥7, and 34 of the first 37 momentum-tagged buys also carried quality, so the tag is not a separate
+allocation. `producer/momentum-shadow.mjs` runs the test that can. At every research refresh,
+`finalize-target.mjs --write` appends one frozen cohort to **`producer/agentic-shadow.json`** from the same
+`ranking` the live composite used: `live` = top 10 single names by the live composite, `noMomentum` = top 10
+with momentum weight 0 and the other sleeves renormalized (index vehicles excluded from both; equal weight;
+refresh price). `gradeShadow(ledger, quotes, asOf)` marks both baskets; the number that matters is
+`noMomentum − live`. Rules: a cohort is never edited or replaced; fewer than `SHADOW_MIN_COHORTS` (4) graded
+cohorts is `thin` and is **not a finding**; it isolates composite SELECTION only (no verify, no allocator
+sizing). **Nothing reads this file for allocation** — `FACTOR_WEIGHTS` changes only on an owner decision
+after the shadow has enough cohorts. A shadow failure logs a warning and never blocks the target write.
+
 ## Tax & regulation rules the rebalancer MUST follow
 1. **Minimize realized gains.** All lots opened 2026-06-29 are **short-term until ~2026-06-30** of the next
    year (taxed as ordinary income). Prefer **cash-flow rebalancing** — steer new deposits/dividends into
