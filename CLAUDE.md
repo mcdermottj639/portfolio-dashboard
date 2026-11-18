@@ -1,3 +1,27 @@
+## v251 — Apex Actions: no Confirm at zero orders, repeated review lines grouped; Book scroll trial on Actions (2026-11-18)
+Jack (Nov 18 13:57 ET, Book screenshot of Apex Actions at v250, "Ok fix that page and try the scroller fix"; 14:00 Agentic Actions screenshot).
+- **`ui/apex.js` `portfolioButton`.** With no order line the green "Confirm this week's Apex book with Claude · 0 orders" block is not
+  drawn (Today already hid its Confirm then); it had nothing to send and, pinned, covered the list above it. "Review · no order" rows that
+  share a reason are ONE row (`[data-apex-review]`: tickers joined with " · ", the reason once, first-seen order). Same names and words;
+  `bookReviews`, `bookLines`, `portfolioPrompt`, every rule and ticket are unchanged. Applies in every layout, not only Book.
+- **Wording (index.html).** The agentic hero, disclaimer, card intro, empty state and target help said the research target is "refreshed
+  weekly"; the gate has been fortnightly since 2026-09-24 (`agentic-due.mjs`). They now say "every two weeks". The 7-day ⚠ on the Research
+  stamp is unchanged on purpose: it marks the point entry zones go advisory (`AG_ENTRY_STALE_D`), which is still true in week two.
+- **Book scroll TRIAL (`ui/duo.js` `syncIndep`, `ui/duo.css` 9e).** Jack: flick the right page, touch the left panel quickly, and the right
+  page keeps the touch. The right page was the document and the left panel a scroller nested in it. On route `plan` (Actions) in Apex /
+  Agentic, in Book, the visible page (`[data-duo-scroller]`, `html[data-duo-indep]`) is now its own scroller and the document is locked, so
+  `#pf-book` (a body-level sibling) is independent of it. **Only `plan` qualifies** (`INDEP_ROUTES`): its page holds no pinned block, and
+  Safari mis-draws a fixed element inside a scrolling ancestor, so `syncIndep` also refuses any page containing a `[data-duo-pin]`. Every
+  other Book route keeps the document scroll until its pinned blocks are moved out of the page — do that only if the phone confirms the
+  trial cures the hand-off. `window.scrollY` / `pageYOffset` / `scrollTo` / `scrollBy` follow the page scroller while it is on (duo.js keeps
+  the native ones as `rootY` / `nScrollTo`), a window `scroll` event is re-dispatched from it, `__pfTopOffset` returns the scroller's top,
+  and the place is carried both ways on a mode switch. The freshness strip is `position:relative` while it is on (a locked body applied the
+  sticky offset twice). Side effect: the Overview · Positions · Research · Actions row stays put while the page scrolls.
+- Tests: `producer/apex.test.mjs`, `producer/apex-turnover.test.mjs` (no Confirm at zero orders, one row per reason, every name kept);
+  `tests/book-checks.mjs` section 9 (document locked, nothing fixed inside the scroller, sibling of the panel, wheel moves only the right
+  page, scrollTo/scrollY follow it, re-pin keeps the place, carried back in Standard, off on Positions). **Not verified, and not verifiable
+  here:** iOS touch momentum and Safari's fixed-in-scroller behaviour — Chromium reproduces neither. A physical iPhone Duo is the test.
+
 ## v250 — Book mode: no right page keeps the viewport's two-column rules (2026-11-18)
 Jack (Nov 18 12:15 ET, Book screenshot of Apex v2.9 Paper at v249: "Some issues in book mode"; 12:19 "Make sure that issue isn't
 appearing elsewhere too"). Cause: rules keyed to the 740-1100px VIEWPORT kept drawing two columns inside the Book right page, which is

@@ -392,3 +392,5 @@ right page carries the combined holdings map). Panel taps carry the account (`da
 
 v250: in Book the v2.9 Paper ranked list is pinned on the left page under the tiles (own scroll) and the selected stock leads the
 right page; the Apex Actions card, the plan tiles and the Markets tiles are one / two columns on the half-width right page. Book only.
+v251: the Apex Confirm button is drawn only when there is an order to confirm; review-only names that share a reason are one row.
+Book, Actions only (trial): the right page scrolls on its own and the document is locked; every other route is unchanged.

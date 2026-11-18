@@ -685,9 +685,16 @@
     const note = fresh
       ? `<div data-apex-price-note style="font-size:11px;color:#6b7280;margin:-4px 0 6px">Order prices use quotes ${escH(age)} (refreshed hourly in market hours). Confirm re-checks them live.</div>`
       : `<div data-apex-price-note style="font-size:11.5px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:8px;padding:6px 9px;margin:-2px 0 8px">Not order prices yet — quotes are ${escH(age)}. The app re-prices at its next refresh (weekdays, hourly 8:41 AM–4:41 PM ET). For the exact price now, tap Confirm.</div>`;
-    const reviewList = reviews.length ? `<div class="ac-tier">Review · no order</div><div data-apex-reviews>${reviews.map((r) => `<div style="font-size:11.5px;padding:5px 0;overflow-wrap:anywhere"><b>${escH(r.sym)}</b> · ${escH(r.why)}</div>`).join('')}</div>` : '';
+    /* v251 (Jack, Nov 18 2026, Actions screenshot: the same sentence printed for CRWD, PLTR, ZS and NET): names that share a
+       reason are ONE row (tickers joined, the reason once), in first-seen order. Same names, same words; nothing dropped. */
+    const byWhy = new Map();
+    reviews.forEach((r) => { const k = String(r.why || ''); if (!byWhy.has(k)) byWhy.set(k, []); byWhy.get(k).push(r.sym); });
+    const reviewList = reviews.length ? `<div class="ac-tier">Review · no order</div><div data-apex-reviews>${[...byWhy].map(([why, syms]) => `<div data-apex-review="${escH(syms.join(' '))}" style="font-size:11.5px;padding:5px 0;overflow-wrap:anywhere"><b>${syms.map(escH).join(' · ')}</b> · ${escH(why)}</div>`).join('')}</div>` : '';
     const list = (n ? `<div class="ac-tier">🧾 Recommended trades <span class="card-hint">(${n})</span></div>${note}<div data-apex-trades style="border:1px solid rgba(0,0,0,.08);border-radius:12px;overflow:hidden;margin-bottom:8px">${rows.replace('border-top:1px solid rgba(0,0,0,.06);', '')}</div>` : '') + reviewList;
     /* v219: [data-apex-confirm] wraps the button + its note so ui/duo.css can pin it under the trades on a phone. */
+    /* v251: with no order there is nothing to confirm, so the button is not drawn (Today already does this). It read
+       "Confirm … · 0 orders" and, pinned, covered the review list it had nothing to send. */
+    if (!n) return list;
     return list + `<div data-apex-confirm><a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div></div>`;
   }
 

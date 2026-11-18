@@ -106,7 +106,8 @@ test('review-only book is visible but never counted as an order', () => {
   const r = run(st, cfg), el = { innerHTML: '', querySelector: () => null };
   A.render(el, st, r.rows, cfg);
   assert.match(el.innerHTML, /Review · no order/);
-  assert.match(el.innerHTML, /· 0 orders/);
+  assert.doesNotMatch(el.innerHTML, /data-apex-confirm/, 'v251: nothing to confirm, so no Confirm button');
+  assert.doesNotMatch(el.innerHTML, /0 orders/);
   assert.doesNotMatch(el.innerHTML, /data-apex-trade=/);
 });
 console.log(`apex-turnover: ${n}/${n} passed`);
