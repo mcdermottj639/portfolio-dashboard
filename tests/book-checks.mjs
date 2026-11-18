@@ -153,7 +153,28 @@ const edge=sel=>p.evaluate(sel=>{const fr=parseFloat(getComputedStyle(document.d
 let ed=await edge('#apex-content>*');ed.page=await p.evaluate(()=>document.querySelector('#apex-content').clientWidth);assert.ok(ed.n>2&&ed.minW>=ed.page*0.8,'book Actions: every Apex block is one full-width column '+JSON.stringify(ed));
 ed=await edge('#plan-content .snap');assert.ok(ed.n>=4&&ed.maxR<=ed.iw+1,'book Actions: no plan tile runs off the page '+JSON.stringify(ed));
 await nav('markets','main');await settle();ed=await edge('#markets-app .mkt-tile');assert.ok(ed.n>=4&&ed.maxR<=ed.iw+1,'book Markets: no tile runs off the page '+JSON.stringify(ed));
-await nav('holdings','main');
+// ── 9. v251 trial: on Actions in Book the right page is its own scroller and the document is locked (independent of the left panel) ──
+await nav('plan','main');await settle();
+const ind=()=>p.evaluate(()=>{const R=document.documentElement,w=document.querySelector('[data-duo-scroller]'),bk=document.getElementById('pf-book');
+  return {on:R.hasAttribute('data-duo-indep'),id:w&&w.id,y:w?w.scrollTop:null,canScroll:w?w.scrollHeight>w.clientHeight+50:null,docLocked:R.scrollHeight<=innerHeight+1,
+    fixedInside:w?[...w.querySelectorAll('*')].filter(e=>e.getClientRects().length&&getComputedStyle(e).position==='fixed').length:null,
+    sibling:w&&bk?!w.contains(bk)&&!bk.contains(w):null,winY:window.scrollY,top:w?w.getBoundingClientRect().top:null,subB:document.getElementById('ex-subnav').getBoundingClientRect().bottom,
+    bookY:bk?bk.scrollTop:null,fresh:document.getElementById('pf-fresh').getBoundingClientRect().top,pin:Math.min(...[...document.querySelectorAll('[data-duo-pin]')].map(e=>e.getBoundingClientRect().top))};});
+let iv=await ind();
+assert.equal(iv.on,true,'book Actions: independent page scroller on');assert.equal(iv.id,'page-picks');assert.equal(iv.docLocked,true,'book Actions: the document itself cannot scroll');
+assert.equal(iv.fixedInside,0,'book Actions: nothing fixed lives inside the page scroller (Safari safety condition)');assert.equal(iv.sibling,true,'book Actions: left panel and right page are siblings');
+assert.ok(iv.canScroll&&iv.top>=iv.subB-1,'book Actions: the page scrolls under the tab row '+JSON.stringify(iv));assert.ok(iv.fresh<iv.pin,'book Actions: the freshness strip sits above the pinned header');
+await p.mouse.move(700,420);await p.mouse.wheel(0,600);await settle();iv=await ind();
+assert.ok(iv.y>500&&iv.winY===iv.y&&iv.bookY===0,'book Actions: wheeling the right page moves only the right page; window.scrollY follows it '+JSON.stringify(iv));
+await p.evaluate(()=>window.scrollTo(0,240));await settle();assert.equal((await ind()).y,240,'book Actions: window.scrollTo drives the page scroller (Find / jumps / Back)');
+await p.evaluate(()=>PFDuo.refresh());await settle();assert.equal((await ind()).y,240,'book Actions: a re-pin keeps the place');
+await p.evaluate(()=>PFDuo.setMode('standard'));await settle();iv=await ind();
+assert.equal(iv.on,false,'standard Actions: document scroll again');assert.ok(iv.winY>0,'standard Actions: the place carried back to the document '+JSON.stringify(iv));
+assert.equal(await p.evaluate(()=>getComputedStyle(document.documentElement).overflowY!=='hidden'),true,'standard Actions: document unlocked');
+await p.evaluate(()=>PFDuo.setMode('book'));await settle();assert.equal((await ind()).on,true);
+await nav('plan','agentic');await settle();iv=await ind();assert.equal(iv.on,true,'book Agentic Actions: independent scroller on');assert.equal(iv.fixedInside,0);
+await nav('holdings','main');await settle();iv=await ind();assert.equal(iv.on,false,'book Positions: still the document scroll (pinned blocks live inside that page)');
+assert.equal(await p.evaluate(()=>window.scrollY),0);
 await p.evaluate(()=>PFDuo.setMode('auto'));
 assert.deepEqual(errors,[]);
 await ctx.close();

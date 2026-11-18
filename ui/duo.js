@@ -96,6 +96,25 @@
 
   var root=document.documentElement, mode=readMode((function(){try{return G.localStorage;}catch(_){return null;}})());
   var FILL_MIN_H=200, FILL_MIN_W=300, fillEl=null, fillScroll=0;
+  /* v251 TRIAL (Jack, Nov 18 2026: flick the right page, then quickly touch the left panel, and the RIGHT page keeps the touch).
+     The right page was the DOCUMENT scrolling and the left panel a scroller nested inside it; iOS hands a touch to the scroller
+     that is still coasting. On the routes below, in Book, the visible page becomes its own scroller and the document is locked,
+     so the two sides are siblings. Only routes whose page holds NO pinned (position:fixed) block qualify: Safari mis-draws a
+     fixed element inside a scrolling ancestor (the Sports Hub v374 lesson), so every other route keeps the document scroll
+     until its pinned blocks are moved out. window.scrollY / scrollTo / scrollBy follow the page scroller while it is on, so
+     Find, section jumps, Back restore and the scroll anchor keep working. Not verifiable off the phone. */
+  var INDEP_ROUTES={plan:1}, indep=null;
+  var nScrollTo=G.scrollTo, nScrollBy=G.scrollBy, nY=null;
+  try{var dY=Object.getOwnPropertyDescriptor(G,'scrollY')||Object.getOwnPropertyDescriptor(Object.getPrototypeOf(G)||{},'scrollY');if(dY&&dY.get)nY=dY.get;}catch(_){}
+  try{if(nY&&typeof nY.call(G)!=='number')nY=null;}catch(_){nY=null;}   // a getter this browser will not run on window: no shim, no trial
+  function rootY(){try{return nY?nY.call(G):0;}catch(_){return 0;}}
+  (function shim(){
+    if(typeof nScrollTo!=='function'||!nY)return;
+    var arg=function(a,b){return (a&&typeof a==='object')?a:{top:+b||0};};
+    G.scrollTo=function(a,b){if(indep){var o=arg(a,b);indep.scrollTo({top:o.top==null?indep.scrollTop:o.top,behavior:o.behavior||'auto'});return;}return nScrollTo.apply(G,arguments);};
+    G.scrollBy=function(a,b){if(indep){var o=arg(a,b);indep.scrollBy({top:o.top||0,behavior:o.behavior||'auto'});return;}return nScrollBy.apply(G,arguments);};
+    ['scrollY','pageYOffset'].forEach(function(k){try{Object.defineProperty(G,k,{configurable:true,enumerable:true,get:function(){return indep?indep.scrollTop:rootY();}});}catch(_){}});
+  })();
   var layout='standard', split=false, det={layout:'standard'}, lastSig='', pinned=[], mo=null, raf=0, applying=false;
   function mq(q){try{return G.matchMedia?G.matchMedia(q):null;}catch(_){return null;}}
   var MQ={v2:mq('(vertical-viewport-segments: 2)'),h2:mq('(horizontal-viewport-segments: 2)'),folded:mq('(device-posture: folded)'),cont:mq('(device-posture: continuous)')};
@@ -160,7 +179,7 @@
     var ps=fresh.style.getPropertyValue('position'), pp=fresh.style.getPropertyPriority('position');
     var ts=fresh.style.getPropertyValue('top'), tp=fresh.style.getPropertyPriority('top');
     fresh.style.setProperty('position','relative','important');fresh.style.setProperty('top','0','important');
-    var fr=fresh.getBoundingClientRect(), natTop=Math.round(fr.top+(G.scrollY||0));
+    var fr=fresh.getBoundingClientRect(), natTop=Math.round(fr.top+rootY());
     if(ps)fresh.style.setProperty('position',ps,pp);else fresh.style.removeProperty('position');
     if(ts)fresh.style.setProperty('top',ts,tp);else fresh.style.removeProperty('top');
     var x0=fr.left, w0=fr.width, top0=Math.round(natTop+fr.height+4), H=G.innerHeight;
@@ -194,6 +213,29 @@
     if(layout==='folded')root.style.setProperty('--duo-lead',Math.max(8,Math.round(geo.bottom+8-(natTop+fr.height)))+'px');
     else{root.style.setProperty('--duo-padl',geo.right+'px');root.style.setProperty('--duo-x0',Math.round(x0)+'px');}
     root.setAttribute('data-duo-ready','');   // CSS that depends on the measured vars waits for this
+  }
+  function syncIndep(){
+    var want=null,E=G.PFExperience;
+    if(split&&layout==='book'&&nY&&E&&INDEP_ROUTES[route()]&&(E.area==='apex'||E.area==='agentic')&&root.hasAttribute('data-duo-ready')){
+      var pg=Array.prototype.slice.call(document.querySelectorAll('body > [id^="page-"]')).filter(vis)[0];
+      // the safety condition, checked on the live page: nothing inside it may be fixed
+      if(pg&&!Array.prototype.slice.call(pg.querySelectorAll('[data-duo-pin]')).length)want=pg;
+    }
+    if(indep&&indep!==want){
+      var t=indep.scrollTop,old=indep;
+      old.removeAttribute('data-duo-scroller');root.removeAttribute('data-duo-indep');root.style.removeProperty('--duo-page-top');indep=null;
+      if(!want&&t>0&&vis(old))nScrollTo.call(G,0,t);   // same page, split turned off: carry the place back to the document
+    }
+    if(want){
+      var y=indep?0:rootY();
+      if(!indep&&y)nScrollTo.call(G,0,0);
+      if(!indep){want.setAttribute('data-duo-scroller','');root.setAttribute('data-duo-indep','');}
+      root.style.setProperty('--duo-page-top',Math.max(0,Math.round(want.getBoundingClientRect().top+rootY()))+'px');
+      if(!indep){
+        indep=want;if(y)want.scrollTop=y;
+        if(!want.__duoScroll){want.__duoScroll=1;want.addEventListener('scroll',function(){if(indep===want){try{G.dispatchEvent(new Event('scroll'));}catch(_){}}},{passive:true});}
+      }
+    }
   }
   // The place the reader is at: the element under the top of the scrolling region and its offset from that region's top.
   function regionTop(){
@@ -247,6 +289,7 @@
       unpin();
       if(split){root.setAttribute('data-duo-split','on');pin(geo);watch(true);}
       else{root.removeAttribute('data-duo-split');watch(false);}
+      syncIndep();
       if(a&&(prevSplit!==split||prevLayout!==layout))anchorRestore(a);
       paintControl(sg);
       if(prevLayout!==layout||prevSplit!==split||force==='mode')
@@ -323,7 +366,7 @@
   // Jumps (Find, My view, section routes) clear the pinned pane as well as the freshness strip.
   function patchOffset(){
     var o=G.__pfTopOffset;if(typeof o!=='function'||o.__duo)return;
-    var f=function(){var y=o.apply(this,arguments);if(root.getAttribute('data-duo-split')==='on'&&root.getAttribute('data-duo-layout')==='folded'){var b=parseFloat(getComputedStyle(root).getPropertyValue('--fold-bottom'))||0;if(b+8>y)return b+8;}return y;};
+    var f=function(){var y=o.apply(this,arguments);if(root.getAttribute('data-duo-split')==='on'&&root.getAttribute('data-duo-layout')==='folded'){var b=parseFloat(getComputedStyle(root).getPropertyValue('--fold-bottom'))||0;if(b+8>y)return b+8;}if(indep){var it=indep.getBoundingClientRect().top+8;if(it>y)return it;}return y;};
     f.__duo=true;G.__pfTopOffset=f;
   }
   // The fold often fires no resize: listen to its own signals, plus a slow visible-only backstop (only when a fold API exists).

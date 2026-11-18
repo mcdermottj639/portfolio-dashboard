@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=250"></script>
-<script src="ui/experience-model.js?v=250"></script>
+<script src="ui/theme.js?v=251"></script>
+<script src="ui/experience-model.js?v=251"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,15 +729,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=250">
-<link rel="stylesheet" href="ui/journey.css?v=250">
-<link rel="stylesheet" href="ui/predictions.css?v=250">
-<link rel="stylesheet" href="ui/apex-paper.css?v=250">
-<link rel="stylesheet" href="ui/smartmoney.css?v=250">
-<link rel="stylesheet" href="ui/ticker.css?v=250">
-<link rel="stylesheet" href="ui/today.css?v=250">
-<link rel="stylesheet" href="ui/book.css?v=250">
-<link rel="stylesheet" href="ui/duo.css?v=250">
+<link rel="stylesheet" href="ui/experience.css?v=251">
+<link rel="stylesheet" href="ui/journey.css?v=251">
+<link rel="stylesheet" href="ui/predictions.css?v=251">
+<link rel="stylesheet" href="ui/apex-paper.css?v=251">
+<link rel="stylesheet" href="ui/smartmoney.css?v=251">
+<link rel="stylesheet" href="ui/ticker.css?v=251">
+<link rel="stylesheet" href="ui/today.css?v=251">
+<link rel="stylesheet" href="ui/book.css?v=251">
+<link rel="stylesheet" href="ui/duo.css?v=251">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -807,10 +807,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=250"></script>
-<script src="ui/apex.js?v=250"></script>
-<script src="ui/business.js?v=250"></script>
-<script src="ui/apex-paper.js?v=250"></script>
+<script src="ui/sd-rules.js?v=251"></script>
+<script src="ui/apex.js?v=251"></script>
+<script src="ui/business.js?v=251"></script>
+<script src="ui/apex-paper.js?v=251"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -924,7 +924,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v250'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v251'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -3648,7 +3648,7 @@ function renderAgenticPage(){
       <div id="agentic-log-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Grading decisions…</div></div>
     </div></div>
     <div class="card" style="text-align:center"><span class="dp-link" onclick="switchTab('picks')">🎯 Plan tab — Daily Picks · ⚡ Action Center →</span></div>
-    <div class="disclaimer">Agentic account ••••3900 — research target refreshed weekly, rebalanced by the executor within your approved limits.${asOf?` Snapshot ${asOf}.`:''} Not financial advice.</div>`;
+    <div class="disclaimer">Agentic account ••••3900 — research target refreshed every two weeks, rebalanced by the executor within your approved limits.${asOf?` Snapshot ${asOf}.`:''} Not financial advice.</div>`;
   // Fault isolation, same rule as load()'s enrichment block: each card renders independently so one
   // throw (a bad series, a Chart.js hiccup, a missing CDN) can't leave every card below it stuck on
   // its spinner forever. Don't "simplify" these guards away.
@@ -4031,7 +4031,7 @@ function renderAgenticCard(){
   const handoff=L.join('\n');
   const asOfTxt=A&&A.asOf?(' · as of '+new Date(A.asOf).toLocaleString()):'';
   el.innerHTML=`
-    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>weekly research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as what the move was worth on your position over the percentage move itself; the dollars sum to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
+    <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What your <b>agentic account (••••3900)</b> holds: each position, its trailing performance (day move in % and $, unrealized P&L), and the <b>trade</b> that would bring it to the ${targetSrc==='research'?`<b>research target</b>${targetAsOf?` (as of ${targetAsOf})`:''}`:`interim heuristic target`}. <span style="opacity:.85">Day is measured from the live quote's prior close, shown as what the move was worth on your position over the percentage move itself; the dollars sum to the account's day in the Total row.</span><br><span class="dp-link" onclick="switchTab('picks');setPlanAccount('agentic')" style="font-size:12px">🎯 Target weights, entry zones, stop/TP and every deferral are on the Plan tab →</span></div>
     ${A?`<div class="fund-note" style="margin:0 0 8px">Account book <b>${fmtD(book)}</b> = ${fmtD(investedNow)} invested + ${fmtD(cash)} settled cash — unlevered (limited margin — instant settlement, no borrowing; 1×)${asOfTxt}.</div>`:`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The producer hasn't captured ••••3900 yet — the account's live cash, holdings and performance appear here after the next scheduled run picks it up. The target itself is on the Plan tab.</div>`}
     ${A&&A.pending?(()=>{const T=A.pending,lg=T.legs||{},ns=(lg.sells||[]).length,nb=(lg.buysNow||[]).length+(lg.buysT1||[]).length,tax=T.taxSummary,st=agTicketSt(T);return `<div class="fund-note" style="${st.terminal?'':'background:#eff6ff;border-color:#bfdbfe;'}margin:0 0 8px"><b>${st.heading==='Rebalance in flight'?'🤖 ':''}${st.heading}</b> — ticket <span style="font-family:monospace;font-size:10.5px">${String(T.id||'').replace(/[&<>"']/g,'')}</span> · <b>${st.compactH}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(T.turnover)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${st.next?' — '+st.nextH:''}.${st.terminal?'':' The table below reflects the book <i>before</i> this ticket fills.'}</div>`;})():''}
     ${heldPos.length?holdingsBlock:(A?`<div class="box-info" style="border-radius:10px;padding:8px 12px;font-size:11.5px;margin:0 0 8px">The account holds <b>no positions yet</b> (all cash: ${fmtD(cash)}). The target it would deploy into is on the Plan tab — the button below places it.</div>`:'')}
@@ -4186,7 +4186,7 @@ function renderAgenticPlan(){
   if(!names.length){
     host.innerHTML=`
       <div class="card"><div class="card-title"><span>🤖 Agentic plan <span class="card-hint">••••3900</span></span></div>
-        <div class="tech-empty">No research target in this snapshot yet. The weekly deep research writes <code>producer/agentic-target.json</code>; once a run picks it up, the target, its deferrals and the account's guardrails appear here.</div>
+        <div class="tech-empty">No research target in this snapshot yet. The deep research (every two weeks) writes <code>producer/agentic-target.json</code>; once a run picks it up, the target, its deferrals and the account's guardrails appear here.</div>
         <div style="text-align:center;margin-top:10px"><span class="dp-link" onclick="switchTab('portfolio');setAccount('agentic')">🤖 Agentic account — holdings · performance · rebalance log →</span></div>
       </div>`;
     return;
@@ -4226,7 +4226,7 @@ function renderAgenticPlan(){
       <div>
         <div class="ph-label">Agentic Strategy · ••••3900</div>
         <div class="ph-date">Target as of ${T.asOf||'—'}</div>
-        <div class="ph-stale">Research target <span style="color:${ageCol};font-weight:600">${ageTxt||'—'}</span> · ${rows.length} names · refreshed weekly (or early on a deposit / big move) · executor checks hourly</div>
+        <div class="ph-stale">Research target <span style="color:${ageCol};font-weight:600">${ageTxt||'—'}</span> · ${rows.length} names · refreshed every two weeks (or early on a deposit / big move) · executor checks hourly</div>
         <div style="margin-top:10px"><button type="button" class="wp-btn" onclick="openHelp('agentic-whole-plan')">📖 The whole plan</button></div>
       </div>
     </div>`;
@@ -5555,7 +5555,7 @@ window.switchTab=switchTab;
     <div class="hsub">The idle-cash clock</div>
     <p>Cash sitting for 10 days forces deployment in tranches. Without a deadline, "wait for a pullback" never expires and a rising market can strand a deposit indefinitely.</p>`},
   'the target and why these names': { tag:'Plan · Agentic', t:'The target', h:`
-    <p>The <b>destination</b> for ••••3900 — not what it currently holds. Refreshed weekly by deep multi-factor research, then run through deterministic caps.</p>
+    <p>The <b>destination</b> for ••••3900 — not what it currently holds. Refreshed every two weeks by deep multi-factor research, then run through deterministic caps.</p>
     <div class="hsub">Inclusion vs. size</div>
     <p>The research returns two separate judgements: is the business worth owning at <i>some</i> price (decides whether it's in at all), and how good is <i>today's</i> price (decides how big). A stretched entry <b>shrinks</b> a position rather than vetoing it — otherwise an extended market yields an empty book instead of a smaller, defensive one.</p>
     <div class="hsub">Status column</div>
@@ -8915,17 +8915,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=250"></script>
-<script src="ui/today.js?v=250"></script>
-<script src="ui/predictions-model.js?v=250"></script>
-<script src="ui/predictions.js?v=250"></script>
-<script src="ui/smartmoney-model.js?v=250"></script>
-<script src="ui/smartmoney.js?v=250"></script>
-<script src="ui/experience.js?v=250"></script>
-<script src="ui/ticker.js?v=250"></script>
-<script src="ui/duo.js?v=250"></script>
-<script src="ui/compact.js?v=250"></script>
-<script src="ui/journey.js?v=250"></script>
-<script src="ui/book.js?v=250"></script>
+<script src="ui/today-model.js?v=251"></script>
+<script src="ui/today.js?v=251"></script>
+<script src="ui/predictions-model.js?v=251"></script>
+<script src="ui/predictions.js?v=251"></script>
+<script src="ui/smartmoney-model.js?v=251"></script>
+<script src="ui/smartmoney.js?v=251"></script>
+<script src="ui/experience.js?v=251"></script>
+<script src="ui/ticker.js?v=251"></script>
+<script src="ui/duo.js?v=251"></script>
+<script src="ui/compact.js?v=251"></script>
+<script src="ui/journey.js?v=251"></script>
+<script src="ui/book.js?v=251"></script>
 </body>
 </html>

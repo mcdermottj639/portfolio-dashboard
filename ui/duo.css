@@ -443,3 +443,12 @@ html[data-duo-split="on"][data-duo-layout="book"] #apex-content{align-items:stre
 /* The plan's Exposure / Equity / Leverage / Idle cash tiles: the fourth ran off the page edge. */
 html[data-duo-split="on"][data-duo-layout="book"] #plan-content .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 html[data-duo-split="on"][data-duo-layout="book"] #plan-agentic-app .ph-stale{white-space:normal!important;overflow:visible!important}
+
+/* 9e · v251 TRIAL — independent scrolling in Book on Apex / Agentic Actions (duo.js syncIndep). The document is locked and the
+   visible page scrolls on its own, so the left panel (#pf-book, a body-level sibling) no longer shares a scroller with it. */
+html[data-duo-indep]{overflow:hidden!important;height:100%;overscroll-behavior:none}
+html[data-duo-indep] body{overflow:hidden!important;height:100dvh;min-height:0!important;padding-bottom:0!important;box-sizing:border-box}
+html[data-duo-indep] [data-duo-scroller]{height:calc(100dvh - var(--duo-page-top,0px));overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
+/* nothing scrolls at body level while the page scroller is on, so the strip needs no sticky offset (a locked body would apply it twice) */
+html[data-duo-indep][data-duo-split="on"][data-duo-ready] #pf-fresh{position:relative!important;top:0!important}

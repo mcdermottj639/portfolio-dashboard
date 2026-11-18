@@ -660,6 +660,12 @@ ok('v212 the Confirm button lists the trades it is about to send — same set it
   const el = { innerHTML: '', querySelector: () => null };
   A.render(el, st, out, cfg, null);
   assert.match(el.innerHTML, /data-apex-reviews/);
+  // v251: names sharing a reason are one row; every review name still appears exactly once; no Confirm with zero orders
+  { const revs = A.bookReviews(st, out, cfg), rowsN = (el.innerHTML.match(/data-apex-review="/g) || []).length;
+    assert.equal(rowsN, new Set(revs.map((r) => r.why)).size, 'one review row per distinct reason');
+    const block = el.innerHTML.slice(el.innerHTML.indexOf('data-apex-reviews'));
+    revs.forEach((r) => assert.ok(block.includes(r.sym), r.sym + ' still listed'));
+    assert.doesNotMatch(el.innerHTML, /data-apex-confirm/); }
   assert.doesNotMatch(el.innerHTML, /data-apex-trade="SNPS"/);
   assert.match(A.portfolioPrompt(st, out, cfg, null), /REVIEW SNPS/);
   // under the reload line: build rungs (sized at the limit, research stop not his $180) and a winner trim all list
