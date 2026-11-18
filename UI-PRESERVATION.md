@@ -387,3 +387,5 @@ Book only, Apex / Agentic only. `ui/book.js` owns `#pf-book`, `html[data-book]`,
 `window.__pfBookPick`; `ui/experience.js` owns `#ws-selected`. The panel is display only and reads existing figures (All Positions rows, the
 Apex review, `acctPerfStats`, `agenticBook`, `__PF_AG_TARGET`, `ticketStatus`, the Action Center list). In Book, Positions, Actions and
 Overview's section routes split too (`PFDuo.core.BOOK_ROUTES`); Folded keeps the v247 landing set. Turning Book off removes every mark.
+v249: Today also gets the panel in Book (both accounts' command blocks + their performance; no holdings list, since Today's
+right page carries the combined holdings map). Panel taps carry the account (`data-ex-account` / `data-bk-acct`).

@@ -90,6 +90,19 @@ await p.evaluate(()=>setPrivacy(true));await settle();
 const priv=await p.locator('#pf-book').innerText();assert.doesNotMatch(priv,/\$\d/,'privacy masks dollar figures in the panel');assert.match(priv,/\d%/,'percentages stay readable');
 await p.evaluate(()=>setPrivacy(false));await settle();
 
+// ── 7b. Today (v249): both accounts' command blocks; taps open the right account ──
+await nav('today','main');
+g=await panel();geometryOk(g,'today');assert.equal(g.tab,'today');
+for(const s of ['APEX · SELF-DIRECTED','AGENTIC · AUTOMATED','Leverage band','Deployed'])assert.ok(g.text.toUpperCase().includes(s.toUpperCase()),'today shows '+s);
+assert.equal((g.text.match(/PERFORMANCE/gi)||[]).length,2,'one performance block per account');
+assert.equal(await p.locator('#pf-book .bk-hold').count(),0,'no holdings list on Today (the right page has the holdings map)');
+await p.locator('#pf-book [data-bk-why="leverage"]').click();await settle();
+assert.deepEqual(await p.evaluate(()=>[PFExperience.route,PFExperience.account]),['plan','main'],'Apex row opens Apex Actions');
+await nav('today','agentic');
+await p.locator('#pf-book [data-bk-card="performance"][data-bk-acct="agentic"]').click();await p.waitForTimeout(600);
+assert.deepEqual(await p.evaluate(()=>[PFExperience.route,PFExperience.account]),['accounts','agentic'],'Agentic performance opens Agentic Overview');
+await nav('accounts','agentic');
+
 // ── 8. Themes, widths and the other modes ──
 await p.evaluate(()=>{document.documentElement.setAttribute('data-theme','gold');});await settle();
 geometryOk(await panel(),'gold theme');
