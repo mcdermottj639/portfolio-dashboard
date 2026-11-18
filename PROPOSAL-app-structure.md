@@ -114,7 +114,7 @@ equity-history chart (Chart.js line, same `applyChartTheme` plumbing as every ot
    `renderPerformance` through it; verify the Portfolio "Agentic since" stat is byte-identical.
 2. Render a perf hero row at the top of `renderAgenticCard()` (index.html:1886): Equity · Day ·
    TWR since {date} · SPY same window · net deposits · P&L $. Reuse `fmtP`/`sc` (display-zero aware).
-3. Bump `APP_VERSION` + `CACHE_VERSION` together; update CLAUDE.md feature inventory.
+3. Bump `APP_VERSION` + `CACHE_VERSION` together; update `docs/claude/features.md` (feature inventory).
 
 **Phase 2 — the new tab (Path A) or toggle (Path B):**
 1. Tab plumbing: add `tab-agentic` button + `page-agentic` container (mirror index.html:542-562);
@@ -132,7 +132,7 @@ equity-history chart (Chart.js line, same `applyChartTheme` plumbing as every ot
    card" → retarget to `'agentic'`.
 5. Help popovers: the registry keys off card **titles**, so moved cards keep their help for free;
    add one new entry for the perf hero/equity chart card.
-6. Bump `APP_VERSION`/`CACHE_VERSION`; update CLAUDE.md (tab list, feature inventory, this file's
+6. Bump `APP_VERSION`/`CACHE_VERSION`; update `docs/claude/features.md` (tab list, feature inventory), this file's
    status line).
 
 **Explicitly out of scope:** producer changes (none needed), Options/Analyze/Markets, the executor,

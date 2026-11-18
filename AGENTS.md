@@ -1,7 +1,8 @@
 # Portfolio Dashboard: agent entry point
 
-Start from current `main`, not an old release number. Read the newest relevant
-`CLAUDE.md` entries, `UI-PRESERVATION.md`, `UX_REVIEW.md`, and
+Start from current `main`, not an old release number. Read `CLAUDE.md` (active
+rules, gates, open items; deep reference and release history load on demand from
+`docs/claude/`), `UI-PRESERVATION.md`, `UX_REVIEW.md`, and
 [the release workflow](docs/RELEASE-WORKFLOW.md). For strategy work also read the
 applicable producer contract; never infer trading authority from repo access.
 
