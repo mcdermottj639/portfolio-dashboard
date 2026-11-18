@@ -106,6 +106,7 @@
   var INDEP_ROUTES={plan:1}, indep=null;
   var nScrollTo=G.scrollTo, nScrollBy=G.scrollBy, nY=null;
   try{var dY=Object.getOwnPropertyDescriptor(G,'scrollY')||Object.getOwnPropertyDescriptor(Object.getPrototypeOf(G)||{},'scrollY');if(dY&&dY.get)nY=dY.get;}catch(_){}
+  try{if(nY&&typeof nY.call(G)!=='number')nY=null;}catch(_){nY=null;}   // a getter this browser will not run on window: no shim, no trial
   function rootY(){try{return nY?nY.call(G):0;}catch(_){return 0;}}
   (function shim(){
     if(typeof nScrollTo!=='function'||!nY)return;
