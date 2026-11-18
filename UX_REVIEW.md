@@ -197,3 +197,11 @@ Plan · Account · Research · What if? sub-nav, the card rail (chips + Expand/C
 tab row: **Overview · Positions · Research · Actions** (Overview = `accounts`, Positions = `holdings`, Research = `analyze` entered from the area and kept
 highlighted via history-state `origin`, Actions = `plan`; `scenario` is an Overview row; the 22 routes and hashes are unchanged). Back is icon-only and
 Classic view moved into More. A bare `#view=analyze` is still a Research-area page. Everything above this note stays as history.
+
+## 2026-11-17 · Duo layout state and mid-fold control (v247)
+Jack chose the Sports Hub rule: Duo optimization always applies; the Duo mode only decides the mid-fold split. A four-way control
+(Auto / Folded / Book / Standard) sits in the gray freshness bar on every page; Standard is the v246 layout. Folded puts the glance
+summary on top and the scrolling page below; Book puts it left and the page right; both only on Today, Apex/Agentic Overview, Research
+(Markets, Analyze) and v2.9 Paper. Auto only follows what the browser reports; without Safari's fold flags it stays Standard until Folded
+or Book is tapped. At 466x677 the Today equity, Apex/Agentic value and stamps, and Paper's PAPER ONLY header with stamps sit above the crease; larger
+blocks (Paper tiles, Markets indexes) continue at the top of the scrolling part. Not verified on a physical Duo or WebKit.
