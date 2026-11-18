@@ -380,3 +380,10 @@ the scrolling part keeps its place (anchor saved and restored). No animation is 
 unscoped selector. Account separation, Confirm, ticket wording, Paper's paper-only labelling and privacy masking are unaffected (pinned nodes
 keep their `data-priv`). Covered by `tests/duo.test.cjs` and `tests/duo-checks.mjs` (run from `tests/journey-browser.mjs`). Not verified: real
 Safari / the physical Duo (the browser fold APIs are simulated).
+
+## Book command panel (v248)
+
+Book only, Apex / Agentic only. `ui/book.js` owns `#pf-book`, `html[data-book]`, the `data-book-dup` / `data-book-n` marks and
+`window.__pfBookPick`; `ui/experience.js` owns `#ws-selected`. The panel is display only and reads existing figures (All Positions rows, the
+Apex review, `acctPerfStats`, `agenticBook`, `__PF_AG_TARGET`, `ticketStatus`, the Action Center list). In Book, Positions, Actions and
+Overview's section routes split too (`PFDuo.core.BOOK_ROUTES`); Folded keeps the v247 landing set. Turning Book off removes every mark.

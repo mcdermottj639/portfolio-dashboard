@@ -1,3 +1,35 @@
+## v248 — Book mode vNext: command panel on the left page, analysis on the right (2026-11-17)
+Jack (Nov 17 23:24 ET, screen recording of v247 Book mode on the open Duo, ~951x669 CSS px): the left page held only the value card with
+empty space under it while the right page needed long scrolls. He approved ChatGPT's dual-pane proposal ("I agree" … "do it"): left =
+command, right = analysis, the two pages connected, each account with its own priorities, Book-only, display only.
+- New `ui/book.js` + `ui/book.css` (precached; book.css loads before duo.css so duo.css stays last). One fixed panel `#pf-book` (child of
+  <body>, `data-priv="on"`) in the free part of the left pane, under the blocks duo.js pins there; it scrolls on its own (scroll kept per
+  account + tab across repaints), so the right page keeps the document scroll. Shown only when Book is split AND the area is Apex or
+  Agentic AND the left pane is ≥200px wide and ≥120px tall (so 390px Book keeps the v247 pinned summary only). Sets `html[data-book="on"]`.
+- Per tab. Overview: Apex = Risk (leverage band gauge from `Apex.C` reload/cruise/cap and the review's `st.band`; margin cushion
+  `st.callDrop` only when borrowing; tech outside the core vs its cap via `Apex.themeShare`; largest position), Performance (sparkline of
+  `acctPerfStats` deposit-adjusted growth, return vs S&P same window), Holdings (top 8 by value: weight bar, today, return). Agentic =
+  Strategy (Deployed = `agenticBook` invested / equity; ticket via `PFExperienceModel.ticketStatus`; largest drift from `__PF_AG_TARGET`),
+  Performance, Holdings. Positions: every holding + the account's risk/strategy block. Research: "Compare holdings" (tap = the journey's
+  Research step for that name). Actions: the Overview Action Center list (`PFExperience.actionsHTML`, new export) as a review queue + the
+  risk/strategy block.
+- Connected pages. A holding tapped on Overview selects it (`PFJourney.select`, so Research / Plan follow) and `experience.js` places a
+  `#ws-selected` block (the same position card, open) at the top of the right page with a Close button; on Positions the tapped card opens
+  first. Performance scrolls the right page to the Performance card (opening it if folded). Risk/strategy rows open Actions (the Apex card /
+  agentic plan). A selection made on the right page highlights the matching left row.
+- No repeated figures: on Overview the right page's snapshot tiles that the left page already shows (Day change / Leverage, Idle cash) are
+  marked `data-book-dup` and hidden while Book is on; the grid re-flows (`data-book-n`). Strip clones never carry the mark.
+- `ui/duo.js`: new `BOOK_ROUTES` (holdings, plan and Overview's section routes) split in Book only, inside Apex / Agentic; section routes and
+  Positions also pin the account header. Folded keeps the v247 landing set (Positions / Actions stay full screen there). Hint text updated.
+- `ui/experience.js`: `posOpts()` factored out of `posCards()` (same fields), `selectedHTML()`, `#ws-selected` placement (order 25),
+  `PFExperience.actionsHTML`.
+- Not changed: any calculation, rule, threshold, ticket, Confirm flow, producer, data, schedule, Apex/Agentic separation (Apex panel reads
+  only the Apex review; Agentic only ••••3900 fields), Standard / Folded / phone layouts.
+- Tests: new tests/book-checks.mjs (via journey-browser; also standalone): geometry left of the crease and under the pins at 951x669 and
+  466x677, none at 390; per-tab content for both accounts; holdings = All Positions rows in order; tap → right page in place, Close, panel
+  scroll kept; Performance jump; Positions / Research / Actions taps; Action Center parity; privacy masks $; gold theme; Folded/Standard
+  leave nothing behind; folded Positions stays full screen. tests/duo.test.cjs asserts BOOK_ROUTES. Not verified: a physical iPhone Duo.
+
 ## v247 — Duo layout state + four-way mid-fold control (2026-11-17, issue #238)
 Owner-approved spec (Jack 20:48 ET, Sports Hub duo.js as reference). Duo optimization ALWAYS applies; the Duo mode controls ONLY the mid-fold split. Layout only; no model, rule, ticket, Confirm, data, producer, schedule or .github change.
 - `ui/duo.js` is the single owner of `html[data-duo-mode]` (auto|folded|book|standard, `localStorage pf:duo-mode`, junk/failed storage = auto), `data-duo-layout` (standard|folded|book), `data-duo-source`, `data-duo-split`, the `--fold-*` vars, `window.PFDuo` and the `pf:duo-change` event. Auto follows only the browser's fold signals (Viewport Segments / its CSS queries + Device Posture); without Safari's flags it stays Standard until Folded or Book is tapped. Inset and screen-size probes are never used to guess a fold.
