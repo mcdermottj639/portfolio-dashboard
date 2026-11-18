@@ -131,5 +131,40 @@ ok('the caps are the ones the runbook quotes', HIST_FULL_CAP === 30 && HIST_MONT
   eq('no pinned ⇒ no pin group (old behaviour)', planHistoricals(uni, hist, today).pin.length, 0);
 }
 
+
+// ── v252: calls sized by bars; held names seeded from more than one source ─────────────────────
+{
+  const { estBars, symbolsPerCall, heldHistoryGaps, heldHistoryDirective, HIST_CALL_BARS } = await import('./hist-plan.mjs');
+  const { heldFromSnapshot, apexSymbols, analyzeUniverse, ANALYZE_BENCH } = await import('./analyze-universe.mjs');
+  const eq2 = (a, b, m) => eq(m, a, b), ok2 = (c, m) => ok(m, c);
+  // 2026-11-18: three YTD series came back as 115,017 characters and were refused inline.
+  ok2(estBars('2026-01-01', '2026-11-18') >= 222, 'a YTD window on Nov 18 is at least 222 bars');
+  eq2(symbolsPerCall('2026-01-01', '2026-11-18'), 1, 'a YTD call on Nov 18 carries ONE symbol');
+  eq2(symbolsPerCall('2026-01-01', '2026-12-31'), 1, 'a whole-year call still fits one symbol');
+  eq2(symbolsPerCall('2026-01-01', '2026-02-27'), 3, 'early in the year the old three-symbol batch is kept');
+  ok2(estBars('2026-01-01', '2026-12-31') <= HIST_CALL_BARS, 'one whole-year series is inside the per-call bar budget');
+  eq2(symbolsPerCall('2027-01-01', '2026-11-18'), 3, 'a start after today cannot divide by zero');
+  // A holding that is on no static bench (the DXCM case) enters the plan from the snapshot alone.
+  const snap = { main: { positions: [{ symbol: 'DXCM', qty: 40 }, { symbol: 'IREN', qty: 500 }, { symbol: 'OLD', qty: 0 }] }, agentic: { positions: [{ symbol: 'spy', qty: 1.2 }] } };
+  eq2(heldFromSnapshot(snap), ['DXCM', 'IREN', 'SPY'], 'holdings come from both accounts of the snapshot; a zero lot is not held');
+  eq2(heldFromSnapshot(null), [], 'no snapshot yields no holdings, never a throw');
+  ok2(!ANALYZE_BENCH.includes('DXCM'), 'DXCM is on no static bench (the premise of the fix)');
+  eq2(analyzeUniverse({ positions: heldFromSnapshot(snap) })[0], 'DXCM', 'a snapshot holding leads the fetch order');
+  ok2(apexSymbols().every((x) => /^[A-Z][A-Z.\-]{0,6}$/.test(x)), 'Apex research names are plain tickers');
+  eq2(apexSymbols('/nonexistent/dir'), [], 'a missing Apex targets file yields an empty list');
+  // Gaps: no series, or last real bar past the tail window. A fresh or tail-able series is not a gap.
+  const bar = (t) => ({ t: t + 'T00:00:00Z', c: 10 });
+  const hist = { day: { IREN: [bar('2026-11-17')], SPY: [bar('2026-11-10')], OLDIE: [bar('2026-10-30')], PAD: [bar('2026-10-01'), { t: '2026-11-17T00:00:00Z', c: 1, interpolated: true }] } };
+  const g = heldHistoryGaps(['DXCM', 'IREN', 'SPY', 'OLDIE', 'PAD', 'dxcm'], hist, '2026-11-18');
+  eq2(g.map((r) => r.sym), ['DXCM', 'OLDIE', 'PAD'], 'gaps = no series, stale series, and a series fresh only by a placeholder bar');
+  eq2(g[0].start, '2026-01-01', 'a gap is seeded year to date');
+  eq2(heldHistoryGaps(['A', 'B', 'C'], {}, '2026-11-18', 2).length, 2, 'the gap list is capped');
+  const dir = heldHistoryDirective({ main: { positions: [{ symbol: 'DXCM', qty: 40 }] }, hist }, '2026-11-18');
+  ok2(/^PREFLIGHT ALSO: /.test(dir) && dir.includes('symbols:["DXCM"]') && dir.includes('hist-day-held-1.json') && dir.includes('2026-01-01T00:00:00Z'), 'the light-run directive names the call and the file');
+  ok2(!/\d+\s*sh|\$\d/.test(dir), 'the directive carries no quantity or dollar figure');
+  eq2(heldHistoryDirective({ main: { positions: [{ symbol: 'IREN', qty: 1 }] }, hist }, '2026-11-18'), '', 'no gap, no directive');
+  eq2(heldHistoryDirective(null, '2026-11-18'), '', 'no snapshot, no directive');
+}
+
 console.log(`\nhist-plan.test: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -394,3 +394,4 @@ v250: in Book the v2.9 Paper ranked list is pinned on the left page under the ti
 right page; the Apex Actions card, the plan tiles and the Markets tiles are one / two columns on the half-width right page. Book only.
 v251: the Apex Confirm button is drawn only when there is an order to confirm; review-only names that share a reason are one row.
 Book, Actions only (trial): the right page scrolls on its own and the document is locked; every other route is unchanged.
+v252: Analyze reads one account's book (the account in context): holdings chips, Your Position (badged Apex / Agentic), sizing, overlap and the pattern-radar list. Same cards and levels; the technical read is unchanged. Producer: held names always get a daily series (bar-sized fetch calls, snapshot holdings, light-run seeding).

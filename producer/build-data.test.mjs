@@ -76,6 +76,9 @@ const FIXTURES = {
   // only a 7-bar TAIL (3 dates it already holds + 4 genuinely new). The old whole-array spread would
   // have replaced 150 bars with 7 — the wide bench is only affordable because this no longer happens.
   'hist-day-2.json': { data: { results: [{ symbol: 'TTT', bars: dayBars(7, '2026-05-29', 2147) }] } },
+  // v252: the SAME symbol in a second raw file (a held-name seed beside the tail). The two must be
+  // unioned; last-file-wins would leave whichever file sorted last. Two dates the tail does not carry.
+  'hist-day-held-1.json': { data: { results: [{ symbol: 'TTT', bars: dayBars(2, '2026-06-20', 3000) }] } },
   // Sidecar as picks-build would leave it — build-data must reuse it (no live ApeWisdom fetch).
   'social-pages.json': { asOf: '2026-07-02T14:00:00.000Z', source: 'apewisdom', rows: [
     { ticker: 'AAA', name: 'Aaa Inc', rank: '12', mentions: '50', mentions_24h_ago: '40' },
@@ -345,12 +348,17 @@ try {
   // v141: the 7-bar tail glues onto the 150-bar carried series (3 dates overlap, 4 are new).
   {
     const tt = out.hist.day.TTT;
-    eq('a 7-bar tail merges onto the carried series instead of replacing it', tt.length, 154);
+    eq('a 7-bar tail AND a second raw file for the same symbol both merge onto the carried series', tt.length, 156);
+    eq('…the second file is not dropped by the first (v252 union across raw files)', tt.some((b) => Number(b.c ?? b.close_price) === 3001), true);
     eq('…with no duplicated dates', tt.length, new Set(tt.map((b) => String(b.t ?? b.begins_at).slice(0, 10))).size);
     eq('…sorted ascending', tt.map((b) => String(b.t).slice(0, 10)).join() === [...tt.map((b) => String(b.t).slice(0, 10))].sort().join(), true);
     eq('…the fresh bar wins its shared date', Number(tt[147].c ?? tt[147].close_price), 2147);
     eq('…and the head of the carried series is untouched', Number(tt[0].c ?? tt[0].close_price), 1000);
   }
+  // v252: AAA is HELD and its only bars are months old, so the snapshot must say so by name.
+  eq('a held name with no recent daily bars is named in refreshInputs.missing',
+    (out.refreshInputs.missing || []).some((m) => /^holdings-history: .*\bAAA\b/.test(m)), true);
+  eq('…and the run is marked partial', out.refreshInputs.status, 'partial');
   eq('fresh quote wins', out.quotes.AAA.last_trade_price, '108');
   eq('missing quote carries forward (no $0)', out.quotes.BBB.last_trade_price, '55');
   eq('no-picks run still publishes (log guard)', stdout.includes('no picks'), true);

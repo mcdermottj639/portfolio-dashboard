@@ -7,7 +7,7 @@ import { etDate } from './market.mjs';
 export function needsResearchRefresh(prior, now = new Date()) {
   if (!prior?.refreshInputs || !prior.generatedAt || etDate(new Date(prior.generatedAt)) !== etDate(now)) return true;
   return prior.refreshInputs.full && (prior.refreshInputs.fullAttempts || 1) < 2
-    && prior.refreshInputs.missing.some(s => /^(daily-picks|holdings-fundamentals|holdings-quotes):/.test(s));
+    && prior.refreshInputs.missing.some(s => /^(daily-picks|holdings-fundamentals|holdings-quotes|holdings-history):/.test(s));
 }
 export function refreshCheck(inputs, { full = true, optionQuotes = null } = {}) {
   const missing = [];

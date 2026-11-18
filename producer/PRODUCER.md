@@ -120,7 +120,9 @@ XOM                         (Energy)
 **Historicals symbols are NOT hand-computed any more (v141).** Run `node producer/hist-plan.mjs` and
 fetch exactly the batches it prints. **Run it AFTER the positions rows have been written** — it reads
 `raw/positions.json` + `raw/agentic-positions.json` for the live half of the bench (a missing file only
-shrinks the list, never breaks it). It unions holdings (both accounts) → the agentic target →
+shrinks the list, never breaks it). Since v252 it ALSO takes holdings from the last published snapshot and
+the Apex research names from `data/apex-targets.json`, so a holding that is on no static bench (DXCM, ZS,
+NET, SNPS on 2026-11-18) is seeded even when the planner runs first. It unions holdings (both accounts) → the agentic target →
 `MARKET_SYMBOLS` → `LEADER_SYMBOLS` → the self-directed bench → the research bench → VTI/GLDM
 (`producer/analyze-universe.mjs`, ~181 static names), reads the committed snapshot to see how far
 each symbol's series already reaches, and splits the work three ways:
@@ -128,10 +130,13 @@ each symbol's series already reaches, and splits the work three ways:
 - **tail** — a series only a few days behind: ~7 bars, **8 symbols/call**, glued onto what we already
   hold by `histbars.mergeBars`. This is what keeps the whole bench fresh cheaply.
 - **full** — a series we don't hold, or one too stale for a tail to bridge without leaving a gap:
-  YTD, **≤3 symbols/call**, capped at 30 symbols per run in priority order (the bench seeds over
+  YTD, **as many symbols per call as the plan prints** (v252: sized by bars, ≈265 per call — 3 names in
+  spring, ONE from about May; a three-symbol YTD call was 115,017 characters on 2026-11-18 and did not
+  return inline), at most 12 calls and 30 symbols per run in priority order (the bench seeds over
   several FETCH_ALL days; the plan prints how many remain).
 - **pick (v204)** — an OPEN Daily-Picks name (the grading universe) too stale for a tail: fetched from
-  the day after its last bar (or the scan date / YTD), **≤3 symbols/call**, OUTSIDE the 30-symbol YTD
+  the day after its last bar (or the scan date / YTD), **≤3 symbols/call (fewer when the window is long;
+  the plan prints the batch)**, OUTSIDE the 30-symbol YTD
   cap, file `hist-day-pick-<n>.json`. Before v204 these competed with holdings/target/shadow seeds for
   that cap and could stay deferred for a pick's whole 60-day life — the Nov 9 "Not graded" BAC/T/NFLX/
   CMCSA rows. Fetch every `pick` line the plan prints, like the others.
@@ -160,7 +165,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      resolve it via `get_accounts`, see the callout below; the `agentic-*.json` rows are EVERY-RUN,
      **not** FETCH_ALL-only), plus the ••••3900 `get_pnl_trade_history` row (the wash-sale ledger's
      source — also EVERY-RUN), the ••••0741 `get_equity_orders` row (the self-directed Rebalance
-     Log's source — also EVERY-RUN), quotes, VIX, options — and **SKIP the FETCH_ALL-only items** (historicals,
+     Log's source — also EVERY-RUN), quotes, VIX, options, and (v252) any `PREFLIGHT ALSO: held names with no usable daily history` call preflight printed — one
+     symbol per call, written to the `hist-day-held-<n>.json` file it names — and **SKIP the FETCH_ALL-only items** (historicals,
      fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
      forward from the prior snapshot automatically. Then go straight to step 4.
 
@@ -349,7 +355,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    >   `Write → producer/raw/quotes.json`). Inline-returned results save this way with no prompt.
    > - **Fetch historicals in the batches `node producer/hist-plan.mjs` prints**, and `Write` each
    >   result to the exact filename on its line. The planner already applies the size rule: **full
-   >   YTD and monthly batches are ≤3 symbols**, while a **tail batch carries 8** — the constraint is
+   >   YTD batches carry as many symbols as it prints (ONE late in the year, v252), monthly batches
+   >   ≤3**, while a **tail batch carries 8** — the constraint is
    >   PAYLOAD SIZE, not symbol count, and a 7-bar tail is ~1/20th of a YTD series, so eight symbols
    >   of tail is smaller than one three-symbol YTD call.
    > - If a result is *still* too large to read inline, fetch a smaller batch — do **not** copy a

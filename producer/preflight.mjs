@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { needsResearchRefresh } from './refresh-check.mjs';
 import { decryptEnvelope } from './emit.mjs';
+import { heldHistoryDirective } from './hist-plan.mjs';
 import { isMarketOpen, isWeekday, isHoliday, closeMinutes, etDate, etMinutes } from './market.mjs';
 
 const DATA = join(dirname(fileURLToPath(import.meta.url)), '..', 'data.json');
@@ -26,9 +27,11 @@ const DATA = join(dirname(fileURLToPath(import.meta.url)), '..', 'data.json');
 export const MAIL_DIRECTIVE = 'PREFLIGHT ALSO: run PRODUCER.md step 2e (Predict payout emails) on THIS run — FETCH_LIGHT included. ' +
   'Gmail tools may be deferred: run ToolSearch "gmail search_threads get_message" first, and skip step 2e only if no Gmail tool is found. ' +
   'Best-effort: a Gmail failure never stops the run.';
+let extraDirective = '';
 function decide(mode, code, msg) {
   console.log(`PREFLIGHT ${mode}`); console.log(`[preflight] ${msg}`);
   if (mode !== 'SKIP') console.log(MAIL_DIRECTIVE);
+  if (mode === 'FETCH_LIGHT' && extraDirective) console.log(extraDirective);
   process.exit(code);
 }
 
@@ -58,6 +61,8 @@ if (priorET !== todayET) decide('FETCH_ALL', 0, `first run of ${todayET} (prior 
 
 // New fetch schema gets one full repair run; incomplete research gets at most one retry/day.
 if (needsResearchRefresh(prior, now)) decide('FETCH_ALL', 0, 'refresh recovery: initial migration or incomplete research retry (bounded).');
+
+extraDirective = heldHistoryDirective(prior, todayET);
 
 // Prior snapshot is from today already, so history/AV/picks can carry forward.
 if (isMarketOpen(now)) decide('FETCH_LIGHT', 11, 'intraday, market open — light fetch; history/AV/picks carry forward.');
