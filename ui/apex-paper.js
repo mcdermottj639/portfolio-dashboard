@@ -590,6 +590,9 @@
       if (!sum || !twoPane(el)) return;
       e.preventDefault();
       select(el, sum.parentElement.getAttribute('data-apx-key'));
+      // Book mode (v250): the list is pinned on the left page, so bring the selected stock to the top of the right page.
+      const rk = sum.closest('[data-apx-sec="ranked"]'), np = el.querySelector('[data-apx-sec="detail"]');
+      if (rk && np && rk.hasAttribute('data-duo-fill') && np.scrollIntoView) { const t = np.getBoundingClientRect().top; if (t < 96 || t > window.innerHeight * 0.45) np.scrollIntoView({ block: 'start' }); }
     });
     const onInput = (e) => { if (e.target && e.target.closest && e.target.closest('[data-apx-filters]')) applyFilter(el); };
     el.addEventListener('input', onInput); el.addEventListener('change', onInput);

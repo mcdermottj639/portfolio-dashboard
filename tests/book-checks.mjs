@@ -125,6 +125,35 @@ await p.evaluate(()=>PFDuo.setMode('book'));await settle();
 assert.equal(await p.evaluate(()=>document.documentElement.getAttribute('data-duo-split')),'on','book Positions splits for the panel');
 // Mode switches keep route, account and selection.
 assert.deepEqual(await p.evaluate(()=>[PFExperience.route,PFExperience.account]),['holdings','main']);
+// ── 8. v250: nothing on a Book right page keeps the viewport's two-column rules (Jack's Nov 18 12:15 ET screenshot of v2.9 Paper) ──
+await p.evaluate(()=>PFDuo.setMode('book'));await nav('apexpaper','main');await p.waitForFunction(()=>document.querySelector('#apexpaper-app .apx'));await settle();
+const paper=()=>p.evaluate(()=>{const R=document.documentElement,cs=getComputedStyle(R),box=s=>{const e=document.querySelector(s);if(!e||!e.getClientRects().length)return null;const r=e.getBoundingClientRect();return {l:r.left,r:r.right,t:r.top,b:r.bottom,w:r.width};};
+  const rows=[...document.querySelectorAll('[data-apx-sec="ranked"] .apx-row>summary')].slice(0,6).map(sm=>{const k=[...sm.children].filter(c=>c.getClientRects().length).map(c=>c.getBoundingClientRect());let bad=0;for(let i=1;i<k.length;i++)if(k[i].left<k[i-1].right-1)bad++;return bad;});
+  const cut=[...document.querySelectorAll('[data-apx-sec="detail"] .apx-levels b,[data-apx-sec="detail"] .apx-levels span,[data-apx-sec="detail"] .apx-kv span,[data-apx-sec="detail"] .apx-kv b')].filter(e=>e.scrollWidth>e.clientWidth+1).length;
+  const cards=[...document.querySelectorAll('#apexpaper-app .apx>*')].filter(e=>e.getClientRects().length&&getComputedStyle(e).position!=='fixed').map(e=>e.getBoundingClientRect().width);
+  return {fill:!!document.querySelector('[data-apx-sec="ranked"][data-duo-fill]'),ranked:box('[data-apx-sec="ranked"]'),detail:box('[data-apx-sec="detail"]'),key:(document.querySelector('[data-apx-sec="detail"]')||{getAttribute(){return null;}}).getAttribute('data-apx-detail'),
+    foldL:parseFloat(cs.getPropertyValue('--fold-left')),foldR:parseFloat(cs.getPropertyValue('--fold-right')),pinB:Math.max(0,...[...document.querySelectorAll('[data-duo-pin]:not([data-duo-fill])')].map(e=>e.getBoundingClientRect().bottom)),
+    rows,cut,minCard:Math.min(...cards),sw:R.scrollWidth,iw:innerWidth};});
+let pg=await paper();
+assert.equal(pg.fill,true,'book Paper: the ranked list is pinned on the left page');
+assert.ok(pg.ranked.r<=pg.foldL+1&&pg.ranked.t>=pg.pinB-1&&pg.ranked.b<=669,'book Paper: list left of the crease, under the tiles, inside the screen '+JSON.stringify(pg.ranked));
+assert.ok(pg.detail&&pg.detail.l>=pg.foldR-1&&pg.detail.w>=400,'book Paper: selected stock uses the whole right page '+JSON.stringify(pg.detail));
+assert.deepEqual(pg.rows,[0,0,0,0,0,0],'book Paper: no list row has overlapping cells');assert.equal(pg.cut,0,'book Paper: no clipped level or figure in the selected stock');
+assert.ok(pg.minCard>=400,'book Paper: every right-page card is full page width');assert.ok(pg.sw<=pg.iw+1,'book Paper: no sideways scroll');
+await p.evaluate(()=>window.scrollTo(0,1200));const key0=pg.key;
+await p.locator('[data-apx-sec="ranked"] .apx-row>summary').nth(2).click();await settle();pg=await paper();
+assert.notEqual(pg.key,key0,'book Paper: a tap on the left changes the right page');assert.ok(pg.detail.t>=0&&pg.detail.t<669*0.5,'book Paper: the selected stock is brought into view');
+assert.equal(await p.evaluate(()=>document.querySelector('[data-apx-sec="ranked"] .apx-row[open]')),null,'book Paper: rows do not expand inline while the detail page is shown');
+await p.setViewportSize({width:466,height:677});await settle();pg=await paper();
+assert.equal(pg.fill,false,'466 book Paper: left page too small, list stays in the flow');assert.equal(pg.detail,null,'466 book Paper: rows expand inline');assert.ok(pg.sw<=pg.iw+1);
+await p.setViewportSize({width:951,height:669});await settle();
+for(const m of ['standard','folded']){await p.evaluate(m=>PFDuo.setMode(m),m);await settle();assert.equal(await p.locator('[data-duo-fill]').count(),0,m+' Paper: nothing filled');}
+await p.evaluate(()=>PFDuo.setMode('book'));await nav('plan','main');await settle();
+const edge=sel=>p.evaluate(sel=>{const fr=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fold-right'));const es=[...document.querySelectorAll(sel)].filter(e=>e.getClientRects().length);return {n:es.length,maxR:Math.max(0,...es.map(e=>e.getBoundingClientRect().right)),minW:Math.min(...es.map(e=>e.getBoundingClientRect().width)),page:innerWidth-fr,iw:innerWidth};},sel);
+let ed=await edge('#apex-content>*');ed.page=await p.evaluate(()=>document.querySelector('#apex-content').clientWidth);assert.ok(ed.n>2&&ed.minW>=ed.page*0.8,'book Actions: every Apex block is one full-width column '+JSON.stringify(ed));
+ed=await edge('#plan-content .snap');assert.ok(ed.n>=4&&ed.maxR<=ed.iw+1,'book Actions: no plan tile runs off the page '+JSON.stringify(ed));
+await nav('markets','main');await settle();ed=await edge('#markets-app .mkt-tile');assert.ok(ed.n>=4&&ed.maxR<=ed.iw+1,'book Markets: no tile runs off the page '+JSON.stringify(ed));
+await nav('holdings','main');
 await p.evaluate(()=>PFDuo.setMode('auto'));
 assert.deepEqual(errors,[]);
 await ctx.close();
