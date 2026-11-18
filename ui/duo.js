@@ -95,6 +95,7 @@
   if(typeof document==='undefined'||!G.document)return;
 
   var root=document.documentElement, mode=readMode((function(){try{return G.localStorage;}catch(_){return null;}})());
+  var FILL_MIN_H=200, FILL_MIN_W=300, fillEl=null, fillScroll=0;
   var layout='standard', split=false, det={layout:'standard'}, lastSig='', pinned=[], mo=null, raf=0, applying=false;
   function mq(q){try{return G.matchMedia?G.matchMedia(q):null;}catch(_){return null;}}
   var MQ={v2:mq('(vertical-viewport-segments: 2)'),h2:mq('(horizontal-viewport-segments: 2)'),folded:mq('(device-posture: folded)'),cont:mq('(device-posture: continuous)')};
@@ -141,11 +142,13 @@
     else if(r==='accounts'||(BOOK_ROUTES[r]&&r!=='plan')){q('#page-portfolio .header').slice(0,1).forEach(function(e){out.push(e);});q('#page-portfolio #ws-strip').forEach(function(e){out.push(e);});}
     else if(r==='markets')q('#markets-app > .picks-hero').forEach(function(e){out.push(e);});
     else if(r==='analyze'){q('#pj-context').forEach(function(e){out.push(e);});q('#az-result > .card:first-child').forEach(function(e){out.push(e);});}
-    else if(r==='apexpaper'){q('#apexpaper-app .apx-head').forEach(function(e){out.push(e);});q('#apexpaper-app .apx-decision .apx-tiles').forEach(function(e){out.push(e);});}
+    else if(r==='apexpaper'){q('#apexpaper-app .apx-head').forEach(function(e){out.push(e);});q('#apexpaper-app .apx-decision .apx-tiles').forEach(function(e){out.push(e);});
+      // v250 — Book: the ranked list is the left page's command list. It takes the rest of the pane and scrolls on its own (fill).
+      if(layout==='book')q('#apexpaper-app [data-apx-sec="ranked"]').slice(0,1).forEach(function(e){fillEl=e;out.push(e);});}
     return out;
   }
   function unpin(){
-    pinned.forEach(function(e){e.removeAttribute('data-duo-pin');e.style.removeProperty('--duo-x');e.style.removeProperty('--duo-y');e.style.removeProperty('--duo-w');});
+    pinned.forEach(function(e){if(e.hasAttribute('data-duo-fill')){fillScroll=e.scrollTop;e.removeAttribute('data-duo-fill');e.style.removeProperty('--duo-h');}e.removeAttribute('data-duo-pin');e.style.removeProperty('--duo-x');e.style.removeProperty('--duo-y');e.style.removeProperty('--duo-w');});
     pinned=[];
     ['--duo-lead','--duo-padl','--duo-x0','--duo-ground','--duo-fresh-top'].forEach(function(k){root.style.removeProperty(k);});
     root.removeAttribute('data-duo-ready');
@@ -171,9 +174,18 @@
       if(nav){var nr=nav.getBoundingClientRect();if(nr.top>H/2)nb=nr.top;}
       paneBottom=nb-8; w=Math.max(120,geo.left-x0);
     }
+    fillEl=null;
     var y=top0, list=atoms();
     for(var i=0;i<list.length;i++){
       var e=list[i];
+      if(e===fillEl){   // last block: fill what is left of the left page, or stay in the flow when the pane is too small to be useful
+        var room=Math.floor(paneBottom-y);
+        if(room>=FILL_MIN_H&&w>=FILL_MIN_W){
+          e.setAttribute('data-duo-pin','');e.setAttribute('data-duo-fill','');e.style.setProperty('--duo-x',x+'px');e.style.setProperty('--duo-w',w+'px');e.style.setProperty('--duo-y',y+'px');e.style.setProperty('--duo-h',room+'px');
+          pinned.push(e);if(fillScroll)e.scrollTop=fillScroll;
+        }
+        break;
+      }
       e.setAttribute('data-duo-pin','');e.style.setProperty('--duo-x',x+'px');e.style.setProperty('--duo-w',w+'px');e.style.setProperty('--duo-y',y+'px');
       var h=e.getBoundingClientRect().height;
       if(y+h>paneBottom+0.5){e.removeAttribute('data-duo-pin');e.style.removeProperty('--duo-x');e.style.removeProperty('--duo-w');e.style.removeProperty('--duo-y');break;}
@@ -252,7 +264,7 @@
   }
   // ── the control ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
   var LABEL={auto:'Auto',folded:'Folded',book:'Book',standard:'Standard'};
-  var HINT={auto:'Follows the fold sensor when the browser reports one; otherwise Standard.',folded:'Top / bottom split on Today, Apex, Agentic, Research and Paper.',book:'Left / right: in Apex and Agentic a command panel on the left, the analysis on the right. Today, Research and Paper split too.',standard:'The normal layout. No split.'};
+  var HINT={auto:'Follows the fold sensor when the browser reports one; otherwise Standard.',folded:'Top / bottom split on Today, Apex, Agentic, Research and Paper.',book:'Left / right: in Apex and Agentic a command panel on the left, the analysis on the right. Paper keeps its list on the left. Today and Research split too.',standard:'The normal layout. No split.'};
   var ICON={standard:'<rect x="3" y="2.5" width="10" height="11" rx="1.5"/>',folded:'<rect x="3" y="2.5" width="10" height="11" rx="1.5"/><path d="M3 8h10"/>',book:'<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M8 3v10"/>'};
   var pop=null,btn=null;
   function ensureControl(){

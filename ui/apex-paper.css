@@ -71,7 +71,7 @@
 .apx-row>summary::-webkit-details-marker{display:none}
 .apx-rk{font-size:11px;color:var(--apx-muted);font-variant-numeric:tabular-nums;text-align:right}
 .apx-sym{font-weight:800;font-size:13.5px;letter-spacing:.01em}
-.apx-row>summary .apx-setup{justify-self:start}
+.apx-row>summary .apx-setup{justify-self:start;overflow:hidden}
 .apx-score{font-weight:750;font-variant-numeric:tabular-nums;font-size:13px}
 .apx-row[open]>summary{border-bottom:1px dashed var(--apx-rule)}
 .apx-row-body{padding:8px 0 12px}

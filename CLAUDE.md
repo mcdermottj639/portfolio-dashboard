@@ -1,3 +1,27 @@
+## v250 — Book mode: no right page keeps the viewport's two-column rules (2026-11-18)
+Jack (Nov 18 12:15 ET, Book screenshot of Apex v2.9 Paper at v249: "Some issues in book mode"; 12:19 "Make sure that issue isn't
+appearing elsewhere too"). Cause: rules keyed to the 740-1100px VIEWPORT kept drawing two columns inside the Book right page, which is
+only about 459px wide. On Paper that made a 200px list beside a 224px detail (row cells printed over each other, Entry/Target/Stop
+tiles and labels cut) while the left page sat empty under the tiles. Layout only; no number, rule, copy, data or producer change.
+- **Paper (Book only).** `ui/duo.js`: the ranked card is a new last atom for `apexpaper` in Book and is pinned as a FILL block
+  (`data-duo-fill`, `--duo-h` = the rest of the left pane, own scroll, scroll kept across re-pins) when the pane has >= 200px of height
+  and >= 300px of width; otherwise it stays in the flow. `ui/duo.css` 9c: right page is one column, selected stock first at full page
+  width, then Decision summary and the panels; filter chips are one sideways-scrolling line in the pinned list. Not pinned (466 / 390
+  Book): the detail pane is hidden and rows expand inline, as on a phone. `ui/apex-paper.js`: a tap on a pinned-list row brings the
+  selected stock to the top of the right page; `ui/apex-paper.css`: the setup chip can no longer print over the score.
+- **Same fault elsewhere** (every route swept in Book vs Standard at 951x669 for clipped, overlapping and off-page elements; `ui/duo.css` 9d):
+  Apex Actions card was leverage+rules | trades+Confirm in 459px, now one column in the folded-phone order (leverage, trades + Confirm,
+  rules) and its blocks stretch (the opportunity list was 252px wide and cut its R/R lines); the plan's four Exposure/Equity/Leverage/
+  Idle-cash tiles ran off the page, now 2 x 2; Markets index / gauge / macro tiles ran off the page, now two columns; the Agentic plan
+  hero's stale line wraps instead of being cut. Clean: Today, Overview, Positions and the section routes for both accounts, Analyze.
+- **Not changed:** Standard, Folded, phone and desktop layouts (their rules are untouched; every new rule is keyed to
+  `html[data-duo-split="on"][data-duo-layout="book"]` or to `[data-duo-fill]`). Known, left alone: in Book the left page of Markets and
+  Analyze holds only their banner (no command panel exists for Research; a new panel is a feature, not a layout fix), and the pinned
+  header caption can still end in an ellipsis.
+- Tests: tests/book-checks.mjs section 8 (list pinned left of the crease under the tiles, detail full right-page width, no overlapping
+  row cells or clipped levels, tap updates and reveals the detail, 466 fallback, nothing filled in Standard / Folded, Actions blocks
+  full width, no plan or Markets tile off the page). Not verified: a physical iPhone Duo.
+
 ## v249 — Book mode: Today gets the command panel too (2026-11-18)
 Jack (Nov 18 01:21 ET, Book screenshot of Today at v248: the left page held only the combined hero, then blank; "Looks good on
 other pages"). `ui/book.js` now also runs on Today (`ctx()` returns tab `today` for route `today`, any area). Two labelled groups,

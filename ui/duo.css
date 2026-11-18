@@ -398,3 +398,48 @@ html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-l
 html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout>*{grid-area:auto!important}
 html[data-duo-split="on"][data-duo-layout="book"] :is(#markets-app,#az-result,#options-app,#plan-agentic-app){grid-template-columns:minmax(0,1fr)!important}
 html[data-duo-split="on"][data-duo-layout="book"] #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+
+/* 9c · v250 — Book mode on Apex v2.9 Paper. The right page is about half the viewport, so the paper page's own >=740px
+   two-pane rules (keyed to the viewport) made a 200px list beside a 224px detail there: rows overlapped, level tiles and
+   labels were cut. Now: the ranked list is pinned on the LEFT page under the tiles (duo.js fill, own scroll), the selected
+   stock leads the RIGHT page at full page width, and everything else on the right page is one column. Layout only. */
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx{display:flex!important;flex-direction:column}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-explore{display:flex!important;flex-direction:column}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-dgrid{grid-template-columns:minmax(0,1fr)!important}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-listpane{max-height:none!important;overflow:visible!important;margin-right:0!important;padding-right:0!important}
+/* list not pinned (pane too small): rows expand inline, like a phone */
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-detail{display:none}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app:has([data-apx-sec="ranked"][data-duo-fill]) .apx-detail{display:block}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app:has([data-apx-sec="ranked"][data-duo-fill]) .apx>.apx-explore{order:1}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app:has([data-apx-sec="ranked"][data-duo-fill]) .apx>.apx-decision{order:2}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-detail{scroll-margin-top:calc(var(--duo-fresh-top,0px) + 58px)}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-pin][data-duo-fill]{height:var(--duo-h);overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:8px 10px!important;scrollbar-width:thin}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill]>h2{margin-bottom:5px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-filters{gap:5px;margin-bottom:2px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-search{min-height:36px;padding:4px 10px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-segs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -10px;padding:0 10px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-segs::-webkit-scrollbar{display:none}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-segopt{flex:0 0 auto}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-morefilters>summary{min-height:30px;padding:3px 0}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-reset{min-height:28px;padding:2px 10px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-list>h3{margin-bottom:2px}
+/* 9d · v250 — the same fault on the other Book pages (found by sweeping every route in Book against Standard): rules keyed
+   to the 740-1100px VIEWPORT that put two columns inside the half-width right page. Book right page = one column. */
+/* Apex card (Actions): leverage, recommended trades + Confirm, then rules — the folded-phone order, full page width. */
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content{display:flex!important;flex-direction:column}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>*{order:3;min-width:0}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>:first-child,
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-lev]{order:0}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-book]{order:1;margin-top:10px}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-rules]{order:2}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-lev] .snap-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+/* Markets: index / gauge / macro tiles were four fixed columns running off the page edge. */
+html[data-duo-split="on"][data-duo-layout="book"] #markets-app .mkt-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html[data-duo-split="on"][data-duo-layout="book"] #markets-app .mkt-tile{min-width:0}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx,
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-explore{align-items:stretch!important}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content{align-items:stretch!important}
+/* The plan's Exposure / Equity / Leverage / Idle cash tiles: the fourth ran off the page edge. */
+html[data-duo-split="on"][data-duo-layout="book"] #plan-content .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html[data-duo-split="on"][data-duo-layout="book"] #plan-agentic-app .ph-stale{white-space:normal!important;overflow:visible!important}

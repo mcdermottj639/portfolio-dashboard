@@ -389,3 +389,6 @@ Apex review, `acctPerfStats`, `agenticBook`, `__PF_AG_TARGET`, `ticketStatus`, t
 Overview's section routes split too (`PFDuo.core.BOOK_ROUTES`); Folded keeps the v247 landing set. Turning Book off removes every mark.
 v249: Today also gets the panel in Book (both accounts' command blocks + their performance; no holdings list, since Today's
 right page carries the combined holdings map). Panel taps carry the account (`data-ex-account` / `data-bk-acct`).
+
+v250: in Book the v2.9 Paper ranked list is pinned on the left page under the tiles (own scroll) and the selected stock leads the
+right page; the Apex Actions card, the plan tiles and the Markets tiles are one / two columns on the half-width right page. Book only.
