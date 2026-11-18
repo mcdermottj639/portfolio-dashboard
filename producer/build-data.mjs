@@ -37,7 +37,8 @@ import { updatePerf, tradeResult, scoreboard } from './smartmoney-perf.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
 import { mergeOrderPages } from './order-pages.mjs';
-import { compactHist, histBytes, mergeHist } from './histbars.mjs';
+import { compactHist, histBytes, mergeHist, mergeBars } from './histbars.mjs';
+import { heldHistoryGaps } from './hist-plan.mjs';
 import { gradeAll, gradingUniverse, quoteCloseBars, addQuoteCloses } from './pickgrade.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -159,7 +160,11 @@ for (const f of filesMatching(/^hist-(day|week|month).*\.json$/)) {
   const results = d.data?.results ?? d.results ?? [];
   // Require CONTENT, not just an array: a transient empty-bars fetch ([] is still an array)
   // must fall through to carry-forward below, not wipe the good prior series for that symbol.
-  for (const res of results) if (res.symbol && Array.isArray(res.bars) && res.bars.length) hist[interval][res.symbol] = res.bars;
+  // v252: a symbol can arrive in more than one raw file (a tail AND a held-name seed, or a window
+  // split across calls). Union them; last-file-wins could replace a full series with a 7-bar tail.
+  for (const res of results) if (res.symbol && Array.isArray(res.bars) && res.bars.length) {
+    hist[interval][res.symbol] = hist[interval][res.symbol] ? mergeBars(hist[interval][res.symbol], res.bars) : res.bars;
+  }
 }
 // Carry forward prior bars for any interval/symbol not freshly fetched this run, so a light
 // intraday run (no hist-*.json) still ships the full YTD/5Y series — and, since v141, MERGE at the
@@ -1228,6 +1233,25 @@ if (existsSync(newsDir)) {
   if (moves.length) markets.movers = { gainers: top(moves), losers: top([...moves].reverse()) };
   if (Object.keys(markets).length) { data.picks = data.picks || {}; data.picks.markets = markets; }
 })();
+
+// ── v252: every HELD name must carry a usable daily series ─────────────────────────────────────
+// Analyze withholds its whole technical read for a name with no bars or bars older than the tail
+// window (the DXCM "STALE DATA" card, 2026-11-18: a 20% holding that is on no static bench). The
+// planner now seeds such a name, but a missed fetch must not be silent: it is named in
+// refreshInputs.missing (so a FULL run gets its one bounded retry) and warned in the run log.
+try {
+  const held = [...new Set([
+    ...(positions || []).filter((p) => p && parseFloat(p.quantity ?? p.qty ?? 0) > 0).map((p) => p.symbol),
+    ...((data.agentic && data.agentic.positions) || []).filter((p) => p && +p.qty > 0).map((p) => p.symbol),
+  ])].filter(Boolean);
+  const gaps = heldHistoryGaps(held, data.hist, etDate(new Date(data.generatedAt)), 50);
+  if (gaps.length && data.refreshInputs) {
+    const line = 'holdings-history: ' + gaps.map((g) => g.sym).join(', ');
+    data.refreshInputs.missing = [...(data.refreshInputs.missing || []), line];
+    data.refreshInputs.status = 'partial';
+    console.warn('REFRESH_PARTIAL: ' + line + ' (no daily bars inside the last 10 days; Analyze withholds its technical read)');
+  }
+} catch (e) { console.warn('held-history check failed:', e.message); }
 
 // --- Alerts: level crossings since the prior snapshot (alerts.mjs — pure transition detection,
 // no sent-state to persist). Written to a raw sidecar; the AGENT delivers post-publish via

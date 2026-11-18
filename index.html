@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=251"></script>
-<script src="ui/experience-model.js?v=251"></script>
+<script src="ui/theme.js?v=252"></script>
+<script src="ui/experience-model.js?v=252"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,15 +729,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=251">
-<link rel="stylesheet" href="ui/journey.css?v=251">
-<link rel="stylesheet" href="ui/predictions.css?v=251">
-<link rel="stylesheet" href="ui/apex-paper.css?v=251">
-<link rel="stylesheet" href="ui/smartmoney.css?v=251">
-<link rel="stylesheet" href="ui/ticker.css?v=251">
-<link rel="stylesheet" href="ui/today.css?v=251">
-<link rel="stylesheet" href="ui/book.css?v=251">
-<link rel="stylesheet" href="ui/duo.css?v=251">
+<link rel="stylesheet" href="ui/experience.css?v=252">
+<link rel="stylesheet" href="ui/journey.css?v=252">
+<link rel="stylesheet" href="ui/predictions.css?v=252">
+<link rel="stylesheet" href="ui/apex-paper.css?v=252">
+<link rel="stylesheet" href="ui/smartmoney.css?v=252">
+<link rel="stylesheet" href="ui/ticker.css?v=252">
+<link rel="stylesheet" href="ui/today.css?v=252">
+<link rel="stylesheet" href="ui/book.css?v=252">
+<link rel="stylesheet" href="ui/duo.css?v=252">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -807,10 +807,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=251"></script>
-<script src="ui/apex.js?v=251"></script>
-<script src="ui/business.js?v=251"></script>
-<script src="ui/apex-paper.js?v=251"></script>
+<script src="ui/sd-rules.js?v=252"></script>
+<script src="ui/apex.js?v=252"></script>
+<script src="ui/business.js?v=252"></script>
+<script src="ui/apex-paper.js?v=252"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -924,7 +924,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v251'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v252'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -5102,7 +5102,7 @@ function switchTab(tab){
     const showing=(g&&g.style.display!=='none')?'agentic':'main'; if(want!==showing)setPlanAccount(want); }catch(e){} }
   if(tab==='markets'&&!_marketsInit){_marketsInit=true;initMarkets();}
   if(tab==='options'&&!_optionsInit){_optionsInit=true;initOptions();}
-  if(tab==='analyze'&&!_analyzeInit){_analyzeInit=true;initAnalyze();}
+  if(tab==='analyze'){ if(!_analyzeInit){_analyzeInit=true;initAnalyze();} else azSyncAccount(); }
   if(tab==='screens'&&!_screensInit){_screensInit=true;initScreens();}
   if(tab==='screens'){ try{ if(_picksChart)_picksChart.resize(); }catch(e){} }
   if(tab==='apexpaper')apexPaperLoad();
@@ -6735,16 +6735,38 @@ window.runNewAnalysis=runNewAnalysis;
 ═══════════════════════════════════════════ */
 let _analyzeInit=false, _azLast=null;
 function initAnalyze(){ renderAzShell(); if(!_azLast){ try{ const s=localStorage.getItem('pf_az_last'); if(s)_azLast=s; }catch(e){} } loadPicksData().then(function(){ if(_azLast)runAnalysis(_azLast); }); }
+/* v252 — THE ONE BOOK ANALYZE READS: the account in context (pf_acct), never the other one.
+   Every Analyze reader of "your holdings" (the chips, Your Position, sizing, overlap with your book,
+   the pattern-radar list) went straight to window.__PORT, which is the SELF-DIRECTED book. With the
+   account set to Agentic the page listed and sized against ••0741's positions. `loaded` is false until
+   that account's book exists, so a reader can say "not loaded" instead of reading the wrong account. */
+function azBook(){
+  const acct=_acctPref();
+  if(acct==='agentic'){
+    let rows=null, eq=null; try{ rows=agenticEnriched(); }catch(e){ rows=null; }
+    try{ const A=window.__DATA&&window.__DATA.agentic; if(A)eq=agenticBook(A).equity; }catch(e){ eq=null; }
+    return {acct, label:'Agentic', enriched:rows||[], totalVal:(eq>0?eq:null), loaded:!!rows};
+  }
+  const P=window.__PORT;
+  return {acct, label:'Apex', enriched:(P&&P.enriched)||[], totalVal:P?P.totalVal:null, loaded:!!(P&&P.enriched)};
+}
+/* Account changed while Analyze was already built: redraw the shell and the open ticker for the new book. */
+function azSyncAccount(){
+  const app=document.getElementById('analyze-app'); if(!app)return;
+  const sh=app.querySelector('[data-az-acct]'); if(sh&&sh.getAttribute('data-az-acct')===_acctPref())return;
+  renderAzShell(); if(_azLast)(typeof _azRunNative==='function'?_azRunNative:runAnalysis)(_azLast);
+}
+window.azBook=azBook; window.azSyncAccount=azSyncAccount;
 function renderAzShell(){
   const app=document.getElementById('analyze-app'); if(!app)return;
-  let chips='';
-  try{ const P=window.__PORT; const syms=P&&P.enriched?[...new Set(P.enriched.filter(p=>p.val>0).sort((a,b)=>b.val-a.val).map(p=>p.symbol))].slice(0,10):[];
-    if(syms.length)chips='<div style="font-size:11px;color:#9ca3af;margin:12px 0 6px">Your top holdings</div><div class="az-chips">'+syms.map(s=>'<span class="az-chip" onclick="runAnalysis(\''+s+'\')">'+s+'</span>').join('')+'</div>'; }catch(e){}
+  let chips=''; const BK=azBook();
+  try{ const syms=[...new Set(BK.enriched.filter(p=>p.val>0).sort((a,b)=>b.val-a.val).map(p=>p.symbol))].slice(0,10);
+    if(syms.length)chips='<div data-az-chips-for="'+BK.acct+'" style="font-size:11px;color:#9ca3af;margin:12px 0 6px">Top holdings · '+BK.label+'</div><div class="az-chips">'+syms.map(s=>'<span class="az-chip" onclick="runAnalysis(\''+s+'\')">'+s+'</span>').join('')+'</div>'; }catch(e){}
   // Native autocomplete over the analyzable set — typing only surfaces tickers this snapshot can read.
   let dl=''; try{ const u=azUniverse(); if(u.length)dl='<datalist id="az-tickers">'+u.map(o=>'<option value="'+o.sym+'">'+(o.label?String(o.label).replace(/"/g,'&quot;').replace(/</g,'&lt;'):o.sym)+'</option>').join('')+'</datalist>'; }catch(e){}
   app.innerHTML=
     '<div class="picks-hero"><div><div class="ph-label">Analyze</div><div class="ph-date">Single-Stock Deep Dive</div><div class="ph-stale">Technical + fundamental read from the latest snapshot · research only.</div></div></div>'+
-    '<div class="card"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
+    '<div class="card" data-az-acct="'+BK.acct+'"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
     '<div id="az-result"></div>';
 }
 function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(s)runAnalysis(s); }
@@ -6857,7 +6879,7 @@ function _betaSeries(closes, bench, win){ win=win||60;
    the recommendation's correlation-drag dampener and the Analyze "Overlap With Your Book" card. */
 function _bookCorrAll(sym){ _azMemoCheck(); if(sym in _azMemo.bookCorr)return _azMemo.bookCorr[sym];
   let out=null;
-  try{ const P=window.__PORT; if(P&&P.enriched){ const base=azSeries(sym).map(s=>s.c);
+  try{ const P=azBook(); if(P.loaded){ const base=azSeries(sym).map(s=>s.c);
     if(base.length>=30){ const br=[]; for(let i=1;i<base.length;i++)br.push(base[i]/base[i-1]-1); const cors=[];
       for(const p of P.enriched){ if(p.symbol===sym||p.val<=0)continue; const oc=azSeries(p.symbol).map(s=>s.c); if(oc.length<30)continue;
         const n=Math.min(br.length,oc.length-1); if(n<20)continue; const xs=br.slice(-n),ys=[]; for(let i=oc.length-n;i<oc.length;i++)ys.push(oc[i]/oc[i-1]-1);
@@ -6871,7 +6893,7 @@ function _bookCorrAll(sym){ _azMemoCheck(); if(sym in _azMemo.bookCorr)return _a
 // Every symbol this snapshot can actually analyze: holdings ∪ picks ∪ daily bars ∪ quotes ∪ options book.
 function azUniverse(){
   const set=new Map(); const add=(s,lbl)=>{ if(!s)return; s=String(s).toUpperCase(); if(!set.has(s)||(!set.get(s)&&lbl))set.set(s,lbl||set.get(s)||null); };
-  try{ const P=window.__PORT; if(P&&P.enriched)P.enriched.forEach(p=>{ if(p.val>0)add(p.symbol,p.name||null); }); }catch(e){}
+  try{ azBook().enriched.forEach(p=>{ if(p.val>0)add(p.symbol,p.name||null); }); }catch(e){}
   try{ (typeof PICK_PICKS!=='undefined'?PICK_PICKS:[]).forEach(p=>add(p&&p.ticker,(p&&p.company)||null)); }catch(e){}
   try{ (typeof PICK_CANDIDATES!=='undefined'?PICK_CANDIDATES:[]).forEach(c=>add(c&&c.ticker,(c&&c.company)||null)); }catch(e){}
   try{ const h=(window.__DATA&&window.__DATA.hist&&window.__DATA.hist.day)||{}; Object.keys(h).forEach(s=>add(s)); }catch(e){}
@@ -6881,7 +6903,7 @@ function azUniverse(){
 }
 // Snapshot-scoped memo (beta/correlation loops are the expensive part) — keyed to data.generatedAt.
 let _azMemo={gen:'__init__',extra:{},corr:{},bookCorr:{},hist:{},edge:undefined};
-function _azMemoCheck(){ let g=''; try{ g=(window.__DATA&&window.__DATA.generatedAt)||''; }catch(e){} if(_azMemo.gen!==g)_azMemo={gen:g,extra:{},corr:{},bookCorr:{},hist:{},edge:undefined}; }
+function _azMemoCheck(){ let g=''; try{ g=((window.__DATA&&window.__DATA.generatedAt)||'')+'|'+_acctPref(); }catch(e){} if(_azMemo.gen!==g)_azMemo={gen:g,extra:{},corr:{},bookCorr:{},hist:{},edge:undefined}; }
 // Implied vol for a symbol: prefer the live options book's IV, else an ATR-based realized-vol proxy.
 function azIV(a,x){
   let iv=null,src=null;
@@ -7189,7 +7211,7 @@ function _smaArr(c,n){ if(c.length<n)return null; const out=new Array(c.length).
 function azExtra(a){ _azMemoCheck(); if(a&&a.sym&&_azMemo.extra[a.sym])return _azMemo.extra[a.sym]; const r=_azExtraRaw(a); if(a&&a.sym)_azMemo.extra[a.sym]=r; return r; }
 function _azExtraRaw(a){
   const sym=a.sym, ser=azSeries(sym), closes=ser.map(s=>s.c), x={};
-  try{ const P=window.__PORT; if(P){ x.totalVal=P.totalVal; if(P.enriched){ const p=P.enriched.find(e=>e.symbol===sym); if(p)x.held={qty:p.qty,avg:p.avg,val:p.val,pnlD:p.pnlD,pnlP:p.pnlP,pct:p.pct}; } } }catch(e){}
+  try{ const P=azBook(); if(P.loaded){ x.totalVal=P.totalVal; x.acct=P.acct; { const p=P.enriched.find(e=>e.symbol===sym&&e.val>0); if(p)x.held={qty:p.qty,avg:p.avg,val:p.val,pnlD:p.pnlD,pnlP:p.pnlP,pct:p.pct}; } } }catch(e){}
   if(closes.length>=20){
     const last=closes.length-1;
     x.sma20arr=_smaArr(closes,20); x.sma50arr=closes.length>=50?_smaArr(closes,50):null; x.sma200arr=closes.length>=200?_smaArr(closes,200):null;
@@ -7655,7 +7677,7 @@ function azVerdictVsAnalyze(v,tone){ const vb=v.dir==='bullish', vr=v.dir==='bea
 
 /* ── Pattern Radar — scan holdings + picks for any of the named patterns ── */
 function azScanSyms(){ const set=new Set();
-  try{ const P=window.__PORT; if(P&&P.enriched)P.enriched.filter(p=>p.val>0).forEach(p=>set.add(p.symbol)); }catch(e){}
+  try{ azBook().enriched.filter(p=>p.val>0).forEach(p=>set.add(p.symbol)); }catch(e){}
   try{ (typeof PICK_PICKS!=='undefined'?PICK_PICKS:[]).forEach(p=>p&&p.ticker&&set.add(p.ticker)); }catch(e){}
   try{ (typeof PICK_CANDIDATES!=='undefined'?PICK_CANDIDATES:[]).forEach(c=>c&&c.ticker&&set.add(c.ticker)); }catch(e){}
   return [...set].slice(0,50); }
@@ -7886,7 +7908,7 @@ function runAnalysis(sym){
   const a=analyzeStock(sym);
   if(!a){
     let u=[]; try{ u=azUniverse(); }catch(e){}
-    const held=[]; try{ const P=window.__PORT; if(P&&P.enriched)P.enriched.filter(p=>p.val>0).sort((p,q)=>q.val-p.val).slice(0,6).forEach(p=>held.push(p.symbol)); }catch(e){}
+    const held=[]; try{ azBook().enriched.filter(p=>p.val>0).sort((p,q)=>q.val-p.val).slice(0,6).forEach(p=>held.push(p.symbol)); }catch(e){}
     const picks=[]; try{ (typeof PICK_PICKS!=='undefined'?PICK_PICKS:[]).slice(0,4).forEach(p=>p&&p.ticker&&picks.push(p.ticker)); }catch(e){}
     const sugg=[...new Set([...held,...picks])].slice(0,10);
     const fallback=sugg.length?sugg:u.slice(0,10).map(o=>o.sym);
@@ -7942,7 +7964,7 @@ function runAnalysis(sym){
       (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
         '<div style="text-align:left;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:10px;border-left:3px solid '+tc+'"><div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">💡 Why this signal</div><div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9">'+whyTxt+'</div></div>':'')+'</div>'+
     (a.stale&&a.hasTA===false&&a.dataAge!=null?'<div class="card" style="border-left:4px solid #f59e0b"><div class="card-title"><span>⏳ Stale History</span></div><div style="font-size:12.5px;line-height:1.6">The daily bars this snapshot holds for <b>'+a.sym+'</b> end on <b>'+(a.lastBar||'an unknown date')+'</b> — <b>'+a.dataAge+' days</b> before the snapshot itself. The price above is live; the bars are not, so every moving average, momentum reading, level and pattern would be measured from a series that stopped moving. Measured over this snapshot’s own history a read that stale points the WRONG WAY 11–15% of the time, so the technical call is <b>withheld rather than shaded</b>. The producer refreshes daily bars on its next full run and this name comes back on its own — nothing is broken and nothing needs doing. Price, '+(a.pick?'today’s Picks call, ':'')+'fundamentals and your position are shown below.</div></div>':!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
-    (x.held?'<div class="card" data-priv="on" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position</span></div>'+mGrid([['Shares','<span data-priv="val">'+fmt(x.held.qty,x.held.qty<10?2:0)+'</span>'],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
+    (x.held?'<div class="card" data-priv="on" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position <span class="badge" data-az-pos-acct="'+(x.acct||'main')+'">'+(x.acct==='agentic'?'Agentic':'Apex')+'</span></span></div>'+mGrid([['Shares','<span data-priv="val">'+fmt(x.held.qty,x.held.qty<10?2:0)+'</span>'],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     (earn?'<div class="card" style="border-left:4px solid '+(earn.days>=0&&earn.days<=10?'#f59e0b':'#6366f1')+'"><div class="card-title"><span>📅 Earnings</span></div><div style="font-size:12.5px;line-height:1.6">'+(earn.days<0?('Last reported '+(-earn.days)+'d ago ('+earn.date+').'):earn.days===0?('Reports <b>today</b> ('+earn.date+')'+(earn.when&&_whenTxt[earn.when]?' '+_whenTxt[earn.when]:'')+'.'):('Next earnings in <b>'+earn.days+' days</b> — '+earn.date+(earn.when&&_whenTxt[earn.when]?', '+_whenTxt[earn.when]:'')+'.'))+(earn.eps!=null?' Est. EPS $'+earn.eps+'.':'')+(earn.days>=0&&earn.days<=10?' <b style="color:#f59e0b">Elevated IV / gap risk into the print — size accordingly.</b>':'')+'</div></div>':'')+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+
       (mtf?'<div style="font-size:11.5px;color:var(--text);opacity:.9;margin-top:11px;line-height:1.6"><b style="color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;font-size:10.5px">🕒 Timeframes</b> &nbsp;'+mtf.rows.map(o=>o.tf+' '+(o.up===true?'<span style="color:#10b981">▲</span>':o.up===false?'<span style="color:#ef4444">▼</span>':'<span style="color:#9ca3af">–</span>')).join(' &nbsp;·&nbsp; ')+' &nbsp;—&nbsp; <span style="color:'+mtf.align.c+';font-weight:700">'+mtf.align.t+'</span></div>':'')+'</div>':'')+
@@ -7985,6 +8007,9 @@ function runAnalysis(sym){
   try{ const cmp=localStorage.getItem('pf_az_cmp'); if(cmp&&cmp!==sym){ const ci=document.getElementById('az-cmp-input'); if(ci)ci.value=cmp; setTimeout(()=>azCompare(cmp),0); } }catch(e){}
 }
 window.runAnalysis=runAnalysis;
+/* The un-wrapped renderer. ui/journey.js replaces window.runAnalysis with a wrapper that also SELECTS the
+   ticker for the current account; an account switch must redraw the open ticker without selecting it. */
+var _azRunNative=runAnalysis;
 function azConfirm(sym){
   let ov=document.getElementById('az-confirm');
   if(!ov){ ov=document.createElement('div'); ov.id='az-confirm'; ov.style.cssText='position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);padding:24px'; document.body.appendChild(ov); }
@@ -8915,17 +8940,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=251"></script>
-<script src="ui/today.js?v=251"></script>
-<script src="ui/predictions-model.js?v=251"></script>
-<script src="ui/predictions.js?v=251"></script>
-<script src="ui/smartmoney-model.js?v=251"></script>
-<script src="ui/smartmoney.js?v=251"></script>
-<script src="ui/experience.js?v=251"></script>
-<script src="ui/ticker.js?v=251"></script>
-<script src="ui/duo.js?v=251"></script>
-<script src="ui/compact.js?v=251"></script>
-<script src="ui/journey.js?v=251"></script>
-<script src="ui/book.js?v=251"></script>
+<script src="ui/today-model.js?v=252"></script>
+<script src="ui/today.js?v=252"></script>
+<script src="ui/predictions-model.js?v=252"></script>
+<script src="ui/predictions.js?v=252"></script>
+<script src="ui/smartmoney-model.js?v=252"></script>
+<script src="ui/smartmoney.js?v=252"></script>
+<script src="ui/experience.js?v=252"></script>
+<script src="ui/ticker.js?v=252"></script>
+<script src="ui/duo.js?v=252"></script>
+<script src="ui/compact.js?v=252"></script>
+<script src="ui/journey.js?v=252"></script>
+<script src="ui/book.js?v=252"></script>
 </body>
 </html>

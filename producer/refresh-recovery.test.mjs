@@ -64,4 +64,8 @@ test('preflight repairs old snapshots and retries missing research once without 
  assert.equal(needsResearchRefresh({...base,refreshInputs:quality},now),true);
  assert.equal(needsResearchRefresh({...base,refreshInputs:{...quality,fullAttempts:2}},now),false);
  assert.equal(needsResearchRefresh({...base,refreshInputs:{...quality,missing:[]}},now),false);
+ // v252: a held name with no usable daily bars after a FULL run earns the same single retry.
+ assert.equal(needsResearchRefresh({...base,refreshInputs:{full:true,fullAttempts:1,missing:['holdings-history: DXCM']}},now),true);
+ assert.equal(needsResearchRefresh({...base,refreshInputs:{full:true,fullAttempts:2,missing:['holdings-history: DXCM']}},now),false);
+ assert.equal(needsResearchRefresh({...base,refreshInputs:{full:false,fullAttempts:0,missing:['holdings-history: DXCM']}},now),false);
 });

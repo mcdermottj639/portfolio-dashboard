@@ -140,6 +140,29 @@ export function targetSymbols(dir = __dirname) {
   return (t && Array.isArray(t.names) ? t.names : []).map((n) => n && (n.ticker || n.t || n.sym || n.symbol)).filter(Boolean);
 }
 
+/** Held tickers across BOTH accounts as the last published snapshot recorded them. Symbols only.
+ *  v252: `heldFromRaw` alone made a holding's place in the fetch plan depend on the planner running
+ *  AFTER this run's position files were written. A name that is on no static bench (DXCM, ZS, NET,
+ *  SNPS on 2026-11-18) then never entered the plan and its daily series was never seeded. */
+export function heldFromSnapshot(snap) {
+  const out = [];
+  for (const k of ['main', 'agentic']) for (const p of (snap && snap[k] && Array.isArray(snap[k].positions) ? snap[k].positions : [])) {
+    if (p && p.symbol && !(Number(p.qty) <= 0)) out.push(String(p.symbol).toUpperCase());
+  }
+  return [...new Set(out)];
+}
+
+/** Apex research names from the PUBLIC data/apex-targets.json: this week's targets, the top five and
+ *  the held-level rows. They are what Apex > Research opens in Analyze, usually before they are held. */
+export function apexSymbols(dir = __dirname) {
+  const t = readJSON(join(dir, '..', 'data', 'apex-targets.json'));
+  if (!t || typeof t !== 'object') return [];
+  const out = [...Object.keys(t.targets && typeof t.targets === 'object' ? t.targets : {}),
+    ...(Array.isArray(t.top5) ? t.top5 : []).map((r) => r && r.sym),
+    ...(Array.isArray(t.heldLevels) ? t.heldLevels : []).map((r) => r && r.sym)];
+  return [...new Set(out.map(clean).filter((x) => /^[A-Z][A-Z.\-]{0,6}$/.test(x)))];
+}
+
 /** The bench as the producer will actually fetch it this run: holdings → target → static tiers. */
 export function liveUniverse(rawDir = RAWDIR) {
   return analyzeUniverse({ positions: heldFromRaw(rawDir), target: targetSymbols() });

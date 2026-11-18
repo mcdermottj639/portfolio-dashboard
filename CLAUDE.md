@@ -1,3 +1,39 @@
+## v252 — Held names always get daily history; Analyze reads one account's book (2026-11-18)
+Jack (Nov 18 14:02 ET, two Analyze screenshots; 14:54 "PR 1 — Data integrity"): DXCM, about a fifth of Apex, read
+"Limited Data / STALE DATA", and Research > Analyze with Account = Agentic listed the self-directed holdings.
+- **Why DXCM had no bars (two defects, both in the fetch plan, both reproduced).** (1) DXCM, ZS, NET, SNPS and S are on
+  NO static bench (`ANALYZE_BENCH`), so they entered `hist-plan.mjs` only through `raw/positions.json`, i.e. only when
+  the planner ran after this run's position files were written. (2) A "full" batch was "≤3 symbols" of YTD bars, a rule
+  written Sept 8 at ~153 bars a name. On Nov 18 the same call (DXCM, SPY, IREN from Jan 1) returned **115,017
+  characters** and was refused inline, so the batch could not be written to `raw/` (measured in this session, ~173
+  characters per bar). The live run log and the encrypted snapshot were NOT readable here (no passphrase), so which of
+  the two bit on Nov 17-18 is not established; both are fixed.
+- **`producer/hist-plan.mjs`.** Calls are sized by BARS: `HIST_CALL_BARS` 265, `symbolsPerCall(start, today)` (3 names in
+  spring, one from about May; never under one), `HIST_FULL_CALLS` 12 per run (so the YTD cap is min(30, per-call x 12)),
+  pinned Daily-Picks batches use the same sizing. Holdings = `heldFromRaw()` ∪ `heldFromSnapshot(snap)`; the target tier
+  also carries `apexSymbols()` (targets, top five, held-level rows of the public `data/apex-targets.json`).
+  New pure `heldHistoryGaps` / `heldHistoryDirective`.
+- **`producer/preflight.mjs`.** On FETCH_LIGHT it prints `PREFLIGHT ALSO: held names with no usable daily history …` with
+  the exact one-symbol calls and `hist-day-held-<n>.json` files (max 6), so a holding bought after the morning run is
+  seeded within the hour. Code-side because the producer Routine's prompt is not editable from a session; it already
+  says to obey preflight (the Nov 3 mail directive is the precedent). **Not verified until a run does it.**
+- **`producer/build-data.mjs`.** A symbol present in more than one raw history file is UNIONED (`mergeBars`), not
+  last-file-wins. After the build, any held name (both accounts) with no real daily bar inside 10 days is named in
+  `refreshInputs.missing` as `holdings-history: …`, warned as `REFRESH_PARTIAL`, and (`refresh-check.mjs`) earns a FULL
+  run its one bounded retry.
+- **Analyze account isolation (`index.html`).** New `azBook()` = the ONE book Analyze reads, chosen by `pf_acct`
+  (Apex = `window.__PORT`, Agentic = `agenticEnriched()` + `agenticBook().equity`). The holdings chips ("Top holdings ·
+  Apex|Agentic"), Your Position (now badged with the account), sizing, Overlap With Your Book, the pattern-radar list,
+  the miss-fallback chips and the autocomplete all read it; the per-snapshot memo is keyed by account; `azSyncAccount()`
+  redraws the shell and the open ticker when the account changes (called from `switchTab`). `ui/journey.js` notice reads
+  "General screen · Self-directed|Agentic positions only". Not changed: Screens' ✓ OWN badge and Markets' HELD tag
+  (self-directed by design), the technical read itself (account-independent), any rule, ticket or schedule.
+- Tests: `producer/hist-plan.test.mjs` (+18: bar sizing, snapshot holdings, gaps, directive), `refresh-recovery`,
+  `build-data.test.mjs` (union across raw files, held-history warning; 109), new `tests/analyze-account-checks.mjs`
+  (via journey-browser: both accounts, switch on the same screen, a name held in both, workspace Research tabs, privacy,
+  no sideways drift). **Data freshness is NOT confirmed:** the fix takes effect on the producer's next runs and the
+  snapshot cannot be decrypted from this session or from CI. DXCM on the phone is the check.
+
 ## v251 — Apex Actions: no Confirm at zero orders, repeated review lines grouped; Book scroll trial on Actions (2026-11-18)
 Jack (Nov 18 13:57 ET, Book screenshot of Apex Actions at v250, "Ok fix that page and try the scroller fix"; 14:00 Agentic Actions screenshot).
 - **`ui/apex.js` `portfolioButton`.** With no order line the green "Confirm this week's Apex book with Claude · 0 orders" block is not

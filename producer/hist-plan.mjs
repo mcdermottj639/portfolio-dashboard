@@ -43,7 +43,7 @@ import { shadowSymbols } from './agentic-observatory.mjs';
 // which is the failure this whole change exists to end.
 
 import { readSnapshot } from './fetchgate.mjs';
-import { analyzeUniverse, heldFromRaw, targetSymbols, tierOf } from './analyze-universe.mjs';
+import { analyzeUniverse, heldFromRaw, heldFromSnapshot, apexSymbols, targetSymbols, tierOf } from './analyze-universe.mjs';
 import { gradingUniverse, gradingStarts } from './pickgrade.mjs';
 
 // --- dials -------------------------------------------------------------------------------------
@@ -56,6 +56,13 @@ export const HIST_MONTH_BATCH = 3;
 export const HIST_MONTH_CAP = 15;
 export const HIST_MONTH_STALE_DAYS = 35;
 export const QUOTES_BATCH = 60;        // the every-run quotes call already carries ~60 inline
+// v252 — A CALL IS SIZED BY BARS, NOT BY SYMBOL COUNT. "≤3 symbols" was written on 2026-09-08, when a
+// YTD series was ~153 bars. The series grows every session: on 2026-11-18 a three-symbol YTD call
+// returned 115,017 characters (~222 bars each) and the harness refused to return it inline, so the
+// batch the plan printed could not be written to raw/ at all. Measured ~173 characters per bar.
+export const HIST_CALL_BARS = 265;     // ≈46K characters: one whole-year series, or 3 names in spring
+export const HIST_FULL_CALLS = 12;     // YTD calls per run (was 10 = 30 names ÷ 3)
+export const HIST_HELD_GAP_MAX = 6;    // held names a LIGHT run is asked to seed (preflight)
 
 // WHY 8 SYMBOLS IS SAFE FOR A TAIL WHILE FULL STAYS AT 3. The ≤3 rule exists because an oversized
 // MCP result is spilled by the harness to a temp file and only its PATH comes back — at which point
@@ -136,6 +143,49 @@ export function planHistoricals(universe, hist, today, dials = {}) {
   return { tail, full, fullDeferred, fresh, pin, month: monthDue, monthDeferred };
 }
 
+/** Upper bound on the daily bars a fetch from `start` (YYYY-MM-DD…) to `today` returns: weekdays, so
+ *  holidays only ever make it an over-estimate. */
+export function estBars(start, today) {
+  const a = Date.parse(`${String(start).slice(0, 10)}T00:00:00Z`), b = Date.parse(`${today}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 0;
+  let n = 0; for (let t = a; t <= b; t += 864e5) { const d = new Date(t).getUTCDay(); if (d !== 0 && d !== 6) n++; }
+  return n;
+}
+/** How many symbols one call may carry for a window, so the result returns inline. Never under 1. */
+export function symbolsPerCall(start, today, max = HIST_FULL_BATCH, budget = HIST_CALL_BARS) {
+  const bars = Math.max(1, estBars(start, today));
+  return Math.max(1, Math.min(max, Math.floor(budget / bars)));
+}
+/**
+ * Held names whose daily series a tail cannot repair: none at all, or last real bar older than
+ * HIST_TAIL_DAYS. Pure. `held` is symbols; returns [{sym,last,start}] in the given order, capped.
+ * preflight prints these on LIGHT runs so a holding bought today is readable within the hour.
+ */
+export function heldHistoryGaps(held, hist, today, max = HIST_HELD_GAP_MAX) {
+  const day = (hist && (hist.day || hist.daily)) || {}, out = [];
+  for (const raw of held || []) {
+    const sym = String(raw || '').toUpperCase(); if (!sym || out.some((r) => r.sym === sym)) continue;
+    const last = lastBarDate(day[sym]);
+    const age = last ? Math.max(0, daysBetween(last, today)) : null;
+    if (age != null && age <= HIST_TAIL_DAYS) continue;
+    out.push({ sym, last, age, start: `${today.slice(0, 4)}-01-01` });
+  }
+  return out.slice(0, max);
+}
+
+// v252 — a HELD name with no usable daily series is seeded on LIGHT runs too. Historicals are a
+// FETCH_ALL step, so a holding bought after the morning run (or one whose seed was missed) read
+// "STALE DATA" on Analyze until the next day at best. One symbol per call: a whole-year series is
+// ~45K characters and two no longer return inline (see hist-plan.mjs HIST_CALL_BARS). Symbols only.
+export function heldHistoryDirective(prior, today) {
+  let gaps = [];
+  try { gaps = heldHistoryGaps(heldFromSnapshot(prior), prior && prior.hist, today); } catch { gaps = []; }
+  if (!gaps.length) return '';
+  return 'PREFLIGHT ALSO: held names with no usable daily history — fetch them on THIS run (FETCH_LIGHT included), ONE symbol per call: ' +
+    gaps.map((g, i) => `Robinhood · get_equity_historicals { symbols:["${g.sym}"], interval:"day", start_time:"${g.start}T00:00:00Z" } → Write the VERBATIM result to producer/raw/hist-day-held-${i + 1}.json`).join(' ; ') +
+    '. Best-effort: a failure never stops the run.';
+}
+
 /** Chunk a symbol list into fetch batches. */
 export function batches(rows, size) {
   const out = [];
@@ -149,8 +199,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const today = todayET();
 
   const snap = await readSnapshot();          // best-effort; null ⇒ everything is FULL
-  const positions = heldFromRaw();
-  const target = targetSymbols();
+  // Holdings: this run's raw files AND the last published snapshot, so the plan does not depend on
+  // being run after the position rows were written. Apex research names ride with the target tier.
+  const positions = [...new Set([...heldFromRaw(), ...heldFromSnapshot(snap)])];
+  const target = [...new Set([...targetSymbols(), ...apexSymbols()])];
   // The picks GRADING universe (pickgrade.mjs — archived Daily Picks whose outcome is still being
   // measured) rides in right behind holdings + target: the Track Record can only grade a name whose
   // closes kept arriving, and this is the fetch that keeps them arriving. Read from the same snapshot,
@@ -161,19 +213,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const base = analyzeUniverse({ positions, target });
   const pri = new Set([...positions, ...target].map((x) => String(x || '').toUpperCase()));
   const universe = [...new Set([...base.filter((x) => pri.has(x)), ...shadowSymbols(snap?.agentic?.correctness?.shadow), ...grading.map((x) => String(x).toUpperCase()), ...base.filter((x) => !pri.has(x))])];
-  const plan = planHistoricals(universe, (snap && snap.hist) || {}, today, { pinned });
-
   const tailStart = isoAgo(HIST_TAIL_LOOKBACK, today);
   const fullStart = `${today.slice(0, 4)}-01-01T00:00:00Z`;
+  const fullPer = symbolsPerCall(fullStart, today);
+  const fullCap = Math.min(HIST_FULL_CAP, fullPer * HIST_FULL_CALLS);
+  const plan = planHistoricals(universe, (snap && snap.hist) || {}, today, { pinned, fullCap });
+
   const monthStart = isoAgo(365 * 5, today);
 
   const tailBatches = batches(plan.tail, HIST_TAIL_BATCH);
-  const fullBatches = batches(plan.full, HIST_FULL_BATCH);
+  const fullBatches = batches(plan.full, fullPer);
   const monthBatches = batches(plan.month, HIST_MONTH_BATCH);
   const quoteBatches = batches(universe, QUOTES_BATCH);
   // Pinned (open-pick) fetches group by start date so each call has one window; ≤3 per call like FULL.
   const pinByStart = {}; for (const r of plan.pin) (pinByStart[r.start] = pinByStart[r.start] || []).push(r.sym);
-  const pinBatches = Object.keys(pinByStart).sort().flatMap((st) => batches(pinByStart[st], HIST_FULL_BATCH).map((syms) => ({ st, syms })));
+  const pinBatches = Object.keys(pinByStart).sort().flatMap((st) => batches(pinByStart[st], symbolsPerCall(st, today)).map((syms) => ({ st, syms })));
   const calls = tailBatches.length + pinBatches.length + fullBatches.length + monthBatches.length + quoteBatches.length;
 
   const out = {
@@ -198,15 +252,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   console.log(`Historicals plan — ${today} · bench ${universe.length} symbols · snapshot ${out.snapshot}`);
   if (!snap) console.log('  ⚠️  no readable snapshot (no data.json / no PF_PASSPHRASE / decrypt failed) —\n' +
-    `      failing OPEN: every symbol is treated as unseeded, capped at ${HIST_FULL_CAP} YTD fetches this run.`);
+    `      failing OPEN: every symbol is treated as unseeded, capped at ${fullCap} YTD fetches this run.`);
   console.log('');
   for (const l of out.lines) {
     if (l.kind === 'quotes-bench') console.log(`QUOTES bench          file=${l.file}  symbols=${l.symbols.join(',')}\n`);
     else console.log(`HIST ${l.interval} ${l.kind.includes('tail') ? 'tail' : l.kind.includes('pick') ? 'pick' : l.kind.includes('full') ? 'full' : '5y  '}  start=${l.start_time}  file=${l.file}  symbols=${l.symbols.join(',')}\n`);
   }
   if (plan.fullDeferred.length) {
-    console.log(`  ⏳ ${plan.fullDeferred.length} symbol(s) queued for a later run (YTD cap ${HIST_FULL_CAP}/run, priority order) — ` +
-      `~${Math.ceil(plan.fullDeferred.length / HIST_FULL_CAP)} more FETCH_ALL day(s) to finish seeding.`);
+    console.log(`  ⏳ ${plan.fullDeferred.length} symbol(s) queued for a later run (YTD cap ${fullCap}/run, priority order) — ` +
+      `~${Math.ceil(plan.fullDeferred.length / fullCap)} more FETCH_ALL day(s) to finish seeding.`);
     console.log(`     next up: ${plan.fullDeferred.slice(0, 12).map((r) => `${r.sym}(${tierOf(r.sym, { positions, target })})`).join(', ')}${plan.fullDeferred.length > 12 ? ', …' : ''}`);
   }
   if (plan.monthDeferred.length) console.log(`  ⏳ ${plan.monthDeferred.length} symbol(s) queued for a later monthly refresh (cap ${HIST_MONTH_CAP}/run).`);
