@@ -5,7 +5,8 @@
 GitHub is authoritative for code, PRs, checks and release history. Claudex/Drive
 remains the shared handoff. ChatGPT coordinates and uses verified tools; Codex
 and Claude are implementation/review options, not automatic permission upgrades.
-Claude Duet remains the reasoning recipient; Jarvis is the display/workflow layer.
+Claude Duet leads operations (routing, tracking, records); Operations HQ is the
+status dashboard. Jarvis is retired: only its "Task storage" database remains.
 One task has one implementation owner. Do not replace existing automation owners.
 
 - Coordination: https://docs.google.com/document/d/1oyJS2uyoBF8-TET3fLxU-hvlke9U805GXNhFjMb4k8Q/edit
@@ -83,7 +84,9 @@ unrelated merges. Persistent-data migrations require their own backup/recovery
 plan before implementation. After recovery verify the served app and data age.
 
 Record regressions, reverts, failed releases, manual handoffs and usage per useful
-change. Fewer handoffs and verified outcomes matter more than PR volume. Expand
+change (model requests, elapsed time, cached-read tokens when reported; see
+`CLAUDE.md` § Efficient execution). Wait for CI with one blocking watch, not
+repeated status polls. Fewer handoffs and verified outcomes matter more than PR volume. Expand
 the workflow app by app after evidence, retaining each app's own test commands.
 
 ## Primary references

@@ -32,7 +32,7 @@
 
 
 How the **agentic account** is researched, targeted, monitored, and rebalanced. Read with
-`CLAUDE.md` (architecture) and `SCHEDULING.md` (how the producer is scheduled — same web-trigger model).
+`docs/claude/architecture.md` (architecture; `CLAUDE.md` holds the active rules) and `SCHEDULING.md` (how the producer is scheduled — same web-trigger model).
 
 ## THE MANDATE (owner-set 2026-09-08) — read this before changing any dial
 > **••••3900 — Agentic (Mandate A).** Objective: **beat SPY over rolling 12-month windows.** Unlevered,

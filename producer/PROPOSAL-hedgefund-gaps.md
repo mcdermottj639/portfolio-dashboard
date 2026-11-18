@@ -22,7 +22,7 @@ and passed; the first live scheduled run is the remaining end-to-end check.
 
 **Original status: BUILD SPEC — approved for implementation, not yet built.** Written 2026-08-24 from the
 hedge-fund-vs-agentic gap analysis (session branch `claude/hedge-fund-vs-agentic-x1rl3n`). The
-implementing session should read this whole file first, then CLAUDE.md's Gotchas, then the files
+implementing session should read this whole file first, then `docs/claude/gotchas.md`, then the files
 named in each phase. Owner decision points are marked **⚖️ OWNER** — implement the recommended
 default unless the owner has said otherwise in the launching prompt.
 
@@ -52,7 +52,7 @@ which research sleeve earns its keep.
 - **Mirror consumer-side.** Any new deferral reason or badge the planner emits must be mirrored in
   `index.html`'s shared agentic helpers (`agenticExecMap` etc.) — a badge that disagrees with the
   executor is worse than no badge. Consumer change ⇒ bump `APP_VERSION` + `CACHE_VERSION` together.
-- **Update CLAUDE.md + AGENTIC.md in the same change** (standing rule), and this file's status
+- **Update the `docs/claude/` reference + AGENTIC.md in the same change** (standing rule; root `CLAUDE.md` only if an active rule changes), and this file's status
   line per phase as phases land.
 - **Land on `main`** when verified (ALWAYS MERGE rule) — unmerged producer code never runs.
 - Phases are independent unless noted. Suggested order: **1 → 2 → 4 → 6**, then the Phase 5
@@ -177,7 +177,7 @@ near-zero vol (which also makes park/release round trips PDT- and tax-trivial).
   interaction from Phase 2 becomes moot for parking (SGOV is fine to hold in a drawdown — if Phase
   2 lands after Phase 3, parking need not be suspended under soft; reconcile whichever lands second).
 - Ledger/consumer: `agentic-parked.json` `vehicle` field, the Plan tab 🅿️ waiting-ground card copy,
-  AGENTIC.md §parking, CLAUDE.md's parked-ledger row. Quotes: SGOV must be in the producer's
+  AGENTIC.md §parking, `docs/claude/key-files.md`'s parked-ledger row. Quotes: SGOV must be in the producer's
   every-run quote cover (it is once held; add it to the quote list the way VTI is handled).
 
 **If declined:** keep VTI, but implement Phase 2's parking-suspension under drawdown as specced.
@@ -241,7 +241,7 @@ composite 3.96 .. 7.97 (mean 5.68)
 Those two components carry **70% of the flow composite's weight** (revision 40 / insider 30) and are
 therefore contributing almost no ranking information — a near-constant term shifts every name equally
 and cancels out of a ranking. The composite's real variance comes from surprise (20) and award (10).
-This is precisely the failure mode CLAUDE.md documents ("a constant drag on every megacap rather than
+This is precisely the failure mode `docs/claude/gotchas.md` documents ("a constant drag on every megacap rather than
 a discriminator"); the buy/sell asymmetry fix raised the insider *level* (~0.9 → ~3.2) without making
 it *discriminate*. Flipping now would weight a signal that currently reduces to "PEAD + federal
 contract awards, diluted by two dead terms."
@@ -295,7 +295,7 @@ Flip to 0.10 only when Phase 6 attribution shows flow discriminating over a mean
 either re-weighted toward where the information actually is, or the insider term dropped to a flag
 (the `lobbyingFlag` precedent) rather than a scored input. Re-running the burn-in query above is the
 check; a fresh decrypt takes seconds. Congressional clusters stay at zero weight permanently
-regardless. If flipped, update CLAUDE.md's flow rows ("DISPLAY-ONLY" clauses) and the Flow card's
+regardless. If flipped, update `docs/claude/key-files.md`'s flow rows ("DISPLAY-ONLY" clauses) and the Flow card's
 burn-in copy in `index.html` (version bump).
 
 ## Phase 6 — Sleeve attribution (`agentic-ledger.mjs` + Rebalance Log)
@@ -351,6 +351,6 @@ drivers excluded; alpha math consistent with the existing per-decision grading o
    renders the new badges (`make-sample-data.mjs` gains fixtures for: a look-through breach, a
    drawdown-soft state, a stressed regime, sleeve stats — a surface that can't be previewed rots,
    see the v116 lesson).
-4. CLAUDE.md (+ AGENTIC.md / PRODUCER.md where relevant) updated in the same change; this file's
+4. `docs/claude/` reference (+ AGENTIC.md / PRODUCER.md where relevant; root CLAUDE.md for active rules) updated in the same change; this file's
    phase status updated.
 5. Branch merged to `main` (ALWAYS MERGE rule).
