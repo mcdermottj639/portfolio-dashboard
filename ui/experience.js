@@ -448,30 +448,40 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
       +'<p class="ws-research"><span>Research</span><b>'+(o.research||'—')+'</b></p>'
       +'<nav class="ws-stage" aria-label="'+sym+' stages"><span aria-current="step">Holding</span><i aria-hidden="true"></i><button type="button" data-pj-go="analyze" data-pj-sym="'+sym+'">Research · View thesis</button><i aria-hidden="true"></i><button type="button" data-pj-go="plan" data-pj-sym="'+sym+'" data-pj-focus="'+sym+'">Plan · Review plan</button></nav></article>';
   }
+  // The per-row context a position card shows (next action, levels, research stamp, agentic target) — one source for the Positions list
+  // and Book's selected-holding block (v248).
+  function posOpts(r, acct) {
+    const o={};
+    const rs=stampOf('research'), rsTxt=rs?(rs.state==='stale'?'⚠ ':'')+esc(rs.text)+(rs.dateOnly?' (date only)':''):'';
+    if(acct==='main'){
+      const book=apexBook(), T=window.__APEX_TGT;
+      const line=book?.lines.find(l=>l.sym===r.symbol), core=book?.c.out.find(x=>x.kind==='core'&&String(x.title).startsWith(r.symbol+' ')), rev=book?.reviews.find(x=>x.sym===r.symbol);
+      o.next=line?qtyLabel(line)+(line.px?' <span class="ws-px">· '+esc(line.px)+'</span>':''):core?esc(core.title):rev?esc(rev.why):'';
+      try{ o.levels=book?window.Apex.exitLevelsFor(book.c.cfg,r.symbol):null; }catch(_){ o.levels=null; }
+      const held=Array.isArray(T?.heldLevels)&&T.heldLevels.some(x=>x&&x.sym===r.symbol), entry=Array.isArray(T?.top5)&&T.top5.some(x=>x&&x.sym===r.symbol);
+      o.research=(held||entry)&&rsTxt?(held?'Held-name research record':'New-entry research')+' · '+rsTxt:'';
+    } else {
+      const agT=window.__PF_AG_TARGET, names=window.__DATA?.agentic?.target?.names;
+      o.tgt=agT?.rows?.find(x=>x.sym===r.symbol)||null;
+      o.next=o.tgt?esc(o.tgt.status):'';
+      o.research=o.tgt&&rsTxt&&Array.isArray(names)&&names.some(x=>x&&x.ticker===r.symbol)?'Target research · '+rsTxt:'';
+    }
+    return o;
+  }
   function posCards() {
     const acct=account(), rows=(typeof window.__pfPosRows==='function'?window.__pfPosRows(acct):[]).filter(r=>r&&r.symbol);
     if(!rows.length)return '<p class="ws-empty"><strong>No open positions</strong><span>'+(acct==='agentic'&&!Array.isArray(window.__DATA?.agentic?.positions)?'Agentic holdings unavailable in this snapshot.':'Nothing to show for this account.')+'</span></p>';
     const sel=window.PFJourney?.state?.symbol||'';
     const ordered=rows.slice().sort((a,b)=>(a.symbol===sel?-1:b.symbol===sel?1:0)||((b.val==null?-1:b.val)-(a.val==null?-1:a.val)));
-    const book=acct==='main'?apexBook():null, T=window.__APEX_TGT, agT=window.__PF_AG_TARGET;
-    const rs=stampOf('research'), rsTxt=rs?(rs.state==='stale'?'⚠ ':'')+esc(rs.text)+(rs.dateOnly?' (date only)':''):'';
-    const inT=(arr,k)=>Array.isArray(arr)&&arr.some(x=>x&&x[k]);
-    return '<h2 class="ws-h">Positions <span class="ws-count">'+rows.length+'</span></h2>'+ordered.map((r,n)=>{
-      const o={open:n===0,selected:r.symbol===sel};
-      if(acct==='main'){
-        const line=book?.lines.find(l=>l.sym===r.symbol), core=book?.c.out.find(x=>x.kind==='core'&&String(x.title).startsWith(r.symbol+' ')), rev=book?.reviews.find(x=>x.sym===r.symbol);
-        o.next=line?qtyLabel(line)+(line.px?' <span class="ws-px">· '+esc(line.px)+'</span>':''):core?esc(core.title):rev?esc(rev.why):'';
-        try{ o.levels=book?window.Apex.exitLevelsFor(book.c.cfg,r.symbol):null; }catch(_){ o.levels=null; }
-        const held=Array.isArray(T?.heldLevels)&&T.heldLevels.some(x=>x&&x.sym===r.symbol), entry=Array.isArray(T?.top5)&&T.top5.some(x=>x&&x.sym===r.symbol);
-        o.research=(held||entry)&&rsTxt?(held?'Held-name research record':'New-entry research')+' · '+rsTxt:'';
-      } else {
-        o.tgt=agT?.rows?.find(x=>x.sym===r.symbol)||null;
-        o.next=o.tgt?esc(o.tgt.status):'';
-        const names=window.__DATA?.agentic?.target?.names;
-        o.research=o.tgt&&rsTxt&&inT(names,'ticker')&&names.some(x=>x&&x.ticker===r.symbol)?'Target research · '+rsTxt:'';
-      }
-      return posCard(r,o);
-    }).join('');
+    return '<h2 class="ws-h">Positions <span class="ws-count">'+rows.length+'</span></h2>'+ordered.map((r,n)=>posCard(r,{...posOpts(r,acct),open:n===0,selected:r.symbol===sel})).join('');
+  }
+  // v248 Book: a holding tapped on the left page (ui/book.js sets window.__pfBookPick) opens at the top of Overview's right page.
+  function selectedHTML() {
+    const acct=account(), pick=window.__pfBookPick;
+    if(document.documentElement.getAttribute('data-book')!=='on'||!pick||pick.acct!==acct)return null;
+    const r=(typeof window.__pfPosRows==='function'?window.__pfPosRows(acct):[]).find(x=>x&&x.symbol===pick.sym);
+    if(!r)return null;
+    return '<h2 class="ws-h"><span>Selected</span><button type="button" data-bk-clear aria-label="Close the selected holding">✕ Close</button></h2>'+posCard(r,{...posOpts(r,acct),open:true,selected:true});
   }
   // ── placing the blocks (inside the active account's root, so a re-render of that root removes them and they are re-added) ──────
   function placeBlock(root, id, html, after) {
@@ -495,16 +505,16 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
         // The snapshot's own Day change / Leverage (or Idle cash) tiles, cloned: the same rendered figures, no second calculation.
         const labels=acct==='agentic'?['Idle Cash']:['Day Change','Leverage'];
         const tiles=[...(root.querySelectorAll(':scope>[data-sec="snapshot"] .snap'))].filter(t=>labels.includes((t.querySelector('.snap-lbl')?.textContent||'').trim()));
-        let strip=root.querySelector(':scope>#ws-strip'), sig=tiles.map(t=>t.outerHTML).join('');
-        if(!strip||strip.dataset.sig!==sig){ const n=document.createElement('section'); n.id='ws-strip'; n.className='ws-block ws-strip'; n.dataset.sig=sig; n.setAttribute('aria-label','Account summary'); tiles.forEach(t=>n.appendChild(t.cloneNode(true))); if(strip)strip.replaceWith(n); else hdr.after(n); strip=n; }
+        let strip=root.querySelector(':scope>#ws-strip'), sig=tiles.map(t=>t.outerHTML.replace(' data-book-dup=""','')).join('');
+        if(!strip||strip.dataset.sig!==sig){ const n=document.createElement('section'); n.id='ws-strip'; n.className='ws-block ws-strip'; n.dataset.sig=sig; n.setAttribute('aria-label','Account summary'); tiles.forEach(t=>{const k=t.cloneNode(true);k.removeAttribute('data-book-dup');n.appendChild(k);}); if(strip)strip.replaceWith(n); else hdr.after(n); strip=n; }
         if(!tiles.length)strip.remove();
-        const prev=tiles.length?strip:hdr;
+        const lead=tiles.length?strip:hdr, picked=placeBlock(root,'ws-selected',selectedHTML(),lead), prev=picked||lead;
         const act=placeBlock(root,'ws-actions',actionsHTML(),prev), more=placeBlock(root,'ws-more',moreHTML(),act);
         placeBlock(root,'ws-poscards',null,more);
       } else if(tab==='positions') {
-        ['ws-strip','ws-actions','ws-more'].forEach(id=>placeBlock(root,id,null,hdr));
+        ['ws-strip','ws-selected','ws-actions','ws-more'].forEach(id=>placeBlock(root,id,null,hdr));
         placeBlock(root,'ws-poscards',posCards(),hdr);
-      } else ['ws-strip','ws-actions','ws-more','ws-poscards'].forEach(id=>placeBlock(root,id,null,hdr));
+      } else ['ws-strip','ws-selected','ws-actions','ws-more','ws-poscards'].forEach(id=>placeBlock(root,id,null,hdr));
       protect();
     } finally { blocksBusy=false; }
   }
@@ -533,6 +543,6 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&routeKey==='today')queueRefresh();});
   setInterval(()=>{if(!document.hidden&&routeKey==='today')queueRefresh();},60000);
   window.__experienceRefresh=queueRefresh;
-  window.PFExperience=Object.freeze({navigate,focusPlan,refreshBlocks:wsBlocks,get route(){return routeKey;},get account(){return account();},get origin(){return origin;},get area(){return areaOf(routeKey,account());}});
+  window.PFExperience=Object.freeze({navigate,focusPlan,refreshBlocks:wsBlocks,actionsHTML:()=>actionsHTML(),get route(){return routeKey;},get account(){return account();},get origin(){return origin;},get area(){return areaOf(routeKey,account());}});
   navigate(routeKey,{keepScroll:true});
 })();

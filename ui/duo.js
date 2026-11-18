@@ -53,6 +53,9 @@
   var G=typeof window!=='undefined'?window:globalThis;
   var KEY='pf:duo-mode', MODES=['auto','folded','book','standard'], GAP=24, FORCED_GAP=8;   // a reported crease gets a 24px gutter; a forced split has no crease, so only a hairline gap
   var LANDING={today:1,accounts:1,markets:1,analyze:1,apexpaper:1};
+  // v248: in Book only, the rest of the Apex / Agentic workspace (Positions, Actions and Overview's section routes) splits too, so
+  // ui/book.js can keep the command panel on the left page. Folded keeps the v247 set above.
+  var BOOK_ROUTES={holdings:1,plan:1,performance:1,heatmap:1,risk:1,income:1,technicals:1,fundamentals:1,flow:1};
   function normalizeMode(v){return MODES.indexOf(v)>=0?v:'auto';}
   function readMode(store){try{return normalizeMode(store&&store.getItem(KEY));}catch(_){return 'auto';}}
   function writeMode(store,m){try{store.setItem(KEY,m);return true;}catch(_){return false;}}
@@ -87,7 +90,7 @@
     }
     return null;
   }
-  var core={KEY:KEY,MODES:MODES,LANDING:LANDING,GAP:GAP,FORCED_GAP:FORCED_GAP,normalizeMode:normalizeMode,readMode:readMode,writeMode:writeMode,detect:detect,resolve:resolve,geometry:geometry};
+  var core={KEY:KEY,MODES:MODES,LANDING:LANDING,BOOK_ROUTES:BOOK_ROUTES,GAP:GAP,FORCED_GAP:FORCED_GAP,normalizeMode:normalizeMode,readMode:readMode,writeMode:writeMode,detect:detect,resolve:resolve,geometry:geometry};
   var api=G.PFDuo=G.PFDuo||{};api.core=core;
   if(typeof document==='undefined'||!G.document)return;
 
@@ -125,14 +128,17 @@
   }
   var $=function(id){return document.getElementById(id);};
   function route(){try{return G.PFExperience&&G.PFExperience.route||'';}catch(_){return '';}}
-  function landing(){return !!G.PFExperience&&!!LANDING[route()];}
+  function landing(){
+    var E=G.PFExperience,r=route();if(!E)return false;
+    return !!LANDING[r]||(layout==='book'&&!!BOOK_ROUTES[r]&&(E.area==='apex'||E.area==='agentic'));
+  }
   function vis(e){return !!e&&e.getClientRects().length>0;}
   // Summary blocks per landing view, in the order they stack in the top (or left) pane. Chrome first. Existing nodes only.
   function atoms(){
     var out=[],r=route(),q=function(s){return Array.prototype.slice.call(document.querySelectorAll(s)).filter(vis);};
     q('#ex-top').forEach(function(e){out.push(e);});   // the tab row (#ex-subnav) is interactive: it stays in the flow, at the top of the scrolling part
     if(r==='today')q('#page-ex-today .td-hero').forEach(function(e){out.push(e);});
-    else if(r==='accounts'){q('#page-portfolio .header').slice(0,1).forEach(function(e){out.push(e);});q('#page-portfolio #ws-strip').forEach(function(e){out.push(e);});}
+    else if(r==='accounts'||(BOOK_ROUTES[r]&&r!=='plan')){q('#page-portfolio .header').slice(0,1).forEach(function(e){out.push(e);});q('#page-portfolio #ws-strip').forEach(function(e){out.push(e);});}
     else if(r==='markets')q('#markets-app > .picks-hero').forEach(function(e){out.push(e);});
     else if(r==='analyze'){q('#pj-context').forEach(function(e){out.push(e);});q('#az-result > .card:first-child').forEach(function(e){out.push(e);});}
     else if(r==='apexpaper'){q('#apexpaper-app .apx-head').forEach(function(e){out.push(e);});q('#apexpaper-app .apx-decision .apx-tiles').forEach(function(e){out.push(e);});}
@@ -246,7 +252,7 @@
   }
   // ── the control ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
   var LABEL={auto:'Auto',folded:'Folded',book:'Book',standard:'Standard'};
-  var HINT={auto:'Follows the fold sensor when the browser reports one; otherwise Standard.',folded:'Top / bottom split on Today, Apex, Agentic, Research and Paper.',book:'Left / right split on Today, Apex, Agentic, Research and Paper.',standard:'The normal layout. No split.'};
+  var HINT={auto:'Follows the fold sensor when the browser reports one; otherwise Standard.',folded:'Top / bottom split on Today, Apex, Agentic, Research and Paper.',book:'Left / right: in Apex and Agentic a command panel on the left, the analysis on the right. Today, Research and Paper split too.',standard:'The normal layout. No split.'};
   var ICON={standard:'<rect x="3" y="2.5" width="10" height="11" rx="1.5"/>',folded:'<rect x="3" y="2.5" width="10" height="11" rx="1.5"/><path d="M3 8h10"/>',book:'<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M8 3v10"/>'};
   var pop=null,btn=null;
   function ensureControl(){

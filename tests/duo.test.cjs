@@ -56,6 +56,8 @@ assert.equal(core.readMode(null), 'auto');
 
 // Which routes split: exactly the five landing routes.
 assert.deepEqual(Object.keys(core.LANDING).sort(), ['accounts','analyze','apexpaper','markets','today']);
+  // v248: Book (only) also splits the rest of the Apex / Agentic workspace for the command panel.
+  assert.deepEqual(Object.keys(core.BOOK_ROUTES).sort(), ['flow','fundamentals','heatmap','holdings','income','performance','plan','risk','technicals']);
 // Layout-only contract: the split code is keyed to the state attributes (static check on the shipped stylesheet).
 const css = fs.readFileSync(path.join(__dirname, '../ui/duo.css'), 'utf8');
 const block = css.slice(css.indexOf('9 · v247')).replace(/\/\*[\s\S]*?\*\//g, '');
