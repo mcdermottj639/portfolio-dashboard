@@ -146,9 +146,10 @@ re-reading a 570K-character CLAUDE.md. Work this way:
   per release; one PR per scope; run independent tool calls in parallel.
 - **Targeted tests while developing** (§8). Run the full gate set once on the final head (§6.4); CI is the
   gate of record for the long browser suites (journey-browser ≈ 11 min).
-- **No status polling loops.** Wait for CI with ONE blocking call — `gh pr checks <N> --watch --interval 60`
-  or `gh run watch <run-id> --exit-status` (timeout ≤ 10 min, then at most one more) — not repeated
-  separate status checks. After merge, one Pages check (≤ 5 tries, 60 s apart).
+- **No status polling loops.** Wait for CI with ONE blocking shell call (timeout ≤ 10 min, then at most one
+  more), not repeated separate status checks. GraphQL (`gh pr checks`) is refused in Claude sessions; use REST:
+  `for i in $(seq 1 18); do r=$(gh api repos/mcdermottj639/portfolio-dashboard/commits/$SHA/check-runs --jq '.check_runs[]|"\(.name)=\(.status)/\(.conclusion)"'); [ -n "$r" ] && ! grep -q 'queued\|in_progress' <<<"$r" && break; sleep 30; done; echo "$r"`.
+  After merge, one Pages check in the same style (≤ 5 tries, 60 s apart).
 - **Delegate only parallel, independent work**, and hand the agent file paths + line ranges, not "read CLAUDE.md".
 - **Short records.** Release-log entry ≤ 12 lines; handoff entries link PR/SHA instead of re-describing.
 - **Measure.** On each development task note requests/turns, elapsed time and cached-read tokens when the
