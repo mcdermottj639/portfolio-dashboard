@@ -15,6 +15,16 @@ usage; one blocking CI watch), `PROPOSAL-app-structure.md`, `producer/AGENTIC.md
 character budget. No code, data, rule, schedule, permission or version change. Scheduled-task prompts audited:
 none depends on a CLAUDE.md heading or line; AGENTIC.md / PRODUCER.md headings and step numbers left untouched.
 
+## v254 — Apex card no longer sends approvals to Jarvis (2026-11-18)
+Jack (Nov 18 17:31 ET): "Best guess. 'Approvals live in Jarvis': the Apex card still says this." Jarvis is retired (Task storage is
+a database only), and approvals have been the Confirm button since v199. Wording only: no rule, ticket, prompt or Confirm change.
+- `ui/apex.js`: intro "Rules fire here; you confirm with Claude below; you place the order in Robinhood." Footer "Tickets are proposals
+  from these rules. Check them with Claude using the Confirm button above, and against live holdings and pending orders before …" (the
+  Jarvis link and the unused `DEFAULT_CFG.jarvis` are gone). Armed rung "armed — trigger set by the morning scan".
+- `index.html` research note: "Buy lines are in the Confirm list on Actions." Comments updated.
+- Tests: `producer/apex.test.mjs` now asserts the card names Robinhood and never Jarvis. Older entries below that say "Jarvis" are
+  HISTORICAL.
+
 ## v253 — Research holds each account's research; Actions holds what to do (2026-11-18)
 Jack (Nov 18 14:02 ET: "why does research always open to analyze. Apex and agentic plans should be under the research for each no?";
 14:54 "PR 2 — Research/Actions redesign … Reuse existing cards; avoid duplicate information"). Display and navigation only: every card

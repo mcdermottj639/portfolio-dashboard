@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=253"></script>
-<script src="ui/experience-model.js?v=253"></script>
+<script src="ui/theme.js?v=254"></script>
+<script src="ui/experience-model.js?v=254"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,15 +729,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=253">
-<link rel="stylesheet" href="ui/journey.css?v=253">
-<link rel="stylesheet" href="ui/predictions.css?v=253">
-<link rel="stylesheet" href="ui/apex-paper.css?v=253">
-<link rel="stylesheet" href="ui/smartmoney.css?v=253">
-<link rel="stylesheet" href="ui/ticker.css?v=253">
-<link rel="stylesheet" href="ui/today.css?v=253">
-<link rel="stylesheet" href="ui/book.css?v=253">
-<link rel="stylesheet" href="ui/duo.css?v=253">
+<link rel="stylesheet" href="ui/experience.css?v=254">
+<link rel="stylesheet" href="ui/journey.css?v=254">
+<link rel="stylesheet" href="ui/predictions.css?v=254">
+<link rel="stylesheet" href="ui/apex-paper.css?v=254">
+<link rel="stylesheet" href="ui/smartmoney.css?v=254">
+<link rel="stylesheet" href="ui/ticker.css?v=254">
+<link rel="stylesheet" href="ui/today.css?v=254">
+<link rel="stylesheet" href="ui/book.css?v=254">
+<link rel="stylesheet" href="ui/duo.css?v=254">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -807,10 +807,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=253"></script>
-<script src="ui/apex.js?v=253"></script>
-<script src="ui/business.js?v=253"></script>
-<script src="ui/apex-paper.js?v=253"></script>
+<script src="ui/sd-rules.js?v=254"></script>
+<script src="ui/apex.js?v=254"></script>
+<script src="ui/business.js?v=254"></script>
+<script src="ui/apex-paper.js?v=254"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -924,7 +924,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v253'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v254'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2066,7 +2066,7 @@ function apexPaperLoad(){
 window.__apexPaperPaint=apexPaperPaint; window.__apexPaperLoad=apexPaperLoad;
 /* v186 — Apex leverage loop (ui/apex.js). Reads the same snapshot the plan reads: equity =
    account value (st.totalVal), debt = negative cash, positions = enriched. Pure rules live in the
-   module; this is only the adapter. Approvals are NOT here — Jarvis holds the decisions queue. */
+   module; this is only the adapter. Approvals are the Confirm button (a Claude chat); orders are placed by hand in Robinhood. */
 function renderApexCard(S,opts){
   const el=document.getElementById('apex-content');
   if(!S||!S.stats||!Array.isArray(S.enriched)){ window.__PF_APEX_REVIEW=null; return; }
@@ -2125,7 +2125,7 @@ function renderApexCard(S,opts){
       const ranked=T.top5.filter(r=>r&&r.sym&&isFinite(+r.composite)).slice().sort((a,b)=>((tg[b.sym]?1:0)-(tg[a.sym]?1:0))||((+b.composite)-(+a.composite)));
       research={rows:ranked.slice(0,5).map(r=>({sym:r.sym,score:+r.composite,px:+r.entry||null,held:held.has(r.sym),target:tg[r.sym]||null,why:r.why||'',rr:r.rr,vol:r.vol,extended:!!r.extended,name:r.name||null,trigger:+r.trigger||null,limit:+r.limit||null,tp1:+r.tp1||null,stop:+r.stop||null,atr:+r.atr||null,stopBasis:r.stopBasis||null,wash:(cfg.wash&&cfg.wash[r.sym])?cfg.wash[r.sym].clear:null})),record:T.record||null,vetoed:T.vetoed||[],opps:(typeof Apex.opportunities==='function')?Apex.opportunities(T):null
         ,asOf:T.asOf||'',source:`Weekly research · ${T.gatedCount||'?'}/${T.universeCount||'?'} passed the gates`,
-        note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. 🚫 = tax hold (wash sale). ⏳ = near its 20-day high (half size). News is a veto only. Buy tickets are in Jarvis.'};
+        note:'Score 0–10 = momentum 40% · fundamentals 35% · reward/risk 25%. 🎯 = target this week, sized by volatility. 🚫 = tax hold (wash sale). ⏳ = near its 20-day high (half size). News is a veto only. Buy lines are in the Confirm list on Actions.'};
     } else if(typeof sdMomentum==='function'&&typeof SD_BENCH==='object'){
       const held=new Set(positions.map(p=>p.symbol));
       const uni=[...new Set([...Object.keys(SD_BENCH),...held])];
@@ -6193,7 +6193,7 @@ window.switchTab=switchTab;
     return (fb&&fb.offsetHeight>0)?fb.offsetHeight+8:48;
   }
   function scrollToCard(card){
-    // v253: a plan-page card lives on ONE workspace tab (data-ws). Open that tab first, or the jump lands on a hidden card.
+    // v254: a plan-page card lives on ONE workspace tab (data-ws). Open that tab first, or the jump lands on a hidden card.
     try{ var w=card.getAttribute('data-ws'), X=window.PFExperience; if(w&&X&&document.documentElement.classList.contains('ws-on')){ var want=w==='research'?'acctresearch':'plan'; if(X.route!==want)X.navigate(want,{keepScroll:true}); } }catch(e){}
     for(var dd=card.parentElement; dd; dd=dd.parentElement){ if(dd.tagName==='DETAILS'&&!dd.open)dd.open=true; else if(dd.id&&dd.style&&dd.style.display==='none'&&window.toggleSection&&document.querySelector('[data-toggle="'+dd.id+'"]'))window.toggleSection(dd.id); }   // v202: open a folded section first
     try{ if(window.__pfFold)window.__pfFold.open(card); }catch(e){}   // v235: a data-toggle body (most cards) opens here too
@@ -8942,17 +8942,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=253"></script>
-<script src="ui/today.js?v=253"></script>
-<script src="ui/predictions-model.js?v=253"></script>
-<script src="ui/predictions.js?v=253"></script>
-<script src="ui/smartmoney-model.js?v=253"></script>
-<script src="ui/smartmoney.js?v=253"></script>
-<script src="ui/experience.js?v=253"></script>
-<script src="ui/ticker.js?v=253"></script>
-<script src="ui/duo.js?v=253"></script>
-<script src="ui/compact.js?v=253"></script>
-<script src="ui/journey.js?v=253"></script>
-<script src="ui/book.js?v=253"></script>
+<script src="ui/today-model.js?v=254"></script>
+<script src="ui/today.js?v=254"></script>
+<script src="ui/predictions-model.js?v=254"></script>
+<script src="ui/predictions.js?v=254"></script>
+<script src="ui/smartmoney-model.js?v=254"></script>
+<script src="ui/smartmoney.js?v=254"></script>
+<script src="ui/experience.js?v=254"></script>
+<script src="ui/ticker.js?v=254"></script>
+<script src="ui/duo.js?v=254"></script>
+<script src="ui/compact.js?v=254"></script>
+<script src="ui/journey.js?v=254"></script>
+<script src="ui/book.js?v=254"></script>
 </body>
 </html>

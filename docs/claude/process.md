@@ -4,7 +4,7 @@
 
 > Load for release mechanics, preview fixtures (`make-sample-data.mjs` flags), the full test-coverage narrative, the replay-key contract, encryption and env vars.
 >
-> **Superseded lines kept for history (do NOT follow):** (1) "develop on `claude/portfolio-dashboard-data-ffc7x3`", "Push code straight to `main`" (2026-08-11) and the `git push origin <branch>:main` recipe under "ALWAYS MERGE" (2026-08-14) — superseded by `AGENTS.md` + `docs/RELEASE-WORKFLOW.md` (2026-11-13): a branch and PR per task, required CI, Claude merges the tested head after green checks (owner never merges; the repo's `allow_auto_merge` setting read false on 2026-11-18). The "finishing = landed on main and served" intent still stands. (2) "Currently **v222**" — the version lives in `index.html` `APP_VERSION` and `sw.js` `CACHE_VERSION`. (3) Apex "1.35× cruise / 1.5× cap" under "Two accounts, two MANDATES" — the band is `ui/apex.js` `C` (v218: 1.75 reload / 1.90 cruise / 2.00 cap). (4) "Light ⇄ Gold" theming — v229 moved to Light / Dark / System (`ui/theme.js`); read the code before relying on this paragraph.
+> **Superseded lines kept for history (do NOT follow):** (1) "develop on `claude/portfolio-dashboard-data-ffc7x3`", "Push code straight to `main`" (2026-08-11) and the `git push origin <branch>:main` recipe under "ALWAYS MERGE" (2026-08-14) — superseded by `AGENTS.md` + `docs/RELEASE-WORKFLOW.md` (2026-11-13): a branch and PR per task, required CI, Claude merges the tested head after green checks (owner never merges; the repo's `allow_auto_merge` setting read false on 2026-11-18). The "finishing = landed on main and served" intent still stands. (2) "Currently **v254**" (any fixed number here goes stale) — the version lives in `index.html` `APP_VERSION` and `sw.js` `CACHE_VERSION`. (3) Apex "1.35× cruise / 1.5× cap" under "Two accounts, two MANDATES" — the band is `ui/apex.js` `C` (v218: 1.75 reload / 1.90 cruise / 2.00 cap). (4) "Light ⇄ Gold" theming — v229 moved to Light / Dark / System (`ui/theme.js`); read the code before relying on this paragraph.
 
 ## Plan → Build → Verify (standing development process, owner-set 2026-08-25)
 Every substantive change to this repo runs a three-stage split, chosen for usage-limit economics AND
@@ -56,7 +56,7 @@ changes only on the owner's explicit ask via `update_trigger`.
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v222** (`pf-v222`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v254** (`pf-v254`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
