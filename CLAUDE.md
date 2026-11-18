@@ -1,3 +1,34 @@
+## v253 — Research holds each account's research; Actions holds what to do (2026-11-18)
+Jack (Nov 18 14:02 ET: "why does research always open to analyze. Apex and agentic plans should be under the research for each no?";
+14:54 "PR 2 — Research/Actions redesign … Reuse existing cards; avoid duplicate information"). Display and navigation only: every card
+is the same node drawn once by the same renderer; no rule, ticket, Confirm flow, prompt, data, producer or schedule change.
+- **One page, two tabs.** New route `acctresearch` (`ui/experience.js`; account-scoped, tab `picks`, hidden from chip rows) is the
+  workspace **Research** tab. It shows page-picks, the same page as `plan` (**Actions**). Pieces carry `data-ws="research"` or
+  `data-ws="actions"` and `ui/experience.css` hides the other tab's pieces (`html.ws-on[data-ws-tab=…] #page-picks [data-ws=…]`).
+  Untagged pieces (agentic hero, disclaimer) show on both. Classic view and every non-workspace route keep the whole page.
+
+| Tab | Apex (••0741) | Agentic (••3900) |
+| --- | --- | --- |
+| Research | This week's research (top 5, record), ranked opportunities, screened out, weights vs target + tech bar, business check, v2.9 Paper pointer | Model correctness & forward record, The target and why, Business check |
+| Actions | Leverage tiles, recommended trades + Confirm + review rows, rules firing, what-if, Action Center | Where the plan stands, What's blocked, The waiting ground, Guardrails, How the loop runs |
+
+- **`ui/apex.js`**: thin wrappers only (`[data-apex-weights]`, `[data-apex-research]`, `[data-apex-sim]`) plus `data-ws` on each section.
+  On Research the Apex sections are re-ordered by CSS `order` (research, weights, business); DOM order is unchanged, so Classic is.
+- **Analyze** is no longer what the tab opens. A slim "Analyze a stock" row (`#ws-analyze`, the journey's existing
+  `data-pj-go="analyze"`) sits at the top of the research page; Analyze opened from it (or from a position card) still keeps the
+  Research tab lit and Back returns to the research page. Research > Analyze in the bottom nav is unchanged.
+- **Book** (`ui/book.js`, `ui/duo.js` BOOK_ROUTES): on Research the left page is navigation: "On this page" (one row per research
+  section visible on the right, tap = scroll the right page to it) and "Names in this research" (tap = Analyze). Labels and tickers
+  only, no figure repeated. Actions keeps the review queue + risk/strategy block. The independent-scroll trial is NOT extended:
+  `INDEP_ROUTES` is still `plan` only. Left-panel rows that pointed at research content (Tech outside core, Largest drift) and the
+  Overview "theme cap" action row now open Research.
+- Find / My view: a jump to a tagged card opens its tab first (`scrollToCard`).
+- Timestamps unchanged: Agentic says research is every two weeks; the header Research stamp and its 7-day ⚠ (entry zones advisory)
+  are as in v251. Known and left alone: the Apex header "Last scan" stamp reads the Daily Picks screen date, not the Apex scan.
+- Tests: nav-b-checks (Research tab → account research; the row → Analyze; Back twice), workspace-checks (each tagged piece on
+  exactly one tab; paper pointer on Research), book-checks section 4 (navigation panel, jump, names, no dollar figure),
+  analyze-account-checks, experience.test / duo.test route lists. Not verified: a physical iPhone Duo.
+
 ## v252 — Held names always get daily history; Analyze reads one account's book (2026-11-18)
 Jack (Nov 18 14:02 ET, two Analyze screenshots; 14:54 "PR 1 — Data integrity"): DXCM, about a fifth of Apex, read
 "Limited Data / STALE DATA", and Research > Analyze with Account = Agentic listed the self-directed holdings.

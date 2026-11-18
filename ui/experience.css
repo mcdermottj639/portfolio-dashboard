@@ -464,3 +464,20 @@ html.ws-on .pj-context{padding:6px 12px;margin:0 0 8px}
 html.ws-on .pj-context-head select{min-height:40px}
 @media(max-width:340px){.ws-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:740px){.ws-strip{max-width:560px}#agentic-app .ws-strip{max-width:280px}.ws-acts,.ws-rows{max-width:640px}}
+
+/* ── v253 Research / Actions split (Jack, Nov 18 2026) ─────────────────────────────────────────────────────────────────────────
+   One page (page-picks), one render of every card. A card or Apex section tagged data-ws="research" shows on the Research tab,
+   data-ws="actions" on Actions; untagged pieces (the Apex intro line, the agentic hero, the disclaimer) show on both. Only inside
+   the Apex / Agentic workspace: Classic view and every other route keep the whole page. */
+html.ws-on[data-ws-tab="research"] #page-picks [data-ws="actions"],
+html.ws-on[data-ws-tab="actions"] #page-picks [data-ws="research"]{display:none!important}
+html.ws-on #page-picks .ws-analyze{margin:0 0 12px}
+html.ws-on #page-picks .ws-analyze .ws-row small{display:block;font-size:11px;font-weight:400;opacity:.7;margin-top:1px}
+html.ws-on[data-ws-tab="research"] #apex-card .card-title .card-hint{display:none}
+/* Research reads top-down: this week's research, ranked list, weights, then the business check. Order only; the DOM is unchanged. */
+html.ws-on[data-ws-tab="research"] #apex-content{display:flex!important;flex-direction:column;align-items:stretch!important}
+html.ws-on[data-ws-tab="research"] #apex-content>*{order:5!important;min-width:0}
+html.ws-on[data-ws-tab="research"] #apex-content>:first-child{order:0!important}
+html.ws-on[data-ws-tab="research"] #apex-content>[data-apex-research]{order:1!important}
+html.ws-on[data-ws-tab="research"] #apex-content>[data-apex-weights]{order:2!important}
+html.ws-on[data-ws-tab="research"] #apex-content>[data-apex-business]{order:3!important}

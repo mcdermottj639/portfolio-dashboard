@@ -246,39 +246,50 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await p.locator(chip('options')).click();await settle(p);assert.match(await p.locator('#ex-context').innerText(),/^Options · self-directed source/);
     await ctx.close();
   }
-  // Research chip (Apex / Agentic rows): the journey's "2 · Research" step as a sub-nav chip. It opens Analyze for THIS area's selected holding.
+  // v253 Research tab (Apex / Agentic rows): the account's OWN research page (route acctresearch, the plan page's research cards).
+  // Single-stock Analyze opens from the row inside it, for THIS account's selected holding, and keeps the Research tab current.
   {
     const {ctx,p}=await open();
     const syms=await p.evaluate(()=>({main:PFExperienceModel.snapshot(__DATA,__SNAP,'main').positions.map(x=>x.symbol),ag:PFExperienceModel.snapshot(__DATA,__SNAP,'agentic').positions.map(x=>x.symbol)}));
     const onlyMain=syms.main.find(x=>!syms.ag.includes(x)),onlyAg=syms.ag.find(x=>!syms.main.includes(x));
     assert.ok(onlyMain&&onlyAg,'sample has a holding unique to each account');
     await p.evaluate(([a,b])=>localStorage.setItem('pf-journey-ui-v1',JSON.stringify({main:{symbol:a},agentic:{symbol:b}})),[onlyMain,onlyAg]);await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
+    const tabR='#ex-subnav [data-ws-tab="research"]';
     for(const [acct,A,own,other] of [['main','apex',onlyMain,onlyAg],['agentic','agentic',onlyAg,onlyMain]]){
       await p.locator(area(A)).click();await settle(p);
       assert.deepEqual(await chipsOf(p),CHIPS[A],A+': chips Overview · Positions · Research · Actions');
-      assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),1,A+': one Research chip');
+      assert.equal(await p.locator(tabR).count(),1,A+': one Research tab');
       const order=await chipsOf(p);assert.equal(order.indexOf('Research'),order.indexOf('Positions')+1,A+': Research sits right after Positions');
       await p.locator(chip('accounts')).click();await settle(p);
       const j=(await st(p)).j;
-      await p.locator('#ex-subnav [data-ex-research]').focus();assert.equal(await p.evaluate(()=>document.activeElement.hasAttribute('data-ex-research')),true,A+': Research chip is keyboard focusable');
+      await p.locator(tabR).focus();assert.equal(await p.evaluate(()=>document.activeElement.getAttribute('data-ws-tab')),'research',A+': Research tab is keyboard focusable');
       await p.keyboard.press('Enter');await settle(p);
-      const s=await st(p);assert.deepEqual([s.route,s.account],['analyze',acct],A+': Research chip opens Analyze in the same account');
-      assert.deepEqual(await areas(p),[A],A+': v242 Research keeps its own area highlighted when entered from it');
-      assert.equal(await p.locator('#ex-subnav [data-ex-research]').getAttribute('aria-current'),'page',A+': Research tab is the current tab');
+      let s=await st(p);assert.deepEqual([s.route,s.account],['acctresearch',acct],A+': Research opens the account\'s own research, same account');
+      assert.deepEqual(await areas(p),[A],A+': Research keeps its area highlighted');
+      assert.equal(await p.locator(tabR).getAttribute('aria-current'),'page',A+': Research tab is the current tab');
       assert.equal(s.j.index,j.index+1,A+': one history step');
+      assert.equal(await p.locator('#'+(acct==='agentic'?'plan-agentic-app':'picks-app')).isVisible(),true,A+': the account plan page is the research page');
+      assert.equal(await p.locator('#analyze-app').isVisible(),false,A+': Research no longer opens on single-stock Analyze');
+      // The row inside it opens Analyze for this account's selected holding; the tab stays lit; Back returns to the research page.
+      const row=p.locator('#ws-analyze [data-pj-go="analyze"]');assert.equal(await row.count(),1,A+': one Analyze row on the research page');
+      await row.click();await settle(p);
+      s=await st(p);assert.deepEqual([s.route,s.account],['analyze',acct],A+': the row opens Analyze in the same account');
+      assert.deepEqual(await areas(p),[A]);assert.equal(await p.locator(tabR).getAttribute('aria-current'),'page',A+': Research stays the current tab on Analyze');
       assert.equal(await p.locator('#pj-symbol').inputValue(),own,A+': Analyze opens the selected holding of this account');
       assert.notEqual(await p.locator('#pj-symbol').inputValue(),other,A+': never the other account\'s holding');
       await p.locator('#pj-back').click();await settle(p);
-      assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['accounts',acct,A],A+': Back returns to the account page it came from');
+      assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['acctresearch',acct,A],A+': Back returns to the research page');
+      await p.locator('#pj-back').click();await settle(p);
+      assert.deepEqual([(await st(p)).route,(await st(p)).account,...(await areas(p))],['accounts',acct,A],A+': Back again returns to the account page it came from');
     }
     // No holding selected: Analyze opens with its normal picker, still in the same account.
     await p.evaluate(()=>localStorage.setItem('pf-journey-ui-v1','{}'));await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
-    await p.locator(area('apex')).click();await p.locator('#ex-subnav [data-ex-research]').click();await settle(p);
+    await p.locator(area('apex')).click();await settle(p);await p.locator(tabR).click();await settle(p);await p.locator('#ws-analyze [data-pj-go="analyze"]').click();await settle(p);
     assert.deepEqual([(await st(p)).route,(await st(p)).account],['analyze','main'],'no selection: Analyze opens with its normal picker');
     // A bare Analyze (no Apex/Agentic origin) is a Research-area page: its own row, no workspace Research tab.
     await p.evaluate(()=>PFExperience.navigate('markets'));await settle(p);await p.locator(area('research')).click();await p.evaluate(()=>PFExperience.navigate('analyze'));await settle(p);
     assert.deepEqual(await areas(p),['research'],'bare Analyze highlights Research');
-    assert.equal(await p.locator('#ex-subnav [data-ex-research]').count(),0,'no workspace Research tab in the Research area');
+    assert.equal(await p.locator('#ex-subnav [data-ws-tab="research"]').count(),0,'no workspace Research tab in the Research area');
     assert.deepEqual(await chipsOf(p),CHIPS.research);
     await ctx.close();
   }
