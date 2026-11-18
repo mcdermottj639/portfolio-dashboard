@@ -20,7 +20,7 @@
   if(typeof document==='undefined')return;
   var G=window, root=document.documentElement;
   var TAB={accounts:'overview',performance:'overview',heatmap:'overview',risk:'overview',income:'overview',technicals:'overview',
-    fundamentals:'overview',flow:'overview',holdings:'positions',analyze:'research',plan:'actions'};
+    fundamentals:'overview',flow:'overview',holdings:'positions',analyze:'research',plan:'actions',acctresearch:'findings'};
   var MIN_W=200, MIN_H=120, OVERVIEW_ROWS=8;
   var el=null, raf=0, src='', key='', scrolls={}, lastOn=false;
   function E(){return G.PFExperience||null;}
@@ -134,7 +134,7 @@
       if(num(st.debt)>0&&num(st.callDrop)!==null)out+=goRow('data-bk-card="risk" data-bk-acct="main"','Margin cushion',plain(st.callDrop*100,0),'the book can fall this far before a call');
       try{
         if(c.cfg.themeCap!==false){var th=G.Apex.themeShare(st,c.cfg);if(th&&th.outside>0){
-          out+=goRow('data-ex-route="plan" data-ex-account="main" data-bk-why="theme"','Tech outside '+esc(c.cfg.core||'core'),plain(th.share*100,0),'cap '+Math.round(th.max*100)+'%'+(th.over?' · over':''),bar(th.share*100,th.max*100,th.over));}}
+          out+=goRow('data-ex-route="acctresearch" data-ex-account="main" data-bk-why="theme"','Tech outside '+esc(c.cfg.core||'core'),plain(th.share*100,0),'cap '+Math.round(th.max*100)+'%'+(th.over?' · over':''),bar(th.share*100,th.max*100,th.over));}}
       }catch(_){}
     }
     if(rs.length){var top=rs.slice().sort(function(a,b){return (num(b.pct)||0)-(num(a.pct)||0);})[0];
@@ -158,10 +158,35 @@
     var T=G.__PF_AG_TARGET;
     if(T&&Array.isArray(T.rows)&&T.rows.length){
       var dr=T.rows.filter(function(r){return num(r.drift)!==null;}).sort(function(a,b){return Math.abs(b.drift)-Math.abs(a.drift);})[0];
-      if(dr)out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Largest drift',(dr.drift>0?'+':'−')+Math.abs(dr.drift).toFixed(1)+'pp',esc(dr.sym)+' vs its '+(num(dr.tgt)===null?'—':dr.tgt.toFixed(1)+'%')+' target'+(T.asOf?' · research '+esc(shortDate(T.asOf)):''));
+      if(dr)out+=goRow('data-ex-route="acctresearch" data-ex-account="agentic"','Largest drift',(dr.drift>0?'+':'−')+Math.abs(dr.drift).toFixed(1)+'pp',esc(dr.sym)+' vs its '+(num(dr.tgt)===null?'—':dr.tgt.toFixed(1)+'%')+' target'+(T.asOf?' · research '+esc(shortDate(T.asOf)):''));
     }
     if(!out)return '';
     return sec('Strategy','••••3900 · automated','<div class="bk-rows">'+out+'</div>');
+  }
+  // v253 Research tab (Jack, Nov 18 2026: Book = navigation / context left, detail right). The left page lists the research
+  // sections that are on the right page (tap = scroll the right page to it) and the names that research is about (tap = the
+  // existing single-stock Analyze). It repeats no figure from the right page: labels and tickers only.
+  function onPage(sel){try{var n=document.querySelector('#page-picks '+sel);return !!n&&n.getClientRects().length>0;}catch(_){return false;}}
+  function jumpRow(sel,label){return onPage(sel)?goRow('data-bk-jump="'+esc(sel)+'"',label,'',''):'';}
+  function nameRow(sym,sub){return goRow('data-pj-go="analyze" data-pj-sym="'+esc(sym)+'"','<b class="bk-sym">'+esc(sym)+'</b>','',sub?esc(sub):'');}
+  function findings(acct){
+    var nav='',names=[],seen={};
+    var add=function(sym,sub){sym=String(sym||'').toUpperCase();if(!sym||seen[sym])return;seen[sym]=1;names.push(nameRow(sym,sub));};
+    if(acct==='agentic'){
+      nav=jumpRow('[data-toggle="b-agp-target"]','The target and why')+jumpRow('.cr-card','Model correctness')+jumpRow('[data-toggle="b-agp-biz"]','Business check');
+      try{var ns=G.__DATA&&G.__DATA.agentic&&G.__DATA.agentic.target&&G.__DATA.agentic.target.names;
+        (Array.isArray(ns)?ns:[]).forEach(function(n){if(n&&n.ticker)add(n.ticker,n.phaseOut?'phase-out':'target');});}catch(_){}
+    } else {
+      nav=jumpRow('[data-apex-research]','This week\u2019s research')+jumpRow('[data-apex-opps]','Ranked opportunities')+jumpRow('[data-apex-veto]','Screened out')
+        +jumpRow('[data-apex-weights]','Weights vs target')+jumpRow('[data-apex-business]','Business check')+jumpRow('[data-apex-paper-link]','v2.9 Paper research');
+      try{var T=G.__APEX_TGT||{};
+        Object.keys(T.targets&&typeof T.targets==='object'?T.targets:{}).forEach(function(k){add(k,'this week\u2019s target');});
+        (Array.isArray(T.top5)?T.top5:[]).forEach(function(r){if(r&&r.sym)add(r.sym,'top five');});
+        (Array.isArray(T.heldLevels)?T.heldLevels:[]).forEach(function(r){if(r&&r.sym)add(r.sym,'held name');});}catch(_){}
+    }
+    nav+=goRow('data-pj-go="analyze"','Analyze a stock','','');
+    return sec('On this page','tap to jump','<div class="bk-rows">'+nav+'</div>')+
+      (names.length?sec('Names in this research <span class="bk-count">'+names.length+'</span>','tap one to analyze it','<div class="bk-rows">'+names.join('')+'</div>'):'');
   }
   function queue(){
     var e=E(),h='';
@@ -180,6 +205,7 @@
     if(c.tab==='overview')return head+perfSec(a)+holdings(a,OVERVIEW_ROWS,'overview');
     if(c.tab==='positions')return holdings(a,0,'positions')+head;
     if(c.tab==='research')return holdings(a,0,'research');
+    if(c.tab==='findings')return findings(a);
     return queue()+head;
   }
 
@@ -241,6 +267,16 @@
     };
     if(e.route!=='accounts'||e.account!==acct){e.navigate('accounts',{account:acct});setTimeout(go,260);}else go();
   }
+  // v253: scroll the right page to a research section. Opens the card if it is folded (its own toggle), never re-renders it.
+  function jumpTo(sel){
+    var n=null;try{n=document.querySelector('#page-picks '+sel);}catch(_){n=null;}
+    if(!n)return;
+    var card=n.closest('.card')||n,t=card.querySelector(':scope>.card-title');
+    if(t&&t.getAttribute('aria-expanded')==='false')t.click();
+    var target=n.matches('[data-toggle]')?card:n;
+    var y=target.getBoundingClientRect().top+G.scrollY-((G.__pfTopOffset&&G.__pfTopOffset())||8)-8;G.scrollTo(0,Math.max(0,y));
+    var prev=target.style.boxShadow;target.style.boxShadow='0 0 0 2px #6366f1';setTimeout(function(){target.style.boxShadow=prev;},900);
+  }
   document.addEventListener('click',function(ev){
     if(!el||!el.contains(ev.target))return;
     var s=ev.target.closest('[data-bk-sym]'),cd=ev.target.closest('[data-bk-card]');
@@ -253,6 +289,7 @@
       try{if(e&&e.refreshBlocks)e.refreshBlocks();}catch(_){}
       G.scrollTo(0,0);soon();
     } else if(cd){showCard(cd.getAttribute('data-bk-card'),cd.getAttribute('data-bk-acct'));}
+    else { var j=ev.target.closest('[data-bk-jump]'); if(j)jumpTo(j.getAttribute('data-bk-jump')); }
   });
   document.addEventListener('click',function(ev){var x=ev.target.closest('[data-bk-clear]');if(!x)return;G.__pfBookPick=null;var e=E();try{if(e&&e.refreshBlocks)e.refreshBlocks();}catch(_){}});
 

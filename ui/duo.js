@@ -55,7 +55,7 @@
   var LANDING={today:1,accounts:1,markets:1,analyze:1,apexpaper:1};
   // v248: in Book only, the rest of the Apex / Agentic workspace (Positions, Actions and Overview's section routes) splits too, so
   // ui/book.js can keep the command panel on the left page. Folded keeps the v247 set above.
-  var BOOK_ROUTES={holdings:1,plan:1,performance:1,heatmap:1,risk:1,income:1,technicals:1,fundamentals:1,flow:1};
+  var BOOK_ROUTES={holdings:1,plan:1,acctresearch:1,performance:1,heatmap:1,risk:1,income:1,technicals:1,fundamentals:1,flow:1};
   function normalizeMode(v){return MODES.indexOf(v)>=0?v:'auto';}
   function readMode(store){try{return normalizeMode(store&&store.getItem(KEY));}catch(_){return 'auto';}}
   function writeMode(store,m){try{store.setItem(KEY,m);return true;}catch(_){return false;}}
@@ -158,7 +158,7 @@
     var out=[],r=route(),q=function(s){return Array.prototype.slice.call(document.querySelectorAll(s)).filter(vis);};
     q('#ex-top').forEach(function(e){out.push(e);});   // the tab row (#ex-subnav) is interactive: it stays in the flow, at the top of the scrolling part
     if(r==='today')q('#page-ex-today .td-hero').forEach(function(e){out.push(e);});
-    else if(r==='accounts'||(BOOK_ROUTES[r]&&r!=='plan')){q('#page-portfolio .header').slice(0,1).forEach(function(e){out.push(e);});q('#page-portfolio #ws-strip').forEach(function(e){out.push(e);});}
+    else if(r==='accounts'||(BOOK_ROUTES[r]&&r!=='plan'&&r!=='acctresearch')){q('#page-portfolio .header').slice(0,1).forEach(function(e){out.push(e);});q('#page-portfolio #ws-strip').forEach(function(e){out.push(e);});}
     else if(r==='markets')q('#markets-app > .picks-hero').forEach(function(e){out.push(e);});
     else if(r==='analyze'){q('#pj-context').forEach(function(e){out.push(e);});q('#az-result > .card:first-child').forEach(function(e){out.push(e);});}
     else if(r==='apexpaper'){q('#apexpaper-app .apx-head').forEach(function(e){out.push(e);});q('#apexpaper-app .apx-decision .apx-tiles').forEach(function(e){out.push(e);});

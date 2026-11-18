@@ -118,7 +118,7 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
   // ── 2. Pointer row under the Apex card; the live card, its rules and Confirm are identical with and without the paper file ──
   {
     const {ctx,p}=await open();
-    await p.locator(area('apex')).click();await settle(p);
+    await p.locator(area('apex')).click();await settle(p);await p.locator('#ex-subnav [data-ws-tab="research"]').click();await settle(p);   // v253: the pointer is on the Research tab
     const link=p.locator('#picks-app [data-apex-paper-link]');
     assert.equal(await link.count(),1,'one pointer row');
     assert.match(await link.locator('[data-apx-pointer]').innerText(),/^🧪 v2\.9 paper research: 4 qualified of 1,555 scanned · updated .* ET →$/);
@@ -196,7 +196,7 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
     await paint(p,paperFixture(now,{status:'partial',statusNote:'9 of 12 batches returned',universe:{eligible:1555,scanned:1100,unique:1100,complete:false}}));
     t=await pageText(p);
     assert.equal(await p.locator('#apexpaper-app .apx').getAttribute('data-apx-state'),'partial');assert.match(t,/Partial coverage/);assert.match(t,/9 of 12 batches returned/);assert.match(t,/partial · 1,100 unique/);
-    await p.locator(area('apex')).click();await settle(p);
+    await p.locator(area('apex')).click();await settle(p);await p.locator('#ex-subnav [data-ws-tab="research"]').click();await settle(p);
     assert.match(await p.locator('[data-apx-pointer]').innerText(),/4 qualified of 1,100 scanned · partial coverage/,'the pointer names partial coverage');
     await paint(p,paperFixture(now,{asOf:iso(now-9*864e5)}));
     assert.match(await p.locator('[data-apx-pointer]').innerText(),/STALE — last run /,'the pointer says stale');
@@ -207,7 +207,7 @@ export async function runApexPaperChecks({browser,base,sample,stub,apex,writes=[
   // Missing / unreadable file: an explicit line on the page and on the pointer, never a spinner.
   for(const [paper,state,words] of [['missing','missing',/Research file missing[\s\S]*HTTP 404/],['garbage','unreadable',/Research file unreadable[\s\S]*not valid JSON/],['array','unreadable',/Research file unreadable[\s\S]*not a JSON object/]]){
     const {ctx,p}=await open({paper});
-    await p.locator(area('apex')).click();await settle(p);await p.locator(chip('plan')).click();await settle(p); // v245: the pointer sits under the live Apex card on Actions
+    await p.locator(area('apex')).click();await settle(p);await p.locator('#ex-subnav [data-ws-tab="research"]').click();await settle(p); // v253: the pointer sits under the Apex card on the Research tab
     assert.match(await p.locator('[data-apx-pointer]').innerText(),state==='missing'?/file missing — nothing to show yet/:/file unreadable — nothing to show yet/,paper+': pointer');
     assert.equal(await p.locator('#apex-content [data-apex-confirm], #apex-content [data-apex-lev]').count()>0,true,paper+': the live Apex card still renders');
     await p.locator('[data-apx-pointer]').click();await settle(p);

@@ -41,13 +41,26 @@ const goArea=async(p,a)=>{await p.locator(area(a)).click();await settle(p);};
       assert.deepEqual([s.route,s.account,s.area],[route,acct,A],`${A}: ${t} tab`);assert.equal(await p.locator(tab(t)).getAttribute('aria-current'),'page');}
     // The holding selector stays on Positions and Research.
     await p.locator(tab('positions')).click();await settle(p);assert.equal(await p.locator('#pj-symbol').isVisible(),true,A+': selector on Positions');
-    // Research entered from the area keeps the area highlighted across refresh, Back and Forward; a bare #view=analyze is Research.
+    // v253: the Research tab is the account's own research page; Analyze opens from the row inside it. Both keep the area highlighted
+    // across refresh, Back and Forward; a bare #view=analyze is Research.
     await p.locator(tab('research')).click();await settle(p);
-    assert.deepEqual([(await st(p)).route,...(await areas(p))],['analyze',A],A+': Research tab keeps the area highlighted');
-    assert.equal(await p.locator(tab('research')).getAttribute('aria-current'),'page');assert.equal(await p.locator('#pj-symbol').isVisible(),true,A+': selector on Research');
+    assert.deepEqual([(await st(p)).route,...(await areas(p))],['acctresearch',A],A+': Research tab opens the account research and keeps the area highlighted');
+    assert.equal(await p.locator(tab('research')).getAttribute('aria-current'),'page');
+    await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);assert.deepEqual([(await st(p)).route,...(await areas(p))],['acctresearch',A],A+': the research tab survives a refresh');
+    await p.locator('#ws-analyze [data-pj-go="analyze"]').click();await settle(p);
+    assert.deepEqual([(await st(p)).route,...(await areas(p))],['analyze',A],A+': Analyze from Research keeps the area highlighted');
+    assert.equal(await p.locator(tab('research')).getAttribute('aria-current'),'page');assert.equal(await p.locator('#pj-symbol').isVisible(),true,A+': selector on Analyze');
     await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);assert.deepEqual(await areas(p),[A],A+': origin survives a refresh');
     await p.locator(tab('actions')).click();await settle(p);await p.goBack();await settle(p);assert.deepEqual([(await st(p)).route,...(await areas(p))],['analyze',A],A+': Back');
     await p.goForward();await settle(p);assert.equal((await st(p)).route,'plan',A+': Forward');
+    // Each card is on exactly one of the two tabs: nothing tagged for Actions shows on Research, and the reverse.
+    for(const [t,hide] of [['research','actions'],['actions','research']]){
+      await p.locator(tab(t)).click();await settle(p);
+      const leak=await p.evaluate(h=>[...document.querySelectorAll('#page-picks [data-ws="'+h+'"]')].filter(e=>e.getClientRects().length>0).length,hide);
+      assert.equal(leak,0,`${A}: ${hide} pieces are hidden on the ${t} tab`);
+      const shown=await p.evaluate(t=>[...document.querySelectorAll('#page-picks [data-ws="'+t+'"]')].filter(e=>e.getClientRects().length>0).length,t);
+      assert.ok(shown>0,`${A}: the ${t} tab shows its own pieces`);
+    }
     await ctx.close();
   }
   {const {ctx,p}=await open({seed:{pf_acct:'main'}});await p.goto(base+'#view=analyze');await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);
@@ -105,7 +118,8 @@ const goArea=async(p,a)=>{await p.locator(area(a)).click();await settle(p);};
    assert.deepEqual([(await st(p)).route,...(await areas(p))],['apexpaper','apex'],'Overview row opens the paper view, Apex highlighted');
    assert.equal(await p.locator('#ex-subnav [aria-current="page"]').count(),0,'no workspace tab claims the paper page');
    await p.goto(base+'#view=apexpaper');await p.reload();await p.waitForFunction(()=>window.__SNAP&&window.PFJourney);await settle(p);assert.deepEqual(await areas(p),['apex'],'#view=apexpaper highlights Apex');
-   await p.locator(tab('actions')).click();await settle(p);assert.equal(await p.locator('[data-apx-pointer]:visible').count()>0,true,'the pointer under the live Apex card stays on Actions');
+   await p.locator(tab('research')).click();await settle(p);assert.equal(await p.locator('[data-apx-pointer]:visible').count()>0,true,'v253: the paper pointer is on the Research tab with the rest of the Apex research');
+   await p.locator(tab('actions')).click();await settle(p);assert.equal(await p.locator('[data-apx-pointer]:visible').count(),0,'…and no longer repeated on Actions');
    await ctx.close();
    const a=await open();await goArea(a.p,'agentic');await a.p.locator(tab('overview')).click();await settle(a.p);
    assert.equal(await a.p.locator('.ws-row[data-ex-route="apexpaper"], [data-apx-pointer]:visible').count(),0,'never in Agentic');await a.ctx.close();}

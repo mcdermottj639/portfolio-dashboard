@@ -70,11 +70,14 @@ export async function runAnalyzeAccountChecks({browser,base,sample,stub,apex,wri
     if(fmtQty(qm)!==fmtQty(qa))assert.ok(!c.card.includes('Shares'+fmtQty(qm)),'the self-directed lot is not shown under Agentic');
   }
 
-  // 4 · The Research tab inside each workspace keeps that workspace's account.
+  // 4 · Analyze opened from each workspace's Research tab keeps that workspace's account.
   for(const acct of ['agentic','main']){
     await p.evaluate(a=>PFExperience.navigate('accounts',{account:a}),acct);await settle();
     await p.locator('#ex-subnav [data-ws-tab="research"]').click();await settle();
-    const st=await p.evaluate(()=>({route:PFExperience.route,account:PFExperience.account}));
+    let st=await p.evaluate(()=>({route:PFExperience.route,account:PFExperience.account}));
+    assert.equal(st.route,'acctresearch');assert.equal(st.account,acct);   // v253: the account's own research page
+    await p.locator('#ws-analyze [data-pj-go="analyze"]').click();await settle();
+    st=await p.evaluate(()=>({route:PFExperience.route,account:PFExperience.account}));
     assert.equal(st.route,'analyze');assert.equal(st.account,acct);
     s=await shell();assert.equal(s.acct,acct,`workspace Research (${acct}) opened Analyze for ${s.acct}`);
     const own=acct==='agentic'?held.ag:held.main;for(const x of s.chips)assert.ok(own.includes(x),`${x} is not a ${acct} holding`);

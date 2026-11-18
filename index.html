@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=252"></script>
-<script src="ui/experience-model.js?v=252"></script>
+<script src="ui/theme.js?v=253"></script>
+<script src="ui/experience-model.js?v=253"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -729,15 +729,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=252">
-<link rel="stylesheet" href="ui/journey.css?v=252">
-<link rel="stylesheet" href="ui/predictions.css?v=252">
-<link rel="stylesheet" href="ui/apex-paper.css?v=252">
-<link rel="stylesheet" href="ui/smartmoney.css?v=252">
-<link rel="stylesheet" href="ui/ticker.css?v=252">
-<link rel="stylesheet" href="ui/today.css?v=252">
-<link rel="stylesheet" href="ui/book.css?v=252">
-<link rel="stylesheet" href="ui/duo.css?v=252">
+<link rel="stylesheet" href="ui/experience.css?v=253">
+<link rel="stylesheet" href="ui/journey.css?v=253">
+<link rel="stylesheet" href="ui/predictions.css?v=253">
+<link rel="stylesheet" href="ui/apex-paper.css?v=253">
+<link rel="stylesheet" href="ui/smartmoney.css?v=253">
+<link rel="stylesheet" href="ui/ticker.css?v=253">
+<link rel="stylesheet" href="ui/today.css?v=253">
+<link rel="stylesheet" href="ui/book.css?v=253">
+<link rel="stylesheet" href="ui/duo.css?v=253">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -807,10 +807,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=252"></script>
-<script src="ui/apex.js?v=252"></script>
-<script src="ui/business.js?v=252"></script>
-<script src="ui/apex-paper.js?v=252"></script>
+<script src="ui/sd-rules.js?v=253"></script>
+<script src="ui/apex.js?v=253"></script>
+<script src="ui/business.js?v=253"></script>
+<script src="ui/apex-paper.js?v=253"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -924,7 +924,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v252'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v253'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -4154,7 +4154,7 @@ function agCorrectnessCard(A){
   </div>`;
   const rows=tracks.slice().reverse().slice(0,12).map(t=>{const L=t.latest,e=L?L.excessPp:null;
     return `<details class="cr-row ${e==null?'':e>=0?'cr-win':'cr-loss'}"><summary><span class="cr-d"><b>${dl(t.observedDay)}</b><small>${t.startDay?'from '+dl(t.startDay):'pending'}</small></span><span class="cr-v"><small>Model</small>${L?sgn(L.model-100,'%'):'—'}</span><span class="cr-v"><small>SPY</small>${L?sgn(L.spy-100,'%'):'—'}</span><span class="cr-pill ${tone(e)}">${sgn(e,'pp')}</span></summary><p>${agEsc(t.modelVersion||'—')} · observed ${agEsc(t.observedDay)} · start ${agEsc(t.startDay||'pending')}<br>${agEsc(t.basis||'Pending')} · ${agEsc(t.status)}</p></details>`;}).join('');
-  return `<div class="card cr-card" style="margin-bottom:14px"><div class="card-title">Model correctness &amp; forward record</div>
+  return `<div class="card cr-card" data-ws="research" style="margin-bottom:14px"><div class="card-title">Model correctness &amp; forward record</div>
     <div class="cr-status cr-${st.k}"><i></i><span><b>${st.t}</b></span></div>
     ${st.d||stampLbl?`<p class="cr-sub">${st.d}${st.d&&stampLbl?' ':''}${stampLbl?'Updated '+stampLbl+'.':''}</p>`:''}
     ${tiles}
@@ -4241,7 +4241,7 @@ function renderAgenticPlan(){
     return `<div class="fund-note" style="margin:0;${st.terminal?'':'background:#eff6ff;border-color:#bfdbfe'}"><b>${st.heading==='Rebalance in flight'?'🤖 ':''}${st.heading}</b> — <span style="font-family:monospace;font-size:10.5px">${String(pend.id||'').replace(/[&<>"']/g,'')}</span> · <b>${st.compactH}</b> · ${ns} sell${ns===1?'':'s'} → ${nb} buy${nb===1?'':'s'} · turnover ${fmtD(pend.turnover||0)}${tax?` · est ST net ${tax.net>=0?'+':'−'}${fmtD(Math.abs(tax.net))}`:''}${next?` — ${next}`:''}.</div>`;
   })();
   const statusCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-status" onclick="toggleSection('b-agp-status')"><span>🤖 Where the plan stands <span class="card-hint">(ticket · cash · next action)</span></span><span class="chevron">▼</span></div><div id="b-agp-status">
+    <div class="card" data-ws="actions"><div class="card-title collapsible" data-toggle="b-agp-status" onclick="toggleSection('b-agp-status')"><span>🤖 Where the plan stands <span class="card-hint">(ticket · cash · next action)</span></span><span class="chevron">▼</span></div><div id="b-agp-status">
       <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">This account runs itself between your confirmations: research sets the destination, a deterministic planner turns drift into a ticket, and an hourly executor places what falls inside the auto tier. Everything below is state the producer and executor own — this page reads it, it never places an order.</div></details>
       ${pendLine}
       <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr);margin-top:10px">
@@ -4276,7 +4276,7 @@ function renderAgenticPlan(){
   // finalize-target from the sleeve scores, not taken on the model's word.
   const theses=rows.filter(x=>x.thesis||x.drivers.length).map(x=>`<div class="harv-line"><span style="flex:1"><b>${x.sym}</b> <span style="color:#9ca3af">${fmt(x.tgt,0)}%</span>${x.drivers.length?` <span style="color:#9ca3af;font-size:10.5px">· ${x.drivers.join(' · ')}</span>`:''}${x.thesis?`<div style="font-size:11.5px;color:var(--text);opacity:.85;margin-top:2px;line-height:1.45">${x.thesis}</div>`:''}</span></div>`).join('');
   const targetCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-target" onclick="toggleSection('b-agp-target')"><span>🎯 The target — and why these names <span class="card-hint">${rows.length} names · as of ${T.asOf||'—'}</span></span><span class="chevron">▼</span></div><div id="b-agp-target">
+    <div class="card" data-ws="research"><div class="card-title collapsible" data-toggle="b-agp-target" onclick="toggleSection('b-agp-target')"><span>🎯 The target — and why these names <span class="card-hint">${rows.length} names · as of ${T.asOf||'—'}</span></span><span class="chevron">▼</span></div><div id="b-agp-target">
       <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">The destination, not the book. Weekly deep multi-factor research (momentum · quality · growth · catalyst → adversarial verify → synthesis) proposes an allocation; <b>finalize-target</b> then re-enforces the correlation-cluster and vol-scaled caps deterministically, so the caps hold no matter what the research says. Business quality decides <b>inclusion</b>; today's price decides <b>size</b> — a stretched entry shrinks a position instead of vetoing it.</div></details>
       <div class="xr-list tg-list">${tRows}</div><div class="tg-key">bar = target weight · tick = held now · tap a name for levels</div>
       ${T.method?`<details class="trk-detail" style="margin-top:10px"><summary>How this target was built <span style="color:#9ca3af;font-weight:400">— sizing, caps, and why names left</span></summary><div class="ag-method">${agMethodHtml(T)}</div></details>`:''}
@@ -4337,7 +4337,7 @@ function renderAgenticPlan(){
     ? [nBuy?nBuy+' buy'+(nBuy===1?'':'s')+' deferred':'',nSell?nSell+' sell'+(nSell===1?'':'s')+' held':''].filter(Boolean).join(' · ')
     : 'nothing deferred';
   const blockedCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blockHint}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
+    <div class="card" data-ws="actions"><div class="card-title collapsible" data-toggle="b-agp-block" onclick="toggleSection('b-agp-block')"><span>⏸ What's blocked — and what clears it <span class="card-hint">${blockHint}</span></span><span class="chevron">▼</span></div><div id="b-agp-block">
       <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">A deferral never changes a target <b>weight</b> — only <b>when</b> the money moves. These are the same checks <code>agentic-deploy.mjs</code> runs before it writes a ticket, so what you read here is what the executor will actually do. Only names it is actually trying to <b>buy</b> can appear: a name already held at its target weight has no buy to defer, so its entry zone is moot and the levels that matter are its <b>stop and take-profit</b> on the target card above.</div></details>
       ${agDrawdownBanner()}${agRegimeBanner()}
       ${(blockList.length||sellBlockHtml)?'':`<div class="tech-empty">Nothing is deferred right now — every target name is clear to trade on its next pass.</div>`}
@@ -4351,7 +4351,7 @@ function renderAgenticPlan(){
   // ── 4. the waiting ground ────────────────────────────────────────────────────────────────────
   const parkVal=(()=>{ const h=heldPos.find(p=>p.symbol===AG_PARK_VEHICLE); return h?Math.max(0,+h.value||0):0; })();
   const parkCard=`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-agp-park" onclick="toggleSection('b-agp-park')"><span>🅿️ The waiting ground <span class="card-hint">${parked?fmtD(parked.dollars)+' parked in '+(parked.vehicle||AG_PARK_VEHICLE):'nothing parked'}</span></span><span class="chevron">▼</span></div><div id="b-agp-park">
+    <div class="card" data-ws="actions"><div class="card-title collapsible" data-toggle="b-agp-park" onclick="toggleSection('b-agp-park')"><span>🅿️ The waiting ground <span class="card-hint">${parked?fmtD(parked.dollars)+' parked in '+(parked.vehicle||AG_PARK_VEHICLE):'nothing parked'}</span></span><span class="chevron">▼</span></div><div id="b-agp-park">
       <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">Only a <b>wash-sale</b> deferral waits here now (owner decision, 2026-09-03, after switching idle cash to a <b>high-yield sweep</b>): its dollars go into <b>${AG_PARK_VEHICLE}</b>, a broad-market placeholder, and are released to fund the name once the 30-day window clears. Every OTHER deferral — entry band, earnings, policy, re-entry, below-stop, regime, drawdown — now waits in <b>cash</b>. A round trip through the vehicle pays a full spread (~0.21%) to rent a few days of equity beta; measured on this book it earned <b>+$0.78 on ~$1,000 of turnover</b>, less than the spread, while ${AG_PARK_VEHICLE} itself fell 0.22%. A 30-day wash wait is the one case long enough to be worth it. <b>${AG_PARK_VEHICLE}, not SPY</b>: SPY is the target's own ballast, so parking there would bury the placeholder inside a real position — and the two track different indexes, so they're never "substantially identical" for wash-sale purposes. Not QQQ either, since half of it is the megacap-tech cluster the ${AG_CLUSTER_CAP}% cap exists to contain.</div></details>
       ${parked?`
         <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr)">
@@ -4367,7 +4367,7 @@ function renderAgenticPlan(){
   // ── 5. the rulebook ──────────────────────────────────────────────────────────────────────────
   const rule=(icon,name,val,why)=>`<details class="gr-row"><summary><span class="gr-ic">${icon}</span><b>${name}</b>${(()=>{const c=String(val).replace(/<[^>]+>/g,'');return c.length<=16?`<span class="gr-chip">${c}</span>`:'';})()}<i class="oh-chev"></i></summary><p><b>${val}</b> — ${why}</p></details>`;
   const rulesCard=`
-    <div class="card" data-priv="off"><div class="card-title collapsible" data-toggle="b-agp-rules" onclick="toggleSection('b-agp-rules')"><span>📏 Guardrails <span class="card-hint">the standing rules the executor can't cross</span></span><span class="chevron">▼</span></div><div id="b-agp-rules">
+    <div class="card" data-priv="off" data-ws="actions"><div class="card-title collapsible" data-toggle="b-agp-rules" onclick="toggleSection('b-agp-rules')"><span>📏 Guardrails <span class="card-hint">the standing rules the executor can't cross</span></span><span class="chevron">▼</span></div><div id="b-agp-rules">
       <details class="sd-more ag-intro"><summary>About this card</summary><div class="ag-intro-b">Every one of these is enforced in code, not prose — most were added after a specific mistake. They bind the automated executor whether or not a target "says so".</div></details>
       <div class="gr-list">
       ${rule('🧬','Correlation-cluster cap',AG_CLUSTER_CAP+'% megacap-tech','A "sector-diversified" label hid the fact that NVDA/MSFT/GOOGL/AMZN/META/AAPL all trade as one bet. Payments cap 20%, staples 25%; index is uncapped.')}
@@ -4395,7 +4395,7 @@ function renderAgenticPlan(){
   // ── 6. how the loop runs ─────────────────────────────────────────────────────────────────────
   const step=(n,title,body)=>`<details class="gr-row"><summary><span class="gr-ic lp-n">${n}</span><b>${title}</b><i class="oh-chev"></i></summary><p>${body}</p></details>`;
   const loopCard=`
-    <div class="card" data-priv="off" data-sec="agp-loop"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
+    <div class="card" data-priv="off" data-sec="agp-loop" data-ws="actions"><div class="card-title collapsible" data-toggle="b-agp-loop" onclick="toggleSection('b-agp-loop')"><span>🔁 How the loop runs <span class="card-hint">research → target → ticket → fill</span></span><span class="chevron">▼</span></div><div id="b-agp-loop">
       <div class="gr-list">
         ${step('1','Research — weekly, or early','A multi-sleeve deep research run (momentum · quality · growth · catalyst, with an adversarial verify pass) proposes names and weights. It also runs early when a deposit lands or a held name gaps ≥6% — the system reacts to events, not just the calendar.')}
         ${step('2','Finalize — caps re-enforced','<code>finalize-target.mjs</code> re-applies the cluster and vol-scaled caps to whatever the research returned, and a held name the research dropped is retained one cycle as a <b>phase-out</b> (zero trades) unless the verdict was explicitly business-broken. A target refresh expresses intent; it is not an execution order.')}
@@ -4409,7 +4409,7 @@ function renderAgenticPlan(){
 
   /* v192 — Business check for the agentic book (display only: the executor, Mandate A and every
      rule above never read it). Held names first, then the research target's names. */
-  const bizCard=`<div class="card"><div class="card-title collapsible" data-toggle="b-agp-biz" onclick="toggleSection('b-agp-biz')"><span>🧾 Business check <span class="card-hint">is each company doing what it promised?</span></span><span class="chevron">▼</span></div><div id="b-agp-biz"><div data-ag-business></div></div></div>`;
+  const bizCard=`<div class="card" data-ws="research"><div class="card-title collapsible" data-toggle="b-agp-biz" onclick="toggleSection('b-agp-biz')"><span>🧾 Business check <span class="card-hint">is each company doing what it promised?</span></span><span class="chevron">▼</span></div><div id="b-agp-biz"><div data-ag-business></div></div></div>`;
   host.innerHTML=hero+statusCard+agCorrectnessCard(A)+targetCard+bizCard+blockedCard+parkCard+rulesCard+loopCard;
   { const pos=heldPos.map(p=>({symbol:p.symbol,qty:+p.qty||0,px:+p.px||0,avg:+(p.avgCost??p.avg??p.average_buy_price)||0}));
     bizPaint(host.querySelector('[data-ag-business]'),[...pos.map(p=>p.symbol),...names.map(n=>n.ticker)],pos,null); }
@@ -6193,6 +6193,8 @@ window.switchTab=switchTab;
     return (fb&&fb.offsetHeight>0)?fb.offsetHeight+8:48;
   }
   function scrollToCard(card){
+    // v253: a plan-page card lives on ONE workspace tab (data-ws). Open that tab first, or the jump lands on a hidden card.
+    try{ var w=card.getAttribute('data-ws'), X=window.PFExperience; if(w&&X&&document.documentElement.classList.contains('ws-on')){ var want=w==='research'?'acctresearch':'plan'; if(X.route!==want)X.navigate(want,{keepScroll:true}); } }catch(e){}
     for(var dd=card.parentElement; dd; dd=dd.parentElement){ if(dd.tagName==='DETAILS'&&!dd.open)dd.open=true; else if(dd.id&&dd.style&&dd.style.display==='none'&&window.toggleSection&&document.querySelector('[data-toggle="'+dd.id+'"]'))window.toggleSection(dd.id); }   // v202: open a folded section first
     try{ if(window.__pfFold)window.__pfFold.open(card); }catch(e){}   // v235: a data-toggle body (most cards) opens here too
     var body=card.querySelector(':scope > .card-body');
@@ -8139,7 +8141,7 @@ function renderPicksStatic(){
     </div></div>
 `;
   const pAction=apexPage?`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
+    <div class="card" data-ws="actions"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own: margin and earnings now, then the broken-thesis check. Buys come from the Apex card above.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
       <div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div>
@@ -8147,7 +8149,7 @@ function renderPicksStatic(){
       <div id="plan-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:16px 0"><span class="spin-sm"></span> Building plan…</div></div>
     </div></div>
 `:`
-    <div class="card"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
+    <div class="card" data-ws="actions"><div class="card-title collapsible" data-toggle="b-action" onclick="toggleSection('b-action')"><span>⚡ Action Center <span class="card-hint">(your book: do now · the plan)</span></span><span class="chevron">▼</span></div><div id="b-action">
       <div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">What to do with what you already own — the live-signal feed and the raise-cash → redeploy plan. Step 2 of the plan redeploys into the ideas below.</div>
       <div class="ac-tier" style="margin-top:0">⚡ Do now <span class="card-hint">(live signals, ranked)</span></div>
       <div id="act-content"><div style="display:flex;align-items:center;gap:8px;color:#9ca3af;font-size:13px;padding:10px 0"><span class="spin-sm"></span> Building actions…</div></div>
@@ -8163,7 +8165,7 @@ function renderPicksStatic(){
 `;
   /* v244: pointer to the Apex v2.9 PAPER research page. Display only; the Apex card above is the only live source. */
   const pPaperLink=`
-    <div class="card" style="text-align:center" data-apex-paper-link data-priv="off"><span class="dp-link" data-apx-pointer onclick="switchTab('apexpaper')">🧪 v2.9 paper research: loading… →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Paper only. It never feeds the Apex card above, its targets or Confirm.</div></div>
+    <div class="card" style="text-align:center" data-apex-paper-link data-priv="off" data-ws="research"><span class="dp-link" data-apx-pointer onclick="switchTab('apexpaper')">🧪 v2.9 paper research: loading… →</span><div style="font-size:11px;color:#9ca3af;margin-top:4px">Paper only. It never feeds the Apex card above, its targets or Confirm.</div></div>
 `;
   const pDisc=screensDiscHtml();
   if(apexPage){
@@ -8940,17 +8942,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=252"></script>
-<script src="ui/today.js?v=252"></script>
-<script src="ui/predictions-model.js?v=252"></script>
-<script src="ui/predictions.js?v=252"></script>
-<script src="ui/smartmoney-model.js?v=252"></script>
-<script src="ui/smartmoney.js?v=252"></script>
-<script src="ui/experience.js?v=252"></script>
-<script src="ui/ticker.js?v=252"></script>
-<script src="ui/duo.js?v=252"></script>
-<script src="ui/compact.js?v=252"></script>
-<script src="ui/journey.js?v=252"></script>
-<script src="ui/book.js?v=252"></script>
+<script src="ui/today-model.js?v=253"></script>
+<script src="ui/today.js?v=253"></script>
+<script src="ui/predictions-model.js?v=253"></script>
+<script src="ui/predictions.js?v=253"></script>
+<script src="ui/smartmoney-model.js?v=253"></script>
+<script src="ui/smartmoney.js?v=253"></script>
+<script src="ui/experience.js?v=253"></script>
+<script src="ui/ticker.js?v=253"></script>
+<script src="ui/duo.js?v=253"></script>
+<script src="ui/compact.js?v=253"></script>
+<script src="ui/journey.js?v=253"></script>
+<script src="ui/book.js?v=253"></script>
 </body>
 </html>

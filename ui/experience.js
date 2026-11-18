@@ -28,6 +28,10 @@
   const routes = {
     today: {area:'today', label:'Daily brief', custom:'today'},
     plan: {area:'apex', scoped:true, label:'Plan', tab:'picks'},
+    // v253 (Jack, Nov 18 2026: "Apex and agentic plans should be under the research for each"): the account's OWN research. Same page as
+    // `plan` (page-picks, same renderers, every card drawn once); the cards tagged data-ws="research" show here and the ones tagged
+    // data-ws="actions" show on Actions (ui/experience.css). Single-stock Analyze opens from inside it.
+    acctresearch: {area:'apex', scoped:true, hidden:true, label:'Research', tab:'picks'},
     accounts: {area:'apex', scoped:true, label:'Account', tab:'portfolio'},
     holdings: {area:'apex', scoped:true, hidden:true, label:'All positions', tab:'portfolio', section:'holdings'},
     performance: {area:'apex', scoped:true, hidden:true, label:'Performance', tab:'portfolio', section:'performance'},
@@ -131,9 +135,8 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
     // v242 (owner, Nov 17 2026): ONE tab row for Apex and Agentic: Overview · Positions · Research · Actions. It replaces the Plan · Account ·
     // Research · What if? chips, the per-page card rail and the journey's three step buttons. Same route ids (accounts / holdings / analyze /
     // plan), no new route; What if? (scenario) is a row inside Overview. Research is the journey's data-pj-go="analyze" step.
-    if(wsMode)sub.innerHTML=WS_TABS.map(([id,label,route])=>(id==='research'
-      ?'<button type="button" data-pj-go="analyze" data-ex-research data-ws-tab="research" aria-current="'+(wsTab(routeKey)===id?'page':'false')+'">'+label+'</button>'
-      :'<button type="button" data-ex-route="'+route+'" data-ws-tab="'+id+'" aria-current="'+(wsTab(routeKey)===id?'page':'false')+'">'+label+'</button>')).join('');
+    // v253: Research is the account's own research page (route acctresearch); Analyze opens from inside it and keeps this tab lit.
+    if(wsMode)sub.innerHTML=WS_TABS.map(([id,label,route])=>'<button type="button" data-ex-route="'+route+'" data-ws-tab="'+id+'" aria-current="'+(wsTab(routeKey)===id?'page':'false')+'">'+label+'</button>').join('');
     else sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>'+(k==='accounts'&&(area==='apex'||area==='agentic')?'<button type="button" data-pj-go="analyze" data-ex-research aria-current="false">Research</button>':'')).join('')+(area==='more'?'<button type="button" id="ex-classic-more" class="ws-classic" title="Return to the classic tab layout">Classic view</button>':'');
     $('ex-context').textContent=routeKey==='predictions'?'Market research, watchlists, and recorded results':routeKey==='smartmoney'?'Politician and insider trades on your names · read-only':routeKey==='today'?'Self-directed + Agentic · your big picture':r.tab==='options'?'Options · self-directed source (existing contracts and ideas)':(r.scoped?(account()==='agentic'?'Agentic (automated)':'Apex (self-directed)'):(r.lab?'Lab · ':'')+(account()==='agentic'?'Agentic':'Self-directed'))+' · '+r.label;
     if(wsMode&&routeKey!=='apexpaper')$('ex-context').textContent=IDENT[account()];
@@ -342,8 +345,8 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
   // the agentic target rows the plan already shows (window.__PF_AG_TARGET), the existing snapshot tiles (cloned) and Today's read-only model.
   const AREA_NAME = {apex:'Apex', agentic:'Agentic', research:'Research', more:'More'};
   const IDENT = {main:'Self-directed · ••••0741', agentic:'Automated · ••••3900'};
-  const WS_TABS = [['overview','Overview','accounts'],['positions','Positions','holdings'],['research','Research','analyze'],['actions','Actions','plan']];
-  const wsTab = key => key==='holdings'?'positions':key==='plan'?'actions':key==='analyze'?'research':key==='apexpaper'?'':'overview';
+  const WS_TABS = [['overview','Overview','accounts'],['positions','Positions','holdings'],['research','Research','acctresearch'],['actions','Actions','plan']];
+  const wsTab = key => key==='holdings'?'positions':key==='plan'?'actions':(key==='analyze'||key==='acctresearch')?'research':key==='apexpaper'?'':'overview';
   const wsOn = () => { const a=areaOf(routeKey,account()); return (a==='apex'||a==='agentic')&&routeKey!=='today'&&routeKey!=='apexpaper'; };
   const fD = n => typeof window.fmtD==='function'?window.fmtD(n):'—';
   const fP = n => typeof window.fmtP==='function'?window.fmtP(n):'—';
@@ -412,7 +415,7 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
       const book=apexBook();
       if(book){
         book.c.out.filter(r=>(r.kind==='risk'||r.kind==='lev')).forEach(r=>items.push({cat:'risk',html:esc(r.title),src:'Risk · Apex',go:dataAttr('plan'),warn:true}));
-        try{ const th=window.Apex.themeShare(book.c.st,book.c.cfg); if(book.c.cfg.themeCap!==false&&th&&th.over)items.push({cat:'risk',html:'Tech outside '+esc(book.c.cfg.core||'core')+' over its '+Math.round(window.Apex.C.THEME_MAX*100)+'% cap',src:'Risk · Apex theme cap',go:dataAttr('plan'),warn:true}); }catch(_){}
+        try{ const th=window.Apex.themeShare(book.c.st,book.c.cfg); if(book.c.cfg.themeCap!==false&&th&&th.over)items.push({cat:'risk',html:'Tech outside '+esc(book.c.cfg.core||'core')+' over its '+Math.round(window.Apex.C.THEME_MAX*100)+'% cap',src:'Risk · Apex theme cap',go:dataAttr('acctresearch'),warn:true}); }catch(_){}
       }
       brief.options.expirations.filter(p=>p.days>=0&&p.days<=7).forEach(p=>items.push({cat:'options',html:esc(p.underlying)+' '+esc(M.number(p.strike)===null?'':'$'+M.number(p.strike))+' '+esc(String(p.type||'').toLowerCase())+' · expires '+esc(p.days===0?'today':p.expiration),src:'Options · expiration is a calendar event',go:dataAttr('options','main')}));
     } else {
@@ -492,12 +495,27 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
     if(el.previousElementSibling!==after)after.after(el);
     return el;
   }
+  // v253 Research tab: one slim row into single-stock Analyze (the existing route; the journey opens it for the selected name and keeps
+  // this tab lit), at the top of the account's research page. Removed everywhere else, so Actions and Classic view never show it.
+  function researchEntry(ws, acct) {
+    const on=ws&&routeKey==='acctresearch';
+    ['picks-app','plan-agentic-app'].forEach(id=>{
+      const root=$(id); if(!root)return;
+      let el=root.querySelector(':scope>#ws-analyze');
+      if(!on||id!==(acct==='agentic'?'plan-agentic-app':'picks-app')||!root.children.length){ if(el)el.remove(); return; }
+      if(!el){ el=document.createElement('section'); el.id='ws-analyze'; el.className='ws-block ws-analyze';
+        el.innerHTML='<div class="ws-rows"><button type="button" class="ws-row" data-pj-go="analyze" data-ex-research><span>Analyze a stock <small>technical + fundamental read for one name</small></span><span aria-hidden="true">›</span></button></div>'; }
+      const hero=root.querySelector(':scope>.picks-hero');
+      if(hero){ if(hero.nextElementSibling!==el)hero.after(el); } else if(root.firstElementChild!==el)root.prepend(el);
+    });
+  }
   let blocksBusy = false;
   function wsBlocks() {
     if(blocksBusy)return; blocksBusy=true;
     try {
       const ws=wsOn(), acct=account();
       document.querySelectorAll('#app>.ws-block,#agentic-app>.ws-block').forEach(n=>{ if(!ws||n.parentElement.id!==(acct==='agentic'?'agentic-app':'app'))n.remove(); });
+      researchEntry(ws,acct);
       if(!ws)return;
       const root=$(acct==='agentic'?'agentic-app':'app'), hdr=root?.querySelector(':scope>.header'); if(!root||!hdr)return;
       const tab=wsTab(routeKey);

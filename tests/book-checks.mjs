@@ -63,9 +63,27 @@ assert.equal(await p.locator('#pf-book .bk-hold').count(),rows.length,'Positions
 await p.locator('#pf-book [data-bk-sym="'+rows[1]+'"]').click();await settle();
 assert.equal(await p.locator('#ws-poscards .ws-pos').first().getAttribute('data-ws-sym'),rows[1],'tapped holding opens first on the right');
 
-// ── 4. Research: compare list; a tap researches that name in the same account ──
+// ── 4. Research (v253): the left page is navigation for the account's research; a name opens Analyze; Analyze keeps the compare list ──
 await p.locator('#ex-subnav [data-ws-tab="research"]').click();await settle();
-g=await panel();geometryOk(g,'apex research');assert.equal(g.tab,'research');
+g=await panel();geometryOk(g,'apex research');assert.equal(g.tab,'findings');
+assert.equal(await p.evaluate(()=>PFExperience.route),'acctresearch');
+{
+  const jumps=await p.evaluate(()=>[...document.querySelectorAll('#pf-book [data-bk-jump]')].map(b=>b.getAttribute('data-bk-jump')));
+  assert.ok(jumps.length>=2,'the left page lists the research sections on the right page');
+  for(const sel of jumps)assert.equal(await p.evaluate(sel=>{const n=document.querySelector('#page-picks '+sel);return !!n&&n.getClientRects().length>0;},sel),true,'every listed section is visible on the right page: '+sel);
+  const fl=await p.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fold-right')));
+  assert.ok((await p.evaluate(()=>document.getElementById('picks-app').getBoundingClientRect().left))>=fl-1,'the research cards are on the right page');
+  const last=jumps[Math.min(1,jumps.length-1)];await p.locator('#pf-book [data-bk-jump="'+last.replace(/"/g,'\\"')+'"]').click();await settle();
+  const top=await p.evaluate(sel=>{const n=document.querySelector('#page-picks '+sel);const t=n.matches('[data-toggle]')?n.closest('.card'):n;return t.getBoundingClientRect().top;},last);
+  assert.ok(top>=0&&top<(await p.evaluate(()=>innerHeight))-60,'a section tap brings it into view on the right page (top '+Math.round(top)+')');
+  assert.equal(await p.evaluate(()=>[...document.querySelectorAll('#pf-book *')].some(e=>/\$\d/.test(e.childNodes.length===1&&e.firstChild.nodeType===3?e.textContent:''))),false,'the navigation panel repeats no dollar figure');
+  const names=await p.evaluate(()=>[...document.querySelectorAll('#pf-book [data-pj-sym]')].map(b=>b.getAttribute('data-pj-sym')));
+  assert.ok(names.length>0,'the names in the research are listed');
+  await p.locator('#pf-book [data-pj-sym="'+names[0]+'"]').click();await settle();
+  assert.equal(await p.evaluate(()=>PFExperience.route),'analyze');assert.equal(await p.evaluate(()=>PFJourney.state.symbol),names[0]);
+  assert.equal(await p.evaluate(()=>PFExperience.area),'apex','Analyze from Research keeps the Apex area');
+}
+g=await panel();geometryOk(g,'apex analyze');assert.equal(g.tab,'research');
 await p.locator('#pf-book [data-pj-sym="'+rows[0]+'"]').click();await settle();
 assert.equal(await p.evaluate(()=>PFExperience.route),'analyze');assert.equal(await p.evaluate(()=>PFJourney.state.symbol),rows[0]);
 assert.equal(await p.evaluate(()=>PFExperience.area),'apex','Research keeps the Apex area');
