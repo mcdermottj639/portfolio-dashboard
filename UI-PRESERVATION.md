@@ -328,3 +328,55 @@ Plan · Account · Research · What if? sub-nav, the card rail (chips + Expand/C
 tab row: **Overview · Positions · Research · Actions** (Overview = `accounts`, Positions = `holdings`, Research = `analyze` entered from the area and kept
 highlighted via history-state `origin`, Actions = `plan`; `scenario` is an Overview row; the 22 routes and hashes are unchanged). Back is icon-only and
 Classic view moved into More. A bare `#view=analyze` is still a Research-area page. Everything above this note stays as history.
+
+## Duo layout state and mid-fold (v247)
+
+Jack's rule, taken from his Sports Hub app: **Duo optimization ALWAYS applies; the Duo mode controls ONLY the mid-fold split.** The
+width rules in `ui/duo.css` (sections 1–8: slim header, rails, two-pane open Today/Apex, sideways rail) never depend on the mode. Do not
+infer a fold from screenshot dimensions or from `screen.width`.
+
+**One owner.** `ui/duo.js` alone writes `html[data-duo-mode]` (auto | folded | book | standard), `html[data-duo-layout]` (standard |
+folded | book), `html[data-duo-source]` (none | sensor | forced), `html[data-duo-split="on"]` (only on a landing view while the layout is not
+standard), `--fold-top/--fold-bottom` (folded) or `--fold-left/--fold-right` (book) in px, and `window.PFDuo` (`mode`, `layout`, `split`,
+`setMode()`, `refresh()`, `core` for tests). Every change dispatches `pf:duo-change` on `document`. The mode is stored in `localStorage`
+`pf:duo-mode`; a missing, unknown or unwritable store means `auto`. No page keeps its own layout flag.
+
+| Mode | Layout |
+| --- | --- |
+| Auto | the browser's own fold signals only: Viewport Segments (`window.viewport.segments`, or the CSS `(vertical|horizontal)-viewport-segments: 2` queries read through `env(viewport-segment-*)`) with Device Posture not `continuous`. Two stacked segments = folded; two side by side = book; anything else, including a posture with no geometry, = standard |
+| Folded | top / bottom split at the reported crease (24px gutter), else at 50% of the viewport height (8px hairline) |
+| Book | left / right split at the reported crease, else at 50% of the viewport width |
+| Standard | exactly the v246 layout: nothing below is applied |
+
+**Web limits.** Safari without the Viewport Segments / Device Posture flags (or any browser without those APIs) reports nothing, so
+**Auto stays Standard there until the owner taps Folded or Book.** Chromium reports `continuous` posture by default, which also means no
+split. The inset probe (`pf-side-status`, `--duo-r`, `--duo-l`, `__pfDuoMeasure`) is unchanged and is not a fold signal: an inset says nothing
+about orientation. A separate "phone" vs "folded" (outer display) distinction is not knowable from the web and is not made.
+
+**Control.** One button in the gray freshness bar (`#pf-duo`, beside the theme button, present on every route of the new navigation (Classic view loads the same script and bar; not browser-tested); at
+widths under 480px icon-only, always with `aria-label` "Duo layout: <mode>…"; 44px target without growing the bar). It opens a
+`role="radiogroup"` popover with four `role="radio"` buttons (≥44px, arrow keys, Escape) and a one-line note that names what Auto is
+currently seeing. The popover floats over the page (no layout shift). The same setting is not duplicated elsewhere.
+
+**Which views split.** Only the landing view of an area, and only when the layout is folded or book: Today; Accounts (Apex and Agentic
+Overview); Markets and Analyze (Research); v2.9 Paper. Every other route (Positions, Actions, Options, Activity, Decision evidence,
+Rebalance log, Scenario, Screens, Smart $, Predict) stays full screen in every mode, because confining every page to half the screen "cut off
+most of the app" in Sports Hub.
+
+**How.** No node is moved, removed or re-rendered. The summary blocks stay where they are in the DOM and are pinned in place
+(`position:fixed`, values set by `duo.js`) while they fit in the top pane (folded) or left pane (book); the first block that does not fit
+and everything after it continues at the top of the scrolling part, so nothing is clipped. The document keeps scrolling (`window.scrollY`,
+Back/Forward scroll restore, Find, My view and section jumps are unchanged; `__pfTopOffset()` clears the top pane). In folded an opaque
+backdrop (`html::before`) hides scrolled content under the top pane. The tab row (`#ex-subnav`) is interactive, so it stays in the scrolling
+part. Pinned: chrome `#ex-top` (title or identity, Back, stamps) plus Today `.td-hero`; Apex/Agentic Overview `.header` and `#ws-strip`; Markets
+`.picks-hero`; Analyze `#pj-context` and the selected ticker's first card; Paper `.apx-head` and `.apx-tiles`. Whatever does not fit stays in
+the bottom part. A re-render of a page re-pins (childList observer); `data-duo-pin` and the `--duo-*` vars are removed on any other route.
+
+**Transitions.** Rotate, open/close, a segment or posture change, a mode change, a route change: the page re-lays out without a reload; route,
+account, selected holding, filters, open details and card folds are untouched (state lives outside the layout); the element at the top of
+the scrolling part keeps its place (anchor saved and restored). No animation is used.
+
+**Contract.** Standard = v246: rule blocks 9b/9c in `ui/duo.css` are all keyed to `html[data-duo-split="on"]`; `tests/duo.test.cjs` fails an
+unscoped selector. Account separation, Confirm, ticket wording, Paper's paper-only labelling and privacy masking are unaffected (pinned nodes
+keep their `data-priv`). Covered by `tests/duo.test.cjs` and `tests/duo-checks.mjs` (run from `tests/journey-browser.mjs`). Not verified: real
+Safari / the physical Duo (the browser fold APIs are simulated).

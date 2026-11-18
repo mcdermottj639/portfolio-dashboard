@@ -1,3 +1,10 @@
+## v247 — Duo layout state + four-way mid-fold control (2026-11-17, issue #238)
+Owner-approved spec (Jack 20:48 ET, Sports Hub duo.js as reference). Duo optimization ALWAYS applies; the Duo mode controls ONLY the mid-fold split. Layout only; no model, rule, ticket, Confirm, data, producer, schedule or .github change.
+- `ui/duo.js` is the single owner of `html[data-duo-mode]` (auto|folded|book|standard, `localStorage pf:duo-mode`, junk/failed storage = auto), `data-duo-layout` (standard|folded|book), `data-duo-source`, `data-duo-split`, the `--fold-*` vars, `window.PFDuo` and the `pf:duo-change` event. Auto follows only the browser's fold signals (Viewport Segments / its CSS queries + Device Posture); without Safari's flags it stays Standard until Folded or Book is tapped. Inset and screen-size probes are never used to guess a fold.
+- Control `#pf-duo` in the gray bar (icon-only <480px, 44px target, popover `role=radiogroup`). Standard = v246 geometry (1,537 element boxes identical to main across 6 views x 4 viewports, local check).
+- Folded = top/bottom, Book = left/right, only on Today, Accounts (Apex/Agentic Overview), Markets, Analyze and v2.9 Paper; every other route is full screen in every mode. Existing nodes are pinned in place (position:fixed) while they fit; the rest scrolls with the document, so scrollY, Back/Forward, Find, My view and __pfTopOffset keep working. Route, selection, folds and scroll anchor survive every transition.
+- Tests: tests/duo.test.cjs (detection, mode resolution, storage), tests/duo-checks.mjs via journey-browser (fold simulated with stubbed segments/posture + live change events). Not verified: real Safari fold APIs, WebKit, a physical Duo.
+
 ## v246 — Apex v2.9 Paper: decision view, Duo two-pane list/detail, filters, honest validation panel (2026-11-17, issue #235)
 
 Jack reviewed a recording of v244's v2.9 Paper page and approved issue #235 (Claudex OPS-20261117-01). Display only, ui/apex-paper.js/.css; every number comes from data/apex-paper-v29.json at run time (no sample figures hardcoded).

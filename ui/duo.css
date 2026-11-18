@@ -336,3 +336,65 @@ html[data-theme="gold"] .card [style*=";color:#075985"],html[data-theme="gold"] 
   #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income])>.card-title .card-hint{display:none}
   #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income]) table :is(th,td){padding-left:3px;padding-right:3px;font-size:11px}
 }
+
+/* ───────── 9 · v247: central Duo layout state + mid-fold split (ui/duo.js owns every attribute below) ─────────
+   Jack's rule: Duo optimization above ALWAYS applies; the mode only decides the mid-fold split of a landing view.
+   Everything here is keyed to html[data-duo-split="on"] (landing view + folded/book) or to the control, so
+   Standard mode, and every non-landing route, is the v246 layout unchanged. No transitions or animation are used. */
+
+/* 9a · The control: one button in the gray freshness bar (≥44px tall without growing the bar) and its popover. */
+#pf-duo{display:inline-flex;align-items:center;gap:4px;min-height:44px;min-width:32px;margin:-8px 0;padding:0 3px;
+  background:transparent;border:0;color:inherit;font:inherit;font-size:11px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#pf-duo svg{flex:0 0 auto}
+#pf-duo:focus-visible,#pf-duo-pop button:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+@media (max-width:479px){#pf-duo .pf-duo-word{display:none}}
+#pf-duo-pop{position:fixed;right:12px;width:min(calc(100vw - 24px),400px);z-index:400;box-sizing:border-box;padding:10px;
+  background:#fff;color:#1c1c1e;border:1px solid #dbe2ea;border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.22);font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#pf-duo-pop[hidden]{display:none}
+#pf-duo-pop .pf-duo-t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin:0 2px 6px}
+#pf-duo-pop .pf-duo-seg{display:flex;gap:4px}
+#pf-duo-pop .pf-duo-seg button{flex:1 1 0;min-width:0;min-height:44px;padding:0 4px;font:inherit;font-size:12.5px;color:inherit;background:#eef2f7;border:1px solid #dbe2ea;border-radius:9px;cursor:pointer}
+#pf-duo-pop .pf-duo-seg button[aria-checked="true"]{background:#2563eb;border-color:#2563eb;color:#fff}
+#pf-duo-pop .pf-duo-note{margin:8px 2px 0;font-weight:500;font-size:11.5px;line-height:1.4;color:#64748b}
+html[data-theme="dark"] #pf-duo-pop,html[data-theme="gold"] #pf-duo-pop{background:#1c1c1e;color:#e5e5ea;border-color:#2c2c2e}
+html[data-theme="dark"] #pf-duo-pop .pf-duo-seg button,html[data-theme="gold"] #pf-duo-pop .pf-duo-seg button{background:#2c2c2e;border-color:#3a3a3c}
+html[data-theme="dark"] #pf-duo-pop .pf-duo-t,html[data-theme="dark"] #pf-duo-pop .pf-duo-note,html[data-theme="gold"] #pf-duo-pop .pf-duo-t,html[data-theme="gold"] #pf-duo-pop .pf-duo-note{color:#9a9aa0}
+
+/* 9b · Split: pinned summary blocks. duo.js sets --duo-x/-y/-w per block (measured), stacks them top-down in the top
+   pane (folded) or left pane (book) while they fit, and leaves the rest in the document flow. */
+html[data-duo-split="on"] [data-duo-pin]{position:fixed!important;left:var(--duo-x);top:var(--duo-y);width:var(--duo-w);max-width:none!important;
+  margin:0!important;box-sizing:border-box;z-index:140;overflow:hidden}
+/* Folded: an opaque top pane over the scrolling document; the rest of the page starts below the crease. */
+html[data-duo-split="on"][data-duo-ready]::before{content:'';position:fixed;left:0;right:0;top:0;height:var(--duo-fresh-top);z-index:130;
+  background:var(--duo-ground,#f0f2f5)}
+html[data-duo-split="on"][data-duo-layout="folded"][data-duo-ready]::before{height:var(--fold-bottom)}
+html[data-duo-split="on"][data-duo-ready] #pf-fresh{top:var(--duo-fresh-top)!important}
+html[data-duo-split="on"][data-duo-layout="folded"][data-duo-ready] #pf-fresh{margin-bottom:var(--duo-lead,8px)!important}
+/* Book: the rest of the page sits to the right of the crease; the strip stays full width. */
+html[data-duo-split="on"][data-duo-layout="book"][data-duo-ready] body{padding-left:var(--duo-padl)!important}
+html[data-duo-split="on"][data-duo-layout="book"][data-duo-ready] #pf-fresh{margin-left:calc(var(--duo-x0) - var(--duo-padl))!important}
+
+/* 9c · Pinned blocks are a glance: tighter chrome so the summary fits above the crease (padding / gaps only, no value hidden). */
+html[data-duo-split="on"] #ex-top[data-duo-pin]{padding-top:2px!important;padding-bottom:2px!important}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin]{padding:8px 10px!important}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-hero-line{margin:2px 0 4px}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-account-grid{margin-top:4px;padding-top:4px}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-eyebrow{line-height:1.15}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin]>.td-muted{margin:0 0 2px;line-height:1.3}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-account-head{margin-bottom:0}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin]{padding:6px 10px!important}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] #ex-combined-equity{font-size:clamp(24px,6.4vw,30px)}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] .td-account .td-account-value{font-size:clamp(14px,11cqi,20px)}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-account-meta{margin-top:1px}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] #ex-combined-move{font-size:16px;line-height:1.1}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] .td-hero-change{font-size:10.5px;line-height:1.2;padding-bottom:0}
+
+/* 9d · Open-width grids: a pinned block leaves its grid cell, so Today's two-pane grid drops the empty "hero" area; in Book the
+   scrolling part is only about half the screen, so the open two-up pairings fall back to one column there. */
+@media (min-width:740px) and (max-width:1100px) {
+  html[data-duo-split="on"] #page-ex-today .td-shell .td-layout:has(>.td-hero[data-duo-pin]){grid-template-areas:"holdings waiting" "links monitor" "market market"}
+}
+html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:none!important}
+html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout>*{grid-area:auto!important}
+html[data-duo-split="on"][data-duo-layout="book"] :is(#markets-app,#az-result,#options-app,#plan-agentic-app){grid-template-columns:minmax(0,1fr)!important}
+html[data-duo-split="on"][data-duo-layout="book"] #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
