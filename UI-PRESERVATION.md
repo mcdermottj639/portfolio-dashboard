@@ -396,3 +396,5 @@ v251: the Apex Confirm button is drawn only when there is an order to confirm; r
 Book, Actions only (trial): the right page scrolls on its own and the document is locked; every other route is unchanged.
 v252: Analyze reads one account's book (the account in context): holdings chips, Your Position (badged Apex / Agentic), sizing, overlap and the pattern-radar list. Same cards and levels; the technical read is unchanged. Producer: held names always get a daily series (bar-sized fetch calls, snapshot holdings, light-run seeding).
 v253: Apex / Agentic Research tab = that account's research cards (Apex research, opportunities, screened out, weights, business check, paper pointer; Agentic target, model correctness, business check); Actions = trades, Confirm, leverage, rules, blockers, waiting ground, guardrails. Same cards, each on one tab; Classic view shows the whole page as before. Analyze opens from the row on Research.
+
+- v254 (2026-11-18): Apex card wording only — approvals are the Confirm button, not Jarvis; no card, rule or layout change.
