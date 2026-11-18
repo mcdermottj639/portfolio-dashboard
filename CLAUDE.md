@@ -1,3 +1,13 @@
+## v249 — Book mode: Today gets the command panel too (2026-11-18)
+Jack (Nov 18 01:21 ET, Book screenshot of Today at v248: the left page held only the combined hero, then blank; "Looks good on
+other pages"). `ui/book.js` now also runs on Today (`ctx()` returns tab `today` for route `today`, any area). Two labelled groups,
+each the SAME block the account pages use: **Apex · self-directed ••••0741** = the Risk block (leverage band, margin cushion, tech
+cap, largest position) + its deposit-adjusted Performance; **Agentic · automated ••••3900** = the Strategy block (deployed, ticket,
+largest drift) + its Performance. Deliberately NO holdings list on Today: its right page already has the combined holdings map,
+so a list on the left would repeat it. Taps are account-aware now (route rows carry `data-ex-account`, card/holding rows
+`data-bk-acct`), so a tap from Today opens the right account's Actions / Overview / Positions. Display only; no calculation, rule
+or data change; Standard / Folded unchanged. Tests: tests/book-checks.mjs section 7b. Not verified: a physical iPhone Duo.
+
 ## v248 — Book mode vNext: command panel on the left page, analysis on the right (2026-11-17)
 Jack (Nov 17 23:24 ET, screen recording of v247 Book mode on the open Duo, ~951x669 CSS px): the left page held only the value card with
 empty space under it while the right page needed long scrolls. He approved ChatGPT's dual-pane proposal ("I agree" … "do it"): left =

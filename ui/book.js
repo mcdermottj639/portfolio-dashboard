@@ -1,7 +1,7 @@
 /* v248 — Book mode vNext: the left page is a command panel, the right page is the analysis (Jack, Nov 17 2026, screen recording
    of v247 Book mode: "the left page is significantly underused while the right page requires too much scrolling").
-   Book only (html[data-duo-split="on"][data-duo-layout="book"]), Apex / Agentic areas only, on Overview (accounts + its section routes),
-   Positions (holdings), Research (analyze opened from an account) and Actions (plan). Folded, Standard, phone and every other route are
+   Book only (html[data-duo-split="on"][data-duo-layout="book"]): Today (v249: both accounts' command blocks), and in the Apex / Agentic
+   areas Overview (accounts + its section routes), Positions (holdings), Research (analyze opened from an account) and Actions (plan). Folded, Standard, phone and every other route are
    untouched.
    DISPLAY ONLY. Every figure is one the app already computes for the same account:
      window.__pfPosRows(acct)       the All Positions rows (weight, value, return, today)
@@ -36,6 +36,7 @@
   function ctx(){
     var e=E();if(!e)return null;
     if(root.getAttribute('data-duo-split')!=='on'||root.getAttribute('data-duo-layout')!=='book'||!root.hasAttribute('data-duo-ready'))return null;
+    if(e.route==='today')return {route:'today',tab:'today',acct:'both'};   // v249: Today = both accounts' command blocks
     var tab=TAB[e.route];if(!tab)return null;
     var area=e.area;if(area!=='apex'&&area!=='agentic')return null;
     return {route:e.route,tab:tab,acct:e.account==='agentic'?'agentic':'main'};
@@ -92,7 +93,7 @@
     if(!st)return sec('Performance','','<p class="bk-empty">Needs two recorded days of account equity.</p>');
     var alpha=num(st.spy)!==null?st.ret-st.spy:null;
     var meta='deposit-adjusted · since '+esc(shortDate(st.since));
-    var body='<button type="button" class="bk-perf" data-bk-card="performance" aria-label="Open the Performance card">'+spark(st)+
+    var body='<button type="button" class="bk-perf" data-bk-card="performance" data-bk-acct="'+acct+'" aria-label="Open the Performance card">'+spark(st)+
       '<span class="bk-perf-n"><b class="'+tone(st.ret).trim()+'">'+pct(st.ret)+'</b><span>S&amp;P '+(num(st.spy)===null?'—':pct(st.spy))+' same window'+(alpha!==null?' · '+(alpha>=0?'ahead':'behind')+' '+Math.abs(alpha).toFixed(1)+'pp':'')+'</span></span><i aria-hidden="true">›</i></button>';
     return sec('Performance',meta,body);
   }
@@ -128,16 +129,16 @@
         var short=st.band==='over'?'Over cap':st.band==='high'?'Above cruise':st.band==='normal'?'In band':debt?'Room':'No margin';
         var word=st.band==='over'?'Over the '+cap+'× cap · no new buys':st.band==='high'?'Above '+C.LEV_NORMAL+'× cruise · no new buys':st.band==='normal'?'Between reload and '+C.LEV_NORMAL+'× cruise':debt?'Under the '+C.LEV_RELOAD+'× reload line':'No borrowing';
         var gauge='<span class="bk-gauge" aria-hidden="true"><span class="bk-zone" style="left:'+at(C.LEV_RELOAD)+'%;width:'+(at(C.LEV_NORMAL)-at(C.LEV_RELOAD))+'%"></span><span class="bk-zone bk-zone-hi" style="left:'+at(C.LEV_NORMAL)+'%;width:'+(100-at(C.LEV_NORMAL))+'%"></span><b style="left:'+at(lev)+'%"></b></span>';
-        out+=goRow('data-ex-route="plan" data-bk-why="leverage"','Leverage band',esc(short),esc(word),gauge);
+        out+=goRow('data-ex-route="plan" data-ex-account="main" data-bk-why="leverage"','Leverage band',esc(short),esc(word),gauge);
       }
-      if(num(st.debt)>0&&num(st.callDrop)!==null)out+=goRow('data-bk-card="risk"','Margin cushion',plain(st.callDrop*100,0),'the book can fall this far before a call');
+      if(num(st.debt)>0&&num(st.callDrop)!==null)out+=goRow('data-bk-card="risk" data-bk-acct="main"','Margin cushion',plain(st.callDrop*100,0),'the book can fall this far before a call');
       try{
         if(c.cfg.themeCap!==false){var th=G.Apex.themeShare(st,c.cfg);if(th&&th.outside>0){
-          out+=goRow('data-ex-route="plan" data-bk-why="theme"','Tech outside '+esc(c.cfg.core||'core'),plain(th.share*100,0),'cap '+Math.round(th.max*100)+'%'+(th.over?' · over':''),bar(th.share*100,th.max*100,th.over));}}
+          out+=goRow('data-ex-route="plan" data-ex-account="main" data-bk-why="theme"','Tech outside '+esc(c.cfg.core||'core'),plain(th.share*100,0),'cap '+Math.round(th.max*100)+'%'+(th.over?' · over':''),bar(th.share*100,th.max*100,th.over));}}
       }catch(_){}
     }
     if(rs.length){var top=rs.slice().sort(function(a,b){return (num(b.pct)||0)-(num(a.pct)||0);})[0];
-      if(num(top.pct)!==null)out+=goRow('data-bk-sym="'+esc(top.symbol)+'"','Largest position',plain(top.pct,1),esc(top.symbol)+' · share of book',bar(top.pct));}
+      if(num(top.pct)!==null)out+=goRow('data-bk-sym="'+esc(top.symbol)+'" data-bk-acct="'+acct+'"','Largest position',plain(top.pct,1),esc(top.symbol)+' · share of book',bar(top.pct));}
     if(!out)return '';
     return sec('Risk','Apex band '+(c?G.Apex.C.LEV_RELOAD+' / '+G.Apex.C.LEV_NORMAL+' / '+G.Apex.C.LEV_CAP+'×':''),'<div class="bk-rows">'+out+'</div>');
   }
@@ -147,17 +148,17 @@
     if(A&&typeof G.agenticBook==='function'){
       try{var b=G.agenticBook(A),eq=num(b.equity);
         if(eq&&eq>0){var inv=num(b.invested)||0,cash=num(b.cash)||0,ip=inv/eq*100;
-          out+=goRow('data-ex-route="plan"','Deployed',plain(ip,0),money(inv)+' invested of '+money(eq),bar(ip));}}catch(_){}
+          out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Deployed',plain(ip,0),money(inv)+' invested of '+money(eq),bar(ip));}}catch(_){}
     }
     var M=G.PFExperienceModel;
     if(A&&M&&typeof M.ticketStatus==='function'){
-      if(A.pending&&A.pending.status){var t=M.ticketStatus(A.pending);out+=goRow('data-ex-route="plan"',esc(t.heading||'Ticket'),'',esc(t.label),'');}
-      else out+=goRow('data-ex-route="plan"','Ticket','','No ticket recorded','');
+      if(A.pending&&A.pending.status){var t=M.ticketStatus(A.pending);out+=goRow('data-ex-route="plan" data-ex-account="agentic"',esc(t.heading||'Ticket'),'',esc(t.label),'');}
+      else out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Ticket','','No ticket recorded','');
     }
     var T=G.__PF_AG_TARGET;
     if(T&&Array.isArray(T.rows)&&T.rows.length){
       var dr=T.rows.filter(function(r){return num(r.drift)!==null;}).sort(function(a,b){return Math.abs(b.drift)-Math.abs(a.drift);})[0];
-      if(dr)out+=goRow('data-ex-route="plan"','Largest drift',(dr.drift>0?'+':'−')+Math.abs(dr.drift).toFixed(1)+'pp',esc(dr.sym)+' vs its '+(num(dr.tgt)===null?'—':dr.tgt.toFixed(1)+'%')+' target'+(T.asOf?' · research '+esc(shortDate(T.asOf)):''));
+      if(dr)out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Largest drift',(dr.drift>0?'+':'−')+Math.abs(dr.drift).toFixed(1)+'pp',esc(dr.sym)+' vs its '+(num(dr.tgt)===null?'—':dr.tgt.toFixed(1)+'%')+' target'+(T.asOf?' · research '+esc(shortDate(T.asOf)):''));
     }
     if(!out)return '';
     return sec('Strategy','••••3900 · automated','<div class="bk-rows">'+out+'</div>');
@@ -168,7 +169,13 @@
     return h?'<section class="bk-sec bk-queue">'+h.replace('Action Center','Review queue')+'</section>':'';
   }
 
+  // v249 Today (Jack, Nov 18 01:21 ET, Book screenshot of Today: the left page held only the combined hero). Today's right page
+  // already carries the combined holdings map, Waiting on you, Out of your hands, value history and the market backdrop, so the
+  // left page adds only what Today does not show: each account's own command block and its deposit-adjusted performance.
+  // No combined holdings list here (that would repeat the right page's map).
+  function group(label,body){return body?'<div class="bk-group"><div class="bk-eyebrow">'+label+'</div>'+body+'</div>':'';}
   function build(c){
+    if(c.tab==='today')return group('Apex · self-directed ••••0741',apexRisk('main')+perfSec('main'))+group('Agentic · automated ••••3900',agenticStrategy()+perfSec('agentic'));
     var a=c.acct,head=a==='agentic'?agenticStrategy():apexRisk(a);
     if(c.tab==='overview')return head+perfSec(a)+holdings(a,OVERVIEW_ROWS,'overview');
     if(c.tab==='positions')return holdings(a,0,'positions')+head;
@@ -223,8 +230,8 @@
   // A holding on Overview or Positions selects it (the journey's own selection, so Research / Plan follow it) and shows its card at
   // the top of the right page; a card link scrolls the right page to that card on Overview. Route links (data-ex-route) and the
   // Research list (data-pj-go) are handled by the existing experience / journey listeners.
-  function showCard(sec){
-    var e=E();if(!e)return;
+  function showCard(sec,acct){
+    var e=E();if(!e)return;acct=acct==='agentic'||acct==='main'?acct:e.account;
     var go=function(){
       var r=document.getElementById(e.account==='agentic'?'agentic-app':'app'),card=r&&r.querySelector(':scope>[data-sec="'+sec+'"]');
       if(!card)return false;
@@ -232,19 +239,20 @@
       if(t&&t.getAttribute('aria-expanded')==='false')t.click();   // the card's own toggle: opens it the way a tap would (v235 fold contract)
       var y=card.getBoundingClientRect().top+G.scrollY-((G.__pfTopOffset&&G.__pfTopOffset())||8)-8;G.scrollTo(0,Math.max(0,y));return true;
     };
-    if(e.route!=='accounts'){e.navigate('accounts');setTimeout(go,260);}else go();
+    if(e.route!=='accounts'||e.account!==acct){e.navigate('accounts',{account:acct});setTimeout(go,260);}else go();
   }
   document.addEventListener('click',function(ev){
     if(!el||!el.contains(ev.target))return;
     var s=ev.target.closest('[data-bk-sym]'),cd=ev.target.closest('[data-bk-card]');
     if(s){
-      var e=E(),sym=s.getAttribute('data-bk-sym');
+      var e=E(),sym=s.getAttribute('data-bk-sym'),acct=s.getAttribute('data-bk-acct')||(e?e.account:'main');
+      // From Today (or the other account) the tap opens that account's Positions first, so the selection lands in the right book.
+      if(e&&(e.account!==acct||(e.route!=='accounts'&&e.route!=='holdings')))e.navigate('holdings',{account:acct});
       try{if(G.PFJourney)G.PFJourney.select(sym);}catch(_){}
-      G.__pfBookPick={acct:e?e.account:'main',sym:sym};
-      if(e&&e.route!=='accounts'&&e.route!=='holdings'){e.navigate('holdings');}
+      G.__pfBookPick={acct:acct,sym:sym};
       try{if(e&&e.refreshBlocks)e.refreshBlocks();}catch(_){}
       G.scrollTo(0,0);soon();
-    } else if(cd){showCard(cd.getAttribute('data-bk-card'));}
+    } else if(cd){showCard(cd.getAttribute('data-bk-card'),cd.getAttribute('data-bk-acct'));}
   });
   document.addEventListener('click',function(ev){var x=ev.target.closest('[data-bk-clear]');if(!x)return;G.__pfBookPick=null;var e=E();try{if(e&&e.refreshBlocks)e.refreshBlocks();}catch(_){}});
 
