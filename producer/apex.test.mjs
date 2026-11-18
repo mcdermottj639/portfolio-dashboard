@@ -112,7 +112,7 @@ ok('render: no DOM outside render; render writes tiles and rules into the elemen
   const calls = [];
   const el = { innerHTML: '', querySelector: () => null };
   A.render(el, A.state(book), A.rules(A.state(book)));
-  assert.ok(/Leverage/.test(el.innerHTML) && /Risk guard/.test(el.innerHTML) && /Jarvis/.test(el.innerHTML));
+  assert.ok(/Leverage/.test(el.innerHTML) && /Risk guard/.test(el.innerHTML) && /Robinhood/.test(el.innerHTML) && !/Jarvis/.test(el.innerHTML));
   assert.ok(!/undefined|NaN/.test(el.innerHTML), 'no undefined/NaN in markup');
   void calls;
 });

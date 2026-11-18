@@ -5,7 +5,7 @@
    (exposure ÷ equity), the distance to a maintenance call, a pre-built drop
    tripwire, a de-lever ladder that sells into strength, and the reload rule that
    only borrows when the book is winning. Tickets are proposals; approvals live in
-   Jarvis (decisions queue) and the order is placed by Jack in Robinhood.
+   the Confirm button (a Claude chat) and the order is placed by Jack in Robinhood.
 
    Loaded by index.html before the main inline script; require()-able from Node
    tests. Keep this file free of DOM access outside render(). */
@@ -64,7 +64,6 @@
     coreOwner: true,                                 // v201: the core is OWNER-MANAGED — no rule ever proposes selling, trimming or adding it; Apex builds around it
     targets: { IREN: 20, NVDA: 20, PLTR: 15, RKLB: 15, CRWD: 10 },
     kicker: 15,                                      // LEAPS sleeve cap, funded from trims only
-    jarvis: 'https://claude.ai/artifact/1rWeHSBKA2BJ1kiesa81sQ',
     /* v196: Robinhood's per-stock maintenance (Margin buffer screen, Jack, 2026-11-08). Names not listed use
        the 30% account default, which is the same or stricter than Robinhood's figure for them. */
     maintBy: { IREN: 0.30, AMZN: 0.25, PLTR: 0.25 },
@@ -317,7 +316,7 @@
     } else if (st.lev < C.LEV_RELOAD && st.lev <= C.LEV_CAP) {
       /* v188 BUILD ON CONFIRMATION (Jack, 2026-11-05: "I expect a new portfolio"). Room exists but the
          trend filter is shut, so the book is built with ARMED buy-stop-limits only — they fill only if
-         a name takes out max(prior high, 10-day EMA) × 1.005. The scan writes exact triggers in Jarvis;
+         a name takes out max(prior high, 10-day EMA) × 1.005. The scan writes exact triggers to Task storage;
          this card shows the split. Core is never added to. */
       const room = Math.max(0, C.LEV_NORMAL * st.equity - st.exposure);
       const names = Object.keys(cfg.targets).filter((s) => s !== cfg.core && !nearEarn(s));
@@ -354,7 +353,7 @@
           }
           /* v194 (Jack, 11:34: "always put the entry target prices"): with the scan's levels the rung shows
              trigger → limit, target, stop and reward/risk AT THAT ENTRY, and sizes at the limit exactly like
-             the Jarvis ticket (floor(budget ÷ limit)). Missing or invalid levels produce a review without a ticket. */
+             the scan's ticket (floor(budget ÷ limit)). Missing or invalid levels produce a review without a ticket. */
           const sizePx = L && L.limit > 0 ? L.limit : px;
           const qty = sizePx > 0 ? Math.floor(alloc / sizePx) : 0;
           if (qty > 0) pend[themeOf(cfg, s) === C.THEME_CAPPED ? 'capped' : 'other'] += qty * sizePx;
@@ -512,7 +511,7 @@
     const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], tp: ['#d1fae5', '#065f46', 'target hit'], lose: ['#fee2e2', '#991b1b', 'stop'], sl: ['#fee2e2', '#991b1b', 'research stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], review: ['#fef3c7', '#92400e', 'review · no order'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'], skip: ['#f3f4f6', '#374151', 'not buyable'], wash: ['#fef3c7', '#92400e', 'tax hold'] };
     const rows = out.length ? out.map((r) => {
       const tg = r.lowRR ? ['#fee2e2', '#991b1b', 'below R/R floor'] : (kindTag[r.kind] || kindTag.guard);
-      const tk = r.levels ? levelsHtml(r.levels, esc) : r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger in Jarvis</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
+      const tk = r.levels ? levelsHtml(r.levels, esc) : r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger set by the morning scan</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
       return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0;white-space:nowrap">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
     }).join('') : '<div class="tech-empty">No rule fires. Hold.</div>';
     /* v203 (Jack, Nov 9 01:38 ET: "make sure apex is showing the recommended shares and dollar amounts in each
@@ -537,7 +536,7 @@
       const hold = cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` <span title="tax hold to ${esc(cfg.wash[s].clear)}">🚫</span>` : '';
       return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600;white-space:nowrap">${esc(s)}${hold}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>` + sizeLine(s, tg); }).join('');
     el.innerHTML = `
-      <div data-ws="actions" style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>approvals live in Jarvis</b>; you place the order in Robinhood.</div>
+      <div data-ws="actions" style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>you confirm with Claude below</b>; you place the order in Robinhood.</div>
       <div data-apex-lev data-ws="actions"><div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
       <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(st.guardPct)} · ${C.LEV_CAP}x = ${pct(1 / C.LEV_CAP)}</span></div>
       <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${Math.min(99.5, st.guardPct * 100)}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
@@ -550,7 +549,7 @@
       <div data-apex-research data-ws="research">${researchBlock(research, esc)}</div>
       <div data-apex-sim data-ws="actions"><div class="ac-tier">🧪 What if</div>
       <div id="apex-whatif"></div></div>
-      <div data-ws="actions" style="font-size:11px;color:#9ca3af;margin-top:10px">Tickets are proposals from these rules. Approve or decline them in <a href="${esc(cfg.jarvis)}" target="_blank" rel="noopener" style="color:#2563eb">Jarvis</a>; confirm against live holdings and pending orders before entering a ticket.</div>`;
+      <div data-ws="actions" style="font-size:11px;color:#9ca3af;margin-top:10px">Tickets are proposals from these rules. Check them with Claude using the Confirm button above, and against live holdings and pending orders before entering a ticket.</div>`;
     renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
   }
 

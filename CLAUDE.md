@@ -1,3 +1,13 @@
+## v254 — Apex card no longer sends approvals to Jarvis (2026-11-18)
+Jack (Nov 18 17:31 ET): "Best guess. 'Approvals live in Jarvis': the Apex card still says this." Jarvis is retired (Task storage is
+a database only), and approvals have been the Confirm button since v199. Wording only: no rule, ticket, prompt or Confirm change.
+- `ui/apex.js`: intro "Rules fire here; you confirm with Claude below; you place the order in Robinhood." Footer "Tickets are proposals
+  from these rules. Check them with Claude using the Confirm button above, and against live holdings and pending orders before …" (the
+  Jarvis link and the unused `DEFAULT_CFG.jarvis` are gone). Armed rung "armed — trigger set by the morning scan".
+- `index.html` research note: "Buy lines are in the Confirm list on Actions." Comments updated.
+- Tests: `producer/apex.test.mjs` now asserts the card names Robinhood and never Jarvis. Older entries below that say "Jarvis" are
+  HISTORICAL.
+
 ## v253 — Research holds each account's research; Actions holds what to do (2026-11-18)
 Jack (Nov 18 14:02 ET: "why does research always open to analyze. Apex and agentic plans should be under the research for each no?";
 14:54 "PR 2 — Research/Actions redesign … Reuse existing cards; avoid duplicate information"). Display and navigation only: every card
@@ -2446,7 +2456,7 @@ Three hazards this table exists to prevent:
   the change is large/risky enough to want a reviewable diff — in both cases say plainly that it is
   NOT live yet. Verify before merging (tests + the version bumps), never merge to dodge a failure.
 - **Versioning:** any change to `index.html`/`sw.js` → bump **both** `APP_VERSION` (in `index.html`
-  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v222** (`pf-v222`).
+  `boot()`) and `CACHE_VERSION` (in `sw.js`) together. Currently **v254** (`pf-v254`).
   **DAY IN CASH** pass (2026-09-12, owner-set): the Agentic Portfolio table's `Day / YTD` column drops YTD
   for **what the day's move was worth in dollars on that position** (`qty × (px − prevClose)`; the header is
   now just `Day`). **v147 put the dollars ON TOP with the percentage grey beneath, matching `plCell` one
