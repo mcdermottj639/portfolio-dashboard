@@ -221,5 +221,6 @@ Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equi
   The same Monday run freezes the rejected-names ledger (`shadow` in the paper file: live v2.8 picks as a
   control arm, live tech-cap and R/R rejects, paper one-test-short names). Late live names (8:30 copy) are
   added before the next open or marked `missing`; skipped Mondays are listed. Locked eval spec:
-  `producer/APEX-PAPER-EVAL.md` (`eval-1`). Paper only, descriptive, changes no threshold.
+  `producer/APEX-PAPER-EVAL.md` (`eval-1`, simulated `sim-1` from `--paths` daily prices). Paper only,
+  descriptive, changes no threshold.
 - Momentum-off shadow (••••3900): paper only; `thin` until 4 graded cohorts.

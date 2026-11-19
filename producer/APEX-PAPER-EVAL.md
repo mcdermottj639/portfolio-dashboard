@@ -30,8 +30,16 @@ Owner-managed core (IREN) never enters any arm.
 
 ## Raw vs simulated
 `evaluation.arms` is RAW stock performance (each name, buy at open, mark at horizon).
-Simulated portfolio results (drawdown, stop hits, exposure, sizing) are `null` until the paper track
-stores a daily close path per entered name. That needs a scheduled-task prompt change, owned by Jack.
+`evaluation.simulated` (spec `sim-1`, `SIM` in code, added 2026-11-19) is a SIMULATED portfolio, `null`
+until daily prices are stored:
+- Prices: `paths` in the paper file, `[date, open, low, close]` per cohort and symbol (plus SPY), read-only,
+  supplied by the scheduled task with `--paths`. A stored day is never overwritten; newest 26 cohorts kept.
+- Arms: `paper` (frozen cohort weights, rest cash) and `live` (live v2.8 picks, equal weight).
+- Hold: entry open to 30 trading days, or the frozen stop (paper picks freeze `stop` and `tp1` from 2026-11-23).
+  Stop fill = the stop, or the open when the day opens below it. Live picks carry no stored stop.
+- Per cohort: net return, SPY over the same dates, net alpha, max drawdown of the cohort curve, average
+  exposure (% of capital invested per day), stop hits. Costs 0.20 pt per position; margin interest not modelled.
+- Only completed cohorts are averaged; descriptive until 12 completed cohorts per arm.
 
 ## Not decided here
 Promotion thresholds (what result would justify changing a live rule) are Jack's call with GPT,

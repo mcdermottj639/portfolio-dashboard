@@ -369,7 +369,7 @@ export const EVAL = Object.freeze({
 });
 const median = a => { const b = [...a].sort((x, y) => x - y); const k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
 /** Raw per-arm record from stored marks only (eval-1). Simulated portfolio results stay null until daily paths exist. */
-export function evaluate(cohorts, marks, shadowCohorts, shadowMarks) {
+export function evaluate(cohorts, marks, shadowCohorts, shadowMarks, paths = null) {
   const rows = []; // {arm-gate, cohort, sym}
   for (const c of cohorts || []) for (const p of (c && c.picks) || []) if (p && p.status === 'entered') rows.push({ gate: 'paper-pick', asOf: c.asOf, sym: p.sym, marks });
   for (const c of shadowCohorts || []) for (const p of (c && c.picks) || []) if (p && p.status === 'entered') rows.push({ gate: p.gate, asOf: c.asOf, sym: p.sym, marks: shadowMarks });
@@ -385,12 +385,99 @@ export function evaluate(cohorts, marks, shadowCohorts, shadowMarks) {
     for (const [hz, v] of Object.entries(by)) { const avg = v.reduce((s, x) => s + x, 0) / v.length; h[hz] = { n: v.length, hit: r2(v.filter(x => x > 0).length / v.length), avgAlpha: r2(avg), medianAlpha: r2(median(v)), avgAlphaNet: r2(avg - EVAL.costPctRoundTrip) }; }
     arms[a.key] = { label: a.label, cohorts: coh.size, entered: mine.length, horizons: h, descriptive: coh.size < EVAL.minCohorts };
   }
-  return { version: EVAL.version, spec: 'producer/APEX-PAPER-EVAL.md', arms, simulated: null,
-    simulatedNote: 'Simulated portfolio results (weights, stops, drawdown, exposure, financing) are not measured yet: they need a daily price path per entered name.',
+  const simulated = simulate(cohorts, shadowCohorts, paths);
+  return { version: EVAL.version, spec: 'producer/APEX-PAPER-EVAL.md', arms, simulated,
+    simulatedNote: simulated ? simulated.note : 'Simulated portfolio results (weights, stops, drawdown, exposure, financing) are not measured yet: they need a daily price path per entered name.',
     note: `Raw per-name results vs SPY, equal weight, ${EVAL.costPctRoundTrip} points round-trip cost. Descriptive only until ${EVAL.minCohorts} Monday cohorts per arm; no live rule changes on this evidence.` };
 }
 
-export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, v28, prior, backtest, quoteBasis, extraNotes = [], sources = [], cohort = false, vols = null, fills = null, newMarks = null, shadowFills = null, shadowMarks = null }) {
+/**
+ * Simulated portfolio spec `sim-1` (paper only; see producer/APEX-PAPER-EVAL.md). Daily price paths are stored per
+ * cohort and symbol as [date, open, low, close]: read-only prices supplied by the scheduled task (--paths).
+ * Each entered name is held from its entry open for 30 trading days or until its frozen stop is hit (exit at the
+ * stop, or at the open when the day opens below it). Paper cohorts keep their frozen weights (the rest is cash);
+ * the live v2.8 control arm is equal weight. 0.20 points round trip per position; margin interest not modelled.
+ */
+export const SIM = Object.freeze({ version: 'sim-1', holdDays: 30, costPctRoundTrip: 0.20, arms: Object.freeze(['paper', 'live']), keepCohorts: 26,
+  stopFill: 'the stop, or the open when the day opens below it', weighting: 'paper: frozen cohort weights, rest cash; live: equal weight', financing: 'margin interest not modelled' });
+
+const isDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+/** Merge stored and new daily rows. A stored day is never overwritten; malformed rows are dropped; only the newest 26 cohort keys are kept. */
+export function mergePaths(prior, fresh) {
+  const out = {};
+  for (const src of [prior, fresh]) for (const [k, syms] of Object.entries(src && typeof src === 'object' ? src : {})) {
+    for (const [sym, rows] of Object.entries(syms && typeof syms === 'object' ? syms : {})) {
+      if (!Array.isArray(rows)) continue;
+      const m = new Map((((out[k] || {})[sym]) || []).map(r => [r[0], r]));
+      for (const r of rows) if (Array.isArray(r) && isDay(r[0]) && r.slice(1, 4).every(v => typeof v === 'number' && v > 0) && !m.has(r[0])) m.set(r[0], r.slice(0, 4));
+      if (m.size) { out[k] = out[k] || {}; out[k][sym] = [...m.values()].sort((a, b) => (a[0] < b[0] ? -1 : 1)); }
+    }
+  }
+  const keep = Object.keys(out).sort().slice(-SIM.keepCohorts);
+  return Object.fromEntries(keep.map(k => [k, out[k]]));
+}
+
+/** One name: entry at its open, out at the stop or after holdDays. Null until the path starts on the entry day. */
+export function simName(pick, rows, holdDays = SIM.holdDays) {
+  if (!pick || pick.status !== 'entered' || !(pick.entryPx > 0) || !isDay(pick.entryDate)) return null;
+  const days = (rows || []).filter(r => r[0] >= pick.entryDate);
+  if (!days.length || days[0][0] !== pick.entryDate) return null;
+  const e = pick.entryPx; const stop = pick.stop > 0 && pick.stop < e ? pick.stop : null;
+  let minPx = e, exitPx = null, exitDate = null, stopped = false; const curve = [];
+  for (let i = 0; i < days.length && i <= holdDays; i++) {
+    const [d, o, l, c] = days[i];
+    if (stop && l <= stop) { exitPx = i === 0 ? stop : Math.min(o, stop); exitDate = d; stopped = true; minPx = Math.min(minPx, exitPx); curve.push([d, exitPx / e - 1, false]); break; }
+    minPx = Math.min(minPx, l);
+    if (i === holdDays) { exitPx = c; exitDate = d; }
+    curve.push([d, c / e - 1, i < holdDays]);
+  }
+  return { sym: pick.sym, complete: exitPx != null, stopped, exitDate, retPct: r2(curve[curve.length - 1][1] * 100), maxDrawdownPct: r2((minPx / e - 1) * 100), curve };
+}
+
+function simCohort(asOf, picks, weightOf, paths, holdDays) {
+  const p = (paths && paths[asOf]) || {}; const names = [];
+  for (const pk of picks) { const s = simName(pk, p[pk.sym], holdDays); if (s) names.push({ ...s, w: weightOf(pk) }); }
+  if (!names.length) return null;
+  const dates = [...new Set(names.flatMap(n => n.curve.map(x => x[0])))].sort();
+  const total = names.reduce((t, n) => t + n.w, 0);
+  let peak = 100, dd = 0, expo = 0, v = 100;
+  for (const d of dates) {
+    v = 100 - total; let inv = 0;
+    for (const n of names) {
+      let pt = null; for (const x of n.curve) if (x[0] <= d) pt = x;
+      if (!pt) { v += n.w; continue; }
+      v += n.w * (1 + pt[1]); if (pt[0] === d || pt[2]) inv += n.w;
+    }
+    peak = Math.max(peak, v); dd = Math.min(dd, v / peak - 1); expo += inv;
+  }
+  const entered = picks.filter(x => x && x.status === 'entered').length;
+  const complete = names.length === entered && names.every(n => n.complete);
+  const net = (v - 100) - SIM.costPctRoundTrip * total / 100;
+  const spy = p.SPY || []; const s0 = spy.find(r => r[0] === dates[0]); const s1 = spy.find(r => r[0] === dates[dates.length - 1]);
+  const spyRet = s0 && s1 ? (s1[3] / s0[1] - 1) * 100 : null;
+  return { asOf, complete, names: names.length, stops: names.filter(n => n.stopped).length, investedPct: r1(total), days: dates.length,
+    retNetPct: r2(net), spyRetPct: spyRet == null ? null : r2(spyRet), alphaNetPct: spyRet == null ? null : r2(net - spyRet),
+    maxDrawdownPct: r2(dd * 100), avgExposurePct: r1(expo / dates.length), worstNameDrawdownPct: Math.min(...names.map(n => n.maxDrawdownPct)) };
+}
+
+/** Simulated results per arm, from stored daily paths only. Null until any path is stored. */
+export function simulate(cohorts, shadowCohorts, paths, holdDays = SIM.holdDays) {
+  if (!paths || !Object.keys(paths).length) return null;
+  const avg = a => (a.length ? r2(a.reduce((t, x) => t + x, 0) / a.length) : null);
+  const arm = list => {
+    const all = list.filter(Boolean); const done = all.filter(c => c.complete);
+    return { cohorts: done.length, inProgress: all.length - done.length, names: done.reduce((t, c) => t + c.names, 0), stops: done.reduce((t, c) => t + c.stops, 0),
+      avgRetNetPct: avg(done.map(c => c.retNetPct)), avgAlphaNetPct: avg(done.map(c => c.alphaNetPct).filter(x => x != null)),
+      worstDrawdownPct: done.length ? Math.min(...done.map(c => c.maxDrawdownPct)) : null, avgExposurePct: avg(done.map(c => c.avgExposurePct)),
+      descriptive: done.length < EVAL.minCohorts, perCohort: all };
+  };
+  const paper = (cohorts || []).map(c => simCohort(c.asOf, c.picks || [], pk => (pk.w > 0 ? pk.w : 0), paths, holdDays));
+  const live = (shadowCohorts || []).map(c => { const ps = (c.picks || []).filter(x => x.gate === 'live-pick'); return ps.length ? simCohort(c.asOf, ps, () => 100 / ps.length, paths, holdDays) : null; });
+  return { version: SIM.version, spec: 'producer/APEX-PAPER-EVAL.md', holdDays, arms: { paper: arm(paper), live: arm(live) },
+    note: `Simulated from stored daily prices: hold ${holdDays} trading days or until the frozen stop (paper picks; live picks carry no stored stop), ${SIM.costPctRoundTrip} points round trip per position, margin interest not modelled. Descriptive only until ${EVAL.minCohorts} completed cohorts per arm.` };
+}
+
+export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, v28, prior, backtest, quoteBasis, extraNotes = [], sources = [], cohort = false, vols = null, fills = null, newMarks = null, shadowFills = null, shadowMarks = null, newPaths = null }) {
   const m = mergeBatches(batches);
   const scored = m.rows.map(p => scoreRow(p, bench, { today, themeMap, checks }));
   const setupMatches = { A: 0, B: 0, C: 0, none: 0 }; const rej = {};
@@ -440,7 +527,7 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
     const bySym = Object.fromEntries(qualified.map(q => [q.sym, q]));
     cohorts.push({
       asOf, rulesVersion: RULES_VERSION, spyAt: bench.last, universeCount: scored.length, qualifiedCount: qualified.length, techBatchPct: batch.techBatchPct, sizedBy: batch.sizedBy,
-      picks: batch.picks.map(p => ({ sym: p.sym, w: p.weightPct, setup: bySym[p.sym].setup, theme: bySym[p.sym].theme, entryRule: bySym[p.sym].entryType === 'limit' ? 'next session open' : `trigger $${bySym[p.sym].entry}`, entryPx: null, entryDate: null, status: 'pending' })),
+      picks: batch.picks.map(p => ({ sym: p.sym, w: p.weightPct, setup: bySym[p.sym].setup, theme: bySym[p.sym].theme, entryRule: bySym[p.sym].entryType === 'limit' ? 'next session open' : `trigger $${bySym[p.sym].entry}`, stop: bySym[p.sym].stop ?? null, tp1: bySym[p.sym].tp1 ?? null, entryPx: null, entryDate: null, status: 'pending' })),
     });
     frozen = true;
   } else if (cohort && today && cohorts.some(c => String(c.asOf).slice(0, 10) === today)) frozen = true;
@@ -448,6 +535,7 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
   let skipped = Array.isArray(prior && prior.skipped) ? prior.skipped.slice() : [];
   if (cohort && !frozen && today && !skipped.some(x => x.date === today)) skipped = [...skipped, { date: today, asOf, reason: status === 'ok' ? 'no complete run' : 'coverage partial: ' + (m.batches.filter(b => b.total == null || b.rows !== b.total).map(b => b.label).join(', ') || 'SPY benchmark missing') }].slice(-52);
   const marks = mergeMarks(prior && prior.marks, newMarks);
+  const paths = mergePaths(prior && prior.paths, newPaths);
   const bad = m.batches.filter(b => b.total == null || b.rows !== b.total);
   const doc = {
     schema: 1, paper: true, rulesVersion: RULES_VERSION, asOf, status,
@@ -481,7 +569,8 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
     },
     cohortNote: cohorts.length ? `${cohorts.length} Monday cohort(s) logged; descriptive only until 12 exist. Review, not verdict.` : 'No paper cohort yet. The first one is frozen on the next Monday run; results stay descriptive until 12 Monday cohorts exist.',
     backtest: backtest || (prior && prior.backtest) || null,
-    evaluation: evaluate(cohorts, marks, shadowCohorts, shadowMarksAll),
+    paths,
+    evaluation: evaluate(cohorts, marks, shadowCohorts, shadowMarksAll, paths),
     notes: [
       'PAPER ONLY. No ticket, alert, order or live rule reads this file. Live Apex stays on rules v2.8.',
       'Thresholds are the approved v2.9-paper-1 starting points under test; none was loosened to produce picks.',
@@ -545,6 +634,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     checks: arg('checks') ? rd(arg('checks')) : null, v28, prior, backtest: arg('backtest') ? rd(arg('backtest')) : null,
     cohort: process.argv.includes('--cohort'), vols: arg('vols') ? rd(arg('vols')) : null, fills: arg('fills') ? rd(arg('fills')) : null, newMarks: arg('marks') ? rd(arg('marks')) : null,
     shadowFills: arg('shadow-fills') ? rd(arg('shadow-fills')) : null, shadowMarks: arg('shadow-marks') ? rd(arg('shadow-marks')) : null,
+    newPaths: arg('paths') ? rd(arg('paths')) : null,
     quoteBasis: arg('quote') || 'Robinhood scanner last trade at the time of the run',
     extraNotes: arg('note') ? [arg('note')] : [],
     sources: [`Robinhood market scanner (preview_scan), ${files.length} batches, ${asOf}`, 'SPY benchmark from the same scanner', 'data/apex-targets.json (live v2.8 result, read-only)'],
