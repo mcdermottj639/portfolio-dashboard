@@ -1,132 +1,27 @@
 name: Producer tests
-
-# Synthetic/offline tests: no broker writes, secrets or decrypted account records.
-# Every PR, including data-only updates, must get an exact-head result.
+# TEMPORARY scratch-branch workflow (sweep baseline for v255). Never merged.
 on:
-  pull_request: {}
-  merge_group: {}
-  push:
-    branches: [main]
-    paths: ['producer/**', 'ui/**', 'tests/**', 'scripts/**', 'index.html', 'sw.js', '.github/workflows/tests.yml']
   workflow_dispatch: {}
-
 permissions:
   contents: read
-
-concurrency:
-  group: producer-tests-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
-  test:
+  sweep:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - name: Run producer test suites
-        run: |
-          rc=0
-          for t in producer/*.test.mjs; do
-            echo "::group::$t"
-            node "$t" || rc=1
-            echo "::endgroup::"
-          done
-          exit $rc
-
-      - name: Run dashboard model tests
-        run: node --test tests/*.test.cjs
-
-      - name: Install browser test runtime
-        run: |
-          npm install --no-save --no-package-lock playwright@1.57.0
-          # The pinned hosted image already has Chromium's shared libraries.
-          # Do not depend on apt mirrors merely to install extra font packages.
-          npx playwright install chromium
-
-      - name: Check synthetic dashboard in Chromium
-        run: |
-          node tests/preview.mjs > /tmp/portfolio-preview.log 2>&1 &
-          preview_pid=$!
-          trap 'kill "$preview_pid"' EXIT
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8767/ >/dev/null; then break; fi
-            sleep 1
-          done
-          node tests/brief-browser.mjs
-          node tests/sd-plan-browser.mjs
-          node tests/apex-browser.mjs
-          node tests/journey-browser.mjs
-          node tests/holdings-duo-browser.mjs
-          node tests/today-viewport-browser.mjs
-
-      - name: Verify published UI after a main release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          python3 tests/verify-live-shell.py
-          PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/journey-browser.mjs
-          PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/holdings-duo-browser.mjs
-          PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/today-viewport-browser.mjs
-
-      - name: Save synthetic layout evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: journey-browser-evidence
-          path: tmp/journey-evidence/
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Save public UI source for review
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: journey-review-source
-          path: |
-            index.html
-            sw.js
-            ui/
-            tests/
-            UX_REVIEW.md
-            UI-PRESERVATION.md
-            CLAUDE.md
-          retention-days: 3
-
-  webkit-layout:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with: { persist-credentials: false }
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - name: Install WebKit layout runtime
-        run: |
+      - run: |
           npm install --no-save --no-package-lock playwright@1.57.0
-          npx playwright install --with-deps webkit
-      - name: Verify compact Today in WebKit with synthetic data
-        run: |
-          node tests/preview.mjs > /tmp/portfolio-webkit-preview.log 2>&1 &
-          preview_pid=$!
-          trap 'kill "$preview_pid"' EXIT
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8767/ >/dev/null; then break; fi
-            sleep 1
-          done
-          PF_BROWSER=webkit node tests/today-viewport-browser.mjs
-      - name: Verify served Today in WebKit
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          python3 tests/verify-live-shell.py
-          PF_BROWSER=webkit PF_PREVIEW_URL=https://mcdermottj639.github.io/portfolio-dashboard/ node tests/today-viewport-browser.mjs
-      - name: Save synthetic WebKit layout evidence
+          npx playwright install chromium
+      - run: |
+          node tests/preview.mjs > /tmp/p.log 2>&1 &
+          for a in $(seq 1 30); do curl -fsS http://127.0.0.1:8767/ >/dev/null && break; sleep 1; done
+          node tests/duo-checks.mjs && echo DUO_OK || echo DUO_FAIL
+          node tests/brief-browser.mjs && echo BRIEF_OK || echo BRIEF_FAIL
+          node tests/sweep-browser.mjs || true
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: today-webkit-evidence
-          path: tmp/journey-evidence/
-          if-no-files-found: ignore
-          retention-days: 14
+        with: { name: sweep, path: tmp/sweep/ }
