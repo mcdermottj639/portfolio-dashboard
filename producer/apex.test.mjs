@@ -889,6 +889,12 @@ ok('v258 morning ticket: same lines as Confirm, entry+target on every buy, hones
   assert.ok(T.stops.some((s) => s.sym === 'ZS' && s.stop === 173.86 && s.tp1 === 267.87), 'held ZS shows its research exits');
   assert.ok(!T.stops.concat(T.sells).some((s) => s.sym === 'IREN'), 'IREN (owner-managed) never on the sell side');
   assert.ok(/Research Mon, Nov 16, 2026, 7:13 AM ET/.test(A.ticketHtml(T, (s) => String(s))));
+  // v259: every row carries its share count — the order size for buys and sells, shares held for a sell stop
+  T.buys.concat(T.sells).forEach((r) => { const l = lines.find((x) => x.sym === r.sym && x.side === r.side); assert.equal(r.qty, l.qty, r.sym + ' shares match the order'); });
+  assert.equal(T.stops.find((s) => s.sym === 'ZS').qty, 5, 'ZS sell stop shows 5 shares held');
+  const th = A.ticketHtml(T, (s) => String(s));
+  assert.equal((th.match(/data-apex-ticket-qty/g) || []).length, T.buys.length + T.sells.length + T.stops.length, 'a share count on every row');
+  assert.ok(/>5 sh</.test(th), 'whole shares print without decimals');
   const el = { innerHTML: '', querySelector: () => null }; A.render(el, st, out, cfg, null);
   const h = el.innerHTML;
   assert.ok(h.indexOf('id="apex-ticket"') >= 0 && h.indexOf('id="apex-ticket"') < h.indexOf('data-apex-rules'), 'ticket leads the card');

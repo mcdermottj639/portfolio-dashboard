@@ -873,20 +873,20 @@
     const pctFrom = (a, b) => (a && b ? (a / b - 1) * 100 : null);
     const buys = lines.filter((l) => l.side === 'buy').map((l) => {
       const L = levelsFor(cfg, l.sym) || {}, entry = num(L.limit) || num(L.trigger), stop = num(L.stop), tp1 = num(L.tp1);
-      return { side: 'buy', sym: l.sym, name: L.name || null, action: l.text, price: l.px, est: !!l.est, entry, trigger: num(L.trigger), tp1, stop,
+      return { side: 'buy', sym: l.sym, qty: num(l.qty), name: L.name || null, action: l.text, price: l.px, est: !!l.est, entry, trigger: num(L.trigger), tp1, stop,
         rr: L.rr != null && Number.isFinite(+L.rr) ? +L.rr : null, riskPct: pctFrom(stop, entry), rewardPct: pctFrom(tp1, entry), note: l.sub || '' };
     });
     const sellSyms = new Set();
     const sells = lines.filter((l) => l.side === 'sell').map((l) => {
       sellSyms.add(l.sym);
       const E = exitLevelsFor(cfg, l.sym) || {}, p = st.positions.find((x) => x.symbol === l.sym) || {};
-      return { side: 'sell', sym: l.sym, name: E.name || null, action: l.text, price: l.px, est: !!l.est, last: num(p.px), tp1: num(E.tp1), stop: num(E.stop), note: l.sub || '' };
+      return { side: 'sell', sym: l.sym, qty: num(l.qty), name: E.name || null, action: l.text, price: l.px, est: !!l.est, last: num(p.px), tp1: num(E.tp1), stop: num(E.stop), note: l.sub || '' };
     });
     /* Held names (never the owner-managed core) with a research stop or target and no sell today: their sell-stop and
        take-profit levels, so every held name on the ticket shows where it exits. Research levels, not Jack's orders. */
     const stops = st.positions.filter((p) => !(cfg.coreOwner && p.symbol === cfg.core) && !sellSyms.has(p.symbol)).map((p) => {
       const E = exitLevelsFor(cfg, p.symbol) || {}, stop = num(E.stop), tp1 = num(E.tp1), last = num(p.px);
-      return stop || tp1 ? { side: 'stop', sym: p.symbol, name: E.name || null, qty: p.qty, last, est: !fresh, tp1, stop, toStopPct: pctFrom(stop, last), toTargetPct: pctFrom(tp1, last) } : null;
+      return stop || tp1 ? { side: 'stop', sym: p.symbol, name: E.name || null, qty: num(p.qty), last, est: !fresh, tp1, stop, toStopPct: pctFrom(stop, last), toTargetPct: pctFrom(tp1, last) } : null;
     }).filter(Boolean);
     const state = cfg.researchReady === false ? 'stale' : (buys.length || sells.length || stops.length ? 'ready' : 'none');
     return { state, researchAsOf: cfg.researchAsOf || null, researchStamp: etStamp(cfg.researchAsOf), quotesAge: ageText(cfg.snapAgeMin), fresh, buys, sells, stops };
@@ -899,7 +899,9 @@
     const cell = (v, col) => `<span style="min-width:0;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis${col ? ';color:' + col : ''}">${v}</span>`;
     const head = (a, b, c) => `<div style="${cols};padding:5px 10px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280"><span>Symbol</span><span style="text-align:right">${a}</span><span style="text-align:right">${b}</span><span style="text-align:right">${c}</span></div>`;
     const pill = (s, bg, fg) => `<span style="display:inline-block;min-width:0;max-width:62px;overflow:hidden;text-overflow:ellipsis;padding:3px 6px;border-radius:7px;background:${bg};color:${fg};font-weight:800;font-size:12.5px;text-align:center">${esc(s)}</span>`;
-    const row = (r, tone, first, second, third, detail) => `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" style="border-top:1px solid rgba(0,0,0,.06)"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box">${pill(r.sym, tone[0], tone[1])}${cell(first)}${cell(second, '#059669')}${cell(third, '#dc2626')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere">${detail}</div></details>`;
+    const row = (r, tone, first, second, third, detail) => `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" style="border-top:1px solid rgba(0,0,0,.06)"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, tone[0], tone[1])}${r.qty ? `<span data-apex-ticket-qty style="font-size:10.5px;font-weight:600;color:#6b7280;font-variant-numeric:tabular-nums;white-space:nowrap">${shares(r.qty)} sh</span>` : ''}</span>${cell(first)}${cell(second, '#059669')}${cell(third, '#dc2626')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere">${detail}</div></details>`;
+    // v259 (Jack, Nov 19 2026 4:56 PM ET: "Need share amounts"): every row shows its shares — the order size for buys and sells, shares held for a sell stop.
+    const shares = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x).toLocaleString('en-US') : (+x).toFixed(2));
     const g = ['#d1fae5', '#065f46'], rd = ['#fee2e2', '#991b1b'];
     const est = (r) => (r.est ? '≈ ' : '');
     const buyRows = T.buys.map((r) => row(r, g, est(r) + n2(r.entry), n2(r.tp1), n2(r.stop),

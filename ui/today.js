@@ -72,7 +72,7 @@
     const alerts = brief.attention.filter(a => !a.title.startsWith('Agentic ticket:') && a.title !== 'Earnings in the week ahead');
     const earnings = brief.earnings.filter(e => e.days <= 7);
     const count = (state.book && (state.book.lines.length || state.book.reviews.length) ? 1 : 0) + (ticket.group === 'waiting' ? 1 : 0) + alerts.length + earnings.length;
-    let html = '<section class="td-waiting td-panel"><div class="td-section-head"><h2>Waiting on you</h2><span class="td-count" aria-label="' + count + ' items to review">' + count + '</span></div>' + tradeCard(state.book);
+    let html = '<section class="td-waiting td-panel"><div class="td-section-head"><h2>Waiting on you</h2><button type="button" class="td-link" data-td-apex-ticket style="margin-left:auto">🧾 Order ticket <span aria-hidden="true">↗</span></button><span class="td-count" aria-label="' + count + ' items to review">' + count + '</span></div>' + tradeCard(state.book);
     if (ticket.group === 'waiting') html += attentionRow({title:'Agentic · ' + ticket.label,detail:ticket.detail,route:'plan',account:'agentic'});
     html += earnings.map(e => '<div class="td-attention-row"><div><strong>' + esc(e.symbol) + ' earnings · ' + esc(when(e.days)) + '</strong><p class="td-muted">' + esc(e.date) + ' · Check the research before acting.</p></div><button type="button" class="td-link" data-td-holding="' + esc(e.symbol) + '">Review <span aria-hidden="true">↗</span></button></div>').join('');
     html += alerts.slice(0,2).map(attentionRow).join('');
@@ -154,6 +154,8 @@
     host.addEventListener('click', e => {
       const button = e.target.closest('button');
       if (!button) return;
+      // v259 (Jack, Nov 19 2026 4:53 PM ET): Today's Apex tile opens the morning ticket, the same jump as #apex-ticket.
+      if (button.hasAttribute('data-td-apex-ticket')) { if (location.hash === '#apex-ticket') { window.__apexTicketJumped = false; window.apexTicketJump?.(); } else location.hash = '#apex-ticket'; return; }
       if (button.dataset.tdView) {
         state.view = button.dataset.tdView === 'list' ? 'list' : 'map';
         try { localStorage.setItem('pf_today_view',state.view); } catch (_) {}
