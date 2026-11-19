@@ -412,6 +412,13 @@ html.ws-on #ex-subnav button{flex:1 1 0!important;text-align:center;padding-left
 .ws-classic{font:inherit;font-size:12px;margin-left:auto;color:var(--ex-muted)!important}
 /* The card rail ("Collapse all · Apex · Action Center") is replaced by the tab row; the cards, their folds and Find / My view are untouched. */
 html.ws-on #page-portfolio>.card-nav,html.ws-on #page-picks>.card-nav{display:none!important}
+/* v256: the page card toolbar (Expand all / Collapse all) sits just above the card stack: under the account summary and My view
+   on Overview, under the position list header on Positions, and above the Plan / Research cards. */
+html.experience-on .pf-foldall{background:var(--ex-soft);color:var(--ex-accent);border-color:transparent;font-family:inherit}
+html.experience-on .pf-fold-empty{color:var(--ex-muted)}
+html.ws-on #page-portfolio>.pf-foldbar{order:48}
+html[data-ws-tab="positions"] #page-portfolio>.pf-foldbar{order:15}
+html.ws-on #page-picks>.pf-foldbar{order:55}
 /* Pure pointer cards (Plan tab →, Rebalance Log →, Screens →, Agentic account →) were navigation layers; the bottom nav and tab row reach those places. */
 html.ws-on #app>.card:has(>.dp-link),html.ws-on #agentic-app>.card:has(>.dp-link),html.ws-on #picks-app>.card:has(>.dp-link):not(:has([data-apx-pointer])){display:none!important}
 /* One page, three tabs: the Accounts page is shown as Overview (summary, actions, then the existing cards) or Positions (cards, then All Positions). */

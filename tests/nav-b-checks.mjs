@@ -386,9 +386,10 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
         await p.evaluate(r=>PFExperience.navigate(r),route);await p.waitForTimeout(250);
         const g=await p.evaluate(()=>{const page=document.querySelector('#page-picks').style.display==='none'?document.getElementById('page-portfolio'):document.getElementById('page-picks');
           // Above the page: the sub-nav, or on Plan the journey context block that follows it.
+          // v256: the Expand all / Collapse all toolbar counts as content, not as an empty gap.
           let prev=page.previousElementSibling;while(prev&&!(prev.offsetHeight>0&&getComputedStyle(prev).position!=='fixed'))prev=prev.previousElementSibling;
           const sb=(prev||document.getElementById('ex-subnav')).getBoundingClientRect().bottom;
-          const vis=[...page.querySelectorAll('.ws-block, .card, .header, .picks-hero')].filter(e=>e.offsetHeight>0&&getComputedStyle(e).position!=='absolute'),first=vis.sort((x,y)=>x.getBoundingClientRect().top-y.getBoundingClientRect().top)[0]||[...page.children].find(e=>e.offsetHeight>0);
+          const vis=[...page.querySelectorAll('.ws-block, .card, .header, .picks-hero, .pf-foldbar')].filter(e=>e.offsetHeight>0&&getComputedStyle(e).position!=='absolute'),first=vis.sort((x,y)=>x.getBoundingClientRect().top-y.getBoundingClientRect().top)[0]||[...page.children].find(e=>e.offsetHeight>0);
           return {sw:document.documentElement.scrollWidth,iw:innerWidth,gap:first?first.getBoundingClientRect().top-sb:null,wraps:[...document.querySelectorAll('.acct-seg-wrap')].map(e=>e.offsetHeight),cap:document.getElementById('ex-context').scrollWidth<=document.getElementById('ex-context').parentElement.clientWidth+1};});
         const l2=`${label} ${route}`;
         assert.ok(g.sw<=g.iw,l2+': no horizontal overflow');assert.deepEqual(g.wraps,[0,0],l2+': no switch space');
