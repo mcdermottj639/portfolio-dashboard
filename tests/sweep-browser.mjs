@@ -68,5 +68,7 @@ const md=['# Layout sweep — '+results.length+' route/size/account views','','|
 fs.writeFileSync(out+'/sweep.md',md.join('\n'));
 console.log('views',results.length,'with defects',bad.length,'errors',errors.length);
 for(const r of bad.slice(0,200))console.log(r.size,r.route,r.acct,JSON.stringify(r.defects.slice(0,4)));
+// Page length per view (screens tall; Book also the left page), so a before/after run can be compared from the log alone.
+for(const r of results)console.log('H',r.size,r.route,r.acct,(r.height/r.vh).toFixed(2),r.left?(r.left/r.vh).toFixed(2):'-',r.folded);
 if(errors.length||writes.length){console.error(errors.join('\n'),writes.join('\n'));process.exit(1);}
 if(process.env.PF_SWEEP_STRICT&&bad.length)process.exit(1);
