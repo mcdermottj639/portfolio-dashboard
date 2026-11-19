@@ -1,0 +1,81 @@
+{
+ "about": "Verbatim migration of the root CLAUDE.md into docs/claude/ (PR #248). Each block is a run of original lines that must stay unchanged; tests/claude-docs.test.cjs re-hashes them. Verify the source with: git show c57f072:CLAUDE.md | sha256sum",
+ "sourceCommit": "c57f072",
+ "sourceFile": "CLAUDE.md",
+ "sourceLines": 4316,
+ "sourceSha256": "de07d951330357369a58e45a918b7a2669ec66f68344a000143ac1a05a882e1e",
+ "blocks": [
+  {
+   "file": "docs/claude/release-log.md",
+   "origLines": [
+    1,
+    2171
+   ],
+   "lines": 2171,
+   "sha256": "b15ceac4d4073fcb0c689db40f2394613289931b8e03ba5e6be461b590a1d696"
+  },
+  {
+   "file": "docs/claude/architecture.md",
+   "origLines": [
+    2172,
+    2254
+   ],
+   "lines": 83,
+   "sha256": "d67d1cd0c59b92263d5e24fc1cd05c5333c3d0e401cb47ecd699fb1bb3f882d7"
+  },
+  {
+   "file": "docs/claude/process.md",
+   "origLines": [
+    2255,
+    2285
+   ],
+   "lines": 31,
+   "sha256": "7b0b8907dae2ca7ca4944b543ff5855424cd232977229d433ccfad5783c72436"
+  },
+  {
+   "file": "docs/claude/architecture.md",
+   "origLines": [
+    2286,
+    2379
+   ],
+   "lines": 94,
+   "sha256": "f498e763811d0b97015b864b72180e62f4920aad010fd2495ec7a459c9d5e489"
+  },
+  {
+   "file": "docs/claude/key-files.md",
+   "origLines": [
+    2380,
+    2439
+   ],
+   "lines": 60,
+   "sha256": "f453d0568c0e27ee4af47479fa1106b7bd9cd4b004b2c1d36f3d792b250a68a3"
+  },
+  {
+   "file": "docs/claude/process.md",
+   "origLines": [
+    2440,
+    2678
+   ],
+   "lines": 239,
+   "sha256": "ba605a3aad35706d187ccc02aa7a19c3a3be59c1ef728f8c75b5d33dc75190e9"
+  },
+  {
+   "file": "docs/claude/gotchas.md",
+   "origLines": [
+    2679,
+    3703
+   ],
+   "lines": 1025,
+   "sha256": "0c4b492bc8cac24a59b4bbe845b8c1256ac947ec668f515515f2e801bcaca692"
+  },
+  {
+   "file": "docs/claude/features.md",
+   "origLines": [
+    3704,
+    4316
+   ],
+   "lines": 613,
+   "sha256": "0346859f4ae859120c52470f45d4edb1a606e1aba8690737fd559f909253daf7"
+  }
+ ]
+}
