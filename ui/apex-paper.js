@@ -499,7 +499,7 @@
      Reads doc.evaluation, doc.shadow and doc.skipped exactly as the paper engine publishes them (producer/apex-paper.mjs,
      spec producer/APEX-PAPER-EVAL.md). Nothing is estimated here: a missing number is "—", an arm with no graded mark says
      so, and every result carries "descriptive" until 12 Monday cohorts exist. Raw per-name results and the simulated
-     portfolio are kept in separate tables. These cards use the shared .card-title header so they fold like other cards. */
+     portfolio are kept in separate tables. */
   const EVAL_HORIZONS = [5, 30, 60, 90], PRIMARY_H = 30, MIN_COHORTS = 12, OPEN_LEDGER = 12;
   const ARMS = [['live', 'Live v2.8 picks'], ['paper', 'v2.9 paper picks'], ['rejectedLive', 'Rejected by a live rule'], ['rejectedPaper', 'Rejected by one paper test']];
   const GATE = {
@@ -586,7 +586,10 @@
 
   const alphaCell = (v) => '<td class="' + (v === null ? '' : v >= 0 ? 'apx-up' : 'apx-dn') + '">' + esc(fmtPct(v, 1, true)) + '</td>';
   const hitTxt = (v) => (v === null ? DASH : group(v * 100, 0) + '%');
-  const cardHead = (title, sub) => '<div class="card-title apx-ctitle"><span>' + esc(title) + '</span>' + (sub ? '<span class="apx-csub">' + sub + '</span>' : '') + '</div>';
+  /* Same h2 header as the other paper cards. Not the app's shared .card-title: that header gains the My view pin
+     button, and the paper page carries no button (tests/apex-paper-checks.mjs). PR 253 leaves this page out of the
+     card fold and Expand all bar; long parts here fold with the module's own <details>. */
+  const cardHead = (title, sub) => '<h2>' + esc(title) + (sub ? ' <span class="apx-csub">' + sub + '</span>' : '') + '</h2>';
 
   function resultsHtml(r) {
     const prog = chip(r.cohortsMax + ' of ' + MIN_COHORTS + ' weeks', r.cohortsMax >= MIN_COHORTS ? 'info' : 'warn');
@@ -634,7 +637,7 @@
       const top = rows.slice(0, OPEN_LEDGER).join(''), more = rows.length > OPEN_LEDGER ? fold('ledger-more:' + (co.day || i), (rows.length - OPEN_LEDGER) + ' more', rows.slice(OPEN_LEDGER).join(''), 'apx-list-fold') : '';
       const ls = LIVE_STATUS[co.liveStatus];
       const inner = (ls ? '<p class="apx-muted">' + chip(ls[0], ls[1]) + (co.liveNote ? ' ' + esc(co.liveNote) : '') + '</p>' : '') + '<div class="apx-llist">' + (rows.length ? top + more : '<p class="apx-empty">No names this week.</p>') + '</div>';
-      return '<details class="apx-fold apx-lweek" data-apx-key="ledger-week:' + esc(co.day || i) + '"' + (i === 0 ? ' open' : '') + '><summary>Week of ' + esc(fmtDay(co.day) || 'undated') + ' <span>' + co.picks.length + ' names</span></summary><div class="apx-fold-body">' + inner + '</div></details>';
+      return '<details class="apx-fold apx-lweek" data-apx-key="ledger-week:' + esc(co.day || i) + '"><summary>Week of ' + esc(fmtDay(co.day) || 'undated') + ' <span>' + co.picks.length + ' names</span></summary><div class="apx-fold-body">' + inner + '</div></details>';
     }).join('');
     const rules = r.byGate.length ? fold('ledger-rules', 'By rule <span>' + r.shownH + '-day net alpha' + (r.shownH !== PRIMARY_H ? ', early look' : '') + '</span>', '<table class="apx-table"><thead><tr><th>Rule</th><th>Names</th><th>Graded</th><th>Hit</th><th>Net alpha</th></tr></thead><tbody>' +
       r.byGate.map((g) => '<tr><th>' + esc(g.gate.label) + '</th><td>' + esc(fmtInt(g.names)) + '</td><td>' + esc(fmtInt(g.n)) + '</td><td>' + esc(hitTxt(g.hit)) + '</td>' + alphaCell(g.avgAlphaNet) + '</tr>').join('') + '</tbody></table>') : '';

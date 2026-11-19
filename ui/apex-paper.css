@@ -262,10 +262,8 @@
   .apx-selgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 
-/* v257 — measured results, weekly cohorts and the rejected-names ledger. These three cards use the shared
-   .card-title header (so the app's card fold can reach them); the header is restyled here only inside .apx. */
-.apx .apx-card>.apx-ctitle{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:0 0 8px;font-size:14px;font-weight:750;color:var(--apx-text)}
-.apx-csub{display:inline-flex;flex-wrap:wrap;gap:4px;font-size:11.5px;font-weight:500;color:var(--apx-muted)}
+/* v257 — measured results, weekly cohorts and the rejected-names ledger (same card style as the rest of this page). */
+.apx-card h2>.apx-csub{display:inline-flex;flex-wrap:wrap;gap:4px}
 .apx-arms th:first-child,.apx-htable th:first-child{width:38%}
 .apx-sim th:first-child{width:40%}
 .apx-lfilters{display:flex;flex-direction:column;gap:7px;margin-bottom:6px}

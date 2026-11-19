@@ -24,7 +24,7 @@ test('results: a file from before eval-1 says results come with the next run, ne
   const h=A.html(base,NOW);
   assert.match(h,/data-apx-res="waiting"/); assert.match(h,/data-apx-ledger="waiting"/);
   assert.match(h,/data-sec="apx-results"/); assert.match(h,/data-sec="apx-rejected"/); assert.match(h,/data-sec="apx-history"/);
-  assert.match(h,/class="card-title apx-ctitle"/,'new cards use the shared card header so they fold');
+  assert.ok(!/card-title/.test(h),'no shared card header: it would add the My view pin button, and this page has no button');
 });
 test('results: four arms in the locked order; before any 30-day mark the 5-day table is labelled an early look',()=>{
   const r=A.research(full(),NOW);
