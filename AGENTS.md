@@ -1,10 +1,12 @@
 # Portfolio Dashboard: agent entry point
 
-Start from current `main`, not an old release number. Read `CLAUDE.md` (active
-rules, gates, open items; deep reference and release history load on demand from
-`docs/claude/`), `UI-PRESERVATION.md`, `UX_REVIEW.md`, and
-[the release workflow](docs/RELEASE-WORKFLOW.md). For strategy work also read the
-applicable producer contract; never infer trading authority from repo access.
+Start from current `main`, not an old release number. Always read `CLAUDE.md`
+(active safety rules, release gates, open items) and
+[the release workflow](docs/RELEASE-WORKFLOW.md). Load the rest only when the task
+needs it: `UI-PRESERVATION.md` and `UX_REVIEW.md` for UI or layout work (grep the
+section for the screen you touch), `docs/claude/` reference per `CLAUDE.md` §9, and
+the applicable producer contract for strategy work. Never infer trading authority
+from repo access.
 
 ## Work and handoff
 

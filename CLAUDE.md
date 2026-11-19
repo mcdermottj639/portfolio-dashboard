@@ -185,7 +185,8 @@ re-reading a 570K-character CLAUDE.md. Work this way:
 | `docs/claude/release-log.md` | Why something is the way it is (HISTORICAL, newest first; grep by version, file or ticker) |
 | `producer/AGENTIC.md` / `PRODUCER.md` / `SCHEDULING.md` / `RAILWAY.md` | Executor and mandate / producer steps / scheduling / optional Railway path |
 | `producer/APEX-DECISIONS.md` | Apex rules contract and the apex-targets schema |
-| `UI-PRESERVATION.md`, `UX_REVIEW.md`, `ui/TODAY.md`, `docs/REDESIGN-2.0-AUDIT.md` | UI contracts and design decisions that must not regress |
+| `UI-PRESERVATION.md`, `UX_REVIEW.md`, `ui/TODAY.md`, `docs/REDESIGN-2.0-AUDIT.md` | UI or layout work only: contracts and design decisions that must not regress (grep the screen you touch) |
+| `docs/claude/MIGRATION.json` | Proof the moved history is unchanged (per-block SHA-256, checked by `tests/claude-docs.test.cjs`); historical blocks are never edited |
 
 Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equityseries.mjs`,
 `optvol.mjs`, `build-data.mjs`) refer to text now in `docs/claude/gotchas.md`, `key-files.md` or

@@ -4,6 +4,12 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## Docs/process — conditional UI docs + migration manifest (2026-11-18)
+ChatGPT review of PR #248 (relayed by Jack 7:06 PM ET): `AGENTS.md` still told every task to read `UI-PRESERVATION.md`
+(35.7K) and `UX_REVIEW.md` (15.9K). They now load for UI/layout work only; `CLAUDE.md` + `docs/RELEASE-WORKFLOW.md`
+stay mandatory. New `docs/claude/MIGRATION.json`: SHA-256 of the source CLAUDE.md (c57f072) and of each of the 8
+verbatim blocks; `tests/claude-docs.test.cjs` re-hashes every block, so an edit to moved history fails CI.
+
 ## Docs/process — instruction split: CLAUDE.md 575,553 → 18,625 characters (2026-11-18)
 Jack (Nov 18 17:39 ET, Operations HQ): the last two releases took 113 model requests and 64.8M cached-read tokens;
 "Create a separate, documentation/process-only optimization PR." Root `CLAUDE.md` now holds only ACTIVE rules,
