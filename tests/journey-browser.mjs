@@ -251,7 +251,9 @@ try{
    const r=await page.evaluate(n=>{const c=[...document.querySelectorAll('#options-app>.card')].find(k=>(k.querySelector('.card-title')?.textContent||'').includes(n));const b=c.getBoundingClientRect();return [b.top,b.bottom];},name);assert.ok(r[0]<844&&r[1]>0,name+' scrolled into view');};
   await chip('Covered-Call Income');await seen('Covered-Call Income');
   for(const name of Object.keys(SEC)){await reload(false);await seed(name);assert.equal(by(await opt(),name).folded,true);await chip(name);await seen(name);}
-  await reload(false);await seed('Roll Scorecard');await page.evaluate(()=>{const c=document.querySelector('#options-app>.card[data-sec="opt-rolls"]');__pfGoCard(__navTitleOf(c),'options');});await settle();await seen('Roll Scorecard');
+  await reload(false);await seed('Roll Scorecard');await page.evaluate(()=>{const c=document.querySelector('#options-app>.card[data-sec="opt-rolls"]');__pfGoCard(__navTitleOf(c),'options');});await settle();
+  // v255: History now starts open above it, so the smooth scroll runs further; wait until it comes to rest, then check where it landed.
+  for(let i=0,last=-1;i<20;i++){const y=await page.evaluate(()=>scrollY);if(y===last)break;last=y;await page.waitForTimeout(250);}await seen('Roll Scorecard');
   // rail Expand/Collapse all reaches the folded cards and keeps its label
   await reload(false);
   assert.match(await page.locator('#page-options .cn-all').innerText(),/Collapse all/);
