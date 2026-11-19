@@ -113,10 +113,12 @@ export async function runFoldbarChecks({browser,base,sample,stub,apex,writes=[]}
   await nav('options');await settle();
   await page.evaluate(()=>{const c=document.createElement('div');c.className='card';c.id='fb-empty';
     c.innerHTML='<div class="card-title collapsible" data-toggle="fb-empty-b" onclick="toggleSection(\'fb-empty-b\')"><span>Empty test card</span><span class="chevron">▼</span></div><div id="fb-empty-b" style="display:none"></div>';
-    document.getElementById('options-app').appendChild(c);});await settle();
-  await page.locator('#fb-empty > .card-title').click();await settle();
-  assert.match(await page.locator('#fb-empty-b').innerText(),/Nothing to show here yet/,'empty state shown when an empty card opens');
-  await page.evaluate(()=>document.getElementById('fb-empty').remove());await settle();
+    // Appended to the page itself (not #options-app, which re-renders and would drop it), opened through the
+    // same shared toggleSection path a tap uses, and read back in the same tick.
+    document.getElementById('page-options').appendChild(c);});
+  const emptyText=await page.evaluate(()=>{toggleSection('fb-empty-b');const t=document.getElementById('fb-empty-b').innerText;document.getElementById('fb-empty').remove();return t;});
+  assert.match(emptyText,/Nothing to show here yet/,'empty state shown when an empty card opens');
+  await settle();
 
   // (f) every layout: control fully on screen, ≥40px tall, label readable, no sideways overflow folded or expanded
   for(const [w,h,ins,label] of VP){
