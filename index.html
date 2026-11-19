@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=257"></script>
-<script src="ui/experience-model.js?v=257"></script>
+<script src="ui/theme.js?v=258"></script>
+<script src="ui/experience-model.js?v=258"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -745,15 +745,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=257">
-<link rel="stylesheet" href="ui/journey.css?v=257">
-<link rel="stylesheet" href="ui/predictions.css?v=257">
-<link rel="stylesheet" href="ui/apex-paper.css?v=257">
-<link rel="stylesheet" href="ui/smartmoney.css?v=257">
-<link rel="stylesheet" href="ui/ticker.css?v=257">
-<link rel="stylesheet" href="ui/today.css?v=257">
-<link rel="stylesheet" href="ui/book.css?v=257">
-<link rel="stylesheet" href="ui/duo.css?v=257">
+<link rel="stylesheet" href="ui/experience.css?v=258">
+<link rel="stylesheet" href="ui/journey.css?v=258">
+<link rel="stylesheet" href="ui/predictions.css?v=258">
+<link rel="stylesheet" href="ui/apex-paper.css?v=258">
+<link rel="stylesheet" href="ui/smartmoney.css?v=258">
+<link rel="stylesheet" href="ui/ticker.css?v=258">
+<link rel="stylesheet" href="ui/today.css?v=258">
+<link rel="stylesheet" href="ui/book.css?v=258">
+<link rel="stylesheet" href="ui/duo.css?v=258">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -823,10 +823,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=257"></script>
-<script src="ui/apex.js?v=257"></script>
-<script src="ui/business.js?v=257"></script>
-<script src="ui/apex-paper.js?v=257"></script>
+<script src="ui/sd-rules.js?v=258"></script>
+<script src="ui/apex.js?v=258"></script>
+<script src="ui/business.js?v=258"></script>
+<script src="ui/apex-paper.js?v=258"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -940,7 +940,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v257'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v258'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2083,6 +2083,19 @@ window.__apexPaperPaint=apexPaperPaint; window.__apexPaperLoad=apexPaperLoad;
 /* v186 — Apex leverage loop (ui/apex.js). Reads the same snapshot the plan reads: equity =
    account value (st.totalVal), debt = negative cash, positions = enriched. Pure rules live in the
    module; this is only the adapter. Approvals are the Confirm button (a Claude chat); orders are placed by hand in Robinhood. */
+/* v258 (Jack, Nov 19 2026): the morning chat line links to #apex-ticket — open the Apex account's Plan page and the Apex
+   card, then scroll to the order ticket. Once per load (and again if the hash is set while the app is open). */
+function apexTicketJump(){
+  if(location.hash!=='#apex-ticket'||window.__apexTicketJumped||!document.getElementById('apex-ticket'))return;
+  window.__apexTicketJumped=true;
+  try{ const X=window.PFExperience; if(X&&(X.route!=='plan'||X.account!=='main'))X.navigate('plan',{account:'main',keepScroll:true}); }catch(_){}
+  const card=document.getElementById('apex-card');
+  try{ if(card&&window.__pfFold)window.__pfFold.open(card); }catch(_){}
+  const b=document.getElementById('b-apex'); if(b&&b.style.display==='none'&&typeof toggleSection==='function')toggleSection('b-apex');
+  const go=()=>{ try{ const t=document.getElementById('apex-ticket'); if(t)t.scrollIntoView({block:'start',behavior:'smooth'}); }catch(_){} };
+  setTimeout(go,150); setTimeout(go,900);
+}
+window.addEventListener('hashchange',()=>{ window.__apexTicketJumped=false; apexTicketJump(); });
 function renderApexCard(S,opts){
   const el=document.getElementById('apex-content');
   if(!S||!S.stats||!Array.isArray(S.enriched)){ window.__PF_APEX_REVIEW=null; return; }
@@ -2155,6 +2168,7 @@ function renderApexCard(S,opts){
   }catch(e){ research={rows:[],empty:'Research lens failed: '+(e&&e.message||e)}; }
   window.__PF_APEX_REVIEW={st:state,out,cfg,research,sourceData:window.__DATA,sourceSnap:S,generatedAt:window.__DATA?.generatedAt};
   if(el)Apex.render(el,state,out,cfg,research);
+  apexTicketJump();
   /* v216: Plan step 1 ("Cut what's broken") names the sells the Apex card recommends, so "Nothing is broken" no longer
      reads as contradicting a research-dropped exit. The plan renders first; this fills its slot on every Apex render. */
   try{ const sl=document.querySelector('[data-sd-apex-sells]'); if(sl&&typeof Apex.planSellNote==='function')sl.innerHTML=Apex.planSellNote(state,out,cfg,(sl.getAttribute('data-skip')||'').split(',').filter(Boolean)); }catch(_){}
@@ -9011,17 +9025,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=257"></script>
-<script src="ui/today.js?v=257"></script>
-<script src="ui/predictions-model.js?v=257"></script>
-<script src="ui/predictions.js?v=257"></script>
-<script src="ui/smartmoney-model.js?v=257"></script>
-<script src="ui/smartmoney.js?v=257"></script>
-<script src="ui/experience.js?v=257"></script>
-<script src="ui/ticker.js?v=257"></script>
-<script src="ui/duo.js?v=257"></script>
-<script src="ui/compact.js?v=257"></script>
-<script src="ui/journey.js?v=257"></script>
-<script src="ui/book.js?v=257"></script>
+<script src="ui/today-model.js?v=258"></script>
+<script src="ui/today.js?v=258"></script>
+<script src="ui/predictions-model.js?v=258"></script>
+<script src="ui/predictions.js?v=258"></script>
+<script src="ui/smartmoney-model.js?v=258"></script>
+<script src="ui/smartmoney.js?v=258"></script>
+<script src="ui/experience.js?v=258"></script>
+<script src="ui/ticker.js?v=258"></script>
+<script src="ui/duo.js?v=258"></script>
+<script src="ui/compact.js?v=258"></script>
+<script src="ui/journey.js?v=258"></script>
+<script src="ui/book.js?v=258"></script>
 </body>
 </html>

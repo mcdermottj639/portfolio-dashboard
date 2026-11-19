@@ -866,5 +866,48 @@ ok('v233 ranked opportunities render: four counts, grouped rows, real Nov 16 fil
   assert.ok(!/undefined|NaN/.test(h.slice(h.indexOf('data-apex-opps'), h.indexOf('data-apex-opps') + 20000)));
 });
 
+
+/* v258 — Jack, Nov 19 2026: "I want my apex buys and sells to come to me each morning in a format like this that I can click".
+   The ticket is the Confirm list (bookLines) re-laid as buys / sells & sell stops, every row carrying entry or last,
+   target and stop; held names show their research exit levels; the owner-managed core never appears. */
+ok('v258 morning ticket: same lines as Confirm, entry+target on every buy, honest empty and stale states', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeCap: false, snapAgeMin: 5, researchReady: true, researchAsOf: '2026-11-16T07:13:00-05:00',
+    targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 },
+    levels: { NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99, name: 'Cloudflare' },
+      PLTR: { limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low' } },
+    exitLevels: { ZS: { stop: 173.86, tp1: 267.87, stopBasis: '2xATR', name: 'Zscaler' }, IREN: { stop: 10, tp1: 40 } } });
+  const st = A.state({ positions: [
+    { symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 215, avg: 165.14 },
+    { symbol: 'ZS', qty: 5, px: 194.92, avg: 198.66 } ], cash: -3000 });
+  const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
+  const lines = A.bookLines(st, out, cfg), T = A.ticket(st, out, cfg);
+  assert.equal(T.state, 'ready');
+  assert.deepEqual(T.buys.map((b) => b.sym), lines.filter((l) => l.side === 'buy').map((l) => l.sym));
+  assert.deepEqual(T.sells.map((b) => b.sym), lines.filter((l) => l.side === 'sell').map((l) => l.sym));
+  T.buys.forEach((b) => { assert.ok(b.entry > 0 && b.tp1 > 0, b.sym + ' entry + target'); });
+  const net = T.buys.find((b) => b.sym === 'NET'); assert.ok(net && net.stop === 250.92 && Math.abs(net.rr - (370.35 - 294.9) / (294.9 - 250.92)) < 1e-9);
+  assert.ok(T.stops.some((s) => s.sym === 'ZS' && s.stop === 173.86 && s.tp1 === 267.87), 'held ZS shows its research exits');
+  assert.ok(!T.stops.concat(T.sells).some((s) => s.sym === 'IREN'), 'IREN (owner-managed) never on the sell side');
+  assert.ok(/Research Mon, Nov 16, 2026, 7:13 AM ET/.test(A.ticketHtml(T, (s) => String(s))));
+  const el = { innerHTML: '', querySelector: () => null }; A.render(el, st, out, cfg, null);
+  const h = el.innerHTML;
+  assert.ok(h.indexOf('id="apex-ticket"') >= 0 && h.indexOf('id="apex-ticket"') < h.indexOf('data-apex-rules'), 'ticket leads the card');
+  assert.equal((h.match(/data-apex-ticket-row="/g) || []).length, T.buys.length + T.sells.length + T.stops.length);
+  assert.ok(/data-side="buy"/.test(h) && /data-side="sell"/.test(h) && /data-side="stop"/.test(h));
+  assert.ok(!/undefined|NaN/.test(h.slice(h.indexOf('id="apex-ticket"'), h.indexOf('data-apex-rules'))));
+  // stale research: no buys, an honest dated line; sells and stops still listed
+  const sc = Object.assign({}, cfg, { researchReady: false }), sOut = A.rules(st, { cfg: sc, smaMap: {}, earningsMap: {} }), S = A.ticket(st, sOut, sc);
+  assert.equal(S.state, 'stale');
+  const sh = A.ticketHtml(S, (s) => String(s));
+  assert.ok(/No ticket for today — research last updated Mon, Nov 16, 2026, 7:13 AM ET/.test(sh) && !/data-side="buy"/.test(sh));
+  // nothing held, nothing to do
+  const st0 = A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }], cash: 0 }), c0 = { targets: { IREN: 20 }, researchAsOf: null };
+  const Z = A.ticket(st0, A.rules(st0, { cfg: c0 }), c0);
+  assert.equal(Z.state, 'none'); assert.ok(/No orders today\. Research unknown/.test(A.ticketHtml(Z, (s) => String(s))));
+  // stale quotes: rows marked as estimates
+  const q = A.ticket(st, out, Object.assign({}, cfg, { snapAgeMin: 600 }));
+  assert.ok(q.buys.every((b) => b.est) && /≈ = estimate/.test(A.ticketHtml(q, (s) => String(s))));
+});
+
 console.log(`apex: ${n - failed}/${n} passed`);
 assert.equal(failed, 0);

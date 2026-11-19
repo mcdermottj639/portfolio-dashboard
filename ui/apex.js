@@ -535,7 +535,7 @@
       if (cfg.coreOwner && s === cfg.core) return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:#9ca3af"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% · yours</span></div>` + sizeLine(s, tg);
       const hold = cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` <span title="tax hold to ${esc(cfg.wash[s].clear)}">🚫</span>` : '';
       return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600;white-space:nowrap">${esc(s)}${hold}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>` + sizeLine(s, tg); }).join('');
-    el.innerHTML = `
+    el.innerHTML = `<div data-ws="actions">${ticketHtml(ticket(st, out, cfg), esc)}</div>
       <div data-ws="actions" style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>you confirm with Claude below</b>; you place the order in Robinhood.</div>
       <div data-apex-lev data-ws="actions"><div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
       <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(st.guardPct)} · ${C.LEV_CAP}x = ${pct(1 / C.LEV_CAP)}</span></div>
@@ -855,7 +855,73 @@
     return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div>${recLine}${opp}${vet}<div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
   }
 
+  /* v258 (Jack, Nov 19 2026 3:14 PM ET, a "Morning stock order ticket" image: "I want my apex buys and sells to come to
+     me each morning in a format like this that I can click"). DISPLAY ONLY: the same buy and sell lines the Confirm
+     button sends (bookLines) plus the research exit levels of held names (heldLevels → cfg.exitLevels), laid out as a
+     ticket — buys green, sells and sell stops red, one tappable row per symbol. No new data, no order is placed; Jack
+     enters Apex orders himself. Deep link: #apex-ticket (index.html opens the Apex card and scrolls here). */
+  function etStamp(iso) {
+    const t = iso ? Date.parse(iso) : NaN;
+    if (!Number.isFinite(t)) return null;
+    try { return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(t)) + ' ET'; } catch (_) { return null; }
+  }
+  function ticket(st, out, cfg) {
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    const lines = bookLines(st, out || [], cfg);
+    const fresh = priceIsFresh(cfg);
+    const num = (v) => (v != null && Number.isFinite(+v) && +v > 0 ? +v : null);
+    const pctFrom = (a, b) => (a && b ? (a / b - 1) * 100 : null);
+    const buys = lines.filter((l) => l.side === 'buy').map((l) => {
+      const L = levelsFor(cfg, l.sym) || {}, entry = num(L.limit) || num(L.trigger), stop = num(L.stop), tp1 = num(L.tp1);
+      return { side: 'buy', sym: l.sym, name: L.name || null, action: l.text, price: l.px, est: !!l.est, entry, trigger: num(L.trigger), tp1, stop,
+        rr: L.rr != null && Number.isFinite(+L.rr) ? +L.rr : null, riskPct: pctFrom(stop, entry), rewardPct: pctFrom(tp1, entry), note: l.sub || '' };
+    });
+    const sellSyms = new Set();
+    const sells = lines.filter((l) => l.side === 'sell').map((l) => {
+      sellSyms.add(l.sym);
+      const E = exitLevelsFor(cfg, l.sym) || {}, p = st.positions.find((x) => x.symbol === l.sym) || {};
+      return { side: 'sell', sym: l.sym, name: E.name || null, action: l.text, price: l.px, est: !!l.est, last: num(p.px), tp1: num(E.tp1), stop: num(E.stop), note: l.sub || '' };
+    });
+    /* Held names (never the owner-managed core) with a research stop or target and no sell today: their sell-stop and
+       take-profit levels, so every held name on the ticket shows where it exits. Research levels, not Jack's orders. */
+    const stops = st.positions.filter((p) => !(cfg.coreOwner && p.symbol === cfg.core) && !sellSyms.has(p.symbol)).map((p) => {
+      const E = exitLevelsFor(cfg, p.symbol) || {}, stop = num(E.stop), tp1 = num(E.tp1), last = num(p.px);
+      return stop || tp1 ? { side: 'stop', sym: p.symbol, name: E.name || null, qty: p.qty, last, est: !fresh, tp1, stop, toStopPct: pctFrom(stop, last), toTargetPct: pctFrom(tp1, last) } : null;
+    }).filter(Boolean);
+    const state = cfg.researchReady === false ? 'stale' : (buys.length || sells.length || stops.length ? 'ready' : 'none');
+    return { state, researchAsOf: cfg.researchAsOf || null, researchStamp: etStamp(cfg.researchAsOf), quotesAge: ageText(cfg.snapAgeMin), fresh, buys, sells, stops };
+  }
+  function ticketHtml(T, esc) {
+    const n2 = (v) => (v == null ? '—' : (+v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const pc = (v) => (v == null ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
+    const rh = (s) => `<a href="https://robinhood.com/stocks/${encodeURIComponent(s)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">Open in Robinhood ↗</a>`;
+    const cols = 'display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:6px;align-items:center';
+    const cell = (v, col) => `<span style="min-width:0;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis${col ? ';color:' + col : ''}">${v}</span>`;
+    const head = (a, b, c) => `<div style="${cols};padding:5px 10px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280"><span>Symbol</span><span style="text-align:right">${a}</span><span style="text-align:right">${b}</span><span style="text-align:right">${c}</span></div>`;
+    const pill = (s, bg, fg) => `<span style="display:inline-block;min-width:0;max-width:62px;overflow:hidden;text-overflow:ellipsis;padding:3px 6px;border-radius:7px;background:${bg};color:${fg};font-weight:800;font-size:12.5px;text-align:center">${esc(s)}</span>`;
+    const row = (r, tone, first, second, third, detail) => `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" style="border-top:1px solid rgba(0,0,0,.06)"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box">${pill(r.sym, tone[0], tone[1])}${cell(first)}${cell(second, '#059669')}${cell(third, '#dc2626')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere">${detail}</div></details>`;
+    const g = ['#d1fae5', '#065f46'], rd = ['#fee2e2', '#991b1b'];
+    const est = (r) => (r.est ? '≈ ' : '');
+    const buyRows = T.buys.map((r) => row(r, g, est(r) + n2(r.entry), n2(r.tp1), n2(r.stop),
+      `<b>${esc(r.action)}</b> · ${esc(r.price)}${r.name ? ` · ${esc(r.name)}` : ''}<br>Target ${pc(r.rewardPct)} · stop ${pc(r.riskPct)}${r.rr != null ? ` · R/R <b>${r.rr.toFixed(2)}</b>` : ''}${r.trigger && r.trigger !== r.entry ? ` · trigger ${n2(r.trigger)}` : ''}<br><span style="opacity:.8">${esc(r.note)}</span><br>${rh(r.sym)}`)).join('');
+    const sellRows = T.sells.map((r) => row(r, rd, est(r) + n2(r.last), n2(r.tp1), n2(r.stop),
+      `<b>${esc(r.action)}</b> · ${esc(r.price)}${r.name ? ` · ${esc(r.name)}` : ''}<br><span style="opacity:.8">${esc(r.note)}</span><br>${rh(r.sym)}`)).join('');
+    const stopRows = T.stops.map((r) => row(r, rd, '≈ ' + n2(r.last), n2(r.tp1), n2(r.stop),
+      `<b>Hold · sell-stop levels</b>${r.name ? ` · ${esc(r.name)}` : ''}<br>Stop ${n2(r.stop)}${r.toStopPct != null ? ` (${pc(r.toStopPct)} from last)` : ''} · target ${n2(r.tp1)}${r.toTargetPct != null ? ` (${pc(r.toTargetPct)})` : ''}<br><span style="opacity:.8">Research exit levels — the app alerts when price reaches them. Not an order today.</span><br>${rh(r.sym)}`)).join('');
+    const box = (title, tone, sub, h, body) => `<div style="border:1px solid ${tone[1]}33;border-radius:12px;overflow:hidden;margin:8px 0;background:var(--card,#fff)"><div style="background:${tone[0]};color:${tone[1]};padding:7px 10px;font-weight:800;font-size:12.5px;letter-spacing:.02em">${title} <span style="font-weight:600;opacity:.8">${sub}</span></div>${h}${body}</div>`;
+    const stamp = T.researchStamp ? esc(T.researchStamp) : 'unknown';
+    const meta = `<div style="font-size:11px;color:#6b7280;margin:2px 0 4px">Research ${stamp} · quotes ${esc(T.quotesAge)}${T.fresh ? '' : ' · ≈ = estimate, not an order price'} · tap a row for details</div>`;
+    let body;
+    if (T.state === 'stale') body = `<div data-apex-ticket-empty style="font-size:12px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:8px;padding:8px 10px;margin:6px 0">No ticket for today — research last updated ${stamp}. No buys until the next research run.</div>`;
+    else if (T.state === 'none') body = `<div data-apex-ticket-empty style="font-size:12px;color:var(--text);opacity:.8;padding:6px 0">No orders today. Research ${stamp}.</div>`;
+    else body = '';
+    const buysBox = T.state !== 'stale' && T.buys.length ? box('🟢 Buys', g, `(${T.buys.length})`, head('Entry', 'Target', 'Stop'), buyRows) : '';
+    const sellsBox = T.sells.length || T.stops.length ? box('🔴 Sells &amp; sell stops', rd, `(${T.sells.length + T.stops.length})`, head('Last', 'Target', 'Stop'), sellRows + stopRows) : '';
+    const noBuys = T.state === 'ready' && !T.buys.length ? `<div style="font-size:11.5px;color:#6b7280;margin:4px 0">No buys today.</div>` : '';
+    return `<div id="apex-ticket" data-apex-ticket="${T.state}" style="scroll-margin-top:72px"><style>[data-apex-ticket-row]>summary::-webkit-details-marker{display:none}[data-apex-ticket-row][open]>summary{background:rgba(0,0,0,.03)}</style><div class="ac-tier">🧾 Morning order ticket</div>${meta}${body}${noBuys}${buysBox}${sellsBox}<div style="font-size:10.5px;color:#9ca3af;margin:2px 0 8px">Display only — you place Apex orders yourself in Robinhood. Prices are research levels.</div></div>`;
+  }
+
   // v255 (Jack, Nov 18 2026): the What if sliders (renderWhatIf) were removed; the tripwire line and the stress test stay.
 
-  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION, opportunities };
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, ticket, ticketHtml, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION, opportunities };
 });

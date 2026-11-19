@@ -4,6 +4,15 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v258 — Morning order ticket on the Apex card, deep link #apex-ticket (2026-11-19)
+Jack (Nov 19 3:14 PM ET, sample "Morning stock order ticket" image; option 1 picked 3:53 PM ET). DISPLAY ONLY.
+`Apex.ticket()` re-lays the Confirm list (`bookLines`) as 🟢 Buys (entry · target · stop, R/R in the row) and
+🔴 Sells & sell stops (sell lines + held names' research exit levels; never the owner-managed core). Rows are
+`<details>` (tap for action, price, reason, Robinhood link). Stale research ⇒ "No ticket for today — research last
+updated …"; stale quotes ⇒ "≈" estimates. `#apex-ticket` (index.html `apexTicketJump`, journey `pageRoute`) opens Apex ·
+Plan, unfolds the card and scrolls to the ticket. Files: ui/apex.js, ui/journey.js, index.html, sw.js, tests.
+No rule, price, order, prompt or schedule change. NOT verified: physical Duo.
+
 ## v257 — v2.9 Paper page: measured results, weekly cohorts, rejected-names ledger (2026-11-19)
 Jack (Nov 18 10:51 PM ET, Duet relay, Priority 1). `ui/apex-paper.js` `research()` reads `evaluation` (eval-1 raw,
 sim-1 simulated), `shadow` and `skipped` from `data/apex-paper-v29.json`. Three cards on the existing Paper page:
