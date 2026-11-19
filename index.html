@@ -190,6 +190,8 @@ html { overflow-x: clip; }
 .scn { border:1px solid #e5e7eb; border-radius:10px; padding:11px 12px; text-align:center; }
 .scn-lbl { font-size:10.5px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; }
 .scn-val { font-size:18px; font-weight:800; margin-top:3px; }
+/* v255 sweep: at 320px the four Risk tiles (Sharpe · Volatility · Max Drawdown · …) ran past the right edge; small phones get two columns. */
+@media (max-width:360px){ .scn-grid{ grid-template-columns:repeat(2,minmax(0,1fr))!important; } }
 
 /* Allocation bars */
 .alloc-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
