@@ -96,7 +96,7 @@ assert.equal(await p.locator('#pf-book .ws-act').count(),q,'review queue = Actio
 // v255: the Actions left page is filled: performance and the top holdings follow the queue (a tap opens Positions).
 for(const t of ['PERFORMANCE','TOP HOLDINGS'])assert.ok(g.text.toUpperCase().includes(t),'apex actions shows '+t);
 assert.deepEqual(await p.$$eval('#pf-book .bk-hold .bk-sym',n=>n.map(x=>x.textContent)),rows.slice(0,5),'actions top holdings = the five largest');
-await p.locator('#pf-book [data-bk-sym="'+rows[0]+'"]').click();await settle();
+await p.locator('#pf-book .bk-hold[data-bk-sym="'+rows[0]+'"]').click();await settle();
 assert.equal(await p.evaluate(()=>PFExperience.route),'holdings','a top-holding tap opens Positions');
 // v255: Allocation sized to its pane — the two lists stack on the right page and every bar keeps a usable width.
 await nav('accounts','main');
