@@ -43,6 +43,7 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
+<script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
 <script src="ui/theme.js?v=258"></script>
 <script src="ui/experience-model.js?v=258"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
@@ -2086,9 +2087,10 @@ window.__apexPaperPaint=apexPaperPaint; window.__apexPaperLoad=apexPaperLoad;
 /* v258 (Jack, Nov 19 2026): the morning chat line links to #apex-ticket — open the Apex account's Plan page and the Apex
    card, then scroll to the order ticket. Once per load (and again if the hash is set while the app is open). */
 function apexTicketJump(){
-  if(location.hash!=='#apex-ticket'||window.__apexTicketJumped||!document.getElementById('apex-ticket'))return;
-  window.__apexTicketJumped=true;
+  if(location.hash!=='#apex-ticket'||window.__apexTicketJumped)return;
   try{ const X=window.PFExperience; if(X&&(X.route!=='plan'||X.account!=='main'))X.navigate('plan',{account:'main',keepScroll:true}); }catch(_){}
+  if(!document.getElementById('apex-ticket'))return;   // the Apex card renders it; renderApexCard calls this again then
+  window.__apexTicketJumped=true;
   const card=document.getElementById('apex-card');
   try{ if(card&&window.__pfFold)window.__pfFold.open(card); }catch(_){}
   const b=document.getElementById('b-apex'); if(b&&b.style.display==='none'&&typeof toggleSection==='function')toggleSection('b-apex');
