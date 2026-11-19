@@ -16,6 +16,7 @@
       y:Math.max(0,Math.min(1000000,num(value.y)||0)), details:Array.isArray(value.details)?value.details.filter(n=>Number.isInteger(n)&&n>=0&&n<1000).slice(0,1000):[]};
   }
   function pageRoute(hash) {
+    if (hash === '#apex-ticket') return 'plan';   // v258: the morning Apex ticket link opens the Apex Plan page
     const m = /^#view=([a-z]+)$/.exec(hash || '');
     return m && ROUTES.includes(m[1]) ? m[1] : null;
   }

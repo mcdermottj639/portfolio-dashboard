@@ -42,6 +42,15 @@ try {
   }
   r = await render('overlap');
   assert.doesNotMatch(r.text, /X is through its research stop/, 'entry level did not replace held stop');
+  // v258 morning ticket: the same Y buy with entry and target, at the top of the card
+  { const tk = await page.evaluate(() => { const t = document.querySelector('#apex-ticket'); const rows = [...t.querySelectorAll('[data-apex-ticket-row]')];
+      return { state: t.dataset.apexTicket, rows: rows.map(e => ({ sym: e.dataset.apexTicketRow, side: e.dataset.side, text: e.querySelector('summary').innerText })), first: document.querySelector('#apex-content').firstElementChild.contains(t) }; });
+    assert.equal(tk.state, 'ready'); assert.ok(tk.first, 'ticket leads the Apex card');
+    const y = tk.rows.find(x => x.sym === 'Y' && x.side === 'buy'); assert.ok(y, 'Y buy row'); assert.match(y.text, /100\.00/); assert.match(y.text, /120\.00/); assert.match(y.text, /90\.00/);
+    assert.ok(tk.rows.some(x => x.sym === 'X' && x.side === 'stop'), 'held X shows its research stop'); assert.ok(!tk.rows.some(x => x.sym === 'IREN'), 'no IREN row'); }
+  r = await render('stale');
+  assert.equal(await page.evaluate(() => document.querySelector('#apex-ticket').dataset.apexTicket), 'stale');
+  assert.match(r.text, /No ticket for today — research last updated/);
   r = await render('stop');
   assert.equal(r.trades.filter(t => t.sym === 'X').length, 1);
   assert.match(r.trades.find(t => t.sym === 'X').text, /Sell 10 X/);
@@ -52,6 +61,26 @@ try {
     await page.setViewportSize({ width, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `no overflow at ${width}`);
   }
+  // v258: at the folded Duo / phone width the ticket fits, rows tap open, and a screenshot is kept as evidence
+  await page.setViewportSize({ width: 390, height: 844 });
+  await render('stop');
+  { const row = page.locator('#apex-ticket [data-apex-ticket-row]').first(); await row.locator('summary').click();
+    assert.equal(await row.evaluate(e => e.open), true, 'a ticket row opens on tap');
+    assert.equal(await page.evaluate(() => { const t = document.querySelector('#apex-ticket'); return t.scrollWidth <= t.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; }), true, 'ticket fits 390px');
+    assert.ok((await row.locator('summary').boundingBox()).height >= 44, '44px touch target');
+    fs.mkdirSync('tmp/journey-evidence', { recursive: true });
+    await page.locator('#apex-ticket').screenshot({ path: 'tmp/journey-evidence/apex-ticket-390.png' }); }
+  // v258 deep link: #apex-ticket opens the Apex Plan page and the Apex card with the ticket on screen
+  { const p2 = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
+    const e2 = []; p2.on('pageerror', e => e2.push(e.message));
+    await p2.addInitScript(stub);
+    await p2.addInitScript(() => { localStorage.setItem('pf_acct', 'agentic'); localStorage.setItem('pf_experience_route', 'today'); });
+    await p2.route('https://**/*', r => r.abort());
+    await p2.goto((process.env.PF_PREVIEW_URL || 'http://127.0.0.1:8767') + '#apex-ticket');
+    await p2.waitForFunction(() => window.PFExperience?.route === 'plan' && window.PFExperience?.account === 'main' && document.querySelector('#apex-ticket')?.offsetParent, null, { timeout: 30000 });
+    await p2.waitForTimeout(1200);
+    assert.equal(await p2.evaluate(() => { const r = document.querySelector('#apex-ticket').getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }), true, 'ticket on screen after the deep link');
+    assert.deepEqual(e2, []); await p2.close(); }
   assert.deepEqual(errors, []);
   console.log('apex-browser: adapter, action/prompt parity, review-only states, held exits and 320–1440px layouts PASS');
 } finally { await browser.close(); }
