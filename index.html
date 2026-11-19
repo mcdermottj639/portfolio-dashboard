@@ -367,11 +367,13 @@ html[data-theme="gold"] .pf-find { border-color: var(--nx-bd); }
   #pf-fresh { gap:5px!important; padding:6px 7px!important; }
   /* v255 sweep: at 320–390px the unbreakable timestamp pushed Duo / theme / ↻ past the right edge. It now wraps
      inside its own column (still whole, never ellipsized) so every control stays on screen. */
-  #pf-fresh-left { overflow:visible!important; text-overflow:clip!important; white-space:normal!important; flex:1 1 auto; min-width:0!important; line-height:1.25; font-size:11px; }
+  #pf-fresh-left { overflow:visible!important; text-overflow:clip!important; white-space:normal!important; flex:1 1 auto; min-width:0!important; line-height:14px; font-size:11px; }
   #pf-fresh .pf-fresh-actions { gap:7px!important; }
   #pf-fresh .pf-find { padding:5px 6px; }
   #pf-fresh .pf-find-word, #pf-fresh .pf-refresh-word, #pf-fresh .pf-fresh-age { display:none; }
 }
+/* Two wrapped lines (2 × 14px) fit beside the 44px Duo target without the bar growing past 44px (duo-checks). */
+@media (max-width:360px) { #pf-fresh .pf-fresh-actions { gap:4px!important; } #pf-fresh .pf-find { padding:4px; } }
 @media (max-width:340px) { #pf-fresh-left {font-size:10.5px;} }
 /* ── Card help popovers: a "?" in each card header opens a teaching modal ── */
 .help-btn { flex: 0 0 auto; margin-left: auto; width: 19px; height: 19px; padding: 0; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: #9ca3af; font-size: 11px; font-weight: 800; line-height: 17px; text-align: center; cursor: pointer; opacity: .65; font-family: inherit; -webkit-appearance: none; }
