@@ -44,3 +44,18 @@ test('the agent entry points route to the new layout', () => {
   assert.match(read('CLAUDE.md'), /APP_VERSION/); // release markers stay in default context
   assert.match(read('CLAUDE.md'), /UNVERIFIED/); // open items stay in default context
 });
+
+test('moved history is unchanged: every MIGRATION.json block re-hashes', () => {
+  const crypto = require('crypto');
+  const m = JSON.parse(read('docs/claude/MIGRATION.json'));
+  assert.strictEqual(m.blocks.reduce((n, b) => n + b.lines, 0), m.sourceLines, 'blocks cover every source line');
+  for (const b of m.blocks) {
+    const lines = read(b.file).split('\n');
+    let found = false;
+    for (let i = 0; i + b.lines <= lines.length && !found; i++) {
+      const h = crypto.createHash('sha256').update(lines.slice(i, i + b.lines).join('\n')).digest('hex');
+      if (h === b.sha256) found = true;
+    }
+    assert.ok(found, `${b.file}: original lines ${b.origLines.join('-')} changed or missing`);
+  }
+});
