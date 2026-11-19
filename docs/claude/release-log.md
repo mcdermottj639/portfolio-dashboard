@@ -12,6 +12,16 @@ Now: one `.pf-foldbar` control above the card stack on every page with foldable 
 one shared open/close path (`__pfFold.set`). Files: index.html, ui/experience.css, sw.js, tests (new foldbar-checks.mjs).
 No strategy, order, threshold, schedule, account-isolation, data or producer change. NOT verified: physical Duo.
 
+## Producer — Apex paper: live control arm, late-copy fix, eval-1 (2026-11-19, no app version change)
+Jack (Nov 19, relayed): make v2.9 paper measurable; fix the 7:52 scan vs 8:30 targets-copy timing; never drop
+rejected live names silently. `producer/apex-paper.mjs`: live v2.8 picks join the shadow ledger as `live-pick`;
+a Monday whose live file lands after 7:52 gets its live names on the next run before the next open
+(`liveStatus` added-late) or is marked `missing`; partial/failed Mondays go in `skipped`; new `evaluation`
+block (locked spec `producer/APEX-PAPER-EVAL.md`, eval-1: 4 arms, 5/30/60/90d vs SPY, 0.20 pt cost, descriptive
+until 12 cohorts). Raw only; simulated drawdown/stops need daily closes (task prompt change, Jack's call).
+PAPER ONLY: no live rule, ticket, UI, schedule or `RULES_VERSION` change. Tests: apex-paper 23/23.
+NOT verified: a real Monday freeze (first is 2026-11-23).
+
 ## v255 — cleanup release: What if? removed, cards open, labels, Book fixes (2026-11-19)
 Jack (Nov 18, relayed handoff plan: "Say 'go'"): one release, six steps. What if? removed everywhere (route, page, Overview row,
 Decision evidence link, Apex sliders, model fn); the Risk stress test stays. Cards start open except `agp-loop` and `opt-knowledge`

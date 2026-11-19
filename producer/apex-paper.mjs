@@ -284,15 +284,48 @@ export function metricsOf(marks) {
  * Every ledger name enters on paper at the next session's open. No threshold is changed by this.
  */
 export const SHADOW = { PER_GATE: 5, COST_PP: 0.20, GATES: ['rr', 'trend', 'not-near-high', 'not-pulled-back', 'growth-low', 'growth-neg', 'pe', 'rs3', 'slope', 'off-low'] };
-export const SHADOW_LABEL = { 'live-tech-cap': 'Live v2.8: blocked by the 40% tech cap', 'live-rr': 'Live v2.8: reward/risk under 1.5 at entry' };
+export const SHADOW_LABEL = { 'live-pick': 'Live v2.8: picked (control arm, graded on paper)', 'live-tech-cap': 'Live v2.8: blocked by the 40% tech cap', 'live-rr': 'Live v2.8: reward/risk under 1.5 at entry' };
+export const LIVE_GATES = ['live-pick', 'live-tech-cap', 'live-rr'];
+/** Live v2.8 names for one ledger cohort: the picks (control arm) and the two single-rule rejects. Read-only copy of the live file. */
+export function liveLedger(v28, core = 'IREN') {
+  const out = []; const have = new Set(); const top = Object.fromEntries((Array.isArray(v28 && v28.top5) ? v28.top5 : []).filter(x => x && x.sym).map(x => [x.sym, x.composite ?? null]));
+  const add = (sym, gate, composite) => { const k = gate + '|' + sym; if (!sym || sym === core || have.has(k)) return; have.add(k); out.push({ sym, gate, source: 'live v2.8', composite: composite ?? null, entryRule: 'next session open', entryPx: null, entryDate: null, status: 'pending' }); };
+  for (const sym of Object.keys((v28 && v28.targets) || {})) add(sym, 'live-pick', top[sym]);
+  for (const b of Array.isArray(v28 && v28.blockedByTheme) ? v28.blockedByTheme : []) if (b && b.sym) add(b.sym, 'live-tech-cap', b.composite);
+  for (const b of Array.isArray(v28 && v28.vetoed) ? v28.vetoed : []) if (b && b.sym && /^R\/R at entry/.test(String(b.why || ''))) add(b.sym, 'live-rr', b.composite);
+  return out;
+}
+/** The next session's 9:30 AM ET open after a cohort date (weekdays; market holidays are not modelled). */
+export function nextOpenMs(cohortAsOf) {
+  const s = String(cohortAsOf || ''); const d = new Date(s.slice(0, 10) + 'T12:00:00Z'); if (isNaN(d)) return null;
+  do d.setUTCDate(d.getUTCDate() + 1); while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  const off = (/[+-]\d\d:\d\d$/.exec(s) || ['-05:00'])[0];
+  return Date.parse(d.toISOString().slice(0, 10) + 'T09:30:00' + off);
+}
+/**
+ * Late live names (owner, 2026-11-18: "Do not silently omit rejected live Apex candidates"). The Monday paper run
+ * (7:52 AM ET) usually runs before the live targets copy (8:30 AM / 12:30 PM ET). Every ledger name enters at the
+ * next session's open, so live names added by any run before that open are graded exactly like names frozen at
+ * 7:52: no look-ahead. After that open a cohort with no live names is marked missing, never left silent.
+ */
+export function settleLive(cohort, v28, runAsOf) {
+  if (!cohort || cohort.liveIncluded || cohort.liveStatus === 'missing') return cohort;
+  const run = Date.parse(runAsOf); const open = nextOpenMs(cohort.asOf); const day = String(cohort.asOf || '').slice(0, 10);
+  if (open == null || isNaN(run)) return cohort;
+  const fresh = !!(v28 && String(v28.asOf || '').slice(0, 10) === day);
+  if (run < open && fresh) {
+    const have = new Set((cohort.picks || []).map(p => p.gate + '|' + p.sym));
+    const add = liveLedger(v28).filter(p => !have.has(p.gate + '|' + p.sym));
+    return { ...cohort, picks: [...add, ...(cohort.picks || [])], liveIncluded: true, liveRulesVersion: v28.rulesVersion || null, liveStatus: 'added-late', liveAddedAt: runAsOf, liveNote: null };
+  }
+  if (run >= open) return { ...cohort, liveStatus: 'missing', liveNote: `Live v2.8 names missing for this week: no live scan file dated ${day} reached the dashboard before the next session opened. Paper and paper-rejected names are still graded.` };
+  return { ...cohort, liveStatus: 'pending', liveNote: 'Live v2.8 names wait for this morning\'s targets copy; any run before the next session opens adds them.' };
+}
 export function shadowPicks(near, v28, today, core = 'IREN') {
   const out = []; const have = new Set();
   const add = (sym, gate, source, composite) => { const k = gate + '|' + sym; if (!sym || sym === core || have.has(k)) return; have.add(k); out.push({ sym, gate, source, composite: composite ?? null, entryRule: 'next session open', entryPx: null, entryDate: null, status: 'pending' }); };
   const liveFresh = !!(v28 && today && String(v28.asOf || '').slice(0, 10) === today);
-  if (liveFresh) {
-    for (const b of Array.isArray(v28.blockedByTheme) ? v28.blockedByTheme : []) if (b && b.sym) add(b.sym, 'live-tech-cap', 'live v2.8', b.composite);
-    for (const b of Array.isArray(v28.vetoed) ? v28.vetoed : []) if (b && b.sym && /^R\/R at entry/.test(String(b.why || ''))) add(b.sym, 'live-rr', 'live v2.8', b.composite);
-  }
+  if (liveFresh) for (const p of liveLedger(v28, core)) { const k = p.gate + '|' + p.sym; if (!have.has(k)) { have.add(k); out.push(p); } }
   for (const g of SHADOW.GATES) {
     let n = 0;
     for (const q of near) { if (n >= SHADOW.PER_GATE) break; if ((q.failKeys || [])[0] === g && (q.failKeys || []).length === 1) { add(q.sym, 'paper-' + g, 'paper v2.9', q.composite); n++; } }
@@ -313,6 +346,48 @@ export function shadowMetrics(cohorts, marks) {
   for (const [g, hs] of Object.entries(by)) { out[g] = { label: SHADOW_LABEL[g] || ('Paper v2.9: ' + (REJ_LABEL[g.replace(/^paper-/, '')] || g)) };
     for (const [h, a] of Object.entries(hs)) { const avg = a.reduce((s, x) => s + x, 0) / a.length; out[g][h] = { n: a.length, hit: r2(a.filter(x => x > 0).length / a.length), avgAlpha: r2(avg), avgAlphaNet: r2(avg - SHADOW.COST_PP) }; } }
   return out;
+}
+
+/**
+ * EVALUATION SPEC eval-1 — LOCKED (owner, 2026-11-18: "Use fixed evaluation criteria. Do not loosen live rules
+ * based on preliminary results."). Full text: producer/APEX-PAPER-EVAL.md. Changing any value here is a visible
+ * spec change (tests pin it) and needs Jack's approval; it never changes a live rule.
+ * Every arm is measured the same way: entry at the next session's open after the Monday cohort date, marks at
+ * 5/30/60/90 trading days, alpha = stock return minus SPY over the same dates, equal weight per name, a flat
+ * 0.20-point round-trip cost. These are RAW per-name results. Simulated portfolio results (weights, stops,
+ * drawdown, exposure, financing) need a daily price path per entered name and are reported separately.
+ */
+export const EVAL = Object.freeze({
+  version: 'eval-1', horizons: [5, 30, 60, 90], primaryHorizon: 30, entry: 'next session open after the Monday cohort date',
+  noFillDays: 10, benchmark: 'SPY over the same dates', costPctRoundTrip: 0.20, minCohorts: 12, weighting: 'equal weight per name',
+  arms: Object.freeze([
+    { key: 'live', label: 'Live v2.8 picks', gates: ['live-pick'] },
+    { key: 'paper', label: 'v2.9 paper picks', gates: ['paper-pick'] },
+    { key: 'rejectedLive', label: 'Rejected by a live rule', gates: ['live-tech-cap', 'live-rr'] },
+    { key: 'rejectedPaper', label: 'Rejected by one paper test', gates: SHADOW.GATES.map(g => 'paper-' + g) },
+  ]),
+});
+const median = a => { const b = [...a].sort((x, y) => x - y); const k = b.length >> 1; return b.length % 2 ? b[k] : (b[k - 1] + b[k]) / 2; };
+/** Raw per-arm record from stored marks only (eval-1). Simulated portfolio results stay null until daily paths exist. */
+export function evaluate(cohorts, marks, shadowCohorts, shadowMarks) {
+  const rows = []; // {arm-gate, cohort, sym}
+  for (const c of cohorts || []) for (const p of (c && c.picks) || []) if (p && p.status === 'entered') rows.push({ gate: 'paper-pick', asOf: c.asOf, sym: p.sym, marks });
+  for (const c of shadowCohorts || []) for (const p of (c && c.picks) || []) if (p && p.status === 'entered') rows.push({ gate: p.gate, asOf: c.asOf, sym: p.sym, marks: shadowMarks });
+  const arms = {};
+  for (const a of EVAL.arms) {
+    const mine = rows.filter(r => a.gates.includes(r.gate)); const by = {}; const seen = new Set();
+    for (const r of mine) for (const m of r.marks || []) {
+      if (!m || m.asOf !== r.asOf || m.sym !== r.sym || m.alpha == null || !EVAL.horizons.includes(m.horizon)) continue;
+      const k = a.key + '|' + r.asOf + '|' + r.sym + '|' + m.horizon; if (seen.has(k)) continue; seen.add(k); // one name counts once per arm, even under two gates
+      (by[m.horizon] = by[m.horizon] || []).push(m.alpha);
+    }
+    const coh = new Set(mine.map(r => r.asOf)); const h = {};
+    for (const [hz, v] of Object.entries(by)) { const avg = v.reduce((s, x) => s + x, 0) / v.length; h[hz] = { n: v.length, hit: r2(v.filter(x => x > 0).length / v.length), avgAlpha: r2(avg), medianAlpha: r2(median(v)), avgAlphaNet: r2(avg - EVAL.costPctRoundTrip) }; }
+    arms[a.key] = { label: a.label, cohorts: coh.size, entered: mine.length, horizons: h, descriptive: coh.size < EVAL.minCohorts };
+  }
+  return { version: EVAL.version, spec: 'producer/APEX-PAPER-EVAL.md', arms, simulated: null,
+    simulatedNote: 'Simulated portfolio results (weights, stops, drawdown, exposure, financing) are not measured yet: they need a daily price path per entered name.',
+    note: `Raw per-name results vs SPY, equal weight, ${EVAL.costPctRoundTrip} points round-trip cost. Descriptive only until ${EVAL.minCohorts} Monday cohorts per arm; no live rule changes on this evidence.` };
 }
 
 export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, v28, prior, backtest, quoteBasis, extraNotes = [], sources = [], cohort = false, vols = null, fills = null, newMarks = null, shadowFills = null, shadowMarks = null }) {
@@ -355,8 +430,10 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
   }) }));
   if (cohort && status === 'ok' && today && !shadowCohorts.some(c => String(c.asOf).slice(0, 10) === today)) {
     const sp = shadowPicks(near, v28, today);
-    shadowCohorts.push({ asOf, rulesVersion: RULES_VERSION, liveRulesVersion: sp.liveFresh ? (v28.rulesVersion || null) : null, liveIncluded: sp.liveFresh, spyAt: bench.last, picks: sp.picks });
+    const c = { asOf, rulesVersion: RULES_VERSION, liveRulesVersion: sp.liveFresh ? (v28.rulesVersion || null) : null, liveIncluded: sp.liveFresh, liveStatus: sp.liveFresh ? 'included' : 'pending', spyAt: bench.last, picks: sp.picks };
+    shadowCohorts.push(sp.liveFresh ? c : settleLive(c, v28, asOf));
   }
+  for (let i = 0; i < shadowCohorts.length; i++) shadowCohorts[i] = settleLive(shadowCohorts[i], v28, asOf);
   const shadowMarksAll = mergeMarks(pShadow.marks, shadowMarks);
   let frozen = false;
   if (cohort && status === 'ok' && today && !cohorts.some(c => String(c.asOf).slice(0, 10) === today)) {
@@ -367,6 +444,9 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
     });
     frozen = true;
   } else if (cohort && today && cohorts.some(c => String(c.asOf).slice(0, 10) === today)) frozen = true;
+  // A Monday that could not freeze a cohort is recorded, never skipped silently.
+  let skipped = Array.isArray(prior && prior.skipped) ? prior.skipped.slice() : [];
+  if (cohort && !frozen && today && !skipped.some(x => x.date === today)) skipped = [...skipped, { date: today, asOf, reason: status === 'ok' ? 'no complete run' : 'coverage partial: ' + (m.batches.filter(b => b.total == null || b.rows !== b.total).map(b => b.label).join(', ') || 'SPY benchmark missing') }].slice(-52);
   const marks = mergeMarks(prior && prior.marks, newMarks);
   const bad = m.batches.filter(b => b.total == null || b.rows !== b.total);
   const doc = {
@@ -393,13 +473,15 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
       note: 'Tech share of this paper batch vs the 40% batch rule. The live v2.8 figure is tech as a share of the stock held outside the owner-managed core.',
     },
     v28: v28 ? { asOf: v28.asOf || null, rulesVersion: v28.rulesVersion || null, universe: v28.universeCount ?? null, passed: v28.gatedCount ?? null, actionable: Object.keys(v28.targets || {}), targets: v28.targets || {} } : null,
-    cohorts, marks, metrics: metricsOf(marks),
+    cohorts, marks, metrics: metricsOf(marks), skipped,
     shadow: {
       cohorts: shadowCohorts, marks: shadowMarksAll, metrics: shadowMetrics(shadowCohorts, shadowMarksAll),
-      note: 'Rejected-names ledger, PAPER ONLY. Each Monday it freezes names a single rule turned away (live v2.8: 40% tech cap, reward/risk under 1.5; paper v2.9: the top ' + SHADOW.PER_GATE + ' by score per failed test) and grades them against SPY from the next session\'s open. avgAlphaNet takes 0.20 points off for slippage; margin interest is not modelled. Descriptive only until 12 Monday cohorts; no rule changes on this evidence alone.',
+      live: shadowCohorts.length ? (({ liveStatus, liveNote, asOf: a }) => ({ asOf: a, status: liveStatus || (shadowCohorts[shadowCohorts.length - 1].liveIncluded ? 'included' : 'pending'), note: liveNote || null }))(shadowCohorts[shadowCohorts.length - 1]) : null,
+      note: 'Rejected-names ledger, PAPER ONLY. Each Monday it freezes the live v2.8 picks as a control arm and the names a single rule turned away (live v2.8: 40% tech cap, reward/risk under 1.5; paper v2.9: the top ' + SHADOW.PER_GATE + ' by score per failed test) and grades them against SPY from the next session\'s open. avgAlphaNet takes 0.20 points off for slippage; margin interest is not modelled. Descriptive only until 12 Monday cohorts; no rule changes on this evidence alone.',
     },
     cohortNote: cohorts.length ? `${cohorts.length} Monday cohort(s) logged; descriptive only until 12 exist. Review, not verdict.` : 'No paper cohort yet. The first one is frozen on the next Monday run; results stay descriptive until 12 Monday cohorts exist.',
     backtest: backtest || (prior && prior.backtest) || null,
+    evaluation: evaluate(cohorts, marks, shadowCohorts, shadowMarksAll),
     notes: [
       'PAPER ONLY. No ticket, alert, order or live rule reads this file. Live Apex stays on rules v2.8.',
       'Thresholds are the approved v2.9-paper-1 starting points under test; none was loosened to produce picks.',
@@ -419,7 +501,10 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
 export function markFailed(prior, asOf, reason, nextRun) {
   const base = prior && typeof prior === 'object' ? prior : { schema: 1, paper: true, rulesVersion: RULES_VERSION, ranked: { qualified: [], near: [], emerging: [] }, cohorts: [], marks: [], metrics: {}, notes: [], sources: [] };
   const lastSuccessAsOf = base.status === 'ok' ? base.asOf : (base.lastSuccessAsOf || null);
-  return { ...base, status: 'failed', asOf, statusNote: String(reason || 'run failed').slice(0, 300), lastSuccessAsOf, nextRun: nextRun || base.nextRun || null };
+  const day = String(asOf || '').slice(0, 10); const dow = new Date(day + 'T12:00:00Z').getUTCDay();
+  let skipped = Array.isArray(base.skipped) ? base.skipped.slice() : [];
+  if (dow === 1 && !(base.cohorts || []).some(c => String(c.asOf).slice(0, 10) === day) && !skipped.some(x => x.date === day)) skipped = [...skipped, { date: day, asOf, reason: 'run failed: ' + String(reason || 'run failed').slice(0, 200) }].slice(-52);
+  return { ...base, status: 'failed', asOf, statusNote: String(reason || 'run failed').slice(0, 300), lastSuccessAsOf, nextRun: nextRun || base.nextRun || null, skipped };
 }
 
 // ---- CLI: node producer/apex-paper.mjs --in <dir> --spy last,c63,c126 --asof ISO --next ISO [--checks file] [--out file]

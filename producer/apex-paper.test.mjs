@@ -1,7 +1,7 @@
 // Apex v2.9 paper engine tests. Synthetic rows only; no network.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { markFailed, unwrap, mergeBatches, setupOf, scoreRow, buildBatch, build, fundamentalScore, rrPoints, tradingDaysBetween, mergeMarks, metricsOf, lin, C, RULES_VERSION, shadowPicks, shadowMetrics, SHADOW } from './apex-paper.mjs';
+import { markFailed, unwrap, mergeBatches, setupOf, scoreRow, buildBatch, build, fundamentalScore, rrPoints, tradingDaysBetween, mergeMarks, metricsOf, lin, C, RULES_VERSION, shadowPicks, shadowMetrics, SHADOW, liveLedger, nextOpenMs, settleLive, EVAL, evaluate } from './apex-paper.mjs';
 
 let n = 0; const t = (name, fn) => { fn(); n++; };
 const col = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v == null ? '' : String(v)]));
@@ -149,6 +149,55 @@ t('rejected-names ledger: frozen once with the Monday cohort, live gates only fr
   assert.equal(shadowPicks(many, null, '2026-11-23').picks.length, SHADOW.PER_GATE);
   assert.equal(shadowPicks([{ sym: 'E', failKeys: ['earnings'] }, { sym: 'T', failKeys: ['rr', 'pe'] }], null, 'x').picks.length, 0);
   assert.deepEqual(shadowMetrics(null, null), {});
+});
+t('late live names: added on any run before the next open, marked missing after it, never silent', () => {
+  const mon = { today: '2026-11-23', asOf: '2026-11-23T07:52:00-05:00', cohort: true };
+  const live = { asOf: '2026-11-23T07:13:00-05:00', rulesVersion: 'v2.8', targets: { DXCM: 20, IREN: 40 }, top5: [{ sym: 'DXCM', composite: 7.9 }], blockedByTheme: [{ sym: 'ZS', composite: 7.1 }], vetoed: [{ sym: 'REGN', composite: 7.5, why: 'R/R at entry 0.31 < 1.5' }] };
+  const d1 = mk({ ...mon, v28: { ...live, asOf: '2026-11-16T07:13:00-05:00' } }); const c1 = d1.shadow.cohorts[0];
+  assert.equal(c1.liveIncluded, false); assert.equal(c1.liveStatus, 'pending'); assert.match(c1.liveNote, /targets copy/);
+  assert.equal(d1.shadow.live.status, 'pending');
+  const d2 = mk({ today: '2026-11-24', asOf: '2026-11-24T07:52:00-05:00', prior: d1, v28: live }); const c2 = d2.shadow.cohorts[0];
+  assert.equal(c2.liveIncluded, true); assert.equal(c2.liveStatus, 'added-late'); assert.equal(c2.liveAddedAt, '2026-11-24T07:52:00-05:00');
+  assert.deepEqual(c2.picks.filter(p => p.source === 'live v2.8').map(p => p.gate + ':' + p.sym), ['live-pick:DXCM', 'live-tech-cap:ZS', 'live-rr:REGN']);
+  assert.equal(c2.picks.find(p => p.gate === 'live-pick').composite, 7.9);
+  assert.ok(c2.picks.every(p => p.status === 'pending' && p.entryRule === 'next session open'), 'late names enter at the same open as the rest');
+  assert.ok(!c2.picks.some(p => p.sym === 'IREN'), 'owner-managed core never enters the ledger');
+  assert.equal(c2.asOf, c1.asOf, 'the cohort date never moves');
+  assert.equal(mk({ today: '2026-11-24', asOf: '2026-11-24T08:30:00-05:00', prior: d2, v28: live }).shadow.cohorts[0].picks.length, c2.picks.length, 'settling twice adds nothing');
+  const late = mk({ today: '2026-11-24', asOf: '2026-11-24T09:45:00-05:00', prior: d1, v28: live }).shadow.cohorts[0];
+  assert.equal(late.liveIncluded, false); assert.equal(late.liveStatus, 'missing'); assert.ok(!late.picks.some(p => p.source === 'live v2.8'), 'no live name after the open (no look-ahead)');
+  assert.match(late.liveNote, /missing/);
+  const sameDay = mk({ ...mon, asOf: '2026-11-23T12:31:00-05:00', prior: d1, v28: live }).shadow.cohorts[0];
+  assert.equal(sameDay.liveStatus, 'added-late', 'the 12:30 PM copy also counts');
+  assert.equal(settleLive(late, live, '2026-11-25T07:52:00-05:00'), late, 'a missing week stays missing');
+  assert.equal(nextOpenMs('2026-11-27T07:52:00-05:00'), Date.parse('2026-11-30T09:30:00-05:00'), 'Friday rolls to Monday');
+  assert.deepEqual(liveLedger(null), []);
+});
+t('a Monday that freezes no cohort is recorded as skipped, with the reason', () => {
+  const part = build({ batches: [{ label: 'tech-a', payload: payload([row('AAA')], 300) }], bench, today: '2026-11-23', asOf: '2026-11-23T07:52:00-05:00', cohort: true });
+  assert.equal(part.cohorts.length, 0); assert.deepEqual(part.skipped.map(x => x.date), ['2026-11-23']); assert.match(part.skipped[0].reason, /coverage partial: tech-a/);
+  const again = build({ batches: [{ label: 'tech-a', payload: payload([row('AAA')], 300) }], bench, today: '2026-11-23', asOf: '2026-11-23T08:00:00-05:00', cohort: true, prior: part });
+  assert.equal(again.skipped.length, 1, 'one entry per Monday');
+  assert.deepEqual(mk().skipped, [], 'a weekday run skips nothing');
+  const f = markFailed(mk(), '2026-11-30T07:58:00-05:00', 'scanner refused'); assert.equal(f.skipped[0].date, '2026-11-30'); assert.match(f.skipped[0].reason, /run failed: scanner refused/);
+  assert.equal(markFailed(mk(), '2026-12-01T07:58:00-05:00', 'x').skipped.length, 0, 'a failed Tuesday is not a skipped Monday');
+});
+t('evaluation spec eval-1 is locked and every arm is measured the same way', () => {
+  assert.equal(EVAL.version, 'eval-1'); assert.deepEqual(EVAL.horizons, [5, 30, 60, 90]); assert.equal(EVAL.primaryHorizon, 30);
+  assert.equal(EVAL.costPctRoundTrip, 0.20); assert.equal(EVAL.costPctRoundTrip, SHADOW.COST_PP); assert.equal(EVAL.minCohorts, 12); assert.equal(EVAL.noFillDays, 10);
+  assert.deepEqual(EVAL.arms.map(a => a.key), ['live', 'paper', 'rejectedLive', 'rejectedPaper']);
+  assert.ok(Object.isFrozen(EVAL) && Object.isFrozen(EVAL.arms));
+  const co = [{ asOf: 'c1', picks: [{ sym: 'AAA', status: 'entered' }, { sym: 'BBB', status: 'pending' }] }];
+  const sc = [{ asOf: 'c1', picks: [{ sym: 'DXCM', gate: 'live-pick', status: 'entered' }, { sym: 'ZS', gate: 'live-tech-cap', status: 'entered' }, { sym: 'N', gate: 'paper-rr', status: 'entered' }, { sym: 'N', gate: 'paper-pe', status: 'entered' }] }];
+  const e = evaluate(co, [{ asOf: 'c1', sym: 'AAA', horizon: 5, alpha: 2 }, { asOf: 'c1', sym: 'BBB', horizon: 5, alpha: 50 }],
+    sc, [{ asOf: 'c1', sym: 'DXCM', horizon: 5, alpha: -1 }, { asOf: 'c1', sym: 'ZS', horizon: 5, alpha: 3 }, { asOf: 'c1', sym: 'N', horizon: 5, alpha: 4 }, { asOf: 'c1', sym: 'ZS', horizon: 7, alpha: 9 }]);
+  assert.deepEqual(e.arms.paper.horizons[5], { n: 1, hit: 1, avgAlpha: 2, medianAlpha: 2, avgAlphaNet: 1.8 }, 'a pending pick is never graded');
+  assert.deepEqual(e.arms.live.horizons[5], { n: 1, hit: 0, avgAlpha: -1, medianAlpha: -1, avgAlphaNet: -1.2 });
+  assert.equal(e.arms.rejectedLive.horizons[7], undefined, 'only spec horizons count');
+  assert.equal(e.arms.rejectedPaper.horizons[5].n, 1, 'a name under two paper gates counts once in its arm');
+  assert.equal(e.arms.live.descriptive, true); assert.equal(e.simulated, null); assert.match(e.simulatedNote, /daily price path/);
+  assert.deepEqual(evaluate(null, null, null, null).arms.live, { label: 'Live v2.8 picks', cohorts: 0, entered: 0, horizons: {}, descriptive: true });
+  assert.ok(mk().evaluation && mk().evaluation.version === 'eval-1', 'every published file carries the evaluation block');
 });
 t('marks are stamped once and metrics come only from stored marks', () => {
   const a = { asOf: 'c1', sym: 'AAA', horizon: 5, ret: 2, spyRet: 1, alpha: 1 };
