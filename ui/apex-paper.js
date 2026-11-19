@@ -495,6 +495,187 @@
       (m.metrics.length ? fold('metrics', 'Metrics <span>' + m.metrics.length + '</span>', '<div class="apx-kv">' + m.metrics.map((x) => kv(x.key, x.value)).join('') + '</div>') : '') + btHtml + '</section>';
   }
 
+  /* ── v257: measured results (eval-1 raw, sim-1 simulated), the rejected-names ledger and weekly cohort history ──
+     Reads doc.evaluation, doc.shadow and doc.skipped exactly as the paper engine publishes them (producer/apex-paper.mjs,
+     spec producer/APEX-PAPER-EVAL.md). Nothing is estimated here: a missing number is "—", an arm with no graded mark says
+     so, and every result carries "descriptive" until 12 Monday cohorts exist. Raw per-name results and the simulated
+     portfolio are kept in separate tables. These cards use the shared .card-title header so they fold like other cards. */
+  const EVAL_HORIZONS = [5, 30, 60, 90], PRIMARY_H = 30, MIN_COHORTS = 12, OPEN_LEDGER = 12;
+  const ARMS = [['live', 'Live v2.8 picks'], ['paper', 'v2.9 paper picks'], ['rejectedLive', 'Rejected by a live rule'], ['rejectedPaper', 'Rejected by one paper test']];
+  const GATE = {
+    'live-pick': ['Live pick', 'Live v2.8: picked (control arm, graded on paper)', 'live-pick'],
+    'live-tech-cap': ['Tech cap', 'Live v2.8: blocked by the 40% tech cap', 'live-rej'],
+    'live-rr': ['Live R/R', 'Live v2.8: reward/risk under 1.5 at entry', 'live-rej'],
+    'paper-rr': ['R/R', 'Paper v2.9: reward/risk under 1.5 at entry', 'paper-rej'],
+    'paper-trend': ['Trend', 'Paper v2.9: pullback trend score under 5', 'paper-rej'],
+    'paper-not-near-high': ['Near high', 'Paper v2.9: breakout too far below the 3-month high', 'paper-rej'],
+    'paper-not-pulled-back': ['Pullback', 'Paper v2.9: pullback not at the 20-day yet', 'paper-rej'],
+    'paper-growth-low': ['Growth <10%', 'Paper v2.9: pullback growth under 10%', 'paper-rej'],
+    'paper-growth-neg': ['Growth <0', 'Paper v2.9: revenue growth negative', 'paper-rej'],
+    'paper-pe': ['P/E', 'Paper v2.9: P/E over 100', 'paper-rej'],
+    'paper-rs3': ['vs SPY', 'Paper v2.9: not ahead of SPY over 3 months', 'paper-rej'],
+    'paper-slope': ['50-day', 'Paper v2.9: reversal, 50-day not rising', 'paper-rej'],
+    'paper-off-low': ['Off low', 'Paper v2.9: reversal under 15% above the 3-month low', 'paper-rej']
+  };
+  const GROUPS = [['all', 'All'], ['live-pick', 'Live picks'], ['live-rej', 'Live rejects'], ['paper-rej', 'Paper rejects']];
+  const LIVE_STATUS = { included: ['Live names in', 'good'], 'added-late': ['Live names added late', 'info'], pending: ['Live names pending', 'warn'], missing: ['Live names missing', 'bad'] };
+  const dayOf = (v) => { const s = str(v); return s && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null; };
+  const fmtDay = (d) => { if (!d) return null; const t = Date.parse(d + 'T12:00:00Z'); return Number.isFinite(t) ? new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(t)) : d; };
+  /* Weekday arithmetic for "about when" lines only; market holidays are not modelled, so callers say "about". */
+  function addWeekdays(day, n) {
+    const t = Date.parse(day + 'T12:00:00Z'); if (!Number.isFinite(t)) return null;
+    const d = new Date(t); let left = n;
+    while (left > 0) { d.setUTCDate(d.getUTCDate() + 1); if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) left--; }
+    return d.toISOString().slice(0, 10);
+  }
+  const gateOf = (g, labels) => { const x = GATE[g]; return { key: g, short: x ? x[0] : (g || DASH), label: str(obj(labels[g]).label) || (x ? x[1] : g || 'Unlabelled rule'), group: x ? x[2] : (/^live-/.test(g || '') ? 'live-rej' : 'paper-rej') }; };
+  const markOf = (m) => ({ asOf: str(m.asOf), sym: str(m.sym), horizon: num(m.horizon) !== null ? m.horizon : num(Number(m.horizon)), ret: num(m.ret), spyRet: num(m.spyRet), alpha: num(m.alpha) });
+
+  function research(doc, nowMs) {
+    const d = obj(doc), ev = isObj(d.evaluation) ? d.evaluation : null, sh = isObj(d.shadow) ? d.shadow : null;
+    const now = num(nowMs) === null ? Date.now() : nowMs;
+    const labels = obj(sh && sh.metrics);
+    const arms = ARMS.map(([key, label]) => {
+      const a = obj(ev && obj(ev.arms)[key]), hz = obj(a.horizons);
+      const horizons = EVAL_HORIZONS.map((h) => { const x = obj(hz[h]); return { h, n: num(x.n), hit: num(x.hit), avgAlpha: num(x.avgAlpha), medianAlpha: num(x.medianAlpha), avgAlphaNet: num(x.avgAlphaNet) }; });
+      return { key, label: str(a.label) || label, cohorts: num(a.cohorts), entered: num(a.entered), horizons, primary: horizons.find((x) => x.h === PRIMARY_H), descriptive: a.descriptive !== false };
+    });
+    const sim = ev && isObj(ev.simulated) ? ev.simulated : null;
+    const simArm = (k) => { const a = obj(sim && obj(sim.arms)[k]); return { cohorts: num(a.cohorts), inProgress: num(a.inProgress), names: num(a.names), stops: num(a.stops), avgRetNetPct: num(a.avgRetNetPct), avgAlphaNetPct: num(a.avgAlphaNetPct), worstDrawdownPct: num(a.worstDrawdownPct), avgExposurePct: num(a.avgExposurePct) }; };
+    const smarks = arr(sh && sh.marks).map(obj).map(markOf);
+    const ledger = [];
+    const scohorts = arr(sh && sh.cohorts).map(obj).map((co) => {
+      const asOf = str(co.asOf), day = dayOf(co.asOf);
+      const picks = arr(co.picks).map(obj).map((p) => {
+        const sym = str(p.sym) || '?', g = gateOf(str(p.gate), labels);
+        const marks = smarks.filter((m) => m.asOf === asOf && m.sym === sym && m.horizon !== null).sort((a, b) => a.horizon - b.horizon);
+        const latest = marks.filter((m) => m.alpha !== null).pop() || null;
+        const row = { key: 'rej:' + (day || '?') + ':' + g.key + ':' + sym, cohortDay: day, sym, gate: g, source: str(p.source), composite: num(p.composite), entryRule: str(p.entryRule), entryPx: num(p.entryPx), entryDate: dayOf(p.entryDate), status: str(p.status) || 'pending', marks, latest };
+        ledger.push(row); return row;
+      });
+      return { asOf, day, picks, liveStatus: str(co.liveStatus) || (co.liveIncluded === true ? 'included' : null), liveNote: str(co.liveNote) };
+    }).sort((a, b) => ((a.day || '') < (b.day || '') ? 1 : -1));
+    const pcohorts = arr(d.cohorts).map(obj).map((co) => ({ day: dayOf(co.asOf), picks: arr(co.picks).map(obj), marks: arr(d.marks).map(obj).filter((m) => str(m.asOf) === str(co.asOf)).length }));
+    const skipped = arr(d.skipped).map(obj).map((x) => ({ day: dayOf(x.date) || dayOf(x.asOf), reason: str(x.reason) })).filter((x) => x.day);
+    const days = [...new Set([...pcohorts.map((c) => c.day), ...scohorts.map((c) => c.day), ...skipped.map((x) => x.day)].filter(Boolean))].sort().reverse();
+    const history = days.map((day) => {
+      const p = pcohorts.find((c) => c.day === day), s = scohorts.find((c) => c.day === day), k = skipped.find((x) => x.day === day);
+      const cnt = (grp) => (s ? s.picks.filter((x) => x.gate.group === grp).length : 0);
+      return { day, paper: p ? p.picks.length : null, paperEntered: p ? p.picks.filter((x) => x.status === 'entered').length : null, paperMarks: p ? p.marks : 0,
+        livePicks: cnt('live-pick'), liveRej: cnt('live-rej'), paperRej: cnt('paper-rej'), liveStatus: s ? s.liveStatus : null, liveNote: s ? s.liveNote : null, skipped: k ? k.reason || 'reason not recorded' : null };
+    });
+    const firstDay = days.length ? days[days.length - 1] : null;
+    const graded = arms.some((a) => a.horizons.some((x) => x.n));
+    const entry = firstDay ? addWeekdays(firstDay, 1) : null;
+    const order = Object.keys(GATE), rank = (k) => (order.indexOf(k) < 0 ? order.length : order.indexOf(k));
+    const gates = [...new Map(ledger.map((r) => [r.gate.key, r.gate])).values()].sort((a, b) => rank(a.key) - rank(b.key));
+    /* The table shows the locked primary horizon (30 days) as soon as any arm has it; before that, the shortest graded
+       horizon, labelled as an early look. No horizon is mixed into another. */
+    const shownH = arms.some((a) => a.primary.n) ? PRIMARY_H : (EVAL_HORIZONS.find((h) => arms.some((a) => a.horizons.find((x) => x.h === h).n)) || PRIMARY_H);
+    const byGate = gates.map((g) => { const x = obj(obj(labels[g.key])[shownH]); return { gate: g, names: ledger.filter((r) => r.gate.key === g.key).length, n: num(x.n), hit: num(x.hit), avgAlphaNet: num(x.avgAlphaNet) }; });
+    const live = isObj(sh && sh.live) ? { day: dayOf(sh.live.asOf), status: str(sh.live.status), note: str(sh.live.note) } : null;
+    return {
+      present: !!ev, version: ev ? str(ev.version) : null, note: ev ? str(ev.note) : null, arms, graded, shownH,
+      cohortsMax: arms.reduce((m, a) => Math.max(m, a.cohorts || 0), 0),
+      firstMarks: entry && !graded ? { h5: addWeekdays(entry, 5), h30: addWeekdays(entry, 30), past: Date.parse(addWeekdays(entry, 5) + 'T23:00:00Z') < now } : null,
+      sim: sim ? { version: str(sim.version), holdDays: num(sim.holdDays), note: str(sim.note), paper: simArm('paper'), live: simArm('live') } : null,
+      simNote: ev ? str(ev.simulatedNote) : null,
+      ledgerPresent: !!sh, ledgerNote: sh ? str(sh.note) : null, ledger, ledgerCohorts: scohorts, byGate, live, history
+    };
+  }
+
+  const alphaCell = (v) => '<td class="' + (v === null ? '' : v >= 0 ? 'apx-up' : 'apx-dn') + '">' + esc(fmtPct(v, 1, true)) + '</td>';
+  const hitTxt = (v) => (v === null ? DASH : group(v * 100, 0) + '%');
+  const cardHead = (title, sub) => '<div class="card-title apx-ctitle"><span>' + esc(title) + '</span>' + (sub ? '<span class="apx-csub">' + sub + '</span>' : '') + '</div>';
+
+  function resultsHtml(r) {
+    const prog = chip(r.cohortsMax + ' of ' + MIN_COHORTS + ' weeks', r.cohortsMax >= MIN_COHORTS ? 'info' : 'warn');
+    let fresh;
+    if (!r.present) fresh = '<p class="apx-empty" data-apx-res="waiting">This file was written before results were measured. The next weekday paper run (7:52 AM ET) adds them.</p>';
+    else if (!r.graded) fresh = '<p class="apx-empty" data-apx-res="ungraded">No graded marks yet.' + (r.firstMarks ? ' First 5-day marks about ' + esc(fmtDay(r.firstMarks.h5)) + ', first 30-day marks about ' + esc(fmtDay(r.firstMarks.h30)) + ' (holidays not counted).' : ' The first cohort is frozen on the next Monday run.') + '</p>';
+    else fresh = '<p class="apx-muted" data-apx-res="graded">Descriptive only until ' + MIN_COHORTS + ' Monday cohorts per arm. No live rule changes on this evidence.</p>';
+    const head = '<thead><tr><th>Arm</th><th>Weeks</th><th>Graded</th><th>Hit</th><th>Net alpha</th></tr></thead>';
+    const row = (a, x) => '<tr data-apx-arm="' + esc(a.key) + '"><th>' + esc(a.label) + '</th><td>' + esc(fmtInt(a.cohorts)) + '</td><td>' + esc(fmtInt(x.n)) + '</td><td>' + esc(hitTxt(x.hit)) + '</td>' + alphaCell(x.avgAlphaNet) + '</tr>';
+    const table = (h) => '<table class="apx-table apx-arms">' + head + '<tbody>' + r.arms.map((a) => row(a, a.horizons.find((x) => x.h === h))).join('') + '</tbody></table>';
+    const early = r.shownH !== PRIMARY_H, others = EVAL_HORIZONS.filter((h) => h !== r.shownH);
+    const raw = '<h3>Raw per name <span>' + r.shownH + ' trading days · vs SPY · after 0.20 pts cost</span></h3>' +
+      (early ? '<p class="apx-muted" data-apx-early>Early look only. The ' + PRIMARY_H + '-day result is the one that counts.</p>' : '') + table(r.shownH) +
+      fold('res-horizons', 'Other horizons <span>' + others.join(', ') + ' days</span>', others.map((h) => '<p class="apx-tl">' + h + ' trading days</p>' + table(h)).join(''));
+    const s = r.sim;
+    const simRows = s ? [['Weeks done', (a) => fmtInt(a.cohorts) + (a.inProgress ? ' (+' + fmtInt(a.inProgress) + ' open)' : '')], ['Net return', (a) => fmtPct(a.avgRetNetPct, 1, true)], ['vs SPY', (a) => fmtPct(a.avgAlphaNetPct, 1, true)],
+      ['Worst drawdown', (a) => fmtPct(a.worstDrawdownPct, 1)], ['Avg exposure', (a) => fmtPct(a.avgExposurePct, 0)], ['Stops hit', (a) => fmtInt(a.stops)]] : [];
+    const simHtml = '<h3>Simulated portfolio <span>' + esc(s ? (s.version || 'sim') + ' · hold ' + fmtInt(s.holdDays) + ' days or stop' : 'not measured yet') + '</span></h3>' +
+      (s ? '<table class="apx-table apx-sim" data-apx-sim="on"><thead><tr><th></th><th>v2.9 paper</th><th>Live v2.8</th></tr></thead><tbody>' + simRows.map(([k, f]) => '<tr><th>' + esc(k) + '</th><td>' + esc(f(s.paper)) + '</td><td>' + esc(f(s.live)) + '</td></tr>').join('') + '</tbody></table>' +
+        (s.note ? '<p class="apx-muted">' + esc(s.note) + '</p>' : '')
+        : '<p class="apx-empty" data-apx-sim="off">Waiting for stored daily prices. ' + esc(r.simNote || 'Simulated results need a daily price path per entered name.') + '</p>');
+    return '<section class="card apx-card apx-res" data-sec="apx-results" data-apx-sec="results">' + cardHead('Results by arm', prog + (r.version ? ' ' + chip(r.version, 'mute') : '')) + fresh + (r.present ? raw + simHtml : '') +
+      '<p class="apx-caveat">Raw results grade each name alone. The simulated portfolio uses weights, stops and cash, so the two are never added together.</p></section>';
+  }
+
+  function ledgerRowHtml(x) {
+    const st = x.status === 'entered' ? (x.entryPx !== null ? 'in ' + fmtPx(x.entryPx) : 'entered') : x.status;
+    const lt = x.latest;
+    const body = '<p><b>' + esc(x.gate.label) + '</b></p><div class="apx-kv">' + kv('Week of', fmtDay(x.cohortDay) || DASH) + kv('Source', x.source || DASH) + kv('Entry', x.entryRule || DASH) +
+      kv('Entry price', fmtPx(x.entryPx)) + kv('Entry date', fmtDay(x.entryDate) || DASH) + kv('Score', fmtNum(x.composite, 1)) + '</div>' +
+      (x.marks.length ? '<table class="apx-table"><thead><tr><th>Days</th><th>Return</th><th>SPY</th><th>Alpha</th></tr></thead><tbody>' + x.marks.map((m) => '<tr><td>' + esc(fmtInt(m.horizon)) + '</td><td>' + esc(fmtPct(m.ret, 1, true)) + '</td><td>' + esc(fmtPct(m.spyRet, 1, true)) + '</td>' + alphaCell(m.alpha) + '</tr>').join('') + '</tbody></table>'
+        : '<p class="apx-empty">Not marked yet. First mark 5 trading days after entry.</p>');
+    return '<details class="apx-lrow" data-apx-key="' + esc(x.key) + '" data-apx-gate="' + esc(x.gate.key) + '" data-apx-grp="' + esc(x.gate.group) + '"><summary><b>' + esc(x.sym) + '</b>' + chip(x.gate.short, x.gate.group === 'live-pick' ? 'good' : x.gate.group === 'live-rej' ? 'info' : 'mute') +
+      '<span class="apx-lst">' + esc(st) + '</span><span class="apx-la ' + (lt ? (lt.alpha >= 0 ? 'apx-up' : 'apx-dn') : '') + '">' + esc(lt ? fmtPct(lt.alpha, 1, true) + ' · ' + lt.horizon + 'd' : DASH) + '</span></summary><div class="apx-lbody">' + body + '</div></details>';
+  }
+
+  function rejectedHtml(r) {
+    const head = cardHead('Rejected names', esc(r.ledger.length + ' graded on paper'));
+    if (!r.ledgerPresent) return '<section class="card apx-card apx-ledger" data-sec="apx-rejected" data-apx-sec="rejected">' + head + '<p class="apx-empty" data-apx-ledger="waiting">The rejected-names ledger starts with the next weekday paper run; the first week is frozen on a Monday.</p></section>';
+    const counts = Object.fromEntries(GROUPS.map(([k]) => [k, k === 'all' ? r.ledger.length : r.ledger.filter((x) => x.gate.group === k).length]));
+    const filters = '<form class="apx-lfilters" data-apx-rejf onsubmit="return false"><div class="apx-segs" role="radiogroup" aria-label="Show">' + GROUPS.map(([k, l], i) => '<label class="apx-chip apx-segopt"><input type="radio" name="grp" value="' + k + '"' + (i === 0 ? ' checked' : '') + '><span>' + esc(l) + ' <i>' + counts[k] + '</i></span></label>').join('') + '</div>' +
+      '<label class="apx-sel apx-lsel">Rule<select name="gate"><option value="">Any rule</option>' + r.byGate.map((g) => '<option value="' + esc(g.gate.key) + '">' + esc(g.gate.short + ' · ' + g.names) + '</option>').join('') + '</select></label></form>';
+    const weeks = r.ledgerCohorts.map((co, i) => {
+      const rows = co.picks.map(ledgerRowHtml);
+      const top = rows.slice(0, OPEN_LEDGER).join(''), more = rows.length > OPEN_LEDGER ? fold('ledger-more:' + (co.day || i), (rows.length - OPEN_LEDGER) + ' more', rows.slice(OPEN_LEDGER).join(''), 'apx-list-fold') : '';
+      const ls = LIVE_STATUS[co.liveStatus];
+      const inner = (ls ? '<p class="apx-muted">' + chip(ls[0], ls[1]) + (co.liveNote ? ' ' + esc(co.liveNote) : '') + '</p>' : '') + '<div class="apx-llist">' + (rows.length ? top + more : '<p class="apx-empty">No names this week.</p>') + '</div>';
+      return '<details class="apx-fold apx-lweek" data-apx-key="ledger-week:' + esc(co.day || i) + '"' + (i === 0 ? ' open' : '') + '><summary>Week of ' + esc(fmtDay(co.day) || 'undated') + ' <span>' + co.picks.length + ' names</span></summary><div class="apx-fold-body">' + inner + '</div></details>';
+    }).join('');
+    const rules = r.byGate.length ? fold('ledger-rules', 'By rule <span>' + r.shownH + '-day net alpha' + (r.shownH !== PRIMARY_H ? ', early look' : '') + '</span>', '<table class="apx-table"><thead><tr><th>Rule</th><th>Names</th><th>Graded</th><th>Hit</th><th>Net alpha</th></tr></thead><tbody>' +
+      r.byGate.map((g) => '<tr><th>' + esc(g.gate.label) + '</th><td>' + esc(fmtInt(g.names)) + '</td><td>' + esc(fmtInt(g.n)) + '</td><td>' + esc(hitTxt(g.hit)) + '</td>' + alphaCell(g.avgAlphaNet) + '</tr>').join('') + '</tbody></table>') : '';
+    return '<section class="card apx-card apx-ledger" data-sec="apx-rejected" data-apx-sec="rejected">' + head + (r.ledger.length ? filters : '') +
+      '<p class="apx-empty" data-apx-lnomatch hidden>No name matches this filter.</p>' + (weeks || '<p class="apx-empty">No week frozen yet.</p>') + rules +
+      (r.ledgerNote ? fold('ledger-note', 'How the ledger works', '<p>' + esc(r.ledgerNote) + '</p>') : '') + '</section>';
+  }
+
+  function historyHtml(r) {
+    const head = cardHead('Weekly cohorts', esc(r.history.length ? r.history.length + ' week' + (r.history.length === 1 ? '' : 's') : 'none yet'));
+    if (!r.history.length) return '<section class="card apx-card apx-hist" data-sec="apx-history" data-apx-sec="history">' + head + '<p class="apx-empty">No Monday recorded yet. Each Monday run freezes a cohort or logs why it could not.</p></section>';
+    const row = (h) => {
+      const ls = LIVE_STATUS[h.liveStatus];
+      const cells = h.skipped && h.paper === null ? '<td colspan="3">' + chip('Skipped', 'bad') + ' ' + esc(h.skipped) + '</td>'
+        : '<td>' + esc(h.paper === null ? DASH : h.paperEntered + ' of ' + h.paper) + '</td><td>' + esc(h.livePicks + ' / ' + h.liveRej + ' / ' + h.paperRej) + '</td><td>' + (ls ? chip(ls[0], ls[1]) : DASH) + '</td>';
+      return '<tr data-apx-week="' + esc(h.day) + '"><th>' + esc(fmtDay(h.day)) + '</th>' + cells + '</tr>';
+    };
+    const t = (rows) => '<table class="apx-table apx-htable"><thead><tr><th>Week</th><th>Paper in</th><th>Live / L-rej / P-rej</th><th>Live copy</th></tr></thead><tbody>' + rows.map(row).join('') + '</tbody></table>';
+    const OPEN_WEEKS = 8;
+    return '<section class="card apx-card apx-hist" data-sec="apx-history" data-apx-sec="history">' + head + t(r.history.slice(0, OPEN_WEEKS)) +
+      (r.history.length > OPEN_WEEKS ? fold('history-more', (r.history.length - OPEN_WEEKS) + ' older weeks', t(r.history.slice(OPEN_WEEKS))) : '') +
+      (r.live && r.live.note ? '<p class="apx-muted">' + esc(r.live.note) + '</p>' : '') +
+      '<p class="apx-muted">Paper in: picks that entered of those frozen. Live copy: whether the live v2.8 names reached that week before the next open. A skipped week is logged, never left out.</p></section>';
+  }
+
+  /* Ledger filter: group chips AND rule select; hides rows, empties weeks, opens weeks with matches. DOM only. */
+  function applyLedgerFilter(el) {
+    const form = el.querySelector('[data-apx-rejf]'); if (!form) return;
+    const g = form.querySelector('input[name="grp"]:checked'), grp = g ? g.value : 'all', gate = form.elements.gate ? form.elements.gate.value : '';
+    const active = grp !== 'all' || !!gate; let shown = 0;
+    el.querySelectorAll('[data-apx-sec="rejected"] .apx-lrow').forEach((row) => { const hit = (grp === 'all' || row.getAttribute('data-apx-grp') === grp) && (!gate || row.getAttribute('data-apx-gate') === gate); row.hidden = !hit; if (hit) shown++; });
+    el.querySelectorAll('[data-apx-sec="rejected"] details.apx-lweek, [data-apx-sec="rejected"] details.apx-list-fold').forEach((fd) => {
+      const hits = fd.querySelectorAll('.apx-lrow:not([hidden])').length;
+      if (active && hits && !fd.open) { fd.open = true; fd.setAttribute('data-apx-auto', '1'); }
+      if (!active && fd.hasAttribute('data-apx-auto')) { fd.open = false; fd.removeAttribute('data-apx-auto'); }
+      fd.hidden = active && !hits;
+    });
+    const none = el.querySelector('[data-apx-lnomatch]'); if (none) none.hidden = !(active && shown === 0);
+    if (el.__apx) el.__apx.lf = active ? { grp, gate } : null;
+  }
+
   function html(doc, nowMs, error, ui) {
     const m = model(doc, nowMs, error), s = m.status;
     const boundary = '<p class="apx-boundary">Paper only. Nothing here feeds the live Apex card, its targets, Confirm or any order.</p>';
@@ -537,7 +718,7 @@
     const keys = listedRows(m).map((x) => x.key), sel = ui && ui.sel && keys.includes(ui.sel) ? ui.sel : defaultSelection(m);
     return '<div class="apx" data-apx-state="' + esc(s.kind) + '">' + headerHtml(m) + decisionHtml(m, d) +
       '<div class="apx-explore">' + rankedHtml(m, d) + detailHtml(m, sel) + '</div>' +
-      sectorsHtml(m, d) + funnel + cohortsHtml(m) + compareSec + cover + notesSec + '</div>';
+      sectorsHtml(m, d) + funnel + (function () { const r = research(doc, nowMs); return resultsHtml(r) + historyHtml(r) + rejectedHtml(r); })() + cohortsHtml(m) + compareSec + cover + notesSec + '</div>';
   }
 
   /* ── interaction (DOM only; inside render) ──
@@ -594,7 +775,7 @@
       const rk = sum.closest('[data-apx-sec="ranked"]'), np = el.querySelector('[data-apx-sec="detail"]');
       if (rk && np && rk.hasAttribute('data-duo-fill') && np.scrollIntoView) { const t = np.getBoundingClientRect().top; if (t < 96 || t > window.innerHeight * 0.45) np.scrollIntoView({ block: 'start' }); }
     });
-    const onInput = (e) => { if (e.target && e.target.closest && e.target.closest('[data-apx-filters]')) applyFilter(el); };
+    const onInput = (e) => { if (!e.target || !e.target.closest) return; if (e.target.closest('[data-apx-filters]')) applyFilter(el); else if (e.target.closest('[data-apx-rejf]')) applyLedgerFilter(el); };
     el.addEventListener('input', onInput); el.addEventListener('change', onInput);
     el.addEventListener('reset', (e) => { if (e.target && e.target.matches && e.target.matches('[data-apx-filters]')) setTimeout(() => applyFilter(el), 0); }, true);
     el.addEventListener('submit', (e) => { if (e.target && e.target.matches && e.target.matches('[data-apx-filters]')) e.preventDefault(); }, true);
@@ -611,12 +792,15 @@
     const m = model(doc, opts.now, opts.error);
     if (!m.status.usable) { el.__apx = null; return; }
     const pane = el.querySelector('[data-apx-sec="detail"]');
-    el.__apx = { m, f: prev.f || null, sel: pane ? pane.getAttribute('data-apx-detail') || null : null };
+    el.__apx = { m, f: prev.f || null, lf: null, sel: pane ? pane.getAttribute('data-apx-detail') || null : null };
     bind(el);
     if (el.__apx.sel) el.querySelectorAll('[data-apx-sec="ranked"] .apx-row').forEach((r) => { if (r.getAttribute('data-apx-key') === el.__apx.sel) { r.classList.add('apx-on'); r.setAttribute('aria-current', 'true'); } });
     if (el.__apx.f) { writeFilter(el.querySelector('[data-apx-filters]'), el.__apx.f); applyFilter(el); }
+    const lf = prev.lf, lform = el.querySelector('[data-apx-rejf]');
+    if (lf && lform) { lform.querySelectorAll('input[name="grp"]').forEach((x) => { x.checked = x.value === lf.grp; }); if (lform.elements.gate) lform.elements.gate.value = lf.gate || ''; applyLedgerFilter(el); }
   }
 
   return { STALE_HOURS, TECH_CAP_PCT, OPEN_ROWS, OPEN_BARS, RUN_H, RUN_M, etParts, etRunMs, missedWeekdayRun, fmtET, status, model, pointer, html, render,
-    decision, rowFlags, filterRows, filterActive, normFilter, segCounts, defaultSelection, sectorView, detailHtml, listedRows, fmtW };
+    decision, rowFlags, filterRows, filterActive, normFilter, segCounts, defaultSelection, sectorView, detailHtml, listedRows, fmtW,
+    research, addWeekdays, GATE, PRIMARY_H, MIN_COHORTS };
 });
