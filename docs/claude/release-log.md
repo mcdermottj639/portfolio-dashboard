@@ -12,6 +12,14 @@ Now: one `.pf-foldbar` control above the card stack on every page with foldable 
 one shared open/close path (`__pfFold.set`). Files: index.html, ui/experience.css, sw.js, tests (new foldbar-checks.mjs).
 No strategy, order, threshold, schedule, account-isolation, data or producer change. NOT verified: physical Duo.
 
+## Producer — Apex paper: daily prices and simulated sim-1 (2026-11-19, no app version change)
+Jack (Nov 19, "Merge + daily prices"). `producer/apex-paper.mjs`: new `--paths` flag stores read-only daily
+[date, open, low, close] per cohort name and SPY under `paths` (never overwrites a stored day; newest 26 cohorts);
+Monday freezes now keep each pick's `stop` and `tp1`; `evaluation.simulated` (sim-1): paper (frozen weights) and
+live (equal weight) cohorts held 30 trading days or to the stop, net return, SPY alpha, max drawdown, exposure,
+stop hits; 0.20 pt cost, no margin interest. PAPER ONLY: no live rule, ticket, UI, schedule or `RULES_VERSION`
+change. Tests: apex-paper 27/27. The task-prompt step that supplies `--paths` is drafted, not applied.
+
 ## Producer — Apex paper: live control arm, late-copy fix, eval-1 (2026-11-19, no app version change)
 Jack (Nov 19, relayed): make v2.9 paper measurable; fix the 7:52 scan vs 8:30 targets-copy timing; never drop
 rejected live names silently. `producer/apex-paper.mjs`: live v2.8 picks join the shadow ledger as `live-pick`;
