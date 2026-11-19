@@ -1,7 +1,7 @@
 // Apex v2.9 paper engine tests. Synthetic rows only; no network.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { markFailed, unwrap, mergeBatches, setupOf, scoreRow, buildBatch, build, fundamentalScore, rrPoints, tradingDaysBetween, mergeMarks, metricsOf, lin, C, RULES_VERSION, shadowPicks, shadowMetrics, SHADOW, liveLedger, nextOpenMs, settleLive, EVAL, evaluate } from './apex-paper.mjs';
+import { markFailed, unwrap, mergeBatches, setupOf, scoreRow, buildBatch, build, fundamentalScore, rrPoints, tradingDaysBetween, mergeMarks, metricsOf, lin, C, RULES_VERSION, shadowPicks, shadowMetrics, SHADOW, liveLedger, nextOpenMs, settleLive, EVAL, evaluate, SIM, mergePaths, simName, simulate } from './apex-paper.mjs';
 
 let n = 0; const t = (name, fn) => { fn(); n++; };
 const col = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v == null ? '' : String(v)]));
@@ -198,6 +198,53 @@ t('evaluation spec eval-1 is locked and every arm is measured the same way', () 
   assert.equal(e.arms.live.descriptive, true); assert.equal(e.simulated, null); assert.match(e.simulatedNote, /daily price path/);
   assert.deepEqual(evaluate(null, null, null, null).arms.live, { label: 'Live v2.8 picks', cohorts: 0, entered: 0, horizons: {}, descriptive: true });
   assert.ok(mk().evaluation && mk().evaluation.version === 'eval-1', 'every published file carries the evaluation block');
+});
+t('sim-1: daily paths merge without overwriting a stored day, and only the newest 26 cohorts are kept', () => {
+  assert.equal(SIM.version, 'sim-1'); assert.equal(SIM.holdDays, 30); assert.equal(SIM.costPctRoundTrip, EVAL.costPctRoundTrip); assert.ok(Object.isFrozen(SIM));
+  const a = mergePaths({ c1: { AAA: [['2026-11-24', 10, 9, 10]] } }, { c1: { AAA: [['2026-11-24', 99, 99, 99], ['2026-11-25', 10, 9.5, 11], ['bad', 1, 1, 1], ['2026-11-26', 10, -1, 10]] } });
+  assert.deepEqual(a.c1.AAA, [['2026-11-24', 10, 9, 10], ['2026-11-25', 10, 9.5, 11]]);
+  const many = {}; for (let i = 0; i < 30; i++) many['2026-' + String(100 + i)] = { X: [['2026-11-24', 1, 1, 1]] };
+  const kept = Object.keys(mergePaths(many, null)); assert.equal(kept.length, 26); assert.equal(kept[0], '2026-104');
+  assert.deepEqual(mergePaths(null, null), {});
+});
+t('sim-1: a name exits at its stop, at the open on a gap below it, or after the hold', () => {
+  const pk = { sym: 'AAA', status: 'entered', entryPx: 100, entryDate: '2026-11-24', stop: 90 };
+  const rows = [['2026-11-24', 100, 95, 98], ['2026-11-25', 97, 93, 96], ['2026-11-26', 85, 80, 82], ['2026-11-27', 90, 88, 89]];
+  const gap = simName(pk, rows, 5);
+  assert.equal(gap.stopped, true); assert.equal(gap.exitDate, '2026-11-26'); assert.equal(gap.retPct, -15, 'gap through the stop fills at the open'); assert.equal(gap.maxDrawdownPct, -15);
+  const touch = simName(pk, [['2026-11-24', 100, 89, 95]], 5); assert.equal(touch.retPct, -10); assert.equal(touch.stopped, true);
+  const held = simName(pk, rows.slice(0, 2), 1); assert.equal(held.complete, true); assert.equal(held.stopped, false); assert.equal(held.retPct, -4); assert.equal(held.maxDrawdownPct, -7);
+  const open = simName(pk, rows.slice(0, 2), 5); assert.equal(open.complete, false, 'still inside the hold');
+  assert.equal(simName(pk, rows.slice(1), 5), null, 'a path must start on the entry day');
+  assert.equal(simName({ ...pk, status: 'pending' }, rows, 5), null);
+  assert.equal(simName({ ...pk, stop: null }, rows, 5).stopped, false, 'no stop, no stop exit');
+});
+t('sim-1: cohort portfolios keep frozen weights (rest cash), live picks equal weight, SPY-relative and net of cost', () => {
+  const co = [{ asOf: 'c1', picks: [{ sym: 'AAA', w: 30, stop: 90, status: 'entered', entryPx: 100, entryDate: '2026-11-24' }, { sym: 'BBB', w: 20, status: 'entered', entryPx: 50, entryDate: '2026-11-24' }] }];
+  const sc = [{ asOf: 'c1', picks: [{ sym: 'AAA', gate: 'live-pick', status: 'entered', entryPx: 100, entryDate: '2026-11-24' }, { sym: 'ZS', gate: 'live-tech-cap', status: 'entered', entryPx: 10, entryDate: '2026-11-24' }] }];
+  const paths = { c1: { AAA: [['2026-11-24', 100, 99, 110], ['2026-11-25', 110, 88, 89]], BBB: [['2026-11-24', 50, 49, 55], ['2026-11-25', 55, 54, 60]], SPY: [['2026-11-24', 700, 690, 700], ['2026-11-25', 700, 700, 707]] } };
+  assert.equal(simulate(co, sc, null), null); assert.equal(evaluate(co, [], sc, [], null).simulated, null);
+  const s = simulate(co, sc, paths, 1);
+  const p = s.arms.paper.perCohort[0];
+  assert.equal(p.complete, true); assert.equal(p.stops, 1); assert.equal(p.investedPct, 50);
+  assert.equal(p.retNetPct, 0.9, '30% x -10% (stop) + 20% x +20% = +1.0, minus 0.20 x 50% invested');
+  assert.equal(p.spyRetPct, 1); assert.equal(p.alphaNetPct, -0.1); assert.equal(p.maxDrawdownPct, -3.81, 'peak 105 after day 1, 101 after the stop');
+  assert.equal(s.arms.paper.cohorts, 1); assert.equal(s.arms.paper.descriptive, true);
+  const l = s.arms.live.perCohort[0];
+  assert.equal(l.names, 1, 'only live-pick names form the live arm'); assert.equal(l.investedPct, 100); assert.equal(l.stops, 0, 'live picks carry no stored stop');
+  assert.equal(l.retNetPct, -11.2);
+  const inProg = simulate(co, sc, paths, 5); assert.equal(inProg.arms.paper.cohorts, 0); assert.equal(inProg.arms.paper.inProgress, 1, 'a cohort inside its hold is counted as in progress, not graded');
+  assert.equal(evaluate(co, [], sc, [], paths).simulated.version, 'sim-1');
+});
+t('sim-1: a Monday freeze stores each pick\'s stop and target; --paths rows are kept in the published file', () => {
+  const mon = { today: '2026-11-23', asOf: '2026-11-23T07:52:00-05:00', cohort: true };
+  const d = mk(mon); const pk = d.cohorts[0] && d.cohorts[0].picks[0];
+  assert.ok(pk, 'a cohort was frozen'); assert.ok(pk.stop > 0 && pk.tp1 > pk.stop, 'stop and target frozen with the pick');
+  const q = d.ranked.qualified.find(x => x.sym === pk.sym); assert.equal(pk.stop, q.stop); assert.equal(pk.tp1, q.tp1);
+  const d2 = mk({ today: '2026-11-24', asOf: '2026-11-24T07:52:00-05:00', prior: d, newPaths: { [d.cohorts[0].asOf]: { [pk.sym]: [['2026-11-24', 100, 99, 101]] } } });
+  assert.deepEqual(d2.paths[d.cohorts[0].asOf][pk.sym], [['2026-11-24', 100, 99, 101]]);
+  assert.ok(d2.evaluation.simulated, 'simulation block present once paths exist');
+  assert.deepEqual(mk().paths, {});
 });
 t('marks are stamped once and metrics come only from stored marks', () => {
   const a = { asOf: 'c1', sym: 'AAA', horizon: 5, ret: 2, spyRet: 1, alpha: 1 };
