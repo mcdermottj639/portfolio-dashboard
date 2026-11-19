@@ -130,6 +130,17 @@ try{
       zero:Object.assign(clone(),{asOf:iso(now-36e5),status:'ok',funnel:{...paper.funnel,qualified:0},ranked:{qualified:[],near:paper.ranked.near.slice(0,3),emerging:[]},batch:{...paper.batch,picks:[],blocked:[],cashPct:100},sectors:{universe:paper.sectors.universe,qualified:{},near:{}}}),
       noReason:Object.assign(clone(),{asOf:iso(now-36e5),status:'ok',batch:{...paper.batch,blocked:(paper.batch.blocked||[]).map(b=>({sym:b.sym})).concat([{sym:'ZZOFF'}])},ranked:{...paper.ranked,qualified:paper.ranked.qualified.map(r=>r.status==='blocked'?{...r,statusReason:null}:r)}}),
       stale:Object.assign(clone(),{asOf:iso(now-9*864e5),lastSuccessAsOf:iso(now-9*864e5),status:'ok',cohorts:[],marks:[]}),
+      // v257: measured results, simulated portfolio, weekly cohorts and the rejected-names ledger (long names, every horizon).
+      measured:(()=>{const A='2026-11-23T07:52:00-05:00',hz=x=>({n:3,hit:0.67,avgAlpha:x,medianAlpha:x,avgAlphaNet:+(x-0.2).toFixed(2)}),arm=(l,h)=>({label:l,cohorts:2,entered:6,horizons:{5:hz(h),30:hz(h*2),60:hz(h*3),90:hz(h*4)},descriptive:true});
+        const pk=(sym,gate,i)=>({sym,gate,source:/^live/.test(gate)?'live v2.8':'paper v2.9',composite:6.1+i,entryRule:'next session open',entryPx:123.45+i,entryDate:'2026-11-24',status:i%3?'entered':'pending'});
+        const gates=['live-pick','live-tech-cap','live-rr','paper-rr','paper-trend','paper-not-near-high','paper-not-pulled-back','paper-growth-low','paper-growth-neg','paper-pe','paper-rs3','paper-slope','paper-off-low'];
+        const picks=gates.flatMap((g,i)=>[pk('W'+i+'LONGX',g,i),pk('V'+i,g,i+1)]);
+        const sa=x=>({cohorts:2,inProgress:1,names:6,stops:2,avgRetNetPct:x,avgAlphaNetPct:x-1.25,worstDrawdownPct:-12.34,avgExposurePct:61.5});
+        return Object.assign(clone(),{asOf:iso(now-36e5),status:'ok',skipped:[{date:'2026-11-16',reason:'coverage partial: slice 7 and slice 11 short of their totals'}],
+          shadow:{cohorts:[{asOf:A,liveIncluded:true,liveStatus:'added-late',picks},{asOf:'2026-11-09T07:52:00-05:00',liveStatus:'missing',liveNote:'Live v2.8 names missing for this week.',picks:picks.slice(0,6)}],
+            marks:picks.map((x,i)=>({asOf:A,sym:x.sym,horizon:5,ret:i-10.5,spyRet:1.25,alpha:i-11.75})),metrics:{},live:{asOf:A,status:'added-late',note:null},note:'Rejected-names ledger, PAPER ONLY.'},
+          evaluation:{version:'eval-1',arms:{live:arm('Live v2.8 picks',1.5),paper:arm('v2.9 paper picks',-2.25),rejectedLive:arm('Rejected by a live rule',3.5),rejectedPaper:arm('Rejected by one paper test',-12.75)},
+            simulated:{version:'sim-1',holdDays:30,arms:{paper:sa(4.56),live:sa(-7.89)},note:'Simulated from stored daily prices.'},note:'Raw per-name results.'}});})(),
       oddSector:Object.assign(clone(),{asOf:iso(now-36e5),status:'ok',sectors:{...paper.sectors,qualified:{...paper.sectors.qualified,'Space Mining':2}},ranked:{...paper.ranked,qualified:[{...paper.ranked.qualified[0],sector:'Space Mining'},...paper.ranked.qualified.slice(1).map(r=>({...r,sector:null}))]},batch:{...paper.batch,picks:[{sym:'QX',weightPct:30.4},{sym:'QY',weightPct:30.4}],cashPct:40}})
     };
     for(const [name,doc] of Object.entries(edge)){
@@ -139,6 +150,22 @@ try{
       if(name==='zero'){assert.match(t,/Paper picks 0/);assert.match(t,/No paper buys in this batch\./);assert.match(t,/Nothing qualified in this run\./);assert.match(t,/No qualified names by sector/);}
       if(name==='noReason'){assert.match(t,/reason not available/);assert.match(t,/ZZOFF reason not available · not in the listed rows/);}
       if(name==='stale'){assert.match(t,/STALE — last run/);assert.match(t,/Stale snapshot/);assert.match(t,/Not yet measured/);}
+      if(name==='measured'){
+        assert.match(t,/Results by arm/);assert.match(t,/Simulated portfolio/);assert.match(t,/Weekly cohorts/);assert.match(t,/Skipped/);assert.match(t,/Live names missing/);
+        const rows='#apexpaper-app [data-apx-sec="rejected"] .apx-lrow';
+        await p.locator('#apexpaper-app [data-apx-rejf] input[value="live-rej"]').check({force:true});await p.waitForTimeout(50);
+        const vis=await p.$$eval(rows,rs=>rs.filter(r=>!r.hidden).map(r=>r.getAttribute('data-apx-grp')));
+        assert.ok(vis.length>0&&vis.every(g=>g==='live-rej'),label+': live-rejects filter shows only live rejects');
+        await p.selectOption('#apexpaper-app [data-apx-rejf] select[name="gate"]','live-rr');await p.waitForTimeout(50);
+        const vis2=await p.$$eval(rows,rs=>rs.filter(r=>!r.hidden).map(r=>r.getAttribute('data-apx-gate')));
+        assert.ok(vis2.length>0&&vis2.every(g=>g==='live-rr'),label+': rule filter');
+        await p.locator('#apexpaper-app [data-apx-rejf] input[value="paper-rej"]').check({force:true});await p.waitForTimeout(50);
+        assert.equal(await p.locator('#apexpaper-app [data-apx-lnomatch]').isVisible(),true,label+': no-match line when nothing fits');
+        await p.locator('#apexpaper-app [data-apx-rejf] input[value="all"]').check({force:true});await p.selectOption('#apexpaper-app [data-apx-rejf] select[name="gate"]','');
+        await p.evaluate(()=>document.querySelectorAll('#apexpaper-app [data-apx-sec="results"] details,#apexpaper-app [data-apx-sec="rejected"] details,#apexpaper-app [data-apx-sec="history"] details').forEach(d=>{d.open=true;}));
+        await p.locator('#apexpaper-app [data-apx-sec="results"]').scrollIntoViewIfNeeded();
+        await p.screenshot({path:`${shots}/apex-paper-${label}-results.png`});
+      }
       if(name==='oddSector'){assert.match(t,/Space Mining 2 no screened count/);assert.match(t,/Source weights add to 100\.8% \(rounding in the file\); shown as published\./);assert.match(t,/Sector not recorded/);}
       await noOverflow(p,label+' '+name);
       if(two&&name==='zero')await p.screenshot({path:`${shots}/apex-paper-${label}-zero.png`});

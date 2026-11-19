@@ -261,3 +261,24 @@
 @media (min-width:1101px){
   .apx-selgrid{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
+
+/* v257 — measured results, weekly cohorts and the rejected-names ledger (same card style as the rest of this page). */
+.apx-card h2>.apx-csub{display:inline-flex;flex-wrap:wrap;gap:4px}
+.apx-arms th:first-child,.apx-htable th:first-child{width:38%}
+.apx-sim th:first-child{width:40%}
+.apx-lfilters{display:flex;flex-direction:column;gap:7px;margin-bottom:6px}
+.apx-lsel{max-width:260px}
+.apx-lweek{margin-top:6px}
+.apx-lrow{border-top:1px solid var(--apx-rule)}
+.apx-llist>.apx-lrow:first-child{border-top:0}
+.apx-lrow>summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:minmax(44px,auto) auto minmax(0,1fr) auto;align-items:center;gap:7px;min-height:44px;padding:5px 0;font-size:12.5px}
+.apx-lrow>summary::-webkit-details-marker{display:none}
+.apx-lrow>summary .apx-chip{justify-self:start}
+.apx-lst{color:var(--apx-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apx-la{font-variant-numeric:tabular-nums;font-weight:650;white-space:nowrap}
+.apx-lrow[open]>summary{border-bottom:1px dashed var(--apx-rule)}
+.apx-lbody{padding:8px 0 12px;font-size:12px}
+.apx-lbody p{overflow-wrap:anywhere}
+.apx>[data-apx-sec="results"]{order:5}.apx>[data-apx-sec="history"]{order:5}.apx>[data-apx-sec="rejected"]{order:5}
+@media (max-width:360px){ .apx-lrow>summary{gap:5px} .apx-lst{display:none} .apx-lrow>summary{grid-template-columns:minmax(40px,auto) auto minmax(0,1fr)} }
+@media (min-width:740px){ .apx>[data-apx-sec="rejected"]{grid-column:1/-1} }

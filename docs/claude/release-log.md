@@ -4,6 +4,16 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v257 — v2.9 Paper page: measured results, weekly cohorts, rejected-names ledger (2026-11-19)
+Jack (Nov 18 10:51 PM ET, Duet relay, Priority 1). `ui/apex-paper.js` `research()` reads `evaluation` (eval-1 raw,
+sim-1 simulated), `shadow` and `skipped` from `data/apex-paper-v29.json`. Three cards on the existing Paper page:
+Measured results (four arms in a locked order, 30-day primary horizon, 5-day table labelled an early look, "x of 12
+weeks", simulated in its own table or an honest wait line), Weekly cohorts (newest first, live-copy status, skipped
+Mondays with reason), Rejected names (group chips + rule select, every frozen name once, weeks folded). Own `<h2>`
+headers: the shared `.card-title` adds the My view pin button and this page carries none. Files: ui/apex-paper.js,
+ui/apex-paper.css, sw.js, index.html, tests. No live rule, ticket, schedule, threshold or producer change; nothing
+live reads the paper file. NOT verified: physical Duo.
+
 ## v256 — one Expand all / Collapse all toolbar per page; fold memory for every card (2026-11-19)
 Jack (Nov 18 10:51 PM ET, Duet relay, Priority 2). Audit: the rail's Expand/Collapse all existed but v242 hid it on Apex /
 Agentic; most cards (Risk, Plan, Research) reopened on every refresh; Collapse all hid the Apex Confirm card and Action Center.

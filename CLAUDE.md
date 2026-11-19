@@ -204,7 +204,7 @@ Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equi
   same change.
 
 ## 11. CURRENT STATE and open items (dated 2026-11-18 — recheck before relying on them)
-- App/cache **v256 / pf-v256** on `main` (recheck `APP_VERSION` / `CACHE_VERSION`).
+- App/cache **v257 / pf-v257** on `main` (recheck `APP_VERSION` / `CACHE_VERSION`).
 - **UNVERIFIED — DXCM history correction (v252).** The fix to held-name daily history (`hist-plan.mjs`
   bar-sized calls, held-name directive in `preflight.mjs`, union of raw files and `holdings-history`
   warning in `build-data.mjs`) is merged, but ticker-level freshness is **not confirmed**: the snapshot is
@@ -222,5 +222,6 @@ Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equi
   control arm, live tech-cap and R/R rejects, paper one-test-short names). Late live names (8:30 copy) are
   added before the next open or marked `missing`; skipped Mondays are listed. Locked eval spec:
   `producer/APEX-PAPER-EVAL.md` (`eval-1`, simulated `sim-1` from `--paths` daily prices). Paper only,
-  descriptive, changes no threshold.
+  descriptive, changes no threshold. v257 shows it on the v2.9 Paper page (Measured results, Weekly
+  cohorts, Rejected names); the page has no buttons and stays out of the card fold.
 - Momentum-off shadow (••••3900): paper only; `thin` until 4 graded cohorts.
