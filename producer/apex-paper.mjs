@@ -273,7 +273,49 @@ export function metricsOf(marks) {
   return out;
 }
 
-export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, v28, prior, backtest, quoteBasis, extraNotes = [], sources = [], cohort = false, vols = null, fills = null, newMarks = null }) {
+/**
+ * REJECTED-NAMES LEDGER (owner, 2026-11-18: "Start paper review"). Paper only, read by nothing live.
+ * Each Monday, with the pick cohort, freeze the names a single rule turned away so they can be graded
+ * the same way as the picks. It answers "are the rules filtering out names that go on to beat SPY?"
+ * one filter at a time. Two sources:
+ *   live v2.8 scan (data/apex-targets.json, only when it is dated the same day): names blocked by the
+ *     40% tech cap, and names dropped for reward/risk under 1.5;
+ *   this paper scan: the best few names that failed exactly ONE test, grouped by that test.
+ * Every ledger name enters on paper at the next session's open. No threshold is changed by this.
+ */
+export const SHADOW = { PER_GATE: 5, COST_PP: 0.20, GATES: ['rr', 'trend', 'not-near-high', 'not-pulled-back', 'growth-low', 'growth-neg', 'pe', 'rs3', 'slope', 'off-low'] };
+export const SHADOW_LABEL = { 'live-tech-cap': 'Live v2.8: blocked by the 40% tech cap', 'live-rr': 'Live v2.8: reward/risk under 1.5 at entry' };
+export function shadowPicks(near, v28, today, core = 'IREN') {
+  const out = []; const have = new Set();
+  const add = (sym, gate, source, composite) => { const k = gate + '|' + sym; if (!sym || sym === core || have.has(k)) return; have.add(k); out.push({ sym, gate, source, composite: composite ?? null, entryRule: 'next session open', entryPx: null, entryDate: null, status: 'pending' }); };
+  const liveFresh = !!(v28 && today && String(v28.asOf || '').slice(0, 10) === today);
+  if (liveFresh) {
+    for (const b of Array.isArray(v28.blockedByTheme) ? v28.blockedByTheme : []) if (b && b.sym) add(b.sym, 'live-tech-cap', 'live v2.8', b.composite);
+    for (const b of Array.isArray(v28.vetoed) ? v28.vetoed : []) if (b && b.sym && /^R\/R at entry/.test(String(b.why || ''))) add(b.sym, 'live-rr', 'live v2.8', b.composite);
+  }
+  for (const g of SHADOW.GATES) {
+    let n = 0;
+    for (const q of near) { if (n >= SHADOW.PER_GATE) break; if ((q.failKeys || [])[0] === g && (q.failKeys || []).length === 1) { add(q.sym, 'paper-' + g, 'paper v2.9', q.composite); n++; } }
+  }
+  return { picks: out, liveFresh };
+}
+/** Per-gate record from stored marks only. avgAlphaNet takes 10 bps of slippage per side off each name. */
+export function shadowMetrics(cohorts, marks) {
+  const by = {};
+  for (const c of cohorts || []) for (const p of (c && c.picks) || []) {
+    if (!p || p.status !== 'entered') continue;
+    for (const m of marks || []) {
+      if (!m || m.asOf !== c.asOf || m.sym !== p.sym || m.alpha == null) continue;
+      ((by[p.gate] = by[p.gate] || {})[m.horizon] = by[p.gate][m.horizon] || []).push(m.alpha);
+    }
+  }
+  const out = {};
+  for (const [g, hs] of Object.entries(by)) { out[g] = { label: SHADOW_LABEL[g] || ('Paper v2.9: ' + (REJ_LABEL[g.replace(/^paper-/, '')] || g)) };
+    for (const [h, a] of Object.entries(hs)) { const avg = a.reduce((s, x) => s + x, 0) / a.length; out[g][h] = { n: a.length, hit: r2(a.filter(x => x > 0).length / a.length), avgAlpha: r2(avg), avgAlphaNet: r2(avg - SHADOW.COST_PP) }; } }
+  return out;
+}
+
+export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, v28, prior, backtest, quoteBasis, extraNotes = [], sources = [], cohort = false, vols = null, fills = null, newMarks = null, shadowFills = null, shadowMarks = null }) {
   const m = mergeBatches(batches);
   const scored = m.rows.map(p => scoreRow(p, bench, { today, themeMap, checks }));
   const setupMatches = { A: 0, B: 0, C: 0, none: 0 }; const rej = {};
@@ -306,6 +348,16 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
     const f = fills && fills[c.asOf] && fills[c.asOf][p.sym];
     return f && p.status === 'pending' ? { ...p, entryPx: f.entryPx ?? p.entryPx, entryDate: f.entryDate ?? p.entryDate, status: f.status || p.status } : p;
   }) }));
+  const pShadow = (prior && prior.shadow) || {};
+  const shadowCohorts = (Array.isArray(pShadow.cohorts) ? pShadow.cohorts : []).map(c => ({ ...c, picks: (c.picks || []).map(p => {
+    const f = shadowFills && shadowFills[c.asOf] && shadowFills[c.asOf][p.sym];
+    return f && p.status === 'pending' ? { ...p, entryPx: f.entryPx ?? p.entryPx, entryDate: f.entryDate ?? p.entryDate, status: f.status || p.status } : p;
+  }) }));
+  if (cohort && status === 'ok' && today && !shadowCohorts.some(c => String(c.asOf).slice(0, 10) === today)) {
+    const sp = shadowPicks(near, v28, today);
+    shadowCohorts.push({ asOf, rulesVersion: RULES_VERSION, liveRulesVersion: sp.liveFresh ? (v28.rulesVersion || null) : null, liveIncluded: sp.liveFresh, spyAt: bench.last, picks: sp.picks });
+  }
+  const shadowMarksAll = mergeMarks(pShadow.marks, shadowMarks);
   let frozen = false;
   if (cohort && status === 'ok' && today && !cohorts.some(c => String(c.asOf).slice(0, 10) === today)) {
     const bySym = Object.fromEntries(qualified.map(q => [q.sym, q]));
@@ -342,6 +394,10 @@ export function build({ batches, bench, today, asOf, nextRun, themeMap, checks, 
     },
     v28: v28 ? { asOf: v28.asOf || null, rulesVersion: v28.rulesVersion || null, universe: v28.universeCount ?? null, passed: v28.gatedCount ?? null, actionable: Object.keys(v28.targets || {}), targets: v28.targets || {} } : null,
     cohorts, marks, metrics: metricsOf(marks),
+    shadow: {
+      cohorts: shadowCohorts, marks: shadowMarksAll, metrics: shadowMetrics(shadowCohorts, shadowMarksAll),
+      note: 'Rejected-names ledger, PAPER ONLY. Each Monday it freezes names a single rule turned away (live v2.8: 40% tech cap, reward/risk under 1.5; paper v2.9: the top ' + SHADOW.PER_GATE + ' by score per failed test) and grades them against SPY from the next session\'s open. avgAlphaNet takes 0.20 points off for slippage; margin interest is not modelled. Descriptive only until 12 Monday cohorts; no rule changes on this evidence alone.',
+    },
     cohortNote: cohorts.length ? `${cohorts.length} Monday cohort(s) logged; descriptive only until 12 exist. Review, not verdict.` : 'No paper cohort yet. The first one is frozen on the next Monday run; results stay descriptive until 12 Monday cohorts exist.',
     backtest: backtest || (prior && prior.backtest) || null,
     notes: [
@@ -403,11 +459,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     batches, bench: { last, c63, c126 }, today: asOf.slice(0, 10), asOf, nextRun: arg('next'), themeMap: v28 && v28.themeMap,
     checks: arg('checks') ? rd(arg('checks')) : null, v28, prior, backtest: arg('backtest') ? rd(arg('backtest')) : null,
     cohort: process.argv.includes('--cohort'), vols: arg('vols') ? rd(arg('vols')) : null, fills: arg('fills') ? rd(arg('fills')) : null, newMarks: arg('marks') ? rd(arg('marks')) : null,
+    shadowFills: arg('shadow-fills') ? rd(arg('shadow-fills')) : null, shadowMarks: arg('shadow-marks') ? rd(arg('shadow-marks')) : null,
     quoteBasis: arg('quote') || 'Robinhood scanner last trade at the time of the run',
     extraNotes: arg('note') ? [arg('note')] : [],
     sources: [`Robinhood market scanner (preview_scan), ${files.length} batches, ${asOf}`, 'SPY benchmark from the same scanner', 'data/apex-targets.json (live v2.8 result, read-only)'],
   });
   if (doc.universe.scanned === 0) { console.error('APEX_PAPER_UNREADABLE: no scanner rows parsed; the previous file is left in place'); process.exit(3); }
   fs.writeFileSync(out, JSON.stringify(doc, null, 1) + '\n');
-  console.log(JSON.stringify({ status: doc.status, eligible: doc.universe.eligible, scanned: doc.universe.scanned, dup: doc.universe.duplicatesRemoved, setups: doc.funnel.setupMatches, qualified: doc.ranked.qualified.map(q => `${q.sym}:${q.setup}:${q.composite}`), near: doc.funnel.near, emerging: doc.funnel.emerging, batch: doc.batch.picks, blocked: doc.batch.blocked.length, statusNote: doc.statusNote }));
+  console.log(JSON.stringify({ status: doc.status, eligible: doc.universe.eligible, scanned: doc.universe.scanned, dup: doc.universe.duplicatesRemoved, setups: doc.funnel.setupMatches, qualified: doc.ranked.qualified.map(q => `${q.sym}:${q.setup}:${q.composite}`), near: doc.funnel.near, emerging: doc.funnel.emerging, batch: doc.batch.picks, blocked: doc.batch.blocked.length, shadowCohorts: doc.shadow.cohorts.length, shadowPending: doc.shadow.cohorts.flatMap(c => c.picks).filter(p => p.status === 'pending').length, statusNote: doc.statusNote }));
 }

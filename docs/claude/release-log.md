@@ -4,6 +4,17 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## Producer — Apex paper rejected-names ledger (2026-11-18, no app version change)
+Jack (Nov 18 7:16 PM ET, after an opportunity-cost concern about the Apex filters): "Start paper review".
+`producer/apex-paper.mjs` now freezes, with each Monday cohort, a `shadow` ledger in `data/apex-paper-v29.json`:
+live v2.8 names blocked by the 40% tech cap or dropped for R/R under 1.5 (only when `data/apex-targets.json` is
+dated the same day), plus the top 5 paper names per single failed test. All enter on paper at the next open and
+are graded vs SPY per gate (`shadowMetrics`, `avgAlphaNet` = minus 0.20 pt slippage; margin interest not modelled).
+New CLI flags `--shadow-fills`, `--shadow-marks`. PAPER ONLY: no threshold, live rule, ticket or UI changed;
+`RULES_VERSION` unchanged. Tests: `producer/apex-paper.test.mjs` 20/20. The "Apex v2.9 paper track · 0741"
+task prompt was updated to fill and mark the ledger. NOT built: a dashboard view of the ledger (first marks
+cannot exist before ~Dec 1). NOT verified: a real Monday freeze (first is 2026-11-23).
+
 ## Docs/process — instruction split: CLAUDE.md 575,553 → 18,625 characters (2026-11-18)
 Jack (Nov 18 17:39 ET, Operations HQ): the last two releases took 113 model requests and 64.8M cached-read tokens;
 "Create a separate, documentation/process-only optimization PR." Root `CLAUDE.md` now holds only ACTIVE rules,

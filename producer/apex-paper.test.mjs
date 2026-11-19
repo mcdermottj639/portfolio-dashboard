@@ -1,7 +1,7 @@
 // Apex v2.9 paper engine tests. Synthetic rows only; no network.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { markFailed, unwrap, mergeBatches, setupOf, scoreRow, buildBatch, build, fundamentalScore, rrPoints, tradingDaysBetween, mergeMarks, metricsOf, lin, C, RULES_VERSION } from './apex-paper.mjs';
+import { markFailed, unwrap, mergeBatches, setupOf, scoreRow, buildBatch, build, fundamentalScore, rrPoints, tradingDaysBetween, mergeMarks, metricsOf, lin, C, RULES_VERSION, shadowPicks, shadowMetrics, SHADOW } from './apex-paper.mjs';
 
 let n = 0; const t = (name, fn) => { fn(); n++; };
 const col = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v == null ? '' : String(v)]));
@@ -120,6 +120,35 @@ t('cohort: frozen once on a complete Monday run; never on a partial run; old pic
   assert.equal(d3.cohorts[0].picks.find(p => p.sym === 'AAA').entryPx, 101);
   assert.equal(d3.cohorts[0].picks.find(p => p.sym === 'BBB').status, 'pending');
   const part = build({ batches: [{ label: 'a', payload: payload([row('AAA')], 300) }], bench, ...mon }); assert.equal(part.cohorts.length, 0);
+});
+t('rejected-names ledger: frozen once with the Monday cohort, live gates only from a same-day live file, graded per gate', () => {
+  const mon = { today: '2026-11-23', asOf: '2026-11-23T07:55:00-05:00', cohort: true };
+  const live = { asOf: '2026-11-23T07:13:00-05:00', rulesVersion: 'v2.8', targets: {}, blockedByTheme: [{ sym: 'ZS', composite: 7.1 }, { sym: 'IREN', composite: 9 }], vetoed: [{ sym: 'REGN', composite: 7.5, why: 'R/R at entry 0.31 < 1.5' }, { sym: 'NVDA', why: 'below SMA200 (1 vs 2)' }] };
+  assert.equal(mk().shadow.cohorts.length, 0, 'never frozen off-Monday');
+  const d1 = mk({ ...mon, v28: live }); const sc = d1.shadow.cohorts[0];
+  assert.equal(d1.shadow.cohorts.length, 1); assert.equal(sc.liveIncluded, true);
+  assert.deepEqual(sc.picks.map(p => p.gate + ':' + p.sym), ['live-tech-cap:ZS', 'live-rr:REGN', 'paper-growth-low:NEAR']);
+  assert.ok(sc.picks.every(p => p.status === 'pending' && p.entryPx === null && p.entryRule === 'next session open'));
+  assert.ok(!d1.cohorts[0].picks.some(p => sc.picks.some(x => x.sym === p.sym)), 'a ledger name is never also a pick');
+  const stale = mk({ ...mon }); assert.equal(stale.shadow.cohorts[0].liveIncluded, false);
+  assert.deepEqual(stale.shadow.cohorts[0].picks.map(p => p.sym), ['NEAR'], 'a stale live file adds no live names');
+  assert.equal(mk({ ...mon, asOf: '2026-11-23T12:00:00-05:00', prior: d1 }).shadow.cohorts.length, 1, 'no second ledger the same day');
+  const part = build({ batches: [{ label: 'a', payload: payload([row('AAA')], 300) }], bench, ...mon }); assert.equal(part.shadow.cohorts.length, 0);
+  const d3 = mk({ today: '2026-12-01', asOf: '2026-12-01T07:55:00-05:00', prior: d1,
+    shadowFills: { [sc.asOf]: { ZS: { entryPx: 200, entryDate: '2026-11-24', status: 'entered' }, REGN: { entryPx: 900, entryDate: '2026-11-24', status: 'entered' } } },
+    shadowMarks: [{ asOf: sc.asOf, sym: 'ZS', horizon: 5, ret: 4, spyRet: 1, alpha: 3 }, { asOf: sc.asOf, sym: 'REGN', horizon: 5, ret: -1, spyRet: 1, alpha: -2 }, { asOf: sc.asOf, sym: 'NEAR', horizon: 5, ret: 9, spyRet: 1, alpha: 8 }] });
+  assert.equal(d3.shadow.cohorts[0].picks.find(p => p.sym === 'ZS').entryPx, 200);
+  assert.deepEqual(d3.shadow.metrics['live-tech-cap'][5], { n: 1, hit: 1, avgAlpha: 3, avgAlphaNet: 2.8 });
+  assert.deepEqual(d3.shadow.metrics['live-rr'][5], { n: 1, hit: 0, avgAlpha: -2, avgAlphaNet: -2.2 });
+  assert.equal(d3.shadow.metrics['paper-growth-low'], undefined, 'a name with no paper fill is never graded');
+  assert.equal(d3.metrics[5], undefined, 'ledger marks never leak into the pick record');
+  const d4 = mk({ today: '2026-12-02', asOf: '2026-12-02T07:55:00-05:00', prior: d3, shadowMarks: [{ asOf: sc.asOf, sym: 'ZS', horizon: 5, alpha: 99 }] });
+  assert.equal(d4.shadow.metrics['live-tech-cap'][5].avgAlpha, 3, 'a stored ledger mark is never recomputed');
+  assert.equal(markFailed(d3, 'x', 'y').shadow.cohorts.length, 1, 'a failed run keeps the ledger');
+  const many = Array.from({ length: 9 }, (_, i) => ({ sym: 'N' + i, composite: 9 - i, failKeys: ['rr'] }));
+  assert.equal(shadowPicks(many, null, '2026-11-23').picks.length, SHADOW.PER_GATE);
+  assert.equal(shadowPicks([{ sym: 'E', failKeys: ['earnings'] }, { sym: 'T', failKeys: ['rr', 'pe'] }], null, 'x').picks.length, 0);
+  assert.deepEqual(shadowMetrics(null, null), {});
 });
 t('marks are stamped once and metrics come only from stored marks', () => {
   const a = { asOf: 'c1', sym: 'AAA', horizon: 5, ret: 2, spyRet: 1, alpha: 1 };
