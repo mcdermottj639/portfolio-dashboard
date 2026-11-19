@@ -41,7 +41,6 @@
     technicals: {area:'apex', scoped:true, hidden:true, label:'Technicals', tab:'portfolio', section:'technicals'},
     fundamentals: {area:'apex', scoped:true, hidden:true, label:'Fundamentals', tab:'portfolio', section:'fundamentals'},
     flow: {area:'apex', scoped:true, hidden:true, label:'Flow & positioning', tab:'portfolio', section:'flow'},
-    scenario: {area:'apex', scoped:true, label:'What if?', custom:'scenario'},
     // v244: Apex v2.9 PAPER research (display only). Apex-only: `account:'main'` pins the self-directed account, so it
     // never shows under Agentic; `transient` keeps it out of the area's "last route" memory, so tapping Apex always
     // reopens a LIVE page (Plan by default), never the paper one.
@@ -106,7 +105,7 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
   main.innerHTML='<div class="ex-wordmark">PORTFOLIO</div>'+Object.keys(defaults).map(a=>'<button type="button" data-ex-area="'+a+'" aria-current="false">'+icon(a)+'<span>'+(a[0].toUpperCase()+a.slice(1))+'</span></button>').join('');
   const sub = document.createElement('nav'); sub.id='ex-subnav'; sub.className='ex-subnav'; sub.setAttribute('aria-label','Section navigation');
   const first = $('tabbar'); first.before(top,main,sub);
-  ['today','activity','decisions','scenario'].forEach(name=>{
+  ['today','activity','decisions'].forEach(name=>{
     const page=document.createElement('section'); page.id='page-ex-'+name; page.className='ex-page'; page.dataset.priv='on'; page.hidden=true; sub.after(page);
   });
   document.documentElement.classList.add('experience-on');
@@ -134,7 +133,7 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
     const wsMode=(area==='apex'||area==='agentic')&&routeKey!=='today';
     // v242 (owner, Nov 17 2026): ONE tab row for Apex and Agentic: Overview · Positions · Research · Actions. It replaces the Plan · Account ·
     // Research · What if? chips, the per-page card rail and the journey's three step buttons. Same route ids (accounts / holdings / analyze /
-    // plan), no new route; What if? (scenario) is a row inside Overview. Research is the journey's data-pj-go="analyze" step.
+    // plan), no new route; What if? (scenario) was a row inside Overview until v255 removed it. Research is the journey's data-pj-go="analyze" step.
     // v253: Research is the account's own research page (route acctresearch); Analyze opens from inside it and keeps this tab lit.
     if(wsMode)sub.innerHTML=WS_TABS.map(([id,label,route])=>'<button type="button" data-ex-route="'+route+'" data-ws-tab="'+id+'" aria-current="'+(wsTab(routeKey)===id?'page':'false')+'">'+label+'</button>').join('');
     else sub.innerHTML=Object.entries(routes).filter(([k,v])=>inArea(k,area)&&!v.hidden).map(([k,v])=>'<button type="button" data-ex-route="'+k+'" aria-current="'+(k===routeKey?'page':'false')+'">'+esc(v.label)+'</button>'+(k==='accounts'&&(area==='apex'||area==='agentic')?'<button type="button" data-pj-go="analyze" data-ex-research aria-current="false">Research</button>':'')).join('')+(area==='more'?'<button type="button" id="ex-classic-more" class="ws-classic" title="Return to the classic tab layout">Classic view</button>':'');
@@ -196,7 +195,7 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
     html+=card('Market backdrop',marketContent+'<h3 class="ex-calendar-title">Coming up · next 30 days</h3>'+(events.length?eventRows(events.slice(0,4))+(events.length>4?'<details><summary>Show '+(events.length-4)+' more events</summary>'+eventRows(events.slice(4))+'</details>':''):'<p class="ex-muted">No dated earnings or option expirations in the next 30 days were found in this snapshot.</p>'));
     html+='<section class="ex-card"><h2>Options income &amp; exposure</h2><span class="ex-label">Self-directed · '+esc(s.options.year||'Year not recorded')+' realized options P&amp;L</span><div class="ex-option-result">'+amount(s.options.broker)+'</div><p class="ex-muted">'+(s.options.broker===null?'Broker total unavailable.':'Broker reported · '+esc(date(s.options.asOf)))+'</p>'+(s.options.positionsKnown?row('Open contracts',esc(String(s.options.open.reduce((n,p)=>n+Number(p.contracts),0)))+' contracts'):'<p class="ex-muted">Open positions are unavailable.</p>')+(s.options.open.length?row('Open position P&L',amount(s.options.openPnl),'Unrealized · quoted marks, before fees'):'')+(s.options.sharesCapped>0?row('Shares capped by calls',esc(s.options.sharesCapped)+' shares','Open + pending contracts'):'')+(s.options.cspCash>0?row('Put collateral',money(s.options.cspCash)):'')+'<p class="ex-muted">'+(s.options.reconciled?'Matched contract results reconcile to the broker total.':'Contract history is not fully reconciled.')+'</p>'+jump('options','Open options & history','main')+'</section>';
     const ag=s.accounts[1], dd=s.drawdown;
-    html+=card('Agentic at a glance',row('Research dated',esc(s.target?.asOf||'Not recorded'))+row('Recorded ticket',esc(s.pending?.status?M.ticketStatus(s.pending).compact:ag.available?'None in flight':'Unavailable'))+(dd?row('Deployment guard',esc(dd.insufficient?'Insufficient history':prettyStatus(dd.level)),M.number(dd.dd)!==null?'Recorded drawdown '+percent(dd.dd*100):''):'')+'<p class="ex-muted">Published research and execution records. Open the plan for current eligibility, deferrals and details.</p>'+cta('agentic','Open agentic plan')+jump('decisions','Research & sources','agentic'));
+    html+=card('Agentic at a glance',row('Research dated',esc(s.target?.asOf||'Not recorded'),(M.researchCycle(s.target?.asOf)||{}).text||'')+row('Recorded ticket',esc(s.pending?.status?M.ticketStatus(s.pending).compact:ag.available?'No active ticket':'Unavailable'))+(dd?row('Deployment guard',esc(dd.insufficient?'Insufficient history':prettyStatus(dd.level)),M.number(dd.dd)!==null?'Recorded drawdown '+percent(dd.dd*100):''):'')+'<p class="ex-muted">Published research and execution records. Open the plan for current eligibility, deferrals and details.</p>'+cta('agentic','Open agentic plan')+jump('decisions','Research & sources','agentic'));
     const largest=s.positions.find(p=>p.value!==null),total=s.positions.reduce((n,p)=>n+(p.value||0),0),share=largest&&total>0?largest.value/total*100:0;
     html+=card('Where the weight sits',largest?'<div class="ex-exposure"><div class="ex-ring" style="--share:'+share.toFixed(1)+'%" role="img" aria-label="Largest holding represents '+share.toFixed(1)+' percent of priced long holdings"><div><strong>'+share.toFixed(0)+'%</strong><small>of longs</small></div></div><div><div class="ex-label">Largest combined holding</div><div class="ex-number">'+esc(largest.symbol)+'</div><div class="ex-holding-val">'+money(largest.value)+'</div><p class="ex-muted">'+(s.equity>0?(largest.value/s.equity*100).toFixed(1)+'% of combined equity. ':'')+esc(largest.shared?'Held in both accounts.':largest.sources[0].label+'.')+'</p></div></div>'+allocationVisual(s):'<p class="ex-muted">Position valuations are unavailable.</p>');
     html+=card('Combined value over time',historyChart(s.history,true));
@@ -208,9 +207,9 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
     const s=model(), d=window.__DATA, t=d?.agentic?.target, p=d?.agentic?.pending;
     const name=account()==='agentic'?'Agentic':'Self-directed';
     let html='<h1>See what actually happened.</h1><p class="ex-muted">Published records, with a clear view of what is available.</p>';
-    html+='<div class="ex-status-strip"><div>'+icon('activity')+'<span class="ex-label">Published snapshot</span><strong>'+esc(d?ageText(d.generatedAt):'Not loaded')+'</strong></div><div><span class="ex-label">'+esc(name)+' account</span><strong>'+esc(s.available?'Present in snapshot':'Not available')+'</strong></div><div><span class="ex-label">Agentic ticket</span><strong>'+esc(p?.status?M.ticketStatus(p).compact:d?'None in flight':'Not available')+'</strong></div></div>';
+    html+='<div class="ex-status-strip"><div>'+icon('activity')+'<span class="ex-label">Published snapshot</span><strong>'+esc(d?ageText(d.generatedAt):'Not loaded')+'</strong></div><div><span class="ex-label">'+esc(name)+' account</span><strong>'+esc(s.available?'Present in snapshot':'Not available')+'</strong></div><div><span class="ex-label">Agentic ticket</span><strong>'+esc(p?.status?M.ticketStatus(p).compact:d?'No active ticket':'Not available')+'</strong></div></div>';
     html+='<div class="ex-grid">'+card('Published data',row('Snapshot',esc(d?'Loaded':'Not loaded'),d?date(d.generatedAt):'Unlock the snapshot first.')+row('Snapshot age',esc(ageText(d?.generatedAt)))+row('Selected account',esc(s.available?'Present in snapshot':'Not available'))+row('Agentic account as of',esc(date(d?.agentic?.asOf)))+note('This checks what the app received. Snapshot age is elapsed time, not a live broker or Routine health check.'));
-    html+=card('Research & execution record',row('Agentic target',esc(t?.asOf || 'No target in this snapshot'))+row('Evidence coverage',esc(prettyStatus(t?.research?.status)))+row('Rebalance ticket',esc(p?.status ? M.ticketStatus(p).compact : d?'None in flight':'Not available'))+row(M.ticketStatus({status:'done'}).label,p?.completedAt?esc(date(p.completedAt)):'—',p?.completedAt?M.ticketStatus({status:'done'}).caveat.replace(/^./,c=>c.toUpperCase()):'')+'<p class="ex-muted">These research and ticket records belong to the Agentic account.</p>'+jump('plan',account()==='agentic'?'Open the full plan':'Open selected account’s plan'));
+    html+=card('Research & execution record',row('Agentic target',esc(t?.asOf || 'No target in this snapshot'))+row('Evidence coverage',esc(prettyStatus(t?.research?.status)))+row('Rebalance ticket',esc(p?.status ? M.ticketStatus(p).compact : d?'No active ticket':'Not available'))+row(M.ticketStatus({status:'done'}).label,p?.completedAt?esc(date(p.completedAt)):'—',p?.completedAt?M.ticketStatus({status:'done'}).caveat.replace(/^./,c=>c.toUpperCase()):'')+'<p class="ex-muted">These research and ticket records belong to the Agentic account.</p>'+jump('plan',account()==='agentic'?'Open the full plan':'Open selected account’s plan'));
     const events=[{label:'Snapshot published',at:d?.generatedAt,detail:'Data received by this app.'},{label:'Agentic account captured',at:d?.agentic?.asOf},{label:'Agentic research dated',at:t?.asOf}].filter(e=>M.age(e.at)!==null).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
     html+=card('Published record timeline',timeline(events,'No dated records are available. Unlock a published snapshot to see them.')+'<p class="ex-muted">Dates from the snapshot; this is not a live execution feed.</p>');
     const history=(Array.isArray(p?.history)?p.history:[]).filter(h=>h && M.age(h.at)!==null).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)).slice(-12).reverse();
@@ -235,34 +234,12 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
       return card(symbol+' · target '+(M.number(n.weightPct)===null?'unknown':M.number(n.weightPct).toFixed(1)+'%'),
         '<p>'+esc(n.thesis || 'No thesis text was recorded.')+'</p>'+row('Entry zone',esc(typeof n.entry==='object'?JSON.stringify(n.entry):n.entry || 'Not recorded'))+row('Research stop / target',esc((n.stop ?? '—')+' / '+(n.target ?? '—')))+
         '<details><summary>Drivers, sources & dates</summary><p>'+esc(drivers)+'</p>'+(sources.length?sources.map(e=>'<div class="ex-evidence"><div class="ex-label">'+esc(e.sleeve)+' · '+esc(e.asOf || 'Date unavailable')+'</div><p>'+esc(e.claim)+'</p>'+(e.href?'<a href="'+esc(e.href)+'" target="_blank" rel="noopener noreferrer">Read source ↗</a>':'<span class="ex-muted">'+esc(e.source || 'Source unavailable')+'</span>')+'</div>').join(''):'<p>Claim-level source records are unavailable in this target. They have not been reconstructed or invented.</p>')+'</details>'+jump('plan','See current eligibility & deferrals'),false,symbol);
-    }).join('')+'</div>'+note('Opposing evidence, tax estimates, and a complete do-nothing comparison are shown only where recorded. The stress test is hypothetical; it is not a forecast or recommendation.')+jump('scenario','Explore a what-if scenario')+jump('log','Review the measured record');
+    }).join('')+'</div>'+note('Opposing evidence, tax estimates, and a complete do-nothing comparison are shown only where recorded. The stress test is hypothetical; it is not a forecast or recommendation.')+jump('log','Review the measured record');
     $('page-ex-decisions').innerHTML=html;
-  }
-  const scenarioState={symbol:'',shock:-10,shift:0,bps:0};
-  function renderScenario() {
-    const s=model(), positions=s.positions.filter(p=>p.value>0);
-    let html='<h1>Explore a what-if.</h1><p class="ex-muted">Use the selected account’s published positions to compare a price shock with shifting part of one position to cash.</p>';
-    if(!(s.equity>0)||!positions.length){ $('page-ex-scenario').innerHTML=html+unavailable('A positive account equity and a priced holding are required.'); return; }
-    if(!positions.some(p=>p.symbol===scenarioState.symbol))scenarioState.symbol=positions[0].symbol;
-    html+='<div class="ex-grid">'+card('Choose the assumptions','<div class="ex-controls"><label>Holding<select id="ex-scenario-symbol">'+positions.map(p=>'<option value="'+esc(p.symbol)+'"'+(p.symbol===scenarioState.symbol?' selected':'')+'>'+esc(p.symbol)+'</option>').join('')+'</select></label><label for="ex-shock">Holding price move: <strong id="ex-shock-label">'+scenarioState.shock+'%</strong></label><input id="ex-shock" type="range" min="-50" max="50" step="1" value="'+scenarioState.shock+'"><label for="ex-shift">Shift this holding to cash: <strong id="ex-shift-label">'+scenarioState.shift+'%</strong></label><input id="ex-shift" type="range" min="0" max="100" step="5" value="'+scenarioState.shift+'"><label>Assumed trading cost (basis points on amount shifted)<input id="ex-cost" type="number" min="0" max="1000" step="1" value="'+scenarioState.bps+'"></label></div>'+row('Account equity',esc(money(s.equity)))+'<p class="ex-muted">0 basis points means costs are excluded. 40 basis points means 0.4% of the amount shifted.</p>')+card('Compare the scenario outcomes','<div id="ex-scenario-results" aria-live="polite"></div>')+'</div>';
-    html+=note('All other assets stay flat. This excludes taxes, option Greeks, dividends, financing costs, and market impact. It does not check whether a sale is eligible under the mandate or whether shares are pledged. No orders or target changes are created.');
-    html+='<p class="ex-muted">Valuation snapshot: '+esc(date(s.generatedAt))+' · '+esc(ageText(s.generatedAt))+'. Stale or partial inputs limit the usefulness of this scenario.</p>'+jump('risk','Return to existing risk analysis');
-    $('page-ex-scenario').innerHTML=html; updateScenario();
-  }
-  function updateScenario() {
-    const s=model(), p=s.positions.find(p=>p.symbol===scenarioState.symbol), r=M.scenario({equity:s.equity,positionValue:p?.value,shockPct:scenarioState.shock,shiftPct:scenarioState.shift,costBps:scenarioState.bps});
-    if($('ex-shock-label'))$('ex-shock-label').textContent=scenarioState.shock+'%';
-    if($('ex-shift-label'))$('ex-shift-label').textContent=scenarioState.shift+'%';
-    if(!$('ex-scenario-results'))return;
-    if(!r){$('ex-scenario-results').innerHTML=unavailable('Enter a valid trading cost between 0 and 1,000 basis points.');protect();return;}
-    const max=Math.max(Math.abs(r.before),Math.abs(r.after),1);
-    const bar=(value,y,label)=>'<text x="0" y="'+y+'" fill="currentColor" font-size="12">'+label+'</text><rect x="0" y="'+(y+8)+'" width="'+(Math.abs(value)/max*280)+'" height="12" rx="3" fill="'+(value<0?'var(--nx-red,#dc2626)':'var(--nx-grn,#059669)')+'"/>';
-    $('ex-scenario-results').innerHTML=row('Published '+p.symbol+' value',esc(money(p.value)))+row('Keep current allocation',esc(money(r.before)),percent(r.beforePct)+' of account equity')+row('After hypothetical shift',esc(money(r.after)),percent(r.afterPct)+' including assumed costs')+row('Amount shifted / cost',esc(money(r.shifted)+' / '+money(r.cost)))+'<svg class="ex-scenario-chart" viewBox="0 0 300 128" role="img" aria-label="Magnitude of hypothetical portfolio changes; exact signed values listed above">'+bar(r.before,20,'Keep allocation')+bar(r.after,78,'After shift')+'</svg>'+note(r.difference===0?'Both choices have the same result under these assumptions.':money(Math.abs(r.difference))+(r.difference>0?' more':' less')+' after the hypothetical shift in this scenario.')+jump('decisions','Read the research before deciding');
-    protect();
   }
   function renderCustom() {
     const openDetails=routeKey==='today'?[...$('page-ex-today').querySelectorAll('details[open]')].map(el=>el.querySelector('summary')?.textContent):[];
-    const r=routes[routeKey]; if(r.custom==='today')renderToday();if(r.custom==='activity')renderActivity();if(r.custom==='decisions')renderDecisions();if(r.custom==='scenario')renderScenario();
+    const r=routes[routeKey]; if(r.custom==='today')renderToday();if(r.custom==='activity')renderActivity();if(r.custom==='decisions')renderDecisions();
     if(routeKey==='today')$('page-ex-today').querySelectorAll('details').forEach(el=>{el.open=openDetails.includes(el.querySelector('summary')?.textContent);});
     if(r.tab==='predictions')window.PFPredictions?.mount($('predictions-app'));
     if(r.tab==='smartmoney')window.PFSmartMoney?.mount($('smartmoney-app'));
@@ -291,7 +268,7 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
     origin=key==='analyze'&&(options.origin==='main'||options.origin==='agentic')?options.origin:null;
     routeKey=key; if(routes[key].account)save('pf_acct',routes[key].account);
     if(!routes[key].transient&&!(key==='analyze'&&origin))save('pf_area_'+areaOf(key,account()),key); save('pf_experience_route',key); if(key==='smartmoney'||key==='predictions')save('pf_signals_last',key); const r=routes[key],token=++jumpToken;
-    ['today','activity','decisions','scenario'].forEach(n=>$('page-ex-'+n).hidden=r.custom!==n);
+    ['today','activity','decisions'].forEach(n=>$('page-ex-'+n).hidden=r.custom!==n);
     navigating=true;
     try {
       if(r.tab){nativeSwitch(r.tab);syncToggles(r.tab);}
@@ -331,13 +308,6 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
   });
   $('ex-find').addEventListener('click',()=>{if(window.__pfFind)window.__pfFind();});
   $('ex-classic').addEventListener('click',goClassic);
-  $('page-ex-scenario').addEventListener('input',e=>{
-    if(e.target.id==='ex-shock')scenarioState.shock=Number(e.target.value);
-    else if(e.target.id==='ex-shift')scenarioState.shift=Number(e.target.value);
-    else if(e.target.id==='ex-cost')scenarioState.bps=e.target.value===''?null:Number(e.target.value);
-    else return;updateScenario();
-  });
-  $('page-ex-scenario').addEventListener('change',e=>{if(e.target.id==='ex-scenario-symbol'){scenarioState.symbol=e.target.value;updateScenario();}});
   // ── v242 workspace (owner, Nov 17 2026: "I see more navigation than investment information") ─────────────────────────────────
   // Display and organisation only. One compact header, one tab row (Overview · Positions · Research · Actions) for Apex and Agentic,
   // freshness stamps, a position card, and an action list. Nothing here calculates a number the app does not already calculate: it reads
@@ -432,8 +402,9 @@ const areaOf = (key, acct) => { const r=known(key)&&routes[key]; if(!r)return 't
       :'<p class="ws-empty"><strong>Nothing needs you</strong><span>No waiting, risk or options items in the published records.</span></p>');
   }
   function moreHTML() {
-    const acct=account();
-    return '<h2 class="ws-h">More in Overview</h2><div class="ws-rows">'+(acct==='main'?'<button type="button" class="ws-row" data-ws-card="Options Income &amp; History" data-ws-card-tab="options"><span>Options income &amp; history</span><span aria-hidden="true">›</span></button>':'')+(acct==='main'?'<button type="button" class="ws-row" '+dataAttr('apexpaper')+'><span>v2.9 Paper research</span><span aria-hidden="true">›</span></button>':'')+'<button type="button" class="ws-row" '+dataAttr('scenario')+'><span>What if?</span><span aria-hidden="true">›</span></button></div>';
+    // v255 (Jack, Nov 18 2026: never uses What if, "can be removed everywhere"): the What if? row is gone, so Agentic has no rows left.
+    const acct=account(); if(acct!=='main')return null;
+    return '<h2 class="ws-h">More in Overview</h2><div class="ws-rows">'+(acct==='main'?'<button type="button" class="ws-row" data-ws-card="Options Income &amp; History" data-ws-card-tab="options"><span>Options income &amp; history</span><span aria-hidden="true">›</span></button>':'')+(acct==='main'?'<button type="button" class="ws-row" '+dataAttr('apexpaper')+'><span>v2.9 Paper research</span><span aria-hidden="true">›</span></button>':'')+'</div>';
   }
   // ── Position card ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
   function posCard(r, o) {

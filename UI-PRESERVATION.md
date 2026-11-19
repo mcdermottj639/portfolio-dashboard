@@ -63,8 +63,8 @@ Classic view is available from the header. The original feature search and saved
   live Claude run health, broker reconciliation, or push-delivery receipts; these remain unavailable.
 - Decision evidence is for the agentic target only. It preserves research dates, recorded thesis,
   source dates and links, and missing evidence labels. The original self-directed plan stays separate.
-- What if is local scenario arithmetic on one holding, with other assets held flat, optional
-  assumed trading cost, and no tax/option sensitivity model. It cannot change a target or place a trade.
+- ~~What if is local scenario arithmetic on one holding~~ — **removed in v255** (owner, Nov 18 2026: never used, "can be
+  removed everywhere"). See the v255 note at the end. The Risk card's stress test is a different feature and stays.
 
 ## Release checks
 
@@ -239,7 +239,7 @@ the Today brief are unchanged. The nav stays five items; it is not extended.
 | `plan` | Research › Plan & Action Center | Apex or Agentic (by account) › Plan |
 | `accounts` | Portfolio › Accounts | Apex or Agentic › Account |
 | `holdings` `performance` `heatmap` `risk` `income` `technicals` `fundamentals` `flow` | Portfolio (no chip) | Apex or Agentic (no chip; Account page cards and rail) |
-| `scenario` | Research › What if? | Apex or Agentic › What if? |
+| `scenario` | Research › What if? | Apex or Agentic › What if? (removed v255; the id is no longer a route) |
 | `markets` `screens` `analyze` | Research | Research (unchanged chips) |
 | `smartmoney` | Signals › Smart Money | Research › Smart $ |
 | `predictions` | Signals › Prediction markets | Research › Predict |
@@ -398,3 +398,23 @@ v252: Analyze reads one account's book (the account in context): holdings chips,
 v253: Apex / Agentic Research tab = that account's research cards (Apex research, opportunities, screened out, weights, business check, paper pointer; Agentic target, model correctness, business check); Actions = trades, Confirm, leverage, rules, blockers, waiting ground, guardrails. Same cards, each on one tab; Classic view shows the whole page as before. Analyze opens from the row on Research.
 
 - v254 (2026-11-18): Apex card wording only — approvals are the Confirm button, not Jarvis; no card, rule or layout change.
+
+### v255 (2026-11-19) — cleanup release (owner-approved plan, Nov 18 2026)
+
+The owner's call overrides this document's "nothing is removed" for one feature: **What if? is removed everywhere** — the
+`scenario` route and page, its Overview row ("More in Overview" keeps Options and v2.9 Paper on Apex; Agentic has no rows), the
+Decision evidence jump, the Apex What if sliders (`renderWhatIf`) and `PFExperienceModel.scenario`. A stale `#view=scenario` or saved
+`pf_experience_route='scenario'` falls back like any unknown route (21 routes). The Risk card's beta stress test stays.
+
+Card folds (supersedes the "starts folded" lists in v235, v236 and v239): every card now **starts open** except the two "how it
+works" explainers, How the loop runs (`plan-agentic:agp-loop`) and Options Knowledge (`options:opt-knowledge`). Same `__pfFold`
+contract and the same `pf_card_fold_v1` key, so a choice already saved (open or closed) still wins; My view pins, chips, Find and
+Expand all behave as before.
+
+Labels: Book Deployed shows one decimal (99.9%, not 100%); "No active ticket" replaces "None in flight" / "No ticket recorded"; the
+Agentic plan tile "On target" (it counted held names) reads "Target names held · N of M"; Agentic research shows its age against
+the 14-day cycle (Agentic at a glance, Book strategy block) and the research stamp turns stale after 14 days, not 7; the By Sector
+column says its % is of stocks with a known sector. Book: the Actions left page adds Performance and Top holdings (5, tap opens
+Positions); Allocation stacks its two lists in the right page. Phones (≤480px): the freshness timestamp wraps inside its column so
+Duo / theme / refresh stay on screen. Layout sweep: `tests/sweep-browser.mjs` (every route × 7 sizes × both accounts, run in CI on a
+scratch branch). Not verified: the physical Duo.

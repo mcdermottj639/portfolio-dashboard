@@ -58,9 +58,9 @@ try {
       const fits=await page.evaluate(()=>{
         const left=document.querySelector('#pf-fresh-left').getBoundingClientRect();
         const right=document.querySelector('#pf-fresh .pf-fresh-actions').getBoundingClientRect();
-        return left.right+3<=right.left;
+        return left.right+3<=right.left&&right.right<=innerWidth;
       });
-      assert.equal(fits,true,'timestamp does not overlap actions at '+width);
+      assert.equal(fits,true,'timestamp does not overlap actions, and the actions stay on screen (v255 sweep), at '+width);
     }
   }
   await page.locator('.ex-brief-method summary').click();

@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-export const ROUTES=['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','scenario','activity','log','smartmoney','predictions','apexpaper'];
-const SCOPED=['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'];
+export const ROUTES=['today','accounts','holdings','performance','heatmap','risk','income','options','plan','markets','screens','analyze','technicals','fundamentals','flow','decisions','activity','log','smartmoney','predictions','apexpaper'];
+const SCOPED=['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow'];
 // v244: apexpaper (Apex v2.9 paper research) is Apex-only: it pins the self-directed account whatever pf_acct was.
 const PINNED={apexpaper:'main'};
 export const accountAfter=(route,acct)=>PINNED[route]||acct;
@@ -16,8 +16,8 @@ const CHIPS={today:['Daily brief'],apex:['Overview','Positions','Research','Acti
 const RAIL={performance:'Performance',heatmap:'Heatmap',risk:'Risk',income:'Income',technicals:'Technical',fundamentals:'Fundamentals',flow:'Flow'};
 // apexpaper is new in v244 and has no v236 baseline: its entry (2) is only the budget that admits the three taps it takes in v242 (Apex, Overview, the "v2.9 Paper research" row).
 // Taps from a fresh load (Today, self-directed) on v236 (measured with the same paths on the v236 shell, audit/nav/old.json).
-const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,scenario:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1,apexpaper:2},
-  agentic:{plan:2,accounts:2,holdings:3,performance:3,heatmap:3,risk:3,income:3,technicals:3,fundamentals:3,flow:3,scenario:3,decisions:3,log:3,activity:2}};
+const OLD_TAPS={main:{today:0,plan:1,accounts:1,holdings:2,performance:2,heatmap:2,risk:2,income:2,technicals:2,fundamentals:2,flow:2,markets:2,screens:2,analyze:2,smartmoney:1,predictions:2,options:2,decisions:2,log:2,activity:1,apexpaper:2},
+  agentic:{plan:2,accounts:2,holdings:3,performance:3,heatmap:3,risk:3,income:3,technicals:3,fundamentals:3,flow:3,decisions:3,log:3,activity:2}};
 // Smallest v236 nav / sub-nav chip boxes per viewport (width, height), measured on the v236 shell.
 const OLD_MIN={'320x568':{item:[59,50],chip:44},'390x844':{item:[73,50],chip:44},'466x677':{item:[88,50],chip:44},'960x676':{item:[64,58],chip:42},'677x466':{item:[62,52],chip:42},'1280x800':{item:[159,48],chip:42}};
 const GAP_MAX=40;
@@ -58,7 +58,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
   }
   // The account whose content a scoped page shows. Apex = main only, Agentic = agentic only.
   async function assertContent(p,route,acct,label){
-    const [mainSel,agSel]=route==='plan'?['#picks-app','#plan-agentic-app']:SCOPED.includes(route)&&route!=='scenario'?['#app','#agentic-app']:[null,null];
+    const [mainSel,agSel]=route==='plan'?['#picks-app','#plan-agentic-app']:SCOPED.includes(route)?['#app','#agentic-app']:[null,null];
     if(mainSel){
       assert.equal(await vis(p,mainSel),acct==='main',`${label}: ${mainSel} visible only for the self-directed account`);
       assert.equal(await vis(p,agSel),acct==='agentic',`${label}: ${agSel} visible only for the agentic account`);
@@ -66,9 +66,8 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
       assert.match(await p.locator(acct==='main'?tg[0]:tg[1]).getAttribute('class'),/\bactive\b/,`${label}: own toggle shows ${acct}`);
       assert.doesNotMatch(await p.locator(acct==='main'?tg[1]:tg[0]).getAttribute('class'),/\bactive\b/,`${label}: other toggle is not active`);
       for(const [i,id] of tg.entries())assert.equal(await p.locator(id).getAttribute('aria-selected'),String((i===0)===(acct==='main')),`${label}: ${id} aria-selected in step`);
-      if(route!=='scenario')await assertTogglesHidden(p,label);
+      await assertTogglesHidden(p,label);
     }
-    if(route==='scenario')assert.match(await p.locator('#ex-context').innerText(),acct==='main'?/^Self-directed · ••••0741/:/^Automated · ••••3900/,`${label}: scenario names its account`);
     assert.equal(await p.locator('#ex-account').inputValue(),acct,`${label}: header select agrees`);
   }
   // What names the account on the Accounts / Plan pages now that the switch is gone: caption + hero.
@@ -105,9 +104,8 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
   // ── 2. Tap paths from a fresh load: every route reachable within (v236 taps + 1) ──
   const tapTable={};
   {
-    const SCEN='.ws-row[data-ex-route="scenario"]', rail=null;
     const PATH=(r,a)=>{const ag=a==='agentic',A=ag?'agentic':'apex',sel=ag?['SELECT']:[];
-      const m={today:[],plan:[area(A)],accounts:[area(A),chip('accounts')],scenario:[area(A),chip('accounts'),SCEN],holdings:[area(A),chip('holdings')],
+      const m={today:[],plan:[area(A)],accounts:[area(A),chip('accounts')],holdings:[area(A),chip('holdings')],
         options:[area('more')],markets:[area('research')],screens:[area('research'),chip('screens')],analyze:[area('research'),chip('analyze')],
         apexpaper:[area('apex'),chip('accounts'),'.ws-row[data-ex-route="apexpaper"]'],smartmoney:[area('research'),chip('smartmoney')],predictions:[area('research'),chip('predictions')],
         decisions:[area('more'),chip('decisions'),...sel],log:[area('more'),chip('log'),...(ag?['#acct-tg-agentic']:[])],activity:[area('more'),chip('activity'),...sel]};
@@ -173,9 +171,9 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     ({ctx,p}=await open());
     await p.locator(area('apex')).click();await p.locator(chip('accounts')).click();await settle(p);
     await p.locator(area('agentic')).click();await settle(p);assert.equal((await st(p)).route,'plan','Agentic has its own memory (default plan)');
-    await p.evaluate(()=>PFExperience.navigate('scenario'));await settle(p);
+    await p.evaluate(()=>PFExperience.navigate('holdings'));await settle(p);   // v255: was scenario (What if? removed)
     await p.locator(area('apex')).click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account],['accounts','main'],'Apex reopens its last-used route');
-    await p.locator(area('agentic')).click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account],['scenario','agentic'],'Agentic reopens its last-used route');
+    await p.locator(area('agentic')).click();await settle(p);assert.deepEqual([(await st(p)).route,(await st(p)).account],['holdings','agentic'],'Agentic reopens its last-used route');
     await ctx.close();
   }
 
@@ -227,11 +225,7 @@ export async function runNavChecks({browser,base,sample,stub,apex,writes=[],tapO
     await p.evaluate(()=>setPlanAccount('main'));await settle(p);
     assert.equal(await p.locator('#plan-tg-main').getAttribute('aria-selected'),'true','setPlanAccount still updates the hidden plan switch');
     await p.evaluate(()=>setPlanAccount('agentic'));await settle(p);
-    await p.evaluate(()=>PFExperience.navigate('scenario'));await settle(p);
-    assert.equal(await p.locator('#ex-account').isVisible(),true,'header select is the account control on What if?');
-    await p.locator('#ex-account').selectOption('main');await settle(p);
-    assert.deepEqual(await areas(p),['apex'],'header select flips Agentic to Apex');await assertContent(p,'scenario','main','header select');
-    await p.goBack();await settle(p);assert.deepEqual(await areas(p),['agentic']);await assertContent(p,'scenario','agentic','Back after header-select flip');
+    // v255: What if? (scenario) was the one account-scoped page that showed the header select; it was removed with What if?.
     // The header select is not shown on Plan / Account (it was already hidden there before this change).
     for(const r of ['plan','accounts','holdings'])for(const a of ['main','agentic']){await p.evaluate(([r,a])=>PFExperience.navigate(r,{account:a}),[r,a]);await settle(p);
       assert.equal(await p.locator('#ex-account-label').isVisible(),false,`header select hidden on ${a}:${r}`);}

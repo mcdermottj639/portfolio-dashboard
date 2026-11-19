@@ -547,10 +547,7 @@
       <div data-apex-weights data-ws="research"><div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · held → target in shares and $ · cap ${pct(C.SINGLE_MAX_EQ)})</span></div>${mix}
       ${themeHtml(st, cfg)}</div>
       <div data-apex-research data-ws="research">${researchBlock(research, esc)}</div>
-      <div data-apex-sim data-ws="actions"><div class="ac-tier">🧪 What if</div>
-      <div id="apex-whatif"></div></div>
       <div data-ws="actions" style="font-size:11px;color:#9ca3af;margin-top:10px">Tickets are proposals from these rules. Check them with Claude using the Confirm button above, and against live holdings and pending orders before entering a ticket.</div>`;
-    renderWhatIf(el.querySelector('#apex-whatif'), st, cfg);
   }
 
   /* v224 (rules v2.8): one bar — the capped theme's share of the stock outside the core, a tick at the cap. The
@@ -858,27 +855,7 @@
     return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div>${recLine}${opp}${vet}<div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
   }
 
-  /* Two sliders: the core name and the donor. Debt held fixed; shows band + which rules fire. */
-  function renderWhatIf(box, st, cfg) {
-    if (!box) return;
-    const names = [cfg.core, cfg.donor].map((s) => st.positions.find((p) => p.symbol === s)).filter(Boolean);
-    if (!names.length) { box.innerHTML = '<div class="tech-empty">Needs priced holdings.</div>'; return; }
-    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    box.innerHTML = names.map((p, i) => `<div style="display:flex;align-items:center;gap:10px;margin:6px 0;font-size:12px"><span style="width:52px;font-weight:600">${esc(p.symbol)}</span><input type="range" data-apex-i="${i}" min="${(p.px * 0.5).toFixed(2)}" max="${(p.px * 2).toFixed(2)}" step="0.01" value="${p.px.toFixed(2)}" style="flex:1"><span data-apex-v="${i}" style="width:64px;text-align:right">${money(p.px)}</span></div>`).join('') +
-      '<div class="snap-grid" style="margin-top:8px"><div class="snap-tile"><div class="snap-lbl">Equity</div><div class="snap-val" data-apex-eq></div></div><div class="snap-tile"><div class="snap-lbl">Leverage</div><div class="snap-val" data-apex-lev></div></div></div><div data-apex-fire style="margin-top:8px"></div>';
-    const upd = () => {
-      const pos = st.positions.map((p) => ({ ...p }));
-      names.forEach((n, i) => { const v = +box.querySelector(`[data-apex-i="${i}"]`).value; const q = pos.find((x) => x.symbol === n.symbol); q.px = v; box.querySelector(`[data-apex-v="${i}"]`).textContent = money(v); });
-      const s2 = state({ positions: pos, cash: -st.debt, maint: st.maintBase });   // each position keeps its own maint
-      const eqEl = box.querySelector('[data-apex-eq]'), lvEl = box.querySelector('[data-apex-lev]');
-      eqEl.textContent = (s2.equity < 0 ? '-' : '') + '$' + k(Math.abs(s2.equity)); eqEl.style.color = s2.eqPct < st.maint ? '#ef4444' : 'var(--text)';
-      lvEl.textContent = s2.lev === Infinity || s2.eqPct < s2.maint ? 'call' : s2.lev.toFixed(2) + 'x'; lvEl.style.color = s2.lev > C.LEV_CAP ? '#ef4444' : s2.lev > C.LEV_NORMAL ? '#f97316' : '#10b981';
-      const fired = rules(s2, { cfg }).filter((r) => r.kind !== 'guard');
-      box.querySelector('[data-apex-fire]').innerHTML = fired.length ? fired.map((r) => `<div style="font-size:11.5px;padding:4px 8px;border-left:3px solid ${r.kind === 'risk' || r.kind === 'lose' ? '#ef4444' : r.kind === 'win' || r.kind === 'reload' ? '#10b981' : '#f97316'};margin-bottom:4px">${esc(r.title)}</div>`).join('') : '<div style="font-size:11.5px;color:#9ca3af">No rule fires. Hold.</div>';
-    };
-    box.querySelectorAll('input[type=range]').forEach((r) => r.addEventListener('input', upd));
-    upd();
-  }
+  // v255 (Jack, Nov 18 2026): the What if sliders (renderWhatIf) were removed; the tripwire line and the stress test stay.
 
   return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION, opportunities };
 });

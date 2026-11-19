@@ -41,7 +41,7 @@ for(const [w,h] of [[320,568],[390,844]]){
     assert.match(await b.getAttribute('aria-label'),/^Duo layout: Auto/);assert.ok((await b.boundingBox()).height>=44,'control is a 44px target');
     const r=await p.evaluate(()=>{const l=document.getElementById('pf-fresh-left').getBoundingClientRect(),a=document.querySelector('#pf-fresh .pf-fresh-actions').getBoundingClientRect(),e=document.getElementById('pf-fresh-left');return {gap:a.left-l.right,clip:e.scrollWidth-e.clientWidth,bar:document.getElementById('pf-fresh').offsetHeight};});
     assert.ok(r.clip<=1&&r.gap>=-1,`${w}: freshness stamp not clipped by the control (clip ${r.clip}, gap ${r.gap})`);
-    if(route==='today'&&account==='main'&&w===320)assert.ok(r.bar<=44,'the bar did not grow');
+    if(route==='today'&&account==='main'&&w===320)assert.ok(r.bar<=44,'the bar did not grow ('+r.bar+'px)');
   }
 }
 await p.setViewportSize({width:390,height:844});await nav('today','main');

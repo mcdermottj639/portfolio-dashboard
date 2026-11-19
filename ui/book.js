@@ -21,7 +21,7 @@
   var G=window, root=document.documentElement;
   var TAB={accounts:'overview',performance:'overview',heatmap:'overview',risk:'overview',income:'overview',technicals:'overview',
     fundamentals:'overview',flow:'overview',holdings:'positions',analyze:'research',plan:'actions',acctresearch:'findings'};
-  var MIN_W=200, MIN_H=120, OVERVIEW_ROWS=8;
+  var MIN_W=200, MIN_H=120, OVERVIEW_ROWS=8, ACTION_ROWS=5;
   var el=null, raf=0, src='', key='', scrolls={}, lastOn=false;
   function E(){return G.PFExperience||null;}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -113,8 +113,8 @@
     var shown=limit?rs.slice(0,limit):rs;
     var attr=function(r){return mode==='research'?'data-pj-go="analyze" data-pj-sym="'+esc(r.symbol)+'"':'data-bk-sym="'+esc(r.symbol)+'"';};
     var more=limit&&rs.length>limit?'<button type="button" class="bk-more" data-ex-route="holdings">All '+rs.length+' positions ›</button>':'';
-    var title=mode==='research'?'Compare holdings':mode==='positions'?'All holdings':'Holdings';
-    var meta=mode==='research'?'tap one to research it':mode==='positions'?'tap one to open it':'tap one to see it on the right';
+    var title=mode==='research'?'Compare holdings':mode==='positions'?'All holdings':mode==='actions'?'Top holdings':'Holdings';
+    var meta=mode==='research'?'tap one to research it':mode==='positions'||mode==='actions'?'tap one to open it':'tap one to see it on the right';
     return sec(title+' <span class="bk-count">'+rs.length+'</span>',meta,holdHead()+'<div class="bk-holds">'+shown.map(function(r){return holdRow(r,max,sel,attr(r));}).join('')+'</div>'+more);
   }
 
@@ -148,13 +148,16 @@
     if(A&&typeof G.agenticBook==='function'){
       try{var b=G.agenticBook(A),eq=num(b.equity);
         if(eq&&eq>0){var inv=num(b.invested)||0,cash=num(b.cash)||0,ip=inv/eq*100;
-          out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Deployed',plain(ip,0),money(inv)+' invested of '+money(eq),bar(ip));}}catch(_){}
+          out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Deployed',plain(ip,1),money(inv)+' invested of '+money(eq),bar(ip));}}catch(_){}
     }
     var M=G.PFExperienceModel;
     if(A&&M&&typeof M.ticketStatus==='function'){
       if(A.pending&&A.pending.status){var t=M.ticketStatus(A.pending);out+=goRow('data-ex-route="plan" data-ex-account="agentic"',esc(t.heading||'Ticket'),'',esc(t.label),'');}
-      else out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Ticket','','No ticket recorded','');
+      else out+=goRow('data-ex-route="plan" data-ex-account="agentic"','Ticket','','No active ticket','');
     }
+    // v255: research age against the 14-day cycle it runs on.
+    var rc=A&&A.target&&M&&typeof M.researchCycle==='function'?M.researchCycle(A.target.asOf):null;
+    if(rc)out+=goRow('data-ex-route="acctresearch" data-ex-account="agentic"','Research',rc.days+'d',rc.overdue?(rc.days-rc.cycle)+'d past the '+rc.cycle+'-day cycle':'of a '+rc.cycle+'-day cycle',bar(rc.fill,null,rc.overdue));
     var T=G.__PF_AG_TARGET;
     if(T&&Array.isArray(T.rows)&&T.rows.length){
       var dr=T.rows.filter(function(r){return num(r.drift)!==null;}).sort(function(a,b){return Math.abs(b.drift)-Math.abs(a.drift);})[0];
@@ -206,7 +209,9 @@
     if(c.tab==='positions')return holdings(a,0,'positions')+head;
     if(c.tab==='research')return holdings(a,0,'research');
     if(c.tab==='findings')return findings(a);
-    return queue()+head;
+    // v255 (audit, Nov 18 2026): the Actions left page held only the queue and the strategy block and left most of the page blank;
+    // it now also carries the account's performance and its top holdings (a tap opens that holding in Positions).
+    return queue()+head+perfSec(a)+holdings(a,ACTION_ROWS,'actions');
   }
 
   // ── duplicate figures (owner: "Don't repeat the same account numbers in multiple sections") ─────────────────────────────────────

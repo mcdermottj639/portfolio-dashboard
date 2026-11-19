@@ -29,14 +29,8 @@ const groups=M.composition([{symbol:'A',value:800},{symbol:'B',value:100},{symbo
 assert.deepEqual(groups.map(p=>[p.label,p.share]),[['A',80],['B',10],['C',5],['Other',5]]);
 assert.deepEqual(M.composition([]),[]);
 assert.deepEqual(M.breadth([{day:null},{day:0},{day:2},{day:-1},{}]),{up:1,down:1,flat:1,missing:2});
-// A cash shift helps on the downside and sacrifices upside; costs always reduce the shifted result.
-const base={equity:25000,positionValue:11500,shiftPct:50,costBps:40};
-let r=M.scenario({...base,shockPct:-10});assert.equal(r.before,-1150);assert.equal(r.after,-598);assert.equal(r.cost,23);assert.equal(r.difference,552);
-r=M.scenario({...base,shockPct:10});assert.equal(r.after,552);assert.equal(r.difference,-598);
-r=M.scenario({...base,shiftPct:0,shockPct:-10});assert.equal(r.difference,0);
-assert.equal(M.scenario({...base,equity:0,shockPct:-10}),null);
-assert.equal(M.scenario({...base,costBps:'',shockPct:-10}),null);
-assert.equal(M.scenario({...base,shiftPct:101,shockPct:-10}),null);
+// v255: What if? removed (Jack, Nov 18 2026); the model no longer exports scenario().
+assert.equal(M.scenario,undefined);
 const evidence=M.evidence({research:{evidence:{A:{quality:{evidence:[{claim:'untrusted',source:'javascript:alert(1)'},{claim:'file source',source:'https://example.com/filing',asOf:'2026-09-15'}]}}}}},'A');
 assert.equal(evidence[0].href,null);assert.equal(evidence[1].href,'https://example.com/filing');
 const root=path.join(__dirname,'..'),html=fs.readFileSync(path.join(root,'index.html'),'utf8');
@@ -54,13 +48,14 @@ for(const route of ['technicals','fundamentals','flow']){
 }
 assert.match(experience,/const defaults = \{today:'today',apex:'plan',agentic:'plan',research:'markets',more:'options'\}/,'five areas, in order, with their defaults');
 const routeIds=[...experience.matchAll(/^    (\w+): \{area:'(\w+)'/gm)].map(m=>m[1]);
-assert.deepEqual(routeIds.slice().sort(),['accounts','acctresearch','activity','analyze','apexpaper','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','scenario','screens','smartmoney','technicals','today'],'all 21 Navigation B route ids are kept, plus apexpaper (v244) and acctresearch (v253: the account research tab)');
+assert.deepEqual(routeIds.slice().sort(),['accounts','acctresearch','activity','analyze','apexpaper','decisions','flow','fundamentals','heatmap','holdings','income','log','markets','options','performance','plan','predictions','risk','screens','smartmoney','technicals','today'],'the Navigation B route ids are kept (v255 removed What if?, scenario), plus apexpaper (v244) and acctresearch (v253: the account research tab)');
 assert.match(experience,/    acctresearch: \{area:'apex', scoped:true, hidden:true, label:'Research', tab:'picks'\}/,'the account research tab is the plan page, account-scoped');
 // v244: the Apex v2.9 paper page is an Apex-only route (not account-scoped, pinned to the self-directed account, never the area's remembered route).
 assert.match(experience,/    apexpaper: \{area:'apex', account:'main', transient:true, label:'v2.9 Paper', tab:'apexpaper'\}/);
 assert.ok(html.includes('id="page-apexpaper"')&&html.includes('id="apexpaper-app"'),'paper research page container');
+assert.equal(require('../ui/journey.js').pageRoute('#view=scenario'),null,'v255: an old What if? link opens the default page');
 for(const id of routeIds)assert.match(require('../ui/journey.js').pageRoute('#view='+id)||'',new RegExp('^'+id+'$'),'journey admits #view='+id);
-for(const route of ['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow','scenario'])assert.match(experience,new RegExp('    '+route+": \\{area:'apex', scoped:true"),route+' is account-scoped');
+for(const route of ['plan','accounts','holdings','performance','heatmap','risk','income','technicals','fundamentals','flow'])assert.match(experience,new RegExp('    '+route+": \\{area:'apex', scoped:true"),route+' is account-scoped');
 for(const route of ['markets','screens','analyze','smartmoney','predictions'])assert.match(experience,new RegExp('    '+route+": \\{area:'research'"),route+' is in Research');
 for(const route of ['options','decisions','log','activity'])assert.match(experience,new RegExp('    '+route+": \\{area:'more'"),route+' is in More');
 assert.match(experience,/areaOf = \(key, acct\)/);assert.match(experience,/accountArea = \{main:'apex',agentic:'agentic'\}/);
@@ -74,7 +69,7 @@ assert.doesNotMatch(experience,/01 \/ What moved|02 \/ Where|03 \/ Your next/);
 assert.match(experience,/class="ex-cta"/);
 assert.match(experience,/ex-div-left/);
 assert.match(experience,/Open the plan/);
-assert.match(experience,/None in flight/);
+assert.match(experience,/No active ticket/);assert.doesNotMatch(experience,/None in flight/);
 assert.match(experience,/Not in this app/);
 assert.doesNotMatch(experience,/Not connected/);
 const css=fs.readFileSync(path.join(root,'ui/experience.css'),'utf8');
@@ -90,7 +85,9 @@ assert.equal(M.stamp('garbage'),null);assert.equal(M.stamp(null),null);
  const d={generatedAt:'2026-11-17T14:41:00Z',picks:{ts:'2026-11-16'},agentic:{target:{asOf:'2026-11-01'}}};
  const mainS=M.freshnessStamps(d,'main',{now,apexTarget:{asOf:'2026-11-17T12:00:00Z'}});
  assert.deepEqual(mainS.map(x=>x.key),['research','scan'],'no Account stamp: the freshness bar is the one account time');assert.equal(mainS[0].text,'Nov 17, 7:00 AM ET');assert.equal(mainS[1].dateOnly,true);
- const agS=M.freshnessStamps(d,'agentic',{now});assert.deepEqual(agS.map(x=>x.key),['research'],'Agentic has no Last scan and no Account stamp');assert.equal(agS[0].state,'stale','a target older than 7 days is stale');
+ const agS=M.freshnessStamps(d,'agentic',{now});assert.deepEqual(agS.map(x=>x.key),['research'],'Agentic has no Last scan and no Account stamp');assert.equal(agS[0].state,'stale','a target older than the 14-day cycle is stale');
+ assert.equal(M.freshnessStamps({agentic:{target:{asOf:'2026-11-08'}}},'agentic',{now})[0].state,'ok','9 days into the 14-day cycle is not stale (v255)');
+ assert.equal(M.researchCycle('2026-11-08',now).text,'9 days into the 14-day cycle');assert.equal(M.researchCycle('2026-11-01',now).text,'16 days old · 2 days past the 14-day cycle');assert.equal(M.researchCycle('2026-11-01',now).overdue,true);assert.equal(M.researchCycle(null,now),null);
  assert.deepEqual(M.freshnessStamps({generatedAt:'2026-11-17T10:00:00Z'},'main',{now}),[],'the account time is never a workspace stamp');
  assert.deepEqual(M.freshnessStamps({},'main',{now}),[],'no sources, no stamps');}
-console.log('PASS: display models, missing data, scenarios, source links, preserved destinations, script syntax, cache versions, today brief visuals');
+console.log('PASS: display models, missing data, source links, preserved destinations, script syntax, cache versions, today brief visuals');

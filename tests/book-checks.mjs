@@ -93,6 +93,17 @@ await p.locator('#ex-subnav [data-ws-tab="actions"]').click();await settle();
 g=await panel();geometryOk(g,'apex actions');assert.equal(g.tab,'actions');
 const q=await p.evaluate(()=>{const t=document.createElement('div');t.innerHTML=PFExperience.actionsHTML();return t.querySelectorAll('.ws-act').length;});
 assert.equal(await p.locator('#pf-book .ws-act').count(),q,'review queue = Action Center items');
+// v255: the Actions left page is filled: performance and the top holdings follow the queue (a tap opens Positions).
+for(const t of ['PERFORMANCE','TOP HOLDINGS'])assert.ok(g.text.toUpperCase().includes(t),'apex actions shows '+t);
+assert.deepEqual(await p.$$eval('#pf-book .bk-hold .bk-sym',n=>n.map(x=>x.textContent)),rows.slice(0,5),'actions top holdings = the five largest');
+await p.locator('#pf-book .bk-hold[data-bk-sym="'+rows[0]+'"]').click();await settle();
+assert.equal(await p.evaluate(()=>PFExperience.route),'holdings','a top-holding tap opens Positions');
+// v255: Allocation sized to its pane — the two lists stack on the right page and every bar keeps a usable width.
+await nav('accounts','main');
+const al=await p.evaluate(()=>{const c=document.querySelector('#app>[data-sec="allocation"]');if(!c)return null;const b=c.querySelector('[id^="b-alloc"]');if(b&&b.style.display==='none')c.querySelector('.card-title').click();
+  const cols=[...c.querySelectorAll('.two-col>div')].map(d=>d.getBoundingClientRect()),tr=[...c.querySelectorAll('.alloc-track')].map(t=>t.getBoundingClientRect().width),r=c.getBoundingClientRect();
+  return {stacked:cols.length<2||cols[1].top>=cols[0].bottom-1,minTrack:tr.length?Math.min(...tr):null,right:r.right,fold:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fold-left'))};});
+if(al){assert.ok(al.stacked,'allocation lists stack in the Book pane');if(al.minTrack!==null)assert.ok(al.minTrack>=60,'allocation bars keep their width ('+al.minTrack+')');}
 
 // ── 6. Agentic gets its own priorities: deployment, ticket, performance; no Apex leverage band ──
 await nav('accounts','agentic');

@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=254"></script>
-<script src="ui/experience-model.js?v=254"></script>
+<script src="ui/theme.js?v=255"></script>
+<script src="ui/experience-model.js?v=255"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -190,6 +190,8 @@ html { overflow-x: clip; }
 .scn { border:1px solid #e5e7eb; border-radius:10px; padding:11px 12px; text-align:center; }
 .scn-lbl { font-size:10.5px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; }
 .scn-val { font-size:18px; font-weight:800; margin-top:3px; }
+/* v255 sweep: at 320px the four Risk tiles (Sharpe · Volatility · Max Drawdown · …) ran past the right edge; small phones get two columns. */
+@media (max-width:360px){ .scn-grid{ grid-template-columns:repeat(2,minmax(0,1fr))!important; } }
 
 /* Allocation bars */
 .alloc-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
@@ -363,11 +365,15 @@ html[data-theme="gold"] .pf-find { border-color: var(--nx-bd); }
 /* Keep the full timestamp legible on phones by making secondary actions icon-only. */
 @media (max-width:480px) {
   #pf-fresh { gap:5px!important; padding:6px 7px!important; }
-  #pf-fresh-left { overflow:visible!important; text-overflow:clip!important; flex:0 0 auto; font-size:11px; }
+  /* v255 sweep: at 320–390px the unbreakable timestamp pushed Duo / theme / ↻ past the right edge. It now wraps
+     inside its own column (still whole, never ellipsized) so every control stays on screen. */
+  #pf-fresh-left { overflow:visible!important; text-overflow:clip!important; white-space:normal!important; flex:1 1 auto; min-width:0!important; line-height:14px; font-size:11px; }
   #pf-fresh .pf-fresh-actions { gap:7px!important; }
   #pf-fresh .pf-find { padding:5px 6px; }
   #pf-fresh .pf-find-word, #pf-fresh .pf-refresh-word, #pf-fresh .pf-fresh-age { display:none; }
 }
+/* Two wrapped lines (2 × 14px) fit beside the 44px Duo target without the bar growing past 44px (duo-checks). */
+@media (max-width:360px) { #pf-fresh .pf-fresh-actions { gap:4px!important; } #pf-fresh .pf-find { padding:4px; } }
 @media (max-width:340px) { #pf-fresh-left {font-size:10.5px;} }
 /* ── Card help popovers: a "?" in each card header opens a teaching modal ── */
 .help-btn { flex: 0 0 auto; margin-left: auto; width: 19px; height: 19px; padding: 0; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: #9ca3af; font-size: 11px; font-weight: 800; line-height: 17px; text-align: center; cursor: pointer; opacity: .65; font-family: inherit; -webkit-appearance: none; }
@@ -729,15 +735,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=254">
-<link rel="stylesheet" href="ui/journey.css?v=254">
-<link rel="stylesheet" href="ui/predictions.css?v=254">
-<link rel="stylesheet" href="ui/apex-paper.css?v=254">
-<link rel="stylesheet" href="ui/smartmoney.css?v=254">
-<link rel="stylesheet" href="ui/ticker.css?v=254">
-<link rel="stylesheet" href="ui/today.css?v=254">
-<link rel="stylesheet" href="ui/book.css?v=254">
-<link rel="stylesheet" href="ui/duo.css?v=254">
+<link rel="stylesheet" href="ui/experience.css?v=255">
+<link rel="stylesheet" href="ui/journey.css?v=255">
+<link rel="stylesheet" href="ui/predictions.css?v=255">
+<link rel="stylesheet" href="ui/apex-paper.css?v=255">
+<link rel="stylesheet" href="ui/smartmoney.css?v=255">
+<link rel="stylesheet" href="ui/ticker.css?v=255">
+<link rel="stylesheet" href="ui/today.css?v=255">
+<link rel="stylesheet" href="ui/book.css?v=255">
+<link rel="stylesheet" href="ui/duo.css?v=255">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -807,10 +813,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=254"></script>
-<script src="ui/apex.js?v=254"></script>
-<script src="ui/business.js?v=254"></script>
-<script src="ui/apex-paper.js?v=254"></script>
+<script src="ui/sd-rules.js?v=255"></script>
+<script src="ui/apex.js?v=255"></script>
+<script src="ui/business.js?v=255"></script>
+<script src="ui/apex-paper.js?v=255"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -924,7 +930,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v254'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v255'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -2250,7 +2256,7 @@ function renderAllocation(alloc, totalVal, opts){
   function bars(entries,total,palFn){ return entries.map((e,i)=>{ const pct=total>0?e[1]/total*100:0; const col=typeof palFn==='function'?palFn(e[0],i):palFn[e[0]]||sPal[i%sPal.length]; return `<div class="alloc-row"><div class="alloc-name">${e[0]}</div><div class="alloc-track"><div class="alloc-fill" style="width:${Math.min(pct,100)}%;background:${col}"></div></div><div class="alloc-pct">${fmt(pct,1)}% · ${fmtD(e[1])}</div></div>`; }).join(''); }
   el.innerHTML=`
     <div class="two-col no-mb">
-      <div><div class="col-title">By Sector <span class="card-hint">(stock holdings)</span></div>${sectors.length?bars(sectors,sectors.reduce((s,e)=>s+e[1],0),(n,i)=>sPal[i%sPal.length]):'<div class="tech-empty">Loading sectors…</div>'}<div class="cov-note">Sector data covers ${fmt(alloc.sectorCoverage,0)}% of equity (top holdings).</div></div>
+      <div><div class="col-title">By Sector <span class="card-hint">(% of stocks with a known sector)</span></div>${sectors.length?bars(sectors,sectors.reduce((s,e)=>s+e[1],0),(n,i)=>sPal[i%sPal.length]):'<div class="tech-empty">Loading sectors…</div>'}<div class="cov-note">Sector data covers ${fmt(alloc.sectorCoverage,0)}% of equity (top holdings).</div></div>
       <div><div class="col-title">By Asset Class</div>${assets.length?bars(assets,eq,aPal):'<div class="tech-empty">—</div>'}</div>
     </div>`;
 }
@@ -4247,7 +4253,7 @@ function renderAgenticPlan(){
       <div class="pk-metrics" style="grid-template-columns:repeat(2,1fr);margin-top:10px">
         <div class="pk-m"><div class="pk-m-l">Book</div><div class="pk-m-v">${book>0?fmtD(book):'—'}</div></div>
         <div class="pk-m"><div class="pk-m-l">Idle cash</div><div class="pk-m-v">${fmtD(cash)}${book>0?` <span style="font-size:11px;color:#9ca3af">${fmt(cashPct,1)}%</span>`:''}</div></div>
-        <div class="pk-m"><div class="pk-m-l">On target</div><div class="pk-m-v">${rows.filter(x=>x.held).length}/${rows.length} <span style="font-size:11px;color:#9ca3af">names held</span></div></div>
+        <div class="pk-m"><div class="pk-m-l">Target names held</div><div class="pk-m-v">${rows.filter(x=>x.held).length} of ${rows.length}</div></div>
         <div class="pk-m"><div class="pk-m-l">Last rebalance</div><div class="pk-m-v">${lastDec?dLbl(lastDec.date):'—'}</div></div>
       </div>
       ${idleDays!=null?`<div class="fund-note" style="margin:10px 0 0;${idleDays>=AG_IDLE_DEPLOY_D?'background:#fffbeb;border-color:#fde68a':''}"><b>⏱ Idle cash ${idleDays}d of ${AG_IDLE_DEPLOY_D}</b> <span class="ag-clock"><i style="width:${Math.min(100,idleDays/AG_IDLE_DEPLOY_D*100)}%"></i></span> <span style="opacity:.75">since ${dLbl(A.cashIdleSince)}.</span> <details class="sd-more" style="margin-top:4px"><summary>What happens at the deadline</summary>${idleDays>=AG_IDLE_DEPLOY_D?`The deadline has passed — entry bands are <b>waived</b> and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches (swept whole below ${fmtD(AG_IDLE_SWEEP_FLOOR)}).`:`At ${AG_IDLE_DEPLOY_D}d the entry bands are waived and cash deploys in ${AG_IDLE_TRANCHE_PCT}% tranches — "wait for a pullback" is not allowed to run forever.`}</details></div>`:''}
@@ -5118,7 +5124,7 @@ window.switchTab=switchTab;
    title. A card re-renders as a NEW node (load() / renderAgenticPage), so apply() runs once per new node, before
    first paint, and honours — in order — the choice made this session, the choice saved in localStorage
    `pf_card_fold_v1` ({"main:allocation":1|0,...}, 1 = open), a My view pin (a pinned card does not start
-   folded), else the default (folded). Anything that navigates to a card calls open(), which unfolds it for the
+   folded), else the default (v255: open, except the TUCK explainers). Anything that navigates to a card calls open(), which unfolds it for the
    session only; a header tap / Expand-all is the user's choice and is saved. Storage failure = defaults. */
 (function(){
   var KEY='pf_card_fold_v1';
@@ -5131,6 +5137,10 @@ window.switchTab=switchTab;
      Screens ('screens', #screens-app) folds the full Scoring Breakdown table. The self-directed Plan has no folded card, so
      it has no scope here and one account's choice can never reach the other. Predict has none (see UI-PRESERVATION.md). */
   var PSECS={'agp-loop':1}, SCSECS={'scr-breakdown':1};
+  /* v255 (Jack, Nov 18 2026: doesn't like the collapsed cards; chose "cards start open, the small how-it-works notes stay
+     tucked"): every card above now STARTS OPEN. Only the two how-it-works explainers below still start folded. The keys stay,
+     so a header tap (open or closed) is still the owner's saved choice, and a saved choice still wins over this default. */
+  var TUCK={'plan-agentic:agp-loop':1,'options:opt-knowledge':1};
   function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':(c.closest('#options-app')?'options':(c.closest('#plan-agentic-app')?'plan-agentic':(c.closest('#screens-app')?'screens':null)))); }
   function keyOf(c){ var s=c&&c.getAttribute&&c.getAttribute('data-sec'), a=c&&acctOf(c); if(!a||!s)return null;
     if(a==='plan-agentic')return PSECS[s]?a+':'+s:null;
@@ -5163,7 +5173,7 @@ window.switchTab=switchTab;
   window.__pfFold={
     key:keyOf,
     apply:function(c){ try{ var k=keyOf(c); if(!k)return;
-      var want=mem[k]!==undefined?mem[k]:(function(){ var m=read(); return (m[k]===1||m[k]===0)?m[k]===1:pinned(c); })();
+      var want=mem[k]!==undefined?mem[k]:(function(){ var m=read(); return (m[k]===1||m[k]===0)?m[k]===1:(!TUCK[k]||pinned(c)); })();
       if(!want)paint(c,false);
       else{ var t=c.querySelector(':scope > .card-title'); if(t&&!t.hasAttribute('aria-expanded'))t.setAttribute('aria-expanded','true'); } }catch(e){} },
     note:function(c,open,persist){ try{ var k=keyOf(c); if(!k)return; mem[k]=!!open; if(persist)save(k,open); if(open)opened(c); }catch(e){} },
@@ -8942,17 +8952,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=254"></script>
-<script src="ui/today.js?v=254"></script>
-<script src="ui/predictions-model.js?v=254"></script>
-<script src="ui/predictions.js?v=254"></script>
-<script src="ui/smartmoney-model.js?v=254"></script>
-<script src="ui/smartmoney.js?v=254"></script>
-<script src="ui/experience.js?v=254"></script>
-<script src="ui/ticker.js?v=254"></script>
-<script src="ui/duo.js?v=254"></script>
-<script src="ui/compact.js?v=254"></script>
-<script src="ui/journey.js?v=254"></script>
-<script src="ui/book.js?v=254"></script>
+<script src="ui/today-model.js?v=255"></script>
+<script src="ui/today.js?v=255"></script>
+<script src="ui/predictions-model.js?v=255"></script>
+<script src="ui/predictions.js?v=255"></script>
+<script src="ui/smartmoney-model.js?v=255"></script>
+<script src="ui/smartmoney.js?v=255"></script>
+<script src="ui/experience.js?v=255"></script>
+<script src="ui/ticker.js?v=255"></script>
+<script src="ui/duo.js?v=255"></script>
+<script src="ui/compact.js?v=255"></script>
+<script src="ui/journey.js?v=255"></script>
+<script src="ui/book.js?v=255"></script>
 </body>
 </html>

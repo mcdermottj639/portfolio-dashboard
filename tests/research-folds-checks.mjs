@@ -1,16 +1,17 @@
-// Dashboard 2.0 Phase 3b (v239): Plan (agentic), Screens and Predict keep decisions open; reference cards start folded.
+// Dashboard 2.0 Phase 3b (v239), revised v255: Plan (agentic), Screens and Predict keep decisions open; only the agentic "How the loop runs" explainer starts folded.
 // Called from journey-browser.mjs (the CI suite). One context, one page. All account data are synthetic; nothing here submits an order.
 //   Plan, agentic   folded: "How the loop runs".   Always open: Where the plan stands, Model correctness & forward record, The target,
 //                    Business check, What's blocked, The waiting ground, Guardrails.
 //   Plan, self-directed  nothing qualifies: Apex card and Action Center stay open, no card is folded.
-//   Screens         folded: "Scoring Breakdown".   Always open: Top 3 Picks, Composite Scores, Track Record (+ note, hero).
+//   Screens         v255: nothing folded (Scoring Breakdown starts open). Always open: Top 3 Picks, Composite Scores, Track Record (+ note, hero).
 //   Predict         nothing qualifies (tabs; every reference block is already a closed <details>): no card is folded by this change.
 import assert from 'node:assert/strict';
 
 const KEY='pf_card_fold_v1';
 const VP=[[390,844,{}],[466,677,{right:84}],[960,676,{right:100}],[677,466,{left:85}],[1280,800,{}]];
 const PLAN_AG={fold:[/How the loop runs/],open:[/Where the plan stands/,/Model correctness/,/The target/,/Business check/,/What's blocked/,/waiting ground/,/Guardrails/]};
-const SCREENS={fold:[/Scoring Breakdown/],open:[/Top 3 Picks/,/Composite Scores/,/Track Record/]};
+// v255 (Jack, Nov 18 2026): Scoring Breakdown now starts open; only the "how it works" loop explainer stays tucked.
+const SCREENS={fold:[],open:[/Top 3 Picks/,/Composite Scores/,/Track Record/,/Scoring Breakdown/]};
 
 export async function runResearchFoldChecks({browser,base,sample,stub,apex,writes=[]}){
   const errors=[];
@@ -73,8 +74,9 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   c=await cardsOf(SC);
   for(const re of SCREENS.fold){const x=find(c,re);assert.equal(x.folded,true,x.title+' starts folded');assert.equal(x.aria,'false');assert.equal(x.sec,'scr-breakdown');}
   for(const re of SCREENS.open){const x=find(c,re);assert.equal(x.folded,false,x.title+' stays open');assert.ok(x.visible,x.title+' visible');}
-  assert.equal(c.filter(x=>x.folded).length,1,'Screens: exactly one card folded');
-  assert.ok(await page.locator(SC+' #picks-table tbody tr').count()>=3,'scoring rows rendered while folded');
+  assert.equal(c.filter(x=>x.folded).length,0,'Screens: no card folded (v255)');
+  assert.equal(find(c,/Scoring Breakdown/).sec,'scr-breakdown','Scoring Breakdown keeps its fold key, so a tap is remembered');
+  assert.ok(await page.locator(SC+' #picks-table tbody tr').count()>=3,'scoring rows rendered');
   assert.ok(await page.locator('#picks-chart').isVisible(),'Composite Scores chart stays visible');
   assert.ok(await page.locator('[data-sd-screens-note]').isVisible(),'reference-not-buys note stays visible');
   // Predict: nothing qualifies, nothing folded by this change; the five tabs and their content are as before
@@ -103,11 +105,11 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   await nav('plan','main');await settle();
   assert.ok((await cardsOf(MAIN)).every(x=>!x.folded),'the agentic choice does not reach the self-directed Plan');
   await nav('accounts','agentic');await settle();
-  assert.equal(await page.locator('#agentic-app .card[data-sec="allocation"] > .card-title').getAttribute('aria-expanded'),'false','the agentic Accounts page keeps its own folds');
-  assert.equal(await page.locator('#agentic-app .card[data-sec="income"] > .card-title').getAttribute('aria-expanded'),'false');
+  assert.equal(await page.locator('#agentic-app .card[data-sec="allocation"] > .card-title').getAttribute('aria-expanded'),'true','the agentic Accounts page keeps its own (open, v255) state');
+  assert.equal(await page.locator('#agentic-app .card[data-sec="income"] > .card-title').getAttribute('aria-expanded'),'true');
   // and the reverse: an Accounts choice does not open the loop; closing the loop persists too
   await page.locator('#agentic-app .card[data-sec="income"] > .card-title').click();await settle();
-  assert.deepEqual(await stored(),{'plan-agentic:agp-loop':1,'agentic:income':1});
+  assert.deepEqual(await stored(),{'plan-agentic:agp-loop':1,'agentic:income':0});
   await toPlanAg();
   await hdr(AG,/How the loop runs/).click();await settle();
   assert.equal(JSON.parse(await page.evaluate(k=>localStorage.getItem(k),KEY))['plan-agentic:agp-loop'],0,'closed choice saved');
@@ -116,16 +118,16 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   // Screens: same
   await toScreens();
   await hdr(SC,/Scoring Breakdown/).click();await settle();
-  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,false);assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).aria,'true');
-  assert.equal((await stored())['screens:scr-breakdown'],1);
+  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,true);assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).aria,'false');
+  assert.equal((await stored())['screens:scr-breakdown'],0);
   await page.evaluate(()=>{window.__old=document.querySelector('#screens-app [data-sec="scr-breakdown"]');renderScreensPage();});await settle();
   assert.equal(await page.evaluate(()=>document.contains(window.__old)),false,'breakdown card really re-rendered');
-  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,false,'open survives a re-render');
+  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,true,'closed survives a re-render');
   await reload(true);await toScreens();
-  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,false,'open survives a reload');
-  const box=await page.locator('#picks-table').boundingBox();assert.ok(box&&box.width>100&&box.x>=0&&box.x+box.width<=391,'scoring table visible and inside the phone width once opened');
-  await hdr(SC,/Scoring Breakdown/).click();await settle();await reload(true);await toScreens();
   assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,true,'closed choice survives a reload');
+  await hdr(SC,/Scoring Breakdown/).click();await settle();await reload(true);await toScreens();
+  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,false,'open choice survives a reload');
+  const box=await page.locator('#picks-table').boundingBox();assert.ok(box&&box.width>100&&box.x>=0&&box.x+box.width<=391,'scoring table visible and inside the phone width');
 
   // (d) navigation opens a folded card: rail chip, Find / My view jump, Expand/Collapse all
   await fresh('ag');
@@ -164,7 +166,8 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   assert.equal(afterFold,neverFolded,'loop card: privacy view is identical whether opened after being folded or never folded');
   assert.doesNotMatch(await page.locator(AG+' [data-sec="agp-loop"]').evaluate(e=>e.closest('#plan-agentic-app').querySelector('.card:not([data-priv="off"])')?.innerText||''),/\$\d{3,}/,'private agentic figures stay masked beside it');
   await page.evaluate(()=>setPrivacy(false));await settle();
-  await fresh('sc');
+  await page.evaluate(k=>localStorage.setItem(k,JSON.stringify({'screens:scr-breakdown':0})),KEY);await nav('screens');await page.evaluate(()=>renderScreensPage());await settle();   // v255: folded only by the owner's saved choice
+  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,true);
   await page.evaluate(()=>setPrivacy(true));await settle();
   await hdr(SC,/Scoring Breakdown/).click();await settle();
   const norm=t=>t.replace(/\$[\d,]+\.\d\d/g,'$').split('\n').filter(l=>!/vs scan|scan price|live/.test(l)).join('\n');   // live price refresh timing is not what is under test
@@ -182,7 +185,7 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
     await page.evaluate(()=>document.querySelectorAll('#page-picks [data-sec] > .card-title[aria-expanded="false"]').forEach(t=>t.click()));await quick();await noOverflow(`plan agentic ${w}x${h} expanded`);
     await nav('plan','main');await quick();await noOverflow(`plan self-directed ${w}x${h}`);
     await toScreens();await noOverflow(`screens ${w}x${h} folded`);
-    await hdr(SC,/Scoring Breakdown/).click();await quick();await noOverflow(`screens ${w}x${h} expanded`);
+    await page.evaluate(()=>document.querySelectorAll('#screens-app [data-sec] > .card-title[aria-expanded="false"]').forEach(t=>t.click()));await quick();await noOverflow(`screens ${w}x${h} expanded`);
     await nav('predictions');await quick();await noOverflow(`predict ${w}x${h}`);
     await fresh('ag');await fresh('sc');
   }
@@ -193,7 +196,7 @@ export async function runResearchFoldChecks({browser,base,sample,stub,apex,write
   await toScreens();await page.evaluate(()=>renderScreensPage());await settle();
   x=find(await cardsOf(SC),/Scoring Breakdown/);assert.equal(x.folded,false,'empty-state card is left open');
   await page.evaluate(()=>{PICK_CANDIDATES.push(...window.__cands);renderScreensPage();});await settle();
-  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,true,'restored data folds again');
+  assert.equal(find(await cardsOf(SC),/Scoring Breakdown/).folded,false,'restored data stays open (v255 default)');
   await page.evaluate(()=>{localStorage.removeItem('pf_card_fold_v1');localStorage.removeItem('pf_pins');});
   assert.deepEqual(errors,[],'no page errors');
   await ctx.close();
