@@ -122,7 +122,7 @@ with no file the book is the core alone and the build rule writes nothing. Contr
    ```
    Browser suites (synthetic data; start `node tests/preview.mjs` first, port 8767; Playwright 1.57.0):
    `brief-browser`, `sd-plan-browser`, `apex-browser`, `journey-browser` (also runs workspace, nav-b, book,
-   duo, apex-paper, ticket-status, research-folds, analyze-account checks), `holdings-duo-browser`,
+   duo, apex-paper, ticket-status, research-folds, foldbar, analyze-account checks), `holdings-duo-browser`,
    `today-viewport-browser`; WebKit: today checks in the `webkit-layout` job. Inline-script parse check for
    `index.html`. Privacy audit when account figures render.
 5. Required CI on the PR head: **`test`** (Producer tests) and **`data-integrity`**. Never merge on a failed,
@@ -204,7 +204,7 @@ Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equi
   same change.
 
 ## 11. CURRENT STATE and open items (dated 2026-11-18 — recheck before relying on them)
-- App/cache **v255 / pf-v255** on `main` (recheck `APP_VERSION` / `CACHE_VERSION`).
+- App/cache **v256 / pf-v256** on `main` (recheck `APP_VERSION` / `CACHE_VERSION`).
 - **UNVERIFIED — DXCM history correction (v252).** The fix to held-name daily history (`hist-plan.mjs`
   bar-sized calls, held-name directive in `preflight.mjs`, union of raw files and `holdings-history`
   warning in `build-data.mjs`) is merged, but ticker-level freshness is **not confirmed**: the snapshot is

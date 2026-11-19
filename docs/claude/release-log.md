@@ -4,6 +4,14 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v256 — one Expand all / Collapse all toolbar per page; fold memory for every card (2026-11-19)
+Jack (Nov 18 10:51 PM ET, Duet relay, Priority 2). Audit: the rail's Expand/Collapse all existed but v242 hid it on Apex /
+Agentic; most cards (Risk, Plan, Research) reopened on every refresh; Collapse all hid the Apex Confirm card and Action Center.
+Now: one `.pf-foldbar` control above the card stack on every page with foldable cards (rail button removed); every card keyed in
+`pf_card_fold_v1`; Collapse all skips Apex card / Action Center / plan status / warning cards; empty state on an empty opened card;
+one shared open/close path (`__pfFold.set`). Files: index.html, ui/experience.css, sw.js, tests (new foldbar-checks.mjs).
+No strategy, order, threshold, schedule, account-isolation, data or producer change. NOT verified: physical Duo.
+
 ## v255 — cleanup release: What if? removed, cards open, labels, Book fixes (2026-11-19)
 Jack (Nov 18, relayed handoff plan: "Say 'go'"): one release, six steps. What if? removed everywhere (route, page, Overview row,
 Decision evidence link, Apex sliders, model fn); the Risk stress test stays. Cards start open except `agp-loop` and `opt-knowledge`

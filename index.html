@@ -43,8 +43,8 @@
 <style>.kyle-btn,.run-btn{display:none!important}</style>
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
-<script src="ui/theme.js?v=255"></script>
-<script src="ui/experience-model.js?v=255"></script>
+<script src="ui/theme.js?v=256"></script>
+<script src="ui/experience-model.js?v=256"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -309,6 +309,16 @@ html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
 .card-nav-chip:active { background: #6366f1; color: #fff; }
 /* Expand/collapse-all rides at the head of the rail — outlined, so it reads as a control rather
    than as one more destination chip. */
+/* v256: the page's card toolbar — one Expand all / Collapse all control just above the card stack (moved out of the rail).
+   Right-aligned, compact, 40px tall so it is an easy thumb target on the folded Duo; never wraps or widens the page. */
+.pf-foldbar { display: flex; justify-content: flex-end; align-items: center; margin: 0 0 8px; min-width: 0; }
+.pf-foldall { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px;
+  font: inherit; font-size: 12.5px; font-weight: 650; line-height: 1; white-space: nowrap; cursor: pointer;
+  background: var(--surface-2); color: var(--text); border: 1px solid rgba(0,0,0,0.12); -webkit-tap-highlight-color: transparent; }
+.pf-foldall:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+.pf-foldall-i { font-size: 11px; opacity: .75; }
+html[data-theme="gold"] .pf-foldall { border-color: var(--nx-bd); }
+.pf-fold-empty { margin: 6px 0 2px; font-size: 12px; color: var(--muted, #6b7280); }
 .cn-all { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 14px;
   background: transparent; color: var(--text); border: 1px solid rgba(0,0,0,0.16); cursor: pointer;
   white-space: nowrap; font-family: inherit; }
@@ -735,15 +745,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=255">
-<link rel="stylesheet" href="ui/journey.css?v=255">
-<link rel="stylesheet" href="ui/predictions.css?v=255">
-<link rel="stylesheet" href="ui/apex-paper.css?v=255">
-<link rel="stylesheet" href="ui/smartmoney.css?v=255">
-<link rel="stylesheet" href="ui/ticker.css?v=255">
-<link rel="stylesheet" href="ui/today.css?v=255">
-<link rel="stylesheet" href="ui/book.css?v=255">
-<link rel="stylesheet" href="ui/duo.css?v=255">
+<link rel="stylesheet" href="ui/experience.css?v=256">
+<link rel="stylesheet" href="ui/journey.css?v=256">
+<link rel="stylesheet" href="ui/predictions.css?v=256">
+<link rel="stylesheet" href="ui/apex-paper.css?v=256">
+<link rel="stylesheet" href="ui/smartmoney.css?v=256">
+<link rel="stylesheet" href="ui/ticker.css?v=256">
+<link rel="stylesheet" href="ui/today.css?v=256">
+<link rel="stylesheet" href="ui/book.css?v=256">
+<link rel="stylesheet" href="ui/duo.css?v=256">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -813,10 +823,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=255"></script>
-<script src="ui/apex.js?v=255"></script>
-<script src="ui/business.js?v=255"></script>
-<script src="ui/apex-paper.js?v=255"></script>
+<script src="ui/sd-rules.js?v=256"></script>
+<script src="ui/apex.js?v=256"></script>
+<script src="ui/business.js?v=256"></script>
+<script src="ui/apex-paper.js?v=256"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -930,7 +940,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v255'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v256'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -1492,7 +1502,7 @@ function toggleSection(bodyId){ const body=document.getElementById(bodyId); cons
   // few whose header wasn't already .collapsible), so both the screen-reader state and the section
   // rail's Expand/Collapse-all label have to be maintained here as well as there.
   if(head)head.setAttribute('aria-expanded',hiding?'false':'true');
-  try{ if(head&&window.__pfFold)window.__pfFold.note(head.parentElement,!hiding,true); }catch(e){}   // v235: remember a fold-set card's open/closed choice
+  try{ if(head&&window.__pfFold)window.__pfFold.note(head.parentElement,!hiding,true); }catch(e){}   // v235: remember a card's open/closed choice (v256: every card, plus the empty state)
   try{ const pg=body.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(e){} }
 window.toggleSection=toggleSection;
 function toast(msg){ const t=document.getElementById('toast'); if(!t)return; if(msg)t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2800); }
@@ -5141,19 +5151,37 @@ window.switchTab=switchTab;
      tucked"): every card above now STARTS OPEN. Only the two how-it-works explainers below still start folded. The keys stay,
      so a header tap (open or closed) is still the owner's saved choice, and a saved choice still wins over this default. */
   var TUCK={'plan-agentic:agp-loop':1,'options:opt-knowledge':1};
-  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':(c.closest('#options-app')?'options':(c.closest('#plan-agentic-app')?'plan-agentic':(c.closest('#screens-app')?'screens':null)))); }
-  function keyOf(c){ var s=c&&c.getAttribute&&c.getAttribute('data-sec'), a=c&&acctOf(c); if(!a||!s)return null;
-    if(a==='plan-agentic')return PSECS[s]?a+':'+s:null;
-    if(a==='screens'){ if(!SCSECS[s])return null;
-      /* With no candidate rows the card is only an empty-state notice; it stays open. */
-      if(s==='scr-breakdown'&&!c.querySelector('#picks-table .sym'))return null;
-      return a+':'+s; }
-    if(a==='options'){ if(!OSECS[s])return null;
-      /* Income & History folds only when it holds contract history; with no ledger (or no rows) the card is just an
-         empty-state / reconciliation notice, which stays visible. */
-      if(s==='opt-history'&&!c.querySelector('.oh-hist,.oh-list'))return null;
-      return a+':'+s; }
-    return SECS[s]?a+':'+s:null; }
+  /* v256 (Jack, Nov 18 2026: Expand all / Collapse all, and "do not unexpectedly reset expanded cards during ordinary
+     refreshes"): before v256 only the cards listed in SECS/OSECS/PSECS/SCSECS had a key, so every other card (Risk &
+     Diversification, the Plan and Research cards, Apex, Action Center…) came back OPEN each time a refresh re-rendered it.
+     Now every card in a known container is keyed — by data-sec, else by its header's data-toggle body id — so a fold choice
+     survives a re-render (session) and a reload (saved). The listed keys are unchanged (same strings), so saved choices and
+     the TUCK defaults carry over. The self-directed Plan/Research container (#picks-app) gets its own 'plan-main' scope;
+     its toggle ids (b-apex, b-action…) never appear on the agentic side, so one account's choice still can't reach the other.
+     Analyze is per-ticker and stays unkeyed. */
+  function acctOf(c){ return c.closest('#agentic-app')?'agentic':(c.closest('#app')?'main':(c.closest('#options-app')?'options':(c.closest('#plan-agentic-app')?'plan-agentic':(c.closest('#picks-app')?'plan-main':(c.closest('#screens-app')?'screens':null))))); }
+  function idOf(c){ var s=c.getAttribute('data-sec'); if(s)return s; var t=c.querySelector(':scope > .card-title'); return (t&&t.getAttribute('data-toggle'))||null; }
+  function keyOf(c){ var a=c&&c.getAttribute&&acctOf(c), s=a&&idOf(c); if(!a||!s)return null;
+    /* With no candidate rows the Scoring Breakdown is only an empty-state notice; it is not remembered folded. */
+    if(a==='screens'&&s==='scr-breakdown'&&!c.querySelector('#picks-table .sym'))return null;
+    /* Income & History is remembered only when it holds contract history; with no ledger (or no rows) the card is just an
+       empty-state / reconciliation notice. */
+    if(a==='options'&&s==='opt-history'&&!c.querySelector('.oh-hist,.oh-list'))return null;
+    return a+':'+s; }
+  /* v256: cards that Collapse all never hides — the Apex card (its Confirm-with-Claude check), the Action Center (orders to
+     place, at their prices), the agentic "Where the plan stands" ticket status, and any card showing a warning box. A header
+     tap still folds them (the owner's manual control); Expand all still opens them. */
+  var KEEP={'b-apex':1,'b-action':1,'b-agp-status':1};
+  function keep(c){ try{ if(c.id==='apex-card'||c.hasAttribute('data-fold-keep'))return true;
+    var t=c.querySelector(':scope > .card-title'), id=t&&t.getAttribute('data-toggle'); if(id&&KEEP[id])return true;
+    var b=bodyOf(c); return !!(b&&b.querySelector('.box-warn')); }catch(e){ return false; } }
+  /* v256: a card opened with nothing inside shows a one-line empty state instead of a blank band. Checked on every open;
+     removed again once the body has content (a re-render replaces the body anyway). */
+  function empty(c){ try{ var b=bodyOf(c); if(!b)return; var n=b.querySelector(':scope > .pf-fold-empty');
+    var has=[].some.call(b.childNodes,function(x){ if(x===n)return false; if(x.nodeType===3)return /\S/.test(x.textContent);
+      if(x.nodeType!==1)return false; return /\S/.test(x.textContent)||!!(x.matches('svg,canvas,img,table,iframe,input,select,button')||x.querySelector('svg,canvas,img,table,iframe,input,select,button,.hm-tile')); });
+    if(has){ if(n)n.remove(); return; }
+    if(!n){ n=document.createElement('p'); n.className='pf-fold-empty'; n.textContent='Nothing to show here yet. This card fills in when the next snapshot has data for it.'; b.appendChild(n); } }catch(e){} }
   function read(){ try{ var v=JSON.parse(localStorage.getItem(KEY)||'null'); return (v&&typeof v==='object'&&!Array.isArray(v))?v:{}; }catch(e){ return {}; } }
   function save(k,open){ try{ var m=read(); m[k]=open?1:0; localStorage.setItem(KEY,JSON.stringify(m)); }catch(e){} }
   function bodyOf(c){ var b=c.querySelector(':scope > .card-body'); if(b)return b;
@@ -5171,14 +5199,17 @@ window.switchTab=switchTab;
   function opened(c){ try{ if(c.getAttribute('data-sec')==='heatmap'&&typeof renderHeatmap==='function')renderHeatmap(acctOf(c)==='agentic'?'-ag':''); }catch(e){} }
   function sync(c){ try{ var pg=c.closest('[id^="page-"]'); if(pg&&window.__navSyncAll)window.__navSyncAll(pg); }catch(e){} }
   window.__pfFold={
-    key:keyOf,
+    key:keyOf, keep:keep,
     apply:function(c){ try{ var k=keyOf(c); if(!k)return;
       var want=mem[k]!==undefined?mem[k]:(function(){ var m=read(); return (m[k]===1||m[k]===0)?m[k]===1:(!TUCK[k]||pinned(c)); })();
       if(!want)paint(c,false);
       else{ var t=c.querySelector(':scope > .card-title'); if(t&&!t.hasAttribute('aria-expanded'))t.setAttribute('aria-expanded','true'); } }catch(e){} },
-    note:function(c,open,persist){ try{ var k=keyOf(c); if(!k)return; mem[k]=!!open; if(persist)save(k,open); if(open)opened(c); }catch(e){} },
+    note:function(c,open,persist){ try{ if(open){ opened(c); empty(c); } var k=keyOf(c); if(!k)return; mem[k]=!!open; if(persist)save(k,open); }catch(e){} },
     open:function(c){ try{ var k=keyOf(c), b=bodyOf(c); if(!b||b.style.display!=='none')return;
-      paint(c,true); if(k)mem[k]=true; opened(c); sync(c); }catch(e){} }
+      paint(c,true); if(k)mem[k]=true; opened(c); empty(c); sync(c); }catch(e){} },
+    /* v256: the ONE open/close path for Expand all / Collapse all — the same paint the header taps use, then the same
+       memory (saved: it is the owner's choice), heatmap redraw and empty state. */
+    set:function(c,open){ try{ if(paint(c,!!open))window.__pfFold.note(c,!!open,true); }catch(e){} }
   };
 })();
 
@@ -5312,11 +5343,10 @@ window.switchTab=switchTab;
     // v185: the rail goes UNDER a page's account switcher — pick the account, then jump within it.
     // It stays a direct child of the page (every `:scope > .card-nav` lookup depends on that).
     if(!nav){ nav=document.createElement('div'); nav.className='card-nav'; var sw=pageEl.querySelector(':scope > .acct-seg-wrap'); if(sw)sw.after(nav); else pageEl.insertBefore(nav,pageEl.firstChild); }
-    var html='<button class="cn-all" type="button" onclick="__navAll(\''+pageEl.id+'\')">Collapse all</button>';
+    var html='';   // v256: Expand/Collapse all moved out of the rail into the page's card toolbar (.pf-foldbar), one per page
     for(i=0;i<cards.length;i++){ var c=cards[i]; c.card.id='navc-'+(++NAVSEQ); // fresh unique id every build
       html+='<button class="card-nav-chip" type="button" onclick="__navJump(\''+c.card.id+'\')">'+c.title.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</button>'; }
     nav.innerHTML='<div class="card-nav-chips" role="group" aria-label="Jump to a section on this page">'+html+'</div>';
-    syncAllLabel(pageEl);
   }
   /* Expand/collapse every card on the page.
      THE APP HAS TWO COLLAPSE MECHANISMS and this has to drive both, or the button silently acts on
@@ -5335,34 +5365,59 @@ window.switchTab=switchTab;
     var id=t&&t.getAttribute('data-toggle');
     return id?document.getElementById(id):null;
   }
+  /* v256: a card counts only when it is actually on screen. hiddenWithin() catches the inline-style containers (one account at a
+     time); the client-rect check catches cards the workspace hides with CSS (Overview / Positions, Research / Actions tabs) and
+     cards inside a closed <details>. An inactive page has no boxes at all, so for it the inline check alone decides. */
+  function onScreen(c,pageEl){ if(hiddenWithin(c,pageEl))return false; return pageEl.getClientRects().length===0||c.getClientRects().length>0; }
   function pageCards(pageEl){
     var out=[]; pageEl.querySelectorAll('.card').forEach(function(c){
-      if(!hiddenWithin(c,pageEl)&&bodyOf(c))out.push(c); });
+      if(bodyOf(c)&&onScreen(c,pageEl))out.push(c); });
     return out;
   }
-  function anyOpen(pageEl){
-    return pageCards(pageEl).some(function(c){ var b=bodyOf(c); return b&&b.style.display!=='none'; });
-  }
+  function isOpen(c){ var b=bodyOf(c); return !!(b&&b.style.display!=='none'); }
+  function kept(c){ try{ return !!(window.__pfFold&&window.__pfFold.keep(c)); }catch(e){ return false; } }
+  /* "Collapse all" while anything Collapse all can fold is still open; "Expand all" once nothing is. Cards Collapse all never
+     hides (the Apex Confirm card, Action Center…) don't hold the label on "Collapse all". */
+  function anyOpen(pageEl){ return pageCards(pageEl).some(function(c){ return !kept(c)&&isOpen(c); }); }
   function syncAllLabel(pageEl){
-    var b=pageEl.querySelector(':scope > .card-nav .cn-all');
-    if(b)b.textContent=anyOpen(pageEl)?'Collapse all':'Expand all';
+    var b=pageEl.querySelector(':scope > .pf-foldbar .pf-foldall'); if(!b)return;
+    var col=anyOpen(pageEl), txt=col?'Collapse all':'Expand all';
+    if(b.dataset.mode!==(col?'collapse':'expand')){ b.dataset.mode=col?'collapse':'expand';
+      b.innerHTML='<span class="pf-foldall-i" aria-hidden="true">'+(col?'▴':'▾')+'</span>'+txt;
+      b.setAttribute('aria-label',txt+' cards on this page'); }
   }
   window.__navSyncAll=syncAllLabel;   // the per-card collapse toggles keep the label honest
+  /* Expand/collapse every eligible card on the page. The action is the one the button SHOWS (re-synced first), so a label the
+     reader saw is never contradicted. Both collapse mechanisms (data-toggle bodies and enhancer .card-body) go through the
+     shared __pfFold.set, which saves each card's choice like a header tap. */
   window.__navAll=function(pageId){
     var pageEl=document.getElementById(pageId); if(!pageEl)return;
-    var collapse=anyOpen(pageEl);
+    var b=pageEl.querySelector(':scope > .pf-foldbar .pf-foldall');
+    var collapse=b?b.dataset.mode==='collapse':anyOpen(pageEl);
     pageCards(pageEl).forEach(function(c){
-      var body=bodyOf(c); if(!body)return;
-      body.style.display=collapse?'none':'';
-      var ch=c.querySelector(':scope > .card-title .chevron');
-      if(ch)ch.style.transform=collapse?'rotate(-90deg)':'';
-      var t=c.querySelector(':scope > .card-title');
-      if(t)t.setAttribute('aria-expanded',collapse?'false':'true');
-      try{ if(window.__pfFold)window.__pfFold.note(c,!collapse,true); }catch(e){}
+      if(collapse&&kept(c))return;
+      if(isOpen(c)===!collapse)return;
+      if(window.__pfFold&&window.__pfFold.set)window.__pfFold.set(c,!collapse);
     });
     syncAllLabel(pageEl);
   };
-  function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); }); }
+  /* v256 (Jack, Nov 18 2026): ONE compact Expand all / Collapse all control per page, in a light toolbar just above the card
+     stack — not in the global header or the bottom nav. It shows on every page with at least two foldable cards on screen
+     (so v2.9 Paper, Predict and Smart $, whose cards don't fold, get none). In the workspace (Apex / Agentic) the CSS order
+     puts it under the account summary, right above the cards. */
+  var BAR_PAGES=PAGES.concat(['page-screens']);
+  function buildBar(pageEl){
+    var bar=pageEl.querySelector(':scope > .pf-foldbar'), n=pageCards(pageEl).length;
+    if(n<2&&pageEl.getClientRects().length>0){ if(bar)bar.remove(); return; }
+    if(n<2&&!bar)return;
+    if(!bar){ bar=document.createElement('div'); bar.className='pf-foldbar'; bar.setAttribute('role','toolbar'); bar.setAttribute('aria-label','Cards on this page');
+      bar.innerHTML='<button class="pf-foldall" type="button" onclick="__navAll(\''+pageEl.id+'\')"></button>';
+      var anchor=pageEl.querySelector(':scope > .myview')||pageEl.querySelector(':scope > .card-nav')||pageEl.querySelector(':scope > .acct-seg-wrap');
+      if(anchor)anchor.after(bar); else pageEl.insertBefore(bar,pageEl.firstChild); }
+    syncAllLabel(pageEl);
+  }
+  function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); });
+    BAR_PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)buildBar(el); }); }
   /* The observer watches childList only, so a pure visibility flip (the Accounts toggle) has to
      ask for the rebuild itself. */
   window.__navRebuild=buildAll;
@@ -5372,10 +5427,14 @@ window.switchTab=switchTab;
       var t=null, schedule=function(){ clearTimeout(t); t=setTimeout(buildAll,150); };
       var mo=new MutationObserver(function(muts){
         for(var i=0;i<muts.length;i++){ var tgt=muts[i].target;
-          if(tgt&&tgt.closest&&tgt.closest('.card-nav'))continue; // ignore our own writes
+          if(tgt&&tgt.closest&&(tgt.closest('.card-nav')||tgt.closest('.pf-foldbar')))continue; // ignore our own writes
           schedule(); break; }
       });
-      PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
+      BAR_PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)mo.observe(el,{childList:true,subtree:true}); });
+      /* v256: a route / tab / layout switch only flips styles or classes; the toolbar label (and whether it shows) follows it. */
+      var mv=new MutationObserver(schedule);
+      BAR_PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)mv.observe(el,{attributes:true,attributeFilter:['style']}); });
+      mv.observe(document.documentElement,{attributes:true,attributeFilter:['class','data-ws-tab','data-duo']});
     }catch(e){}
   }
   if(document.readyState!=='loading')start(); else document.addEventListener('DOMContentLoaded',start);
@@ -8131,7 +8190,7 @@ function renderScreensPage(){
     <div class="card" data-sd-screens-note style="border-left:3px solid #f59e0b;border-radius:0 10px 10px 0"><div style="font-size:12.5px;line-height:1.55"><b>Reference screen, not your buy list.</b> ••0741's buys come from the <span class="dp-link" onclick="switchTab('picks');setPlanAccount('main')">Apex card on the Plan page</span>. Nothing below is checked against Apex's leverage band, 2-per-cluster cap or tax holds, and none of it reaches the Confirm button. Found something here? Run it through <span class="dp-link" onclick="switchTab('analyze')">Analyze</span> first.</div></div>
 `+screensHeroHtml()+screensCardsHtml('oversold RSI&lt;45 screen · reference')+screensDiscHtml();
   screensRenderAll();
-  try{ if(window.__pfFold)app.querySelectorAll('.card[data-sec]').forEach(window.__pfFold.apply); }catch(e){}   // v239: this page has no card enhancer, so the fold is applied here, after the table has rows
+  try{ if(window.__pfFold)app.querySelectorAll('.card').forEach(window.__pfFold.apply); }catch(e){}   // v256: every card (keyed by data-sec or toggle id), not only data-sec ones. v239: this page has no card enhancer, so the fold is applied here, after the table has rows
 }
 
 function renderPicksStatic(){
@@ -8952,17 +9011,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=255"></script>
-<script src="ui/today.js?v=255"></script>
-<script src="ui/predictions-model.js?v=255"></script>
-<script src="ui/predictions.js?v=255"></script>
-<script src="ui/smartmoney-model.js?v=255"></script>
-<script src="ui/smartmoney.js?v=255"></script>
-<script src="ui/experience.js?v=255"></script>
-<script src="ui/ticker.js?v=255"></script>
-<script src="ui/duo.js?v=255"></script>
-<script src="ui/compact.js?v=255"></script>
-<script src="ui/journey.js?v=255"></script>
-<script src="ui/book.js?v=255"></script>
+<script src="ui/today-model.js?v=256"></script>
+<script src="ui/today.js?v=256"></script>
+<script src="ui/predictions-model.js?v=256"></script>
+<script src="ui/predictions.js?v=256"></script>
+<script src="ui/smartmoney-model.js?v=256"></script>
+<script src="ui/smartmoney.js?v=256"></script>
+<script src="ui/experience.js?v=256"></script>
+<script src="ui/ticker.js?v=256"></script>
+<script src="ui/duo.js?v=256"></script>
+<script src="ui/compact.js?v=256"></script>
+<script src="ui/journey.js?v=256"></script>
+<script src="ui/book.js?v=256"></script>
 </body>
 </html>

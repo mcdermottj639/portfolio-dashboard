@@ -418,3 +418,20 @@ column says its % is of stocks with a known sector. Book: the Actions left page 
 Positions); Allocation stacks its two lists in the right page. Phones (≤480px): the freshness timestamp wraps inside its column so
 Duo / theme / refresh stay on screen. Layout sweep: `tests/sweep-browser.mjs` (every route × 7 sizes × both accounts, run in CI on a
 scratch branch). Not verified: the physical Duo.
+
+### v256 (2026-11-19) — one Expand all / Collapse all per page (Jack, Nov 18 2026)
+- **One control per page**, in a light toolbar (`.pf-foldbar` › `.pf-foldall`) just above the card stack, on every page with at
+  least two foldable cards on screen: Apex / Agentic Account, Positions, Research, Actions (Plan), Markets, Options, Analyze,
+  Screens. Not in the global header or bottom nav. Pages whose cards don't fold (v2.9 Paper, Predict, Smart $, Today) get none.
+  The rail's old `.cn-all` button is gone (its job moved here); the rail chips are unchanged and still hidden in the workspace (v242).
+- Label = what a tap does: "Collapse all" while any eligible card is open, else "Expand all"; a tap does what the label showed.
+  ≥40px tall, right-aligned, never wraps or widens the page (folded Duo 466×677 is the design constraint).
+- **Never hidden by Collapse all:** the Apex card (Confirm with Claude), Action Center, the agentic "Where the plan stands"
+  ticket status, and any card showing a `.box-warn` warning (`KEEP` / `keep()` in the fold IIFE). A header tap still folds them.
+- **Every card's fold is remembered** (`pf_card_fold_v1`, key = scope + data-sec, else the header's data-toggle id; new scope
+  `plan-main` for `#picks-app`), so an ordinary refresh no longer reopens a folded card (before v256 only the listed cards were).
+  Existing keys, TUCK defaults (cards start open except the two explainers) and pins are unchanged. Analyze stays unkeyed.
+- One open/close path: header taps, the toolbar and navigation all go through `__pfFold` (paint → note → heatmap redraw →
+  empty state). An opened card with no content shows "Nothing to show here yet…" instead of a blank band.
+- Tests: `tests/foldbar-checks.mjs` (from journey-browser): one control per page, Collapse/Expand all, safety cards, refresh
+  memory, empty state, seven layouts.

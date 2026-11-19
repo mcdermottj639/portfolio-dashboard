@@ -162,7 +162,8 @@ try{
    if(acct==='main')await opens(acct,find,'allocation');   // Find/My view index by title and pick the first match, so a shared title lands on the self-directed card (existing behaviour)
   }
   await reloadFresh(false);await nav('accounts','main');await settle();
-  assert.equal(await page.locator('#page-portfolio .cn-all:visible').count(),0,'v242: Expand/Collapse all rail is not shown in the workspace');
+  assert.equal(await page.locator('#page-portfolio .cn-all:visible').count(),0,'v242: the rail is not shown in the workspace');
+  assert.equal(await page.locator('#page-portfolio .pf-foldbar .pf-foldall:visible').count(),1,'v256: the page card toolbar carries Expand/Collapse all in the workspace');
   // a card pinned to My view does not start folded
   await reloadFresh(false);await nav('accounts','main');await settle();
   const pinTitle=await page.evaluate(()=>__navTitleOf(document.querySelector('#app .card[data-sec="fundamentals"]')));
@@ -254,11 +255,11 @@ try{
   await chip('Covered-Call Income');await seen('Covered-Call Income');
   for(const name of Object.keys(SEC)){await reload(false);await seed(name);assert.equal(by(await opt(),name).folded,true);await chip(name);await seen(name);}
   await reload(false);await seed('Roll Scorecard');await page.evaluate(()=>{const c=document.querySelector('#options-app>.card[data-sec="opt-rolls"]');__pfGoCard(__navTitleOf(c),'options');});await settle();await seen('Roll Scorecard');
-  // rail Expand/Collapse all reaches the folded cards and keeps its label
+  // v256: the page toolbar's Expand/Collapse all (was the rail's) reaches the folded cards and keeps its label
   await reload(false);
-  assert.match(await page.locator('#page-options .cn-all').innerText(),/Collapse all/);
-  await page.locator('#page-options .cn-all').click();await settle();assert.ok((await opt()).every(x=>x.folded),'collapse all');
-  await page.locator('#page-options .cn-all').click();await settle();assert.ok((await opt()).every(x=>!x.folded),'expand all');assert.match(await page.locator('#page-options .cn-all').innerText(),/Collapse all/);
+  assert.match(await page.locator('#page-options .pf-foldall').innerText(),/Collapse all/);
+  await page.locator('#page-options .pf-foldall').click();await settle();assert.ok((await opt()).every(x=>x.folded),'collapse all');
+  await page.locator('#page-options .pf-foldall').click();await settle();assert.ok((await opt()).every(x=>!x.folded),'expand all');assert.match(await page.locator('#page-options .pf-foldall').innerText(),/Collapse all/);
   // a card pinned to My view starts open
   await page.evaluate(()=>{localStorage.setItem('pf_pins',JSON.stringify([__navTitleOf(document.querySelector('#options-app>.card[data-sec="opt-knowledge"]'))]));localStorage.removeItem('pf_card_fold_v1');});
   await reload(true);c=await opt();assert.equal(by(c,'Options Knowledge').folded,false,'pinned card starts open');assert.equal(by(c,'Roll Scorecard').folded,false,'v255: Roll Scorecard starts open');
@@ -276,7 +277,7 @@ try{
     assert.ok(cc[1]>=ex[1]+ex[3]&&ti[1]>=cc[1]+cc[3],'order down the page: Expirations, rankers, Trade Ideas');
     for(const t of ['Options Income & History','Roll Scorecard','Options Knowledge'])assert.ok(by(k,t).box[2]>=ti[2]-1,t+' is full width');
    }
-   await page.locator('#page-options .cn-all').click();await page.locator('#page-options .cn-all').click();await settle();
+   await page.locator('#page-options .pf-foldall').click();await page.locator('#page-options .pf-foldall').click();await settle();
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`options ${w}x${h} expanded: page width`);
   }
   await cdp.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,bottom:0,right:0,left:0}});
@@ -412,6 +413,12 @@ try{
   const {runResearchFoldChecks}=await import('./research-folds-checks.mjs');
   await runResearchFoldChecks({browser,base,sample,stub,writes,
    apex:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}],heldLevels:[{sym:'AAPL',stop:170,tp1:230,why:'Synthetic held-name evidence'}]}});
+ }
+ // ── v256: one page-level Expand all / Collapse all toolbar on every page with foldable cards (display only) ──
+ {
+  const {runFoldbarChecks}=await import('./foldbar-checks.mjs');
+  await runFoldbarChecks({browser,base,sample,stub,writes,
+   apex:{asOf:new Date().toISOString(),targets:{MSFT:20},top5:[{sym:'MSFT',composite:8,why:'Synthetic entry research',limit:420,trigger:420,stop:380,tp1:500,orderType:'limit',tradable:true}]}});
  }
  // ── v240: one wording for agentic ticket status on every screen (display only) ──
  {
