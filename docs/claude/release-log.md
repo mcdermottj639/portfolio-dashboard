@@ -4,6 +4,12 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v259 — Today links to the morning order ticket (2026-11-19)
+Jack (Nov 19 4:53 PM ET): "Have a link on today page that brings me to this spot". Today's Apex tile gets a
+"🧾 Morning order ticket ↗" button (`data-td-apex-ticket`, ui/today.js) that sets `#apex-ticket`, so the v258 jump
+opens Apex · Actions and scrolls to the ticket. Files: ui/today.js, index.html, sw.js, tests. Display only; no data,
+rule or order change. NOT verified: physical Duo.
+
 ## v258 — Morning order ticket on the Apex card, deep link #apex-ticket (2026-11-19)
 Jack (Nov 19 3:14 PM ET, sample "Morning stock order ticket" image; option 1 picked 3:53 PM ET). DISPLAY ONLY.
 `Apex.ticket()` re-lays the Confirm list (`bookLines`) as 🟢 Buys (entry · target · stop, R/R in the row) and

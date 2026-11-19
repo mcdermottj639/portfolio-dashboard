@@ -49,6 +49,13 @@ export async function runTodayChecks(page) {
     assert.match(await page.locator('.td-waiting').innerText(), /Waiting on you/i);
     assert.match(await page.locator('.td-monitor').innerText(), /Out of your hands/i);
 
+    // v259 (Jack, Nov 19 2026): Today's Apex tile links straight to the morning order ticket.
+    await page.locator('[data-td-apex-ticket]').click();
+    await page.waitForFunction(() => window.PFExperience.route === 'plan' && window.PFExperience.account === 'main' && document.getElementById('apex-ticket'));
+    await page.waitForFunction(() => { const r=document.getElementById('apex-ticket').getBoundingClientRect(); return r.height>0 && r.top>=0 && r.top<innerHeight; }, null, {timeout:5000});
+    await page.evaluate(() => { history.replaceState(null,'',location.pathname+location.search); window.__apexTicketJumped=false; });
+    await openToday(page);
+
     // Theme selection persists independently of the account / route state and follows the
     // operating system only when System has been selected explicitly.
     await chooseTheme(page, 'dark');
