@@ -4,6 +4,15 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v255 — cleanup release: What if? removed, cards open, labels, Book fixes (2026-11-19)
+Jack (Nov 18, relayed handoff plan: "Say 'go'"): one release, six steps. What if? removed everywhere (route, page, Overview row,
+Decision evidence link, Apex sliders, model fn); the Risk stress test stays. Cards start open except `agp-loop` and `opt-knowledge`
+(`TUCK` in the fold IIFE; saved choices still win). Labels: Deployed 1 decimal, "No active ticket", "Target names held",
+research age vs the 14-day cycle (`PFExperienceModel.researchCycle`; agentic research stamp stale after 14d, was 7), By Sector
+denominator. Book: Actions left page + Performance + Top holdings (5); Allocation stacks in the pane. Phones: freshness stamp
+wraps so the controls stay on screen. New `tests/sweep-browser.mjs` (route × 7 sizes × both accounts; reports, not in CI).
+No strategy, order, threshold, schedule, account-isolation, data or producer change. NOT verified: physical Duo.
+
 ## Producer — Apex paper rejected-names ledger (2026-11-18, no app version change)
 Jack (Nov 18 7:16 PM ET, after an opportunity-cost concern about the Apex filters): "Start paper review".
 `producer/apex-paper.mjs` now freezes, with each Monday cohort, a `shadow` ledger in `data/apex-paper-v29.json`:

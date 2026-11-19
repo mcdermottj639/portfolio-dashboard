@@ -282,17 +282,6 @@
       detail:e.detail, text, compact:text + (e.caveat ? ' (' + e.caveat + ')' : ''), next:e.next || '', caveat:e.caveat || '',
       heading:e.terminal ? 'Last ticket' : 'Rebalance in flight'};
   }
-  function scenario({ equity, positionValue, shockPct, shiftPct, costBps }) {
-    const values = [equity, positionValue, shockPct, shiftPct, costBps].map(number);
-    if (values.some(n => n === null)) return null;
-    [equity, positionValue, shockPct, shiftPct, costBps] = values;
-    if (equity <= 0 || positionValue < 0 || shockPct < -100 || shockPct > 100 || shiftPct < 0 || shiftPct > 100 || costBps < 0 || costBps > 1000) return null;
-    const shifted = positionValue * shiftPct / 100;
-    const cost = shifted * costBps / 10000;
-    const before = positionValue * shockPct / 100;
-    const after = (positionValue - shifted) * shockPct / 100 - cost;
-    return { before, after, difference: after - before, cost, shifted, beforePct: before / equity * 100, afterPct: after / equity * 100 };
-  }
   function evidence(target, ticker) {
     const sleeves = target?.research?.evidence?.[ticker] || {};
     return Object.entries(sleeves).flatMap(([sleeve, row]) =>
@@ -327,12 +316,22 @@
     };
     const minutes = v => age(v, now), days = v => { const t = Date.parse(v); return Number.isFinite(t) ? (now - t) / 86400000 : null; };
     // The account snapshot time is NOT repeated here: the gray freshness bar is its one authoritative stamp, with its own stale warning (Jack, Nov 17: one date/time stamp, no duplicates).
-    if (agentic) add('research', 'Research', data?.agentic?.target?.asOf, v => { const d = days(v); return d !== null && d > 7; });
+    // v255: Agentic research runs on a 14-day cycle (producer/agentic-due.mjs, fortnightly since Sep 24), so it is stale past 14 days, not 7.
+    if (agentic) add('research', 'Research', data?.agentic?.target?.asOf, v => { const d = days(v); return d !== null && d > RESEARCH_CYCLE_DAYS; });
     else {
       add('research', 'Research', ctx.apexTarget?.asOf, v => { const m = minutes(v); return m === null || m > 8 * 1440 || m < -5; });
       add('scan', 'Last scan', data?.picks?.ts, v => { const t = Date.parse(v + 'T00:00:00'); return Number.isFinite(t) && Math.round((now - t) / 86400000) >= 2; });
     }
     return out;
   }
-  return { stamp, freshnessStamps, number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, scenario, evidence, ticketStatus, ticketStatusFor, TICKET_STATUS };
+  // v255 (audit, Nov 18 2026): the Agentic research date read against its 14-day cycle, e.g. "9 days into the 14-day cycle".
+  const RESEARCH_CYCLE_DAYS = 14;
+  function researchCycle(asOf, now) {
+    const t = Date.parse(asOf); if (!Number.isFinite(t)) return null;
+    const days = Math.max(0, Math.floor(((now == null ? Date.now() : now) - t) / 86400000)), over = days > RESEARCH_CYCLE_DAYS;
+    const d = n => n + (n === 1 ? ' day' : ' days');
+    return {days, cycle: RESEARCH_CYCLE_DAYS, overdue: over, fill: Math.min(100, days / RESEARCH_CYCLE_DAYS * 100),
+      text: over ? d(days) + ' old · ' + d(days - RESEARCH_CYCLE_DAYS) + ' past the 14-day cycle' : d(days) + ' into the 14-day cycle'};
+  }
+  return { researchCycle, RESEARCH_CYCLE_DAYS, stamp, freshnessStamps, number, agenticPositionRows, snapshot, age, valueHistory, composition, breadth, dailyBrief, combinedHistory, easternDay, evidence, ticketStatus, ticketStatusFor, TICKET_STATUS };
 });

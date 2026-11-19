@@ -204,7 +204,7 @@ Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equi
   same change.
 
 ## 11. CURRENT STATE and open items (dated 2026-11-18 — recheck before relying on them)
-- App/cache **v254 / pf-v254** on `main` (recheck `APP_VERSION` / `CACHE_VERSION`).
+- App/cache **v255 / pf-v255** on `main` (recheck `APP_VERSION` / `CACHE_VERSION`).
 - **UNVERIFIED — DXCM history correction (v252).** The fix to held-name daily history (`hist-plan.mjs`
   bar-sized calls, held-name directive in `preflight.mjs`, union of raw files and `holdings-history`
   warning in `build-data.mjs`) is merged, but ticker-level freshness is **not confirmed**: the snapshot is

@@ -145,10 +145,11 @@ const goArea=async(p,a)=>{await p.locator(area(a)).click();await settle(p);};
    else assert.ok((await p.locator('.ws-act').allInnerTexts()).every(t=>!/ticket|deployment guard/i.test(t)),'items come only from remaining records');
    await ctx.close();}
 
-  // ── 6. Overview row for Options Income & History, What if? stays reachable, Classic view moved into More ──
+  // ── 6. Overview row for Options Income & History (v255: What if? removed), Classic view moved into More ──
   {const {ctx,p}=await open();await goArea(p,'apex');await p.locator(tab('overview')).click();await settle(p);
    await p.locator('[data-ws-card-tab="options"]').click();await settle(p);assert.equal((await st(p)).route,'options','Options Income & History row opens Options');
-   await p.evaluate(()=>PFExperience.navigate('accounts'));await settle(p);await p.locator('.ws-row[data-ex-route="scenario"]').click();await settle(p);assert.equal((await st(p)).route,'scenario','What if? row');
+   await p.evaluate(()=>PFExperience.navigate('accounts'));await settle(p);assert.equal(await p.locator('.ws-row[data-ex-route="scenario"]').count(),0,'v255: the What if? row is removed');
+   assert.equal(await p.evaluate(()=>{PFExperience.navigate('scenario');return PFExperience.route;}),'accounts','v255: the What if? route no longer exists');
    await goArea(p,'more');assert.equal(await p.locator('#ex-classic-more').isVisible(),true,'Classic view lives in More');
    await p.locator('#ex-classic-more').click();await p.waitForSelector('.ex-classic-return');assert.equal(await p.locator('#tabbar').isVisible(),true,'Classic view still opens');await p.locator('.ex-classic-return').click();await settle(p);
    await goArea(p,'today');assert.equal(await p.locator('#ex-classic').isVisible(),true,'Today keeps its own Classic button');await ctx.close();}
