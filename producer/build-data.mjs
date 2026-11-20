@@ -37,6 +37,7 @@ import { updatePerf, tradeResult, scoreboard } from './smartmoney-perf.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
 import { mergeOrderPages } from './order-pages.mjs';
+import { summarizeOpenOrders } from './open-orders.mjs';
 import { compactHist, histBytes, mergeHist, mergeBars } from './histbars.mjs';
 import { heldHistoryGaps } from './hist-plan.mjs';
 import { gradeAll, gradingUniverse, quoteCloseBars, addQuoteCloses } from './pickgrade.mjs';
@@ -823,6 +824,16 @@ const data = {
       console.log(`self-directed log: ${graded.stats.total} logged · ${graded.stats.resolved} resolved (${graded.stats.ahead} ahead)${graded.stats.avgAlpha != null ? ` · avg alpha ${graded.stats.avgAlpha}pp vs SPY` : ''}`);
     }
   }
+}
+// v260: ••••0741 open sell orders (raw/main-open-orders.json, EVERY-RUN) for the Apex morning ticket's "Placed"
+// marks. Never carried forward: a stale order list could hide a to-do, so a run without the file publishes null
+// and the ticket shows every row.
+if (data.main) {
+  const f = filesMatching(/^main-open-orders\.json$/)[0];
+  let open = null;
+  try { if (f) open = summarizeOpenOrders(readJSON(f), data.generatedAt); } catch (error) { console.warn(`open orders: unreadable (${error.message}); ticket shows every row.`); }
+  data.main.openOrders = open;
+  console.log(open ? `open orders: ${Object.keys(open.bySym).length} symbol(s) with a resting sell` : 'open orders: not fetched this run (ticket shows every row)');
 }
 // Flow & Positioning signals (producer/raw/flow/<SYM>.json, written by flow-fetch.mjs — analyst revision
 // momentum, insider Form 4 clusters, earnings-surprise drift; each already scored by flow.mjs). Merged

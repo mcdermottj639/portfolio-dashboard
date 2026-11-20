@@ -655,7 +655,7 @@
       lines.push({ side: 'buy', sym: a.sym, qty: a.qty, text: `Add ${a.qty} ${a.sym}`, px: P('limit', t.limit, t.orderType === 'limit' ? 'Day' : 'GTC'), est: !fresh, sub: `${t.orderType === 'limit' ? 'limit entry' : 'buy-stop trigger ' + money(t.trigger)} · toward ${a.tgt.toFixed(0)}% of equity (now ${a.have.toFixed(0)}%) · target ${money(t.tp1)} · stop ${money(t.stop)} · R/R ${t.rr.toFixed(2)}` }); });
     /* v213 (Jack, Nov 11 2026: "Sell or buy at what price"): every line carries the price to ENTER — a research-dropped
        exit uses the scan's swap rule, limit = last × 0.995, Day (same as the rule sells) — never just "last". */
-    (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, qty: r.ticket.qty, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? P('limit', r.ticket.px, r.ticket.gtc ? 'GTC' : 'Day') : '', est: !fresh, sub: r.title }));
+    (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, qty: r.ticket.qty, limitPx: r.ticket.px > 0 ? r.ticket.px : null, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? P('limit', r.ticket.px, r.ticket.gtc ? 'GTC' : 'Day') : '', est: !fresh, sub: r.title }));
     return lines;
   }
   /* v215 (Jack, Nov 11 2026 05:15 ET, screenshots of Plan step 1 "✓ Nothing is broken · ≈ $0.00 freed" above a
@@ -880,7 +880,7 @@
     const sells = lines.filter((l) => l.side === 'sell').map((l) => {
       sellSyms.add(l.sym);
       const E = exitLevelsFor(cfg, l.sym) || {}, p = st.positions.find((x) => x.symbol === l.sym) || {};
-      return { side: 'sell', sym: l.sym, qty: num(l.qty), name: E.name || null, action: l.text, price: l.px, est: !!l.est, last: num(p.px), tp1: num(E.tp1), stop: num(E.stop), note: l.sub || '' };
+      return { side: 'sell', sym: l.sym, qty: num(l.qty), name: E.name || null, action: l.text, price: l.px, est: !!l.est, last: num(p.px), tp1: num(E.tp1), stop: num(E.stop), note: l.sub || '', limitPx: num(l.limitPx) };
     });
     /* Held names (never the owner-managed core) with a research stop or target and no sell today: their sell-stop and
        take-profit levels, so every held name on the ticket shows where it exits. Research levels, not Jack's orders. */
@@ -888,8 +888,30 @@
       const E = exitLevelsFor(cfg, p.symbol) || {}, stop = num(E.stop), tp1 = num(E.tp1), last = num(p.px);
       return stop || tp1 ? { side: 'stop', sym: p.symbol, name: E.name || null, qty: num(p.qty), last, est: !fresh, tp1, stop, toStopPct: pctFrom(stop, last), toTargetPct: pctFrom(tp1, last) } : null;
     }).filter(Boolean);
+    /* v260 (Jack, Nov 20 2026 2:30 AM ET, ZS on the ticket beside his Nov 9 ZS TP/SL order: "Why is this showing if
+       the orders in"). A row whose sell Jack already has resting in Robinhood (cfg.openOrders, the producer's read-only
+       ••••0741 open-order summary) is marked placed and drops out of the to-do count. Display only: nothing here feeds
+       rules, R/R or Confirm (v211). No order list ⇒ every row stays a to-do (fail open). */
+    const OO = cfg.openOrders && cfg.openOrders.bySym ? cfg.openOrders.bySym : null;
+    const mark = (r) => { const p = placedFor(OO, r); if (p) r.placed = p; return r; };
+    sells.forEach(mark); stops.forEach(mark);
+    const todo = (a) => a.filter((r) => !r.placed).length;
+    const toPlace = todo(sells) + todo(stops), placed = sells.length + stops.length - toPlace;
     const state = cfg.researchReady === false ? 'stale' : (buys.length || sells.length || stops.length ? 'ready' : 'none');
-    return { state, researchAsOf: cfg.researchAsOf || null, researchStamp: etStamp(cfg.researchAsOf), quotesAge: ageText(cfg.snapAgeMin), fresh, buys, sells, stops };
+    return { state, researchAsOf: cfg.researchAsOf || null, researchStamp: etStamp(cfg.researchAsOf), quotesAge: ageText(cfg.snapAgeMin), fresh, buys, sells, stops,
+      toPlace, placed, ordersStamp: OO ? etStamp(cfg.openOrders.asOf) : null };
+  }
+  /* A sell-stop row is placed when a sell stop rests for the symbol. A sell row (sell today) is placed only when a
+     working sell (market, or a limit at or under 2% above the ticket's limit) covers the ticket's shares — a take-profit
+     far above the market does not do today's sell. */
+  function placedFor(OO, r) {
+    const o = OO && OO[r.sym];
+    if (!o) return null;
+    const out = { stop: o.stop, limit: o.limit, qty: Math.max(o.stopQty || 0, o.limitQty || 0) || null, at: o.placedAt || null };
+    if (r.side === 'stop') return o.stop != null ? out : null;
+    const px = r.limitPx;
+    const working = o.market || (o.limit != null && px > 0 && o.limit <= px * 1.02);
+    return working && (!(r.qty > 0) || (o.limitQty || 0) >= r.qty - 1e-6) ? out : null;
   }
   function ticketHtml(T, esc) {
     const n2 = (v) => (v == null ? '—' : (+v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -906,10 +928,15 @@
     const est = (r) => (r.est ? '≈ ' : '');
     const buyRows = T.buys.map((r) => row(r, g, est(r) + n2(r.entry), n2(r.tp1), n2(r.stop),
       `<b>${esc(r.action)}</b> · ${esc(r.price)}${r.name ? ` · ${esc(r.name)}` : ''}<br>Target ${pc(r.rewardPct)} · stop ${pc(r.riskPct)}${r.rr != null ? ` · R/R <b>${r.rr.toFixed(2)}</b>` : ''}${r.trigger && r.trigger !== r.entry ? ` · trigger ${n2(r.trigger)}` : ''}<br><span style="opacity:.8">${esc(r.note)}</span><br>${rh(r.sym)}`)).join('');
-    const sellRows = T.sells.map((r) => row(r, rd, est(r) + n2(r.last), n2(r.tp1), n2(r.stop),
+    const todoSells = T.sells.filter((r) => !r.placed), todoStops = T.stops.filter((r) => !r.placed);
+    const sellRows = todoSells.map((r) => row(r, rd, est(r) + n2(r.last), n2(r.tp1), n2(r.stop),
       `<b>${esc(r.action)}</b> · ${esc(r.price)}${r.name ? ` · ${esc(r.name)}` : ''}<br><span style="opacity:.8">${esc(r.note)}</span><br>${rh(r.sym)}`)).join('');
-    const stopRows = T.stops.map((r) => row(r, rd, '≈ ' + n2(r.last), n2(r.tp1), n2(r.stop),
+    const stopRows = todoStops.map((r) => row(r, rd, '≈ ' + n2(r.last), n2(r.tp1), n2(r.stop),
       `<b>Hold · sell-stop levels</b>${r.name ? ` · ${esc(r.name)}` : ''}<br>Stop ${n2(r.stop)}${r.toStopPct != null ? ` (${pc(r.toStopPct)} from last)` : ''} · target ${n2(r.tp1)}${r.toTargetPct != null ? ` (${pc(r.toTargetPct)})` : ''}<br><span style="opacity:.8">Research exit levels — the app alerts when price reaches them. Not an order today.</span><br>${rh(r.sym)}`)).join('');
+    /* v260: rows Jack already placed — muted, labelled Placed, showing the resting order's own levels (display only). */
+    const placedOn = T.ordersStamp ? `orders read ${esc(T.ordersStamp)}` : 'open orders';
+    const placedRows = T.sells.concat(T.stops).filter((r) => r.placed).map((r) => { const o = r.placed;
+      return `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" data-placed="1" style="border-top:1px solid rgba(0,0,0,.06);opacity:.6"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, '#e5e7eb', '#374151')}<span data-apex-ticket-placed style="font-size:10.5px;font-weight:700;color:#059669;white-space:nowrap">✓ Placed</span></span>${cell('≈ ' + n2(r.last))}${cell(n2(o.limit), '#6b7280')}${cell(n2(o.stop), '#6b7280')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>Order already in Robinhood</b>${o.qty ? ` · ${shares(o.qty)} sh` : ''}${o.limit != null ? ` · sell limit ${n2(o.limit)}` : ''}${o.stop != null ? ` · stop ${n2(o.stop)}` : ''}${o.at && etStamp(o.at) ? ` · placed ${esc(etStamp(o.at))}` : ''}<br><span style="opacity:.8">Nothing to do. Research levels: target ${n2(r.tp1)} · stop ${n2(r.stop)}. From ${placedOn}.</span><br>${rh(r.sym)}</div></details>`; }).join('');
     const box = (title, tone, sub, h, body) => `<div style="border:1px solid ${tone[1]}33;border-radius:12px;overflow:hidden;margin:8px 0;background:var(--card,#fff)"><div style="background:${tone[0]};color:${tone[1]};padding:7px 10px;font-weight:800;font-size:12.5px;letter-spacing:.02em">${title} <span style="font-weight:600;opacity:.8">${sub}</span></div>${h}${body}</div>`;
     const stamp = T.researchStamp ? esc(T.researchStamp) : 'unknown';
     const meta = `<div style="font-size:11px;color:#6b7280;margin:2px 0 4px">Research ${stamp} · quotes ${esc(T.quotesAge)}${T.fresh ? '' : ' · ≈ = estimate, not an order price'} · tap a row for details</div>`;
@@ -918,7 +945,8 @@
     else if (T.state === 'none') body = `<div data-apex-ticket-empty style="font-size:12px;color:var(--text);opacity:.8;padding:6px 0">No orders today. Research ${stamp}.</div>`;
     else body = '';
     const buysBox = T.state !== 'stale' && T.buys.length ? box('🟢 Buys', g, `(${T.buys.length})`, head('Entry', 'Target', 'Stop'), buyRows) : '';
-    const sellsBox = T.sells.length || T.stops.length ? box('🔴 Sells &amp; sell stops', rd, `(${T.sells.length + T.stops.length})`, head('Last', 'Target', 'Stop'), sellRows + stopRows) : '';
+    const toPlace = todoSells.length + todoStops.length, nPlaced = T.sells.length + T.stops.length - toPlace;
+    const sellsBox = T.sells.length || T.stops.length ? box('🔴 Sells &amp; sell stops', rd, `(${toPlace})${nPlaced ? ` <span data-apex-ticket-placed-count style="font-weight:600">· ${nPlaced} placed</span>` : ''}`, head('Last', 'Target', 'Stop'), sellRows + stopRows + placedRows) : '';
     const noBuys = T.state === 'ready' && !T.buys.length ? `<div style="font-size:11.5px;color:#6b7280;margin:4px 0">No buys today.</div>` : '';
     return `<div id="apex-ticket" data-apex-ticket="${T.state}" style="scroll-margin-top:72px"><style>[data-apex-ticket-row]>summary::-webkit-details-marker{display:none}[data-apex-ticket-row][open]>summary{background:rgba(0,0,0,.03)}</style><div class="ac-tier">🧾 Morning order ticket</div>${meta}${body}${noBuys}${buysBox}${sellsBox}<div style="font-size:10.5px;color:#9ca3af;margin:2px 0 8px">Display only — you place Apex orders yourself in Robinhood. Prices are research levels.</div></div>`;
   }

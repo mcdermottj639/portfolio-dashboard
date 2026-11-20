@@ -169,7 +169,8 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
      resolve it via `get_accounts`, see the callout below; the `agentic-*.json` rows are EVERY-RUN,
      **not** FETCH_ALL-only), plus the ••••3900 `get_pnl_trade_history` row (the wash-sale ledger's
      source — also EVERY-RUN), the ••••0741 `get_equity_orders` row (the self-directed Rebalance
-     Log's source — also EVERY-RUN), quotes, VIX, options, and (v252) any `PREFLIGHT ALSO: held names with no usable daily history` call preflight printed — one
+     Log's source — also EVERY-RUN), the ••••0741 open-orders row (v260, the Apex ticket's "Placed"
+     marks — also EVERY-RUN), quotes, VIX, options, and (v252) any `PREFLIGHT ALSO: held names with no usable daily history` call preflight printed — one
      symbol per call, written to the `hist-day-held-<n>.json` file it names — and **SKIP the FETCH_ALL-only items** (historicals,
      fundamentals, the AV daily refresh, and the picks rebuild). `build-data.mjs` carries those
      forward from the prior snapshot automatically. Then go straight to step 4.
@@ -218,6 +219,7 @@ Work from the project root: `C:\Users\mcder\OneDrive\Documents\Claude\Projects\P
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <agentic acct …3900>, span: "ytd" }` | `producer/raw/agentic-trades.json` | EVERY-RUN |
    | `Robinhood · get_pnl_trade_history` | `{ account_number: <account>, span: "3month" }` — if `next_cursor` is non-empty, fetch the next page(s) and merge every page's `trades` into this ONE file | `producer/raw/main-trades.json` | EVERY-RUN (also the option-expiry evidence, step 3c) |
    | `Robinhood · get_equity_orders` | `{ account_number: <account>, state: "filled", created_at_gte: "<main-order-plan.mjs date>" }` | `producer/raw/main-orders-incremental.json` (request wrapper above) | EVERY-RUN |
+   | `Robinhood · get_equity_orders` | `{ account_number: <account>, state_group: "open" }` (READ-ONLY; v260 — the Apex morning ticket marks a row Jack already placed. OCO / TP-SL legs come back as ordinary open orders, so no advanced-orders call. Never place, review or cancel anything.) | `producer/raw/main-open-orders.json` | EVERY-RUN |
    | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-main.json` | **FETCH_ALL only** |
    | `Robinhood · get_realized_pnl` | `{ account_number: <account>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["option"] }` | `producer/raw/realized-main-opt.json` | **FETCH_ALL only** |
    | `Robinhood · get_realized_pnl` | `{ account_number: <agentic acct …3900>, start_date: "<Jan 1 this year>", end_date: "<today>", asset_classes: ["equity"] }` | `producer/raw/realized-agentic.json` | **FETCH_ALL only** |
