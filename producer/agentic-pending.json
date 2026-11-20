@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-13-oref7a",
-  "created": "2026-11-13",
+  "id": "2026-11-20-xulo4k",
+  "created": "2026-11-20",
   "targetId": "97f64950150a6d2dd74d",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,71 +16,45 @@
   "universeVersion": "80f4c5d54ce396515cb7",
   "status": "done",
   "autoEligible": true,
-  "turnover": 281.71,
-  "book": 8170.74,
-  "planHash": "s[]b[MA:38,META:48,MSFT:82,PEP:46,SPY:68]t[]",
+  "turnover": 435.45,
+  "book": 7735.11,
+  "planHash": "s[NEM:401]b[CVX:34]t[]",
   "legs": {
-    "sells": [],
+    "sells": [
+      {
+        "sym": "NEM",
+        "kind": "exit",
+        "dollars": 401.3,
+        "shares": 4.111042,
+        "price": 97.615,
+        "pl": -64.89,
+        "note": "phase-out name at/below its research stop ($97.62 ≤ $100) — already dropped once by the research, so the stop break is the second strike; exit now"
+      }
+    ],
     "buysNow": [
       {
-        "sym": "MSFT",
+        "sym": "CVX",
         "kind": "buy",
-        "dollars": 82.32,
-        "shares": 0.1571,
-        "price": 523.99,
+        "dollars": 34.15,
+        "shares": 0.1649,
+        "price": 207.065,
         "pl": null,
-        "note": "17.2% → 18.22% target"
-      },
-      {
-        "sym": "META",
-        "kind": "buy",
-        "dollars": 47.58,
-        "shares": 0.075,
-        "price": 634.21,
-        "pl": null,
-        "note": "10.9% → 11.52% target"
-      },
-      {
-        "sym": "SPY",
-        "kind": "buy",
-        "dollars": 67.58,
-        "shares": 0.0899,
-        "price": 751.91,
-        "pl": null,
-        "note": "7.6% → 8.42% target"
-      },
-      {
-        "sym": "MA",
-        "kind": "buy",
-        "dollars": 37.92,
-        "shares": 0.0573,
-        "price": 661.785,
-        "pl": null,
-        "note": "6.2% → 6.64% target"
-      },
-      {
-        "sym": "PEP",
-        "kind": "buy",
-        "dollars": 46.31,
-        "shares": 0.3206,
-        "price": 144.4266,
-        "pl": null,
-        "note": "4.7% → 5.31% target"
+        "note": "8.9% → 9.3% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": 0,
-    "net": 0,
+    "realizedLoss": -64.89,
+    "net": -64.89,
     "term": "short",
     "note": null
   },
   "deferred": [
     {
-      "sym": "CVX",
-      "reason": "above-entry",
+      "sym": "META",
+      "reason": "below-stop",
       "until": null
     },
     {
@@ -96,30 +70,36 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "$605.09 of deferred weight (CVX, AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "3 name(s) deferred (CVX, AAPL, COST) — ~$605.09 of intended weight held pending earnings/re-verify/wash-sale",
-    "$9.05 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)"
+    "$552.97 of deferred weight (META, AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "3 name(s) deferred (META, AAPL, COST) — ~$552.97 of intended weight held pending earnings/re-verify/wash-sale",
+    "$377.06 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "entry zones are 9d old (target asOf 2026-11-11) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up"
   ],
   "history": [
     {
-      "at": "2026-11-13",
+      "at": "2026-11-20",
       "to": "proposed"
     },
     {
-      "at": "2026-11-13",
+      "at": "2026-11-20",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-13",
+      "at": "2026-11-20",
+      "to": "sells-placed"
+    },
+    {
+      "at": "2026-11-20",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-13",
+      "at": "2026-11-20",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-13",
-  "buys-placedAt": "2026-11-13",
-  "doneAt": "2026-11-13",
-  "completedAt": "2026-11-13T18:23:12.507Z"
+  "confirmedAt": "2026-11-20",
+  "sells-placedAt": "2026-11-20",
+  "buys-placedAt": "2026-11-20",
+  "doneAt": "2026-11-20",
+  "completedAt": "2026-11-20T15:22:45.106Z"
 }

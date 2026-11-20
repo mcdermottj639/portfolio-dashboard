@@ -2617,6 +2617,50 @@
           ]
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "97f64950150a6d2dd74d",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "80f4c5d54ce396515cb7",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-20-rebalance",
+      "date": "2026-11-20",
+      "kind": "rebalance",
+      "targetAsOf": "2026-11-11",
+      "book": 7735.11,
+      "equityAtDecision": 7725.45,
+      "spyAt": 710.23,
+      "rationale": "EXEC_AUTO ticket 2026-11-20-xulo4k: exited NEM (sold 4.111042 sh @ $98.185 = $403.70, realized ST loss -$64.89 — phase-out name broke its $100 research stop at $97.62, second strike after the earlier phase-out) then deployed $34.15 of cash+proceeds into CVX ($34.15 → 9.3% target, 0.164241 sh @ $207.925). Held $552.97 for META (below-stop), AAPL (above-entry), COST (above-entry); $377.06 left in cash (deferred-weight policy, no known clearing date). Live pre-checks: plan basis book $7,735.11 vs live total_value $7,737.45 pre-trade (+0.03%, within the 5% abort); buying power $413.55 after the NEM fill covered the $34.15 CVX buy; no orders on ••••3900 today before this ticket (PDT n/a); no CVX orders or realized losses on the margin account (••••0741) in the trailing 30 days/month (cross-account wash n/a); CVX does not report earnings within 7 days. Drawdown per the gate: book -8.1% from its 2026-08-10 peak vs benchmark -7.4% (-0.7pp relative; deployment normal). Turnover $435.45.",
+      "trades": [
+        {
+          "sym": "NEM",
+          "side": "SELL",
+          "dollars": 403.7,
+          "shares": 4.111042,
+          "priceAt": 98.185,
+          "weightBefore": null,
+          "weightAfter": null
+        },
+        {
+          "sym": "CVX",
+          "side": "BUY",
+          "dollars": 34.15,
+          "shares": 0.164241,
+          "priceAt": 207.925,
+          "weightBefore": 8.86,
+          "weightAfter": 9.3
+        }
+      ]
     }
   ]
 }
