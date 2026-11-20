@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const A = require('../ui/apex.js');
+import { summarizeOpenOrders } from './open-orders.mjs';
 // v201: IREN is owner-managed by default (no IREN sells). The mechanics stay tested under the old config.
 const LEGACY = { coreOwner: false, ladder: [{ sym: 'IREN', px: 30, qty: 200, note: 'newest lots first' }] };
 
@@ -913,6 +914,55 @@ ok('v258 morning ticket: same lines as Confirm, entry+target on every buy, hones
   // stale quotes: rows marked as estimates
   const q = A.ticket(st, out, Object.assign({}, cfg, { snapAgeMin: 600 }));
   assert.ok(q.buys.every((b) => b.est) && /≈ = estimate/.test(A.ticketHtml(q, (s) => String(s))));
+});
+
+/* v260 — Jack, Nov 20 2026: "Why is this showing if the orders in" (ZS on the ticket, ZS TP/SL already resting).
+   Synthetic orders only. */
+ok('v260 open orders: summary keeps open sells only, OCO legs merge per symbol', () => {
+  const o = (sym, side, state, type, trigger, qty, price, stop, cum) => ({ symbol: sym, side, state, type, trigger, quantity: String(qty), cumulative_quantity: String(cum || 0), price: price == null ? null : String(price), stop_price: stop == null ? null : String(stop), created_at: '2026-11-09T14:45:49Z' });
+  const S = summarizeOpenOrders({ data: { orders: [
+    o('ZS', 'sell', 'confirmed', 'limit', 'immediate', 8, 267, null), o('ZS', 'sell', 'confirmed', 'market', 'stop', 8, null, 180),
+    o('AAA', 'sell', 'cancelled', 'market', 'stop', 3, null, 10), o('BBB', 'buy', 'queued', 'limit', 'immediate', 2, 50, null),
+    o('CCC', 'sell', 'queued', 'market', 'stop', 4, null, 20, 4) ] } }, '2026-11-20T07:00:00Z');
+  assert.deepEqual(Object.keys(S.bySym), ['ZS'], 'cancelled, buy and fully filled orders drop out');
+  assert.equal(S.bySym.ZS.limit, 267); assert.equal(S.bySym.ZS.stop, 180); assert.equal(S.bySym.ZS.stopQty, 8);
+  assert.equal(summarizeOpenOrders(null), null); assert.equal(summarizeOpenOrders({ data: {} }), null);
+  assert.deepEqual(summarizeOpenOrders({ data: { orders: [] } }).bySym, {});
+});
+ok('v260 morning ticket: a row with a resting order shows as placed and leaves the to-do count', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeCap: false, snapAgeMin: 5, researchReady: true, researchAsOf: '2026-11-16T07:13:00-05:00',
+    targets: { IREN: 20 }, levels: {},
+    exitLevels: { ZS: { stop: 173.86, tp1: 267.87 }, NET: { stop: 271.16, tp1: 370.35 }, CRWD: { stop: 201.47, tp1: 286.99 } } });
+  const st = A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'ZS', qty: 8, px: 205.89, avg: 198 },
+    { symbol: 'NET', qty: 7, px: 303.74, avg: 290 }, { symbol: 'CRWD', qty: 1, px: 243.4, avg: 240 }], cash: -1000 });
+  const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
+  const before = A.ticket(st, out, cfg);
+  assert.equal(before.toPlace, before.sells.length + before.stops.length, 'no order list: every row is a to-do (fail open)');
+  const openOrders = { asOf: '2026-11-20T07:00:00Z', bySym: {
+    ZS: { stop: 180, stopQty: 8, limit: 267, limitQty: 8, market: false, placedAt: '2026-11-09T14:45:49Z' },
+    CRWD: { stop: null, stopQty: 0, limit: 286.99, limitQty: 1, market: false, placedAt: '2026-11-20T07:29:35Z' } } };
+  const T = A.ticket(st, out, Object.assign({}, cfg, { openOrders }));
+  const zs = T.stops.find((r) => r.sym === 'ZS'), net = T.stops.find((r) => r.sym === 'NET'), cr = T.stops.find((r) => r.sym === 'CRWD');
+  assert.ok(zs && zs.placed && zs.placed.stop === 180 && zs.placed.limit === 267, 'ZS: resting TP/SL ⇒ placed with its own levels');
+  assert.ok(net && !net.placed, 'NET: no open order ⇒ still a to-do');
+  assert.ok(cr && !cr.placed, 'a take-profit alone is not a sell stop');
+  assert.equal(T.toPlace, before.toPlace - 1); assert.equal(T.placed, 1);
+  const h = A.ticketHtml(T, (s) => String(s));
+  assert.ok(new RegExp('Sells &amp; sell stops <span[^>]*>\\(' + T.toPlace + '\\) <span data-apex-ticket-placed-count[^>]*>· 1 placed').test(h), 'header counts only what is left to place');
+  assert.ok(/data-apex-ticket-row="ZS" data-side="stop" data-placed="1"/.test(h) && /✓ Placed/.test(h) && /Order already in Robinhood<\/b> · 8 sh · sell limit 267\.00 · stop 180\.00/.test(h));
+  assert.ok(!/data-apex-ticket-row="NET"[^>]*data-placed/.test(h), 'NET row stays a to-do');
+  assert.ok(h.indexOf('data-apex-ticket-row="NET"') < h.indexOf('data-apex-ticket-row="ZS"'), 'placed rows sit below the to-dos');
+  assert.ok(!/undefined|NaN/.test(h));
+  // the rules and the Confirm lines never read Jack's orders (v211)
+  assert.deepEqual(A.bookLines(st, out, Object.assign({}, cfg, { openOrders })), A.bookLines(st, out, cfg));
+  // a sell-today row: only a working sell at the ticket's price covers it, never a far take-profit
+  const sellRow = { side: 'sell', sym: 'ZS', qty: 8, limitPx: 204.86 };
+  const T2 = A.ticket(st, [{ kind: 'risk', title: 'x', why: '', ticket: { side: 'sell', sym: 'ZS', qty: 8, px: 204.86 } }], Object.assign({}, cfg, { openOrders }));
+  const s2 = T2.sells.find((r) => r.sym === 'ZS'); assert.ok(s2 && !s2.placed, 'TP at 267 does not do a sell at 204.86');
+  const T3 = A.ticket(st, [{ kind: 'risk', title: 'x', why: '', ticket: { side: 'sell', sym: 'ZS', qty: 8, px: 204.86 } }],
+    Object.assign({}, cfg, { openOrders: { asOf: null, bySym: { ZS: { stop: null, stopQty: 0, limit: 204.86, limitQty: 8, market: false, placedAt: null } } } }));
+  assert.ok(T3.sells.find((r) => r.sym === 'ZS').placed, 'a working sell limit at the ticket price is placed');
+  void sellRow;
 });
 
 console.log(`apex: ${n - failed}/${n} passed`);
