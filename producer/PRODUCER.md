@@ -13,9 +13,13 @@
 > A full-window fetch remains an optional reconciliation path when supported.
 >
 > FETCH_ALL: if the saved scanner spills, use `node producer/picks-local.mjs --plan`.
+> (It spills whenever the oversold set is large: 396 matches / ~73 KB on 2026-11-19. The 68-call
+> history fallback was the likely reason Daily Picks froze at Nov 2; RSI now comes 10 names/call.)
 > Execute its missing-input batches through the normal broker tools (fundamentals/quotes ≤10
-> symbols, daily history 1 symbol over the last 3 months), preserving each full response at the
-> printed filename prefixes. Repeat the planner until all inputs are present, then run
+> symbols; `rsi:` lines = ONE `get_equity_technical_indicators` call per line of ≤10 names with the
+> exact arguments it prints, saved as `picks-screen-rsi-N.json`; `historicals:` = SPY only, 1 symbol
+> over the last 3 months), preserving each full response at the printed filename prefixes.
+> Repeat the planner until all inputs are present, then run
 > `node producer/picks-local.mjs` (without --plan). It writes `scan.json` and `picks-fund.json`
 > for the existing scoring pipeline. It uses 68 explicitly named large-cap candidates rather
 > than the market-wide saved scanner; provenance is saved with Picks. It reuses fresh merged

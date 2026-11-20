@@ -15,7 +15,7 @@ export function loadInputs(dir, prior = {}) {
   const files = existsSync(dir) ? readdirSync(dir).filter(f => f.endsWith('.json')).sort() : [];
   const read = f => unwrap(JSON.parse(readFileSync(join(dir, f), 'utf8')));
   const rows = r => Array.isArray(r) ? r : r?.results || [];
-  const quotes = {}, funds = {}, bars = { ...prior?.hist?.day };
+  const quotes = {}, funds = {}, rsi = {}, bars = { ...prior?.hist?.day };
   for (const file of files) {
     if (/^quotes.*\.json$/.test(file)) for (const r of rows(read(file))) {
       const q = r.quote || r; if (q.symbol) quotes[q.symbol] = q;
@@ -24,12 +24,17 @@ export function loadInputs(dir, prior = {}) {
       for (const r of rows(read(file))) if (r.symbol) funds[r.symbol] = r;
     if (/^hist-day.*\.json$/.test(file)) for (const r of rows(read(file)))
       if (r.symbol && Array.isArray(r.bars)) bars[r.symbol] = mergeBars(bars[r.symbol], r.bars);
+    // Daily RSI(14) from get_equity_technical_indicators (picks-local fallback, ≤10 symbols/call).
+    if (/^picks-screen-rsi(-\d+)?\.json$/.test(file)) for (const r of rows(read(file))) {
+      const ind = (r.indicators || []).find(i => i.type === 'rsi' && (i.params?.period ?? 14) === 14);
+      if (r.symbol && r.interval === 'day' && Array.isArray(ind?.series)) rsi[r.symbol] = ind.series;
+    }
   }
   const positions = ['positions.json', 'agentic-positions.json'].flatMap(f => {
     if (!files.includes(f)) return [];
     const p = read(f); return Array.isArray(p) ? p : p.positions || [];
   });
-  return { quotes, funds, bars, positions, files };
+  return { quotes, funds, rsi, bars, positions, files };
 }
 export function topHoldings({ positions, quotes }, n = 14) {
   const values = new Map();
