@@ -17,29 +17,39 @@ export function rsi(closes) {
   return loss === 0 ? (gain === 0 ? 50 : 100) : 100-100/(1+gain/loss);
 }
 export function localScreen(inputs, now = new Date(), universe = UNIVERSE) {
-  const today=etDate(now), completed = rows => (rows || []).filter(b => {
+  const today=etDate(now), done = day => day && (day < today || day === today && etMinutes(now)>=16*60);
+  const completed = rows => (rows || []).filter(b => {
     const day=String(b.t || b.begins_at || '').slice(0,10);
-    return !b.live && !b.interpolated && day && (day < today || day === today && etMinutes(now)>=16*60)
-      && Number(b.c ?? b.close_price)>0;
+    return !b.live && !b.interpolated && done(day) && Number(b.c ?? b.close_price)>0;
   }).sort((a,b)=>String(a.t||a.begins_at).localeCompare(String(b.t||b.begins_at)));
   const spy=completed(inputs.bars.SPY);
   const ref=String(spy.at(-1)?.t || spy.at(-1)?.begins_at || '').slice(0,10);
   const refFresh=ref && Date.parse(today)-Date.parse(ref)<=5*864e5;
-  const missing={fundamentals:[],quotes:[],historicals:[]}, results=[];
+  // Broker-computed daily RSI(14) for the last completed session (one call per 10 names) stands in
+  // for 3 months of bars per name; local bars still win when they are already fresh.
+  const brokerRsi = sym => {
+    const pt=(inputs.rsi?.[sym] || []).filter(p => done(String(p.begins_at||'').slice(0,10)) && Number.isFinite(Number(p.value)))
+      .sort((a,b)=>String(a.begins_at).localeCompare(String(b.begins_at))).at(-1);
+    return pt && String(pt.begins_at).slice(0,10)===ref ? Number(pt.value) : null;
+  };
+  const missing={fundamentals:[],quotes:[],historicals:[],rsi:[]}, results=[];
+  let fromBroker=0;
   if(!refFresh) missing.historicals.push('SPY');
   for(const sym of universe) {
     const f=inputs.funds[sym], q=inputs.quotes[sym], bs=completed(inputs.bars[sym]);
     const price=Number(q?.last_trade_price ?? q?.previous_close), cap=Number(f?.market_cap);
     if(!f || !(cap>0)) missing.fundamentals.push(sym);
     if(!(price>0)) missing.quotes.push(sym);
-    if(!refFresh || bs.length<30 || String(bs.at(-1)?.t||bs.at(-1)?.begins_at).slice(0,10)!==ref) missing.historicals.push(sym);
-    const value=rsi(bs.map(b=>Number(b.c ?? b.close_price)));
+    const barsFresh=refFresh && bs.length>=30 && String(bs.at(-1)?.t||bs.at(-1)?.begins_at).slice(0,10)===ref;
+    let value=barsFresh ? rsi(bs.map(b=>Number(b.c ?? b.close_price))) : null;
+    if(value===null && refFresh) { value=brokerRsi(sym); if(value!==null) fromBroker++; }
+    if(value===null && refFresh) missing.rsi.push(sym);
     if(cap>1e10 && price>0 && value!==null && value<45) results.push({ticker:sym,columns:{
       Symbol:sym,Name:sym,Last:price,RSI:value,'Market cap':cap,
       '% Change':Number(q?.previous_close)>0 ? (price/Number(q.previous_close)-1)*100 : null }});
   }
   return { missing, data:{result:{results}}, screen:{source:'local-bounded-universe',
-    universe, universeSize:universe.length, barsThrough:ref, asOf:now.toISOString(),
+    universe, universeSize:universe.length, barsThrough:ref, rsiFromBroker:fromBroker, asOf:now.toISOString(),
     note:'Limited universe; not the market-wide Robinhood saved scan.'} };
 }
 if(import.meta.url===`file://${process.argv[1]}`) {
@@ -50,9 +60,11 @@ if(import.meta.url===`file://${process.argv[1]}`) {
   if(process.argv.includes('--plan') || missing) {
     for(const [kind,syms] of Object.entries(result.missing)) {
       const size=kind==='historicals'?1:10;
+      if(kind==='rsi') { for(let i=0;i<syms.length;i+=size) console.log(`rsi: ${syms.slice(i,i+size).join(' ')}`); continue; }
       for(let i=0;i<syms.length;i+=size) console.log(`${kind}: ${syms.slice(i,i+size).join(' ')}`);
     }
-    console.log('Save full tool outputs: picks-screen-fund-N.json / quotes-picks-screen-N.json / hist-day-picks-screen-N.json. Historicals: day, last 3 months; reuse existing fresh history.');
+    console.log('Save full tool outputs: picks-screen-fund-N.json / quotes-picks-screen-N.json / hist-day-picks-screen-N.json / picks-screen-rsi-N.json. Historicals: day, last 3 months; reuse existing fresh history.');
+    console.log(`RSI batches: get_equity_technical_indicators { type: "rsi", interval: "day", start_time: "${new Date(Date.now()-92*864e5).toISOString().slice(0,10)}", output: "last:2", symbols: [the batch] } → picks-screen-rsi-N.json.`);
     if(missing && !process.argv.includes('--plan')) process.exitCode=1;
   } else {
     writeFileSync(join(raw,'scan.json'),JSON.stringify(result));
