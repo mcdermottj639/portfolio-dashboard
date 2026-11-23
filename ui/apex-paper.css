@@ -282,3 +282,20 @@
 .apx>[data-apx-sec="results"]{order:5}.apx>[data-apx-sec="history"]{order:5}.apx>[data-apx-sec="rejected"]{order:5}
 @media (max-width:360px){ .apx-lrow>summary{gap:5px} .apx-lst{display:none} .apx-lrow>summary{grid-template-columns:minmax(40px,auto) auto minmax(0,1fr)} }
 @media (min-width:740px){ .apx>[data-apx-sec="rejected"]{grid-column:1/-1} }
+
+/* v262: metric-card layout for the two dense tables on folded screens and Duo split panes. */
+.apx-res,.apx-hist{container-name:apx-record;container-type:inline-size}
+@container apx-record (max-width:540px){
+  .apx-res .apx-arms,.apx-hist .apx-htable{display:block;width:100%;table-layout:auto}
+  .apx-res .apx-arms thead,.apx-hist .apx-htable thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .apx-res .apx-arms tbody,.apx-hist .apx-htable tbody{display:block}
+  .apx-res .apx-arms tbody tr,.apx-hist .apx-htable tbody tr{display:grid;gap:3px 4px;min-width:0;margin:0 0 8px;padding:8px 0 3px;border-top:1px solid var(--apx-rule)}
+  .apx-res .apx-arms tbody tr{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .apx-hist .apx-htable tbody tr{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .apx-res .apx-arms tbody th,.apx-hist .apx-htable tbody th{grid-column:1/-1;display:block;width:auto!important;border:0;padding:0 4px 5px;font-weight:700;color:var(--apx-text)}
+  .apx-res .apx-arms tbody td,.apx-hist .apx-htable tbody td{display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:40px;padding:3px 4px;border:0;font-size:12px;overflow-wrap:anywhere}
+  .apx-res .apx-arms tbody td::before,.apx-hist .apx-htable tbody td::before{content:attr(data-label);display:block;margin-bottom:3px;color:var(--apx-muted);font-size:9px;font-weight:750;text-transform:uppercase;letter-spacing:.02em;line-height:1.25}
+  .apx-hist .apx-htable tbody td:last-child,.apx-hist .apx-htable tbody td[colspan]{grid-column:1/-1}
+  .apx-hist .apx-htable .apx-chip{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+}
+
