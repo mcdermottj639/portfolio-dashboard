@@ -17,6 +17,7 @@ import { needsResearchRefresh } from './refresh-check.mjs';
 import { decryptEnvelope } from './emit.mjs';
 import { heldHistoryDirective } from './hist-plan.mjs';
 import { isMarketOpen, isWeekday, isHoliday, closeMinutes, etDate, etMinutes } from './market.mjs';
+import { PICKS_DIRECTIVE } from './preflight-directives.mjs';
 
 const DATA = join(dirname(fileURLToPath(import.meta.url)), '..', 'data.json');
 // Step 2e (Predict payout emails) is EVERY-RUN, but the producer Routine's prompt (http_api — not
@@ -31,6 +32,7 @@ let extraDirective = '';
 function decide(mode, code, msg) {
   console.log(`PREFLIGHT ${mode}`); console.log(`[preflight] ${msg}`);
   if (mode !== 'SKIP') console.log(MAIL_DIRECTIVE);
+  if (mode === 'FETCH_ALL') console.log(PICKS_DIRECTIVE);
   if (mode === 'FETCH_LIGHT' && extraDirective) console.log(extraDirective);
   process.exit(code);
 }
