@@ -287,7 +287,8 @@ const hadOverlay = existsSync(OVERLAY);
 if (hadOverlay) { copyFileSync(OVERLAY, OBAK); unlinkSync(OVERLAY); }
 const farFuture = '2099-01-01', longPast = '2020-01-01';
 writeFileSync(TICKET, JSON.stringify({
-  id: 'TEST-TICKET', created: '2026-07-31', status: 'done', turnover: 100, planHash: 's[]b[]t[]',
+  id: 'TEST-TICKET', created: '2026-07-31', status: 'done', completedAt: '2026-07-31T14:00:00Z', turnover: 100, planHash: 's[]b[]t[]',
+  history: [{ at: '2026-07-31', to: 'proposed' }, { at: '2026-07-31', to: 'confirmed' }, { at: '2026-07-31', to: 'done' }],
   legs: { sells: [], buysNow: [], buysT1: [] },
   blockedSells: [
     { sym: 'AAA', kind: 'exit', blocked: 'min-hold', dollars: 500, until: farFuture, heldDays: 13, note: 'still held' },
@@ -516,6 +517,13 @@ try {
 
   // Blocked sells (v126) — the reason a planned exit did NOT happen has to survive to the consumer.
   eq('a done ticket is still stripped from pending', out.agentic.pending, undefined);
+  eq('finished ticket history reaches the snapshot separately from active pending',
+    [out.agentic.lastTicket.id, out.agentic.lastTicket.status, out.agentic.lastTicket.completedAt,
+      out.agentic.lastTicket.history.map(h => h.to)],
+    ['TEST-TICKET', 'done', '2026-07-31T14:00:00Z', ['proposed', 'confirmed', 'done']]);
+  eq('historical ticket projection exposes no order legs or account details',
+    Object.keys(out.agentic.lastTicket).sort(),
+    ['autoEligible','completedAt','created','history','id','status']);
   eq('…but its blocked sells are emitted separately', out.agentic.blockedSells.items.map((b) => b.sym), ['AAA']);
   eq('an expired block is filtered out (the guard already released)',
     out.agentic.blockedSells.items.some((b) => b.sym === 'BBB'), false);
