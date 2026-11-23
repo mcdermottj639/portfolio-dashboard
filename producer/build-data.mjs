@@ -707,6 +707,20 @@ const data = {
           data.agentic.pending = ticket;
           console.log(`agentic pending ticket: ${ticket.id} · ${ticket.status} · turnover ${fmtMoney(ticket.turnover || 0)}`);
         }
+        // Terminal tickets intentionally do not enter "pending". Preserve only their
+        // dated lifecycle for the read-only Activity timeline (not proof of broker fills).
+        if (ticket && ['done', 'aborted', 'cancelled', 'rejected'].includes(ticket.status)) {
+          data.agentic.lastTicket = {
+            id: typeof ticket.id === 'string' ? ticket.id : null,
+            status: ticket.status,
+            created: ticket.created || null,
+            completedAt: ticket.completedAt || ticket.doneAt || null,
+            autoEligible: ticket.autoEligible === true,
+            history: (Array.isArray(ticket.history) ? ticket.history : [])
+              .filter(h => h && typeof h.to === 'string' && typeof h.at === 'string' && Number.isFinite(Date.parse(h.at)))
+              .slice(-12).map(h => ({ at: h.at, to: h.to }))
+          };
+        }
         // BLOCKED SELLS ride OUTSIDE `pending` (v126), because the line above deliberately omits a
         // done/aborted ticket — and a FINISHED ticket is exactly when this matters most. On 2026-08-25
         // the ticket reached `done` (its buys filled) while both exits sat blocked by the min-hold; had
