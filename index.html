@@ -941,7 +941,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v262'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v263'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -4537,6 +4537,7 @@ function agSkillMeter(D){
     <details class="sd-more"><summary>ⓘ How this works</summary><div class="fund-note" style="margin:6px 0 0">Each graded rebalance gives one number: how its buys did vs SPY over the same window. <b>t</b> = average ÷ (spread ÷ √count). Inside ±${bar} the record can't be told apart from coin-flips; it needs ${minN}+ decisions before any verdict. Decisions overlap in time and share names, so they aren't independent — this read is <b>optimistic</b>, and a real edge should hold well past the line. "To know" assumes today's average and spread hold. A record, not a forecast.</div></details>
   </div>`;
 }
+const AG_LOG_ROWS=4; // latest decisions visible by default; older records stay accessible
 function renderAgenticLog(){
   const el=document.getElementById('agentic-log-content'); if(!el)return;
   const A=(window.__DATA&&window.__DATA.agentic)||null;
@@ -4544,7 +4545,7 @@ function renderAgenticLog(){
   if(!D||!Array.isArray(D.decisions)||!D.decisions.length){ el.innerHTML=`<div class="tech-empty">No rebalance decisions logged yet. Each confirmed deploy/rebalance is recorded here and graded against what happens next (and vs SPY) — the account's own track record.</div>`; return; }
   const chip=(v)=> v==='ahead'?'<span class="badge" style="background:#dcfce7;color:#065f46">✅ ahead</span>':(v==='behind'?'<span class="badge" style="background:#fee2e2;color:#991b1b">🔻 behind</span>':'<span class="badge" style="background:#f3f4f6;color:#6b7280">'+(v==='open'?'• open':'unknown')+'</span>');
   const pct=(v)=> v==null?'<span style="color:#9ca3af">—</span>':`<span style="color:${v>=0?'#065f46':'#991b1b'};font-weight:600">${v>=0?'+':''}${fmt(v,1)}%</span>`;
-  const rows=D.decisions.map(d=>{
+  const row=(d)=>{
     const g=D.gradingVersion===2?(d.grade||{}):{};
     const trades=(d.trades||[]).map(t=>`${t.side==='BUY'?'+':'−'}${t.sym}`).join(' ')||'—';
     const days=g.daysSince!=null?g.daysSince+'d':'';
@@ -4555,13 +4556,15 @@ function renderAgenticLog(){
       <td class="tr">${pct(g.buyReturnPct)}<br><span style="font-size:10px;color:#9ca3af">vs SPY ${g.alpha==null?'—':(g.alpha>=0?'+':'')+fmt(g.alpha,1)+'pp'}</span></td>
       <td class="tr">${chip(g.verdict)}${g.rotationPct==null?'':`<br><small>Rotation ${fmt(g.rotationPct,1)}pp</small>`}${g.soldReturnPct==null?'':`<br><small>Sold basket ${fmt(g.soldReturnPct,1)}%</small>`}</td>
     </tr>`;
-  }).join('');
+  };
+  const tbl=(list)=>`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Buy return</th><th class="tr">Result</th></tr></thead><tbody>${list.map(row).join('')}</tbody></table></div>`;
+  const recent=D.decisions.slice(0,AG_LOG_ROWS), older=D.decisions.slice(AG_LOG_ROWS);
   const s=D.gradingVersion===2?(D.stats||{}):{};
   const hdr=`<div style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 8px;line-height:1.5">Every owner-confirmed deploy/rebalance on <b>••••3900</b>, graded against what happened next — the account's own track record. <b>Buy return</b> is dollar-weighted. <b>vs SPY</b> compares only buys with the benchmark. <b>Rotation</b> is buy-basket return minus sold-basket return on matched dollars; a sold basket’s subsequent return is reported separately. A call &lt;5d old is still <b>open</b>. Monitor/education only.</div>
     <div class="fund-note" style="margin:0 0 8px">${s.resolved||0}/${s.total||0} resolved · <b>${s.ahead||0} ahead</b> / ${s.behind||0} behind${s.avgAlpha!=null?` · avg buy excess <b>${s.avgAlpha>=0?'+':''}${fmt(s.avgAlpha,1)}pp</b> vs SPY`:''}</div>`;
   const versionRows=Object.entries(D.byModelVersion||{}).map(([v,r])=>`<tr><td>${agEsc(v)}</td><td>${r.decisions}</td><td>${r.buys.comparableN}</td><td>${r.buys.avgAlphaPct==null?'—':fmt(r.buys.avgAlphaPct,2)+'pp'}</td></tr>`).join('');
   const versionTable=versionRows?`<details><summary>Compare recorded model versions</summary><p>Different periods and overlapping buys; descriptive results, not a controlled experiment.</p><table><thead><tr><th>Model</th><th>Decisions</th><th>Comparable buys</th><th>Buy excess</th></tr></thead><tbody>${versionRows}</tbody></table></details>`:'';
-  el.innerHTML=(D.gradingVersion===2?'':'<p>Corrected grading will appear after the next producer refresh. Previous mixed buy/sell scores are hidden.</p>')+hdr+agSkillMeter(D)+versionTable+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+`<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Trades</th><th class="tr">Buy return</th><th class="tr">Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  el.innerHTML=(D.gradingVersion===2?'':'<p>Corrected grading will appear after the next producer refresh. Previous mixed buy/sell scores are hidden.</p>')+hdr+agSkillMeter(D)+versionTable+decBuyStrip(D)+decMarkStrip(D,'agentic')+agSleeveStrip(D)+tbl(recent)+(older.length?`<details class="trk-detail" data-ag-log-older><summary>View ${older.length} older decision${older.length===1?'':'s'}</summary>${tbl(older)}</details>`:'');
 }
 /* Sleeve attribution (v121) — which research sleeve is actually earning its keep. Every target name
    carries `drivers` (the sleeves that scored ≥7) and the ledger stamps them onto each BUY leg AT
