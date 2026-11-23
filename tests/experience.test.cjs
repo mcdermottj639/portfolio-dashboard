@@ -94,3 +94,37 @@ assert.equal(M.stamp('garbage'),null);assert.equal(M.stamp(null),null);
  assert.deepEqual(M.freshnessStamps({generatedAt:'2026-11-17T10:00:00Z'},'main',{now}),[],'the account time is never a workspace stamp');
  assert.deepEqual(M.freshnessStamps({},'main',{now}),[],'no sources, no stamps');}
 console.log('PASS: display models, missing data, source links, preserved destinations, script syntax, cache versions, today brief visuals');
+
+
+/* Agentic history stays compact while all recorded decisions remain accessible. */
+{
+ const vm=require('node:vm');
+ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+ const from=html.indexOf('const AG_LOG_ROWS=4;'),to=html.indexOf('/* Sleeve attribution',from);
+ assert.ok(from>0&&to>from,'Agentic log renderer present');
+ const src=html.slice(from,to);
+ const run=(count)=>{
+   const el={innerHTML:''};
+   const decisions=Array.from({length:count},(_,i)=>({
+     date:'2026-11-'+String(23-i).padStart(2,'0'),kind:'deploy',
+     trades:[{side:'BUY',sym:'TEST'+i}],grade:{verdict:'open',daysSince:i,buyReturnPct:1,alpha:0}
+   }));
+   const context={window:{__DATA:{agentic:{decisions:{gradingVersion:2,decisions,stats:{},byModelVersion:{}}}}},
+     document:{getElementById:id=>id==='agentic-log-content'?el:null},
+     agSkillMeter:()=>'',decBuyStrip:()=>'',decMarkStrip:()=>'',agSleeveStrip:()=>'',fmt:(n,p=1)=>Number(n).toFixed(p),
+     agEsc:x=>String(x)};
+   vm.runInNewContext(src+'\nrenderAgenticLog();',context);
+   return el.innerHTML;
+ };
+ const large=run(7);
+ const cut=large.indexOf('<details class="trk-detail" data-ag-log-older>');
+ assert.ok(cut>0,'older history behind native details');
+ const visible=large.slice(0,cut),hidden=large.slice(cut);
+ assert.match(large,/View 3 older decisions/);
+ assert.equal((visible.match(/<tr>/g)||[]).length,5,'four recent rows plus header');
+ assert.match(visible,/TEST0/);assert.match(visible,/TEST3/);
+ assert.doesNotMatch(visible,/TEST4/);assert.match(hidden,/TEST4/);assert.match(hidden,/TEST6/);
+ const short=run(2);
+ assert.doesNotMatch(short,/data-ag-log-older/,'short histories have no unnecessary expander');
+ assert.equal((short.match(/<tr>/g)||[]).length,3,'both rows remain visible');
+}
