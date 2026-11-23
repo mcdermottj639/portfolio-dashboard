@@ -584,7 +584,7 @@
     };
   }
 
-  const alphaCell = (v) => '<td class="' + (v === null ? '' : v >= 0 ? 'apx-up' : 'apx-dn') + '">' + esc(fmtPct(v, 1, true)) + '</td>';
+  const alphaCell = (v, label = '') => '<td' + (label ? ' data-label="' + esc(label) + '"' : '') + ' class="' + (v === null ? '' : v >= 0 ? 'apx-up' : 'apx-dn') + '">' + esc(fmtPct(v, 1, true)) + '</td>';
   const hitTxt = (v) => (v === null ? DASH : group(v * 100, 0) + '%');
   /* Same h2 header as the other paper cards. Not the app's shared .card-title: that header gains the My view pin
      button, and the paper page carries no button (tests/apex-paper-checks.mjs). PR 253 leaves this page out of the
@@ -598,7 +598,7 @@
     else if (!r.graded) fresh = '<p class="apx-empty" data-apx-res="ungraded">No graded marks yet.' + (r.firstMarks ? ' First 5-day marks about ' + esc(fmtDay(r.firstMarks.h5)) + ', first 30-day marks about ' + esc(fmtDay(r.firstMarks.h30)) + ' (holidays not counted).' : ' The first cohort is frozen on the next Monday run.') + '</p>';
     else fresh = '<p class="apx-muted" data-apx-res="graded">Descriptive only until ' + MIN_COHORTS + ' Monday cohorts per arm. No live rule changes on this evidence.</p>';
     const head = '<thead><tr><th>Arm</th><th>Weeks</th><th>Graded</th><th>Hit</th><th>Net alpha</th></tr></thead>';
-    const row = (a, x) => '<tr data-apx-arm="' + esc(a.key) + '"><th>' + esc(a.label) + '</th><td>' + esc(fmtInt(a.cohorts)) + '</td><td>' + esc(fmtInt(x.n)) + '</td><td>' + esc(hitTxt(x.hit)) + '</td>' + alphaCell(x.avgAlphaNet) + '</tr>';
+    const row = (a, x) => '<tr data-apx-arm="' + esc(a.key) + '"><th>' + esc(a.label) + '</th><td data-label="Weeks">' + esc(fmtInt(a.cohorts)) + '</td><td data-label="Graded">' + esc(fmtInt(x.n)) + '</td><td data-label="Hit">' + esc(hitTxt(x.hit)) + '</td>' + alphaCell(x.avgAlphaNet, 'Net alpha') + '</tr>';
     const table = (h) => '<table class="apx-table apx-arms">' + head + '<tbody>' + r.arms.map((a) => row(a, a.horizons.find((x) => x.h === h))).join('') + '</tbody></table>';
     const early = r.shownH !== PRIMARY_H, others = EVAL_HORIZONS.filter((h) => h !== r.shownH);
     const raw = '<h3>Raw per name <span>' + r.shownH + ' trading days · vs SPY · after 0.20 pts cost</span></h3>' +
@@ -651,8 +651,8 @@
     if (!r.history.length) return '<section class="card apx-card apx-hist" data-sec="apx-history" data-apx-sec="history">' + head + '<p class="apx-empty">No Monday recorded yet. Each Monday run freezes a cohort or logs why it could not.</p></section>';
     const row = (h) => {
       const ls = LIVE_STATUS[h.liveStatus];
-      const cells = h.skipped && h.paper === null ? '<td colspan="3">' + chip('Skipped', 'bad') + ' ' + esc(h.skipped) + '</td>'
-        : '<td>' + esc(h.paper === null ? DASH : h.paperEntered + ' of ' + h.paper) + '</td><td>' + esc(h.livePicks + ' / ' + h.liveRej + ' / ' + h.paperRej) + '</td><td>' + (ls ? chip(ls[0], ls[1]) : DASH) + '</td>';
+      const cells = h.skipped && h.paper === null ? '<td colspan="3" data-label="Status">' + chip('Skipped', 'bad') + ' ' + esc(h.skipped) + '</td>'
+        : '<td data-label="Paper in">' + esc(h.paper === null ? DASH : h.paperEntered + ' of ' + h.paper) + '</td><td data-label="Live / L-rej / P-rej">' + esc(h.livePicks + ' / ' + h.liveRej + ' / ' + h.paperRej) + '</td><td data-label="Live copy">' + (ls ? chip(ls[0], ls[1]) : DASH) + '</td>';
       return '<tr data-apx-week="' + esc(h.day) + '"><th>' + esc(fmtDay(h.day)) + '</th>' + cells + '</tr>';
     };
     const t = (rows) => '<table class="apx-table apx-htable"><thead><tr><th>Week</th><th>Paper in</th><th>Live / L-rej / P-rej</th><th>Live copy</th></tr></thead><tbody>' + rows.map(row).join('') + '</tbody></table>';
