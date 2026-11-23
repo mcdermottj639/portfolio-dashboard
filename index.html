@@ -1653,7 +1653,7 @@ async function pushToKyle(){
     const html=buildKyleHTML();
     const r=await window.cowork.callMcpTool(KYLE+'update_artifact',{artifact_id:KYLE_PORTFOLIO_ID,title:'Portfolio — '+S.date,content:html});
     if(r&&r.isError) throw new Error('Kyle returned an error');
-    const t=document.getElementById('toast'); if(t){ t.textContent='✅ Pushed to Kyle'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2610); }
+    const t=document.getElementById('toast'); if(t){ t.textContent='✅ Pushed to Kyle'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
   }catch(e){ alert('Push to Kyle failed: '+(e&&e.message||e)); }
   if(btn){ btn.disabled=false; btn.textContent='📲 Push to Kyle'; }
 }
@@ -2122,7 +2122,7 @@ function renderApexCard(S,opts){
   if(T&&T.themeMap&&typeof T.themeMap==='object') cfg.themeMap=T.themeMap;
   /* v214: minutes since the snapshot — past Apex.C.PRICE_FRESH_MIN the Recommended-trades list shows estimates, never an order price. */
   try{ const g=(window.__DATA&&window.__DATA.generatedAt)||null, tms=g?Date.parse(g):NaN; cfg.snapAgeMin=isFinite(tms)?(Date.now()-tms)/60000:null; }catch(_){ cfg.snapAgeMin=null; }
-  /* v261: ••••0741 open sell orders (producer, read-only) so the morning ticket marks rows Jack already placed. Display only. */
+  /* v260: ••••0741 open sell orders (producer, read-only) so the morning ticket marks rows Jack already placed. Display only. */
   try{ const M=(window.__DATA&&window.__DATA.main)||null; cfg.openOrders=(M&&M.openOrders&&M.openOrders.bySym)?M.openOrders:null; }catch(_){ cfg.openOrders=null; }
   /* v194 (Jack, 2026-11-06: "always put the entry target prices" · "make sure all can be bought on Robinhood
      always"): the scan's per-name trigger / limit / TP1 / stop / company name / ••0741 tradability ride from
