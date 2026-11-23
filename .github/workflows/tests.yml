@@ -59,6 +59,7 @@ jobs:
           node tests/brief-browser.mjs
           node tests/sd-plan-browser.mjs
           node tests/apex-browser.mjs
+          node tests/apex-paper-view-browser.mjs
           node tests/journey-browser.mjs
           node tests/holdings-duo-browser.mjs
           node tests/today-viewport-browser.mjs

@@ -152,6 +152,27 @@ try{
       if(name==='stale'){assert.match(t,/STALE — last run/);assert.match(t,/Stale snapshot/);assert.match(t,/Not yet measured/);}
       if(name==='measured'){
         assert.match(t,/Results by arm/);assert.match(t,/Simulated portfolio/);assert.match(t,/Weekly cohorts/);assert.match(t,/Skipped/);assert.match(t,/Live names missing/);
+        // Actual geometry on narrow cards, including folded and Book Duo panes.
+        const tables=await p.evaluate(()=>['results','history'].map(section=>{
+          const host=document.querySelector('#apexpaper-app [data-apx-sec="'+section+'"]');
+          const table=host?.querySelector(section==='results'?'.apx-arms':'.apx-htable');
+          const tr=table?.querySelector('tbody tr'),cells=tr?[...tr.querySelectorAll('td')]:[];
+          const bound=table.getBoundingClientRect(),rects=cells.map(c=>c.getBoundingClientRect());
+          const overlap=rects.some((a,i)=>rects.slice(i+1).some(b=>
+            Math.min(a.right,b.right)-Math.max(a.left,b.left)>2 &&
+            Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>2));
+          return {section,display:getComputedStyle(table).display,layout:getComputedStyle(tr).display,
+            labels:cells.map(c=>c.dataset.label||''),overlap,
+            outside:rects.some(r=>r.left<bound.left-1||r.right>bound.right+1)};
+        }));
+        for(const x of tables){
+          assert.ok(x.labels.length>0&&x.labels.every(Boolean),label+' '+x.section+': all metrics labelled');
+          if(x.display==='block'){
+            assert.equal(x.layout,'grid',label+' '+x.section+': responsive layout');
+            assert.equal(x.overlap,false,label+' '+x.section+': metrics never overlap');
+            assert.equal(x.outside,false,label+' '+x.section+': cells fit within table');
+          }else assert.equal(x.display,'table',label+' '+x.section+': wide layout kept');
+        }
         const rows='#apexpaper-app [data-apx-sec="rejected"] .apx-lrow';
         await p.locator('#apexpaper-app [data-apx-rejf] input[value="live-rej"]').check({force:true});await p.waitForTimeout(50);
         const vis=await p.$$eval(rows,rs=>rs.filter(r=>!r.hidden).map(r=>r.getAttribute('data-apx-grp')));

@@ -32,7 +32,7 @@ test('results: four arms in the locked order; before any 30-day mark the 5-day t
   assert.equal(r.shownH,5); assert.equal(A.PRIMARY_H,30); assert.equal(A.MIN_COHORTS,12);
   const h=A.html(full(),NOW);
   assert.match(h,/data-apx-early/); assert.match(h,/1 of 12 weeks/);
-  assert.match(h,/data-apx-arm="rejectedLive"><th>Rejected by a live rule<\/th><td>1<\/td><td>1<\/td><td>100%<\/td><td class="apx-up">\+4\.8%<\/td>/);
+  assert.match(h,/data-apx-arm="rejectedLive"><th>Rejected by a live rule<\/th><td data-label="Weeks">1<\/td><td data-label="Graded">1<\/td><td data-label="Hit">100%<\/td><td data-label="Net alpha" class="apx-up">\+4\.8%<\/td>/);
   const r30=A.research(full({evaluation:{...full().evaluation,arms:{...full().evaluation.arms,paper:arm('v2.9 paper picks',1,{5:hz(2),30:hz(7)})}}}),NOW);
   assert.equal(r30.shownH,30,'the 30-day primary horizon wins once any arm has it');
   assert.ok(!A.html(full({evaluation:{...full().evaluation,arms:{...full().evaluation.arms,paper:arm('v2.9 paper picks',1,{30:hz(7)})}}}),NOW).includes('data-apx-early'));
