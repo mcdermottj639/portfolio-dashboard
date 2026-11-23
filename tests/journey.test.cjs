@@ -37,7 +37,7 @@ test('new assets, version and offline shell move together',()=>{
  for(const name of ['journey.js','journey.css','theme.js','today-model.js','today.js','today.css','apex-paper.js','apex-paper.css']){assert.ok(html.includes('ui/'+name+'?v=262'));assert.ok(sw.includes('ui/'+name+'?v=262'));}
  assert.ok(html.includes('ui/duo.css?v=262')&&sw.includes('ui/duo.css?v=262'),'Duo layouts are linked and precached');
  assert.ok(html.includes('ui/duo.js?v=262')&&sw.includes('ui/duo.js?v=262'),'side-status measure script is linked and precached');
- assert.ok(html.includes("APP_VERSION='v262'"));assert.ok(sw.includes("'pf-v262'"));
+ assert.ok(html.includes("APP_VERSION='v263'"));assert.ok(sw.includes("'pf-v263'"));
 });
 test('freshness header shows the full date and time with AM/PM and ET (Jack, Nov 17 2026)',()=>{
  const html=fs.readFileSync('index.html','utf8');
