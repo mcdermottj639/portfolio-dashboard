@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-11-09T14:04:19Z",
+  "updated": "2026-11-23T13:48:18.000Z",
   "about": "Business check — one frozen assessment per symbol: is the company doing what it promised? Read by ui/business.js for display ONLY, on both books (Apex card + Agentic plan). No stop, trim, weight, leverage, ticket or executor logic reads this file. Written weekly by the 'Business check writer' scheduled task (and by hand in Jack's chat). To change a verdict, add a NEW assessment and move the current one into history[] unchanged — never edit a past one, so forward paper tests can grade what was known at the time. Funds (SPY, VTI…) get no record.",
   "names": {
     "IREN": {
@@ -391,6 +391,341 @@
           "title": "Reuters: Meta AI spending and share class",
           "url": "https://www.investing.com/news/stock-market-news/meta-to-issue-new-class-of-shares-as-it-tightens-ai-spending-forecast-4963908",
           "date": "2026-10-21"
+        }
+      ],
+      "history": []
+    },
+    "DXCM": {
+      "thesis": "Dexcom expands continuous glucose monitoring adoption while converting sales growth into higher operating profitability.",
+      "status": "intact",
+      "summary": "Sales, margins and annual outlook advance.",
+      "asOf": "2026-10-29",
+      "frozenAt": "2026-11-23T13:48:18.000Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 79.93,
+        "date": "2026-10-29",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, DXCM, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Revenue growth",
+          "state": "met",
+          "metric": "Q3 2026 revenue $1.344B versus $1.209B in Q3 2025; issuer-reported growth 11%.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Operating profitability",
+          "state": "met",
+          "metric": "Q3 2026 GAAP operating margin 24.3% versus 20.1% in Q3 2025.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Annual delivery outlook",
+          "state": "on-track",
+          "metric": "FY2026 revenue guidance $5.20B–$5.25B and non-GAAP operating margin approximately 24%; both raised.",
+          "asOf": "2026-10-29"
+        }
+      ],
+      "changed": "Initial assessment: sales and operating margins expanded, with the annual revenue midpoint and operating-margin outlook raised. U.S. G7 15 Day rollout advanced, although full-year delivery is still pending.",
+      "invalidators": [
+        "FY2026 revenue finishes below the $5.20B guidance floor.",
+        "Revenue contracts year over year while GAAP operating income turns negative."
+      ],
+      "nextReview": {
+        "date": "2027-01-27",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Dexcom Q3 2026 issuer results",
+          "url": "https://investors.dexcom.com/news/news-details/2026/Dexcom-Reports-Third-Quarter-2026-Financial-Results/default.aspx",
+          "date": "2026-10-29"
+        },
+        {
+          "title": "Investing.com: Dexcom Q3 results and raised outlook",
+          "url": "https://www.investing.com/news/transcripts/earnings-call-transcript-dexcom-beats-q3-2026-estimates-lifts-outlook-93CH-4985397",
+          "date": "2026-10-29"
+        }
+      ],
+      "history": []
+    },
+    "ZS": {
+      "thesis": "Zscaler converts demand for zero-trust security into recurring subscriptions, recognized revenue and positive free cash flow.",
+      "status": "intact",
+      "summary": "Revenue and subscriptions grow; acquisition pending.",
+      "asOf": "2026-11-23",
+      "frozenAt": "2026-11-23T13:48:18.000Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 194.82,
+        "date": "2026-11-20",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, ZS, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Recognized revenue",
+          "state": "met",
+          "metric": "Q1 FY2027 ended October 31, 2026 revenue $949.3M versus $788.1M a year earlier; reported growth 20%.",
+          "asOf": "2026-11-23"
+        },
+        {
+          "name": "Recurring subscription base",
+          "state": "met",
+          "metric": "ARR at October 31, 2026 $3.882B versus $3.204B a year earlier; reported growth 21%; ARR is not recognized revenue.",
+          "asOf": "2026-11-23"
+        },
+        {
+          "name": "Positive cash generation",
+          "state": "met",
+          "metric": "Q1 FY2027 free cash flow $416.5M versus $413.3M a year earlier; margin 44% versus 52%.",
+          "asOf": "2026-11-23"
+        }
+      ],
+      "changed": "Initial assessment: revenue, ARR and positive free cash flow support the operating thesis, despite a lower free-cash-flow margin. The proposed CrowdStrike acquisition is not completed; guidance was withdrawn because of the transaction, not replaced with a lower forecast.",
+      "invalidators": [
+        "Recognized revenue and ARR both contract year over year.",
+        "Free cash flow turns negative while GAAP operating losses widen year over year."
+      ],
+      "nextReview": {
+        "date": "2027-02-21",
+        "trigger": "90-day evidence review or new earnings/acquisition terms sooner; previously scheduled results call canceled and guidance withdrawn, so December 2 calendar entry is superseded."
+      },
+      "sources": [
+        {
+          "title": "Zscaler Q1 FY2027 issuer results, released 05:30 ET",
+          "url": "https://zscaler.gcs-web.com/news-releases/news-release-details/zscaler-announces-first-quarter-fiscal-year-2027-financial",
+          "date": "2026-11-23"
+        },
+        {
+          "title": "CrowdStrike and Zscaler proposed acquisition: issuer terms and closing conditions",
+          "url": "https://ir.crowdstrike.com/news-releases/news-release-details/crowdstrike-acquire-zscaler-bringing-network-security-and-zero/",
+          "date": "2026-11-23"
+        },
+        {
+          "title": "Reuters: proposed CrowdStrike acquisition of Zscaler",
+          "url": "https://www.reuters.com/legal/transactional/crowdstrike-buy-zscaler-439-billion-2026-11-23/",
+          "date": "2026-11-23"
+        }
+      ],
+      "history": []
+    },
+    "NET": {
+      "thesis": "Cloudflare turns demand for its network and developer platform into growing revenue, contracted demand and positive free cash flow.",
+      "status": "intact",
+      "summary": "Growth and cash generation offset margin pressure.",
+      "asOf": "2026-11-05",
+      "frozenAt": "2026-11-23T13:48:18.000Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 244.51,
+        "date": "2026-11-05",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, NET, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Revenue growth",
+          "state": "met",
+          "metric": "Q3 2026 revenue $782.5M, up an issuer-reported 39% year over year.",
+          "asOf": "2026-11-05"
+        },
+        {
+          "name": "Contracted demand",
+          "state": "met",
+          "metric": "Current remaining performance obligations grew 37% year over year at Q3 2026; contracted obligations are not recognized revenue.",
+          "asOf": "2026-11-05"
+        },
+        {
+          "name": "Positive free cash flow",
+          "state": "met",
+          "metric": "Q3 2026 free cash flow $82.1M versus $75.0M in Q3 2025; reported margin 10% versus 13%.",
+          "asOf": "2026-11-05"
+        }
+      ],
+      "changed": "Initial assessment: recognized revenue, contracted demand and positive free cash flow support the thesis, with full-year guidance raised. GAAP operating loss widened to $67.9M from $37.5M and gross margin fell to 71.2% from 74.0%, so profitability quality remains a watchpoint.",
+      "invalidators": [
+        "Revenue contracts year over year while current remaining performance obligations also decline.",
+        "Free cash flow turns negative while GAAP operating losses continue widening year over year."
+      ],
+      "nextReview": {
+        "date": "2027-02-03",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Cloudflare Q3 2026 results, SEC Exhibit 99.1",
+          "url": "https://www.sec.gov/Archives/edgar/data/1477333/000147733326000060/q326exhibit991.htm",
+          "date": "2026-11-05"
+        },
+        {
+          "title": "Wall Street Journal: Cloudflare raises full-year outlook",
+          "url": "https://www.wsj.com/business/earnings/cloudflare-stock-surges-on-lifted-full-year-outlook-third-quarter-revenue-growth-984186bf",
+          "date": "2026-11-05"
+        }
+      ],
+      "history": []
+    },
+    "CVX": {
+      "thesis": "Chevron grows energy production and converts reliable operations into free cash flow while strengthening its balance sheet.",
+      "status": "weakening",
+      "summary": "Cash strengthens, but quarterly production declines.",
+      "asOf": "2026-10-30",
+      "frozenAt": "2026-11-23T13:48:18.000Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 235.52,
+        "date": "2026-10-30",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, CVX, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Quarterly production growth",
+          "state": "missed",
+          "metric": "Q3 2026 net oil-equivalent production 3,980 MBOED versus 4,086 MBOED in Q3 2025; YTD 2026 3,970 versus 3,614.",
+          "asOf": "2026-10-30"
+        },
+        {
+          "name": "Positive free cash flow",
+          "state": "met",
+          "metric": "Q3 2026 free cash flow $12.0B versus $4.9B in Q3 2025; adjusted free cash flow $14.2B.",
+          "asOf": "2026-10-30"
+        },
+        {
+          "name": "Balance-sheet improvement",
+          "state": "met",
+          "metric": "Q3 2026 net debt-to-CFFO 0.4x versus 1.1x in Q3 2025.",
+          "asOf": "2026-10-30"
+        }
+      ],
+      "changed": "Initial assessment: the quarterly production-growth milestone is missed, with lower price-linked entitlements and Middle East disruption cited by Chevron; year-to-date output still grew. Strong free cash flow and reduced leverage keep the thesis alive, though unusually high refining margins may normalize.",
+      "invalidators": [
+        "Year-to-date production falls below its prior-year level while free cash flow turns negative.",
+        "Free cash flow turns negative while net debt-to-CFFO rises above the Q3 2025 baseline of 1.1x."
+      ],
+      "nextReview": {
+        "date": "2027-01-28",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Chevron Q3 2026 issuer results, SEC Exhibit 99.1",
+          "url": "https://www.sec.gov/Archives/edgar/data/93410/000009341026000196/a09302026ex9918-k.htm",
+          "date": "2026-10-30"
+        },
+        {
+          "title": "Reuters: Chevron profit and refining-margin context",
+          "url": "https://www.investing.com/news/stock-market-news/exxon-chevron-earnings-propelled-by-wardriven-refining-surge-4986750",
+          "date": "2026-10-30"
+        }
+      ],
+      "history": []
+    },
+    "MA": {
+      "thesis": "Mastercard expands payment activity and value-added services while converting network scale into rising operating profit.",
+      "status": "intact",
+      "summary": "Payment activity, services and margins grow.",
+      "asOf": "2026-10-29",
+      "frozenAt": "2026-11-23T13:48:18.000Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 635.7,
+        "date": "2026-10-29",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, MA, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Payment activity",
+          "state": "met",
+          "metric": "Q3 2026 cross-border volume grew 11% in local currency and switched transactions grew 9% year over year.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Revenue and services",
+          "state": "met",
+          "metric": "Q3 2026 net revenue $9.8B, up 14%; value-added services and solutions revenue grew 19% year over year.",
+          "asOf": "2026-10-29"
+        },
+        {
+          "name": "Operating profitability",
+          "state": "met",
+          "metric": "Q3 2026 GAAP operating income $5.9B versus $5.1B in Q3 2025; margin 59.8% versus 58.8%.",
+          "asOf": "2026-10-29"
+        }
+      ],
+      "changed": "Initial assessment: payment activity, services revenue and GAAP operating profitability all expanded. Consumer spending remains supportive, while inflation-driven spending gains may be less durable than transaction growth.",
+      "invalidators": [
+        "Switched transactions and net revenue both contract year over year.",
+        "GAAP operating income turns negative while net revenue declines year over year."
+      ],
+      "nextReview": {
+        "date": "2027-01-27",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "Mastercard Q3 2026 issuer results, SEC Exhibit 99.1",
+          "url": "https://www.sec.gov/Archives/edgar/data/1141391/000114139126000122/ma09302026-exx991xearnings.htm",
+          "date": "2026-10-29"
+        },
+        {
+          "title": "Reuters: Mastercard payment and consumer-spending context",
+          "url": "https://www.investing.com/news/economy-news/mastercard-caps-strong-quarter-for-card-giants-as-consumer-spending-holds-up-4984830",
+          "date": "2026-10-29"
+        }
+      ],
+      "history": []
+    },
+    "PEP": {
+      "thesis": "PepsiCo restores organic growth and North American profitability while protecting earnings and cash generation.",
+      "status": "weakening",
+      "summary": "Sales grow; profit outlook cut.",
+      "asOf": "2026-10-08",
+      "frozenAt": "2026-11-23T13:48:18.000Z",
+      "assessor": "Business check writer (scheduled)",
+      "refClose": {
+        "px": 128.34,
+        "date": "2026-10-08",
+        "source": "Alpha Vantage TIME_SERIES_DAILY, PEP, raw daily close; https://www.alphavantage.co/documentation/#daily"
+      },
+      "milestones": [
+        {
+          "name": "Organic sales growth",
+          "state": "met",
+          "metric": "Q3 2026 ended September 5 net revenue $25.274B; organic revenue grew 3.1% year over year.",
+          "asOf": "2026-10-08"
+        },
+        {
+          "name": "Core margin recovery",
+          "state": "missed",
+          "metric": "Q3 2026 core operating margin 16.9% versus 17.3% in Q3 2025; issuer-reported decline 35 basis points.",
+          "asOf": "2026-10-08"
+        },
+        {
+          "name": "Annual earnings outlook",
+          "state": "missed",
+          "metric": "FY2026 core constant-currency EPS growth guidance cut to 1%–2% from the low end of 4%–6%.",
+          "asOf": "2026-10-08"
+        }
+      ],
+      "changed": "Initial assessment: organic sales expanded, but core margins contracted and management reduced its annual earnings-growth forecast. North American recovery is taking longer than planned; positive growth keeps the thesis alive.",
+      "invalidators": [
+        "Organic revenue contracts while core operating profit also declines year over year.",
+        "FY2026 free cash flow conversion falls below management's 80% floor while core EPS declines year over year."
+      ],
+      "nextReview": {
+        "date": "2027-01-06",
+        "trigger": "90-day evidence review; next earnings date not confirmed in available calendar. Review sooner after new results."
+      },
+      "sources": [
+        {
+          "title": "PepsiCo Q3 2026 issuer results and guidance",
+          "url": "https://investor.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf",
+          "date": "2026-10-08"
+        },
+        {
+          "title": "Reuters: PepsiCo cuts profit forecast as recovery drags",
+          "url": "https://www.reuters.com/business/retail-consumer/pepsico-cuts-annual-core-profit-forecast-higher-costs-hurt-margins-2026-10-08/",
+          "date": "2026-10-08"
         }
       ],
       "history": []
