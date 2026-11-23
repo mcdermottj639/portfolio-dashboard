@@ -1,6 +1,6 @@
 {
-  "id": "2026-11-20-xulo4k",
-  "created": "2026-11-20",
+  "id": "2026-11-23-u6q4rm",
+  "created": "2026-11-23",
   "targetId": "97f64950150a6d2dd74d",
   "modelVersion": "mandate-a-ai-evidence-v1",
   "mandateVersion": "A-2026-09-08",
@@ -16,52 +16,32 @@
   "universeVersion": "80f4c5d54ce396515cb7",
   "status": "done",
   "autoEligible": true,
-  "turnover": 435.45,
-  "book": 7735.11,
-  "planHash": "s[NEM:401]b[CVX:34]t[]",
+  "turnover": 119.25,
+  "book": 7779.74,
+  "planHash": "s[]b[AAPL:119]t[]",
   "legs": {
-    "sells": [
-      {
-        "sym": "NEM",
-        "kind": "exit",
-        "dollars": 401.3,
-        "shares": 4.111042,
-        "price": 97.615,
-        "pl": -64.89,
-        "note": "phase-out name at/below its research stop ($97.62 ≤ $100) — already dropped once by the research, so the stop break is the second strike; exit now"
-      }
-    ],
+    "sells": [],
     "buysNow": [
       {
-        "sym": "CVX",
+        "sym": "AAPL",
         "kind": "buy",
-        "dollars": 34.15,
-        "shares": 0.1649,
-        "price": 207.065,
+        "dollars": 119.25,
+        "shares": 0.3425,
+        "price": 348.15,
         "pl": null,
-        "note": "8.9% → 9.3% target"
+        "note": "4.7% → 6.2% target"
       }
     ],
     "buysT1": []
   },
   "taxSummary": {
     "realizedGain": 0,
-    "realizedLoss": -64.89,
-    "net": -64.89,
+    "realizedLoss": 0,
+    "net": 0,
     "term": "short",
     "note": null
   },
   "deferred": [
-    {
-      "sym": "META",
-      "reason": "below-stop",
-      "until": null
-    },
-    {
-      "sym": "AAPL",
-      "reason": "above-entry",
-      "until": null
-    },
     {
       "sym": "COST",
       "reason": "above-entry",
@@ -70,36 +50,31 @@
   ],
   "blockedSells": [],
   "warnings": [
-    "$552.97 of deferred weight (META, AAPL, COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
-    "3 name(s) deferred (META, AAPL, COST) — ~$552.97 of intended weight held pending earnings/re-verify/wash-sale",
-    "$377.06 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
-    "entry zones are 9d old (target asOf 2026-11-11) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up"
+    "$413.1 of deferred weight (COST) stays in CASH rather than VTI — those deferrals clear on a price move with no known date, and a short round trip through the vehicle costs more in spread than a few days of beta is worth",
+    "1 name(s) deferred (COST) — ~$413.1 of intended weight held pending earnings/re-verify/wash-sale",
+    "$260.15 left uninvested (eligible buys fully funded to target; rest waits for deferred names to clear)",
+    "entry zones are 12d old (target asOf 2026-11-11) — the BELOW-entry check is advisory (a stale zone drifts out of range on its own), but the ABOVE-entry check still binds: an ageing thesis is not a reason to pay up"
   ],
   "history": [
     {
-      "at": "2026-11-20",
+      "at": "2026-11-23",
       "to": "proposed"
     },
     {
-      "at": "2026-11-20",
+      "at": "2026-11-23",
       "to": "confirmed"
     },
     {
-      "at": "2026-11-20",
-      "to": "sells-placed"
-    },
-    {
-      "at": "2026-11-20",
+      "at": "2026-11-23",
       "to": "buys-placed"
     },
     {
-      "at": "2026-11-20",
+      "at": "2026-11-23",
       "to": "done"
     }
   ],
-  "confirmedAt": "2026-11-20",
-  "sells-placedAt": "2026-11-20",
-  "buys-placedAt": "2026-11-20",
-  "doneAt": "2026-11-20",
-  "completedAt": "2026-11-20T15:22:45.106Z"
+  "confirmedAt": "2026-11-23",
+  "buys-placedAt": "2026-11-23",
+  "doneAt": "2026-11-23",
+  "completedAt": "2026-11-23T17:22:24.642Z"
 }

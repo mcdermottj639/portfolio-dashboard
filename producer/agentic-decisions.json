@@ -2661,6 +2661,45 @@
           "weightAfter": 9.3
         }
       ]
+    },
+    {
+      "modelVersion": "mandate-a-ai-evidence-v1",
+      "mandateVersion": "A-2026-09-08",
+      "riskVersion": "hard-caps-v3",
+      "targetId": "97f64950150a6d2dd74d",
+      "factorWeights": {
+        "momentum": 0.22,
+        "quality": 0.24,
+        "growth": 0.22,
+        "catalyst": 0.14,
+        "valuation": 0.18,
+        "flow": 0
+      },
+      "universeVersion": "80f4c5d54ce396515cb7",
+      "evidenceCoverage": 0.6885245901639344,
+      "id": "2026-11-23-rebalance",
+      "date": "2026-11-23",
+      "kind": "rebalance",
+      "targetAsOf": "2026-11-11",
+      "book": 7779.74,
+      "equityAtDecision": 7767.62,
+      "spyAt": 722.57,
+      "rationale": "EXEC_AUTO ticket 2026-11-23-u6q4rm: no sells this pass; deployed $119.25 of settled cash into AAPL (4.7% -> 6.2% target, 0.342141 sh @ $348.54). Held $413.10 for COST (above-entry, 5.5% over the $992.16-$1038.16 zone); $260.15 left in cash (deferred-weight policy, no known clearing date). Live pre-checks: plan basis book $7,779.74 vs live total_value $7,767.62 pre-trade (-0.16%, within the 5% abort); buying power $379.40 covered the $119.25 AAPL buy; no orders on ••••3900 today before this ticket (PDT n/a); margin account (••••0741) AAPL activity in the trailing 30 days was a realized GAIN of $0.01 on 2026-11-09, not a loss (cross-account wash n/a); AAPL has no earnings report within the next 7 days. Drawdown per the gate: book -7.6% from its 2026-08-10 peak vs benchmark -10.8% (+3.2pp relative; deployment normal). Turnover $119.25.",
+      "trades": [
+        {
+          "sym": "AAPL",
+          "side": "BUY",
+          "dollars": 119.25,
+          "shares": 0.342141,
+          "priceAt": 348.54,
+          "weightBefore": 4.67,
+          "weightAfter": 6.2,
+          "drivers": [
+            "quality",
+            "momentum"
+          ]
+        }
+      ]
     }
   ]
 }
