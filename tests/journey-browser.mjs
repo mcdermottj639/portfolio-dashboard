@@ -163,6 +163,7 @@ try{
   }
   await reloadFresh(false);await nav('accounts','main');await settle();
   assert.equal(await page.locator('#page-portfolio .cn-all:visible').count(),0,'v242: the rail is not shown in the workspace');
+  await page.locator('#page-portfolio .pf-foldbar .pf-foldall').first().waitFor({state:'visible',timeout:15000});   // toolbar is built 150ms after the page's last DOM write (debounce): wait for it, don't sleep
   assert.equal(await page.locator('#page-portfolio .pf-foldbar .pf-foldall:visible').count(),1,'v256: the page card toolbar carries Expand/Collapse all in the workspace');
   // a card pinned to My view does not start folded
   await reloadFresh(false);await nav('accounts','main');await settle();
