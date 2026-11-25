@@ -505,9 +505,9 @@ html[data-duo-indep][data-duo-split="on"][data-duo-ready] #pf-fresh{position:rel
 }
 
 /* Book · the "Expand all" bar was its own 48px row above the first card, so the right page's cards started below the left page's.
-   It now has zero height and its button floats fixed at the bottom corner and the first card starts at the top of the pane. Cards use
+   It now has zero height and its button sits in the first card's title row (absolute; nothing fixed in the scroller), so the first card starts at the top of the pane. Cards use
    14px side padding instead of 22px, and the gap under a card title is 8px. */
-html[data-duo-split="on"][data-duo-layout="book"] :is(#page-picks,#page-portfolio)>.pf-foldbar{height:0;margin:0;overflow:visible}
-html[data-duo-split="on"][data-duo-layout="book"] :is(#page-picks,#page-portfolio)>.pf-foldbar .pf-foldall{position:fixed;right:calc(var(--duo-r,0px) + 20px);bottom:12px;z-index:6;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+html[data-duo-split="on"][data-duo-layout="book"] #page-picks>.pf-foldbar{position:relative;height:0;margin:0;overflow:visible;z-index:3}
+html[data-duo-split="on"][data-duo-layout="book"] #page-picks>.pf-foldbar .pf-foldall{position:absolute;top:8px;right:104px;min-height:28px;padding:0 10px;font-size:11.5px}
 html[data-duo-split="on"][data-duo-layout="book"] :is(#picks-app,#plan-agentic-app)>.card{padding:14px!important}
 html[data-duo-split="on"][data-duo-layout="book"] :is(#picks-app,#plan-agentic-app)>.card>.card-title{margin-bottom:8px}

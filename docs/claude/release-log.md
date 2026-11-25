@@ -10,7 +10,7 @@ Layout CSS only (`ui/duo.css` §9f); no card, number, rule, copy, producer or sc
 Full (740-1100, not Book): Overview strip/Action Center/More lose the 560/640px caps (rows two-up) and the analysis cards pair by height
 (performance+income, risk+heatmap, technicals+fundamentals, flow+allocation; CSS `order` only); Positions holdings two-up (open card spans two rows);
 Apex Actions cards pair like the Agentic plan, rows share a height, Apex card uses its Book single-column order.
-Book: the Expand/Collapse-all bar floats (zero-height bar, fixed button) so the right page's first card starts at the top of the pane; cards 14px side padding.
+Book Actions/Research: the Expand/Collapse-all button moves into the first card title row (zero-height bar, absolute) so the right page's first card starts at the top of the pane; cards 14px side padding.
 Files: ui/duo.css, index.html, sw.js, tests/journey.test.cjs (version bump to v265). Folded and 390px unchanged (page heights identical).
 NOT verified: a physical iPhone Duo.
 
