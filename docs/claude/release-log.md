@@ -2,17 +2,17 @@
 
 > **ARCHIVE / REFERENCE — not default context.** Moved verbatim from the repo-root `CLAUDE.md` on 2026-11-18 (docs/process-only PR). Nothing here was rewritten. Where this text conflicts with the root `CLAUDE.md`, the root file wins: it holds the current ACTIVE RULES. Labels used there: ACTIVE RULE / CURRENT STATE / HISTORICAL / UNVERIFIED.
 
-> HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v264 — Wasted space / misaligned cards: Full and Book layouts (2026-11-25)
+> HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
+
+## v265 — Wasted space / misaligned cards: Full and Book layouts (2026-11-25)
 Jack (Nov 25, phone-tested Book Actions: "Good but still wasting space cards not aligned"; then "Portfolio is the full view even more so than book with wasting space so check all").
 Layout CSS only (`ui/duo.css` §9f); no card, number, rule, copy, producer or schedule change.
 Full (740-1100, not Book): Overview strip/Action Center/More lose the 560/640px caps (rows two-up) and the analysis cards pair by height
 (performance+income, risk+heatmap, technicals+fundamentals, flow+allocation; CSS `order` only); Positions holdings two-up (open card spans two rows);
 Apex Actions cards pair like the Agentic plan, rows share a height, Apex card uses its Book single-column order.
 Book: the Expand/Collapse-all bar floats (zero-height bar, fixed button) so the right page's first card starts at the top of the pane; cards 14px side padding.
-Files: ui/duo.css, index.html, sw.js, tests/journey.test.cjs (version bump to v264). Folded and 390px unchanged (page heights identical).
+Files: ui/duo.css, index.html, sw.js, tests/journey.test.cjs (version bump to v265). Folded and 390px unchanged (page heights identical).
 NOT verified: a physical iPhone Duo.
-
-## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
 ## v264 — Today Scoreboard card (2026-11-25)
 Jack (Nov 25 2026, after a mockup: "Build it but put that score card just on main today page. Shouldn't be buried").
