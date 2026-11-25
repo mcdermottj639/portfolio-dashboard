@@ -29,3 +29,46 @@ export function summarizeOpenOrders(payload, asOf) {
   }
   return { asOf: asOf || null, bySym };
 }
+
+// v267 (Jack, Nov 25 2026: "Yes, mark buys too"): ••••0741 BUY orders for the Apex morning ticket's "Placed" mark on
+// buy rows. NO new fetch: it reads the two files the refresh already saves — the open orders above and the incremental
+// filled-order window (raw/main-orders-incremental.json, EVERY-RUN) — both requested for the ••••0741 account only.
+// Publishes symbol → { at, state } where `at` is the LATEST creation time among that symbol's buy orders that are open
+// (queued / confirmed / partially filled) or filled. Cancelled, rejected, failed and expired orders never count, a sell
+// never counts, and an order that carries an account number not ending 0741 is ignored. No prices, quantities or ids
+// are kept. The ticket compares `at` with the research timestamp (a buy placed before the scan is not this ticket's).
+// DISPLAY ONLY: never an input to rules, scoring, R/R or Confirm (v211). Both inputs unreadable ⇒ null (fail open).
+const BUY_STATES = { open: new Set(['new', 'queued', 'confirmed', 'unconfirmed', 'partially_filled']), filled: new Set(['filled']) };
+
+function ordersOf(input) {
+  let p = input;
+  for (let i = 0; i < 6 && p; i++) {
+    if (p.structuredContent) p = p.structuredContent;
+    else if (p.content && p.content[0] && typeof p.content[0].text === 'string') p = JSON.parse(p.content[0].text);
+    else if (p.payload) p = p.payload;
+    else if (p.data && !Array.isArray(p.orders) && !Array.isArray(p.results)) p = p.data;
+    else break;
+  }
+  const list = p && (Array.isArray(p.orders) ? p.orders : Array.isArray(p.results) ? p.results : null);
+  return list || null;
+}
+
+export function summarizeBuyOrders(openPayload, filledPayload, asOf) {
+  const lists = [];
+  for (const src of [openPayload, filledPayload]) { try { const l = src ? ordersOf(src) : null; if (l) lists.push(l); } catch (_) { /* unreadable input: skip */ } }
+  if (!lists.length) return null;
+  const bySym = {};
+  for (const o of lists.flat()) {
+    if (!o || o.side !== 'buy') continue;
+    const state = String(o.state || '').toLowerCase();
+    const kind = BUY_STATES.open.has(state) ? 'open' : BUY_STATES.filled.has(state) ? 'filled' : null;
+    if (!kind) continue;
+    if (o.account_number != null && !String(o.account_number).endsWith('0741')) continue;
+    const sym = String(o.symbol || '').toUpperCase();
+    const at = o.created_at && Number.isFinite(Date.parse(o.created_at)) ? new Date(Date.parse(o.created_at)).toISOString() : null;
+    if (!sym || !at) continue;
+    const r = bySym[sym];
+    if (!r || at > r.at) bySym[sym] = { at, state: kind };
+  }
+  return { asOf: asOf || null, bySym };
+}

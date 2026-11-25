@@ -117,6 +117,35 @@ try {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     }
     await page.setViewportSize({ width: 390, height: 844 }); }
+  // v267 buys Jack already placed fold the same way: a buy order after the research time marks the row; before it, or none, does not
+  { const renderBuy = at => page.evaluate(at => {
+      window.__DATA.generatedAt = new Date().toISOString();
+      const p = (symbol, qty, px) => ({ symbol, qty, px, avg: px, val: qty * px });
+      const top5 = [{ sym: 'Y', trigger: 100, limit: 100, tp1: 120, stop: 90, orderType: 'limit', maxPx: 105, tradable: true, composite: 8, why: 'Synthetic research' }];
+      window.__APEX_TGT = { asOf: new Date().toISOString(), targets: { Y: 20 }, themeMap: { AA: 'industrial', Y: 'health' }, top5, heldLevels: [{ sym: 'AA', stop: 80, tp1: 150, stopBasis: 'held support' }] };
+      window.__APEX_CFG = {};
+      window.__DATA.main = Object.assign({}, window.__DATA.main, { openOrders: null, placedBuys: at ? { asOf: new Date().toISOString(), bySym: { Y: { at: new Date(Date.now() + at).toISOString(), state: 'open' } } } : null });
+      window.__SNAP = { enriched: [p('IREN', 50, 100), p('AA', 10, 100)], stats: { totalVal: 10000, cashVal: 0 }, smaMap: {}, earn: {} };
+      renderApexCard(window.__SNAP);
+    }, at);
+    const bfold = page.locator('#apex-ticket [data-apex-placed-fold="buy"]');
+    for (const [w, h] of [[390, 844], [466, 677], [960, 676]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await renderBuy(0);
+      assert.equal(await bfold.count(), 0, `${w}: no buy order, buy row is a to-do`); assert.equal(await page.locator('#apex-ticket [data-side="buy"]:not([data-placed])').count(), 1);
+      await renderBuy(-3600000);
+      assert.equal(await bfold.count(), 0, `${w}: buy order before research time does not count`);
+      await renderBuy(60000);
+      assert.equal(await bfold.count(), 1, `${w}: buy placed, folded`); assert.equal(await page.locator('#apex-ticket [data-side="buy"]:not([data-placed])').count(), 0);
+      assert.match(await page.locator('#apex-ticket').innerText(), /Buys\s*\(0\)\s*· 1 placed/);
+      assert.match(await bfold.locator(':scope > summary').innerText(), /✓ 1 placed\s*· tap to see/);
+      assert.equal(await page.evaluate(() => { const t = document.querySelector('#apex-ticket'); return t.scrollWidth <= t.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; }), true, `${w}: fits`);
+      if (w === 390 && process.env.PD_SHOT) { await page.locator('#apex-ticket').scrollIntoViewIfNeeded(); await page.screenshot({ path: process.env.PD_SHOT }); }
+      await bfold.locator(':scope > summary').click();
+      assert.equal(await page.locator('#apex-ticket [data-side="buy"][data-placed]:visible').count(), 1, `${w}: placed buy row shown when open`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${w}: open fits`);
+    }
+    await page.setViewportSize({ width: 390, height: 844 }); }
   // v258 deep link: #apex-ticket opens the Apex Plan page and the Apex card with the ticket on screen
   { const p2 = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
     const e2 = []; p2.on('pageerror', e => e2.push(e.message));
