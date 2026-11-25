@@ -38,11 +38,16 @@ export async function runFoldbarChecks({browser,base,sample,stub,apex,writes=[]}
       open:bodyOf(c).style.display!=='none',keep:!!window.__pfFold.keep(c),
       aria:c.querySelector(':scope > .card-title')?.getAttribute('aria-expanded')}));},pageId);
   const btn=pageId=>page.locator('#'+pageId+' > .pf-foldbar .pf-foldall');
+  // The toolbar is built by a 150ms trailing debounce (index.html buildAll), so it appears 150ms after the page's LAST DOM write,
+  // not at a fixed time: ~0.2s on a fast machine, ~0.9s on a 4x-throttled CPU (async Plan/Action-card renders keep writing).
+  // Wait for the control itself (explicit condition, 15s ceiling), then assert there is exactly one — never a fixed sleep.
+  const oneControl=async(pageId,msg)=>{await page.locator('#'+pageId+' .pf-foldall').first().waitFor({state:'visible',timeout:15000});
+    assert.equal(await page.locator('#'+pageId+' .pf-foldall:visible').count(),1,msg);};
 
   // (a) Apex Account page (workspace): exactly one control, visible, in the page (not the header or bottom nav); no rail button anywhere.
   await fresh();await nav('accounts','main');await settle();
   assert.equal(await page.locator('.cn-all').count(),0,'the old rail Expand/Collapse all button is gone everywhere');
-  assert.equal(await page.locator('#page-portfolio .pf-foldall:visible').count(),1,'one Expand/Collapse all control on the Apex Account page');
+  await oneControl('page-portfolio','one Expand/Collapse all control on the Apex Account page');
   assert.equal(await page.locator('.ex-top .pf-foldall, #tabbar .pf-foldall, .ex-nav .pf-foldall').count(),0,'not in the global header or bottom nav');
   assert.match(await btn('page-portfolio').innerText(),/Collapse all/,'cards start open, so the label offers Collapse all');
   // It sits above the card stack: above every foldable card except those the workspace pins above the summary.
@@ -84,7 +89,7 @@ export async function runFoldbarChecks({browser,base,sample,stub,apex,writes=[]}
 
   // (c) safety: on the self-directed Plan, Collapse all leaves the Apex Confirm card and Action Center open
   await fresh();await nav('plan','main');await settle();
-  assert.equal(await page.locator('#page-picks .pf-foldall:visible').count(),1,'one control on the Plan page');
+  await oneControl('page-picks','one control on the Plan page');
   if((await btn('page-picks').innerText()).includes('Expand'))await btn('page-picks').click(),await settle();
   await btn('page-picks').click();await settle();
   s=await state('page-picks');
@@ -103,7 +108,7 @@ export async function runFoldbarChecks({browser,base,sample,stub,apex,writes=[]}
 
   // (a, cont.) Options: one control; pages whose cards don't fold get none
   await nav('options');await settle();
-  assert.equal(await page.locator('#page-options .pf-foldall:visible').count(),1,'one control on Options');
+  await oneControl('page-options','one control on Options');
   await nav('apexpaper','main');await settle();
   assert.equal(await page.locator('#page-apexpaper .pf-foldall:visible').count(),0,'v2.9 Paper cards do not fold, so no control');
   await nav('predictions');await settle();

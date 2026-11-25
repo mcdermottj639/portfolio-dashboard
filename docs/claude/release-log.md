@@ -4,6 +4,13 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## Test fix — foldbar control race on the Plan page (2026-11-25, no app version bump)
+CI `test` failed intermittently at tests/foldbar-checks.mjs `one control on the Plan page` (0 !== 1). Cause: the toolbar is
+built by a 150ms trailing debounce (`buildAll`), so it appears 150ms after the page's LAST DOM write; the test slept a fixed
+350ms and counted at once. At 4x CPU throttle the control appears ~0.9s after navigation (8/8 failures); never missing for good.
+Fix: test-only, wait for the control to be visible (15s ceiling), then assert exactly one (foldbar-checks x3, journey-browser x1).
+Proof: 20/20 at 4x, 5/5 at 6x. No app code changed. NOT verified: CI result on slow runners until this PR's check ends.
+
 ## Producer — Daily Picks catch-up on FETCH_LIGHT (2026-11-25, no app version bump)
 Jack (Nov 25 2026): Daily Picks keep not updating; approved a catch-up, not a new task. `preflight.mjs` now, on a
 FETCH_LIGHT market-day run whose `data.picks.ts` (the "Last scan" date, read in-run from the decrypted prior snapshot)
