@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=lab1"></script>
-<script src="ui/experience-model.js?v=lab1"></script>
+<script src="ui/theme.js?v=lab2"></script>
+<script src="ui/experience-model.js?v=lab2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -746,15 +746,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=lab1">
-<link rel="stylesheet" href="ui/journey.css?v=lab1">
-<link rel="stylesheet" href="ui/predictions.css?v=lab1">
-<link rel="stylesheet" href="ui/apex-paper.css?v=lab1">
-<link rel="stylesheet" href="ui/smartmoney.css?v=lab1">
-<link rel="stylesheet" href="ui/ticker.css?v=lab1">
-<link rel="stylesheet" href="ui/today.css?v=lab1">
-<link rel="stylesheet" href="ui/book.css?v=lab1">
-<link rel="stylesheet" href="ui/duo.css?v=lab1">
+<link rel="stylesheet" href="ui/experience.css?v=lab2">
+<link rel="stylesheet" href="ui/journey.css?v=lab2">
+<link rel="stylesheet" href="ui/predictions.css?v=lab2">
+<link rel="stylesheet" href="ui/apex-paper.css?v=lab2">
+<link rel="stylesheet" href="ui/smartmoney.css?v=lab2">
+<link rel="stylesheet" href="ui/ticker.css?v=lab2">
+<link rel="stylesheet" href="ui/today.css?v=lab2">
+<link rel="stylesheet" href="ui/book.css?v=lab2">
+<link rel="stylesheet" href="ui/duo.css?v=lab2">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -824,10 +824,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=lab1"></script>
-<script src="ui/apex.js?v=lab1"></script>
-<script src="ui/business.js?v=lab1"></script>
-<script src="ui/apex-paper.js?v=lab1"></script>
+<script src="ui/sd-rules.js?v=lab2"></script>
+<script src="ui/apex.js?v=lab2"></script>
+<script src="ui/business.js?v=lab2"></script>
+<script src="ui/apex-paper.js?v=lab2"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -6860,7 +6860,7 @@ function renderAzShell(){
   let dl=''; try{ const u=azUniverse(); if(u.length)dl='<datalist id="az-tickers">'+u.map(o=>'<option value="'+o.sym+'">'+(o.label?String(o.label).replace(/"/g,'&quot;').replace(/</g,'&lt;'):o.sym)+'</option>').join('')+'</datalist>'; }catch(e){}
   app.innerHTML=
     '<div class="picks-hero"><div><div class="ph-label">Analyze</div><div class="ph-date">Single-Stock Deep Dive</div><div class="ph-stale">Technical + fundamental read from the latest snapshot · research only.</div></div></div>'+
-    '<div class="card" data-az-acct="'+BK.acct+'"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
+    '<div class="card lab-az-find" data-az-acct="'+BK.acct+'"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
     '<div id="az-result"></div>';
 }
 function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(s)runAnalysis(s); }
@@ -8029,7 +8029,10 @@ function runAnalysis(sym){
   const mGrid=(rows)=>'<div class="pk-metrics" style="grid-template-columns:repeat(3,1fr)">'+rows.filter(Boolean).map(m=>'<div class="pk-m"><div class="pk-m-l">'+m[0]+'</div><div class="pk-m-v">'+m[1]+'</div></div>').join('')+'</div>';
   const tg=a.tone==='pos'?'▲':a.tone==='neg'?'▼':'■'; // glyph so the call reads without relying on colour
   el.innerHTML=
-    '<div class="card" style="border-left:4px solid '+tc+'"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><div style="font-size:20px;font-weight:800">'+a.sym+ageBadge+'</div><div style="font-size:22px;font-weight:800;color:'+tc+';margin-top:2px"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div><div style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
+    '<div class="card lab-az-head" style="border-left:4px solid '+tc+'"><div class="lab-az-headrow"><div class="lab-az-id"><div style="font-size:20px;font-weight:800">'+a.sym+ageBadge+'</div><div class="lab-az-call" style="color:'+tc+'"><span aria-hidden="true">'+tg+'</span> '+a.label+'</div><div style="font-size:12px;color:#9ca3af;margin-top:2px">'+a.conf+'% confidence</div></div>'+
+      /* lab2: the Setup gauge rides in the header (was a full card of its own lower down) */
+      '<div class="lab-az-setup"><div class="az-gauge lab-az-g" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:17px;font-weight:800;color:'+sc+'">'+a.setup+'</div></div></div><div><div class="lab-az-setup-l">Setup</div><div class="lab-az-setup-t" style="color:'+sc+'">'+setupTxt+'</div></div></div>'+
+      '<div class="lab-az-px" style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
     // 🔭 Chart read — small, subtle verdict pill above the Recommendation (v87). Full detail + the interactive
     // chart live in the analyzer modal (tap 📊 Chart). Keeps the "chart pattern verdict" help popup via data-help.
     (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
@@ -8054,10 +8057,10 @@ function runAnalysis(sym){
         '<div style="font-size:15px;font-weight:800;color:'+col+'">'+(sc!=null?fmt(sc,1)+'/10':'partial read')+'</div>'+
         '<div style="font-size:11px;color:#9ca3af;margin-top:2px">'+(bits.join(' · ')||'not enough data to score')+'</div></div>'; })()+
     azRec(a,x)+
-    '<div class="card" style="text-align:center"><div class="az-gauge" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:26px;font-weight:800;color:'+sc+'">'+a.setup+'</div><div style="font-size:9px;color:#9ca3af">SETUP</div></div></div><div style="font-size:13px;font-weight:700;margin-top:8px;color:'+sc+'">'+setupTxt+'</div>'+
-      (a.hasTA?'<div style="text-align:left;margin-top:14px">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
-        '<div style="text-align:left;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:10px;border-left:3px solid '+tc+'"><div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">💡 Why this signal</div><div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9">'+whyTxt+'</div></div>':'')+'</div>'+
-    (a.stale&&a.hasTA===false&&a.dataAge!=null?'<div class="card" style="border-left:4px solid #f59e0b"><div class="card-title"><span>⏳ Stale History</span></div><div style="font-size:12.5px;line-height:1.6">The daily bars this snapshot holds for <b>'+a.sym+'</b> end on <b>'+(a.lastBar||'an unknown date')+'</b> — <b>'+a.dataAge+' days</b> before the snapshot itself. The price above is live; the bars are not, so every moving average, momentum reading, level and pattern would be measured from a series that stopped moving. Measured over this snapshot’s own history a read that stale points the WRONG WAY 11–15% of the time, so the technical call is <b>withheld rather than shaded</b>. The producer refreshes daily bars on its next full run and this name comes back on its own — nothing is broken and nothing needs doing. Price, '+(a.pick?'today’s Picks call, ':'')+'fundamentals and your position are shown below.</div></div>':!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></div>':'')+
+    (a.hasTA?'<div class="card"><div class="card-title"><span>🎯 Setup breakdown <span class="card-hint">what makes the '+a.setup+'</span></span></div>'+
+      '<div style="text-align:left">'+azBar('Pattern Quality',a.pattern,a.trendUp?'Clean, trending structure':'Choppy / no clear trend')+azBar('Signal Confidence',a.signal,'How well RSI, trend &amp; momentum agree')+azBar('Risk Level',a.risk,(a.risk>=60?'Contained — manageable volatility':'Elevated — volatile, watch closely'))+'</div>'+
+        '<div style="text-align:left;margin-top:12px;padding:10px 12px;background:var(--surface-2);border-radius:10px;border-left:3px solid '+tc+'"><div style="font-size:11px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">💡 Why this signal</div><div style="font-size:12px;line-height:1.5;color:var(--text);opacity:.9">'+whyTxt+'</div></div></div>':'')+
+    (a.stale&&a.hasTA===false&&a.dataAge!=null?'<div class="card" style="border-left:4px solid #f59e0b"><div class="card-title"><span>⏳ Stale History</span></div><div style="font-size:13px;font-weight:700">Bars end '+(a.lastBar||'an unknown date')+' · '+a.dataAge+' days old · technical call withheld</div><details class="lab-more"><summary>Why, and what happens next</summary><div style="font-size:12.5px;line-height:1.6">The daily bars this snapshot holds for <b>'+a.sym+'</b> end on <b>'+(a.lastBar||'an unknown date')+'</b> — <b>'+a.dataAge+' days</b> before the snapshot itself. The price above is live; the bars are not, so every moving average, momentum reading, level and pattern would be measured from a series that stopped moving. Measured over this snapshot’s own history a read that stale points the WRONG WAY 11–15% of the time, so the technical call is <b>withheld rather than shaded</b>. The producer refreshes daily bars on its next full run and this name comes back on its own — nothing is broken and nothing needs doing. Price, '+(a.pick?'today’s Picks call, ':'')+'fundamentals and your position are shown below.</div></details></div>':!a.hasTA?'<div class="card" style="border-left:4px solid #9ca3af"><div class="card-title"><span>🔒 Limited Snapshot Data</span></div><div style="font-size:13px;font-weight:700">Not enough price history yet · technical read locked until the next run</div><details class="lab-more"><summary>What is locked</summary><div style="font-size:12.5px;line-height:1.6">This snapshot doesn’t have enough daily price history for <b>'+a.sym+'</b> to run the full technical read. <b>Locked until the next producer run captures its bars:</b> price &amp; RSI chart, indicators, multi-timeframe, scenarios, historical edge, support/resistance and the options play. Showing price, '+(a.pick?'today’s Picks call ':'')+'recommendation and fundamentals in the meantime — holdings &amp; screened picks get full history on the next run.</div></details></div>':'')+
     (x.held?'<div class="card" data-priv="on" style="border-left:4px solid #6366f1"><div class="card-title"><span>📦 Your Position <span class="badge" data-az-pos-acct="'+(x.acct||'main')+'">'+(x.acct==='agentic'?'Agentic':'Apex')+'</span></span></div>'+mGrid([['Shares','<span data-priv="val">'+fmt(x.held.qty,x.held.qty<10?2:0)+'</span>'],['Avg cost','$'+fmt(x.held.avg)],['Value','<span class="money">'+fmtD(x.held.val)+'</span>'],['Unrl. P&L','<span class="money" style="color:'+(x.held.pnlD>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlD>=0?'+':'')+fmtD(x.held.pnlD)+'</span>'],['Return','<span style="color:'+(x.held.pnlP>=0?'#10b981':'#ef4444')+'">'+(x.held.pnlP>=0?'+':'')+fmt(x.held.pnlP,1)+'%</span>'],['% of book',fmt(x.held.pct,1)+'%']])+'</div>':'')+
     (earn?'<div class="card" style="border-left:4px solid '+(earn.days>=0&&earn.days<=10?'#f59e0b':'#6366f1')+'"><div class="card-title"><span>📅 Earnings</span></div><div style="font-size:12.5px;line-height:1.6">'+(earn.days<0?('Last reported '+(-earn.days)+'d ago ('+earn.date+').'):earn.days===0?('Reports <b>today</b> ('+earn.date+')'+(earn.when&&_whenTxt[earn.when]?' '+_whenTxt[earn.when]:'')+'.'):('Next earnings in <b>'+earn.days+' days</b> — '+earn.date+(earn.when&&_whenTxt[earn.when]?', '+_whenTxt[earn.when]:'')+'.'))+(earn.eps!=null?' Est. EPS $'+earn.eps+'.':'')+(earn.days>=0&&earn.days<=10?' <b style="color:#f59e0b">Elevated IV / gap risk into the print — size accordingly.</b>':'')+'</div></div>':'')+
     (a.hasTA?'<div class="card"><div class="card-title"><span>📊 Indicators</span></div>'+mGrid([['RSI(14)',a.rsi!=null?a.rsi:'—'],['SMA50',x.sma50?'$'+x.sma50.toFixed(2):'—'],['SMA200',x.sma200?'$'+x.sma200.toFixed(2):'—'],['ATR',x.atrPct!=null?x.atrPct.toFixed(1)+'%':'—'],['Volume',x.volRatio!=null?x.volRatio.toFixed(2)+'×':'—'],['Beta',x.beta!=null?x.beta.toFixed(2):'—'],['vs SPY',x.relStr!=null?(x.relStr>=0?'+':'')+x.relStr.toFixed(1)+'%':'—'],['Trend',a.trendUp?'Up':a.trendUp===false?'Down':'Flat'],['MA cross',x.cross?({golden:'🌟 Golden',death:'💀 Death',above:'50&gt;200',below:'50&lt;200'})[x.cross]:'—']])+
@@ -9034,18 +9037,68 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=lab1"></script>
-<script src="ui/today.js?v=lab1"></script>
-<script src="ui/predictions-model.js?v=lab1"></script>
-<script src="ui/predictions.js?v=lab1"></script>
-<script src="ui/smartmoney-model.js?v=lab1"></script>
-<script src="ui/smartmoney.js?v=lab1"></script>
-<script src="ui/experience.js?v=lab1"></script>
-<script src="ui/ticker.js?v=lab1"></script>
-<script src="ui/duo.js?v=lab1"></script>
-<script src="ui/compact.js?v=lab1"></script>
-<script src="ui/journey.js?v=lab1"></script>
-<script src="ui/book.js?v=lab1"></script>
-<div id="lab-ribbon" data-lab="1" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483000;pointer-events:none;font:700 10px/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em;padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab1</div>
+<script src="ui/today-model.js?v=lab2"></script>
+<script src="ui/today.js?v=lab2"></script>
+<script src="ui/predictions-model.js?v=lab2"></script>
+<script src="ui/predictions.js?v=lab2"></script>
+<script src="ui/smartmoney-model.js?v=lab2"></script>
+<script src="ui/smartmoney.js?v=lab2"></script>
+<script src="ui/experience.js?v=lab2"></script>
+<script src="ui/ticker.js?v=lab2"></script>
+<script src="ui/duo.js?v=lab2"></script>
+<script src="ui/compact.js?v=lab2"></script>
+<script src="ui/journey.js?v=lab2"></script>
+<script src="ui/book.js?v=lab2"></script>
+<style id="lab-css">
+/* lab2 — Analyze: verdict on the first screen (layout only; no number, rule or data changes) */
+.lab-az-headrow{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"id px" "setup setup";gap:8px 12px;align-items:start}
+.lab-az-id{grid-area:id;min-width:0}.lab-az-px{grid-area:px;white-space:nowrap}
+.lab-az-call{font-size:20px;font-weight:800;margin-top:2px;line-height:1.15;overflow-wrap:anywhere}
+.lab-az-setup{grid-area:setup;display:flex;align-items:center;gap:10px;padding-top:8px;border-top:1px solid var(--border,rgba(127,127,127,.2))}
+.az-gauge.lab-az-g{width:52px;height:52px;margin:0;flex:none}.az-gauge.lab-az-g .az-gauge-in{width:38px;height:38px}
+.lab-az-setup-l{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af}
+.lab-az-setup-t{font-size:13px;font-weight:700;line-height:1.25}
+.lab-more{margin-top:6px}.lab-more>summary{cursor:pointer;font-size:12px;color:#9ca3af;min-height:32px;display:flex;align-items:center}
+.lab-more>summary::before{content:"▸";margin-right:6px}.lab-more[open]>summary::before{content:"▾"}
+.lab-more>summary::-webkit-details-marker{display:none}
+@media (min-width:740px){
+  .lab-az-headrow{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"id setup px";gap:24px;align-items:center}
+  .lab-az-setup{padding-top:0;border-top:0;max-width:240px}
+  .lab-az-call{font-size:22px}
+  /* search box, holdings chips and the pattern scan share one row instead of three */
+  .card.lab-az-find{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding-top:12px;padding-bottom:12px}
+  .card.lab-az-find>.az-search{flex:1 1 300px;min-width:0}
+  .card.lab-az-find>[data-az-chips-for]{margin:0!important;white-space:nowrap}
+  .card.lab-az-find>.cm-chip{margin-top:0!important}
+}
+@media (min-width:1101px){
+  /* PC full view: cards flow in two balanced columns under the full-width verdict */
+  html:not([data-duo-split="on"]) #az-result{column-count:2;column-gap:14px}
+  html:not([data-duo-split="on"]) #az-result>*{break-inside:avoid;-webkit-column-break-inside:avoid}
+  html:not([data-duo-split="on"]) #az-result>.card:first-child,html:not([data-duo-split="on"]) #az-result>.disclaimer{column-span:all}
+}
+/* lab2 — Analyze chrome: the journey strip packs into rows instead of four stacked lines */
+.pj-analyzing #pj-context{display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;padding:8px 12px}
+.pj-analyzing #pj-context>.pj-context-head{flex:1 1 100%}
+.pj-analyzing #pj-context>.pj-stage{flex:0 1 auto;margin:0}
+.pj-analyzing #pj-context>.pj-notice{display:contents}
+.pj-analyzing #pj-context>.pj-notice>button{margin-left:auto;order:1}
+.pj-analyzing #pj-context>.pj-source{order:2;flex:0 1 auto;margin-top:0}
+.pj-analyzing #pj-context>.pj-source[open]{flex:1 1 100%}
+.pj-analyzing #pj-context>.pj-notice>span{order:3;font-size:11px;color:var(--ex-muted)}
+@media (max-width:739px){
+  /* phone: holdings chips and the pattern scan scroll on one line under the search box */
+  .card.lab-az-find{display:flex;flex-wrap:nowrap;align-items:center;gap:6px 8px;overflow-x:auto;padding:12px;scrollbar-width:none;flex-flow:row wrap}
+  .card.lab-az-find>.az-search{flex:1 1 100%}
+  .card.lab-az-find>[data-az-chips-for]{display:none}
+  .card.lab-az-find>.az-chips{flex:1 1 0;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .card.lab-az-find>.az-chips>.az-chip{flex:none;min-height:32px;display:inline-flex;align-items:center}
+  .card.lab-az-find>.cm-chip{margin-top:0!important;flex:none;max-width:44%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #lab-ribbon-wrap{bottom:calc(74px + env(safe-area-inset-bottom))!important}
+}
+#lab-ribbon-wrap{position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483000;display:flex;gap:6px;align-items:center;pointer-events:none;font:700 10px/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em}
+#lab-ribbon-wrap a{pointer-events:auto;padding:5px 8px;border-radius:999px;background:#fff;color:#b45309;border:1px solid #b45309;text-decoration:none}
+</style>
+<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="2" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab2</div></div>
 </body>
 </html>
