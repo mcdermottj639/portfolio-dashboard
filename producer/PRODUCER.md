@@ -25,10 +25,11 @@
 > than the market-wide saved scanner; provenance is saved with Picks. It reuses fresh merged
 > historicals and refuses to build from missing/stale inputs. No-match is a valid empty screen.
 > Run `picks-build.mjs` BEFORE `options-plan.mjs`, so option ideas use the refreshed candidates.
-> **Daily Picks is REQUIRED on FETCH_ALL — never skip it to save calls.** Finish every planner
-> batch (~19 calls on 2026-11-20) and `picks-build.mjs` before publishing. A FETCH_ALL that
-> publishes with `daily-picks` missing just to save effort leaves the Last scan stamp frozen
-> (it happened 2026-11-20). Only a real provider failure may leave Picks partial; name it.
+> **Daily Picks: rebuild it on every FETCH_ALL you can, but publishing comes first.** Finish the
+> planner batches (~19 calls on 2026-11-20) and `picks-build.mjs` before `run.mjs` when you can; a
+> skipped rebuild leaves the Last scan stamp frozen (2026-11-20, 11-23). Never end a run without
+> `run.mjs` because Picks or any other extra is unfinished (2026-11-24/25 runs did, freezing the whole
+> dashboard): publish with what you have and name what was skipped.
 >
 > After quotes, `node producer/refresh-check.mjs --full` prints the exact top-14 holdings
 > fundamentals batches. Save each whole response to `holdings-fund-1.json`, `-2.json`, etc.;
