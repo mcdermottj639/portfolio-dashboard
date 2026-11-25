@@ -1,0 +1,513 @@
+/* v219 — iPhone Duo (foldable) layouts. Jack, Nov 12 2026: "Can our apps be optimized for the folded vs big
+   view" → picked both mockups ("Both"). Layout only: every card, number and control is the same; nothing is
+   computed here. Widths are keyed to ranges, not to a device (the Duo's browser width was estimated, not measured):
+     · phone / folded  ≤ 739px            → slim header, equity beside the day move, Apex trades above the rules
+                                             with Confirm pinned over the bottom nav
+     · open            740–1100px         → the bottom nav / sidebar becomes a left rail; Today and Apex become two panes
+     · short screens   ≤ 720px tall       → the slim header at any width (the open Duo is wide but short)
+   Loaded last so it only overrides.
+   v232 correction: Safari's native Duo controls column is OUTSIDE the web
+   viewport. Inset emulation does not reproduce or reclaim it. Size content to
+   the available viewport; never expand to screen.width or force a zoom. */
+
+.ex-today-title{display:none}
+/* One Today heading on a narrow viewport. Date, stale warning and the working
+   Light/Dark/System control already remain in the sticky freshness bar. */
+@media (max-width:739px) {
+  html.pf-today-premium #ex-top .ex-brand,
+  html.pf-today-premium #ex-top #ex-context,
+  html.pf-today-premium #page-ex-today .td-heading{display:none!important}
+  html.pf-today-premium #ex-top .ex-today-title{display:block;font-size:22px;line-height:1.2;margin:0;letter-spacing:-.5px}
+  html.pf-today-premium #ex-top{padding:4px 0 8px!important;gap:8px!important}
+  html.pf-today-premium #ex-top #ex-classic{min-height:44px;font-size:12px;padding:6px 10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-layout{gap:10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-panel{padding:12px;border-radius:14px}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero.ex-brief-hero{padding:12px!important}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero-line{gap:6px 10px;margin:6px 0 8px;align-items:center}
+  html.pf-today-premium #page-ex-today .td-shell #ex-combined-equity{font-size:clamp(26px,7vw,34px)}
+  html.pf-today-premium #page-ex-today .td-shell #ex-combined-move{font-size:18px}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero-change{font-size:11px;flex:1 1 110px}
+  html.pf-today-premium #page-ex-today .td-shell .td-eyebrow{font-size:10.5px}
+  html.pf-today-premium #page-ex-today .td-shell .td-hero>.td-muted{font-size:11px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-grid{gap:10px;padding-top:6px;margin-top:6px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account+.td-account{padding-left:10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-head{margin-bottom:2px}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-head .td-link{min-height:44px;width:100%;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+  /* A landscape pane can be much narrower than its viewport. Keep the existing
+     account container sizing, with a viewport fallback for older engines. */
+  html.pf-today-premium #page-ex-today .td-shell .td-account .td-account-value{font-size:clamp(18px,5.3vw,23px);font-size:clamp(14px,12.4cqi,23px)}
+  html.pf-today-premium #page-ex-today .td-shell .td-account-meta{font-size:11px;gap:2px 6px;margin-top:3px}
+  html.pf-today-premium #page-ex-today .td-shell .td-section-head{margin-bottom:10px}
+  html.pf-today-premium #page-ex-today .td-shell .td-trade-card{padding:10px}
+}
+
+/* ── 1 · Slim header: phones and short screens ─────────────────────────────────────────────────────────── */
+@media (max-width:739px), (max-height:720px) {
+  html.experience-on .ex-top{flex-wrap:nowrap!important;padding:6px 0;gap:8px}
+  html.experience-on .ex-top>div:not(.ex-tools){flex:1 1 auto;min-width:0}
+  html.experience-on .ex-top .ex-tools{flex:0 0 auto;width:auto;flex-wrap:nowrap}
+  html.experience-on .ex-brand{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  html.experience-on #ex-context{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* The caption under the title already reads "Self-directed + Agentic". */
+  html.experience-on #ex-all-accounts{display:none}
+  /* Today has one sub-page, so its one-tab row is only height. */
+  html.experience-on #ex-subnav:has(>button:only-child){display:none}
+
+  #page-ex-today .ex-brief-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #page-ex-today .ex-brief-heading .ex-label,
+  #page-ex-today .ex-brief-heading p.ex-muted{display:none}
+  #page-ex-today .ex-brief-heading h1{font-size:18px;letter-spacing:-.3px;margin:0}
+  #page-ex-today .ex-brief-heading>.ex-badge{margin:0;flex-shrink:0}
+  #page-ex-today .ex-brief-hero{margin-top:8px;padding:14px;gap:12px}
+  #page-ex-today .ex-brief-hero p.ex-muted{font-size:11.5px;line-height:1.4;margin-bottom:4px}
+  #page-ex-today .ex-move-tile{padding:12px}
+  #page-ex-today .ex-account-grid{margin:10px 0}
+}
+
+@media (max-width:739px) {
+  #pj-context{padding:8px 10px;margin-bottom:8px}
+  #pj-context>.pj-steps{margin-top:6px}
+  #pj-context>.pj-source{margin-top:2px}
+}
+
+/* Equity beside the day move wherever two columns fit (the folded Duo, larger phones). */
+@media (min-width:420px) and (max-width:739px) {
+  #page-ex-today .ex-brief-hero{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center}
+}
+
+/* ── 2 · Phone / folded: Apex trades come before the rules; Confirm stays in reach ───────────────────── */
+@media (max-width:739px) {
+  #apex-content{display:flex;flex-direction:column}
+  #apex-content>*{order:3;min-width:0}
+  #apex-content>:first-child,
+  #apex-content>[data-apex-lev]{order:0}
+  #apex-content>[data-apex-book]{order:1}
+  #apex-content>[data-apex-rules]{order:2}
+  #apex-content>[data-apex-book]{margin-top:10px}
+  #apex-content [data-apex-confirm]{bottom:calc(env(safe-area-inset-bottom) + 66px)}
+}
+
+/* Confirm stays on screen while its trade list is in view (phone: above the bottom nav; open: foot of the pane). */
+@media (max-width:1100px) {
+  #apex-content [data-apex-confirm]{position:sticky;z-index:5;background:var(--sl-panel,#fff);padding:6px 0 2px;
+    box-shadow:0 -10px 12px -10px rgba(20,33,57,.22)}
+}
+@media (min-width:740px) and (max-width:1100px) {
+  #apex-content [data-apex-confirm]{bottom:0;padding-bottom:calc(env(safe-area-inset-bottom) + 8px)}
+}
+
+/* ── 3 · Open: left rail instead of the bottom nav ────────────────────────────────────────────────────── */
+@media (min-width:740px) and (max-width:1100px) {
+  html.experience-on body{padding-left:calc(env(safe-area-inset-left) + 88px);padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
+  html.experience-on .ex-main{top:0;bottom:0;left:0;right:auto;width:calc(env(safe-area-inset-left) + 76px);height:auto;
+    flex-direction:column;justify-content:flex-start;align-items:center;gap:6px;
+    padding:10px 6px 10px calc(env(safe-area-inset-left) + 6px);border-top:0;border-right:1px solid var(--ex-border)}
+  html.experience-on.pf-has-tape .ex-main{top:calc(var(--tk-pad, 0px) + var(--tk-h, 0px))}
+  html.experience-on .ex-main button{flex:0 0 auto;width:64px;min-width:0;min-height:58px;padding:6px 2px;font-size:10.5px;border-radius:10px}
+  html.experience-on .ex-main button[aria-current="page"]{box-shadow:none;background:var(--ex-soft)}
+  /* v220: 901-1100px used to keep the 184px desktop sidebar (the open Duo measures ~960px wide, not ~890). */
+  html.experience-on .ex-main button{flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}
+  html.experience-on .ex-main .ex-wordmark,html.experience-on .ex-main .ex-classic{display:none}
+}
+
+/* ── 4 · Open: two panes (also when the shell already has its side nav, up to 1100px) ───────────────── */
+@media (min-width:740px) and (max-width:1100px) {
+  /* Today: equity, accounts and cash on the left; the radar on the right; the rest pairs up below. */
+  #page-ex-today:not([hidden]){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
+  #page-ex-today>*{margin-top:0;margin-bottom:0}
+  #page-ex-today>.ex-brief-heading{grid-column:1/-1}
+  #page-ex-today>.ex-brief-hero{grid-column:1;grid-row:2;align-self:stretch;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);align-items:center;padding:14px;gap:12px}
+  #page-ex-today>.ex-account-grid{grid-column:1;grid-row:3;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  #page-ex-today .ex-account-card{padding:13px}
+  #page-ex-today .ex-account-head{display:block}
+  #page-ex-today .ex-account-head h2{font-size:14px}
+  #page-ex-today .ex-account-head .ex-link{font-size:11px;padding:5px 0}
+  #page-ex-today .ex-account-facts .ex-row{display:block;font-size:11px}
+  #page-ex-today .ex-account-facts .ex-row>span{display:block;max-width:100%;text-align:left}
+  #page-ex-today .ex-account-facts .ex-row>span:last-child{font-size:16px;margin-top:3px}
+  #page-ex-today>.ex-cash-strip{grid-column:2;grid-row:3;align-self:stretch;align-content:center;grid-template-columns:1fr 1fr;padding:12px 14px;gap:10px}
+  #page-ex-today>.ex-cash-strip>p{grid-column:1/-1;margin:0}
+  #page-ex-today>.ex-brief-grid{display:contents}
+  #page-ex-today>.ex-brief-grid>.ex-card.ex-wide:first-child{grid-column:2;grid-row:2;align-self:stretch}
+  /* v220: a figure never wraps mid-number or spills out of its tile in a narrow pane. */
+  #page-ex-today .ex-hero-value{font-size:clamp(20px,2.9vw,28px);white-space:nowrap}
+  #page-ex-today .ex-daily-value{font-size:clamp(17px,2.4vw,24px);white-space:nowrap}
+  #page-ex-today .ex-move-tile{min-width:0;padding:12px}
+  #page-ex-today .ex-move-tile p.ex-muted{font-size:11px}
+  #page-ex-today .ex-account-value{white-space:nowrap;font-size:clamp(17px,2.3vw,22px)}
+
+  /* Plan context card: account, name picker and the three steps share one row. */
+  #pj-context{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);column-gap:12px;align-items:center;padding:8px 12px}
+  #pj-context>*{grid-column:1/-1;min-width:0}
+  #pj-context>.pj-context-head{grid-column:1}
+  #pj-context>.pj-context-head+.pj-steps{grid-column:2;margin-top:0}
+  #pj-context>.pj-source{margin-top:2px}
+
+  /* Apex: leverage and rules on the left; the trades and Confirm on the right. */
+  #apex-content{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;align-items:start}
+  #apex-content>*{grid-column:1/-1;min-width:0}
+  #apex-content>[data-apex-lev]{grid-column:1;grid-row:2}
+  #apex-content>[data-apex-rules]{grid-column:1;grid-row:3}
+  #apex-content>[data-apex-book]{grid-column:2;grid-row:2/span 2}
+  #apex-content>[data-apex-lev] .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #apex-content>[data-apex-book]>.ac-tier:first-child{margin-top:0}
+  /* No trades and nothing to review: the left pane takes the full width. */
+  #apex-content>[data-apex-book]:empty{display:none}
+  #apex-content:has(>[data-apex-book]:empty)>[data-apex-lev],
+  #apex-content:has(>[data-apex-book]:empty)>[data-apex-rules]{grid-column:1/-1}
+}
+
+/* ── 5 · Reported asymmetric inset fallback (v220), not Safari's native control column ── */
+html.pf-side-status body{padding-right:12px!important}
+html.pf-side-status #pf-fresh,
+html.pf-side-status #ex-top,
+html.pf-side-status #ex-subnav,
+html.pf-side-status #page-ex-today .ex-brief-heading{margin-right:var(--duo-r,0px)!important}
+/* The date bar is sticky too: cover its reserved side area so a full-width
+   card cannot show through beside it after scrolling. Keep the controls inset. */
+html.pf-side-status #pf-fresh::after{content:'';position:absolute;top:-1px;bottom:-1px;left:100%;
+  width:calc(var(--duo-r,0px) + 1px);background:var(--sl-ground,#f7f6f2);pointer-events:none}
+/* The sticky account switcher keeps its own backing under the icons, so scrolled text never shows beside it. */
+html.pf-side-status .acct-seg-wrap{padding-right:var(--duo-r,0px)!important;background:var(--sl-ground,#f7f6f2)}
+
+/* Keep the same holdings controls and numbers readable in the actual phone
+   viewport, including an iOS window that reserves a system-owned side strip. */
+#pos-table,#pos-table-ag{max-width:100%;overflow-x:auto}
+@media (max-width:739px) {
+  #page-portfolio .card[data-sec="holdings"]{padding:12px}
+  #page-portfolio .card[data-sec="holdings"]>.card-title{margin-bottom:10px;flex-wrap:nowrap;gap:5px}
+  #page-portfolio .card[data-sec="holdings"]>.card-title .card-hint{display:none}
+  #page-portfolio .card[data-sec="holdings"] .pj-filter{margin-bottom:8px}
+}
+@media (max-width:520px) {
+  :is(#pos-table,#pos-table-ag) tr.pf-open{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  :is(#pos-table,#pos-table-ag) tr.pf-open>td:first-child{grid-column:1/-1;display:flex;align-items:center;gap:10px}
+  :is(#pos-table,#pos-table-ag) tr.pf-open .pj-row-toggle{margin:0 0 0 auto}
+  :is(#pos-table,#pos-table-ag) td .badge{font-size:11px;padding:2px 5px}
+  :is(#pos-table,#pos-table-ag) .pj-row-toggle{min-height:44px;min-width:44px}
+}
+@media (max-width:399px) {
+  :is(#pos-table,#pos-table-ag) table.pf-stack tbody tr{grid-template-columns:repeat(3,minmax(0,1fr))}
+  :is(#pos-table,#pos-table-ag) table.pf-stack tbody td:first-child{grid-column:1/-1;display:flex;align-items:center;gap:10px}
+  :is(#pos-table,#pos-table-ag) .pj-row-toggle{margin:0 0 0 auto}
+}
+
+/* ───────── 6 · v221: the rest of the app ─────────
+   Jack (Nov 12, on v220's open Today): "That's better. Do the rest of that portfolio dashboard app now."
+   Layout only: same cards, same numbers. */
+
+/* 6a · Short or narrow screens: page banners become one slim row (both Duo screens are < 720px tall). */
+@media (max-width:739px), (max-height:720px) {
+  #page-portfolio .header{padding:10px 16px;margin-bottom:10px}
+  #page-portfolio .header>div{align-items:center!important;gap:10px}
+  #page-portfolio .header .h-label{font-size:10px}
+  #page-portfolio .header .h-value{font-size:clamp(22px,5vw,28px);line-height:1.15;white-space:nowrap}
+  .picks-hero{padding:10px 16px;margin-bottom:10px;gap:8px}
+  .picks-hero .ph-label{font-size:10px}
+  .picks-hero .ph-date{font-size:17px;margin-top:0}
+  .picks-hero .ph-stale{font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .picks-hero>div{min-width:0}
+  .picks-hero .run-btn{padding:6px 12px;font-size:12px}
+  .pred-page .pred-head{padding:4px 0 8px}
+  .pred-page .pred-head h1{font-size:26px;line-height:1.1}
+  .pred-page .pred-head h1+p{display:none}
+  .pred-page .pred-head-tools{margin-top:6px}
+}
+
+/* 6b · Folded (420–739): six snapshot tiles in two rows of three instead of three rows of two. */
+@media (min-width:420px) and (max-width:739px) {
+  #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  #page-portfolio [data-sec="snapshot"] .snap{padding:10px;min-width:0}
+  #page-portfolio [data-sec="snapshot"] .snap-val{font-size:clamp(14px,3.7vw,18px);white-space:nowrap}
+  /* v237: the agentic snapshot has four tiles, so 2x2 here (three columns would leave an orphan). */
+  #page-portfolio #agentic-app [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* 6c · Open (740–1100): use the width. */
+@media (min-width:740px) and (max-width:1100px) {
+  /* Accounts: all six snapshot tiles on one row */
+  #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+  #page-portfolio [data-sec="snapshot"] .snap{padding:10px;min-width:0}
+  #page-portfolio [data-sec="snapshot"] .snap-val{font-size:clamp(14px,1.75vw,18px);white-space:nowrap}
+  /* v237: agentic: four tiles on one row */
+  #page-portfolio #agentic-app [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+  /* Shared pairing grid: a page's cards sit two-up; wide ones opt back to full width. */
+  #markets-app,#options-app,#plan-agentic-app,#az-result{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:start}
+  #markets-app>*,#options-app>*,#plan-agentic-app>*,#az-result>*{grid-column:1/-1;min-width:0}
+
+  /* Markets: sector map beside US-vs-international, macro beside breadth */
+  #markets-app>.card:has(#sec-hint),#markets-app>.card:has(#sec-hint)+.card,
+  #markets-app>.card:has(#mkt-macro),#markets-app>.card:has(#mkt-breadth){grid-column:auto}
+  #mkt-macro .snap-grid,#mkt-macro .mkt-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #mkt-macro .snap{min-width:0}
+
+  /* Options: the two income rankers side by side */
+  #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income]){grid-column:auto}
+
+  /* Agentic plan: every card after the banner pairs up */
+  #plan-agentic-app>.card{grid-column:auto}
+
+  /* Analyze: header and flow chip full width, the rest two-up */
+  #az-result>.card{grid-column:auto}
+  #az-result>.card:first-child,#az-result>.card:nth-child(2){grid-column:1/-1}
+
+  /* Half-width cards: the grey hint leaves the title so the ? ☆ ▼ buttons stay on its line */
+  #markets-app>.card:has(#sec-hint) .card-title .card-hint,#markets-app>.card:has(#sec-hint)+.card .card-title .card-hint,
+  #markets-app>.card:has(#mkt-breadth) .card-title .card-hint,
+  #plan-agentic-app>.card>.card-title .card-hint,#az-result>.card:nth-child(n+3)>.card-title .card-hint{display:none}
+
+  /* Smart Money: full width, rows two-up */
+  .sm-page{max-width:none}
+  .sm-page .sm-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sm-page .sm-rows>.sm-row:nth-child(2){border-top:0}
+  .sm-page .sm-rows>.sm-row:nth-child(odd){border-right:1px solid var(--sm-rule)}
+  .sm-page .sm-rows>:not(.sm-row){grid-column:1/-1}
+}
+
+/* ───────── 7 · v222: folded screen turned sideways (about 678 x 453) ─────────
+   Jack (Nov 13, screenshot): "Got this folded landscape view … optimize this landscape folded view as well".
+   The Duo reports an ~85px LEFT inset in this pose and the bottom bar took a quarter of the 453px height, so the
+   nav becomes a left rail that sits in that inset (width = the larger of the inset and 72px), the bottom bar goes,
+   and the Today heading row (its age repeats the snapshot strip) is hidden. Layout only. --duo-l comes from
+   ui/duo.js; env() is the fallback. Any short wide screen (a phone sideways) gets the same treatment. */
+@media (min-width:560px) and (max-width:739px) and (max-height:520px) {
+  html.experience-on{--duo-rail:max(72px, var(--duo-l, env(safe-area-inset-left)))}
+  html.experience-on body{padding-left:calc(var(--duo-rail) + 10px)!important;padding-bottom:calc(env(safe-area-inset-bottom) + 16px)!important}
+  html.experience-on .ex-main{top:0;bottom:0;left:0;right:auto;width:var(--duo-rail);height:auto;
+    flex-direction:column;justify-content:flex-start;align-items:center;gap:4px;padding:8px 4px;
+    border-top:0;border-right:1px solid var(--ex-border)}
+  html.experience-on.pf-has-tape .ex-main{top:calc(var(--tk-pad, 0px) + var(--tk-h, 0px))}
+  html.experience-on .ex-main button{flex:0 0 auto;width:62px;min-width:0;min-height:52px;padding:5px 2px;font-size:10.5px;
+    flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;border-radius:10px}
+  html.experience-on .ex-main button[aria-current="page"]{box-shadow:none;background:var(--ex-soft)}
+  html.experience-on .ex-main svg{width:20px;height:20px}
+  html.experience-on .ex-main .ex-wordmark,html.experience-on .ex-main .ex-classic{display:none}
+  html.experience-on .ex-classic-return{bottom:16px}
+  #page-ex-today .ex-brief-heading{display:none!important}
+  #page-ex-today .ex-brief-hero{margin-top:0;padding:12px 14px}
+  #page-ex-today .ex-hero-value{font-size:clamp(22px,4.4vw,28px);white-space:nowrap}
+  #page-ex-today .ex-daily-value{font-size:clamp(18px,3.6vw,24px);white-space:nowrap}
+  #apex-content [data-apex-confirm]{bottom:calc(env(safe-area-inset-bottom) + 8px)}
+  #pj-context{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);column-gap:10px;align-items:center}
+  #pj-context>*{grid-column:1/-1;min-width:0}
+  #pj-context>.pj-context-head{grid-column:1}
+  #pj-context>.pj-context-head+.pj-steps{grid-column:2;margin-top:0}
+}
+
+/* ───────── 8 · v234: fixes from Jack's screen recording of v233 on the open Duo (Nov 17 2026) ─────────
+   "Peak into wide screen duo portfolio dashboard so u can further optimized". Layout and legibility only:
+   no card, number, rule or copy change. */
+
+/* 8a · iOS inflates paragraph text on a landscape-shaped screen unless told not to. The recording showed 11–13px
+   notes and "How to read this" lines drawn at about 20px on the open Duo. Every size is now the size the CSS says. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* 8b · Dark theme: --card was never defined, so the Apex Entry / Target / Stop / R/R tiles fell back to white and
+   printed their light value text on it (unreadable). Also lift the inline dark reds and blues that were written
+   for a white card. */
+html[data-theme="gold"],html[data-theme="dark"]{--card:rgba(255,255,255,.06)}
+html[data-theme="gold"] .card [style*=";color:#b91c1c"],html[data-theme="gold"] .card [style^="color:#b91c1c"],
+html[data-theme="gold"] .card [style*=";color:#991b1b"],html[data-theme="gold"] .card [style^="color:#991b1b"],
+html[data-theme="gold"] .card [style*=";color:#dc2626"],html[data-theme="gold"] .card [style^="color:#dc2626"]{color:#f08a80!important}
+html[data-theme="gold"] .card [style*=";color:#2563eb"],html[data-theme="gold"] .card [style^="color:#2563eb"],
+html[data-theme="gold"] .card [style*=";color:#075985"],html[data-theme="gold"] .card [style^="color:#075985"]{color:#8ab8ff!important}
+
+/* 8c · Holdings map: a sliver tile clipped its ticker and percent ("PEI", "+0."). Labels now shrink with the
+   tile, and the percent is dropped when the tile is too narrow to show it whole. */
+@container td-holding (max-width: 46px) {
+  #page-ex-today .td-shell .td-tile .td-tile-content{padding:5px 2px;border-radius:10px}
+  #page-ex-today .td-shell .td-tile .td-ticker{font-size:10.5px;letter-spacing:-.04em}
+  #page-ex-today .td-shell .td-tile .td-tile-change{font-size:9.5px;letter-spacing:-.03em;padding-top:2px}
+}
+@container td-holding (max-width: 34px) {
+  #page-ex-today .td-shell .td-tile .td-ticker{font-size:9px}
+  #page-ex-today .td-shell .td-tile .td-tile-change{display:none}
+}
+
+@media (min-width:740px) and (max-width:1100px) {
+  /* 8d · Today: "Out of your hands" sat beside Market backdrop, which left an empty block under Waiting on you.
+     It now follows Waiting on you in the right column and Market backdrop takes the full width below. */
+  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero waiting" "score waiting" "holdings waiting" "links monitor" "market market"}
+  #page-ex-today .td-shell .td-monitor{align-self:stretch}
+
+  /* 8e · Options: the two income rankers are half width, so their grey title hint pushed ? ☆ ▼ to a second line
+     and the six-column put table lost its last column. */
+  #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income])>.card-title .card-hint{display:none}
+  #options-app>.card[data-priv="market"]:not(:has(#opt-idea-grid)):not([data-opt-pick-income]) table :is(th,td){padding-left:3px;padding-right:3px;font-size:11px}
+}
+
+/* ───────── 9 · v247: central Duo layout state + mid-fold split (ui/duo.js owns every attribute below) ─────────
+   Jack's rule: Duo optimization above ALWAYS applies; the mode only decides the mid-fold split of a landing view.
+   Everything here is keyed to html[data-duo-split="on"] (landing view + folded/book) or to the control, so
+   Standard mode, and every non-landing route, is the v246 layout unchanged. No transitions or animation are used. */
+
+/* 9a · The control: one button in the gray freshness bar (≥44px tall without growing the bar) and its popover. */
+#pf-duo{display:inline-flex;align-items:center;gap:4px;min-height:44px;min-width:32px;margin:-8px 0;padding:0 3px;
+  background:transparent;border:0;color:inherit;font:inherit;font-size:11px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#pf-duo svg{flex:0 0 auto}
+#pf-duo:focus-visible,#pf-duo-pop button:focus-visible{outline:2px solid #2563eb;outline-offset:1px}
+@media (max-width:479px){#pf-duo .pf-duo-word{display:none}}
+#pf-duo-pop{position:fixed;right:12px;width:min(calc(100vw - 24px),400px);z-index:400;box-sizing:border-box;padding:10px;
+  background:#fff;color:#1c1c1e;border:1px solid #dbe2ea;border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.22);font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#pf-duo-pop[hidden]{display:none}
+#pf-duo-pop .pf-duo-t{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin:0 2px 6px}
+#pf-duo-pop .pf-duo-seg{display:flex;gap:4px}
+#pf-duo-pop .pf-duo-seg button{flex:1 1 0;min-width:0;min-height:44px;padding:0 4px;font:inherit;font-size:12.5px;color:inherit;background:#eef2f7;border:1px solid #dbe2ea;border-radius:9px;cursor:pointer}
+#pf-duo-pop .pf-duo-seg button[aria-checked="true"]{background:#2563eb;border-color:#2563eb;color:#fff}
+#pf-duo-pop .pf-duo-note{margin:8px 2px 0;font-weight:500;font-size:11.5px;line-height:1.4;color:#64748b}
+html[data-theme="dark"] #pf-duo-pop,html[data-theme="gold"] #pf-duo-pop{background:#1c1c1e;color:#e5e5ea;border-color:#2c2c2e}
+html[data-theme="dark"] #pf-duo-pop .pf-duo-seg button,html[data-theme="gold"] #pf-duo-pop .pf-duo-seg button{background:#2c2c2e;border-color:#3a3a3c}
+html[data-theme="dark"] #pf-duo-pop .pf-duo-t,html[data-theme="dark"] #pf-duo-pop .pf-duo-note,html[data-theme="gold"] #pf-duo-pop .pf-duo-t,html[data-theme="gold"] #pf-duo-pop .pf-duo-note{color:#9a9aa0}
+
+/* 9b · Split: pinned summary blocks. duo.js sets --duo-x/-y/-w per block (measured), stacks them top-down in the top
+   pane (folded) or left pane (book) while they fit, and leaves the rest in the document flow. */
+html[data-duo-split="on"] [data-duo-pin]{position:fixed!important;left:var(--duo-x);top:var(--duo-y);width:var(--duo-w);max-width:none!important;
+  margin:0!important;box-sizing:border-box;z-index:140;overflow:hidden}
+/* Folded: an opaque top pane over the scrolling document; the rest of the page starts below the crease. */
+html[data-duo-split="on"][data-duo-ready]::before{content:'';position:fixed;left:0;right:0;top:0;height:var(--duo-fresh-top);z-index:130;
+  background:var(--duo-ground,#f0f2f5)}
+html[data-duo-split="on"][data-duo-layout="folded"][data-duo-ready]::before{height:var(--fold-bottom)}
+html[data-duo-split="on"][data-duo-ready] #pf-fresh{top:var(--duo-fresh-top)!important}
+html[data-duo-split="on"][data-duo-layout="folded"][data-duo-ready] #pf-fresh{margin-bottom:var(--duo-lead,8px)!important}
+/* Book: the rest of the page sits to the right of the crease; the strip stays full width. */
+html[data-duo-split="on"][data-duo-layout="book"][data-duo-ready] body{padding-left:var(--duo-padl)!important}
+html[data-duo-split="on"][data-duo-layout="book"][data-duo-ready] #pf-fresh{margin-left:calc(var(--duo-x0) - var(--duo-padl))!important}
+
+/* 9c · Pinned blocks are a glance: tighter chrome so the summary fits above the crease (padding / gaps only, no value hidden). */
+html[data-duo-split="on"] #ex-top[data-duo-pin]{padding-top:2px!important;padding-bottom:2px!important}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin]{padding:8px 10px!important}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-hero-line{margin:2px 0 4px}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-account-grid{margin-top:4px;padding-top:4px}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-eyebrow{line-height:1.15}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin]>.td-muted{margin:0 0 2px;line-height:1.3}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-account-head{margin-bottom:0}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin]{padding:6px 10px!important}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] #ex-combined-equity{font-size:clamp(24px,6.4vw,30px)}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] .td-account .td-account-value{font-size:clamp(14px,11cqi,20px)}
+html[data-duo-split="on"] #page-ex-today .td-hero[data-duo-pin] .td-account-meta{margin-top:1px}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] #ex-combined-move{font-size:16px;line-height:1.1}
+html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[data-duo-pin] .td-hero-change{font-size:10.5px;line-height:1.2;padding-bottom:0}
+
+/* 9d · Open-width grids: a pinned block leaves its grid cell, so Today's two-pane grid drops the empty "hero" area; in Book the
+   scrolling part is only about half the screen, so the open two-up pairings fall back to one column there. */
+@media (min-width:740px) and (max-width:1100px) {
+  html[data-duo-split="on"] #page-ex-today .td-shell .td-layout:has(>.td-hero[data-duo-pin]){grid-template-areas:"score waiting" "holdings waiting" "links monitor" "market market"}
+}
+html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:none!important}
+html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout>*{grid-area:auto!important}
+html[data-duo-split="on"][data-duo-layout="book"] :is(#markets-app,#az-result,#options-app,#plan-agentic-app){grid-template-columns:minmax(0,1fr)!important}
+html[data-duo-split="on"][data-duo-layout="book"] #page-portfolio [data-sec="snapshot"] .snap-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+
+/* 9c · v250 — Book mode on Apex v2.9 Paper. The right page is about half the viewport, so the paper page's own >=740px
+   two-pane rules (keyed to the viewport) made a 200px list beside a 224px detail there: rows overlapped, level tiles and
+   labels were cut. Now: the ranked list is pinned on the LEFT page under the tiles (duo.js fill, own scroll), the selected
+   stock leads the RIGHT page at full page width, and everything else on the right page is one column. Layout only. */
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx{display:flex!important;flex-direction:column}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-explore{display:flex!important;flex-direction:column}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-dgrid{grid-template-columns:minmax(0,1fr)!important}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-listpane{max-height:none!important;overflow:visible!important;margin-right:0!important;padding-right:0!important}
+/* list not pinned (pane too small): rows expand inline, like a phone */
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-detail{display:none}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app:has([data-apx-sec="ranked"][data-duo-fill]) .apx-detail{display:block}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app:has([data-apx-sec="ranked"][data-duo-fill]) .apx>.apx-explore{order:1}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app:has([data-apx-sec="ranked"][data-duo-fill]) .apx>.apx-decision{order:2}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-detail{scroll-margin-top:calc(var(--duo-fresh-top,0px) + 58px)}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-pin][data-duo-fill]{height:var(--duo-h);overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:8px 10px!important;scrollbar-width:thin}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill]>h2{margin-bottom:5px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-filters{gap:5px;margin-bottom:2px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-search{min-height:36px;padding:4px 10px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-segs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -10px;padding:0 10px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-segs::-webkit-scrollbar{display:none}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-segopt{flex:0 0 auto}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-morefilters>summary{min-height:30px;padding:3px 0}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-reset{min-height:28px;padding:2px 10px}
+html[data-duo-split="on"] [data-apx-sec="ranked"][data-duo-fill] .apx-list>h3{margin-bottom:2px}
+/* 9d · v250 — the same fault on the other Book pages (found by sweeping every route in Book against Standard): rules keyed
+   to the 740-1100px VIEWPORT that put two columns inside the half-width right page. Book right page = one column. */
+/* Apex card (Actions): leverage, recommended trades + Confirm, then rules — the folded-phone order, full page width. */
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content{display:flex!important;flex-direction:column}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>*{order:3;min-width:0}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>:first-child,
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-lev]{order:0}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-book]{order:1;margin-top:10px}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-rules]{order:2}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content>[data-apex-lev] .snap-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+/* Markets: index / gauge / macro tiles were four fixed columns running off the page edge. */
+html[data-duo-split="on"][data-duo-layout="book"] #markets-app .mkt-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html[data-duo-split="on"][data-duo-layout="book"] #markets-app .mkt-tile{min-width:0}
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx,
+html[data-duo-split="on"][data-duo-layout="book"] #apexpaper-app .apx-explore{align-items:stretch!important}
+html[data-duo-split="on"][data-duo-layout="book"] #apex-content{align-items:stretch!important}
+/* The plan's Exposure / Equity / Leverage / Idle cash tiles: the fourth ran off the page edge. */
+html[data-duo-split="on"][data-duo-layout="book"] #plan-content .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html[data-duo-split="on"][data-duo-layout="book"] #plan-agentic-app .ph-stale{white-space:normal!important;overflow:visible!important}
+
+/* 9e · v251 TRIAL — independent scrolling in Book on Apex / Agentic Actions (duo.js syncIndep). The document is locked and the
+   visible page scrolls on its own, so the left panel (#pf-book, a body-level sibling) no longer shares a scroller with it. */
+html[data-duo-indep]{overflow:hidden!important;height:100%;overscroll-behavior:none}
+html[data-duo-indep] body{overflow:hidden!important;height:100dvh;min-height:0!important;padding-bottom:0!important;box-sizing:border-box}
+html[data-duo-indep] [data-duo-scroller]{height:calc(100dvh - var(--duo-page-top,0px));overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
+/* nothing scrolls at body level while the page scroller is on, so the strip needs no sticky offset (a locked body would apply it twice) */
+html[data-duo-indep][data-duo-split="on"][data-duo-ready] #pf-fresh{position:relative!important;top:0!important}
+
+/* 9f · Nov 25 2026 — wasted space and misaligned cards, Full (open, 740-1100) and Book. Jack, phone-tested Book Actions: "Good but still
+   wasting space cards not aligned"; then: "Portfolio is the full view even more so than book with wasting space so check all".
+   Layout only: no card, number, rule, copy or schedule changes. */
+@media (min-width:740px) and (max-width:1100px) {
+  /* Full · Overview: the experience.css 560/640px caps left half of every row empty. Strip and rows fill the page; action and
+     "more" rows run two-up; the analysis cards below pair into rows of equal height (flex-wrap, stretch). */
+  html.ws-on:not([data-duo-split="on"]) .ws-strip,html.ws-on:not([data-duo-split="on"]) #agentic-app .ws-strip{max-width:none}
+  html.ws-on:not([data-duo-split="on"]) #agentic-app .ws-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.ws-on:not([data-duo-split="on"]) .ws-acts,html.ws-on:not([data-duo-split="on"]) .ws-rows{max-width:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+  html.ws-on:not([data-duo-split="on"]) .ws-acts>*,html.ws-on:not([data-duo-split="on"]) .ws-rows>*{min-width:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio{flex-direction:row!important;flex-wrap:wrap;column-gap:12px;align-items:stretch;align-content:flex-start}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] :where(#page-portfolio>*,#page-portfolio #app>*,#page-portfolio #agentic-app>*){flex:0 0 100%;min-width:0;max-width:100%;box-sizing:border-box}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio :is([data-sec="performance"],[data-sec="heatmap"],[data-sec="risk"],[data-sec="allocation"],[data-sec="income"],[data-sec="technicals"],[data-sec="fundamentals"],[data-sec="flow"]){flex:1 1 calc(50% - 6px);max-width:calc(50% - 6px)}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio :is([data-sec="performance"],[data-sec="heatmap"],[data-sec="risk"],[data-sec="allocation"],[data-sec="income"],[data-sec="technicals"],[data-sec="fundamentals"],[data-sec="flow"]) .card-title .card-hint{display:none}
+
+  /* rows pair cards of similar height (order only; DOM unchanged): performance+income, risk+heatmap, technicals+fundamentals, flow+allocation */
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="performance"]{order:61}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="income"]{order:62}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="risk"]{order:63}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="heatmap"]{order:64}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="technicals"]{order:65}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="fundamentals"]{order:66}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="flow"]{order:67}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="allocation"]{order:68}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="rebalance-log"]{order:70}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio .disclaimer{order:71}
+
+  /* Full · Positions: one 852px-wide row per holding left the right two thirds blank. Holdings sit two-up; the open card
+     spans two rows beside the first two compact ones so both columns end level. */
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:stretch}
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards>.ws-h{grid-column:1/-1}
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards>.ws-pos{min-width:0;margin:0 0 8px}
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards>.ws-pos.ws-open{grid-row:span 2}
+
+  /* Full · Apex Actions / Research: the single column of half-empty cards pairs up like the Agentic plan; rows share a height. */
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:stretch}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app>*{grid-column:1/-1;min-width:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app>.card{grid-column:auto}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app>.card>.card-title .card-hint{display:none}
+  html.ws-on:not([data-duo-split="on"]) #plan-agentic-app{align-items:stretch}
+  /* the Apex card is half width now, so it takes the same single-column order as in Book (leverage, trades + Confirm, rules) */
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content{display:flex!important;flex-direction:column;align-items:stretch!important}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>*{order:3;min-width:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>:first-child,
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-lev]{order:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-book]{order:1;margin-top:10px}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-rules]{order:2}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-lev] .snap-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #plan-content .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* Book · the "Expand all" bar was its own 48px row above the first card, so the right page's cards started below the left page's.
+   It now has zero height and its button sits in the first card's title row (absolute; nothing fixed in the scroller), so the first card starts at the top of the pane. Cards use
+   14px side padding instead of 22px, and the gap under a card title is 8px. */
+html[data-duo-split="on"][data-duo-layout="book"] #page-picks>.pf-foldbar{position:relative;height:0;margin:0;overflow:visible;z-index:3}
+html[data-duo-split="on"][data-duo-layout="book"] #page-picks>.pf-foldbar .pf-foldall{position:absolute;top:8px;right:104px;min-height:28px;padding:0 10px;font-size:11.5px}
+html[data-duo-split="on"][data-duo-layout="book"] :is(#picks-app,#plan-agentic-app)>.card{padding:14px!important}
+html[data-duo-split="on"][data-duo-layout="book"] :is(#picks-app,#plan-agentic-app)>.card>.card-title{margin-bottom:8px}

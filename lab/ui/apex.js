@@ -1,0 +1,969 @@
+/* v186 (guard v195) — Apex: the self-directed margin book's leverage loop (pure + render).
+   Layered ON the v156 SD rules, never beside them: trims reuse SD_TRIM_GAIN, the
+   per-name cap reuses SD_SINGLE_MAX_EQ, broken-thesis exits stay with sdBroken.
+   What Apex adds is the thing the plan never said out loud: a LEVERAGE BAND
+   (exposure ÷ equity), the distance to a maintenance call, a pre-built drop
+   tripwire, a de-lever ladder that sells into strength, and the reload rule that
+   only borrows when the book is winning. Tickets are proposals; approvals live in
+   the Confirm button (a Claude chat) and the order is placed by Jack in Robinhood.
+
+   Loaded by index.html before the main inline script; require()-able from Node
+   tests. Keep this file free of DOM access outside render(). */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.Apex = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const C = {
+    LEV_NORMAL: 1.90,      // where the book cruises; adds go only up to here (Jack, 2026-11-11: cap 2x, same spacing — was 1.65)
+    LEV_CAP: 2.00,         // hard cap — above it: no new buys (Jack, 2026-11-11: "Raise leverage cap to 2x"; was 1.75x). Also Robinhood's 50%-initial-margin buying ceiling
+    LEV_RELOAD: 1.75,      // below it new borrow is allowed (was 1.50; trails cruise by the same 0.15)
+    MAINT: 0.30,           // Robinhood house maintenance seen on IREN (2026-11-05); PLTR assumed
+    /* v195 (LAB-004-P1): the guard follows the maintenance REQUIREMENT, not a fixed line. Buffers are points
+       of exposure over the (blended, per-name) requirement; at the default 30% they give the old 35% / 40%. */
+    GUARD_BUFFER: 0.05,    // equity ÷ exposure under requirement + 5 pts ⇒ risk guard
+    GUARD_RECOVER: 0.10,   // …and it sells until equity is back at requirement + 10 pts (capped at 100% = no debt)
+    GUARD_PCT: 0.35,       // = MAINT + GUARD_BUFFER — the default-book line only; rules read st.guardPct
+    GUARD_TARGET: 0.40,    // = MAINT + GUARD_RECOVER — the default-book target only; rules read st.guardTarget
+    TRIM_GAIN: 0.25,       // = SD_TRIM_GAIN
+    TRIM_GAIN_2: 0.50,
+    TRIM_FRAC: 0.25,
+    STOP: 0.25,            // = sdBroken's hard stop
+    SINGLE_MAX_EQ: 0.20,   // = SD_SINGLE_MAX_EQ
+    DRIFT_PTS: 5,
+    EARN_DAYS: 3,
+    TRANCHE: 50,
+    RR_MIN: 1.5,           // v194: Jack's reward/risk floor, measured at the ACTUAL entry (the limit), not yesterday's close
+    PRICE_FRESH_MIN: 75,   // v214: the producer refreshes hourly 8:41 AM–4:41 PM ET on weekdays (incl. the pre-market price); a snapshot older than one cycle + slack cannot name an order price
+    LIMIT_PAD: 0.01,       // v194: the scan's buy-stop-limit sits 1% over the trigger (274.60 → 277.35)
+    /* v224 — rules v2.8 (Jack, Nov 13 2026 12:13 ET: "Review confirm edit as needed build and merge", approving the
+       40% cap after asking "if we should continue to keep concentrating Apex inside AI … growth oriented … doesn't
+       mean we have to be exclusively AI"). One theme ("tech" = AI compute + AI/software + cyber, one versioned map)
+       may hold at most 40% of the stock OUTSIDE the owner-managed core. FORWARD-ONLY: over the cap, tech buys and
+       adds stop; non-tech buys are allowed; nothing is ever sold to meet it and no leverage limit moves for it. */
+    THEME_MAX: 0.40,
+    THEME_CAPPED: 'tech',
+  };
+
+  /* v224 theme map v1 (rules v2.8). Software and cyber cannot escape the cap under separate labels. A name not
+     listed here is "other" unless data/apex-targets.json themeMap (written by the scan) names its theme. */
+  const THEME_MAP_VERSION = 'themes-v1.1';
+  const TECH = ('NVDA AMD AVGO MU TSM ASML AMAT LRCX KLAC ARM MRVL ANET SMCI ON INTC QCOM CIFR WULF CORZ HUT VRT IREN ' +
+    'PLTR APP DDOG SNPS CDNS ADBE META GOOGL GOOG AMZN NFLX TTD MELI MSFT AAPL ORCL CRM NOW INTU SHOP SNOW MDB ' +
+    'CRWD PANW ZS FTNT NET S OKTA CYBR TSLA AXON').split(' ');
+
+  /* Default book config. Overridable from window.__APEX_CFG (set by the producer
+     later) or a test. Targets are % of EQUITY, must respect SINGLE_MAX_EQ. */
+  const DEFAULT_CFG = {
+    core: 'IREN',
+    coreMax: 500,                                    // v188 (Jack, 2026-11-05): keep an IREN core of up to 500 sh — exempt from the stop and drift trims; trims only into strength
+    donor: 'PLTR',                                   // risk-guard tranche source (Jack, 2026-11-05)
+    ladder: [],                                      // v201 (Jack, Nov 8 22:38: "stop telling me to sell the iren … I'll handle the iren"): no IREN rung
+    coreOwner: true,                                 // v201: the core is OWNER-MANAGED — no rule ever proposes selling, trimming or adding it; Apex builds around it
+    targets: { IREN: 20, NVDA: 20, PLTR: 15, RKLB: 15, CRWD: 10 },
+    kicker: 15,                                      // LEAPS sleeve cap, funded from trims only
+    /* v196: Robinhood's per-stock maintenance (Margin buffer screen, Jack, 2026-11-08). Names not listed use
+       the 30% account default, which is the same or stricter than Robinhood's figure for them. */
+    maintBy: { IREN: 0.30, AMZN: 0.25, PLTR: 0.25 },
+    themeCap: true,                                  // v224: rules v2.8 theme cap on; false = the v2.7 book (paper control and pre-v2.8 tests)
+    themeMap: null,                                  // v224: optional {SYM: theme} from the scan; overrides the built-in map per name
+  };
+
+  /* v224 (rules v2.8) theme helpers. Measured on stock OUTSIDE the core; the whole-account picture (core included)
+     is reported separately and never used to pass or fail this cap. */
+  /* v226 — classification hardening (ChatGPT review of v224, Nov 13 2026: a scan map saying ZS:'cyber' or PLTR:'ai-software'
+     made themeOf return that label instead of 'tech', so those names escaped the cap). Three rules, in order:
+     (1) a name on the built-in TECH list is ALWAYS tech — a scan label can never downgrade it;
+     (2) a scan label is NORMALIZED: every tech cluster (ai-compute, ai-software, cyber, tech-other, semis, software…) → 'tech';
+     (3) a name neither list nor scan classifies is 'unclassified' and COUNTS AS TECH for the cap until something classifies
+         it — an unknown name must fail closed, or the cap leaks every time the universe grows. */
+  const TECH_LABELS = ['tech', 'ai-compute', 'ai-software', 'cyber', 'tech-other', 'semis', 'semiconductors', 'software', 'ai', 'internet', 'technology'];
+  const NONTECH = (() => {
+    const m = {}, add = (cl, list) => list.split(' ').forEach((x) => { m[x] = cl; });
+    add('power', 'VST NRG OKLO GEV CEG'); add('space', 'RKLB ASTS LUNR'); add('crypto', 'COIN HOOD MSTR');
+    add('health', 'ISRG VRTX REGN BSX SYK DXCM IDXX MCK LLY UNH JNJ ABBV'); add('finance', 'AXP GS KKR BX SCHW SPGI V MA JPM');
+    add('industrial', 'GE ETN PWR URI HWM TT PH CAT'); add('consumer', 'COST TJX BKNG ABNB CMG ORLY RCL');
+    return m;
+  })();
+  function classOf(cfg, sym) {
+    const s = String(sym || '').toUpperCase();
+    if (TECH.includes(s)) return 'tech';
+    const m = cfg && cfg.themeMap;
+    if (m && Object.prototype.hasOwnProperty.call(m, s) && m[s] != null && String(m[s]).trim()) {
+      const v = String(m[s]).trim().toLowerCase();
+      return TECH_LABELS.includes(v) ? 'tech' : v;
+    }
+    return NONTECH[s] || 'unclassified';
+  }
+  /* What the cap sees: 'tech' for tech AND unclassified names (fail closed), else the cluster. */
+  function themeOf(cfg, sym) { const c = classOf(cfg, sym); return c === 'unclassified' ? C.THEME_CAPPED : c; }
+  function themeShare(st, cfg) {
+    cfg = cfg || DEFAULT_CFG;
+    let outside = 0, capped = 0; const unclassified = [];
+    (st.positions || []).forEach((p) => { if (p.symbol === cfg.core) return; outside += p.val; if (themeOf(cfg, p.symbol) === C.THEME_CAPPED) capped += p.val; if (classOf(cfg, p.symbol) === 'unclassified') unclassified.push(p.symbol); });
+    const all = (st.positions || []).reduce((a, p) => a + p.val, 0);
+    const coreVal = all - outside, cappedAll = capped + (themeOf(cfg, cfg.core) === C.THEME_CAPPED ? coreVal : 0);
+    return { outside, capped, share: outside > 0 ? capped / outside : 0, over: outside > 0 && capped / outside > C.THEME_MAX + 1e-9,
+      wholeShare: all > 0 ? cappedAll / all : 0, max: C.THEME_MAX, theme: C.THEME_CAPPED, mapVersion: THEME_MAP_VERSION, unclassified };
+  }
+  /* Dollars of a capped-theme buy that keep the theme at or under the cap after the buy: (T + d) / (N + d) ≤ max.
+     Non-capped names are unlimited here (every other limit still applies). */
+  function themeRoom(st, cfg, sym, pending) {
+    if ((cfg && cfg.themeCap === false) || themeOf(cfg, sym) !== C.THEME_CAPPED) return Infinity;
+    const t = themeShare(st, cfg), add = pending || { capped: 0, other: 0 };
+    const T = t.capped + add.capped, N = t.outside + add.capped + add.other;
+    return Math.max(0, (C.THEME_MAX * N - T) / (1 - C.THEME_MAX));
+  }
+
+  const num = (v) => (v == null || isNaN(+v) ? 0 : +v);
+
+  /* ── state ─────────────────────────────────────────────────────────────── */
+  /* Maintenance inputs (v195): input.maint = the account default (else C.MAINT); a position's own `maint`
+     (0–1, e.g. Robinhood's higher house figure on a volatile or concentrated name) overrides it for that name;
+     input.maintReq = the broker's total requirement in dollars (covers options / anything not modeled) and is
+     used when it is higher than the per-name sum. The requirement is blended: req = Σ maint_i · value_i. */
+  const clampM = (m) => Math.min(1, Math.max(0, m));
+  function state(input) {
+    const base = clampM(input.maint != null && !isNaN(+input.maint) ? +input.maint : C.MAINT);
+    const pos = (input.positions || []).filter((p) => num(p.qty) > 0 && num(p.px) > 0)
+      .map((p) => ({ symbol: String(p.symbol).toUpperCase(), qty: num(p.qty), px: num(p.px), avg: num(p.avg), val: num(p.qty) * num(p.px),
+        maint: p.maint != null && p.maint !== '' && !isNaN(+p.maint) ? clampM(+p.maint) : base }));
+    const exposure = pos.reduce((s, p) => s + p.val, 0);
+    const debt = Math.max(0, -num(input.cash));
+    const equity = input.equity != null ? num(input.equity) : exposure - debt;
+    const reqNames = pos.reduce((s, p) => s + p.maint * p.val, 0);
+    const req = Math.max(reqNames, num(input.maintReq));
+    const maint = exposure > 0 ? Math.min(1, req / exposure) : base;   // effective (blended) requirement
+    const guardPct = Math.min(1, maint + C.GUARD_BUFFER);
+    const guardTarget = Math.max(guardPct, Math.min(1, maint + C.GUARD_RECOVER));
+    const lev = equity > 0 ? exposure / equity : (exposure > 0 ? Infinity : 0);
+    const eqPct = exposure > 0 ? equity / exposure : 1;
+    const cushion = equity - req;                          // dollars of market value you can lose before a call
+    const callDrop = exposure > 0 && maint < 1 ? Math.max(0, cushion / ((1 - maint) * exposure)) : (exposure > 0 ? 0 : null);
+    const band = lev > C.LEV_CAP ? 'over' : lev > C.LEV_NORMAL ? 'high' : lev < C.LEV_RELOAD ? 'room' : 'normal';
+    const top = pos.slice().sort((a, b) => b.val - a.val);
+    const w = {};
+    pos.forEach((p) => { w[p.symbol] = equity > 0 ? p.val / equity : 0; });
+    return { positions: pos, exposure, debt, equity, maint, maintBase: base, req, guardPct, guardTarget, lev, eqPct, cushion, callDrop, band, top, weights: w };
+  }
+
+  /* Price of `sym` at which equity ÷ exposure == pct, every other name held flat. With no pct it is the
+     price that puts the book on ITS guard line (requirement + GUARD_BUFFER, per-name requirements kept). */
+  function tripwire(st, sym, pct) {
+    const p = st.positions.find((x) => x.symbol === sym);
+    if (!p || p.qty <= 0) return null;
+    const others = st.exposure - p.val;
+    if (pct != null) {
+      const k = 1 - pct;
+      // (q·x + others)·k = debt  ⇒  x = (debt/k − others)/q
+      const x = (st.debt / k - others) / p.qty;
+      return x > 0 ? x : null;
+    }
+    // q·x + O − D = m·q·x + R_o + b·(q·x + O)  ⇒  x = (D + R_o − (1 − b)·O) / (q·(1 − m − b))
+    const b = C.GUARD_BUFFER, Ro = Math.max(0, st.req - p.maint * p.val), den = p.qty * (1 - p.maint - b);
+    if (!(den > 0)) return null;
+    const x = (st.debt + Ro - (1 - b) * others) / den;
+    return x > 0 ? x : null;
+  }
+
+  /* v195 — risk-guard sale plan. Sells donors in order until equity ÷ exposure is back at the book's recovery
+     line (requirement + GUARD_RECOVER, capped at no debt), re-blending the requirement after every sale: a
+     donor carrying a LOW requirement lifts the blend as it goes, so it needs more selling than a flat line
+     says. Order: cfg.donor → other names (largest first) → core shares above coreMax → the core itself
+     (flagged; a call would force it anyway). Equity is unchanged by a sale; proceeds pay debt 1:1.
+     Returns {legs:[{p, qty, s}], after:{exposure, debt, req, eqPct, guardPct, guardTarget}, short$}. */
+  function guardPlan(st, cfg) {
+    const R = C.GUARD_RECOVER;
+    let E = st.exposure, D = st.debt, Q = st.req;
+    const eq = st.equity;
+    const done = () => D <= 1e-9 || eq >= Math.min(E, Q + R * E) - 1e-9;
+    const core = st.positions.find((x) => x.symbol === cfg.core);
+    const coreKeep = core && cfg.coreMax > 0 ? Math.min(core.qty, cfg.coreMax) : 0;
+    const order = [];
+    const donor = st.positions.find((x) => x.symbol === cfg.donor && x.symbol !== cfg.core);
+    if (donor) order.push({ p: donor, max: donor.qty });
+    st.top.filter((x) => x !== donor && x.symbol !== cfg.core).forEach((x) => order.push({ p: x, max: x.qty }));
+    if (core && !cfg.coreOwner && core.qty - coreKeep > 0) order.push({ p: core, max: core.qty - coreKeep });
+    if (core && !cfg.coreOwner && coreKeep > 0) order.push({ p: core, max: coreKeep, core: true });
+    const legs = [];
+    for (const o of order) {
+      if (done()) break;
+      const m = o.p.maint;
+      // smallest s with eq ≥ min(E − s, (Q − m·s) + R·(E − s))
+      const need = Math.max(0, Math.min(E - eq, (Q + R * E - eq) / (m + R)));
+      let qty = Math.ceil(need / o.p.px - 1e-9);
+      if (!legs.length && o.p === donor) qty = Math.max(C.TRANCHE, Math.ceil(qty / C.TRANCHE) * C.TRANCHE);   // first leg keeps the 50-share tranche
+      qty = Math.min(o.max, qty);
+      if (qty <= 0) continue;
+      const s = qty * o.p.px;
+      legs.push({ p: o.p, qty, s, core: !!o.core });
+      E -= s; Q = Math.max(0, Q - m * s); D = Math.max(0, D - s);
+    }
+    const mEff = E > 0 ? Math.min(1, Q / E) : st.maint;
+    const after = { exposure: E, debt: D, req: Q, eqPct: E > 0 ? eq / E : 1, guardPct: Math.min(1, mEff + C.GUARD_BUFFER), guardTarget: Math.max(Math.min(1, mEff + C.GUARD_BUFFER), Math.min(1, mEff + R)) };
+    const short = done() ? 0 : Math.max(0, Math.min(E, Q + R * E) - eq);   // cash to deposit (pays debt) if selling everything allowed is not enough
+    return { legs, after, short };
+  }
+
+  /* Dollars to sell so that exposure/equity == lev target (debt falls 1:1 with proceeds). */
+  function sellToLev(st, levT) {
+    // (E − s)/(eq) == levT  with eq fixed ⇒ s = E − levT·eq
+    return Math.max(0, st.exposure - levT * st.equity);
+  }
+
+  /* ── rules ─────────────────────────────────────────────────────────────── */
+  function rules(st, opt) {
+    opt = opt || {};
+    const cfg = Object.assign({}, DEFAULT_CFG, opt.cfg || {});
+    const sma = opt.smaMap || {};        // sym → {s50}
+    const earn = opt.earningsMap || {};  // sym → {daysAway}
+    const review = opt.review === true || opt.friday === true;   // v194: weekly review day (Monday since Nov 6); `friday` kept for old callers
+    const out = [];
+    const byName = (s) => st.positions.find((p) => p.symbol === s);
+    const nearEarn = (s) => earn[s] && earn[s].daysAway != null && earn[s].daysAway >= 0 && earn[s].daysAway <= C.EARN_DAYS;
+
+    // A1 Risk guard — first, always. v195: the line and the target follow the maintenance requirement.
+    if (st.exposure > 0 && st.eqPct < st.guardPct) {
+      const plan = guardPlan(st, cfg);
+      const line = `Equity is ${pct(st.eqPct)} of stock — ${pct(st.guardPct)} is the guard line (maintenance ${pct(st.maint)} + 5); sells to ${pct(st.guardTarget)}.`;
+      let E = st.exposure, D = st.debt;
+      plan.legs.forEach((L, i) => {
+        const before = { lev: st.equity > 0 ? E / st.equity : Infinity, debt: D };
+        E -= L.s; D = Math.max(0, D - L.s);
+        const last = i === plan.legs.length - 1;
+        const title = L.core ? `Risk guard — core ${L.p.symbol} needed` : (i ? `Risk guard — ${L.p.symbol} too` : 'Risk guard');
+        const why = i === 0 ? line : L.core ? `The other names are not enough to reach ${pct(st.guardTarget)}. The core is your call — a margin call would sell it anyway.` : `${plan.legs[0].p.symbol} alone is not enough to reach ${pct(st.guardTarget)}.`;
+        const r = { kind: 'risk', title, why: last && plan.short > 0 ? why + ` Still $${k(plan.short)} short after every sale${cfg.coreOwner ? ' (' + cfg.core + ' excluded — your call)' : ''} — deposit cash.` : why,
+          ticket: { side: 'sell', sym: L.p.symbol, qty: L.qty, px: round(L.p.px * 0.995), tranche: i === 0 && !L.core, core: L.core || undefined } };
+        r.before = before;
+        r.after = { lev: st.equity > 0 ? E / st.equity : 0, debt: D, proceeds: L.s };
+        if (last) r.after.check = { eqPct: plan.after.eqPct, guardPct: plan.after.guardPct, guardTarget: plan.after.guardTarget, maint: plan.after.exposure > 0 ? plan.after.req / plan.after.exposure : 0, ok: plan.short === 0, short: plan.short };
+        out.push(r);
+      });
+      if (!plan.legs.length) out.push(t('risk', 'Risk guard — nothing to sell', `${line} No holding can be sold for it — deposit $${k(plan.short)} to pay debt.`, null, st));
+    }
+
+    // A2 Leverage band / de-lever ladder.
+    if (st.lev > C.LEV_CAP) {
+      const need = sellToLev(st, C.LEV_CAP);
+      out.push(t('lev', `Over the ${C.LEV_CAP}x cap`, `${st.lev.toFixed(2)}x. No new buys. Sell $${k(need)} into strength to reach the cap; proceeds pay debt.`, null, st));
+      for (const L of cfg.ladder) {
+        const p = byName(L.sym); if (!p || (cfg.coreOwner && L.sym === cfg.core)) continue;
+        const live = p.px >= L.px;
+        out.push(t('ladder', `${live ? 'Sell' : 'Armed: sell'} ${L.qty} ${L.sym} at $${L.px}`,
+          live ? `Price ${money(p.px)} is through the rung — ${L.note || ''}` : `Fires when ${L.sym} prints $${L.px} (now ${money(p.px)}). ${L.note || ''}`,
+          { side: 'sell', sym: L.sym, qty: Math.min(L.qty, p.qty), px: L.px, gtc: true, armed: !live }, st, L.sym, Math.min(L.qty, p.qty), L.px));
+      }
+    } else if (st.lev > C.LEV_NORMAL) {
+      out.push(t('lev', 'Inside the band, above cruise', `${st.lev.toFixed(2)}x — hold. Trims pay debt down toward ${C.LEV_NORMAL}x before anything new.`, null, st));
+    }
+
+    // A3 Winner / A4 Loser — per name, reuse the SD dials.
+    for (const p of st.positions) {
+      if (!(p.avg > 0)) continue;
+      const g = p.px / p.avg - 1;
+      if (cfg.coreOwner && p.symbol === cfg.core) { out.push(t('core', `${p.symbol} — your call`, `Owner-managed: Apex never proposes selling, trimming or adding ${p.symbol}. The book is built around it.`, null, st)); continue; }
+      if (g >= C.TRIM_GAIN) {
+        if (nearEarn(p.symbol)) { out.push(t('guard', `${p.symbol} trim waits for earnings`, `+${pct(g)} from cost but reports in ${earn[p.symbol].daysAway}d — trims after the print.`, null, st)); continue; }
+        // The filled-order feed is aggregated by day, without trim intent or cycle IDs.
+        // A smaller position cannot prove that a milestone has (or has not) filled.
+        // Until a durable execution ledger is connected, this is a review, never
+        // another 25% ticket on every refresh. Protective exits below remain live.
+        out.push(Object.assign(t('review', `${p.symbol} +${pct(g)} — review profit milestone`,
+          'Check completed and pending trims before acting. No repeat trim is proposed without reconciled execution history.', null, st), { sym: p.symbol }));
+      } else if (g <= -C.STOP && p.symbol === cfg.core && cfg.coreMax > 0) {
+        const extra = Math.max(0, Math.floor(p.qty - cfg.coreMax));
+        if (extra > 0) out.push(t('lose', `${p.symbol} ${pct(g)} — ${extra} sh above the core through the stop`, `Core of ${cfg.coreMax} is kept (your call); the shares above it follow the 25% stop. No averaging down.`,
+          { side: 'sell', sym: p.symbol, qty: extra, px: round(p.px * 0.995) }, st, p.symbol, extra, p.px));
+        else out.push(t('core', `${p.symbol} core held at ${pct(g)}`, `${Math.floor(p.qty)} sh ≤ the ${cfg.coreMax}-share core: exempt from the stop by your Nov 5 call. Never add to it on margin; trims only into strength (ladder).`, null, st));
+      } else if (g <= -C.STOP) {
+        out.push(t('lose', `${p.symbol} ${pct(g)} — through the 25% stop`, `Price-risk stop (same as the plan): sell, no averaging down on margin.`,
+          { side: 'sell', sym: p.symbol, qty: p.qty, px: round(p.px * 0.995) }, st, p.symbol, p.qty, p.px));
+      }
+    }
+
+    /* A4b Research exits (v211 — Jack, Nov 11 2026: "u tell me tp or sl spots … when a price hits the correct tp or sl
+       the app is telling me"). A held name with research levels is flagged the moment its price is at or through the
+       RESEARCH target or the RESEARCH stop. The prices of Jack's own resting orders are never read. Core excluded
+       (owner-managed). Reconciliation preserves one exit per name and never lets a trim suppress a full exit. */
+    for (const p of st.positions) {
+      if (p.symbol === cfg.core) continue;
+      const L = exitLevelsFor(cfg, p.symbol); if (!L) continue;
+      const tk = { side: 'sell', sym: p.symbol, qty: p.qty, px: round(p.px * 0.995) };
+      if (L.stop > 0 && p.px <= L.stop)
+        out.push(t('sl', `${p.symbol} is through its research stop ${money(L.stop)}`, `Now ${money(p.px)}${L.stopBasis ? ' · stop basis ' + L.stopBasis : ''}. Exit: sell ${p.qty}. No averaging down on margin.`, tk, st, p.symbol, p.qty, p.px));
+      else if (L.tp1 > 0 && p.px >= L.tp1)
+        out.push(t('tp', `${p.symbol} is at its research target ${money(L.tp1)}`, `Now ${money(p.px)}. Take profit: sell ${p.qty}, or confirm with Claude for a new target.`, tk, st, p.symbol, p.qty, p.px));
+    }
+
+    // A5 Per-name cap (= SD_SINGLE_MAX_EQ) — advisory, weekly.
+    if (review) {
+      for (const p of st.positions) {
+        const w = st.weights[p.symbol] || 0, tgt = (cfg.targets[p.symbol] || 0) / 100;
+        if (p.symbol === cfg.core && (cfg.coreOwner || (w > tgt && p.qty <= cfg.coreMax))) continue;   // v201: owner-managed core never drifts   // v188: a core ≤ coreMax is never drift-trimmed
+        if (tgt > 0 && Math.abs(w - tgt) * 100 >= C.DRIFT_PTS)
+          out.push(t('drift', `${p.symbol} ${pct(w)} vs ${pct(tgt)} target`, w > tgt ? 'Trim back to target at the Monday review.' : 'Add back to target — only with leverage room.', null, st));
+      }
+    }
+
+    // A6 Reload — only when winning and under the reload line (C.LEV_RELOAD).
+    const above50 = st.positions.filter((p) => sma[p.symbol] && sma[p.symbol].s50 && p.px > sma[p.symbol].s50).length;
+    if (st.lev < C.LEV_RELOAD && st.positions.length >= 3 && above50 * 3 >= st.positions.length * 2) {
+      const room = Math.max(0, C.LEV_NORMAL * st.equity - st.exposure);
+      out.push(t('reload', 'Leverage reload open', `${above50}/${st.positions.length} names above their 50-day and ${st.lev.toFixed(2)}x < ${C.LEV_RELOAD}x: up to $${k(room)} may be added to the top-2 momentum names.`, null, st));
+    } else if (st.lev < C.LEV_RELOAD && st.lev <= C.LEV_CAP) {
+      /* v188 BUILD ON CONFIRMATION (Jack, 2026-11-05: "I expect a new portfolio"). Room exists but the
+         trend filter is shut, so the book is built with ARMED buy-stop-limits only — they fill only if
+         a name takes out max(prior high, 10-day EMA) × 1.005. The scan writes exact triggers to Task storage;
+         this card shows the split. Core is never added to. */
+      const room = Math.max(0, C.LEV_NORMAL * st.equity - st.exposure);
+      const names = Object.keys(cfg.targets).filter((s) => s !== cfg.core && !nearEarn(s));
+      const W = names.reduce((a, s) => a + cfg.targets[s], 0);
+      if (room >= 100 && W > 0) {
+        const pend = { capped: 0, other: 0 };   // v224: rungs written earlier this pass count toward the theme cap
+        for (const s of names) {
+          if (out.some((r) => (r.ticket && r.ticket.side === 'sell' && r.ticket.sym === s) || (r.kind === 'review' && r.sym === s))) continue;
+          const held = (byName(s) || { val: 0 }).val;
+          const cap = Math.max(0, Math.min(C.SINGLE_MAX_EQ, cfg.targets[s] / 100) * st.equity - held);
+          const alloc = Math.min(cap, room * cfg.targets[s] / W, themeRoom(st, cfg, s, pend));
+          const px = (sma[s] && sma[s].px) || (byName(s) || {}).px || 0;
+          const L = levelsFor(cfg, s);
+          /* v202: a target inside the 30-day wash-sale window (a loss sale in either account — cfg.wash, built from
+             the dashboard's cross-account ledger) is a TAX HOLD: a dated row, never a buy rung, until the window clears. */
+          const hold = cfg.wash && cfg.wash[s];
+          if (hold && hold.clear) {
+            out.push(t('wash', `${s} — tax hold to ${hold.clear}`, `Sold at a loss inside the last 30 days, so buying before ${hold.clear} is a wash sale (the loss is deferred into the new shares). No buy until then.`, null, st));
+            continue;
+          }
+          /* v194 (Jack, 2026-11-06 11:35: "make sure all can be bought on Robinhood always"): a name the
+             scan marked untradable on ••0741 never becomes a buy rung. */
+          if (L && L.tradable === false) {
+            out.push(t('skip', `${s} skipped — not buyable on Robinhood`, `Robinhood reports ${L.name || s} as not tradable in this account${L.tradableAt ? ' (' + L.tradableAt + ')' : ''}. The scan drops it next run.`, null, st));
+            continue;
+          }
+          const blocked = buyBlock(st, out, cfg, s);
+          if (blocked) {
+            const r = Object.assign(t('review', `${s} — no add`, blocked, null, st), { sym: s });
+            if (L) r.levels = Object.assign({ sym: s, qty: 0, review: true }, L);
+            if (L && L.rr != null && L.rr < C.RR_MIN) r.lowRR = true;
+            out.push(r);
+            continue;
+          }
+          /* v194 (Jack, 11:34: "always put the entry target prices"): with the scan's levels the rung shows
+             trigger → limit, target, stop and reward/risk AT THAT ENTRY, and sizes at the limit exactly like
+             the scan's ticket (floor(budget ÷ limit)). Missing or invalid levels produce a review without a ticket. */
+          const sizePx = L && L.limit > 0 ? L.limit : px;
+          const qty = sizePx > 0 ? Math.floor(alloc / sizePx) : 0;
+          if (qty > 0) pend[themeOf(cfg, s) === C.THEME_CAPPED ? 'capped' : 'other'] += qty * sizePx;
+          if (L && qty > 0) {
+            const away = px > 0 ? L.trigger / px - 1 : null;
+            const tk = Object.assign({}, L, { side: 'buy', sym: s, qty, px: round(px), armed: L.orderType !== 'limit', away });
+            const r = t('build', `${tk.armed ? 'Armed: buy' : 'Buy'} ${qty} ${s} at ${money(tk.armed ? L.trigger : L.limit)} · $${k(qty * L.limit)}`,
+              `${tk.armed ? `Fills only if ${s} bounces through ${money(L.trigger)}` : `Limit entry at ${money(L.limit)}`} · room $${k(room)} to ${C.LEV_NORMAL}x.`,
+              qty > 0 ? tk : null, st);
+            r.levels = tk;
+            out.push(r);
+          }
+        }
+      }
+    }
+
+    // A7 Earnings guard — informational for any add.
+    for (const sym of new Set([...st.positions.map((p) => p.symbol), ...Object.keys(cfg.targets)])) if (nearEarn(sym) && !out.some((r) => r.kind === 'guard' && r.title.startsWith(sym + ' ')))
+      out.push(t('guard', `${sym} reports in ${earn[sym].daysAway}d`, 'No adds inside 3 trading days of a print.', null, st));
+
+    const order = { risk: 0, lev: 1, ladder: 2, lose: 3, sl: 3, win: 4, tp: 4, core: 5, guard: 6, review: 6, drift: 7, reload: 8, build: 9, wash: 10, skip: 10 };
+    return reconcileRules(st, out, cfg).sort((a, b) => order[a.kind] - order[b.kind]);
+  }
+
+  /* v194 — the scan's levels for one name: cfg.levels[sym] = {trigger, limit?, tp1, stop, name?, tradable?}.
+     limit defaults to trigger × 1.01 (the scan's convention); rr is reward ÷ risk at the LIMIT — the worst
+     fill a buy-stop-limit can get — so it is never flattered by yesterday's lower close. */
+  /* v211 (Jack, Nov 11 2026: "My manual inputs should never be accounted for" · "the recs are from deep research"):
+     a stop the scan copied from one of Jack's own resting Robinhood orders (stopBasis "Jack's open stop") is NOT a
+     research level. It is dropped and replaced by the scan's own default basis, 2 × ATR14 under the limit, when the
+     row carries an ATR; otherwise the name has no stop (and no R/R) until the next research run. */
+  const OWNER_STOP = /jack|owner|\bhis\b|\bmy\b|open (robinhood )?(stop|order)/i;
+  function levelsFor(cfg, sym) {
+    const L = cfg && cfg.levels && cfg.levels[sym];
+    if (!L) return null;
+    const n = (v) => (v == null || v === '' || !Number.isFinite(+v) ? null : +v);
+    const trigger = n(L.trigger), tp1 = n(L.tp1), atr = n(L.atr);
+    const limit = L.limit == null ? (trigger ? round(trigger * (1 + C.LIMIT_PAD)) : null) : n(L.limit);
+    let stop = n(L.stop), stopBasis = L.stopBasis ? String(L.stopBasis) : null, ownerStop = false;
+    if (stopBasis && OWNER_STOP.test(stopBasis)) {
+      ownerStop = true;
+      stop = limit && atr > 0 && limit - 2 * atr > 0 ? round(limit - 2 * atr) : null;
+      stopBasis = stop ? '2×ATR estimate (entry only)' : null;
+    }
+    const rr = stop > 0 && limit > stop && tp1 > limit ? (tp1 - limit) / (limit - stop) : null;
+    return { trigger, limit, tp1, stop, stopBasis, ownerStop, rr, orderType: L.orderType || 'stop_limit', maxPx: n(L.maxPx), name: L.name || null, tradable: L.tradable === false ? false : (L.tradable === true ? true : null), tradableAt: L.tradableAt || null };
+  }
+
+  // Held-position research has precedence over a new entry's levels. An ATR
+  // estimate replacing an owner order is not an independently researched exit.
+  function exitLevelsFor(cfg, sym) {
+    const source = cfg.exitLevels && Object.prototype.hasOwnProperty.call(cfg.exitLevels, sym)
+      ? { levels: cfg.exitLevels } : cfg;
+    const L = levelsFor(source, sym);
+    return L && L.ownerStop ? Object.assign({}, L, { stop: null }) : L;
+  }
+
+  function buyBlock(st, out, cfg, sym) {
+    if (cfg.researchReady === false) return 'Research is missing or stale. Refresh it before a new buy; existing holdings remain under their exit rules.';
+    if (cfg.wash && cfg.wash[sym] && cfg.wash[sym].clear) return `Tax hold to ${cfg.wash[sym].clear}.`;
+    if (st.lev >= C.LEV_NORMAL || st.eqPct < st.guardPct) return 'No room to add within the leverage and maintenance limits.';
+    if ((out || []).some((r) => (r.ticket && r.ticket.side === 'sell' && r.ticket.sym === sym) || (r.kind === 'review' && r.sym === sym) || (r.kind === 'guard' && r.title.startsWith(sym + ' ')))) return 'Resolve the exit, profit review or earnings hold before adding.';
+    const L = levelsFor(cfg, sym);
+    if (!L || !(L.stop > 0 && L.stop < L.limit && L.limit < L.tp1) || !Number.isFinite(L.rr)) return 'Valid research stop < entry limit < target required; no buy on missing or invalid R/R.';
+    if (L.tradable === false) return 'Not buyable on Robinhood.';
+    if (L.ownerStop) return 'Research must validate the stop independently; an owner order or automatic ATR estimate is insufficient.';
+    if (!['limit', 'stop_limit', 'stop-limit'].includes(L.orderType) || (L.orderType !== 'limit' && !(L.trigger > 0 && L.trigger <= L.limit))) return 'Valid entry order type and trigger required.';
+    if (L.maxPx != null && L.limit > L.maxPx) return 'Entry exceeds the research maximum price.';
+    if (L.rr < C.RR_MIN) return `R/R ${L.rr.toFixed(2)} at the entry limit is below ${C.RR_MIN}. No add; this is not a sell signal.`;
+    if (cfg.themeCap !== false && themeOf(cfg, sym) === C.THEME_CAPPED && themeRoom(st, cfg, sym) < 1) {
+      const t = themeShare(st, cfg);
+      return `Tech is ${pct(t.share)} of the stock outside ${cfg.core} vs the ${pct(C.THEME_MAX)} cap (v2.8) — no tech adds. Not a sell signal.`;
+    }
+    return null;
+  }
+
+  // Reconcile before rendering, counting or prompting: one action per symbol.
+  // Protective exits outrank optional sells; a full exit cannot become a trim.
+  function reconcileRules(st, rows, cfg) {
+    const priority = { risk: 0, lose: 1, sl: 1, tp: 2, win: 3, ladder: 4 };
+    const sells = new Map();
+    for (const r of rows || []) {
+      const tk = r.ticket;
+      if (!tk || tk.side !== 'sell' || !(tk.qty > 0) || !Number.isFinite(tk.qty) || (cfg.coreOwner && tk.sym === cfg.core)) continue;
+      const p = st.positions.find((p) => p.symbol === tk.sym); if (!p) continue;
+      const prev = sells.get(tk.sym);
+      if (!prev || (priority[r.kind] ?? 9) < (priority[prev.kind] ?? 9) || ((priority[r.kind] ?? 9) === (priority[prev.kind] ?? 9) && tk.qty > prev.ticket.qty)) sells.set(tk.sym, r);
+    }
+    const result = (rows || []).filter((r) => {
+      if (!r.ticket) return !(r.kind === 'review' && sells.has(r.sym));
+      const tk = r.ticket;
+      if (cfg.coreOwner && tk.sym === cfg.core) return false;
+      if (tk.side === 'sell') return sells.get(tk.sym) === r;
+      return !sells.has(tk.sym) && !buyBlock(st, rows, cfg, tk.sym);
+    }).map((r) => {
+      if (!r.ticket || r.ticket.side !== 'sell') return r;
+      const p = st.positions.find((p) => p.symbol === r.ticket.sym);
+      const otherQty = (rows || []).filter((x) => x.ticket && x.ticket.side === 'sell' && x.ticket.sym === p.symbol && !x.ticket.armed && Number.isFinite(x.ticket.qty)).reduce((m, x) => Math.max(m, x.ticket.qty), 0);
+      const guardQty = (rows || []).filter((x) => x.kind === 'risk' && x.ticket && x.ticket.sym === p.symbol).reduce((sum, x) => sum + x.ticket.qty, 0);
+      const qty = Math.min(p.qty, Math.max(r.ticket.qty, otherQty, guardQty));
+      if (qty === r.ticket.qty) return Object.assign({}, r, { ticket: Object.assign({}, r.ticket) });
+      const tk = Object.assign({}, r.ticket, { qty });
+      const adjusted = t(r.kind, r.title, r.why, tk, st, p.symbol, qty, p.px);
+      // If a full exit supersedes a partial guard leg, recompute its impact.
+      return Object.assign({}, r, adjusted);
+    });
+    // Guard plans can contain separate excess/core legs for the same holding.
+    // Sum those legs, then recompute the ordered guard effects after reconciliation.
+    let E = st.exposure, D = st.debt, Q = st.req;
+    const riskRows = result.filter((r) => r.kind === 'risk' && r.ticket);
+    riskRows.forEach((r, i) => {
+      const p = st.positions.find((p) => p.symbol === r.ticket.sym), proceeds = r.ticket.qty * p.px;
+      r.before = { lev: st.equity > 0 ? E / st.equity : Infinity, debt: D };
+      E = Math.max(0, E - proceeds); D = Math.max(0, D - proceeds); Q = Math.max(0, Q - p.maint * proceeds);
+      r.after = { lev: st.equity > 0 ? E / st.equity : 0, debt: D, proceeds };
+      if (i === riskRows.length - 1) {
+        const maint = E > 0 ? Math.min(1, Q / E) : st.maint, eqPct = E > 0 ? st.equity / E : 1;
+        const guardPct = Math.min(1, maint + C.GUARD_BUFFER), guardTarget = Math.min(1, maint + C.GUARD_RECOVER);
+        const short = Math.max(0, Math.min(E, Q + C.GUARD_RECOVER * E) - st.equity);
+        r.after.check = { maint, eqPct, guardPct, guardTarget, ok: short <= 1e-9, short };
+      }
+    });
+    return result;
+  }
+
+  function t(kind, title, why, ticket, st, sym, qty, px) {
+    const r = { kind, title, why, ticket: ticket || null };
+    if (ticket && sym && qty > 0 && px > 0) {
+      const proceeds = qty * px;
+      const debt2 = Math.max(0, st.debt - proceeds), exp2 = st.exposure - proceeds;
+      const lev2 = st.equity > 0 ? exp2 / st.equity : 0;
+      r.before = { lev: st.lev, debt: st.debt };
+      r.after = { lev: lev2, debt: debt2, proceeds };
+    }
+    return r;
+  }
+
+  /* ── format helpers (no DOM) ───────────────────────────────────────────── */
+  function pct(x) { return (x * 100).toFixed(0) + '%'; }
+  function k(x) { return x >= 1000 ? (x / 1000).toFixed(1) + 'K' : Math.round(x).toString(); }
+  function money(x) { return '$' + (+x).toFixed(2); }
+  function round(x) { return Math.round(x * 100) / 100; }
+
+  /* ── render ─────────────────────────────────────────────────────────────── */
+  function render(el, st, out, cfg, research) {
+    if (!el) return;
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const levCol = st.lev > C.LEV_CAP ? '#ef4444' : st.lev > C.LEV_NORMAL ? '#f97316' : '#10b981';
+    const cushCol = st.cushion < 0.05 * st.exposure ? '#ef4444' : st.cushion < 0.12 * st.exposure ? '#f97316' : '#10b981';
+    const eqPct = Math.max(0, Math.min(100, st.eqPct * 100));
+    const bandTxt = { over: 'over the cap — de-lever', high: 'above cruise — hold', normal: 'in band — build', room: 'room to reload' }[st.band];
+    const tile = (l, v, c) => `<div class="snap-tile"><div class="snap-lbl">${l}</div><div class="snap-val" style="color:${c || 'var(--text)'}">${v}</div></div>`;
+    const tw = tripwire(st, cfg.core);
+    const kindTag = { risk: ['#fee2e2', '#991b1b', 'risk guard'], lev: ['#fef3c7', '#92400e', 'leverage'], ladder: ['#fef3c7', '#92400e', 'ladder'], win: ['#d1fae5', '#065f46', 'winner'], tp: ['#d1fae5', '#065f46', 'target hit'], lose: ['#fee2e2', '#991b1b', 'stop'], sl: ['#fee2e2', '#991b1b', 'research stop'], drift: ['#e0e7ff', '#3730a3', 'drift'], reload: ['#d1fae5', '#065f46', 'reload'], guard: ['#f3f4f6', '#374151', 'earnings'], review: ['#fef3c7', '#92400e', 'review · no order'], core: ['#e0f2fe', '#075985', 'core'], build: ['#d1fae5', '#065f46', 'build · armed'], skip: ['#f3f4f6', '#374151', 'not buyable'], wash: ['#fef3c7', '#92400e', 'tax hold'] };
+    const rows = out.length ? out.map((r) => {
+      const tg = r.lowRR ? ['#fee2e2', '#991b1b', 'below R/R floor'] : (kindTag[r.kind] || kindTag.guard);
+      const tk = r.levels ? levelsHtml(r.levels, esc) : r.ticket && !r.after && r.ticket.side === 'buy' ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">Buy ${r.ticket.qty} ${esc(r.ticket.sym)} · ~${money(r.ticket.px)} now · <b>armed</b> — trigger set by the morning scan</div>` : r.ticket && r.after ? `<div style="font-size:11.5px;margin-top:4px;color:var(--text);opacity:.8">${r.ticket.side === 'sell' ? 'Sell' : 'Buy'} ${r.ticket.qty} ${esc(r.ticket.sym)} · limit ${money(r.ticket.px)}${r.ticket.gtc ? ' GTC' : ''} → ${r.after.lev.toFixed(2)}x · debt $${k(r.after.debt)}${r.ticket.armed ? ' · <b>armed</b>' : ''}</div>` : '';
+      return `<div class="flag-card" style="border-left-color:${tg[1]};background:${tg[0]}22"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="font-size:12.5px">${esc(r.title)}</b><span class="act-tag" style="background:${tg[0]};color:${tg[1]};margin:0;white-space:nowrap">${tg[2]}</span></div><div class="flag-body">${esc(r.why)}</div>${tk}</div>`;
+    }).join('') : '<div class="tech-empty">No rule fires. Hold.</div>';
+    /* v203 (Jack, Nov 9 01:38 ET: "make sure apex is showing the recommended shares and dollar amounts in each
+       ticker"): every weights row carries a second line — what you HOLD (shares · $), the full TARGET (shares at
+       the current price · $), and THIS WEEK's armed buy (shares · $) from the build rung when one exists. The
+       core only shows what is held. Share counts come straight from the rung (sized at the limit), so the line
+       can never disagree with the ticket. */
+    const posBy = {}; st.positions.forEach((p) => { posBy[p.symbol] = p; });
+    const rungBy = {}; out.forEach((r) => { if (r.kind === 'build' && r.ticket) rungBy[r.ticket.sym] = r.ticket; });
+    const sizeLine = (s, tg) => {
+      const p = posBy[s], held = p ? `hold ${p.qty % 1 ? p.qty.toFixed(2) : p.qty} sh · $${k(p.val)}` : 'hold 0 sh';
+      if (cfg.coreOwner && s === cfg.core) return `<div style="font-size:10.5px;color:#6b7280;margin:-2px 0 6px 52px">${held} · yours</div>`;
+      const L = exitLevelsFor(cfg, s) || {}, tgtD = tg / 100 * st.equity, px = p ? p.px : (rungBy[s] ? rungBy[s].px : (L.limit || L.trigger || 0)), tgtSh = px > 0 ? Math.floor(tgtD / px) : null;
+      const tk = rungBy[s], wk = tk ? ` · <b style="color:#065f46">this week: buy ${tk.qty} sh ≈ $${k(tk.qty * (tk.limit || tk.px))}</b>` : (cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` · tax hold to ${esc(cfg.wash[s].clear)}` : '');
+      /* v211: the research exit levels sit under every held target name — these, not Jack's own order prices, are what the card alerts on. */
+      const ex = p && (L.stop > 0 || L.tp1 > 0) ? `<br><span data-apex-exit="${esc(s)}">research exit: stop <b>${L.stop > 0 ? money(L.stop) : 'next scan'}</b> · target <b>${L.tp1 > 0 ? money(L.tp1) : 'next scan'}</b></span>` : '';
+      return `<div style="font-size:10.5px;color:#6b7280;margin:-2px 0 6px 52px">${held} · target $${k(tgtD)}${tgtSh != null ? ` (${tgtSh} sh${p ? '' : ' at the scan limit'})` : ''}${wk}${ex}</div>`;
+    };
+    const mix = Object.keys(cfg.targets).map((s) => { const w = (st.weights[s] || 0) * 100, tg = cfg.targets[s];
+      /* v202: the owner-managed core has no target to be over — a neutral bar, no tick, no orange (Jack, Nov 8: stop telling me to sell IREN). */
+      if (cfg.coreOwner && s === cfg.core) return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600">${esc(s)}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:#9ca3af"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% · yours</span></div>` + sizeLine(s, tg);
+      const hold = cfg.wash && cfg.wash[s] && cfg.wash[s].clear ? ` <span title="tax hold to ${esc(cfg.wash[s].clear)}">🚫</span>` : '';
+      return `<div class="stress-row" style="margin-bottom:4px"><span style="width:52px;font-size:12px;font-weight:600;white-space:nowrap">${esc(s)}${hold}</span><div class="gauge" style="flex:1;margin:0;position:relative"><div style="width:${Math.min(100, w)}%;height:100%;background:${w > tg + C.DRIFT_PTS ? '#f97316' : '#3b82f6'}"></div><div style="position:absolute;left:${Math.min(100, tg)}%;top:-2px;width:2px;height:10px;background:#10b981"></div></div><span style="width:74px;text-align:right;font-size:11px;color:#6b7280">${w.toFixed(0)}% / ${tg}%</span></div>` + sizeLine(s, tg); }).join('');
+    el.innerHTML = `<div data-ws="actions">${ticketHtml(ticket(st, out, cfg), esc)}</div>
+      <div data-ws="actions" style="font-size:11.5px;color:var(--text);opacity:.75;margin:-2px 0 10px;line-height:1.5">Leverage loop for the margin book — band ${C.LEV_NORMAL}x cruise / ${C.LEV_CAP}x cap, call line at ${pct(st.maint)} maintenance. Rules fire here; <b>you confirm with Claude below</b>; you place the order in Robinhood.</div>
+      <div data-apex-lev data-ws="actions"><div class="snap-grid">${tile('Leverage', st.lev === Infinity ? 'call' : st.lev.toFixed(2) + 'x', levCol)}${tile('Margin debt', '$' + k(st.debt), st.debt > 0 ? '#ef4444' : 'var(--text)')}${tile('Cushion to call', '$' + k(Math.max(0, st.cushion)), cushCol)}${tile('Band', bandTxt, levCol)}</div>
+      <div style="margin:12px 0 2px;font-size:11px;color:#6b7280;display:flex;justify-content:space-between"><span>Equity ${pct(st.eqPct)} of stock</span><span>call ${pct(st.maint)} · guard ${pct(st.guardPct)} · ${C.LEV_CAP}x = ${pct(1 / C.LEV_CAP)}</span></div>
+      <div class="gauge" style="position:relative;height:10px;overflow:visible"><div style="width:${eqPct}%;height:100%;background:${levCol};border-radius:3px"></div><div style="position:absolute;left:${st.maint * 100}%;top:-3px;width:2px;height:16px;background:#ef4444"></div><div style="position:absolute;left:${Math.min(99.5, st.guardPct * 100)}%;top:-3px;width:2px;height:16px;background:#f97316"></div><div style="position:absolute;left:${100 / C.LEV_CAP}%;top:-3px;width:2px;height:16px;background:#10b981"></div></div>
+      ${tw ? `<div style="font-size:11.5px;color:#6b7280;margin-top:8px">Tripwire: ${esc(cfg.core)} at <b style="color:var(--text)">${money(tw)}</b> puts equity on the guard line (others flat) — the ${esc(cfg.donor)} tranche ticket is pre-built for that print.</div>` : ''}</div>
+      <div data-apex-rules data-ws="actions"><div class="ac-tier">⚙️ Rules firing now</div>${rows}</div>
+      <div data-apex-book data-ws="actions">${portfolioButton(st, out, cfg, research)}</div>
+      <div data-apex-business data-ws="research"></div>
+      <div data-apex-weights data-ws="research"><div class="ac-tier">🎯 Weights vs target <span class="card-hint">(% of equity · held → target in shares and $ · cap ${pct(C.SINGLE_MAX_EQ)})</span></div>${mix}
+      ${themeHtml(st, cfg)}</div>
+      <div data-apex-research data-ws="research">${researchBlock(research, esc)}</div>
+      <div data-ws="actions" style="font-size:11px;color:#9ca3af;margin-top:10px">Tickets are proposals from these rules. Check them with Claude using the Confirm button above, and against live holdings and pending orders before entering a ticket.</div>`;
+  }
+
+  /* v224 (rules v2.8): one bar — the capped theme's share of the stock outside the core, a tick at the cap. The
+     whole-account figure (core included) is a second, grey line so meeting the cap is never read as diversified. */
+  function themeHtml(st, cfg) {
+    if (cfg.themeCap === false) return '';
+    const t = themeShare(st, cfg); if (!(t.outside > 0)) return '';
+    const w = t.share * 100, col = t.over ? '#f97316' : '#10b981';
+    return `<div data-apex-theme style="margin:10px 0 4px"><div style="display:flex;justify-content:space-between;font-size:11.5px"><b>Tech outside ${cfg.core}</b><span style="color:${col};font-weight:600">${w.toFixed(0)}% / ${(C.THEME_MAX * 100).toFixed(0)}% cap</span></div>` +
+      `<div class="gauge" style="position:relative;height:8px;margin:4px 0"><div style="width:${Math.min(100, w)}%;height:100%;background:${col}"></div><div style="position:absolute;left:${C.THEME_MAX * 100}%;top:-3px;width:2px;height:14px;background:#111827"></div></div>` +
+      `<div style="font-size:10.5px;color:#6b7280">${t.over ? 'Over the cap: no tech buys or adds; other growth names can still be bought. Nothing is sold for this.' : 'Under the cap: tech buys allowed up to the line.'} Whole account incl. ${cfg.core}: ${(t.wholeShare * 100).toFixed(0)}% tech.${t.unclassified.length ? ` Counted as tech until classified: ${t.unclassified.join(', ')}.` : ''}</div></div>`;
+  }
+
+  /* One allocation budget for valid entries. A held name outside the buy list
+     is a review only; risk and thesis exits are evaluated independently. */
+  function bookGaps(st, out, cfg) {
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    const eq = st.equity > 0 ? st.equity : 0;
+    const rows = reconcileRules(st, out, cfg);
+    const builds = rows.filter((r) => r.kind === 'build' && r.ticket);
+    const built = new Set(builds.map((r) => r.ticket.sym));
+    const sells = new Set(rows.filter((r) => r.ticket && r.ticket.side === 'sell').map((r) => r.ticket.sym));
+    const held = {}; (st.positions || []).forEach((p) => { held[p.symbol] = p; });
+    const adds = [], reviews = [];
+    let room = Math.max(0, C.LEV_NORMAL * eq - st.exposure - builds.reduce((a, r) => a + r.ticket.qty * r.ticket.limit, 0));
+    const pend = { capped: 0, other: 0 };   // v224: build rungs already on the list count toward the theme cap
+    builds.forEach((r) => { pend[themeOf(cfg, r.ticket.sym) === C.THEME_CAPPED ? 'capped' : 'other'] += r.ticket.qty * r.ticket.limit; });
+    Object.keys(cfg.targets || {}).forEach((sym) => {
+      if (!eq || sym === cfg.core || built.has(sym) || sells.has(sym)) return;
+      const tgt = Math.min(C.SINGLE_MAX_EQ * 100, Math.max(0, +cfg.targets[sym] || 0)), p = held[sym], have = p ? p.val / eq * 100 : 0;
+      if (tgt - have < 2) return;
+      const reason = buyBlock(st, out, cfg, sym);
+      if (reason) { reviews.push({ sym, why: reason }); return; }
+      const lv = levelsFor(cfg, sym), dollars = Math.min(room, (tgt - have) / 100 * eq, themeRoom(st, cfg, sym, pend)), qty = Math.floor(dollars / lv.limit);
+      if (qty > 0) { adds.push({ sym, have, tgt, dollars: qty * lv.limit, qty, lv }); room -= qty * lv.limit; pend[themeOf(cfg, sym) === C.THEME_CAPPED ? 'capped' : 'other'] += qty * lv.limit; }
+    });
+    (st.positions || []).forEach((p) => {
+      if (p.symbol !== cfg.core && !(cfg.targets || {})[p.symbol] && !sells.has(p.symbol)) reviews.push({ sym: p.symbol,
+        why: cfg.researchReady === false ? 'Research unavailable — hold for review; exit rules still apply.' : 'Outside the current buy list — hold / no add. A rotation needs a separate, material advantage after costs.' });
+    });
+    return { adds, exits: [], reviews };
+  }
+
+  function bookReviews(st, out, cfg) {
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    const reviews = new Map();
+    bookGaps(st, out, cfg).reviews.forEach((r) => reviews.set(r.sym, r));
+    (out || []).filter((r) => r.kind === 'review' && r.sym).forEach((r) => reviews.set(r.sym, { sym: r.sym, why: r.why }));
+    return [...reviews.values()];
+  }
+
+  /* v199 (Jack, Nov 8 22:33 ET: "full recommended portfolios … the research feeds me the new portfolio each week and
+     I one click to confirm"): ONE button on the Apex card opens a Claude chat that checks the WHOLE proposed book
+     against live Robinhood data and returns the complete order set — YES / WAIT / NO per name, sized, with prices.
+     ••••0741 is read-only to every agent, so the prompt forbids review/place_equity_order; Jack enters the YES lines.
+     Pure string builder over the rows render() already has. */
+  function portfolioPrompt(st, out, cfg, research) {
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    const f = (x) => (x > 0 && isFinite(x) ? '$' + (+x).toFixed(2) : '—');
+    const lines = bookLines(st, out, cfg);
+    const held = (st.positions || []).map((p) => `${p.symbol} ${p.qty} sh @ ${f(p.px)}${p.symbol === cfg.core ? (cfg.coreOwner ? ' (OWNER-MANAGED — Jack handles it; never propose selling, trimming or adding it)' : ' (core — keep ≤ ' + cfg.coreMax + ' sh, never add)') : ''}`).join('; ') || 'none';
+    const L = ['Apex weekly book check — this is the FULL recommended portfolio for my SELF-DIRECTED margin account (••••0741). Check every line against LIVE Robinhood data and give me the complete set of orders to place: YES / WAIT / NO per name, sized, with exact prices. The account is read-only to you: Robinhood READ tools only (quotes, technical indicators, fundamentals, earnings calendar, news) — never review_equity_order or place_equity_order. I enter every YES myself in the Robinhood app.', '',
+      `Book now: equity $${k(st.equity)} · margin debt $${k(st.debt)} · leverage ${isFinite(st.lev) ? st.lev.toFixed(2) + 'x' : 'n/a'} (cruise ${C.LEV_NORMAL}x, cap ${C.LEV_CAP}x) · maintenance ${pct(st.maint)}. Held: ${held}.`,
+      'Target weights (% of equity): ' + Object.keys(cfg.targets).filter((s) => !(cfg.coreOwner && s === cfg.core)).map((s) => s + ' ' + cfg.targets[s] + '%').join(' · ') + (cfg.coreOwner ? ' — plus ' + cfg.core + ', owner-managed (no target)' : '') + '.',
+      ...(cfg.wash && Object.keys(cfg.wash).some((s) => cfg.targets[s] && cfg.wash[s] && cfg.wash[s].clear) ? ['TAX HOLD (wash sale — sold at a loss inside 30 days): ' + Object.keys(cfg.wash).filter((s) => cfg.targets[s] && cfg.wash[s] && cfg.wash[s].clear).map((s) => s + ' until ' + cfg.wash[s].clear).join(' · ') + ' — WAIT; no buy before that date.'] : [])];
+    /* v211: held names carry their RESEARCH stop and target into the check, so Claude never has to fall back on the prices of Jack's own resting orders. */
+    const lvHeld = (st.positions || []).filter((p) => p.symbol !== cfg.core).map((p) => ({ p, lv: exitLevelsFor(cfg, p.symbol) })).filter((x) => x.lv && (x.lv.stop > 0 || x.lv.tp1 > 0));
+    if (lvHeld.length) L.push('Research exit levels for held names (the only stop and target that count): ' + lvHeld.map((x) => `${x.p.symbol} stop ${f(x.lv.stop)} · target ${f(x.lv.tp1)}`).join('; ') + '.');
+    L.push('', `Proposed actions (${lines.length}; same set as the app, re-check live):`);
+    lines.forEach((l) => L.push(`• ${l.text.toUpperCase()} — ${l.px} — ${l.sub}`));
+    if (!lines.length) L.push('• (none this pass)');
+    const reviews = bookReviews(st, out, cfg);
+    if (reviews.length) { L.push('', 'Review only — these are NOT orders:'); reviews.forEach((r) => L.push(`• REVIEW ${r.sym} — ${r.why}`)); }
+    const extra = research && research.rows ? research.rows.filter((r) => r.trigger && !cfg.targets[r.sym]).slice(0, 3) : [];
+    if (extra.length) { L.push('', 'Research names NOT in the target (for context only, do not add unless one clearly beats a target name): ' + extra.map((r) => `${r.sym} entry ${f(r.trigger)} → ${f(r.tp1)} · stop ${f((levelsFor({ levels: { [r.sym]: r } }, r.sym) || {}).stop)}`).join('; ')); }
+    L.push('', 'New buys/adds only: require finite 0 < research stop < executable limit < target, R/R at the limit >= 1.5, verified tradability, no earnings inside 3 trading days, no active exit, per-name cap 20% of equity, and total buys sized within ' + C.LEV_NORMAL + 'x cruise (hard cap ' + C.LEV_CAP + 'x).' + (cfg.themeCap === false ? '' : ' Theme cap (rules v2.8): tech (AI compute + AI/software + cyber) may be at most ' + Math.round(C.THEME_MAX * 100) + '% of the stock outside ' + cfg.core + ' after all buys; tech now ' + Math.round(themeShare(st, cfg).share * 100) + '%. Over the cap, a tech buy or add is NO; never propose a sale or more leverage to meet the cap.') + ' Preserve limit entries versus breakout stop-limits. Revalidate live; never move a stop or target just to pass R/R. Owner order prices are not research levels. Missing, stale or derived-only research means WAIT on an entry.',
+      'Held positions: low entry R/R or removal from the buy list means HOLD / NO ADD / REVIEW, never a sell by itself. Genuine research stop, thesis/trend failure, planned profit target and maintenance exits remain independent. Do not re-anchor a held stop to a new entry price. Review discretionary rotations weekly; require a documented material advantage on the same horizon after spread, slippage and other costs. A small score/rank change is insufficient. No minimum holding period may delay a genuine risk exit.',
+      'Before any YES, read current holdings and ALL pending, partially filled, filled, cancelled and rejected orders including advanced orders. Reconcile each symbol to ONE net action within available shares and buying power. Unknown execution state means WAIT for a new ticket, while retaining any protective alert. Read my resting orders only to prevent conflicts, not to set research stops/targets. A profit-milestone trim requires durable cycle/milestone records linked to confirmed fills: a clicked recommendation is not a fill. Never repeat a completed trim; partial fills count only their filled shares, pending shares reserve quantity, and cancellations do not erase filled quantities. The app does not yet have this ledger, so its mechanical profit milestones are review-only.' + (cfg.coreOwner ? ' ' + cfg.core + ' is owner-managed: never tell me to sell or trim ' + cfg.core + ' or add to it. Size the rest around it.' : ''),
+      /* v211 (Jack, Nov 11 2026, screenshot of an 8-column table cut off on his iPhone: "I want the orders easy to read in one view on iOS no scrolling"). */
+      'FORMAT — it must fit ONE iPhone screen with no sideways or vertical scrolling. No table wider than 3 columns, no cell longer than about 14 characters. In this order: (1) one verdict line: how many orders to place today. (2) ORDERS, numbered, one short line each, in the order I should enter them: "SELL 4 SNPS · limit $464.00 · Day" (for a breakout: "BUY 3 ZS · stop $x → limit $y · GTC"); a step like cancelling a resting order is its own numbered line. (3) one line: leverage after fills. (4) one 3-column table for the names I hold — Ticker | Stop | Target (research levels). (5) one line "No action:" listing every other name with a 2–3 word reason each. Nothing else: no long table, no why column, no paragraphs; I ask "more" if I want the reasoning. Education only — not financial advice.');
+    return L.join('\n');
+  }
+  /* v212 (Jack, Nov 11 2026, screenshot of the button reading only "1 order": "somewhere here it's gotta tell me what
+     trades it's recommended that I click to confirm"). bookLines() is the SAME set the button counts and the prompt
+     sends — eligible build rungs, capped under-target adds and independent rule sells — as one short line each. Prices are
+     the snapshot's; the confirm step re-prices live. Pure. */
+  /* v214 (Jack, Nov 11 2026 05:02 ET, on "Sell 4 SNPS · limit $457.62 · Day" built from a 12-hour-old close while the
+     stock traded $466 pre-market: "U want me to sell at this limit price" · "Fix the app!"). The page cannot fetch a
+     live quote, so it must not present a stale figure as an order. cfg.snapAgeMin = minutes since the snapshot; older
+     than C.PRICE_FRESH_MIN (or unknown) ⇒ every line is an ESTIMATE ("≈ $457.62", est: true, no "limit", no
+     time-in-force) and the list tells him to tap Confirm for the price to enter. */
+  function priceIsFresh(cfg) { const a = cfg && cfg.snapAgeMin; return a != null && isFinite(+a) && +a >= 0 && +a <= C.PRICE_FRESH_MIN; }
+  function ageText(min) { if (min == null || !isFinite(+min) || +min < 0) return 'unknown age'; if (+min < 90) return Math.max(1, Math.round(+min)) + ' min old'; if (+min < 48 * 60) return Math.round(+min / 60) + 'h old'; return Math.round(+min / 1440) + ' days old'; }
+  function bookLines(st, out, cfg) {
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    out = reconcileRules(st, out, cfg);
+    const fresh = priceIsFresh(cfg);
+    const P = (label, px, tif) => (fresh ? `${label} ${money(px)} · ${tif}` : `≈ ${money(px)}`);
+    const q = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? String(Math.round(x)) : (+x).toFixed(2));
+    const lines = [];
+    (out || []).filter((r) => r.kind === 'build' && r.ticket && r.ticket.qty > 0).forEach((r) => { const t = r.ticket;
+      lines.push({ side: 'buy', sym: t.sym, qty: t.qty, text: `Buy ${q(t.qty)} ${t.sym}`, px: P('limit', t.limit, t.orderType === 'limit' ? 'Day' : 'GTC'), est: !fresh, sub: `${t.orderType === 'limit' ? 'limit entry' : 'buy-stop trigger ' + money(t.trigger)} · target ${money(t.tp1)} · stop ${money(t.stop)} · R/R ${t.rr.toFixed(2)}` }); });
+    const g = bookGaps(st, out, cfg);
+    g.adds.forEach((a) => { const t = a.lv;
+      lines.push({ side: 'buy', sym: a.sym, qty: a.qty, text: `Add ${a.qty} ${a.sym}`, px: P('limit', t.limit, t.orderType === 'limit' ? 'Day' : 'GTC'), est: !fresh, sub: `${t.orderType === 'limit' ? 'limit entry' : 'buy-stop trigger ' + money(t.trigger)} · toward ${a.tgt.toFixed(0)}% of equity (now ${a.have.toFixed(0)}%) · target ${money(t.tp1)} · stop ${money(t.stop)} · R/R ${t.rr.toFixed(2)}` }); });
+    /* v213 (Jack, Nov 11 2026: "Sell or buy at what price"): every line carries the price to ENTER — a research-dropped
+       exit uses the scan's swap rule, limit = last × 0.995, Day (same as the rule sells) — never just "last". */
+    (out || []).filter((r) => r.ticket && r.ticket.side === 'sell').forEach((r) => lines.push({ side: 'sell', sym: r.ticket.sym, qty: r.ticket.qty, limitPx: r.ticket.px > 0 ? r.ticket.px : null, text: `Sell ${q(r.ticket.qty)} ${r.ticket.sym}`, px: r.ticket.px > 0 ? P('limit', r.ticket.px, r.ticket.gtc ? 'GTC' : 'Day') : '', est: !fresh, sub: r.title }));
+    return lines;
+  }
+  /* v215 (Jack, Nov 11 2026 05:15 ET, screenshots of Plan step 1 "✓ Nothing is broken · ≈ $0.00 freed" above a
+     Recommended trade "Sell 4 SNPS": "Rec sells but nothing broken. Where's the disconnect"). Two different tests:
+     step 1 is a trend / −25% stop test; the Apex list also shows research target/stop and maintenance rule sells. planSellNote() is the one line step 1 shows so the two cards stop reading as a contradiction. It
+     names the SAME sell lines the Confirm button sends (bookLines), minus names step 1 already lists (skip).
+     Tickers and reasons only — no share counts or dollars. */
+  function planSellNote(st, out, cfg, skip) {
+    const sk = new Set(skip || []), seen = new Set();
+    const sells = bookLines(st, out, cfg).filter((l) => l.side === 'sell' && !sk.has(l.sym) && !seen.has(l.sym) && seen.add(l.sym));
+    if (!sells.length) return '';
+    const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const items = sells.map((l) => `<b>${escH(l.sym)}</b> (${escH(String(l.sub || 'Apex rule').split(' · ')[0])})`).join(', ');
+    return `<div data-sd-apex-sell-note style="font-size:11.5px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:8px;padding:6px 9px;margin-top:8px">↪ ${sells.length === 1 ? '1 sell is' : sells.length + ' sells are'} on the Apex card above: ${items}. Apex\u2019s research and rules, not this trend test \u2014 not counted in this step.</div>`;
+  }
+  function portfolioButton(st, out, cfg, research) {
+    const lines = bookLines(st, out, cfg);
+    const n = lines.length, reviews = bookReviews(st, out, cfg);
+    if (!n && !reviews.length) return '';
+    const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const rows = lines.map((l) => `<div data-apex-trade="${escH(l.sym)}" style="display:flex;align-items:baseline;gap:8px;padding:7px 10px;border-top:1px solid rgba(0,0,0,.06);min-width:0"><span style="flex:0 0 auto;font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;background:${l.side === 'sell' ? '#fee2e2' : '#d1fae5'};color:${l.side === 'sell' ? '#991b1b' : '#065f46'}">${l.side === 'sell' ? 'SELL' : 'BUY'}</span><span style="flex:1 1 auto;min-width:0"><b style="font-size:13px">${escH(l.text)}</b>${l.px ? ` <span style="font-size:12px;white-space:nowrap${l.est ? ';color:#92400e' : ''}">· ${escH(l.px)}</span>` : ''}${l.sub ? `<br><span style="font-size:10.5px;color:#6b7280;overflow-wrap:anywhere">${escH(l.sub)}</span>` : ''}</span></div>`).join('');
+    const fresh = priceIsFresh(cfg), age = ageText(cfg && cfg.snapAgeMin);
+    const note = fresh
+      ? `<div data-apex-price-note style="font-size:11px;color:#6b7280;margin:-4px 0 6px">Order prices use quotes ${escH(age)} (refreshed hourly in market hours). Confirm re-checks them live.</div>`
+      : `<div data-apex-price-note style="font-size:11.5px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:8px;padding:6px 9px;margin:-2px 0 8px">Not order prices yet — quotes are ${escH(age)}. The app re-prices at its next refresh (weekdays, hourly 8:41 AM–4:41 PM ET). For the exact price now, tap Confirm.</div>`;
+    /* v251 (Jack, Nov 18 2026, Actions screenshot: the same sentence printed for CRWD, PLTR, ZS and NET): names that share a
+       reason are ONE row (tickers joined, the reason once), in first-seen order. Same names, same words; nothing dropped. */
+    const byWhy = new Map();
+    reviews.forEach((r) => { const k = String(r.why || ''); if (!byWhy.has(k)) byWhy.set(k, []); byWhy.get(k).push(r.sym); });
+    const reviewList = reviews.length ? `<div class="ac-tier">Review · no order</div><div data-apex-reviews>${[...byWhy].map(([why, syms]) => `<div data-apex-review="${escH(syms.join(' '))}" style="font-size:11.5px;padding:5px 0;overflow-wrap:anywhere"><b>${syms.map(escH).join(' · ')}</b> · ${escH(why)}</div>`).join('')}</div>` : '';
+    const list = (n ? `<div class="ac-tier">🧾 Recommended trades <span class="card-hint">(${n})</span></div>${note}<div data-apex-trades style="border:1px solid rgba(0,0,0,.08);border-radius:12px;overflow:hidden;margin-bottom:8px">${rows.replace('border-top:1px solid rgba(0,0,0,.06);', '')}</div>` : '') + reviewList;
+    /* v219: [data-apex-confirm] wraps the button + its note so ui/duo.css can pin it under the trades on a phone. */
+    /* v251: with no order there is nothing to confirm, so the button is not drawn (Today already does this). It read
+       "Confirm … · 0 orders" and, pinned, covered the review list it had nothing to send. */
+    if (!n) return list;
+    return list + `<div data-apex-confirm><a href="https://claude.ai/new?q=${encodeURIComponent(portfolioPrompt(st, out, cfg, research))}" target="_blank" rel="noopener" style="display:block;text-align:center;margin:10px 0 2px;padding:11px 12px;border-radius:12px;background:#059669;color:#fff;font-weight:700;font-size:14px;text-decoration:none">✅ Confirm this week\u2019s Apex book with Claude <span style="font-weight:500;opacity:.85">· ${n} order${n === 1 ? '' : 's'}</span></a><div style="font-size:10.5px;color:#9ca3af;text-align:center;margin-bottom:6px">Claude re-checks every line live and returns YES / WAIT / NO with prices. You enter the YES lines in Robinhood.</div></div>`;
+  }
+
+  /* v194 — entry · target · stop · R/R as a 2×2 grid (fits 320px), then company name + a Robinhood link. */
+  function levelsHtml(L, esc) {
+    const sg = (a, b) => (a > 0 && b > 0 ? ((a / b - 1) * 100) : null);
+    const pc = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}% from entry`);
+    const cell = (l, v, sub, col) => `<div style="background:var(--card,#fff);border:1px solid rgba(0,0,0,.08);border-radius:8px;padding:6px 8px;min-width:0"><div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em">${l}</div><div style="font-size:13.5px;font-weight:700;color:${col || 'var(--text)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v}</div>${sub ? `<div style="font-size:10.5px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div>` : ''}</div>`;
+    const low = L.rr != null && L.rr < C.RR_MIN;
+    const grid = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">${
+      cell('Entry', L.trigger ? money(L.trigger) : '—', L.limit ? 'limit ' + money(L.limit) : '')}${
+      cell('Target', L.tp1 ? money(L.tp1) : '—', pc(sg(L.tp1, L.limit)))}${
+      cell('Stop', L.stop ? money(L.stop) : '—', pc(sg(L.stop, L.limit)))}${
+      cell('R/R at entry', L.rr != null ? L.rr.toFixed(2) : '—', `floor ${C.RR_MIN}`, low ? '#dc2626' : '#059669')}</div>`;
+    const qty = L.qty > 0 ? `Buy ${L.qty} ${esc(L.sym)} · ` : '';
+    const name = L.name ? `<b>${esc(L.name)}</b> · ` : '';
+    const link = `<a href="https://robinhood.com/stocks/${encodeURIComponent(L.sym)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">Open in Robinhood ↗</a>`;
+    const warn = low ? `<div style="font-size:11.5px;margin-top:6px;color:#b91c1c;font-weight:600">Under your ${C.RR_MIN} R/R floor at this entry.</div>` : '';
+    return `${grid}${warn}<div style="font-size:11.5px;margin-top:6px;color:var(--text);opacity:.85;line-height:1.45">${name}${qty}<b>${L.review ? 'review · no order' : L.orderType === 'limit' ? 'limit entry' : 'armed'}</b> · ${link}</div>`;
+  }
+
+  /* v210 — Jack (Nov 11 2026, phone screenshot of a 50-name "News veto" paragraph): "Clean this up and merge".
+     Same rows, re-shaped: one folded line with a count per reason; inside, names that share a reason are ticker
+     chips, R/R misses are chips carrying the figure (levels on the chip's title and in the list under them), and
+     one-off reasons stay as "SYM — why" rows. Labelled "screened out": most rows are trend / R/R gates, not news. */
+  function vetoBlock(list, esc) {
+    const rows = (Array.isArray(list) ? list : []).filter((v) => v && v.sym);
+    if (!rows.length) return '';
+    const label = (why) => /^price below SMA200\b/i.test(why) ? 'Below 200-day' : why;
+    const groups = new Map(), rr = [], solo = [];
+    rows.forEach((v) => {
+      const why = String(v.why || '').trim();
+      const m = /^R\/R at entry\s+(-?[\d.]+)\s*<\s*([\d.]+)\s*(?:\((.*)\))?$/.exec(why);
+      if (m) { rr.push({ sym: v.sym, rr: m[1], floor: m[2], lv: m[3] || '' }); return; }
+      if (!why) { solo.push({ sym: v.sym, why: '' }); return; }
+      if (!groups.has(why)) groups.set(why, []);
+      groups.get(why).push(v.sym);
+    });
+    const shared = [];
+    groups.forEach((syms, why) => { if (syms.length > 1) shared.push({ why, syms }); else solo.push({ sym: syms[0], why }); });
+    shared.sort((a, b) => b.syms.length - a.syms.length);
+    const chip = (t, title) => `<span${title ? ' title="' + esc(title) + '"' : ''}>${t}</span>`;
+    const head = (t, n) => `<div style="font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#b45309;margin:8px 0 4px">${esc(t)} · ${n}</div>`;
+    const sum = shared.map((g) => chip(g.syms.length + ' ' + esc(label(g.why).toLowerCase())))
+      .concat(rr.length ? [chip(rr.length + ' R/R under ' + esc(rr[0].floor))] : [])
+      .concat(solo.length ? [chip(solo.length + ' other')] : []).join('');
+    const body = shared.map((g) => head(label(g.why), g.syms.length) + `<div class="sd-chips">${g.syms.map((s) => chip(esc(s))).join('')}</div>`).join('') +
+      (rr.length ? head('R/R under ' + rr[0].floor + ' at entry', rr.length) + `<div class="sd-chips">${rr.map((x) => chip(esc(x.sym) + ' <b>' + esc(x.rr) + '</b>', x.lv)).join('')}</div>` +
+        (rr.some((x) => x.lv) ? `<details class="sd-more" style="margin-top:4px"><summary style="font-size:10.5px;color:#6b7280">Entry → target · stop</summary>${rr.filter((x) => x.lv).map((x) => `<div style="font-size:10.5px;color:#6b7280;line-height:1.5;overflow-wrap:anywhere"><b>${esc(x.sym)}</b> ${esc(x.lv)}</div>`).join('')}</details>` : '') : '') +
+      (solo.length ? head('Other', solo.length) + solo.map((x) => `<div style="font-size:11px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>${esc(x.sym)}</b>${x.why ? ' — ' + esc(x.why) : ''}</div>`).join('') : '');
+    return `<details class="sd-more apex-veto" data-apex-veto style="margin-top:8px"><summary style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:#b45309;opacity:1"><span style="white-space:nowrap">⛔ ${rows.length} screened out ▾</span><span class="sd-chips">${sum}</span></summary>${body}</details>`;
+  }
+
+  /* v233 — Ranked opportunities (Jack, Nov 16 2026: zero buys with the top-scored names locked out — "I don't get how
+     this works"; then approved "Publish the ranked opportunity list … why they qualify or fail, and what would make
+     them actionable"). DISPLAY ONLY: a re-sort of rows the Monday scan already wrote to data/apex-targets.json.
+     Nothing here picks, sizes, tickets or relaxes a gate, and no rule reads it. Buckets:
+       qualified  = on this week's buy list (targets, never the core)
+       restricted = passed every gate but blocked by the tech cap or the AI-compute cluster cap
+       near       = failed ONLY the R/R floor; needPx is the entry at which R/R reaches the floor with the scan's own
+                    target and stop held fixed: (tp1 + floor·stop) ÷ (1 + floor). The scan re-derives levels each
+                    research day, so needPx is an estimate, labelled as one.
+       watch      = failed the relative-strength or catalyst gate (above its 200-day)
+       belowTrend = count of names under their 200-day (not listed). */
+  function opportunities(T) {
+    const out = { qualified: [], restricted: [], near: [], watch: [], belowTrend: 0, asOf: (T && T.asOf) || '', rulesVersion: (T && T.rulesVersion) || '' };
+    if (!T || typeof T !== 'object') return out;
+    const num = (v) => (v != null && v !== '' && isFinite(+v) ? +v : null);
+    const core = T.core || 'IREN', floor = C.RR_MIN;
+    const top = {}; (Array.isArray(T.top5) ? T.top5 : []).concat(Array.isArray(T.heldLevels) ? T.heldLevels : []).forEach((r) => { if (r && r.sym && !top[r.sym]) top[r.sym] = r; });
+    const lv = (sym, r) => { const a = r || {}, b = top[sym] || {}; const pick = (k) => num(a[k]) != null ? num(a[k]) : num(b[k]);
+      return { name: a.name || b.name || null, composite: pick('composite'), limit: pick('limit') != null ? pick('limit') : pick('entry'), tp1: pick('tp1'), stop: pick('stop'), rr: pick('rr') }; };
+    const tg = T.targets && typeof T.targets === 'object' ? T.targets : {};
+    Object.keys(tg).forEach((sym) => { if (sym === core) return; const L = lv(sym); out.qualified.push(Object.assign({ sym, weight: num(tg[sym]), why: 'On this week\'s buy list', unlock: 'Already on the buy list — the trade list above shows whether a buy is still needed' }, L)); });
+    const seen = new Set(out.qualified.map((x) => x.sym));
+    const addR = (row, kind) => { if (!row || !row.sym || row.sym === core || seen.has(row.sym)) return;
+      const ex = out.restricted.find((x) => x.sym === row.sym);
+      const unlock = kind === 'theme' ? 'Tech back under ' + Math.round(C.THEME_MAX * 100) + '% of the stock outside ' + core : 'AI-compute cluster back under its 45%-of-equity cap';
+      if (ex) { ex.blocks.push(kind); ex.unlock += ' and ' + unlock.charAt(0).toLowerCase() + unlock.slice(1); return; }
+      out.restricted.push(Object.assign({ sym: row.sym, blocks: [kind], why: kind === 'theme' ? 'Blocked by the tech cap' : 'Blocked by the AI-compute cap', unlock }, lv(row.sym, row))); };
+    (Array.isArray(T.blockedByTheme) ? T.blockedByTheme : []).forEach((r) => addR(r, 'theme'));
+    (Array.isArray(T.blockedByCap) ? T.blockedByCap : []).forEach((r) => addR(r, 'cluster'));
+    out.restricted.forEach((x) => seen.add(x.sym));
+    (Array.isArray(T.vetoed) ? T.vetoed : []).forEach((v) => {
+      if (!v || !v.sym || v.sym === core || seen.has(v.sym)) return;
+      const why = String(v.why || '').trim();
+      if (/below\s+(?:its\s+)?(?:SMA200|200-day)/i.test(why)) { out.belowTrend++; return; }
+      const m = /^R\/R at entry\s+(-?[\d.]+)\s*<\s*[\d.]+\s*$/.exec(why);
+      if (m) {
+        const L = lv(v.sym, v), rr = num(m[1]);
+        let needPx = null, pct = null;
+        if (L.limit > 0 && L.tp1 > 0 && L.stop > 0 && L.tp1 > L.stop) { needPx = (L.tp1 + floor * L.stop) / (1 + floor); pct = (needPx / L.limit - 1) * 100; if (!(needPx > L.stop) || !(pct < 0)) { needPx = null; pct = null; } }
+        out.near.push(Object.assign({ sym: v.sym, why: 'R/R ' + (rr != null ? rr.toFixed(2) : '?') + ' at today\'s entry (floor ' + floor + ')', needPx, pct,
+          unlock: needPx != null ? 'About $' + needPx.toFixed(2) + ' (' + pct.toFixed(1) + '%) reaches ' + floor + ' R/R with the same target and stop — estimate' : 'A lower entry or a higher target — the scan re-checks every Monday' }, L, { rr }));
+        seen.add(v.sym); return;
+      }
+      if (/relative strength|\bRS\b/i.test(why)) { out.watch.push(Object.assign({ sym: v.sym, why: '3-month strength vs the market too weak', unlock: '3-month strength back in the top 40% of the list' }, lv(v.sym, v))); seen.add(v.sym); return; }
+      if (/catalyst/i.test(why)) { out.watch.push(Object.assign({ sym: v.sym, why: 'No earnings or catalyst inside 60 days', unlock: 'A dated catalyst inside 60 days, or its 50-day back above its 200-day' }, lv(v.sym, v))); seen.add(v.sym); }
+    });
+    const byScore = (a, b) => (b.composite != null ? b.composite : -1) - (a.composite != null ? a.composite : -1) || a.sym.localeCompare(b.sym);
+    out.qualified.sort(byScore); out.restricted.sort(byScore); out.watch.sort(byScore);
+    out.near.sort((a, b) => (a.pct != null ? -a.pct : 1e9) - (b.pct != null ? -b.pct : 1e9) || byScore(a, b));
+    return out;
+  }
+
+  function oppBlock(O, esc) {
+    if (!O) return '';
+    const total = O.qualified.length + O.restricted.length + O.near.length + O.watch.length;
+    if (!total && !O.belowTrend) return '';
+    const row = (x, col) => `<details class="sd-more apex-opp-row" style="margin:0;border-top:1px solid rgba(128,128,128,.18);padding:6px 0"><summary style="display:flex;align-items:center;gap:8px;opacity:1;color:var(--text);font-size:12px;min-width:0"><b style="flex:0 0 46px">${esc(x.sym)}</b><span style="flex:0 0 30px;color:${col};font-weight:700">${x.composite != null ? x.composite.toFixed(1) : '—'}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6b7280">${esc(x.why)}</span></summary><div style="font-size:11.5px;line-height:1.5;color:var(--text);padding:4px 0 2px 54px;overflow-wrap:anywhere">${x.name ? '<b>' + esc(x.name) + '</b><br>' : ''}<span style="color:#6b7280">Actionable when:</span> ${esc(x.unlock)}${x.limit && x.tp1 && x.stop ? '<br><span style="color:#6b7280">Scan levels:</span> entry ' + money(x.limit) + ' → ' + money(x.tp1) + ' · stop ' + money(x.stop) + (x.rr != null ? ' · R/R ' + x.rr.toFixed(2) : '') : ''}</div></details>`;
+    const group = (key, icon, title, hint, list, col, open) => list.length
+      ? `<details class="sd-more apex-opp" data-apex-opp="${key}"${open ? ' open' : ''} style="margin-top:6px"><summary style="opacity:1;color:var(--text);font-size:12.5px;font-weight:700">${icon} ${esc(title)} · ${list.length} <span style="font-weight:400;color:#9ca3af">${esc(hint)}</span></summary>${list.map((x) => row(x, col)).join('')}</details>`
+      : `<div data-apex-opp="${key}" style="font-size:12px;color:#9ca3af;margin-top:6px">${icon} ${esc(title)} · 0</div>`;
+    const firstOpen = O.qualified.length ? 'q' : O.restricted.length ? 'r' : O.near.length ? 'n' : 'w';
+    return `<div class="ac-tier" data-apex-opps style="margin-top:12px">📋 Ranked opportunities <span class="card-hint">(rules ${esc(O.rulesVersion || '?')} · display only)</span></div>
+      <div class="snap-grid" style="grid-template-columns:repeat(4,1fr);gap:6px">${[['Buy list', O.qualified.length, '#10b981'], ['Blocked', O.restricted.length, '#f59e0b'], ['Close', O.near.length, '#3b82f6'], ['Watch', O.watch.length, '#9ca3af']].map((t) => `<div class="snap-tile" style="min-width:0;padding:6px 4px;text-align:center"><div class="snap-val" style="color:${t[2]};font-size:18px">${t[1]}</div><div class="snap-lbl" style="font-size:10px">${t[0]}</div></div>`).join('')}</div>
+      ${group('qualified', '✅', 'Buy list', 'passed everything', O.qualified, '#10b981', firstOpen === 'q')}
+      ${group('restricted', '🔒', 'Blocked by a cap', 'passed every gate', O.restricted, '#f59e0b', firstOpen === 'r')}
+      ${group('near', '🎯', 'Close', 'only the R/R floor is missing', O.near, '#3b82f6', firstOpen === 'n')}
+      ${group('watch', '👀', 'Watch', 'one gate short', O.watch, '#9ca3af', firstOpen === 'w')}
+      ${O.belowTrend ? `<div style="font-size:11px;color:#9ca3af;margin-top:6px">${O.belowTrend} more are under their 200-day average and are not ranked.</div>` : ''}
+      <details class="sd-more" style="margin-top:4px"><summary style="font-size:10.5px;color:#6b7280">ⓘ How to read this</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.45">Same rows as the Monday scan, re-sorted. Nothing here is an order and no rule reads it. "Blocked" names passed every gate and are held back only by the tech cap or the AI-compute cap. "Close" prices are estimates that keep the scan's target and stop fixed; the scan sets fresh levels each Monday.</div></details>`;
+  }
+
+  /* v188 — weekly research, top 5. `research` = {asOf, source, rows:[{sym, score, px, rs3, fromHi, s50, why}]}
+     from the dashboard's SD momentum lens (sdMomentum over SD_BENCH, freshness-gated). A name only
+     becomes a ticket via the Friday swap rule in the scan (beats the weakest holding by ≥ 1.5). */
+  function researchBlock(R, esc) {
+    if (!R || !R.rows || !R.rows.length) return `<div class="ac-tier">🔬 Research — top 5</div><div class="tech-empty">${esc((R && R.empty) || 'No scored names yet (needs fresh daily bars).')}</div>`;
+    const tiles = R.rows.slice(0, 5).map((r, i) => {
+      const col = r.score >= 7 ? '#10b981' : r.score >= 5.5 ? '#f59e0b' : '#9ca3af';
+      const up = r.s50 && r.px ? (r.px / r.s50 - 1) * 100 : null;
+      if (r.why != null && r.rs3 == null) {
+        /* v197 — R/R is measured at the entry this tile shows (limit, else trigger × 1.01), the same way as the
+           build rungs; the scan's figure from the prior close moves into the fold. Raw source URLs become a short
+           "source ↗" link so they can't run off a 390px screen. */
+        /* v202: the scan writes vol as an annualized FRACTION (AMZN 0.313 = 31%); the tile printed it as "vol 0%". */
+        const lv = levelsFor({ levels: { [r.sym]: r } }, r.sym);
+        const rrE = lv && lv.rr != null && isFinite(lv.rr) ? lv.rr : null;
+        const lowE = rrE != null && rrE < C.RR_MIN;
+        const rrClose = r.rr != null && isFinite(+r.rr) ? +r.rr : null;
+        const urls = [];
+        const whyTxt = esc(String(r.why || '').replace(/https?:\/\/\S+/g, (u) => { urls.push(u.replace(/[)\].,;]+$/, '')); return ''; }).replace(/\s{2,}/g, ' ').trim());
+        const src = urls.filter((u) => /^https:\/\//.test(u)).map((u) => ` <a href="${esc(u)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">source ↗</a>`).join('');
+        const rrLine = rrE != null ? `<span style="color:${lowE ? '#dc2626' : '#059669'};font-weight:600">R/R <span style="white-space:nowrap">${rrE.toFixed(2)}</span> at entry${lowE ? ' · under ' + C.RR_MIN : ''}</span><br>` : (rrClose != null ? 'R/R ' + rrClose.toFixed(1) + ' (from close) · ' : '');
+        const cut = whyTxt.indexOf('News:');
+        const whyMain = cut > 0 ? whyTxt.slice(0, cut).replace(/[\s.;·—-]+$/, '') : whyTxt;
+        const news = cut >= 0 ? whyTxt.slice(cut) : '';
+        const closeNote = rrE != null && rrClose != null ? `<div>Scan reported R/R ${rrClose.toFixed(1)}; the entry figure is recomputed from the displayed levels.</div>` : '';
+        const basisNote = lv && lv.ownerStop ? '<div style="color:#92400e">ATR estimate only · research stop needs verification</div>' : '';
+        const fold = news || src || closeNote ? `<details class="sd-more" style="margin-top:3px"><summary style="font-size:10.5px;color:#6b7280">${news ? '📰 News' : 'ⓘ Notes'}${src ? ' · source' : ''}</summary><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${news ? news + src : src.trim()}${closeNote}</div></details>` : '';
+        return `<div class="snap-tile" style="min-width:0;overflow-wrap:anywhere"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.target ? ' 🎯 ' + r.target + '%' : ''}${r.wash ? ' · 🚫' : ''}${r.extended ? ' · ⏳ extended' : ''}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35;overflow-wrap:anywhere">${r.name ? '<b>' + esc(r.name) + '</b><br>' : ''}${r.trigger ? 'Entry ' + money(r.trigger) + (lv && lv.limit && Math.abs(lv.limit - r.trigger) > 0.004 ? ' (limit ' + money(lv.limit) + ')' : '') + (r.tp1 ? ' → ' + money(r.tp1) : '') + (lv && lv.stop ? ' · stop ' + money(lv.stop) : '') + '<br>' : ''}${r.wash ? `<span style="color:#b45309;font-weight:600">🚫 Tax hold to ${esc(r.wash)}</span><br>` : ''}${rrLine}${r.vol != null && isFinite(+r.vol) ? 'vol ' + Math.round(Math.abs(+r.vol) <= 3 ? +r.vol * 100 : +r.vol) + '% · ' : ''}${whyMain}${basisNote}</div>${fold}</div>`;
+      }
+      return `<div class="snap-tile" style="min-width:0"><div class="snap-lbl">#${i + 1} ${esc(r.sym)}${r.held ? ' · held' : ''}</div><div class="snap-val" style="color:${col}">${r.score.toFixed(1)}</div><div style="font-size:10.5px;color:#6b7280;line-height:1.35">${r.rs3 != null ? (r.rs3 >= 0 ? '+' : '') + r.rs3.toFixed(0) + 'pp vs SPY 3m' : '—'}<br>${up != null ? (up >= 0 ? '+' : '') + up.toFixed(0) + '% vs 50-day' : ''}${r.fromHi != null ? ' · ' + r.fromHi.toFixed(0) + '% off high' : ''}</div></div>`;
+    }).join('');
+    const rec = R.record || null;
+    const recLine = rec && (rec.n30 > 0 || rec.n5 > 0 || rec.n90 > 0)
+      ? `<div style="font-size:11.5px;margin-top:8px;color:var(--text)"><b>Record vs SPY:</b> ${[['5d', rec.n5, rec.hit5, rec.avgAlpha5], ['30d', rec.n30, rec.hit30, rec.avgAlpha30], ['90d', rec.n90, rec.hit90, rec.avgAlpha90]].filter((x) => x[1] > 0).map((x) => `${x[0]} ${Math.round(x[2] * 100)}% beat · ${x[3] >= 0 ? '+' : ''}${(+x[3]).toFixed(1)}pp (n=${x[1]})`).join(' · ')}</div>`
+      : (rec ? '<div style="font-size:11px;color:#9ca3af;margin-top:8px">Record vs SPY: no graded picks yet — first marks at 5 trading days.</div>' : '');
+    const vet = vetoBlock(R.vetoed, esc);
+    const opp = oppBlock(R.opps, esc);
+    return `<div class="ac-tier">🔬 Research — top 5 <span class="card-hint">(${esc(R.source || 'momentum lens')} · ${esc(R.asOf || '')})</span></div><div class="snap-grid">${tiles}</div>${recLine}${opp}${vet}<div style="font-size:11px;color:#9ca3af;margin-top:6px">${esc(R.note || 'Scores 0–10. A name becomes a ticket only when it beats your weakest holding (Friday swap rule).')}</div>`;
+  }
+
+  /* v258 (Jack, Nov 19 2026 3:14 PM ET, a "Morning stock order ticket" image: "I want my apex buys and sells to come to
+     me each morning in a format like this that I can click"). DISPLAY ONLY: the same buy and sell lines the Confirm
+     button sends (bookLines) plus the research exit levels of held names (heldLevels → cfg.exitLevels), laid out as a
+     ticket — buys green, sells and sell stops red, one tappable row per symbol. No new data, no order is placed; Jack
+     enters Apex orders himself. Deep link: #apex-ticket (index.html opens the Apex card and scrolls here). */
+  function etStamp(iso) {
+    const t = iso ? Date.parse(iso) : NaN;
+    if (!Number.isFinite(t)) return null;
+    try { return new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(t)) + ' ET'; } catch (_) { return null; }
+  }
+  function ticket(st, out, cfg) {
+    cfg = Object.assign({}, DEFAULT_CFG, cfg || {});
+    const lines = bookLines(st, out || [], cfg);
+    const fresh = priceIsFresh(cfg);
+    const num = (v) => (v != null && Number.isFinite(+v) && +v > 0 ? +v : null);
+    const pctFrom = (a, b) => (a && b ? (a / b - 1) * 100 : null);
+    const buys = lines.filter((l) => l.side === 'buy').map((l) => {
+      const L = levelsFor(cfg, l.sym) || {}, entry = num(L.limit) || num(L.trigger), stop = num(L.stop), tp1 = num(L.tp1);
+      return { side: 'buy', sym: l.sym, qty: num(l.qty), name: L.name || null, action: l.text, price: l.px, est: !!l.est, entry, trigger: num(L.trigger), tp1, stop,
+        rr: L.rr != null && Number.isFinite(+L.rr) ? +L.rr : null, riskPct: pctFrom(stop, entry), rewardPct: pctFrom(tp1, entry), note: l.sub || '' };
+    });
+    const sellSyms = new Set();
+    const sells = lines.filter((l) => l.side === 'sell').map((l) => {
+      sellSyms.add(l.sym);
+      const E = exitLevelsFor(cfg, l.sym) || {}, p = st.positions.find((x) => x.symbol === l.sym) || {};
+      return { side: 'sell', sym: l.sym, qty: num(l.qty), name: E.name || null, action: l.text, price: l.px, est: !!l.est, last: num(p.px), tp1: num(E.tp1), stop: num(E.stop), note: l.sub || '', limitPx: num(l.limitPx) };
+    });
+    /* Held names (never the owner-managed core) with a research stop or target and no sell today: their sell-stop and
+       take-profit levels, so every held name on the ticket shows where it exits. Research levels, not Jack's orders. */
+    const stops = st.positions.filter((p) => !(cfg.coreOwner && p.symbol === cfg.core) && !sellSyms.has(p.symbol)).map((p) => {
+      const E = exitLevelsFor(cfg, p.symbol) || {}, stop = num(E.stop), tp1 = num(E.tp1), last = num(p.px);
+      return stop || tp1 ? { side: 'stop', sym: p.symbol, name: E.name || null, qty: num(p.qty), last, est: !fresh, tp1, stop, toStopPct: pctFrom(stop, last), toTargetPct: pctFrom(tp1, last) } : null;
+    }).filter(Boolean);
+    /* v260 (Jack, Nov 20 2026 2:30 AM ET, ZS on the ticket beside his Nov 9 ZS TP/SL order: "Why is this showing if
+       the orders in"). A row whose sell Jack already has resting in Robinhood (cfg.openOrders, the producer's read-only
+       ••••0741 open-order summary) is marked placed and drops out of the to-do count. Display only: nothing here feeds
+       rules, R/R or Confirm (v211). No order list ⇒ every row stays a to-do (fail open). */
+    const OO = cfg.openOrders && cfg.openOrders.bySym ? cfg.openOrders.bySym : null;
+    const mark = (r) => { const p = placedFor(OO, r); if (p) r.placed = p; return r; };
+    sells.forEach(mark); stops.forEach(mark);
+    /* v267 (Jack, Nov 25 2026: "Yes, mark buys too"): a buy row is placed when ••••0741 has a buy order for the symbol, open
+       or filled, created at or after this ticket's research timestamp (cfg.placedBuys, the producer's read-only
+       symbol + time summary; cancelled / rejected / expired orders, sells and other accounts never reach it). Size and
+       price may differ from the ticket and still count. No list, or no valid research time ⇒ every buy stays a to-do. */
+    const PB = cfg.placedBuys && cfg.placedBuys.bySym ? cfg.placedBuys.bySym : null, rt = cfg.researchAsOf ? Date.parse(cfg.researchAsOf) : NaN;
+    buys.forEach((r) => { const b = PB && PB[r.sym]; const t = b && b.at ? Date.parse(b.at) : NaN;
+      if (Number.isFinite(rt) && Number.isFinite(t) && t >= rt) r.placed = { buy: true, state: b.state === 'filled' ? 'filled' : 'open', at: b.at }; });
+    const todo = (a) => a.filter((r) => !r.placed).length;
+    const toPlace = todo(sells) + todo(stops), placed = sells.length + stops.length - toPlace;
+    const state = cfg.researchReady === false ? 'stale' : (buys.length || sells.length || stops.length ? 'ready' : 'none');
+    return { state, researchAsOf: cfg.researchAsOf || null, researchStamp: etStamp(cfg.researchAsOf), quotesAge: ageText(cfg.snapAgeMin), fresh, buys, sells, stops,
+      toPlace, placed, ordersStamp: OO ? etStamp(cfg.openOrders.asOf) : (PB ? etStamp(cfg.placedBuys.asOf) : null) };
+  }
+  /* A sell-stop row is placed when a sell stop rests for the symbol. A sell row (sell today) is placed only when a
+     working sell (market, or a limit at or under 2% above the ticket's limit) covers the ticket's shares — a take-profit
+     far above the market does not do today's sell. */
+  function placedFor(OO, r) {
+    const o = OO && OO[r.sym];
+    if (!o) return null;
+    const out = { stop: o.stop, limit: o.limit, qty: Math.max(o.stopQty || 0, o.limitQty || 0) || null, at: o.placedAt || null };
+    if (r.side === 'stop') return o.stop != null ? out : null;
+    const px = r.limitPx;
+    const working = o.market || (o.limit != null && px > 0 && o.limit <= px * 1.02);
+    return working && (!(r.qty > 0) || (o.limitQty || 0) >= r.qty - 1e-6) ? out : null;
+  }
+  function ticketHtml(T, esc) {
+    const n2 = (v) => (v == null ? '—' : (+v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const pc = (v) => (v == null ? '' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
+    const rh = (s) => `<a href="https://robinhood.com/stocks/${encodeURIComponent(s)}" target="_blank" rel="noopener" style="color:#2563eb;white-space:nowrap">Open in Robinhood ↗</a>`;
+    const cols = 'display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:6px;align-items:center';
+    const cell = (v, col) => `<span style="min-width:0;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis${col ? ';color:' + col : ''}">${v}</span>`;
+    const head = (a, b, c) => `<div style="${cols};padding:5px 10px;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#6b7280"><span>Symbol</span><span style="text-align:right">${a}</span><span style="text-align:right">${b}</span><span style="text-align:right">${c}</span></div>`;
+    const pill = (s, bg, fg) => `<span style="display:inline-block;min-width:0;max-width:62px;overflow:hidden;text-overflow:ellipsis;padding:3px 6px;border-radius:7px;background:${bg};color:${fg};font-weight:800;font-size:12.5px;text-align:center">${esc(s)}</span>`;
+    const row = (r, tone, first, second, third, detail) => `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" style="border-top:1px solid rgba(0,0,0,.06)"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, tone[0], tone[1])}${r.qty ? `<span data-apex-ticket-qty style="font-size:10.5px;font-weight:600;color:#6b7280;font-variant-numeric:tabular-nums;white-space:nowrap">${shares(r.qty)} sh</span>` : ''}</span>${cell(first)}${cell(second, '#059669')}${cell(third, '#dc2626')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere">${detail}</div></details>`;
+    // v259 (Jack, Nov 19 2026 4:56 PM ET: "Need share amounts"): every row shows its shares — the order size for buys and sells, shares held for a sell stop.
+    const shares = (x) => (Math.abs(x - Math.round(x)) < 1e-9 ? Math.round(x).toLocaleString('en-US') : (+x).toFixed(2));
+    const g = ['#d1fae5', '#065f46'], rd = ['#fee2e2', '#991b1b'];
+    const est = (r) => (r.est ? '≈ ' : '');
+    const todoBuys = T.buys.filter((r) => !r.placed), placedBuys = T.buys.filter((r) => r.placed);
+    const buyRows = todoBuys.map((r) => row(r, g, est(r) + n2(r.entry), n2(r.tp1), n2(r.stop),
+      `<b>${esc(r.action)}</b> · ${esc(r.price)}${r.name ? ` · ${esc(r.name)}` : ''}<br>Target ${pc(r.rewardPct)} · stop ${pc(r.riskPct)}${r.rr != null ? ` · R/R <b>${r.rr.toFixed(2)}</b>` : ''}${r.trigger && r.trigger !== r.entry ? ` · trigger ${n2(r.trigger)}` : ''}<br><span style="opacity:.8">${esc(r.note)}</span><br>${rh(r.sym)}`)).join('');
+    const todoSells = T.sells.filter((r) => !r.placed), todoStops = T.stops.filter((r) => !r.placed);
+    const sellRows = todoSells.map((r) => row(r, rd, est(r) + n2(r.last), n2(r.tp1), n2(r.stop),
+      `<b>${esc(r.action)}</b> · ${esc(r.price)}${r.name ? ` · ${esc(r.name)}` : ''}<br><span style="opacity:.8">${esc(r.note)}</span><br>${rh(r.sym)}`)).join('');
+    const stopRows = todoStops.map((r) => row(r, rd, '≈ ' + n2(r.last), n2(r.tp1), n2(r.stop),
+      `<b>Hold · sell-stop levels</b>${r.name ? ` · ${esc(r.name)}` : ''}<br>Stop ${n2(r.stop)}${r.toStopPct != null ? ` (${pc(r.toStopPct)} from last)` : ''} · target ${n2(r.tp1)}${r.toTargetPct != null ? ` (${pc(r.toTargetPct)})` : ''}<br><span style="opacity:.8">Research exit levels — the app alerts when price reaches them. Not an order today.</span><br>${rh(r.sym)}`)).join('');
+    /* v260: rows Jack already placed — muted, labelled Placed, showing the resting order's own levels (display only). */
+    const placedOn = T.ordersStamp ? `orders read ${esc(T.ordersStamp)}` : 'open orders';
+    const placedRow = (r) => { const o = r.placed;
+      if (r.side === 'buy') return `<details data-apex-ticket-row="${esc(r.sym)}" data-side="buy" data-placed="1" style="border-top:1px solid rgba(0,0,0,.06);opacity:.6"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, '#e5e7eb', '#374151')}<span data-apex-ticket-placed style="font-size:10.5px;font-weight:700;color:#059669;white-space:nowrap">✓ Placed</span></span>${cell(est(r) + n2(r.entry), '#6b7280')}${cell(n2(r.tp1), '#6b7280')}${cell(n2(r.stop), '#6b7280')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>Buy ${o.state === 'filled' ? 'already filled' : 'order already open'} in Robinhood</b>${o.at && etStamp(o.at) ? ` · placed ${esc(etStamp(o.at))}` : ''}<br><span style="opacity:.8">Nothing to do. Research levels: entry ${n2(r.entry)} · target ${n2(r.tp1)} · stop ${n2(r.stop)}. Your order's size and price can differ. From ${placedOn}.</span><br>${rh(r.sym)}</div></details>`;
+      return `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" data-placed="1" style="border-top:1px solid rgba(0,0,0,.06);opacity:.6"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, '#e5e7eb', '#374151')}<span data-apex-ticket-placed style="font-size:10.5px;font-weight:700;color:#059669;white-space:nowrap">✓ Placed</span></span>${cell('≈ ' + n2(r.last))}${cell(n2(o.limit), '#6b7280')}${cell(n2(o.stop), '#6b7280')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>Order already in Robinhood</b>${o.qty ? ` · ${shares(o.qty)} sh` : ''}${o.limit != null ? ` · sell limit ${n2(o.limit)}` : ''}${o.stop != null ? ` · stop ${n2(o.stop)}` : ''}${o.at && etStamp(o.at) ? ` · placed ${esc(etStamp(o.at))}` : ''}<br><span style="opacity:.8">Nothing to do. Research levels: target ${n2(r.tp1)} · stop ${n2(r.stop)}. From ${placedOn}.</span><br>${rh(r.sym)}</div></details>`; };
+    /* v266 (Jack, Nov 25 2026: "Fold into one line"): lines he already placed collapse into ONE summary row per section,
+       "✓ N placed · tap to see", that opens in place onto the rows above. Rows that still need him stay as they are. Display only. */
+    const foldPlaced = (side, rs) => (rs.length ? `<details data-apex-placed-fold="${side}" style="border-top:1px solid rgba(0,0,0,.06)"><summary data-apex-placed-sum style="display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;padding:9px 10px;min-height:44px;box-sizing:border-box;font-size:12.5px;font-weight:700;color:#059669"><span>✓ ${rs.length} placed</span><span data-apex-placed-hint-closed style="font-weight:600;color:#6b7280">· tap to see</span><span data-apex-placed-hint-open style="font-weight:600;color:#6b7280">· tap to hide</span></summary>${rs.map(placedRow).join('')}</details>` : '');
+    const box = (title, tone, sub, h, body) => `<div style="border:1px solid ${tone[1]}33;border-radius:12px;overflow:hidden;margin:8px 0;background:var(--card,#fff)"><div style="background:${tone[0]};color:${tone[1]};padding:7px 10px;font-weight:800;font-size:12.5px;letter-spacing:.02em">${title} <span style="font-weight:600;opacity:.8">${sub}</span></div>${h}${body}</div>`;
+    const stamp = T.researchStamp ? esc(T.researchStamp) : 'unknown';
+    const meta = `<div style="font-size:11px;color:#6b7280;margin:2px 0 4px">Research ${stamp} · quotes ${esc(T.quotesAge)}${T.fresh ? '' : ' · ≈ = estimate, not an order price'} · tap a row for details</div>`;
+    let body;
+    if (T.state === 'stale') body = `<div data-apex-ticket-empty style="font-size:12px;font-weight:600;color:#92400e;background:#fef3c7;border-radius:8px;padding:8px 10px;margin:6px 0">No ticket for today — research last updated ${stamp}. No buys until the next research run.</div>`;
+    else if (T.state === 'none') body = `<div data-apex-ticket-empty style="font-size:12px;color:var(--text);opacity:.8;padding:6px 0">No orders today. Research ${stamp}.</div>`;
+    else body = '';
+    const buysBox = T.state !== 'stale' && T.buys.length ? box('🟢 Buys', g, `(${todoBuys.length})${placedBuys.length ? ` <span data-apex-ticket-placed-count style="font-weight:600">· ${placedBuys.length} placed</span>` : ''}`, head('Entry', 'Target', 'Stop'), buyRows + foldPlaced('buy', placedBuys)) : '';
+    const toPlace = todoSells.length + todoStops.length, nPlaced = T.sells.length + T.stops.length - toPlace;
+    const sellsBox = T.sells.length || T.stops.length ? box('🔴 Sells &amp; sell stops', rd, `(${toPlace})${nPlaced ? ` <span data-apex-ticket-placed-count style="font-weight:600">· ${nPlaced} placed</span>` : ''}`, head('Last', 'Target', 'Stop'), sellRows + stopRows + foldPlaced('sell', T.sells.concat(T.stops).filter((r) => r.placed))) : '';
+    const noBuys = T.state === 'ready' && !T.buys.length ? `<div style="font-size:11.5px;color:#6b7280;margin:4px 0">No buys today.</div>` : '';
+    return `<div id="apex-ticket" data-apex-ticket="${T.state}" style="scroll-margin-top:72px"><style>[data-apex-ticket-row]>summary::-webkit-details-marker{display:none}[data-apex-ticket-row][open]>summary{background:rgba(0,0,0,.03)}[data-apex-placed-fold]>summary::-webkit-details-marker{display:none}[data-apex-placed-fold][open]>summary{background:rgba(0,0,0,.03)}[data-apex-placed-fold][open]>summary [data-apex-placed-hint-closed],[data-apex-placed-fold]:not([open])>summary [data-apex-placed-hint-open]{display:none}</style><div class="ac-tier">🧾 Morning order ticket</div>${meta}${body}${noBuys}${buysBox}${sellsBox}<div style="font-size:10.5px;color:#9ca3af;margin:2px 0 8px">Display only — you place Apex orders yourself in Robinhood. Prices are research levels.</div></div>`;
+  }
+
+  // v255 (Jack, Nov 18 2026): the What if sliders (renderWhatIf) were removed; the tripwire line and the stress test stay.
+
+  return { C, DEFAULT_CFG, state, rules, tripwire, guardPlan, sellToLev, render, levelsFor, exitLevelsFor, buyBlock, portfolioPrompt, bookGaps, bookLines, bookReviews, planSellNote, priceIsFresh, ticket, ticketHtml, themeOf, classOf, themeShare, themeRoom, THEME_MAP_VERSION, opportunities };
+});
