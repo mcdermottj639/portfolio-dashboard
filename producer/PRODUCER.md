@@ -31,6 +31,15 @@
 > `run.mjs` because Picks or any other extra is unfinished (2026-11-24/25 runs did, freezing the whole
 > dashboard): publish with what you have and name what was skipped.
 >
+> **Daily Picks CATCH-UP (2026-11-25).** A missed morning rebuild no longer waits for the next market day.
+> On a FETCH_LIGHT run on a market day, if the published Daily Picks date (`data.picks.ts`, the date the
+> app's "Last scan" stamp reads) is before today (ET), preflight prints `PREFLIGHT ALSO (FETCH_LIGHT, Daily
+> Picks catch-up)`: do the same planner + `picks-local.mjs` + `picks-build.mjs` steps as step 3b, once, after
+> the every-run fetches and before `run.mjs`. One attempt per run; drop it if it fails or you run short.
+> Publishing still comes first. If picks were built today, or the date is unreadable, preflight prints
+> nothing (unreadable adds a `[preflight] picks catch-up: ... unreadable` note). Weekends and market
+> holidays SKIP before this is considered. The prompt needs no change: it says to obey preflight.
+>
 > After quotes, `node producer/refresh-check.mjs --full` prints the exact top-14 holdings
 > fundamentals batches. Save each whole response to `holdings-fund-1.json`, `-2.json`, etc.;
 > the builder now merges them. Complete all batches, not just the first ten holdings.

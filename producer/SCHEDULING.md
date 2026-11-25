@@ -131,6 +131,11 @@ Use exactly this as the scheduled prompt:
 > "follow `producer/PRODUCER.md` exactly" picks it up with **no change needed**. If your live trigger
 > uses an older prompt that doesn't, re-paste the prompt above once.
 
+**Daily Picks catch-up (2026-11-25):** on a FETCH_LIGHT run, if the published Daily Picks date is before
+today (ET) on a market day, `preflight.mjs` prints a one-attempt "Daily Picks catch-up" directive (see
+`PRODUCER.md`). It rides on the prompt's "obey the preflight directive", so the scheduled-task prompt is
+unchanged; no new task exists. It prints nothing when picks were built today, and never blocks `run.mjs`.
+
 `preflight.mjs` owns the run-mode decision (deterministic, from the committed `data.json`), and
 `run.mjs` won't push a plaintext or broken `data.json` — so the agent makes no judgment calls about
 market hours or how much to fetch.
