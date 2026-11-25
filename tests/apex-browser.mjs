@@ -70,6 +70,53 @@ try {
     assert.ok((await row.locator('summary').boundingBox()).height >= 44, '44px touch target');
     fs.mkdirSync('tmp/journey-evidence', { recursive: true });
     await page.locator('#apex-ticket').screenshot({ path: 'tmp/journey-evidence/apex-ticket-390.png' }); }
+  // v266 placed rows fold into ONE summary row per section: none / some / all placed, expand and collapse, at phone and Duo widths
+  { const renderFold = placedSyms => page.evaluate(placedSyms => {
+      window.__DATA.generatedAt = new Date().toISOString();
+      const p = (symbol, qty, px) => ({ symbol, qty, px, avg: px, val: qty * px });
+      const pos = [p('IREN', 50, 100), p('AA', 10, 100), p('BB', 10, 100), p('CC', 10, 100)];
+      const top5 = [{ sym: 'Y', trigger: 100, limit: 100, tp1: 120, stop: 90, orderType: 'limit', maxPx: 105, tradable: true, composite: 8, why: 'Synthetic research' }];
+      window.__APEX_TGT = { asOf: new Date().toISOString(), targets: { Y: 20 }, themeMap: { AA: 'industrial', BB: 'industrial', CC: 'industrial', Y: 'health' }, top5,
+        heldLevels: ['AA', 'BB', 'CC'].map(sym => ({ sym, stop: 80, tp1: 150, stopBasis: 'held support' })) };
+      window.__APEX_CFG = {};
+      window.__DATA.main = Object.assign({}, window.__DATA.main, { openOrders: placedSyms.length ? { asOf: new Date().toISOString(), bySym: Object.fromEntries(placedSyms.map(s => [s, { stop: 80, stopQty: 10, limit: 150, limitQty: 10, market: false, placedAt: null }])) } : null });
+      window.__SNAP = { enriched: pos, stats: { totalVal: 10000, cashVal: 0 }, smaMap: {}, earn: {} };
+      renderApexCard(window.__SNAP);
+    }, placedSyms);
+    const sells = () => page.locator('#apex-ticket [data-side="stop"]:not([data-placed]), #apex-ticket [data-side="sell"]:not([data-placed])');
+    const fold = page.locator('#apex-ticket [data-apex-placed-fold="sell"]');
+    const noOverflow = async label => assert.equal(await page.evaluate(() => { const t = document.querySelector('#apex-ticket'); return t.scrollWidth <= t.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; }), true, label);
+    for (const [w, h] of [[390, 844], [466, 677], [960, 676]]) {
+      await page.setViewportSize({ width: w, height: h });
+      // none placed: no fold row, all three held-name rows fully visible
+      await renderFold([]);
+      assert.equal(await fold.count(), 0, `${w}: none placed, no fold row`); assert.equal(await sells().count(), 3, `${w}: none placed, three to-do rows`);
+      assert.doesNotMatch(await page.locator('#apex-ticket').innerText(), /placed/i, `${w}: no placed text`);
+      // some placed: AA placed -> two to-do rows + ONE summary row, closed by default
+      await renderFold(['AA']);
+      assert.equal(await sells().count(), 2, `${w}: some placed, two rows still need him`); assert.equal(await fold.count(), 1);
+      assert.equal(await fold.evaluate(e => e.open), false, `${w}: fold starts closed`);
+      assert.equal(await page.locator('#apex-ticket [data-placed]:visible').count(), 0, `${w}: placed rows hidden while closed`);
+      assert.match(await fold.locator(':scope > summary').innerText(), /✓ 1 placed\s*· tap to see/);
+      assert.ok((await fold.locator(':scope > summary').boundingBox()).height >= 44, `${w}: 44px touch target`);
+      // all placed: header + just the summary row, no to-do rows
+      await renderFold(['AA', 'BB', 'CC']);
+      assert.equal(await sells().count(), 0, `${w}: all placed, no to-do rows`); assert.equal(await fold.count(), 1);
+      assert.match(await page.locator('#apex-ticket').innerText(), /Sells & sell stops\s*\(0\)\s*· 3 placed/);
+      assert.match(await fold.locator(':scope > summary').innerText(), /✓ 3 placed/);
+      await noOverflow(`${w}: all placed, closed, fits`);
+      // expand in place, then collapse again
+      await fold.locator(':scope > summary').click();
+      assert.equal(await fold.evaluate(e => e.open), true, `${w}: tap opens`);
+      assert.equal(await page.locator('#apex-ticket [data-placed]:visible').count(), 3, `${w}: all three placed rows shown when open`);
+      assert.match(await fold.locator(':scope > summary').innerText(), /tap to hide/);
+      await noOverflow(`${w}: all placed, open, fits`);
+      await fold.locator(':scope > summary').click();
+      assert.equal(await fold.evaluate(e => e.open), false, `${w}: tap closes`);
+      assert.equal(await page.locator('#apex-ticket [data-placed]:visible').count(), 0);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    }
+    await page.setViewportSize({ width: 390, height: 844 }); }
   // v258 deep link: #apex-ticket opens the Apex Plan page and the Apex card with the ticket on screen
   { const p2 = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: 'America/New_York' });
     const e2 = []; p2.on('pageerror', e => e2.push(e.message));
