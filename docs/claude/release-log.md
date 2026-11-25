@@ -4,6 +4,16 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v268 — Analyze Levels card: real support/resistance, charted and spelled out (2026-11-25)
+Jack (Nov 25 2026, 4:29 PM ET, "I want to see the resistance and support lines"; chose "Chart + spelled-out list"): the Levels &
+Scenarios card's levels came from a 40-close, 2-bar fractal (any 2-day wiggle counted; levels near price were skipped; 52-wk hi/lo added).
+IREN Nov 25 showed first resistance $24.46 (+90%) past four real levels. Now `_azExtraRaw` uses the Chart Analyzer's zone method
+(`azCMPivots` on daily highs/lows, ~126 bars, merged within 1.8%, touch counts): up to 3 levels each side. New `azSRBlock` draws a mini
+chart (last 30 closes, dashed level lines, thicker = more touches) and one row per level: price · touches · % from price; method in a
+closed `<details>`. Display only: Bull/Base/Bear targets, stops, tp1/tp2, Apex rules and tickets unchanged (Jack did not pick "fix targets").
+Files: index.html, sw.js, tests/journey.test.cjs. Tests: node tests 124/124, producer tests, validate-data, analyze-account-checks;
+preview screenshots 320/390/951 with real IREN bars (no sideways scroll). NOT verified: a physical iPhone Duo.
+
 ## v267 — Morning order ticket: buys you placed are marked and fold too (2026-11-25)
 Jack (Nov 25 2026, "Yes, mark buys too"): a buy on the ticket is "✓ Placed" and folds into the existing "✓ N placed · tap to see" row
 when ••••0741 has a buy order for that symbol, open (queued / confirmed / partially filled) or filled, created at or after the ticket's

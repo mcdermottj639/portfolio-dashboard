@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=267"></script>
-<script src="ui/experience-model.js?v=267"></script>
+<script src="ui/theme.js?v=268"></script>
+<script src="ui/experience-model.js?v=268"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -746,15 +746,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=267">
-<link rel="stylesheet" href="ui/journey.css?v=267">
-<link rel="stylesheet" href="ui/predictions.css?v=267">
-<link rel="stylesheet" href="ui/apex-paper.css?v=267">
-<link rel="stylesheet" href="ui/smartmoney.css?v=267">
-<link rel="stylesheet" href="ui/ticker.css?v=267">
-<link rel="stylesheet" href="ui/today.css?v=267">
-<link rel="stylesheet" href="ui/book.css?v=267">
-<link rel="stylesheet" href="ui/duo.css?v=267">
+<link rel="stylesheet" href="ui/experience.css?v=268">
+<link rel="stylesheet" href="ui/journey.css?v=268">
+<link rel="stylesheet" href="ui/predictions.css?v=268">
+<link rel="stylesheet" href="ui/apex-paper.css?v=268">
+<link rel="stylesheet" href="ui/smartmoney.css?v=268">
+<link rel="stylesheet" href="ui/ticker.css?v=268">
+<link rel="stylesheet" href="ui/today.css?v=268">
+<link rel="stylesheet" href="ui/book.css?v=268">
+<link rel="stylesheet" href="ui/duo.css?v=268">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -824,10 +824,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=267"></script>
-<script src="ui/apex.js?v=267"></script>
-<script src="ui/business.js?v=267"></script>
-<script src="ui/apex-paper.js?v=267"></script>
+<script src="ui/sd-rules.js?v=268"></script>
+<script src="ui/apex.js?v=268"></script>
+<script src="ui/business.js?v=268"></script>
+<script src="ui/apex-paper.js?v=268"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -941,7 +941,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
     });
   }};
   function boot(){
-    var APP_VERSION='v267'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
+    var APP_VERSION='v268'; // bump alongside sw.js CACHE_VERSION; shown in the freshness bar
     // Force-update: re-download the shell FIRST and only wipe caches once a fresh copy is known
     // to be fetchable — the old order (wipe → reload) could delete the only working cached shell
     // while offline and reload into a blank page.
@@ -7302,6 +7302,24 @@ function azBar(lbl,v,desc){ const c=azScoreColor(v); return '<div style="margin-
 // OHLC daily series — one shared, staleness-gated, live-spliced reader (see azHist).
 function azSeries(sym){ return azHist(sym).bars; }
 function _smaArr(c,n){ if(c.length<n)return null; const out=new Array(c.length).fill(null); let s=0; for(let i=0;i<c.length;i++){ s+=c[i]; if(i>=n)s-=c[i-n]; if(i>=n-1)out[i]=+(s/n).toFixed(2); } return out; }
+// Levels & Scenarios: support/resistance spelled out — mini chart with the level lines + one row per level.
+function azSRBlock(x,px){ const sup=x.srSup||[], res=x.srRes||[]; if(!sup.length&&!res.length)return '';
+  const cl=(x.srCloses||[]).filter(v=>v>0), lv=sup.concat(res);
+  let svg=''; if(cl.length>=10){ const recent=cl.slice(-15), vals=recent.concat(lv.map(z=>z.price)), lo=Math.min(...vals)*0.97, hi=Math.max(...vals)*1.03, W=300, H=150, L=4, R=250;
+    // y-range is set by the levels and the last 3 weeks, so the lines are readable; older price runs off the top (clipped).
+    const y=v=>+(H-6-(v-lo)/(hi-lo)*(H-12)).toFixed(1), xs=i=>+(L+i*(R-L)/(cl.length-1)).toFixed(1);
+    const lab=lv.map(z=>({z,c:res.includes(z)?'#ef4444':'#10b981',y:y(z.price)})).sort((p,q)=>p.y-q.y); for(let i=1;i<lab.length;i++)if(lab[i].y-lab[i-1].y<11)lab[i].y=lab[i-1].y+11;
+    const line=o=>'<line x1="'+L+'" x2="'+R+'" y1="'+y(o.z.price)+'" y2="'+y(o.z.price)+'" stroke="'+o.c+'" stroke-width="'+(1+Math.min(o.z.touches-1,3)*0.6)+'" stroke-dasharray="4 3"/><text x="'+(R+4)+'" y="'+(o.y+3.5)+'" font-size="10" fill="'+o.c+'">$'+o.z.price+'</text>';
+    svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Price with support and resistance lines" style="width:100%;height:auto;display:block;margin:2px 0 8px"><defs><clipPath id="az-sr-clip"><rect x="0" y="0" width="'+(R+2)+'" height="'+H+'"/></clipPath></defs>'+
+      lab.map(line).join('')+
+      '<polyline clip-path="url(#az-sr-clip)" fill="none" stroke="var(--text,#111827)" stroke-width="1.6" points="'+cl.map((v,i)=>xs(i)+','+y(v)).join(' ')+'"/>'+
+      '<circle cx="'+xs(cl.length-1)+'" cy="'+y(cl[cl.length-1])+'" r="3" fill="var(--text,#111827)"/></svg>'; }
+  const row=(z,k)=>{ const c=k==='R'?'#ef4444':'#10b981'; return '<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:baseline;padding:3px 0;font-size:12.5px"><span style="color:'+c+';font-weight:700;min-width:74px">'+(k==='R'?'Resistance':'Support')+'</span><b>$'+z.price+'</b><span style="color:#9ca3af">'+z.touches+' touch'+(z.touches===1?'':'es')+'</span><span style="color:'+c+';min-width:52px;text-align:right">'+(z.pct>=0?'+':'')+z.pct+'%</span></div>'; };
+  return '<div style="margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--border)">'+svg+
+    res.slice().reverse().map(z=>row(z,'R')).join('')+
+    '<div style="font-size:11.5px;color:#9ca3af;padding:3px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:2px 0">Price now $'+(+px).toFixed(2)+'</div>'+
+    sup.map(z=>row(z,'S')).join('')+(!res.length?'<div style="font-size:11.5px;color:#9ca3af;padding:3px 0">No resistance zone above in the last ~6 months</div>':'')+(!sup.length?'<div style="font-size:11.5px;color:#9ca3af;padding:3px 0">No support zone below in the last ~6 months</div>':'')+
+    '<details style="font-size:11px;color:#9ca3af;margin-top:4px"><summary>How these levels are found</summary>Each level is a price where daily highs or lows turned at least ~2.5–8% (scaled to the stock\'s volatility) in the last '+(x.srWin||126)+' trading days. Turns within 1.8% of each other are merged into one zone. More touches = a level the market has respected more; thicker line = more touches. Levels are zones, not exact prices.</details></div>'; }
 function azExtra(a){ _azMemoCheck(); if(a&&a.sym&&_azMemo.extra[a.sym])return _azMemo.extra[a.sym]; const r=_azExtraRaw(a); if(a&&a.sym)_azMemo.extra[a.sym]=r; return r; }
 function _azExtraRaw(a){
   const sym=a.sym, ser=azSeries(sym), closes=ser.map(s=>s.c), x={};
@@ -7322,11 +7340,17 @@ function _azExtraRaw(a){
       const _sh=azHist('SPY'), spyLast=(_sh.price!=null?_sh.price:spy[spy.length-1]);
       const spyYtd=spy[0]>0?(spyLast/spy[0]-1)*100:null; x.relStr=(a.ytd!=null&&spyYtd!=null)?a.ytd-spyYtd:null;
       x.relStrStale=(_sh.quality==='stale'); }
-    const w=Math.min(40,closes.length),seg=closes.slice(-w),sup=[],res=[];
-    for(let i=2;i<seg.length-2;i++){ if(seg[i]<seg[i-1]&&seg[i]<seg[i-2]&&seg[i]<=seg[i+1]&&seg[i]<=seg[i+2])sup.push(seg[i]); if(seg[i]>seg[i-1]&&seg[i]>seg[i-2]&&seg[i]>=seg[i+1]&&seg[i]>=seg[i+2])res.push(seg[i]); }
-    x.support=[...new Set(sup.map(v=>+v.toFixed(2)))].filter(v=>v<a.price).sort((p,q)=>q-p).slice(0,2);
-    x.resistance=[...new Set(res.map(v=>+v.toFixed(2)))].filter(v=>v>a.price).sort((p,q)=>p-q).slice(0,2);
-    if(a.hi52&&a.hi52>a.price)x.resistance.push(+(+a.hi52).toFixed(2)); if(a.lo52&&a.lo52<a.price)x.support.push(+(+a.lo52).toFixed(2));
+    // Support/resistance (v268): the same tested-zone method as the Chart Analyzer's S/R filter —
+    // ZigZag swing turns on daily highs/lows over ~6 months, merged within 1.8%, ranked by touches.
+    // Replaced a 40-close, 2-bar fractal that counted any 2-day wiggle and skipped every level near
+    // price (IREN Nov 25: first "resistance" $24.46, +90%, past four real levels).
+    { const W=Math.min(126,ser.length), S=ser.slice(-W), piv=azCMPivots(S), tol=0.018, zones=[], px=a.price;
+      piv.slice().sort((p,q)=>p.price-q.price).forEach(p=>{ const z=zones.find(z=>Math.abs(z.price-p.price)/z.price<=tol); if(z){ z.price=(z.price*z.touches+p.price)/(z.touches+1); z.touches++; z.lastI=Math.max(z.lastI,p.i); } else zones.push({price:p.price,touches:1,lastI:p.i}); });
+      const mk=z=>({price:+z.price.toFixed(2),touches:z.touches,pct:+((z.price/px-1)*100).toFixed(1),ago:W-1-z.lastI});
+      x.srSup=zones.filter(z=>z.price<px).sort((p,q)=>q.price-p.price).slice(0,3).map(mk);
+      x.srRes=zones.filter(z=>z.price>px).sort((p,q)=>p.price-q.price).slice(0,3).map(mk);
+      x.srCloses=S.slice(-30).map(b=>b.c); x.srWin=W;
+      x.support=x.srSup.map(z=>z.price); x.resistance=x.srRes.map(z=>z.price); }
   }
   if(x.totalVal&&a.price>a.stop){ const perSh=a.price-a.stop; x.sizing={risk1:Math.floor(x.totalVal*0.01/perSh),risk2:Math.floor(x.totalVal*0.02/perSh),perSh:+perSh.toFixed(2)}; }
   const ov=azOverview(sym)||{};
@@ -8064,7 +8088,7 @@ function runAnalysis(sym){
       (mtf?'<div style="font-size:11.5px;color:var(--text);opacity:.9;margin-top:11px;line-height:1.6"><b style="color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;font-size:10.5px">🕒 Timeframes</b> &nbsp;'+mtf.rows.map(o=>o.tf+' '+(o.up===true?'<span style="color:#10b981">▲</span>':o.up===false?'<span style="color:#ef4444">▼</span>':'<span style="color:#9ca3af">–</span>')).join(' &nbsp;·&nbsp; ')+' &nbsp;—&nbsp; <span style="color:'+mtf.align.c+';font-weight:700">'+mtf.align.t+'</span></div>':'')+'</div>':'')+
     (edge?'<div class="card"><div class="card-title"><span>🔬 Historical Edge <span class="card-hint">this stock, similar RSI</span></span></div><div style="font-size:12.5px;line-height:1.6">Across <b>'+edge.n+'</b> past day'+(edge.n===1?'':'s')+' this year when '+a.sym+'’s RSI was near <b>'+a.rsi+'</b> (±'+edge.band+'), the next <b>'+edge.horizon+' sessions</b> were positive <b style="color:'+(edge.winRate>=55?'#10b981':edge.winRate<=45?'#ef4444':'#9ca3af')+'">'+edge.winRate+'%</b> of the time, averaging <b style="color:'+(edge.avg>=0?'#10b981':'#ef4444')+'">'+(edge.avg>=0?'+':'')+edge.avg+'%</b> (best +'+edge.best+'%, worst '+edge.worst+'%).</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">Small in-sample stat from this year’s history — a tendency, not a guarantee.</div></div>':'')+
     (scen?'<div class="card"><div class="card-title"><span>🎲 Levels &amp; Scenarios <span class="card-hint">support/resistance + model-weighted next leg</span></span></div>'+
-      (((x.support&&x.support.length)||(x.resistance&&x.resistance.length))?'<div style="font-size:12.5px;line-height:1.8;margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--border)"><span style="color:#10b981;font-weight:700">Support</span> '+(x.support&&x.support.length?x.support.map(v=>'$'+v).join(' · '):'—')+'<br><span style="color:#ef4444;font-weight:700">Resistance</span> '+(x.resistance&&x.resistance.length?x.resistance.map(v=>'$'+v).join(' · '):'—')+'</div>':'')+
+      azSRBlock(x,a.price)+
       '<table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div>'+(scen.em?'<div style="font-size:12px;margin-top:7px;padding:8px 10px;background:var(--surface-2);border-radius:8px;line-height:1.5">Implied <b>±1σ</b> move (~'+scen.em.dte+'d): <b>±'+scen.em.pct+'%</b> → <b>$'+scen.em.lo+'</b> – <b>$'+scen.em.hi+'</b> <span style="color:#9ca3af">('+(scen.em.src==='market'?'market-implied · IV '+scen.em.iv+'%':'est. from realized vol · ~'+scen.em.iv+'%')+')</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:4px">Case <b>odds</b> are a heuristic from the setup score, trend &amp; RSI (not market-implied); the <b>±1σ band</b> is '+(scen.em&&scen.em.src==='market'?'from live option IV':'a realized-vol estimate')+'.</div></div>':'')+
     (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
       oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
@@ -9034,17 +9058,17 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=267"></script>
-<script src="ui/today.js?v=267"></script>
-<script src="ui/predictions-model.js?v=267"></script>
-<script src="ui/predictions.js?v=267"></script>
-<script src="ui/smartmoney-model.js?v=267"></script>
-<script src="ui/smartmoney.js?v=267"></script>
-<script src="ui/experience.js?v=267"></script>
-<script src="ui/ticker.js?v=267"></script>
-<script src="ui/duo.js?v=267"></script>
-<script src="ui/compact.js?v=267"></script>
-<script src="ui/journey.js?v=267"></script>
-<script src="ui/book.js?v=267"></script>
+<script src="ui/today-model.js?v=268"></script>
+<script src="ui/today.js?v=268"></script>
+<script src="ui/predictions-model.js?v=268"></script>
+<script src="ui/predictions.js?v=268"></script>
+<script src="ui/smartmoney-model.js?v=268"></script>
+<script src="ui/smartmoney.js?v=268"></script>
+<script src="ui/experience.js?v=268"></script>
+<script src="ui/ticker.js?v=268"></script>
+<script src="ui/duo.js?v=268"></script>
+<script src="ui/compact.js?v=268"></script>
+<script src="ui/journey.js?v=268"></script>
+<script src="ui/book.js?v=268"></script>
 </body>
 </html>
