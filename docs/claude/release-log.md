@@ -4,6 +4,16 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v265 — Wasted space / misaligned cards: Full and Book layouts (2026-11-25)
+Jack (Nov 25, phone-tested Book Actions: "Good but still wasting space cards not aligned"; then "Portfolio is the full view even more so than book with wasting space so check all").
+Layout CSS only (`ui/duo.css` §9f); no card, number, rule, copy, producer or schedule change.
+Full (740-1100, not Book): Overview strip/Action Center/More lose the 560/640px caps (rows two-up) and the analysis cards pair by height
+(performance+income, risk+heatmap, technicals+fundamentals, flow+allocation; CSS `order` only); Positions holdings two-up (open card spans two rows);
+Apex Actions cards pair like the Agentic plan, rows share a height, Apex card uses its Book single-column order.
+Book Actions/Research: the Expand/Collapse-all button moves into the first card title row (zero-height bar, absolute) so the right page's first card starts at the top of the pane; cards 14px side padding.
+Files: ui/duo.css, index.html, sw.js, tests/journey.test.cjs (version bump to v265). Folded and 390px unchanged (page heights identical).
+NOT verified: a physical iPhone Duo.
+
 ## v264 — Today Scoreboard card (2026-11-25)
 Jack (Nov 25 2026, after a mockup: "Build it but put that score card just on main today page. Shouldn't be buried").
 New card under the Today hero: four rows from ONE start date (first v2.9 paper cohort entry, now Nov 24): SPY, Apex current

@@ -452,3 +452,62 @@ html[data-duo-indep] [data-duo-scroller]{height:calc(100dvh - var(--duo-page-top
   overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;padding-bottom:calc(env(safe-area-inset-bottom) + 24px)}
 /* nothing scrolls at body level while the page scroller is on, so the strip needs no sticky offset (a locked body would apply it twice) */
 html[data-duo-indep][data-duo-split="on"][data-duo-ready] #pf-fresh{position:relative!important;top:0!important}
+
+/* 9f · Nov 25 2026 — wasted space and misaligned cards, Full (open, 740-1100) and Book. Jack, phone-tested Book Actions: "Good but still
+   wasting space cards not aligned"; then: "Portfolio is the full view even more so than book with wasting space so check all".
+   Layout only: no card, number, rule, copy or schedule changes. */
+@media (min-width:740px) and (max-width:1100px) {
+  /* Full · Overview: the experience.css 560/640px caps left half of every row empty. Strip and rows fill the page; action and
+     "more" rows run two-up; the analysis cards below pair into rows of equal height (flex-wrap, stretch). */
+  html.ws-on:not([data-duo-split="on"]) .ws-strip,html.ws-on:not([data-duo-split="on"]) #agentic-app .ws-strip{max-width:none}
+  html.ws-on:not([data-duo-split="on"]) #agentic-app .ws-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.ws-on:not([data-duo-split="on"]) .ws-acts,html.ws-on:not([data-duo-split="on"]) .ws-rows{max-width:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+  html.ws-on:not([data-duo-split="on"]) .ws-acts>*,html.ws-on:not([data-duo-split="on"]) .ws-rows>*{min-width:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio{flex-direction:row!important;flex-wrap:wrap;column-gap:12px;align-items:stretch;align-content:flex-start}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] :where(#page-portfolio>*,#page-portfolio #app>*,#page-portfolio #agentic-app>*){flex:0 0 100%;min-width:0;max-width:100%;box-sizing:border-box}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio :is([data-sec="performance"],[data-sec="heatmap"],[data-sec="risk"],[data-sec="allocation"],[data-sec="income"],[data-sec="technicals"],[data-sec="fundamentals"],[data-sec="flow"]){flex:1 1 calc(50% - 6px);max-width:calc(50% - 6px)}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio :is([data-sec="performance"],[data-sec="heatmap"],[data-sec="risk"],[data-sec="allocation"],[data-sec="income"],[data-sec="technicals"],[data-sec="fundamentals"],[data-sec="flow"]) .card-title .card-hint{display:none}
+
+  /* rows pair cards of similar height (order only; DOM unchanged): performance+income, risk+heatmap, technicals+fundamentals, flow+allocation */
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="performance"]{order:61}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="income"]{order:62}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="risk"]{order:63}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="heatmap"]{order:64}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="technicals"]{order:65}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="fundamentals"]{order:66}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="flow"]{order:67}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="allocation"]{order:68}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio [data-sec="rebalance-log"]{order:70}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="overview"] #page-portfolio .disclaimer{order:71}
+
+  /* Full · Positions: one 852px-wide row per holding left the right two thirds blank. Holdings sit two-up; the open card
+     spans two rows beside the first two compact ones so both columns end level. */
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:stretch}
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards>.ws-h{grid-column:1/-1}
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards>.ws-pos{min-width:0;margin:0 0 8px}
+  html.ws-on:not([data-duo-split="on"]) #ws-poscards>.ws-pos.ws-open{grid-row:span 2}
+
+  /* Full · Apex Actions / Research: the single column of half-empty cards pairs up like the Agentic plan; rows share a height. */
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:stretch}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app>*{grid-column:1/-1;min-width:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app>.card{grid-column:auto}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #picks-app>.card>.card-title .card-hint{display:none}
+  html.ws-on:not([data-duo-split="on"]) #plan-agentic-app{align-items:stretch}
+  /* the Apex card is half width now, so it takes the same single-column order as in Book (leverage, trades + Confirm, rules) */
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content{display:flex!important;flex-direction:column;align-items:stretch!important}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>*{order:3;min-width:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>:first-child,
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-lev]{order:0}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-book]{order:1;margin-top:10px}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-rules]{order:2}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #apex-content>[data-apex-lev] .snap-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  html.ws-on:not([data-duo-split="on"])[data-ws-tab="actions"] #plan-content .snap-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* Book · the "Expand all" bar was its own 48px row above the first card, so the right page's cards started below the left page's.
+   It now has zero height and its button sits in the first card's title row (absolute; nothing fixed in the scroller), so the first card starts at the top of the pane. Cards use
+   14px side padding instead of 22px, and the gap under a card title is 8px. */
+html[data-duo-split="on"][data-duo-layout="book"] #page-picks>.pf-foldbar{position:relative;height:0;margin:0;overflow:visible;z-index:3}
+html[data-duo-split="on"][data-duo-layout="book"] #page-picks>.pf-foldbar .pf-foldall{position:absolute;top:8px;right:104px;min-height:28px;padding:0 10px;font-size:11.5px}
+html[data-duo-split="on"][data-duo-layout="book"] :is(#picks-app,#plan-agentic-app)>.card{padding:14px!important}
+html[data-duo-split="on"][data-duo-layout="book"] :is(#picks-app,#plan-agentic-app)>.card>.card-title{margin-bottom:8px}
