@@ -37,7 +37,7 @@ import { updatePerf, tradeResult, scoreboard } from './smartmoney-perf.mjs';
 import { accountRealized, buildRealized, lossesFromTrades, mergeEventTrades } from './realizedpnl.mjs';
 import { etDate } from './market.mjs';
 import { mergeOrderPages } from './order-pages.mjs';
-import { summarizeOpenOrders } from './open-orders.mjs';
+import { summarizeOpenOrders, summarizeBuyOrders } from './open-orders.mjs';
 import { compactHist, histBytes, mergeHist, mergeBars } from './histbars.mjs';
 import { heldHistoryGaps } from './hist-plan.mjs';
 import { gradeAll, gradingUniverse, quoteCloseBars, addQuoteCloses } from './pickgrade.mjs';
@@ -848,6 +848,17 @@ if (data.main) {
   try { if (f) open = summarizeOpenOrders(readJSON(f), data.generatedAt); } catch (error) { console.warn(`open orders: unreadable (${error.message}); ticket shows every row.`); }
   data.main.openOrders = open;
   console.log(open ? `open orders: ${Object.keys(open.bySym).length} symbol(s) with a resting sell` : 'open orders: not fetched this run (ticket shows every row)');
+}
+// v267: ••••0741 BUY orders (open + recently filled; the same two raw files, no new fetch) for the ticket's buy rows.
+// Never carried forward, same reason as openOrders: a stale list could hide a to-do.
+if (data.main) {
+  let buys = null;
+  try {
+    const fo = filesMatching(/^main-open-orders\.json$/)[0], ff = filesMatching(/^main-orders-incremental\.json$/)[0];
+    buys = summarizeBuyOrders(fo ? readJSON(fo) : null, ff ? readJSON(ff) : null, data.generatedAt);
+  } catch (error) { console.warn(`placed buys: unreadable (${error.message}); ticket shows every buy.`); }
+  data.main.placedBuys = buys;
+  console.log(buys ? `placed buys: ${Object.keys(buys.bySym).length} symbol(s) with a buy order open or filled` : 'placed buys: no order files this run (ticket shows every buy)');
 }
 // Flow & Positioning signals (producer/raw/flow/<SYM>.json, written by flow-fetch.mjs — analyst revision
 // momentum, insider Form 4 clusters, earnings-surprise drift; each already scored by flow.mjs). Merged

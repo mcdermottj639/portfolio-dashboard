@@ -895,11 +895,18 @@
     const OO = cfg.openOrders && cfg.openOrders.bySym ? cfg.openOrders.bySym : null;
     const mark = (r) => { const p = placedFor(OO, r); if (p) r.placed = p; return r; };
     sells.forEach(mark); stops.forEach(mark);
+    /* v267 (Jack, Nov 25 2026: "Yes, mark buys too"): a buy row is placed when ••••0741 has a buy order for the symbol, open
+       or filled, created at or after this ticket's research timestamp (cfg.placedBuys, the producer's read-only
+       symbol + time summary; cancelled / rejected / expired orders, sells and other accounts never reach it). Size and
+       price may differ from the ticket and still count. No list, or no valid research time ⇒ every buy stays a to-do. */
+    const PB = cfg.placedBuys && cfg.placedBuys.bySym ? cfg.placedBuys.bySym : null, rt = cfg.researchAsOf ? Date.parse(cfg.researchAsOf) : NaN;
+    buys.forEach((r) => { const b = PB && PB[r.sym]; const t = b && b.at ? Date.parse(b.at) : NaN;
+      if (Number.isFinite(rt) && Number.isFinite(t) && t >= rt) r.placed = { buy: true, state: b.state === 'filled' ? 'filled' : 'open', at: b.at }; });
     const todo = (a) => a.filter((r) => !r.placed).length;
     const toPlace = todo(sells) + todo(stops), placed = sells.length + stops.length - toPlace;
     const state = cfg.researchReady === false ? 'stale' : (buys.length || sells.length || stops.length ? 'ready' : 'none');
     return { state, researchAsOf: cfg.researchAsOf || null, researchStamp: etStamp(cfg.researchAsOf), quotesAge: ageText(cfg.snapAgeMin), fresh, buys, sells, stops,
-      toPlace, placed, ordersStamp: OO ? etStamp(cfg.openOrders.asOf) : null };
+      toPlace, placed, ordersStamp: OO ? etStamp(cfg.openOrders.asOf) : (PB ? etStamp(cfg.placedBuys.asOf) : null) };
   }
   /* A sell-stop row is placed when a sell stop rests for the symbol. A sell row (sell today) is placed only when a
      working sell (market, or a limit at or under 2% above the ticket's limit) covers the ticket's shares — a take-profit
@@ -937,6 +944,7 @@
     /* v260: rows Jack already placed — muted, labelled Placed, showing the resting order's own levels (display only). */
     const placedOn = T.ordersStamp ? `orders read ${esc(T.ordersStamp)}` : 'open orders';
     const placedRow = (r) => { const o = r.placed;
+      if (r.side === 'buy') return `<details data-apex-ticket-row="${esc(r.sym)}" data-side="buy" data-placed="1" style="border-top:1px solid rgba(0,0,0,.06);opacity:.6"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, '#e5e7eb', '#374151')}<span data-apex-ticket-placed style="font-size:10.5px;font-weight:700;color:#059669;white-space:nowrap">✓ Placed</span></span>${cell(est(r) + n2(r.entry), '#6b7280')}${cell(n2(r.tp1), '#6b7280')}${cell(n2(r.stop), '#6b7280')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>Buy ${o.state === 'filled' ? 'already filled' : 'order already open'} in Robinhood</b>${o.at && etStamp(o.at) ? ` · placed ${esc(etStamp(o.at))}` : ''}<br><span style="opacity:.8">Nothing to do. Research levels: entry ${n2(r.entry)} · target ${n2(r.tp1)} · stop ${n2(r.stop)}. Your order's size and price can differ. From ${placedOn}.</span><br>${rh(r.sym)}</div></details>`;
       return `<details data-apex-ticket-row="${esc(r.sym)}" data-side="${r.side}" data-placed="1" style="border-top:1px solid rgba(0,0,0,.06);opacity:.6"><summary style="display:block;cursor:pointer;list-style:none"><div style="${cols};padding:9px 10px;min-height:44px;box-sizing:border-box"><span style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0">${pill(r.sym, '#e5e7eb', '#374151')}<span data-apex-ticket-placed style="font-size:10.5px;font-weight:700;color:#059669;white-space:nowrap">✓ Placed</span></span>${cell('≈ ' + n2(r.last))}${cell(n2(o.limit), '#6b7280')}${cell(n2(o.stop), '#6b7280')}</div></summary><div style="padding:2px 10px 10px;font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere"><b>Order already in Robinhood</b>${o.qty ? ` · ${shares(o.qty)} sh` : ''}${o.limit != null ? ` · sell limit ${n2(o.limit)}` : ''}${o.stop != null ? ` · stop ${n2(o.stop)}` : ''}${o.at && etStamp(o.at) ? ` · placed ${esc(etStamp(o.at))}` : ''}<br><span style="opacity:.8">Nothing to do. Research levels: target ${n2(r.tp1)} · stop ${n2(r.stop)}. From ${placedOn}.</span><br>${rh(r.sym)}</div></details>`; };
     /* v266 (Jack, Nov 25 2026: "Fold into one line"): lines he already placed collapse into ONE summary row per section,
        "✓ N placed · tap to see", that opens in place onto the rows above. Rows that still need him stay as they are. Display only. */

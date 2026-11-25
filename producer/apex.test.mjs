@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const A = require('../ui/apex.js');
-import { summarizeOpenOrders } from './open-orders.mjs';
+import { summarizeOpenOrders, summarizeBuyOrders } from './open-orders.mjs';
 // v201: IREN is owner-managed by default (no IREN sells). The mechanics stay tested under the old config.
 const LEGACY = { coreOwner: false, ladder: [{ sym: 'IREN', px: 30, qty: 200, note: 'newest lots first' }] };
 
@@ -963,6 +963,54 @@ ok('v260 morning ticket: a row with a resting order shows as placed and leaves t
     Object.assign({}, cfg, { openOrders: { asOf: null, bySym: { ZS: { stop: null, stopQty: 0, limit: 204.86, limitQty: 8, market: false, placedAt: null } } } }));
   assert.ok(T3.sells.find((r) => r.sym === 'ZS').placed, 'a working sell limit at the ticket price is placed');
   void sellRow;
+});
+
+/* v267 — Jack, Nov 25 2026: "Yes, mark buys too". Synthetic orders only; read-only display. */
+ok('v267 buy orders: open or filled buys count; cancelled, sells, other accounts do not', () => {
+  const o = (sym, side, state, created, extra) => Object.assign({ id: sym + side + state + created, symbol: sym, side, state, created_at: created, quantity: '3', price: '50' }, extra || {});
+  const open = { data: { orders: [
+    o('OPN', 'buy', 'queued', '2026-11-24T14:00:00Z'), o('CNF', 'buy', 'confirmed', '2026-11-24T14:00:00Z'), o('PRT', 'buy', 'partially_filled', '2026-11-24T14:00:00Z'),
+    o('CAN', 'buy', 'cancelled', '2026-11-24T14:00:00Z'), o('REJ', 'buy', 'rejected', '2026-11-24T14:00:00Z'), o('EXP', 'buy', 'expired', '2026-11-24T14:00:00Z'),
+    o('SEL', 'sell', 'queued', '2026-11-24T14:00:00Z'), o('IRA', 'buy', 'queued', '2026-11-24T14:00:00Z', { account_number: '5QX12345' }),
+    o('OK7', 'buy', 'queued', '2026-11-24T14:00:00Z', { account_number: '5QW90741' }) ] } };
+  const filled = { mode: 'incremental', createdAtGte: '2026-11-11', payload: { content: [{ type: 'text', text: JSON.stringify({ orders: [
+    o('FIL', 'buy', 'filled', '2026-11-24T15:00:00Z'), o('OLD', 'buy', 'filled', '2026-11-12T15:00:00Z'), o('SEL', 'sell', 'filled', '2026-11-24T15:00:00Z'),
+    o('OPN', 'buy', 'filled', '2026-11-20T15:00:00Z'), o('AGT', 'buy', 'filled', '2026-11-24T15:00:00Z', { account_number: '5QW63900' }) ] }) }] } };
+  const S = summarizeBuyOrders(open, filled, '2026-11-25T14:00:00Z');
+  assert.deepEqual(Object.keys(S.bySym).sort(), ['CNF', 'FIL', 'OK7', 'OLD', 'OPN', 'PRT'], 'open + filled buys only; cancelled/rejected/expired, sells, other accounts drop out');
+  assert.equal(S.bySym.OPN.at, '2026-11-24T14:00:00.000Z', 'latest creation time per symbol'); assert.equal(S.bySym.FIL.state, 'filled'); assert.equal(S.bySym.CNF.state, 'open');
+  assert.ok(!JSON.stringify(S).match(/quantity|price|"id"|5QW/), 'symbol + time + state only');
+  assert.equal(summarizeBuyOrders(null, null), null); assert.equal(summarizeBuyOrders({ data: {} }, null), null);
+  assert.deepEqual(summarizeBuyOrders(null, filled).bySym.FIL.state, 'filled', 'filled window alone still works');
+});
+ok('v267 morning ticket: a buy placed since the research date is marked and folds; before research, or no list, stays a to-do', () => {
+  const cfg = Object.assign({}, A.DEFAULT_CFG, { themeCap: false, snapAgeMin: 5, researchReady: true, researchAsOf: '2026-11-23T07:13:00-05:00',
+    targets: { IREN: 20, NET: 20, PLTR: 20, ZS: 20 },
+    levels: { NET: { trigger: 294.9, limit: 294.9, tp1: 370.35, stop: 250.92, stopBasis: '2xATR', atr: 21.99, name: 'Cloudflare' }, PLTR: { limit: 168.43, tp1: 212.94, stop: 152.6, stopBasis: 'swing low' } },
+    exitLevels: { ZS: { stop: 173.86, tp1: 267.87, stopBasis: '2xATR', name: 'Zscaler' }, IREN: { stop: 10, tp1: 40 } } });
+  const st = A.state({ positions: [{ symbol: 'IREN', qty: 500, px: 19.72, avg: 44.84 }, { symbol: 'PLTR', qty: 13.103387, px: 215, avg: 165.14 }, { symbol: 'ZS', qty: 5, px: 194.92, avg: 198.66 }], cash: -3000 });
+  const out = A.rules(st, { cfg, smaMap: {}, earningsMap: {} });
+  const base = A.ticket(st, out, cfg); assert.ok(base.buys.length >= 1); assert.ok(base.buys.every((b) => !b.placed), 'no list ⇒ every buy is a to-do (fail open)');
+  const sym = base.buys[0].sym, pb = (at, state) => Object.assign({}, cfg, { placedBuys: { asOf: '2026-11-25T14:00:00Z', bySym: { [sym]: { at, state: state || 'open' } } } });
+  const T = A.ticket(st, out, pb('2026-11-24T14:00:00.000Z'));
+  const b = T.buys.find((r) => r.sym === sym);
+  assert.ok(b.placed && b.placed.state === 'open', 'open buy after the research time ⇒ placed');
+  assert.equal(b.entry, base.buys[0].entry); assert.equal(b.tp1, base.buys[0].tp1); assert.equal(b.stop, base.buys[0].stop, 'research levels unchanged');
+  assert.ok(A.ticket(st, out, pb('2026-11-24T14:00:00.000Z', 'filled')).buys.find((r) => r.sym === sym).placed.state === 'filled', 'filled counts');
+  assert.ok(!A.ticket(st, out, pb('2026-11-20T14:00:00.000Z')).buys.find((r) => r.sym === sym).placed, 'an order from before the research date does not count');
+  assert.ok(!A.ticket(st, out, Object.assign({}, pb('2026-11-24T14:00:00.000Z'), { researchAsOf: null })).buys.find((r) => r.sym === sym).placed, 'unknown research time ⇒ to-do');
+  const h = A.ticketHtml(T, (s) => String(s));
+  const f = h.indexOf('data-apex-placed-fold="buy"'); assert.ok(f > 0, 'buy fold present');
+  assert.ok(new RegExp('Buys <span[^>]*>\\(' + (base.buys.length - 1) + '\\) <span data-apex-ticket-placed-count[^>]*>· 1 placed').test(h), 'header counts what is left');
+  assert.ok(h.indexOf('data-apex-ticket-row="' + sym + '"') > f && /✓ 1 placed<\/span>/.test(h) && /Buy order already open in Robinhood/.test(h) && /Research levels: entry/.test(h));
+  assert.ok(!/undefined|NaN/.test(h));
+  // every buy placed: the header and one summary row, no buy to-do rows
+  const all = Object.assign({}, cfg, { placedBuys: { asOf: null, bySym: Object.fromEntries(base.buys.map((r) => [r.sym, { at: '2026-11-24T14:00:00.000Z', state: 'filled' }])) } });
+  const Ta = A.ticket(st, out, all), ha = A.ticketHtml(Ta, (s) => String(s)), buysPart = ha.slice(ha.indexOf('🟢 Buys'), ha.indexOf('🔴 Sells'));
+  assert.ok(/Buys <span[^>]*>\(0\) <span data-apex-ticket-placed-count[^>]*>· \d+ placed/.test(ha) && (buysPart.match(/data-apex-placed-fold="buy"/g) || []).length === 1);
+  assert.equal((buysPart.match(/data-apex-ticket-row="[^"]+"(?![^>]*data-placed)/g) || []).length, 0, 'no to-do buy row left');
+  // the rules and Confirm lines never read the orders
+  assert.deepEqual(A.bookLines(st, out, all), A.bookLines(st, out, cfg));
 });
 
 console.log(`apex: ${n - failed}/${n} passed`);

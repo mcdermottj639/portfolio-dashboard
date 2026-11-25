@@ -4,6 +4,16 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v267 — Morning order ticket: buys you placed are marked and fold too (2026-11-25)
+Jack (Nov 25 2026, "Yes, mark buys too"): a buy on the ticket is "✓ Placed" and folds into the existing "✓ N placed · tap to see" row
+when ••••0741 has a buy order for that symbol, open (queued / confirmed / partially filled) or filled, created at or after the ticket's
+research timestamp. Quantity and price may differ; the row keeps its own research levels. Cancelled / rejected / expired orders, sells,
+other accounts and orders older than the research time never count; no list or no research time ⇒ every buy stays a to-do. Same producer
+fetch as v260 (open orders + the incremental filled window), no new call and no prompt change: `summarizeBuyOrders` → `main.placedBuys`
+(symbol + time + state only). Display only: no rule, R/R, Confirm line or order logic reads it. Files: producer/open-orders.mjs,
+build-data.mjs, PRODUCER.md, ui/apex.js, index.html/sw.js (v267/pf-v267), tests (apex.test.mjs, apex-browser.mjs, journey.test.cjs).
+NOT verified: live data (first placed buy appears on the first refresh run after publish that includes it); a physical iPhone Duo.
+
 ## v266 — Morning order ticket: placed rows fold into one line (2026-11-25)
 Jack (Nov 25 2026, "Fold into one line"): rows he already placed no longer stay as full greyed rows. In each ticket section
 (Buys; Sells & sell stops) they collapse into ONE summary row "✓ N placed · tap to see" that opens in place; rows that still need
