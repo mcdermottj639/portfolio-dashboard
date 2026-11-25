@@ -22,7 +22,7 @@
   const jump = (route, label, account, cls='td-link') => '<button type="button" class="' + cls + '" data-ex-route="' + route + '"' + (account ? ' data-ex-account="' + account + '"' : '') + '>' + esc(label) + ' <span aria-hidden="true">↗</span></button>';
   const fact = (label, value) => '<div class="td-status-row"><span class="td-muted">' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>';
   const when = days => days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : 'In ' + days + ' days';
-  const state = {host:null, options:null, rows:[], selected:null, view:'map', book:null, notice:''};
+  const state = {host:null, options:null, rows:[], selected:null, view:'map', book:null, notice:'', sbH:'5'};
   try { if (localStorage.getItem('pf_today_view') === 'list') state.view = 'list'; } catch (_) {}
 
   function apex(snapshot, data) {
@@ -62,6 +62,35 @@
       (lines.length ? '<p class="td-muted" data-td-price-note>' + esc(priceNote) + '</p><div class="td-trade-list">' + rows + '</div><button type="button" class="td-primary" data-td-confirm>Confirm with Claude <span aria-hidden="true">↗</span></button><p class="td-muted" style="margin-top:8px">Full Apex book · ' + lines.length + ' proposed order' + (lines.length === 1 ? '' : 's') + '. You enter approved orders in Robinhood.</p>' : '<p class="td-empty">No proposed Apex trades in the current plan.</p>') +
       (reviews.length ? '<details data-td-details="reviews"><summary class="td-link">' + reviews.length + ' review-only item' + (reviews.length === 1 ? '' : 's') + ' · no orders</summary>' + reviews.map(r => '<p class="td-muted"><strong>' + esc(r.sym) + '</strong> · ' + esc(r.why) + '</p>').join('') + '</details>' : '') +
       '<p class="td-muted" role="status" data-td-confirm-status>' + esc(state.notice) + '</p>' + jump('plan','Open self-directed plan','main') + '</div>';
+  }
+
+  // v264 Scoreboard: SPY, Apex v2.8 live picks, Apex v2.9 PAPER and Agentic from one start date. Display only: it reads
+  // published records, never places or sizes anything, and a number that does not exist yet stays a named dash.
+  function scoreboardHtml() {
+    const paper = window.__APEX_PAPER;
+    const head = '<section class="td-score td-panel" data-td-scoreboard data-priv="off"><div class="td-section-head"><h2>Scoreboard</h2>';
+    if (paper === undefined) return head + '<span class="td-sb-pill td-sb-warn">Loading</span></div><p class="td-muted">Loading the score records…</p></section>';
+    const data = state.options?.data;
+    const sb = T.scoreboard({paper, today:new Date().toLocaleDateString('en-CA', {timeZone:'America/New_York'}), spyBars:data?.hist?.day?.SPY,
+      agentic:data?.agentic?.equityHistory, accountReturn:typeof window.recordedAccountReturn === 'function' ? window.recordedAccountReturn : null});
+    const h = sb.chips.map(String).includes(state.sbH) ? state.sbH : '5', rows = sb.byHorizon[h];
+    const pill = sb.pills ? sb.pills[h] : sb.pill;
+    const peak = Math.max(1, ...rows.filter(r => r.state === 'ok').map(r => Math.abs(r.value)));
+    const line = sb.start ? 'Since ' + sb.startLabel + ' open' + (rows.every(r => r.state !== 'ok') && h !== 'start' && sb.scoreDates?.[h] ? ' · First score ' + sb.scoreDates[h]
+      : h === 'start' && !rows.some(r => r.state === 'ok') && sb.firstScore ? ' · First score ' + sb.firstScore : '') : (rows[0] ? rows[0].reason : 'Not started');
+    const body = rows.map(r => {
+      const ok = r.state === 'ok', width = ok ? Math.max(1.5, Math.min(48, Math.abs(r.value) / peak * 48)) : 0;
+      const bar = '<div class="td-sb-bar" aria-hidden="true">' + (ok ? '<i class="td-sb-zero"></i><i class="td-sb-fill ' + (r.gray ? 'td-sb-gray' : r.value < 0 ? 'td-sb-down' : 'td-sb-up') + '" style="' + (r.value < 0 ? 'right' : 'left') + ':50%;width:' + width.toFixed(1) + '%"></i>' : '<em>' + esc(r.reason) + '</em>') + '</div>';
+      const val = ok ? (r.value > 0 ? '+' : '') + r.value.toFixed(1) + '%' : '—';
+      const label = r.name + ', ' + (ok ? val + (r.thru ? ' through ' + r.thru : '') : r.reason);
+      return '<div class="td-sb-row" data-sb-row="' + r.key + '" data-sb-state="' + r.state + '" role="group" aria-label="' + esc(label) + '"><div class="td-sb-name"><strong>' + esc(r.name) + '</strong>' +
+        '<span class="td-muted">' + esc(r.sub) + (ok && r.thru ? ' · thru ' + esc(r.thru) : '') + '</span></div>' + bar + '<b class="td-sb-val ' + (ok && !r.gray ? (r.value < 0 ? 'td-down-ink' : 'td-up-ink') : '') + '">' + esc(val) + '</b></div>';
+    }).join('');
+    const names = {5:'5 days',30:'30',60:'60',90:'90',start:'Since start'};
+    const chips = '<div class="td-sb-chips" role="group" aria-label="Score horizon">' + sb.chips.map(c => '<button type="button" class="td-sb-chip" data-td-sb="' + c + '" aria-pressed="' + (String(c) === h) + '">' + names[c] + '</button>').join('') + '</div>';
+    return head + '<span class="td-sb-pill td-sb-' + pill.tone + '" data-sb-pill>' + esc(pill.text) + '</span></div><p class="td-muted td-sb-line" data-sb-line>' + esc(line) + '</p>' +
+      '<div class="td-sb-rows">' + body + '</div>' + chips +
+      '<details class="td-sb-note" data-td-details="scoreboard-note"><summary>How this is measured</summary><p class="td-muted">Percent only. Same start for every row. SPY and Agentic use daily closes from the day before the start (Agentic is an estimate that adjusts for recorded cash flows). Apex rows are equal-weight raw picks bought at the open, before costs; v2.9 is paper only. A dash is never zero: nothing is filled in until it is published.</p></details></section>';
   }
 
   function attentionRow(item) {
@@ -156,6 +185,12 @@
       if (!button) return;
       // v259 (Jack, Nov 19 2026 4:53 PM ET): Today's Apex tile opens the morning ticket, the same jump as #apex-ticket.
       if (button.hasAttribute('data-td-apex-ticket')) { if (location.hash === '#apex-ticket') { window.__apexTicketJumped = false; window.apexTicketJump?.(); } else location.hash = '#apex-ticket'; return; }
+      if (button.dataset.tdSb) {
+        state.sbH = button.dataset.tdSb;
+        const card = host.querySelector('[data-td-scoreboard]'), open = card?.querySelector('details[open]');
+        if (card) { card.outerHTML = scoreboardHtml(); if (open) host.querySelector('[data-td-scoreboard] details')?.setAttribute('open', ''); host.querySelector('[data-td-sb="' + state.sbH + '"]')?.focus({preventScroll:true}); }
+        return;
+      }
       if (button.dataset.tdView) {
         state.view = button.dataset.tdView === 'list' ? 'list' : 'map';
         try { localStorage.setItem('pf_today_view',state.view); } catch (_) {}
@@ -195,7 +230,8 @@
     state.book = apex(snapshot,data);
     const ticket = T.ticket(brief.pending), leverage = M.number(state.book?.context.st.lev);
     html += '<div class="td-layout"><section class="td-hero td-panel ex-brief-hero"><span class="td-eyebrow">Combined ' + (brief.brokerageBasis ? 'brokerage' : 'account') + ' equity</span><div class="td-hero-line"><strong id="ex-combined-equity">' + esc(money(brief.equity)) + '</strong><div class="td-hero-change"><strong class="td-' + tone(brief.day) + '" id="ex-combined-move">' + esc(move(brief.day)) + '</strong><span>Stock move today' + (brief.partialDay ? ' · partial quotes' : '') + '</span></div></div><p class="td-muted">Self-directed + Agentic · net of account debt.</p><div class="td-account-grid">' + brief.accounts.map(a => '<section class="td-account" data-brief-account="' + a.account + '"><div class="td-account-head">' + jump('accounts',a.label,a.account) + '</div><strong class="td-account-value">' + esc(money(a.equity)) + '</strong><div class="td-account-meta"><span class="td-' + tone(a.day) + '">' + esc(move(a.day)) + '</span><span>stock move</span></div>' + (a.account === 'main' && leverage !== null ? '<div class="td-account-meta">Leverage <span data-priv="val">' + leverage.toFixed(2) + '×</span></div>' : '') + '</section>').join('') + '</div></section>';
-    html += waiting(brief,ticket) + monitor(brief,ticket) + holdings(brief) + disclosures(brief,historyHTML);
+    if (window.__APEX_PAPER === undefined) window.__apexPaperLoad?.();
+    html += waiting(brief,ticket) + scoreboardHtml() + monitor(brief,ticket) + holdings(brief) + disclosures(brief,historyHTML);
     const names = {SPY:'S&P 500',QQQ:'Nasdaq 100',IWM:'Small caps'};
     html += '<section class="td-market td-panel" data-priv="off"><div class="td-section-head"><h2>Market backdrop</h2>' + jump('markets','Explore') + '</div><div class="ex-market-grid">' + brief.markets.map(m => '<div><span>' + esc(names[m.symbol]) + ' <small>' + m.symbol + '</small></span><strong class="td-' + tone(m.change) + '">' + esc(pct(m.change)) + '</strong></div>').join('') + '</div><p class="td-muted" style="margin-top:12px">VIX ' + esc(brief.vix.value === null ? 'Unavailable' : brief.vix.value.toFixed(1)) + ' · captured quotes vs. previous close. Published ' + esc(date(brief.generatedAt)) + '.</p></section></div><dialog id="td-holding-sheet" class="td-sheet" aria-labelledby="td-sheet-title" data-priv="on"></dialog></div>';
     host.innerHTML = html;

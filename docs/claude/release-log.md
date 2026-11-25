@@ -4,6 +4,16 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v264 — Today Scoreboard card (2026-11-25)
+Jack (Nov 25 2026, after a mockup: "Build it but put that score card just on main today page. Shouldn't be buried").
+New card under the Today hero: four rows from ONE start date (first v2.9 paper cohort entry, now Nov 24): SPY, Apex current
+(v2.8 live picks), Apex v2.9 (always "paper"), Agentic ••••3900; diverging bars, percent only, chips 5 / 30 / 60 / 90 / Since start.
+Display only. Reads `data/apex-paper-v29.json` (cohorts, marks, shadow), `data.hist.day.SPY` and `data.agentic.equityHistory` via
+the existing `recordedAccountReturn`. Nothing is estimated or backfilled: a missing number is a dash with "too early" /
+"missing" / "no history yet"; the first-score date is computed (5 trading days, NYSE holidays 2026-27 in `today-model.js`).
+Files: ui/today-model.js (`scoreboard`), ui/today.js, ui/today.css, ui/duo.css (grid area), index.html (version + paper-load repaint),
+sw.js, tests/scoreboard.test.cjs, tests/journey.test.cjs. Not verified: a physical iPhone Duo.
+
 ## v260 — Morning ticket marks rows whose order is already placed (2026-11-20)
 Jack (Nov 20 2:30 AM ET, ZS on the ticket beside his Nov 9 ZS TP/SL order: "Why is this showing if the orders in").
 Producer: new EVERY-RUN read-only fetch `get_equity_orders { state_group: "open" }` on ••••0741 →
