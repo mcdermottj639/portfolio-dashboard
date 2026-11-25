@@ -328,7 +328,7 @@ html[data-theme="gold"] .card [style*=";color:#075985"],html[data-theme="gold"] 
 @media (min-width:740px) and (max-width:1100px) {
   /* 8d · Today: "Out of your hands" sat beside Market backdrop, which left an empty block under Waiting on you.
      It now follows Waiting on you in the right column and Market backdrop takes the full width below. */
-  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero waiting" "holdings waiting" "links monitor" "market market"}
+  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero waiting" "score waiting" "holdings waiting" "links monitor" "market market"}
   #page-ex-today .td-shell .td-monitor{align-self:stretch}
 
   /* 8e · Options: the two income rankers are half width, so their grey title hint pushed ? ☆ ▼ to a second line
@@ -392,7 +392,7 @@ html[data-duo-split="on"].pf-today-premium #page-ex-today .td-shell .td-hero[dat
 /* 9d · Open-width grids: a pinned block leaves its grid cell, so Today's two-pane grid drops the empty "hero" area; in Book the
    scrolling part is only about half the screen, so the open two-up pairings fall back to one column there. */
 @media (min-width:740px) and (max-width:1100px) {
-  html[data-duo-split="on"] #page-ex-today .td-shell .td-layout:has(>.td-hero[data-duo-pin]){grid-template-areas:"holdings waiting" "links monitor" "market market"}
+  html[data-duo-split="on"] #page-ex-today .td-shell .td-layout:has(>.td-hero[data-duo-pin]){grid-template-areas:"score waiting" "holdings waiting" "links monitor" "market market"}
 }
 html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout{grid-template-columns:minmax(0,1fr)!important;grid-template-areas:none!important}
 html[data-duo-split="on"][data-duo-layout="book"] #page-ex-today .td-shell .td-layout>*{grid-area:auto!important}
