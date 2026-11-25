@@ -19,6 +19,8 @@ until Jack approves one batch (target: Sunday 2026-11-29).
 - All of CLAUDE.md §2–§4 still apply (accounts, authorization, strategy rules, privacy; IREN is
   owner-managed; no IRA anywhere). Synthetic data only when testing (`node tests/preview.mjs`, then
   `http://127.0.0.1:8767/lab/index.html`).
+- Lab-only styles live in the `<style id="lab-css">` block at the end of `lab/index.html`; before/after pictures
+  in `lab/shots/`, shown by `lab/changes.html` (linked beside the ribbon; keep the 4 newest runs).
 - Screens that must be right (Jack, 2026-11-25): normal iPhone (390×844), iPhone Duo open / Book
   (960×676), Windows PC full view (1440×900). No sideways scroll, no blank background showing.
 
@@ -40,10 +42,12 @@ until Jack approves one batch (target: Sunday 2026-11-29).
 
 ## Order of work (Claude's pick; update as it moves)
 1. Analyze — the research core (why a pick made it, levels, news, model verdicts in one place).
+   IN PROGRESS: layout pass done (lab2); next: model verdicts + why-it-made-it + insiders/Congress line.
 2. Today — models vs SPY at a glance + what to do today; first screen answers both.
 3. Apex and Agentic — decision view, no Robinhood duplication; Book and PC use the width.
 4. Cut Predict and the Smart $ page; fold what is worth keeping into Analyze.
 5. Navigation pass, then a full three-screen sweep and the Sunday batch summary.
 
 ## Changelog (newest first; one line per run)
+- lab2 · 2026-11-25 · Verdict, setup score and price on first screen; PC two columns; less chrome (Analyze). Nothing cut: the big Setup gauge moved into the header, stale-data text folded behind one line, phone hides the "Top holdings" label (chips stay). Left for Analyze: model verdicts (Apex / Agentic / paper) and the insiders/Congress line per stock; jump-chips and Collapse-all still take two rows.
 - lab1 · 2026-11-25 · Practice copy created from v267; identical to the real app plus the ribbon.
