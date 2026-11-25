@@ -4,6 +4,15 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## Producer — Daily Picks catch-up on FETCH_LIGHT (2026-11-25, no app version bump)
+Jack (Nov 25 2026): Daily Picks keep not updating; approved a catch-up, not a new task. `preflight.mjs` now, on a
+FETCH_LIGHT market-day run whose `data.picks.ts` (the "Last scan" date, read in-run from the decrypted prior snapshot)
+is before today ET, prints ONE directive to run the step-3b planner + picks-local + picks-build before run.mjs.
+Fresh, weekend/holiday and unreadable marker (note only) print no directive; one attempt per run; publishing first.
+Cause of the Nov 24/25 drops: repo records only that FETCH_ALL runs stopped without run.mjs under the hard "never
+skip Picks" rule (#272); why the picks step itself was dropped is not recorded. Files: producer/preflight-directives.mjs,
+preflight.mjs, tests, PRODUCER.md, SCHEDULING.md. NOT verified: a live scheduled run obeying it.
+
 ## v265 — Wasted space / misaligned cards: Full and Book layouts (2026-11-25)
 Jack (Nov 25, phone-tested Book Actions: "Good but still wasting space cards not aligned"; then "Portfolio is the full view even more so than book with wasting space so check all").
 Layout CSS only (`ui/duo.css` §9f); no card, number, rule, copy, producer or schedule change.

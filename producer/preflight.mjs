@@ -17,7 +17,7 @@ import { needsResearchRefresh } from './refresh-check.mjs';
 import { decryptEnvelope } from './emit.mjs';
 import { heldHistoryDirective } from './hist-plan.mjs';
 import { isMarketOpen, isWeekday, isHoliday, closeMinutes, etDate, etMinutes } from './market.mjs';
-import { PICKS_DIRECTIVE } from './preflight-directives.mjs';
+import { PICKS_DIRECTIVE, picksCatchup } from './preflight-directives.mjs';
 
 const DATA = join(dirname(fileURLToPath(import.meta.url)), '..', 'data.json');
 // Step 2e (Predict payout emails) is EVERY-RUN, but the producer Routine's prompt (http_api — not
@@ -29,11 +29,13 @@ export const MAIL_DIRECTIVE = 'PREFLIGHT ALSO: run PRODUCER.md step 2e (Predict 
   'Gmail tools may be deferred: run ToolSearch "gmail search_threads get_message" first, and skip step 2e only if no Gmail tool is found. ' +
   'Best-effort: a Gmail failure never stops the run.';
 let extraDirective = '';
+let catchup = { directive: null, note: null };
 function decide(mode, code, msg) {
   console.log(`PREFLIGHT ${mode}`); console.log(`[preflight] ${msg}`);
   if (mode !== 'SKIP') console.log(MAIL_DIRECTIVE);
   if (mode === 'FETCH_ALL') console.log(PICKS_DIRECTIVE);
   if (mode === 'FETCH_LIGHT' && extraDirective) console.log(extraDirective);
+  if (mode === 'FETCH_LIGHT') { if (catchup.note) console.log(`[preflight] ${catchup.note}`); if (catchup.directive) console.log(catchup.directive); }
   process.exit(code);
 }
 
@@ -65,6 +67,8 @@ if (priorET !== todayET) decide('FETCH_ALL', 0, `first run of ${todayET} (prior 
 if (needsResearchRefresh(prior, now)) decide('FETCH_ALL', 0, 'refresh recovery: initial migration or incomplete research retry (bounded).');
 
 extraDirective = heldHistoryDirective(prior, todayET);
+// Daily Picks catch-up: a FETCH_LIGHT run rebuilds stale picks once (weekend/holiday already SKIPped above).
+catchup = picksCatchup({ mode: 'FETCH_LIGHT', prior, todayET, tradingDay: isWeekday(now) && !isHoliday(now) });
 
 // Prior snapshot is from today already, so history/AV/picks can carry forward.
 if (isMarketOpen(now)) decide('FETCH_LIGHT', 11, 'intraday, market open — light fetch; history/AV/picks carry forward.');
