@@ -33,9 +33,8 @@ until Jack approves one batch (target: Sunday 2026-11-29).
 - Scope: "I want the whole app reenvisioned" — pages and navigation may be rethought inside the lab.
 - Analyze: "really could be bolstered and the more we improve that, I think that improves everything,
   cause that's just the research and information explaining it all."
-- Cuts: prediction markets "can all be removed"; What-if is already gone (v255). Smart $ — Claude's
-  recommendation, not yet confirmed by Jack: drop the page, keep one insiders/Congress line per stock
-  inside Analyze.
+- Cuts: prediction markets "can all be removed"; What-if is already gone (v255). Smart $ — CONFIRMED by Jack
+  2026-11-25 5:07 PM ET: drop the Smart $ page, keep one insiders/Congress line per stock inside Analyze.
 - "reduce waste and make this as impactful as possible without losing the good information."
 - Done by Sunday 2026-11-29. One batch for his approval; nothing ships before that.
 
