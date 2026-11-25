@@ -33,6 +33,11 @@ Both are ACTIVE and agree with this file.
   renumber those without updating the prompts. Other tasks read this file by topic (rules, release
   markers, test commands, open items, `data/apex-targets.json`) — keep those topics here.
 
+- **Practice copy `lab/`** (owner, 2026-11-25): a re-envision of the whole app is being built in `lab/`
+  (served at `/portfolio-dashboard/lab/`), reading the same data. It is not the real app; rules, vision,
+  changelog and the task/model audit log live in `lab/README.md` and `lab/AUDIT.md`. Lab work changes
+  only `lab/**`. Nothing moves from `lab/` into the real app without Jack's approval.
+
 ## 2. Accounts and authorization — ACTIVE RULE (no UI/process change may alter these)
 - Only ••••3900 ("Agentic") is agent-accessible for orders, and only within its mandate and the owner's
   explicit authorization. Verify its capabilities and permissions live each time; **never infer
