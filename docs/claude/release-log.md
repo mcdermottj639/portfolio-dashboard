@@ -4,6 +4,14 @@
 
 > HISTORICAL record of every release, newest first, exactly as it stood in `CLAUDE.md`. Use it for "why is it like this?" questions: `grep -n "^## v2[45]" docs/claude/release-log.md`, or grep a ticker / file / function name. New releases add a SHORT entry at the top (see root `CLAUDE.md` § Writing to these docs).
 
+## v266 — Morning order ticket: placed rows fold into one line (2026-11-25)
+Jack (Nov 25 2026, "Fold into one line"): rows he already placed no longer stay as full greyed rows. In each ticket section
+(Buys; Sells & sell stops) they collapse into ONE summary row "✓ N placed · tap to see" that opens in place; rows that still need
+him are unchanged; an all-placed section shows its header and that one row. Display only: no price, rule, order logic, data or
+producer code (`Apex.ticketHtml` only). Files: ui/apex.js, index.html/sw.js (v266/pf-v266, ?v=266), tests/ticket-fold.test.cjs
+(none/some/all), tests/apex-browser.mjs (expand/collapse at 390, 466, 960), tests/journey.test.cjs. Buys are never marked placed
+today (only sells/stops are, v260); the buys fold is ready if that changes. NOT verified: a physical iPhone Duo.
+
 ## Test fix — foldbar control race on the Plan page (2026-11-25, no app version bump)
 CI `test` failed intermittently at tests/foldbar-checks.mjs `one control on the Plan page` (0 !== 1). Cause: the toolbar is
 built by a 150ms trailing debounce (`buildAll`), so it appears 150ms after the page's LAST DOM write; the test slept a fixed
