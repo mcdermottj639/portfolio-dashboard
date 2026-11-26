@@ -230,3 +230,5 @@ Code comments that cite "CLAUDE.md <topic>" (e.g. `producer/histbars.mjs`, `equi
   descriptive, changes no threshold. v257 shows it on the v2.9 Paper page (Measured results, Weekly
   cohorts, Rejected names); the page has no buttons and stays out of the card fold.
 - Momentum-off shadow (••••3900): paper only; `thin` until 4 graded cohorts.
+- Queued for the next real-app update (after the lab batch): `docs/claude/next-update-preplan.md`
+  (starting ideas, not locked specs — first item PD-ANALYZE-WIDEN, Analyze ticker count).
