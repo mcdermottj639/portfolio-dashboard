@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=lab4"></script>
-<script src="ui/experience-model.js?v=lab4"></script>
+<script src="ui/theme.js?v=lab5"></script>
+<script src="ui/experience-model.js?v=lab5"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -319,6 +319,10 @@ html[data-theme="gold"] .cm-tfhelp { border-color: var(--nx-bd); }
 .pf-foldall:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
 .pf-foldall-i { font-size: 11px; opacity: .75; }
 html[data-theme="gold"] .pf-foldall { border-color: var(--nx-bd); }
+/* lab4 (Jack, Nov 26 2026): on Analyze the control rides inside the ticker search bar, so its own row is gone and the page slides up */
+.pf-foldbar.pf-foldbar-inline { margin: 0; flex: none; display: flex; align-self: stretch; }
+.pf-foldbar-inline .pf-foldall { min-height: 40px; height: 100%; padding: 0 12px; border-radius: 10px; gap: 4px; }
+.pf-foldbar-inline .pf-foldall-i { font-size: 12px; opacity: .85; }
 .pf-fold-empty { margin: 6px 0 2px; font-size: 12px; color: var(--muted, #6b7280); }
 .cn-all { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 14px;
   background: transparent; color: var(--text); border: 1px solid rgba(0,0,0,0.16); cursor: pointer;
@@ -746,15 +750,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=lab4">
-<link rel="stylesheet" href="ui/journey.css?v=lab4">
-<link rel="stylesheet" href="ui/predictions.css?v=lab4">
-<link rel="stylesheet" href="ui/apex-paper.css?v=lab4">
-<link rel="stylesheet" href="ui/smartmoney.css?v=lab4">
-<link rel="stylesheet" href="ui/ticker.css?v=lab4">
-<link rel="stylesheet" href="ui/today.css?v=lab4">
-<link rel="stylesheet" href="ui/book.css?v=lab4">
-<link rel="stylesheet" href="ui/duo.css?v=lab4">
+<link rel="stylesheet" href="ui/experience.css?v=lab5">
+<link rel="stylesheet" href="ui/journey.css?v=lab5">
+<link rel="stylesheet" href="ui/predictions.css?v=lab5">
+<link rel="stylesheet" href="ui/apex-paper.css?v=lab5">
+<link rel="stylesheet" href="ui/smartmoney.css?v=lab5">
+<link rel="stylesheet" href="ui/ticker.css?v=lab5">
+<link rel="stylesheet" href="ui/today.css?v=lab5">
+<link rel="stylesheet" href="ui/book.css?v=lab5">
+<link rel="stylesheet" href="ui/duo.css?v=lab5">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -824,10 +828,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=lab4"></script>
-<script src="ui/apex.js?v=lab4"></script>
-<script src="ui/business.js?v=lab4"></script>
-<script src="ui/apex-paper.js?v=lab4"></script>
+<script src="ui/sd-rules.js?v=lab5"></script>
+<script src="ui/apex.js?v=lab5"></script>
+<script src="ui/business.js?v=lab5"></script>
+<script src="ui/apex-paper.js?v=lab5"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -876,7 +880,14 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
         function norm(p){ return p==null?p:String(p).trim().replace(/[‐-―−⁃]/g,'-'); }
         var hk=(location.hash.match(/(?:^|[#&])key=([^&]+)/)||[])[1];
         if(hk){ try{hk=decodeURIComponent(hk);}catch(e){} history.replaceState(null,'',location.pathname+location.search); }
+        // Durable passphrase memory: localStorage + an IndexedDB copy + a persistent-storage
+        // request, so in-app viewers that drop localStorage between launches still remember it.
+        function idb(mode,fn){ return new Promise(function(res){ try{ var r=indexedDB.open('pf_keep',1); r.onupgradeneeded=function(){ r.result.createObjectStore('kv'); }; r.onsuccess=function(){ try{ var t=r.result.transaction('kv',mode); var q=fn(t.objectStore('kv')); t.oncomplete=function(){ res(q&&q.result); }; t.onerror=function(){ res(null); }; }catch(e){ res(null); } }; r.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }
+        function keepPass(p){ try{localStorage.setItem('pf_pass',p);}catch(e){} idb('readwrite',function(st){ return st.put(p,'pass'); }); try{ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist(); }catch(e){} }
+        function dropPass(){ try{localStorage.removeItem('pf_pass');}catch(e){} idb('readwrite',function(st){ return st.delete('pass'); }); }
+        window.__pfDropPass=dropPass;
         var pass=norm(hk||localStorage.getItem('pf_pass')||null);
+        var passReady = pass!=null ? Promise.resolve() : idb('readonly',function(st){ return st.get('pass'); }).then(function(v){ if(v){ pass=norm(v); try{localStorage.setItem('pf_pass',pass);}catch(e){} } });
         // Custom unlock prompt — a real password input (no auto-capitalize / autocorrect /
         // smart-punctuation), unlike window.prompt which iOS mangles.
         function askPass(showErr){
@@ -886,7 +897,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
             if(!ov){
               ov=document.createElement('div'); ov.id='pf-unlock';
               ov.style.cssText='position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);padding:24px';
-              ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:340px;width:100%;font-family:-apple-system,BlinkMacSystemFont,sans-serif"><div style="font-size:15px;font-weight:700;color:#1c1c1e">🔒 Dashboard passphrase</div><div style="font-size:12px;color:#6b7280;margin:6px 0 12px">Enter your passphrase to unlock.</div><input id="pf-pass-input" type="password" autocapitalize="off" autocorrect="off" autocomplete="current-password" spellcheck="false" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px" placeholder="passphrase"><div id="pf-pass-err" style="font-size:12px;color:#dc2626;margin-top:8px;display:none">Incorrect — check capitalization and try again.</div><button id="pf-pass-go" style="margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;background:#00c244;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Unlock</button></div>';
+              ov.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px;max-width:340px;width:100%;font-family:-apple-system,BlinkMacSystemFont,sans-serif"><div style="font-size:15px;font-weight:700;color:#1c1c1e">🔒 Dashboard passphrase</div><div style="font-size:12px;color:#6b7280;margin:6px 0 12px">Enter your passphrase to unlock — or tap the key above the keyboard to fill it with Face ID.</div><form id="pf-pass-form" method="post" action="#" onsubmit="return false"><input type="text" name="username" autocomplete="username" value="Portfolio Dashboard" readonly tabindex="-1" aria-hidden="true" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"><input id="pf-pass-input" name="password" type="password" autocapitalize="off" autocorrect="off" autocomplete="current-password" spellcheck="false" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px" placeholder="passphrase"><div id="pf-pass-err" style="font-size:12px;color:#dc2626;margin-top:8px;display:none">Incorrect — check capitalization and try again.</div><label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:#1c1c1e"><input id="pf-pass-keep" type="checkbox" checked style="width:18px;height:18px">Remember on this device</label><button id="pf-pass-go" style="margin-top:12px;width:100%;padding:12px;border:none;border-radius:10px;background:#00c244;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Unlock</button></form></div>';
               host.appendChild(ov);
             }
             var inp=ov.querySelector('#pf-pass-input'); var err=ov.querySelector('#pf-pass-err');
@@ -906,11 +917,11 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
           return get.then(function(entered){
             var p=norm(entered);
             if(!p){ pass=null; return attempt(n); }
-            return decryptEnvelope(raw, p).then(function(obj){ try{localStorage.setItem('pf_pass',p);}catch(e){} closeAsk(); return obj; })
-              .catch(function(){ try{localStorage.removeItem('pf_pass');}catch(e){} pass=null; return attempt(n+1); });
+            return decryptEnvelope(raw, p).then(function(obj){ var rm=document.getElementById('pf-pass-keep'); if(!rm||rm.checked)keepPass(p); closeAsk(); return obj; })
+              .catch(function(){ dropPass(); pass=null; return attempt(n+1); });
           });
         }
-        return attempt(0);
+        return passReady.then(function(){ return attempt(0); });
       })
       .catch(function(e){ return Object.assign({error:String(e&&e.message||e)},EMPTY); });
   }
@@ -988,7 +999,7 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
       paintBar();
       window.__pfNudge=function(html){ nudge=html; paintBar(); };
       setInterval(paintBar, 5*60000);
-      var rb=document.getElementById('pf-refresh'); if(rb){ rb.onclick=function(){ if(locked){ try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); }; rb.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); rb.click(); } }; }
+      var rb=document.getElementById('pf-refresh'); if(rb){ rb.onclick=function(){ if(locked){ if(window.__pfDropPass)window.__pfDropPass(); else try{localStorage.removeItem('pf_pass');}catch(e){} } location.reload(); }; rb.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); rb.click(); } }; }
       // Resume: re-check age immediately, and after ≥5 min away peek at data.json — if the
       // producer published a newer snapshot while we were backgrounded, reload straight into it
       // (the stored passphrase makes that seamless) instead of waiting for a manual ↻.
@@ -5403,10 +5414,11 @@ window.switchTab=switchTab;
      hides (the Apex Confirm card, Action Center…) don't hold the label on "Collapse all". */
   function anyOpen(pageEl){ return pageCards(pageEl).some(function(c){ return !kept(c)&&isOpen(c); }); }
   function syncAllLabel(pageEl){
-    var b=pageEl.querySelector(':scope > .pf-foldbar .pf-foldall'); if(!b)return;
+    var bb=barOf(pageEl), b=bb&&bb.querySelector('.pf-foldall'); if(!b)return;
     var col=anyOpen(pageEl), txt=col?'Collapse all':'Expand all';
     if(b.dataset.mode!==(col?'collapse':'expand')){ b.dataset.mode=col?'collapse':'expand';
-      b.innerHTML='<span class="pf-foldall-i" aria-hidden="true">'+(col?'▴':'▾')+'</span>'+txt;
+      b.innerHTML='<span class="pf-foldall-i" aria-hidden="true">'+(col?'▴':'▾')+'</span>'+(bb.classList.contains('pf-foldbar-inline')?'All':txt);
+      b.title=txt;
       b.setAttribute('aria-label',txt+' cards on this page'); }
   }
   window.__navSyncAll=syncAllLabel;   // the per-card collapse toggles keep the label honest
@@ -5415,7 +5427,7 @@ window.switchTab=switchTab;
      shared __pfFold.set, which saves each card's choice like a header tap. */
   window.__navAll=function(pageId){
     var pageEl=document.getElementById(pageId); if(!pageEl)return;
-    var b=pageEl.querySelector(':scope > .pf-foldbar .pf-foldall');
+    var bb=barOf(pageEl), b=bb&&bb.querySelector('.pf-foldall');
     var collapse=b?b.dataset.mode==='collapse':anyOpen(pageEl);
     pageCards(pageEl).forEach(function(c){
       if(collapse&&kept(c))return;
@@ -5429,14 +5441,20 @@ window.switchTab=switchTab;
      (so v2.9 Paper, Predict and Smart $, whose cards don't fold, get none). In the workspace (Apex / Agentic) the CSS order
      puts it under the account summary, right above the cards. */
   var BAR_PAGES=PAGES.concat(['page-screens']);
+  /* lab4 (Jack, Nov 26 2026): on Analyze the control sits at the end of the ticker search bar instead of its own row above the
+     cards. Every other page keeps the v256 toolbar. */
+  function inlineHost(pageEl){ return pageEl.id==='page-analyze'?pageEl.querySelector('#analyze-app .az-search'):null; }
+  function barOf(pageEl){ return pageEl.querySelector(':scope > .pf-foldbar')||pageEl.querySelector('.az-search > .pf-foldbar'); }
   function buildBar(pageEl){
-    var bar=pageEl.querySelector(':scope > .pf-foldbar'), n=pageCards(pageEl).length;
+    var bar=barOf(pageEl), n=pageCards(pageEl).length, host=inlineHost(pageEl);
     if(n<2&&pageEl.getClientRects().length>0){ if(bar)bar.remove(); return; }
     if(n<2&&!bar)return;
-    if(!bar){ bar=document.createElement('div'); bar.className='pf-foldbar'; bar.setAttribute('role','toolbar'); bar.setAttribute('aria-label','Cards on this page');
+    if(bar&&(host?bar.parentNode!==host:bar.classList.contains('pf-foldbar-inline'))){ bar.remove(); bar=null; }
+    if(!bar){ bar=document.createElement('div'); bar.className='pf-foldbar'+(host?' pf-foldbar-inline':''); bar.setAttribute('role','toolbar'); bar.setAttribute('aria-label','Cards on this page');
       bar.innerHTML='<button class="pf-foldall" type="button" onclick="__navAll(\''+pageEl.id+'\')"></button>';
-      var anchor=pageEl.querySelector(':scope > .myview')||pageEl.querySelector(':scope > .card-nav')||pageEl.querySelector(':scope > .acct-seg-wrap');
-      if(anchor)anchor.after(bar); else pageEl.insertBefore(bar,pageEl.firstChild); }
+      if(host)host.appendChild(bar);
+      else{ var anchor=pageEl.querySelector(':scope > .myview')||pageEl.querySelector(':scope > .card-nav')||pageEl.querySelector(':scope > .acct-seg-wrap');
+        if(anchor)anchor.after(bar); else pageEl.insertBefore(bar,pageEl.firstChild); } }
     syncAllLabel(pageEl);
   }
   function buildAll(){ PAGES.forEach(function(id){ var el=document.getElementById(id); if(el)build(el); });
@@ -6857,10 +6875,10 @@ function renderAzShell(){
   try{ const syms=[...new Set(BK.enriched.filter(p=>p.val>0).sort((a,b)=>b.val-a.val).map(p=>p.symbol))].slice(0,10);
     if(syms.length)chips='<div data-az-chips-for="'+BK.acct+'" style="font-size:11px;color:#9ca3af;margin:12px 0 6px">Top holdings · '+BK.label+'</div><div class="az-chips">'+syms.map(s=>'<span class="az-chip" onclick="runAnalysis(\''+s+'\')">'+s+'</span>').join('')+'</div>'; }catch(e){}
   // Native autocomplete over the analyzable set — typing only surfaces tickers this snapshot can read.
-  let dl=''; try{ const u=azUniverse(); if(u.length)dl='<datalist id="az-tickers">'+u.map(o=>'<option value="'+o.sym+'">'+(o.label?String(o.label).replace(/"/g,'&quot;').replace(/</g,'&lt;'):o.sym)+'</option>').join('')+'</datalist>'; }catch(e){}
+  let dl='', azN=0; try{ const u=azUniverse(); azN=u.length; if(u.length)dl='<datalist id="az-tickers">'+u.map(o=>'<option value="'+o.sym+'">'+(o.label?String(o.label).replace(/"/g,'&quot;').replace(/</g,'&lt;'):o.sym)+'</option>').join('')+'</datalist>'; }catch(e){}
   app.innerHTML=
     '<div class="picks-hero"><div><div class="ph-label">Analyze</div><div class="ph-date">Single-Stock Deep Dive</div><div class="ph-stale">Technical + fundamental read from the latest snapshot · research only.</div></div></div>'+
-    '<div class="card lab-az-find" data-az-acct="'+BK.acct+'"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
+    '<div class="card lab-az-find" data-az-acct="'+BK.acct+'"><div class="az-search"><input id="az-ticker" type="text" list="az-tickers" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="Enter ticker — e.g. NVDA" onkeydown="if(event.key===\'Enter\')azGo()"><button class="az-btn" onclick="azGo()">Analyze</button><button class="az-btn az-btn-ghost" onclick="azChartGo()" title="Open the full chart &amp; pattern analyzer">📊 Chart</button></div>'+(azN?'<div class="az-count" style="font-size:11.5px;color:#9ca3af;margin-top:7px"><b style="color:var(--text)">'+azN+'</b> tickers analyzable right now · tap the box to see them</div>':'')+dl+chips+'<button class="cm-chip" onclick="azPatternRadarOpen()" style="margin-top:12px" title="Scan your holdings &amp; picks for chart patterns">📡 Scan my holdings &amp; picks for patterns</button></div>'+
     '<div id="az-result"></div>';
 }
 function azGo(){ const i=document.getElementById('az-ticker'); const s=((i&&i.value)||'').trim().toUpperCase().replace(/[^A-Z.\-]/g,''); if(s)runAnalysis(s); }
@@ -7302,6 +7320,24 @@ function azBar(lbl,v,desc){ const c=azScoreColor(v); return '<div style="margin-
 // OHLC daily series — one shared, staleness-gated, live-spliced reader (see azHist).
 function azSeries(sym){ return azHist(sym).bars; }
 function _smaArr(c,n){ if(c.length<n)return null; const out=new Array(c.length).fill(null); let s=0; for(let i=0;i<c.length;i++){ s+=c[i]; if(i>=n)s-=c[i-n]; if(i>=n-1)out[i]=+(s/n).toFixed(2); } return out; }
+// Levels & Scenarios: support/resistance spelled out — mini chart with the level lines + one row per level.
+function azSRBlock(x,px){ const sup=x.srSup||[], res=x.srRes||[]; if(!sup.length&&!res.length)return '';
+  const cl=(x.srCloses||[]).filter(v=>v>0), lv=sup.concat(res);
+  let svg=''; if(cl.length>=10){ const recent=cl.slice(-15), vals=recent.concat(lv.map(z=>z.price)), lo=Math.min(...vals)*0.97, hi=Math.max(...vals)*1.03, W=300, H=150, L=4, R=250;
+    // y-range is set by the levels and the last 3 weeks, so the lines are readable; older price runs off the top (clipped).
+    const y=v=>+(H-6-(v-lo)/(hi-lo)*(H-12)).toFixed(1), xs=i=>+(L+i*(R-L)/(cl.length-1)).toFixed(1);
+    const lab=lv.map(z=>({z,c:res.includes(z)?'#ef4444':'#10b981',y:y(z.price)})).sort((p,q)=>p.y-q.y); for(let i=1;i<lab.length;i++)if(lab[i].y-lab[i-1].y<11)lab[i].y=lab[i-1].y+11;
+    const line=o=>'<line x1="'+L+'" x2="'+R+'" y1="'+y(o.z.price)+'" y2="'+y(o.z.price)+'" stroke="'+o.c+'" stroke-width="'+(1+Math.min(o.z.touches-1,3)*0.6)+'" stroke-dasharray="4 3"/><text x="'+(R+4)+'" y="'+(o.y+3.5)+'" font-size="10" fill="'+o.c+'">$'+o.z.price+'</text>';
+    svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Price with support and resistance lines" style="width:100%;height:auto;display:block;margin:2px 0 8px"><defs><clipPath id="az-sr-clip"><rect x="0" y="0" width="'+(R+2)+'" height="'+H+'"/></clipPath></defs>'+
+      lab.map(line).join('')+
+      '<polyline clip-path="url(#az-sr-clip)" fill="none" stroke="var(--text,#111827)" stroke-width="1.6" points="'+cl.map((v,i)=>xs(i)+','+y(v)).join(' ')+'"/>'+
+      '<circle cx="'+xs(cl.length-1)+'" cy="'+y(cl[cl.length-1])+'" r="3" fill="var(--text,#111827)"/></svg>'; }
+  const row=(z,k)=>{ const c=k==='R'?'#ef4444':'#10b981'; return '<div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:8px;align-items:baseline;padding:3px 0;font-size:12.5px"><span style="color:'+c+';font-weight:700;min-width:74px">'+(k==='R'?'Resistance':'Support')+'</span><b>$'+z.price+'</b><span style="color:#9ca3af">'+z.touches+' touch'+(z.touches===1?'':'es')+'</span><span style="color:'+c+';min-width:52px;text-align:right">'+(z.pct>=0?'+':'')+z.pct+'%</span></div>'; };
+  return '<div style="margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--border)">'+svg+
+    res.slice().reverse().map(z=>row(z,'R')).join('')+
+    '<div style="font-size:11.5px;color:#9ca3af;padding:3px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin:2px 0">Price now $'+(+px).toFixed(2)+'</div>'+
+    sup.map(z=>row(z,'S')).join('')+(!res.length?'<div style="font-size:11.5px;color:#9ca3af;padding:3px 0">No resistance zone above in the last ~6 months</div>':'')+(!sup.length?'<div style="font-size:11.5px;color:#9ca3af;padding:3px 0">No support zone below in the last ~6 months</div>':'')+
+    '<details style="font-size:11px;color:#9ca3af;margin-top:4px"><summary>How these levels are found</summary>Each level is a price where daily highs or lows turned at least ~2.5–8% (scaled to the stock\'s volatility) in the last '+(x.srWin||126)+' trading days. Turns within 1.8% of each other are merged into one zone. More touches = a level the market has respected more; thicker line = more touches. Levels are zones, not exact prices.</details></div>'; }
 function azExtra(a){ _azMemoCheck(); if(a&&a.sym&&_azMemo.extra[a.sym])return _azMemo.extra[a.sym]; const r=_azExtraRaw(a); if(a&&a.sym)_azMemo.extra[a.sym]=r; return r; }
 function _azExtraRaw(a){
   const sym=a.sym, ser=azSeries(sym), closes=ser.map(s=>s.c), x={};
@@ -7322,11 +7358,17 @@ function _azExtraRaw(a){
       const _sh=azHist('SPY'), spyLast=(_sh.price!=null?_sh.price:spy[spy.length-1]);
       const spyYtd=spy[0]>0?(spyLast/spy[0]-1)*100:null; x.relStr=(a.ytd!=null&&spyYtd!=null)?a.ytd-spyYtd:null;
       x.relStrStale=(_sh.quality==='stale'); }
-    const w=Math.min(40,closes.length),seg=closes.slice(-w),sup=[],res=[];
-    for(let i=2;i<seg.length-2;i++){ if(seg[i]<seg[i-1]&&seg[i]<seg[i-2]&&seg[i]<=seg[i+1]&&seg[i]<=seg[i+2])sup.push(seg[i]); if(seg[i]>seg[i-1]&&seg[i]>seg[i-2]&&seg[i]>=seg[i+1]&&seg[i]>=seg[i+2])res.push(seg[i]); }
-    x.support=[...new Set(sup.map(v=>+v.toFixed(2)))].filter(v=>v<a.price).sort((p,q)=>q-p).slice(0,2);
-    x.resistance=[...new Set(res.map(v=>+v.toFixed(2)))].filter(v=>v>a.price).sort((p,q)=>p-q).slice(0,2);
-    if(a.hi52&&a.hi52>a.price)x.resistance.push(+(+a.hi52).toFixed(2)); if(a.lo52&&a.lo52<a.price)x.support.push(+(+a.lo52).toFixed(2));
+    // Support/resistance (v268): the same tested-zone method as the Chart Analyzer's S/R filter —
+    // ZigZag swing turns on daily highs/lows over ~6 months, merged within 1.8%, ranked by touches.
+    // Replaced a 40-close, 2-bar fractal that counted any 2-day wiggle and skipped every level near
+    // price (IREN Nov 25: first "resistance" $24.46, +90%, past four real levels).
+    { const W=Math.min(126,ser.length), S=ser.slice(-W), piv=azCMPivots(S), tol=0.018, zones=[], px=a.price;
+      piv.slice().sort((p,q)=>p.price-q.price).forEach(p=>{ const z=zones.find(z=>Math.abs(z.price-p.price)/z.price<=tol); if(z){ z.price=(z.price*z.touches+p.price)/(z.touches+1); z.touches++; z.lastI=Math.max(z.lastI,p.i); } else zones.push({price:p.price,touches:1,lastI:p.i}); });
+      const mk=z=>({price:+z.price.toFixed(2),touches:z.touches,pct:+((z.price/px-1)*100).toFixed(1),ago:W-1-z.lastI});
+      x.srSup=zones.filter(z=>z.price<px).sort((p,q)=>q.price-p.price).slice(0,3).map(mk);
+      x.srRes=zones.filter(z=>z.price>px).sort((p,q)=>p.price-q.price).slice(0,3).map(mk);
+      x.srCloses=S.slice(-30).map(b=>b.c); x.srWin=W;
+      x.support=x.srSup.map(z=>z.price); x.resistance=x.srRes.map(z=>z.price); }
   }
   if(x.totalVal&&a.price>a.stop){ const perSh=a.price-a.stop; x.sizing={risk1:Math.floor(x.totalVal*0.01/perSh),risk2:Math.floor(x.totalVal*0.02/perSh),perSh:+perSh.toFixed(2)}; }
   const ov=azOverview(sym)||{};
@@ -8131,7 +8173,7 @@ function runAnalysis(sym){
       (mtf?'<div style="font-size:11.5px;color:var(--text);opacity:.9;margin-top:11px;line-height:1.6"><b style="color:#9ca3af;text-transform:uppercase;letter-spacing:.4px;font-size:10.5px">🕒 Timeframes</b> &nbsp;'+mtf.rows.map(o=>o.tf+' '+(o.up===true?'<span style="color:#10b981">▲</span>':o.up===false?'<span style="color:#ef4444">▼</span>':'<span style="color:#9ca3af">–</span>')).join(' &nbsp;·&nbsp; ')+' &nbsp;—&nbsp; <span style="color:'+mtf.align.c+';font-weight:700">'+mtf.align.t+'</span></div>':'')+'</div>':'')+
     (edge?'<div class="card"><div class="card-title"><span>🔬 Historical Edge <span class="card-hint">this stock, similar RSI</span></span></div><div style="font-size:12.5px;line-height:1.6">Across <b>'+edge.n+'</b> past day'+(edge.n===1?'':'s')+' this year when '+a.sym+'’s RSI was near <b>'+a.rsi+'</b> (±'+edge.band+'), the next <b>'+edge.horizon+' sessions</b> were positive <b style="color:'+(edge.winRate>=55?'#10b981':edge.winRate<=45?'#ef4444':'#9ca3af')+'">'+edge.winRate+'%</b> of the time, averaging <b style="color:'+(edge.avg>=0?'#10b981':'#ef4444')+'">'+(edge.avg>=0?'+':'')+edge.avg+'%</b> (best +'+edge.best+'%, worst '+edge.worst+'%).</div><div style="font-size:11px;color:#9ca3af;margin-top:6px">Small in-sample stat from this year’s history — a tendency, not a guarantee.</div></div>':'')+
     (scen?'<div class="card"><div class="card-title"><span>🎲 Levels &amp; Scenarios <span class="card-hint">support/resistance + model-weighted next leg</span></span></div>'+
-      (((x.support&&x.support.length)||(x.resistance&&x.resistance.length))?'<div style="font-size:12.5px;line-height:1.8;margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--border)"><span style="color:#10b981;font-weight:700">Support</span> '+(x.support&&x.support.length?x.support.map(v=>'$'+v).join(' · '):'—')+'<br><span style="color:#ef4444;font-weight:700">Resistance</span> '+(x.resistance&&x.resistance.length?x.resistance.map(v=>'$'+v).join(' · '):'—')+'</div>':'')+
+      azSRBlock(x,a.price)+
       '<table class="cmp-tbl"><thead><tr><th>Case</th><th>Target</th><th>Move</th><th>Odds</th></tr></thead><tbody>'+scen.rows.map(r=>'<tr><td class="cmp-k" style="color:'+r.c+';font-weight:700">'+r.k+'</td><td>$'+r.px+'</td><td style="color:'+(r.move>=0?'#10b981':'#ef4444')+'">'+(r.move>=0?'+':'')+r.move+'%</td><td>'+r.p+'%</td></tr>').join('')+'</tbody></table><div style="font-size:12px;margin-top:8px">Probability-weighted expected move: <b style="color:'+(scen.ev>=0?'#10b981':'#ef4444')+'">'+(scen.ev>=0?'+':'')+scen.ev+'%</b></div>'+(scen.em?'<div style="font-size:12px;margin-top:7px;padding:8px 10px;background:var(--surface-2);border-radius:8px;line-height:1.5">Implied <b>±1σ</b> move (~'+scen.em.dte+'d): <b>±'+scen.em.pct+'%</b> → <b>$'+scen.em.lo+'</b> – <b>$'+scen.em.hi+'</b> <span style="color:#9ca3af">('+(scen.em.src==='market'?'market-implied · IV '+scen.em.iv+'%':'est. from realized vol · ~'+scen.em.iv+'%')+')</span></div>':'')+'<div style="font-size:11px;color:#9ca3af;margin-top:4px">Case <b>odds</b> are a heuristic from the setup score, trend &amp; RSI (not market-implied); the <b>±1σ band</b> is '+(scen.em&&scen.em.src==='market'?'from live option IV':'a realized-vol estimate')+'.</div></div>':'')+
     (oplay?'<div class="card"><div class="card-title"><span>🧩 Options Play <span class="card-hint">estimate · fits the read</span></span></div>'+(
       oplay.kind==='call'?'<div style="font-size:12.5px;line-height:1.6"><b style="color:#10b981">Bullish — long call.</b> Buy the <b>$'+oplay.strike+'</b> call exp <b>'+oplay.exp+'</b> (~'+oplay.dte+'d). Est. premium <b>~$'+oplay.prem.toFixed(2)+'</b> ($'+oplay.maxLoss+'/contract max loss), breakeven <b>$'+oplay.be+'</b> ('+(oplay.bePct>=0?'+':'')+oplay.bePct+'%). Est. IV ~'+oplay.iv+'%.</div>':
@@ -9101,23 +9143,19 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=lab4"></script>
-<script src="ui/today.js?v=lab4"></script>
-<script src="ui/predictions-model.js?v=lab4"></script>
-<script src="ui/predictions.js?v=lab4"></script>
-<script src="ui/smartmoney-model.js?v=lab4"></script>
-<script src="ui/smartmoney.js?v=lab4"></script>
-<script src="ui/experience.js?v=lab4"></script>
-<script src="ui/ticker.js?v=lab4"></script>
-<script src="ui/duo.js?v=lab4"></script>
-<script src="ui/compact.js?v=lab4"></script>
-<script src="ui/journey.js?v=lab4"></script>
-<script src="ui/book.js?v=lab4"></script>
+<script src="ui/today-model.js?v=lab5"></script>
+<script src="ui/today.js?v=lab5"></script>
+<script src="ui/predictions-model.js?v=lab5"></script>
+<script src="ui/predictions.js?v=lab5"></script>
+<script src="ui/smartmoney-model.js?v=lab5"></script>
+<script src="ui/smartmoney.js?v=lab5"></script>
+<script src="ui/experience.js?v=lab5"></script>
+<script src="ui/ticker.js?v=lab5"></script>
+<script src="ui/duo.js?v=lab5"></script>
+<script src="ui/compact.js?v=lab5"></script>
+<script src="ui/journey.js?v=lab5"></script>
+<script src="ui/book.js?v=lab5"></script>
 <style id="lab-css">
-/* lab4 — Analyze: the section chips and Expand/Collapse all share ONE row (was two). Layout only: same chips, same button. */
-#page-analyze>.card-nav:has(+ .pf-foldbar){padding:0 116px 8px 0;margin:0}
-#page-analyze>.card-nav + .pf-foldbar{position:relative;height:0;margin:0;overflow:visible;z-index:2}
-#page-analyze>.card-nav + .pf-foldbar .pf-foldall{position:absolute;right:0;bottom:10px;min-height:36px;padding:0 12px;font-size:12px}
 /* lab3 — Analyze: "My models" strip (where this ticker stands in Apex, Agentic and the v2.9 paper track) */
 .card.lab-az-models{padding:10px 12px}
 .lab-azm-grid{display:grid;grid-template-columns:1fr;gap:6px}
@@ -9185,6 +9223,6 @@ load();
 #lab-ribbon-wrap{position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483000;display:flex;gap:6px;align-items:center;pointer-events:none;font:700 10px/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 #lab-ribbon-wrap a{pointer-events:auto;padding:5px 8px;border-radius:999px;background:#fff;color:#b45309;border:1px solid #b45309;text-decoration:none}
 </style>
-<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="4" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab4</div></div>
+<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="5" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab5</div></div>
 </body>
 </html>
