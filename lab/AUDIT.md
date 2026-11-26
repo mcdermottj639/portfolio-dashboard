@@ -16,6 +16,21 @@ Newest first.
 6. Still the largest load and NOT yet audited: "Portfolio dashboard refresh" (9 runs a weekday) and "Agentic executor" (7 a weekday). Next audit run starts there.
 7. All 12 tasks read so far attach every connector (Canva, Figma, Supabase, Slides, …). Attach only what each task uses: smaller tool list every run, and a read-only watchdog no longer carries Robinhood.
 
+## Done 2026-11-26 9:35 AM ET (Jack: "All. Just make the changes") — scheduled tasks changed by a Claude chat
+- Fix 1 DONE: "Apex v2.9 paper track · 0741" now runs Mondays only (Fable, prompt untouched). New task
+  "Apex v2.9 paper track · 0741 · Tue–Fri" (Sonnet, same prompt plus a header line) covers Tue–Fri. It is
+  paused with the others; the cloud backup that turns investing tasks on Monday now includes it.
+  NOT verified: a real Sonnet run. Tue Dec 1 is the first; the watchdog and the repo tests are the gate.
+- Fix 2 DONE: "Operations HQ site refresh" model Fable → Sonnet. NOT verified until its next run.
+- Fix 3 DONE: "Apex paper run watchdog" reads the published paper file's date and status (one small request)
+  and no longer reads the task list. It covers both paper tasks.
+- Fix 4 HALF DONE: "Apex buy sheet · 0741" now ends with the ticket link. The "Apex morning order ticket line"
+  could NOT be changed from here (its prompt can only be edited from the chat it posts into). It is paused,
+  and the cloud backup no longer turns it on, but the Monday 6:30 AM reminder in Jack's Duet chat still will.
+  WAITS ON JACK: say "retire the Apex ticket line" in the Duet main chat.
+- Fixes 5–7 not done (not in the message Jack answered): Daily relay Monday check, the hourly jobs audit,
+  connector trimming (connectors cannot be edited with the task tools).
+
 ## Covered so far
 - 2026-11-26 (12 tasks, task-list pages 1–3): Portfolio LAB · deep review (Thanksgiving) · Apex paper run watchdog ·
   Apex morning order ticket line · Operations HQ site refresh · League History Lab · daily polish ·
