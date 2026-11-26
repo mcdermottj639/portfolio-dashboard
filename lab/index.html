@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=lab2"></script>
-<script src="ui/experience-model.js?v=lab2"></script>
+<script src="ui/theme.js?v=lab3"></script>
+<script src="ui/experience-model.js?v=lab3"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -746,15 +746,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=lab2">
-<link rel="stylesheet" href="ui/journey.css?v=lab2">
-<link rel="stylesheet" href="ui/predictions.css?v=lab2">
-<link rel="stylesheet" href="ui/apex-paper.css?v=lab2">
-<link rel="stylesheet" href="ui/smartmoney.css?v=lab2">
-<link rel="stylesheet" href="ui/ticker.css?v=lab2">
-<link rel="stylesheet" href="ui/today.css?v=lab2">
-<link rel="stylesheet" href="ui/book.css?v=lab2">
-<link rel="stylesheet" href="ui/duo.css?v=lab2">
+<link rel="stylesheet" href="ui/experience.css?v=lab3">
+<link rel="stylesheet" href="ui/journey.css?v=lab3">
+<link rel="stylesheet" href="ui/predictions.css?v=lab3">
+<link rel="stylesheet" href="ui/apex-paper.css?v=lab3">
+<link rel="stylesheet" href="ui/smartmoney.css?v=lab3">
+<link rel="stylesheet" href="ui/ticker.css?v=lab3">
+<link rel="stylesheet" href="ui/today.css?v=lab3">
+<link rel="stylesheet" href="ui/book.css?v=lab3">
+<link rel="stylesheet" href="ui/duo.css?v=lab3">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -824,10 +824,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=lab2"></script>
-<script src="ui/apex.js?v=lab2"></script>
-<script src="ui/business.js?v=lab2"></script>
-<script src="ui/apex-paper.js?v=lab2"></script>
+<script src="ui/sd-rules.js?v=lab3"></script>
+<script src="ui/apex.js?v=lab3"></script>
+<script src="ui/business.js?v=lab3"></script>
+<script src="ui/apex-paper.js?v=lab3"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -7994,6 +7994,69 @@ function azRec(a,x){
   h+='<div style="font-size:10.5px;color:#9ca3af;margin-top:10px">'+(pk?'From today’s Picks screen — research, not financial advice.':'Algorithmic read — research, not financial advice.')+'</div></div>';
   return h;
 }
+/* lab3 — "My models" strip on Analyze: where THIS ticker stands in each model, read-only, from files the app
+   already loads (data/apex-targets.json, data.agentic.target, data/apex-paper-v29.json). Display only: no
+   number is computed, no rule is applied here, and the paper tile is labelled paper (it never drives anything). */
+function labAzEsc(v){ return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function labAzWhen(v){ if(!v)return ''; const t=String(v); try{ if(t.length<=10)return new Date(t+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  return new Date(t).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})+' ET'; }catch(e){ return t; } }
+function labAzModelsInner(sym){
+  const G='#10b981',A_='#b45309',R='#ef4444',N='#9ca3af', find=(arr,k)=>Array.isArray(arr)?arr.find(o=>o&&o[k||'sym']===sym):null;
+  const tiles=[], stamps=[];
+  // Apex — the Monday research file
+  (function(){ const T=window.__APEX_TGT; let held=false; try{ held=!!((window.__PORT&&window.__PORT.enriched)||[]).find(p=>p.symbol===sym&&p.val>0); }catch(e){}
+    let st,col=N,why='';
+    if(T===undefined||(T===null&&!window.__LAB_TGT_DONE)){ st='Loading…'; }
+    else if(!T){ st='—'; why='Research file not available'; }
+    else{ const t5=find(T.top5), hl=find(T.heldLevels), bt=find(T.blockedByTheme), bc=find(T.blockedByCap), vt=find(T.vetoed);
+      const sc=o=>o&&o.composite!=null?'Score '+o.composite+(o.rr!=null?' · R/R '+o.rr:''):'';
+      if(sym===T.core){ st='Core holding'; col=G; why='Owner-managed'; }
+      else if(T.targets&&T.targets[sym]!=null){ st='On the buy list · '+T.targets[sym]+'%'; col=G; why=sc(t5||hl); }
+      else if(hl&&hl.status==='held-not-target'){ st='Off the buy list · review'; col=A_; why=hl.review||sc(hl); }
+      else if(bt||bc){ st='Blocked by a cap'; col=A_; why=(bt||bc).why||''; }
+      else if(vt){ st='Rejected'; col=R; why=vt.why||''; }
+      else if(t5){ st='Scored, not picked'; col=A_; why=t5.why||sc(t5); }
+      else if(T.themeMap&&T.themeMap[sym]){ st='Scanned · not picked'; }
+      else{ st='Not in this week\'s scan'; }
+      if(T.asOf)stamps.push('Apex scan '+labAzWhen(T.asOf)); }
+    tiles.push(['Apex',held,st,col,why]); })();
+  // Agentic — the research target in the snapshot
+  (function(){ const A=(window.__DATA&&window.__DATA.agentic)||null; let st,col=N,why='',held=false;
+    if(!A){ st='—'; why='Not in this snapshot'; }
+    else{ held=!!(Array.isArray(A.positions)&&A.positions.find(p=>p&&p.symbol===sym&&(+p.value||0)>0));
+      const names=A.target&&Array.isArray(A.target.names)?A.target.names:null, n=names?names.find(o=>o&&o.ticker===sym):null;
+      if(!names){ st='—'; why='No research target in this snapshot'; }
+      else if(n){ st=(n.phaseOut?'Leaving the target':'In the target')+(n.weightPct!=null?' · '+n.weightPct+'%':''); col=n.phaseOut?A_:G; why=n.thesis||n.sector||''; }
+      else{ st='Not in the target'; }
+      if(A.target&&A.target.asOf)stamps.push('Agentic target '+labAzWhen(A.target.asOf)); }
+    tiles.push(['Agentic',held,st,col,why]); })();
+  // v2.9 paper — descriptive only
+  (function(){ const P=window.__APEX_PAPER; let st,col=N,why='';
+    if(P===undefined){ st='Loading…'; }
+    else if(!P){ st='—'; why='Paper file not available'; }
+    else{ const b=P.batch||{}, rk=P.ranked||{}, pk=find(b.picks), bl=find(b.blocked), q=find(rk.qualified), nr=find(rk.near), em=find(rk.emerging), o=q||nr||em;
+      const d=o?[(o.setup?'Setup '+o.setup+(o.setupLabel?' '+o.setupLabel:''):''),(o.composite!=null?'score '+o.composite:''),(o.rr!=null?'R/R '+o.rr:'')].filter(Boolean).join(' · '):'';
+      if(pk){ st='Paper pick'+(pk.weightPct!=null?' · '+pk.weightPct+'%':''); col=G; why=d; }
+      else if(bl){ st='Qualified, blocked'; col=A_; why=bl.reason||d; }
+      else if(q){ st='Qualified'; col=G; why=d; }
+      else if(nr){ st='Near miss'; col=A_; why=d; }
+      else if(em){ st='Emerging'; col=A_; why=d; }
+      else{ st='Not on the ranked lists'; }
+      if(P.asOf)stamps.push('Paper '+labAzWhen(P.asOf)); }
+    tiles.push(['v2.9 paper',false,st,col,why,'not live']); })();
+  return '<div class="lab-azm-grid">'+tiles.map(t=>'<div class="lab-azm" style="border-left-color:'+t[3]+'"><div class="lab-azm-top"><span class="lab-azm-n">'+t[0]+(t[5]?' <i>'+t[5]+'</i>':'')+'</span>'+(t[1]?'<span class="lab-azm-held">Held</span>':'')+'</div>'+
+    '<div class="lab-azm-st" style="color:'+(t[3]==='#9ca3af'?'var(--text)':t[3])+'">'+labAzEsc(t[2])+'</div>'+(t[4]?'<div class="lab-azm-why" title="'+labAzEsc(t[4])+'">'+labAzEsc(t[4])+'</div>':'')+'</div>').join('')+'</div>'+
+    (stamps.length?'<div class="lab-azm-foot">'+labAzEsc(stamps.join(' · '))+'</div>':'');
+}
+function labAzModelsFill(){ const el=document.getElementById('lab-az-models'); if(!el)return; try{ el.innerHTML=labAzModelsInner(el.getAttribute('data-sym')); }catch(e){} }
+function labAzModels(sym){
+  try{
+    if(window.__APEX_TGT===undefined){ window.__APEX_TGT=null; fetch('../data/apex-targets.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.targets&&typeof j.targets==='object'){ window.__APEX_TGT=j; try{ renderApexCard(window.__SNAP); }catch(_){} } }).catch(()=>{}).finally(()=>{ window.__LAB_TGT_DONE=1; labAzModelsFill(); }); }
+    else if(window.__APEX_TGT===null&&!window.__LAB_TGT_DONE){ let n=0; const iv=setInterval(()=>{ if(window.__APEX_TGT||++n>20){ clearInterval(iv); window.__LAB_TGT_DONE=1; labAzModelsFill(); } },500); }
+    if(window.__APEX_PAPER===undefined){ try{ apexPaperLoad(); }catch(_){} let n=0; const iv=setInterval(()=>{ if(window.__APEX_PAPER!==undefined||++n>34){ clearInterval(iv); labAzModelsFill(); } },500); }
+    return '<div class="card lab-az-models" id="lab-az-models" data-sym="'+labAzEsc(sym)+'" aria-label="Where '+labAzEsc(sym)+' stands in my models">'+labAzModelsInner(sym)+'</div>';
+  }catch(e){ return ''; }
+}
 function runAnalysis(sym){
   _azLast=sym;
   const el=document.getElementById('az-result'); const inp=document.getElementById('az-ticker'); if(inp)inp.value=sym;
@@ -8033,6 +8096,7 @@ function runAnalysis(sym){
       /* lab2: the Setup gauge rides in the header (was a full card of its own lower down) */
       '<div class="lab-az-setup"><div class="az-gauge lab-az-g" role="img" aria-label="Setup score '+a.setup+' out of 100 — '+setupTxt+'" style="background:conic-gradient('+sc+' '+(a.setup*3.6)+'deg, var(--surface-2) 0)"><div class="az-gauge-in"><div style="font-size:17px;font-weight:800;color:'+sc+'">'+a.setup+'</div></div></div><div><div class="lab-az-setup-l">Setup</div><div class="lab-az-setup-t" style="color:'+sc+'">'+setupTxt+'</div></div></div>'+
       '<div class="lab-az-px" style="text-align:right"><div style="font-size:20px;font-weight:800">$'+a.price+'</div>'+(a.dayChg!=null?'<div style="font-size:13px;font-weight:600;color:'+dC+'"><span aria-hidden="true">'+(a.dayChg>=0?'▲':'▼')+'</span> '+(a.dayChg>=0?'+':'')+a.dayChg.toFixed(2)+'% today</div>':'')+'</div></div></div>'+
+    labAzModels(a.sym)+
     // 🔭 Chart read — small, subtle verdict pill above the Recommendation (v87). Full detail + the interactive
     // chart live in the analyzer modal (tap 📊 Chart). Keeps the "chart pattern verdict" help popup via data-help.
     (a.hasTA?(function(){ const v=azChartVerdict(a.sym), cmp=azVerdictVsAnalyze(v,a.tone), dirl=(v.dir==='bullish'||v.dir==='bearish');
@@ -9037,19 +9101,37 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=lab2"></script>
-<script src="ui/today.js?v=lab2"></script>
-<script src="ui/predictions-model.js?v=lab2"></script>
-<script src="ui/predictions.js?v=lab2"></script>
-<script src="ui/smartmoney-model.js?v=lab2"></script>
-<script src="ui/smartmoney.js?v=lab2"></script>
-<script src="ui/experience.js?v=lab2"></script>
-<script src="ui/ticker.js?v=lab2"></script>
-<script src="ui/duo.js?v=lab2"></script>
-<script src="ui/compact.js?v=lab2"></script>
-<script src="ui/journey.js?v=lab2"></script>
-<script src="ui/book.js?v=lab2"></script>
+<script src="ui/today-model.js?v=lab3"></script>
+<script src="ui/today.js?v=lab3"></script>
+<script src="ui/predictions-model.js?v=lab3"></script>
+<script src="ui/predictions.js?v=lab3"></script>
+<script src="ui/smartmoney-model.js?v=lab3"></script>
+<script src="ui/smartmoney.js?v=lab3"></script>
+<script src="ui/experience.js?v=lab3"></script>
+<script src="ui/ticker.js?v=lab3"></script>
+<script src="ui/duo.js?v=lab3"></script>
+<script src="ui/compact.js?v=lab3"></script>
+<script src="ui/journey.js?v=lab3"></script>
+<script src="ui/book.js?v=lab3"></script>
 <style id="lab-css">
+/* lab3 — Analyze: "My models" strip (where this ticker stands in Apex, Agentic and the v2.9 paper track) */
+.card.lab-az-models{padding:10px 12px}
+.lab-azm-grid{display:grid;grid-template-columns:1fr;gap:6px}
+.lab-azm{min-width:0;padding:7px 10px;border-left:4px solid #9ca3af;border-radius:8px;background:var(--surface-2);display:grid;grid-template-columns:92px minmax(0,1fr);gap:0 8px;align-items:baseline}
+.lab-azm-top{display:flex;flex-direction:column;gap:3px;grid-row:1 / span 2;align-self:start}
+.lab-azm-n{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af}
+.lab-azm-n i{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;opacity:.85;display:block}
+.lab-azm-held{align-self:flex-start;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;border:1px solid currentColor;color:#9ca3af}
+.lab-azm-st{font-size:14px;font-weight:800;line-height:1.2;overflow-wrap:anywhere}
+.lab-azm-why{font-size:11px;color:#9ca3af;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.lab-azm-foot{font-size:10px;color:#9ca3af;margin-top:6px;line-height:1.3}
+@media (min-width:740px){
+  .lab-azm-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .lab-azm{display:block;padding:9px 12px}
+  .lab-azm-top{flex-direction:row;align-items:center;justify-content:space-between;margin-bottom:3px;min-height:18px}
+  .lab-azm-n i{display:inline}
+}
+@media (min-width:1101px){ html:not([data-duo-split="on"]) #az-result>.card.lab-az-models{column-span:all} }
 /* lab2 — Analyze: verdict on the first screen (layout only; no number, rule or data changes) */
 .lab-az-headrow{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"id px" "setup setup";gap:8px 12px;align-items:start}
 .lab-az-id{grid-area:id;min-width:0}.lab-az-px{grid-area:px;white-space:nowrap}
@@ -9099,6 +9181,6 @@ load();
 #lab-ribbon-wrap{position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483000;display:flex;gap:6px;align-items:center;pointer-events:none;font:700 10px/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 #lab-ribbon-wrap a{pointer-events:auto;padding:5px 8px;border-radius:999px;background:#fff;color:#b45309;border:1px solid #b45309;text-decoration:none}
 </style>
-<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="2" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab2</div></div>
+<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="3" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab3</div></div>
 </body>
 </html>
