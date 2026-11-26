@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=lab3"></script>
-<script src="ui/experience-model.js?v=lab3"></script>
+<script src="ui/theme.js?v=lab4"></script>
+<script src="ui/experience-model.js?v=lab4"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -746,15 +746,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=lab3">
-<link rel="stylesheet" href="ui/journey.css?v=lab3">
-<link rel="stylesheet" href="ui/predictions.css?v=lab3">
-<link rel="stylesheet" href="ui/apex-paper.css?v=lab3">
-<link rel="stylesheet" href="ui/smartmoney.css?v=lab3">
-<link rel="stylesheet" href="ui/ticker.css?v=lab3">
-<link rel="stylesheet" href="ui/today.css?v=lab3">
-<link rel="stylesheet" href="ui/book.css?v=lab3">
-<link rel="stylesheet" href="ui/duo.css?v=lab3">
+<link rel="stylesheet" href="ui/experience.css?v=lab4">
+<link rel="stylesheet" href="ui/journey.css?v=lab4">
+<link rel="stylesheet" href="ui/predictions.css?v=lab4">
+<link rel="stylesheet" href="ui/apex-paper.css?v=lab4">
+<link rel="stylesheet" href="ui/smartmoney.css?v=lab4">
+<link rel="stylesheet" href="ui/ticker.css?v=lab4">
+<link rel="stylesheet" href="ui/today.css?v=lab4">
+<link rel="stylesheet" href="ui/book.css?v=lab4">
+<link rel="stylesheet" href="ui/duo.css?v=lab4">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -824,10 +824,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=lab3"></script>
-<script src="ui/apex.js?v=lab3"></script>
-<script src="ui/business.js?v=lab3"></script>
-<script src="ui/apex-paper.js?v=lab3"></script>
+<script src="ui/sd-rules.js?v=lab4"></script>
+<script src="ui/apex.js?v=lab4"></script>
+<script src="ui/business.js?v=lab4"></script>
+<script src="ui/apex-paper.js?v=lab4"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -9101,19 +9101,23 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=lab3"></script>
-<script src="ui/today.js?v=lab3"></script>
-<script src="ui/predictions-model.js?v=lab3"></script>
-<script src="ui/predictions.js?v=lab3"></script>
-<script src="ui/smartmoney-model.js?v=lab3"></script>
-<script src="ui/smartmoney.js?v=lab3"></script>
-<script src="ui/experience.js?v=lab3"></script>
-<script src="ui/ticker.js?v=lab3"></script>
-<script src="ui/duo.js?v=lab3"></script>
-<script src="ui/compact.js?v=lab3"></script>
-<script src="ui/journey.js?v=lab3"></script>
-<script src="ui/book.js?v=lab3"></script>
+<script src="ui/today-model.js?v=lab4"></script>
+<script src="ui/today.js?v=lab4"></script>
+<script src="ui/predictions-model.js?v=lab4"></script>
+<script src="ui/predictions.js?v=lab4"></script>
+<script src="ui/smartmoney-model.js?v=lab4"></script>
+<script src="ui/smartmoney.js?v=lab4"></script>
+<script src="ui/experience.js?v=lab4"></script>
+<script src="ui/ticker.js?v=lab4"></script>
+<script src="ui/duo.js?v=lab4"></script>
+<script src="ui/compact.js?v=lab4"></script>
+<script src="ui/journey.js?v=lab4"></script>
+<script src="ui/book.js?v=lab4"></script>
 <style id="lab-css">
+/* lab4 — Analyze: the section chips and Expand/Collapse all share ONE row (was two). Layout only: same chips, same button. */
+#page-analyze>.card-nav:has(+ .pf-foldbar){padding:0 116px 8px 0;margin:0}
+#page-analyze>.card-nav + .pf-foldbar{position:relative;height:0;margin:0;overflow:visible;z-index:2}
+#page-analyze>.card-nav + .pf-foldbar .pf-foldall{position:absolute;right:0;bottom:10px;min-height:36px;padding:0 12px;font-size:12px}
 /* lab3 — Analyze: "My models" strip (where this ticker stands in Apex, Agentic and the v2.9 paper track) */
 .card.lab-az-models{padding:10px 12px}
 .lab-azm-grid{display:grid;grid-template-columns:1fr;gap:6px}
@@ -9181,6 +9185,6 @@ load();
 #lab-ribbon-wrap{position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483000;display:flex;gap:6px;align-items:center;pointer-events:none;font:700 10px/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 #lab-ribbon-wrap a{pointer-events:auto;padding:5px 8px;border-radius:999px;background:#fff;color:#b45309;border:1px solid #b45309;text-decoration:none}
 </style>
-<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="3" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab3</div></div>
+<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="4" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab4</div></div>
 </body>
 </html>

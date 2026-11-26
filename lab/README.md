@@ -42,14 +42,15 @@ until Jack approves one batch (target: Sunday 2026-11-29).
 
 ## Order of work (Claude's pick; update as it moves)
 1. Analyze — the research core (why a pick made it, levels, news, model verdicts in one place).
-   IN PROGRESS: layout pass (lab2) and model verdicts + why-it-made-it strip (lab3) done; next: trim the
-   jump-chips / Collapse-all rows, then move to Today. Congress line lands with item 4.
-2. Today — models vs SPY at a glance + what to do today; first screen answers both.
+   DONE for this pass (lab2 layout, lab3 model verdicts + why-it-made-it strip, lab4 one-row chips).
+   The Congress line lands with item 4.
+2. Today — models vs SPY at a glance + what to do today; first screen answers both. NEXT.
 3. Apex and Agentic — decision view, no Robinhood duplication; Book and PC use the width.
 4. Cut Predict and the Smart $ page; fold what is worth keeping into Analyze.
 5. Navigation pass, then a full three-screen sweep and the Sunday batch summary.
 
 ## Changelog (newest first; one line per run)
+- lab4 · 2026-11-26 · Section chips and Collapse all share one row; verdict sits about 54px higher (Analyze). Nothing cut: same chips, same button, CSS only. Analyze pass is done; next run starts Today.
 - lab3 · 2026-11-25 · "My models" strip: Apex, Agentic and paper verdict for the stock, with reason (Analyze). Nothing cut. Reads files the app already loads (apex-targets, agentic target, paper file); shows status + the research reason, no prices. Insiders already show in the Flow read line; the Congress half of that line waits for the Smart $ cut (item 4). Left for Analyze: jump-chips and Collapse-all still take two rows.
 - lab2 · 2026-11-25 · Verdict, setup score and price on first screen; PC two columns; less chrome (Analyze). Nothing cut: the big Setup gauge moved into the header, stale-data text folded behind one line, phone hides the "Top holdings" label (chips stay). Left for Analyze: model verdicts (Apex / Agentic / paper) and the insiders/Congress line per stock; jump-chips and Collapse-all still take two rows.
 - lab1 · 2026-11-25 · Practice copy created from v267; identical to the real app plus the ribbon.
