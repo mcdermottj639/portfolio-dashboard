@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=lab6"></script>
-<script src="ui/experience-model.js?v=lab6"></script>
+<script src="ui/theme.js?v=lab7"></script>
+<script src="ui/experience-model.js?v=lab7"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -750,15 +750,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=lab6">
-<link rel="stylesheet" href="ui/journey.css?v=lab6">
-<link rel="stylesheet" href="ui/predictions.css?v=lab6">
-<link rel="stylesheet" href="ui/apex-paper.css?v=lab6">
-<link rel="stylesheet" href="ui/smartmoney.css?v=lab6">
-<link rel="stylesheet" href="ui/ticker.css?v=lab6">
-<link rel="stylesheet" href="ui/today.css?v=lab6">
-<link rel="stylesheet" href="ui/book.css?v=lab6">
-<link rel="stylesheet" href="ui/duo.css?v=lab6">
+<link rel="stylesheet" href="ui/experience.css?v=lab7">
+<link rel="stylesheet" href="ui/journey.css?v=lab7">
+<link rel="stylesheet" href="ui/predictions.css?v=lab7">
+<link rel="stylesheet" href="ui/apex-paper.css?v=lab7">
+<link rel="stylesheet" href="ui/smartmoney.css?v=lab7">
+<link rel="stylesheet" href="ui/ticker.css?v=lab7">
+<link rel="stylesheet" href="ui/today.css?v=lab7">
+<link rel="stylesheet" href="ui/book.css?v=lab7">
+<link rel="stylesheet" href="ui/duo.css?v=lab7">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -828,10 +828,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=lab6"></script>
-<script src="ui/apex.js?v=lab6"></script>
-<script src="ui/business.js?v=lab6"></script>
-<script src="ui/apex-paper.js?v=lab6"></script>
+<script src="ui/sd-rules.js?v=lab7"></script>
+<script src="ui/apex.js?v=lab7"></script>
+<script src="ui/business.js?v=lab7"></script>
+<script src="ui/apex-paper.js?v=lab7"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -9143,18 +9143,18 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=lab6"></script>
-<script src="ui/today.js?v=lab6"></script>
-<script src="ui/predictions-model.js?v=lab6"></script>
-<script src="ui/predictions.js?v=lab6"></script>
-<script src="ui/smartmoney-model.js?v=lab6"></script>
-<script src="ui/smartmoney.js?v=lab6"></script>
-<script src="ui/experience.js?v=lab6"></script>
-<script src="ui/ticker.js?v=lab6"></script>
-<script src="ui/duo.js?v=lab6"></script>
-<script src="ui/compact.js?v=lab6"></script>
-<script src="ui/journey.js?v=lab6"></script>
-<script src="ui/book.js?v=lab6"></script>
+<script src="ui/today-model.js?v=lab7"></script>
+<script src="ui/today.js?v=lab7"></script>
+<script src="ui/predictions-model.js?v=lab7"></script>
+<script src="ui/predictions.js?v=lab7"></script>
+<script src="ui/smartmoney-model.js?v=lab7"></script>
+<script src="ui/smartmoney.js?v=lab7"></script>
+<script src="ui/experience.js?v=lab7"></script>
+<script src="ui/ticker.js?v=lab7"></script>
+<script src="ui/duo.js?v=lab7"></script>
+<script src="ui/compact.js?v=lab7"></script>
+<script src="ui/journey.js?v=lab7"></script>
+<script src="ui/book.js?v=lab7"></script>
 <style id="lab-css">
 /* lab6 — Today: each proposed order is one compact block (name + limit + R/R on one row, levels on one row). Layout only. */
 #page-ex-today .td-shell .td-trade-row.lab-td-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;padding:8px 0 2px}
@@ -9233,7 +9233,55 @@ load();
 }
 #lab-ribbon-wrap{position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483000;display:flex;gap:6px;align-items:center;pointer-events:none;font:700 10px/1 system-ui,-apple-system,sans-serif;letter-spacing:.06em}
 #lab-ribbon-wrap a{pointer-events:auto;padding:5px 8px;border-radius:999px;background:#fff;color:#b45309;border:1px solid #b45309;text-decoration:none}
+/* lab7 Today: slim hero (one line + one row per account) and the Scoreboard as a tile strip on the first screen. Layout only. */
+#page-ex-today .td-shell .td-layout .td-hero.ex-brief-hero{padding:10px 14px;container-type:inline-size}
+#page-ex-today .td-shell .td-layout .td-hero .td-eyebrow{font-size:10.5px;line-height:1.3}
+#page-ex-today .td-shell .td-layout .td-hero-line{align-items:center;flex-wrap:nowrap;gap:8px 12px;margin:2px 0 8px}
+#page-ex-today .td-shell .td-layout #ex-combined-equity{font-size:clamp(24px,6.6vw,30px)}
+#page-ex-today .td-shell .td-layout .td-hero-change{text-align:right;padding:0;font-size:10.5px;line-height:1.3}
+#page-ex-today .td-shell .td-layout #ex-combined-move{font-size:16px;margin:0}
+#page-ex-today .td-shell .td-layout .td-account-grid{grid-template-columns:minmax(0,1fr);gap:0!important;padding-top:2px!important}
+#page-ex-today .td-shell .td-layout .td-account{display:flex;align-items:center;gap:0 8px;min-height:32px;container-type:normal}
+#page-ex-today .td-shell .td-layout .td-account + .td-account{padding-left:0!important;border-left:0;border-top:1px solid var(--td-rule)}
+#page-ex-today .td-shell .td-layout .td-account-head{flex:0 1 auto;margin:0;order:1}
+#page-ex-today .td-shell .td-layout .td-account-head .td-link{min-height:32px!important;margin:0;padding-block:0;position:relative}
+#page-ex-today .td-shell .td-layout .td-account-head .td-link::after{content:"";position:absolute;inset:-5px 0}
+#page-ex-today .td-shell .td-layout .td-account .td-account-meta{margin:0;flex-wrap:nowrap;white-space:nowrap;order:4;min-width:62px;justify-content:flex-end;font-size:12px}
+#page-ex-today .td-shell .td-layout .td-account .td-account-meta.lab-lev{order:2;min-width:0;justify-content:flex-start;font-size:11px;gap:3px}
+#page-ex-today .td-shell .td-layout .td-account .td-account-meta:not(.lab-lev) span:last-child{display:none}
+#page-ex-today .td-shell .td-layout .td-account .td-account-value{order:3;margin-left:auto;font-size:16px!important;line-height:1.2}
+#page-ex-today .td-shell .td-layout .td-account-head,#page-ex-today .td-shell .td-layout .td-account-head .td-link{white-space:nowrap;flex-wrap:nowrap}
+@container (min-width:560px){
+  #page-ex-today .td-shell .td-layout .td-hero.ex-brief-hero>.td-eyebrow{float:left;width:42%}
+  #page-ex-today .td-shell .td-layout .td-hero-line{float:left;clear:left;width:42%;margin:2px 0 0;flex-wrap:wrap;justify-content:flex-start}
+  #page-ex-today .td-shell .td-layout .td-hero-change{text-align:left}
+  #page-ex-today .td-shell .td-layout .td-account-grid{margin-left:46%;padding:0 0 0 16px!important;border-top:0;border-left:1px solid var(--td-rule)}
+  #page-ex-today .td-shell .td-layout .td-hero.ex-brief-hero::after{content:"";display:block;clear:both}
+}
+#page-ex-today .td-shell .td-layout .td-score{container-type:inline-size}
+#page-ex-today .td-shell .td-layout .td-score.td-panel{padding-block:12px}
+#page-ex-today .td-shell .td-score .td-section-head{margin-bottom:0}
+#page-ex-today .td-shell .td-score .td-section-head h2{font-size:16px}
+#page-ex-today .td-shell .td-score .td-sb-line{margin:0 0 8px;font-size:11.5px}
+#page-ex-today .td-shell .td-score .td-sb-rows{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+@container (min-width:560px){#page-ex-today .td-shell .td-score .td-sb-rows{grid-template-columns:repeat(4,minmax(0,1fr))}}
+#page-ex-today .td-shell .td-score .td-sb-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name val" "bar bar" "sub sub";align-items:baseline;gap:3px 6px;min-height:0;border-top:0}
+#page-ex-today .td-shell .td-score .td-sb-name{display:contents}
+#page-ex-today .td-shell .td-score .td-sb-name strong{grid-area:name;font-size:12.5px;letter-spacing:-.015em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-ex-today .td-shell .td-score .td-sb-name span{grid-area:sub;font-size:10.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-ex-today .td-shell .td-score .td-sb-bar{grid-area:bar;height:14px;border-radius:4px}
+#page-ex-today .td-shell .td-score .td-sb-fill{top:3px;bottom:3px}
+#page-ex-today .td-shell .td-score .td-sb-bar em{font-size:10px;line-height:14px}
+#page-ex-today .td-shell .td-score .td-sb-val{grid-area:val;font-size:14px;line-height:1.25}
+#page-ex-today .td-shell .td-score .td-sb-chips{margin-top:10px}
+#page-ex-today .td-shell .td-score .td-sb-chip{min-height:32px;border-radius:10px;position:relative}
+#page-ex-today .td-shell .td-score .td-sb-chip::after{content:"";position:absolute;inset:-6px 0}
+#page-ex-today .td-shell .td-score .td-sb-note{margin-top:4px}
+#page-ex-today .td-shell .td-score .td-sb-note summary{min-height:28px;display:flex;align-items:center}
+@media (max-width:559px),(max-width:739px) and (min-height:521px){
+  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero" "score" "waiting" "monitor" "holdings" "links" "market"}
+}
 </style>
-<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="6" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab6</div></div>
+<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="7" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab7</div></div>
 </body>
 </html>
