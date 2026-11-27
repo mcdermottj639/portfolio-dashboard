@@ -7,14 +7,15 @@ Findings only. Nothing here changes a scheduled task, a prompt, a rule or a mode
 seen, the evidence (task name, date, file), what it costs or risks, and a proposed fix for Jack to approve.
 Newest first.
 
-## Top fixes for Jack (ranked; at most 7; nothing is done until you say so)
-1. "Apex v2.9 paper track · 0741": keep Monday as is; run Tue–Fri on Sonnet (the scoring is all in code). Saves about 4 long Fable runs a week (Nov 25 run: 23 minutes).
-2. "Operations HQ site refresh": Fable → Sonnet. It only runs three scripts and pushes. Saves 7 Fable runs a week.
-3. "Apex paper run watchdog": read the published paper file's date (one small request) instead of paging the whole task list. Same alarm, about 5 heavy task-list reads a week saved.
-4. "Apex morning order ticket line": retire it and put the ticket link in the "Apex buy sheet" message. Saves 5 runs a week and one daily ping that says the same thing on days with no buy.
-5. "Daily relay" Monday task check: stop paging every task; check the four named tasks from public evidence (file dates) or stop at the first page that holds them.
-6. Still the largest load and NOT yet audited: "Portfolio dashboard refresh" (9 runs a weekday) and "Agentic executor" (7 a weekday). Next audit run starts there.
-7. All 12 tasks read so far attach every connector (Canva, Figma, Supabase, Slides, …). Attach only what each task uses: smaller tool list every run, and a read-only watchdog no longer carries Robinhood.
+## Top fixes for Jack — FINAL (2026-11-27; ranked; at most 7; nothing is done until you say so)
+Fixes 1–3 of the Nov 26 list are done and fix 4 is half done (next section). What is left, in order:
+1. "Apex morning scan · 0741": the heaviest task read in either audit (55,000-character prompt, Opus, every weekday) and the only investing task still switched on this week (next run Fri Nov 27 7:12 AM ET). Research is Monday only, so split it like the paper track: Monday on Opus, Tue–Fri on Sonnet. Saves 4 Opus runs a week.
+2. "Portfolio dashboard refresh" (9 runs a weekday) and "Agentic executor" (7 a weekday): about 80 runs a week and NEVER REACHED by either audit (the task list is newest first and both runs hit their page limit). One Claude chat should read just these two prompts before Monday; nothing else on this list is as large.
+3. "Claude OS · eBay bookkeeper": 9.5 minutes a night (Nov 25) reading two long docs before it knows whether anything is new. Do the Gmail search and a doc-changed check first and stop when nothing is new, as "Card Vault offer relay" does in 19 seconds. Saves most of 7 runs a week; this is the task that hit the usage limit on Nov 24.
+4. "Claudex compaction (weekly)": Opus → Sonnet. The script in its prompt decides what moves; the model only runs it. Saves one 11-minute Opus run a week.
+5. "Claude OS · App fixer": daily → Mon/Wed/Fri, and attach only the repo it is about to fix instead of all seven every run. Saves 4 runs a week and 6 tool calls on the rest.
+6. Connectors (carried over): every cloud task read attaches all 13 connectors. The eBay bookkeeper and the compaction carry Robinhood; the scan carries Canva, Figma and Supabase. Only Jack can trim them in each task's settings.
+7. Small, carried over: "Daily relay" Monday task-list paging; say "retire the Apex ticket line" in the Duet chat; when the Predict page is cut, switch off the 15-minute prediction workflow that feeds it.
 
 ## Done 2026-11-26 9:35 AM ET (Jack: "All. Just make the changes") — scheduled tasks changed by a Claude chat
 - Fix 1 DONE: "Apex v2.9 paper track · 0741" now runs Mondays only (Fable, prompt untouched). New task
@@ -31,18 +32,99 @@ Newest first.
 - Fixes 5–7 not done (not in the message Jack answered): Daily relay Monday check, the hourly jobs audit,
   connector trimming (connectors cannot be edited with the task tools).
 
-## Covered so far
+## Covered so far (audits are finished; kept as the record)
+- 2026-11-27 (7 tasks, 4 more task-list pages from the Nov 26 resume point): Claudex compaction (weekly) ·
+  Apex morning scan · 0741 · Design upgrades (every 2 weeks) · Morning brief · Heartbeat ·
+  Claude OS · App fixer · Claude OS · eBay bookkeeper.
 - 2026-11-26 (12 tasks, task-list pages 1–3): Portfolio LAB · deep review (Thanksgiving) · Apex paper run watchdog ·
   Apex morning order ticket line · Operations HQ site refresh · League History Lab · daily polish ·
   Apex v2.9 paper track · 0741 · Apex targets copy · Mondays · Sunday game day relay · Daily relay ·
   Apex buy sheet · 0741 · Card Vault offer relay.
-- NOT yet covered (named in the seed list or in other prompts): Portfolio dashboard refresh, Agentic executor,
-  Agentic weekly research refresh, Apex morning scan · 0741, Market update, Morning brief, Claudex sync,
-  weekly Claudex compaction, Claude OS · eBay bookkeeper, Claude OS · Sports Hub model watch / game day, App fixer,
-  and anything else on later pages.
-- Resume point for the next audit run (saves re-reading the 12 above): call the task list with
-  cursor `MTc5NDM2ODk2NDQwMDI1MjAwMHxiZDRiNDc2MS04ODBkLTQ4ZjYtYjE4Ny1mNWFkNGI3MjcwYTY=`
-  (pages run newest-created first; if the cursor is refused, start from page 1 and skip the names above).
+- NEVER REACHED (the list still had more pages when the final run hit its 4-page limit): Portfolio dashboard
+  refresh, Agentic executor, Agentic weekly research refresh, Market update, Claudex sync, Claude OS · Sports Hub
+  model watch / game day / weekly review, App health check, Links improver, and anything older.
+- If a Claude chat picks this up: the list continues from cursor
+  `MTc5MzU2MDE2NDk3ODE2OTAwMHwzODZiNjMzNi0yYmE1LTRmNmQtOTQ1Mi1iYTJjMWRkNjBmOGU=` (recurring tasks, newest
+  created first; this point is tasks created before Nov 1 7:09 PM UTC). Pages hold 1 to 4 tasks each.
+
+## 2026-11-27 5:47 AM ET audit run — FINAL (task list read this run; nothing changed)
+How the list behaved: 4 pages gave 1, 1, 4 and 1 tasks. A page ends as soon as it is "too large", and one
+long prompt fills a page. Only the 59 KB page was saved to a file; the other three arrived in the conversation.
+No `add_repo` tool again this run (tool search found nothing); the repo was already cloned.
+
+Investing and portfolio tasks:
+- **Apex morning scan · 0741** — Opus, weekdays 7:12 AM, ENABLED (settings last changed Nov 26 12:35 PM ET;
+  next run Fri Nov 27 7:12 AM ET). The list shows no last-run record for it. Prompt: 55,232 characters, the
+  longest read in either audit, built from rule layers v2.4 to v2.8.2 that each say "this overrides anything
+  below that conflicts"; "Jarvis" appears 10 times.
+  What it does: reads the ••0741 portfolio, positions, orders and quotes; on research days picks the targets and
+  saves them to Task storage `os/apex-targets`; writes its tickets as alert cards and sends one push summary.
+  The prompt itself says the cards are "now only YOUR OWN ticket ledger" since the page was retired.
+  Three things to weigh:
+  (1) It is the one investing task left on while the paper track, buy sheet, watchdog, relay and ticket line are
+  paused until Mon Nov 30. Whether that is on purpose is UNVERIFIED (the Nov 26 note in this file says the
+  others were paused; it does not name the scan).
+  (2) Its research step runs "every MONDAY, and on any weekday when" the stored targets carry a rules version
+  other than v2.8.2. The file on main reads v2.8.1 (asOf 2026-11-23 07:13 ET). If Task storage still reads
+  v2.8.1 too (UNVERIFIED: storage was not read), the next weekday run does the full research once, on Opus,
+  and the dashboard would not get it before Monday anyway ("Apex targets copy" runs Mondays only).
+  (3) Model vs rule: Monday research on Opus is defensible. Tue–Fri is order bookkeeping with every number
+  "computed in python"; that is the same shape as the paper track, which Jack already moved to Sonnet for Tue–Fri.
+  Proposed: top fix 1, with the same one-week Sonnet trial. Second step, later: collapse the override layers into
+  one current rule text (a rewrite Jack should read, since it is his rules; it would roughly halve the prompt).
+  Docs drift (no usage cost): the prompt is on rules v2.8.2 (wide-net scan, Nov 25); CLAUDE.md §3 and
+  `data/apex-targets.json` still say v2.8 / v2.8.1 until the Monday Nov 30 copy. `scripts/validate-data.py`
+  does not pin the version, so the copy should not be rejected for it. NOT proven until Monday.
+- **Morning brief** — no model set, daily 8:37 AM ET, ENABLED, last run Nov 26 (2 minutes, succeeded). This is
+  Claude's built-in brief (three-line prompt, created outside the task tools), not a Jarvis agent. It settles
+  the open question from Nov 26: a Morning brief IS running. The "switched off Nov 14" line in the Daily relay
+  prompt is about something else or is stale; the App fixer prompt also still lists "Morning brief" and
+  "Market update" as watching agents.
+- **Heartbeat** — no model set, 8:07 AM, 11:07 AM, 2:07 PM and 5:07 PM ET daily, ENABLED, last run Nov 26
+  (20 seconds). Built-in check-ins on mail and calendar. Small each, but 28 runs a week plus 7 briefs, and they
+  did not stop for the break. Proposed: nothing unless Jack does not read them; then he can switch them off in
+  Claude's settings (a Claude chat cannot edit tasks made this way).
+
+Other tasks on these pages:
+- **Claudex compaction (weekly)** — Opus, Sundays 3:41 AM, paused. Last run Nov 22, 11 minutes, succeeded.
+  The prompt carries a complete python script that decides which entries move; the model reads each doc, runs
+  the script, appends to the archive, checks, trims. Model vs rule: no need for Opus. Proposed: top fix 4.
+  It attaches Robinhood, Supabase, Canva and Figma and uses none of them.
+- **Claude OS · eBay bookkeeper** — Sonnet, daily 8:17 PM, paused Nov 25 10:58 PM ET. Last run Nov 25,
+  9.5 minutes, succeeded (what it booked was not checked). Every run reads the coordination doc and the long
+  Ebay handoff, then Gmail, then the storage ledger, before it can tell that nothing is new. Its own board note
+  still says "8:17 AM + 8:17 PM"; it runs once a day now. Alert cards are part of its route (PR held, cost
+  question) and reach Jack only through the Daily relay. Proposed: top fix 3. Model fits the rule.
+- **Claude OS · App fixer** — Sonnet, daily 6:07 AM, paused. Last run Nov 25, 71 seconds, succeeded. Its prompt
+  records that every run from Nov 18 to Nov 25 stopped on a GitHub 403 and built nothing (8 dead runs, "succeeded"
+  each time: a run status is not proof of work). The Nov 25 repair makes it attach all seven repos before
+  anything else, every run, bug or no bug. This run and yesterday's found no `add_repo` tool at all; the repair
+  names "refused or errored" but not "tool not found", so the next run may stall the same way. UNVERIFIED until
+  it runs. Its whole reporting route is alert cards plus the board; nothing messages Jack except the Daily relay.
+  Overlap: its "approved enhancement" step, "Design upgrades" and the two labs all build UI changes for the
+  same apps. Proposed: top fix 5, and tell it to stop quietly when `add_repo` is missing but the repo is
+  already attached.
+- **Design upgrades (every 2 weeks)** — no model set, fires every Sunday 6:47 PM into a standing chat and ends
+  at once on even weeks. ENABLED. Sun Nov 29 is week 48 (even), so it does nothing; next real run Dec 6. The
+  Nov 22 fire shows 2 minutes, which only records that the chat was woken, not the work done. It still lists
+  Portfolio as "driven by Claude": on Dec 6 it would mock up and open a PR against the real app's screens while
+  the lab batch may be replacing them. Proposed: take Portfolio out of its list until the lab batch is shipped
+  or dropped. No usage saving; it avoids throwaway work.
+
+Dashboard and data, where tasks and pages do not line up:
+- A GitHub workflow (not a Claude task, no Claude usage) refreshes the prediction-market snapshot every
+  15 minutes and commits when it changes: 10 of the last 50 commits on main since Nov 23. Jack has said
+  prediction markets "can all be removed" and the lab cuts the Predict page (Order of work item 4). Until the
+  workflow is switched off it keeps feeding a page that is going away, and every commit moves main under any
+  task that has a pull request open. Proposed: switch it off in the same batch that ships the cut.
+- Data pull request #263 "add six business report cards for November 23" has been open and untouched since
+  Nov 23 8:49 AM ET. The Business check on the dashboard is showing older cards than the research that exists.
+  Which task opened it and why nothing merged it was not traced. Proposed: a Claude chat checks its two
+  required checks and merges or closes it.
+- Task storage copies with no page: `os/apex-targets` (read by the buy sheet and the copy task), the wide-net
+  record inside it (new in v2.8.2; the dashboard file has no `wideNet` field yet), and the alert cards. All
+  feed other tasks, not a screen. Nothing to cut today; the wide-net line is a candidate for the lab's
+  "why a pick made it" view once the Monday copy carries it.
 
 ## 2026-11-26 5:47 AM ET audit run — findings (task list read this run; nothing changed)
 How the task list behaves (matters for every task that reads it):
