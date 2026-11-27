@@ -54,7 +54,9 @@
       const parts = /^(Buy|Add|Sell) (\d[\d,.]*)( .+)$/.exec(line.text);
       return parts ? esc(parts[1]) + ' <span data-priv="val">' + esc(parts[2]) + '</span>' + esc(parts[3]) : '<span data-priv="val">' + esc(line.text) + '</span>';
     };
-    const rows = lines.map(line => '<div class="td-trade-row" data-td-trade="' + esc(line.sym) + '"><strong>' + label(line) + '</strong><span class="td-price">' + esc(line.px || 'Price unavailable') + '</span><p class="td-muted">' + esc(line.sub || '') + '</p></div>' + rail(line, book)).join('');
+    // lab6: one compact block per order. The R/R chip repeats the figure already inside line.sub (display only); the sub line shows on one row and opens on tap.
+    const rr = line => { const m = /R\/R\s*([\d.]+)/.exec(line.sub || ''); return m ? '<span class="lab-td-rr">R/R ' + esc(m[1]) + '</span>' : ''; };
+    const rows = lines.map(line => '<div class="td-trade-row lab-td-row" data-td-trade="' + esc(line.sym) + '"><strong>' + label(line) + '</strong><span class="td-price">' + esc(line.px || 'Price unavailable') + '</span>' + rr(line) + '<p class="td-muted" data-lab-sub title="Tap to show the full line">' + esc(line.sub || '') + '</p></div>' + rail(line, book)).join('');
     const priceNote = book.fresh
       ? 'Quotes ' + age(state.options.data?.generatedAt) + '. Claude re-checks every line live.'
       : 'Reprice required · these are estimates from ' + age(state.options.data?.generatedAt) + ' quotes, not current order prices.';
@@ -236,6 +238,7 @@
     html += '<section class="td-market td-panel" data-priv="off"><div class="td-section-head"><h2>Market backdrop</h2>' + jump('markets','Explore') + '</div><div class="ex-market-grid">' + brief.markets.map(m => '<div><span>' + esc(names[m.symbol]) + ' <small>' + m.symbol + '</small></span><strong class="td-' + tone(m.change) + '">' + esc(pct(m.change)) + '</strong></div>').join('') + '</div><p class="td-muted" style="margin-top:12px">VIX ' + esc(brief.vix.value === null ? 'Unavailable' : brief.vix.value.toFixed(1)) + ' · captured quotes vs. previous close. Published ' + esc(date(brief.generatedAt)) + '.</p></section></div><dialog id="td-holding-sheet" class="td-sheet" aria-labelledby="td-sheet-title" data-priv="on"></dialog></div>';
     host.innerHTML = html;
     bind(host);
+    host.querySelectorAll('[data-lab-sub]').forEach(el => el.addEventListener('click', () => el.classList.toggle('lab-open')));
     host.querySelectorAll('details[data-td-details]').forEach(d => { d.open = opened.includes(d.dataset.tdDetails); });
     window.__privScan?.();
     if (selected && state.rows.some(p => p.symbol === selected)) openSheet(selected);

@@ -44,12 +44,14 @@ until Jack approves one batch (target: Sunday 2026-11-29).
 1. Analyze — the research core (why a pick made it, levels, news, model verdicts in one place).
    DONE for this pass (lab2 layout, lab3 model verdicts + why-it-made-it strip, lab4 one-row chips).
    The Congress line lands with item 4.
-2. Today — models vs SPY at a glance + what to do today; first screen answers both. NEXT.
+2. Today — models vs SPY at a glance + what to do today; first screen answers both. IN PROGRESS
+   (lab6 compact orders). NEXT: Scoreboard as a slim strip on the first phone screen, slimmer hero.
 3. Apex and Agentic — decision view, no Robinhood duplication; Book and PC use the width.
 4. Cut Predict and the Smart $ page; fold what is worth keeping into Analyze.
 5. Navigation pass, then a full three-screen sweep and the Sunday batch summary.
 
 ## Changelog (newest first; one line per run)
+- lab6 · 2026-11-26 · Orders to place are compact: three orders and Confirm fit one phone screen (Today). Nothing cut: R/R shows as a chip, the detail line is one row and opens on tap, stop / entry / target sit on one line. Phone page is 276px shorter. Left for Today: Scoreboard (models vs SPY) is still below the orders on phone; hero still repeats Robinhood balances; the review rows under the orders are tall.
 - lab5 · 2026-11-26 · In-Claude chat changes brought into the repo so both copies match (Analyze, unlock). Jack, Nov 26 6 PM ET: "put today's in-Claude LAB changes into the repo lab/ folder". Ported as published: Expand/Collapse control inside the ticker search bar (replaces lab4's one-row CSS, removed), ticker count under the search box, support/resistance block with mini chart (same tested-zone method as the real app v268 — a calculation change Jack approved in chat), passphrase kept in IndexedDB + Face ID fill + "Remember on this device". RULE: change the lab in the repo first, then republish; never edit the in-Claude copy alone.
 - lab4 · 2026-11-26 · Section chips and Collapse all share one row; verdict sits about 54px higher (Analyze). Nothing cut: same chips, same button, CSS only. Analyze pass is done; next run starts Today.
 - lab3 · 2026-11-25 · "My models" strip: Apex, Agentic and paper verdict for the stock, with reason (Analyze). Nothing cut. Reads files the app already loads (apex-targets, agentic target, paper file); shows status + the research reason, no prices. Insiders already show in the Flow read line; the Congress half of that line waits for the Smart $ cut (item 4). Left for Analyze: jump-chips and Collapse-all still take two rows.
