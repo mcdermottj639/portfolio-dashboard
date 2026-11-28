@@ -44,8 +44,8 @@
 <!-- Set theme before paint (no flash). Ivory Ledger is the default; the retained toggle opens Midnight. -->
 <!-- Resolve the saved appearance before styles and first paint. -->
 <script>/* v258: the morning #apex-ticket link always opens the Apex (self-directed) account */try{if(location.hash==='#apex-ticket')localStorage.setItem('pf_acct','main');}catch(e){}</script>
-<script src="ui/theme.js?v=lab8"></script>
-<script src="ui/experience-model.js?v=lab8"></script>
+<script src="ui/theme.js?v=lab9"></script>
+<script src="ui/experience-model.js?v=lab9"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>
 :root { color-scheme: light; }
@@ -750,15 +750,15 @@ html[data-theme="gold"] .box-warn{ background:rgba(124,74,3,.25); border-color:#
 html[data-theme="gold"] .az-gauge-in{ background:#0c0c0d; }
 html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!important; border-color:var(--nx-bd)!important; }
 </style>
-<link rel="stylesheet" href="ui/experience.css?v=lab8">
-<link rel="stylesheet" href="ui/journey.css?v=lab8">
-<link rel="stylesheet" href="ui/predictions.css?v=lab8">
-<link rel="stylesheet" href="ui/apex-paper.css?v=lab8">
-<link rel="stylesheet" href="ui/smartmoney.css?v=lab8">
-<link rel="stylesheet" href="ui/ticker.css?v=lab8">
-<link rel="stylesheet" href="ui/today.css?v=lab8">
-<link rel="stylesheet" href="ui/book.css?v=lab8">
-<link rel="stylesheet" href="ui/duo.css?v=lab8">
+<link rel="stylesheet" href="ui/experience.css?v=lab9">
+<link rel="stylesheet" href="ui/journey.css?v=lab9">
+<link rel="stylesheet" href="ui/predictions.css?v=lab9">
+<link rel="stylesheet" href="ui/apex-paper.css?v=lab9">
+<link rel="stylesheet" href="ui/smartmoney.css?v=lab9">
+<link rel="stylesheet" href="ui/ticker.css?v=lab9">
+<link rel="stylesheet" href="ui/today.css?v=lab9">
+<link rel="stylesheet" href="ui/book.css?v=lab9">
+<link rel="stylesheet" href="ui/duo.css?v=lab9">
 </head>
 <body>
 <!-- v131: the tab bar moved to the BOTTOM (fixed), one row, icon over label. It used to sit at the
@@ -828,10 +828,10 @@ html[data-theme="gold"] #pf-fresh{ background:#0b0b0c!important; color:#9c917b!i
 </div>
 <div class="toast" id="toast">📋 Copied — paste into Claude chat</div>
 
-<script src="ui/sd-rules.js?v=lab8"></script>
-<script src="ui/apex.js?v=lab8"></script>
-<script src="ui/business.js?v=lab8"></script>
-<script src="ui/apex-paper.js?v=lab8"></script>
+<script src="ui/sd-rules.js?v=lab9"></script>
+<script src="ui/apex.js?v=lab9"></script>
+<script src="ui/business.js?v=lab9"></script>
+<script src="ui/apex-paper.js?v=lab9"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    PWA REPLAY SHIM  (consumer side)
@@ -9143,18 +9143,18 @@ applyChartTheme();
 
 load();
 </script>
-<script src="ui/today-model.js?v=lab8"></script>
-<script src="ui/today.js?v=lab8"></script>
-<script src="ui/predictions-model.js?v=lab8"></script>
-<script src="ui/predictions.js?v=lab8"></script>
-<script src="ui/smartmoney-model.js?v=lab8"></script>
-<script src="ui/smartmoney.js?v=lab8"></script>
-<script src="ui/experience.js?v=lab8"></script>
-<script src="ui/ticker.js?v=lab8"></script>
-<script src="ui/duo.js?v=lab8"></script>
-<script src="ui/compact.js?v=lab8"></script>
-<script src="ui/journey.js?v=lab8"></script>
-<script src="ui/book.js?v=lab8"></script>
+<script src="ui/today-model.js?v=lab9"></script>
+<script src="ui/today.js?v=lab9"></script>
+<script src="ui/predictions-model.js?v=lab9"></script>
+<script src="ui/predictions.js?v=lab9"></script>
+<script src="ui/smartmoney-model.js?v=lab9"></script>
+<script src="ui/smartmoney.js?v=lab9"></script>
+<script src="ui/experience.js?v=lab9"></script>
+<script src="ui/ticker.js?v=lab9"></script>
+<script src="ui/duo.js?v=lab9"></script>
+<script src="ui/compact.js?v=lab9"></script>
+<script src="ui/journey.js?v=lab9"></script>
+<script src="ui/book.js?v=lab9"></script>
 <style id="lab-css">
 /* lab6 — Today: each proposed order is one compact block (name + limit + R/R on one row, levels on one row). Layout only. */
 /* lab8: review rows under the orders are one tight block each (title + one-line detail, opens on tap); the review-only fold and the plan link share a row. */
@@ -9290,7 +9290,26 @@ load();
 @media (max-width:559px),(max-width:739px) and (min-height:521px){
   #page-ex-today .td-shell .td-layout{grid-template-areas:"hero" "score" "waiting" "monitor" "holdings" "links" "market"}
 }
+/* lab9 · Today: Market backdrop is one slim row right under the Scoreboard (after the orders on phone); the holdings
+   map is shorter; "Out of your hands" follows the orders with no empty block. CSS only: same markup, same numbers. */
+#page-ex-today .td-shell .td-market{padding-top:12px;padding-bottom:12px}
+#page-ex-today .td-shell .td-market .td-section-head{margin-bottom:6px;align-items:center}
+#page-ex-today .td-shell .td-market .ex-market-grid{gap:8px;padding:0}
+#page-ex-today .td-shell .td-market .ex-market-grid>div{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 8px;padding:7px 10px;min-height:0}
+#page-ex-today .td-shell .td-market .ex-market-grid span{min-width:0}
+#page-ex-today .td-shell .td-market .ex-market-grid small{display:inline;margin:0}
+#page-ex-today .td-shell .td-market .ex-market-grid strong{margin:0;font-size:17px;line-height:1.2}
+#page-ex-today .td-shell .td-market>p.td-muted{margin-top:6px!important;font-size:11px;line-height:1.35}
+#page-ex-today .td-shell .td-map{height:190px}
+@media (min-width:740px){
+  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero waiting" "score waiting" "market waiting" "holdings waiting" "links monitor"}
+  html[data-duo-split="on"] #page-ex-today .td-shell .td-layout:has(>.td-hero[data-duo-pin]){grid-template-areas:"score waiting" "market waiting" "holdings waiting" "links monitor"}
+  #page-ex-today .td-shell .td-map{height:200px}
+}
+@media (max-width:559px),(max-width:739px) and (min-height:521px){
+  #page-ex-today .td-shell .td-layout{grid-template-areas:"hero" "score" "waiting" "monitor" "market" "holdings" "links"}
+}
 </style>
-<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="8" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab8</div></div>
+<div id="lab-ribbon-wrap"><a href="changes.html">What changed</a><div id="lab-ribbon" data-lab="9" style="padding:5px 8px;border-radius:999px;background:#b45309;color:#fff;opacity:.92">PRACTICE COPY · lab9</div></div>
 </body>
 </html>
