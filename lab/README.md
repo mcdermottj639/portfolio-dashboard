@@ -45,13 +45,14 @@ until Jack approves one batch (target: Sunday 2026-11-29).
    DONE for this pass (lab2 layout, lab3 model verdicts + why-it-made-it strip, lab4 one-row chips).
    The Congress line lands with item 4.
 2. Today — models vs SPY at a glance + what to do today; first screen answers both. IN PROGRESS
-   (lab6 compact orders, lab7 slim balances + Scoreboard tiles on the first screen). NEXT: the review rows
-   under the orders are tall; holdings map / market backdrop pass; then item 3.
+   (lab6 compact orders, lab7 slim balances + Scoreboard tiles on the first screen, lab8 short review rows).
+   NEXT: holdings map / market backdrop pass; then item 3.
 3. Apex and Agentic — decision view, no Robinhood duplication; Book and PC use the width.
 4. Cut Predict and the Smart $ page; fold what is worth keeping into Analyze.
 5. Navigation pass, then a full three-screen sweep and the Sunday batch summary.
 
 ## Changelog (newest first; one line per run)
+- lab8 · 2026-11-27 · Review rows under the orders are one tight block; fold and plan link share a row (Today). Nothing cut: each row keeps its title, detail (one line, opens on tap) and Review button; the four review-only notes still open in place. Wording shortened: "4 review-only items · no orders" → "4 review-only · no orders"; "Open self-directed plan" → "Open plan" (inside the Apex · Self-directed card). Phone: "Waiting on you" 879px → 750px; Duo open 886px → 769px; PC 902px → 785px. Left for Today: holdings map / market backdrop pass.
 - lab7 · 2026-11-27 · Slim balances card; Scoreboard is four tiles on the first screen, all sizes (Today). Nothing cut: every balance, the day move, leverage (now "Lev") and all four Scoreboard rows, bars, horizon chips and the method note stay. Wording folded: "Self-directed + Agentic · net of account debt" became "· net of debt" in the card label; the per-account "stock move" label is said once, on the top line. Phone: balances 225px → 162px, Scoreboard 395px → 281px and now above the orders, page 178px shorter; PC: balances 299px → 111px. Left for Today: on phone the top bars (ticker, toolbar, Back row) still use 200px before the page starts (navigation pass, item 5); review rows under the orders are tall.
 - lab6 · 2026-11-26 · Orders to place are compact: three orders and Confirm fit one phone screen (Today). Nothing cut: R/R shows as a chip, the detail line is one row and opens on tap, stop / entry / target sit on one line. Phone page is 276px shorter. Left for Today: Scoreboard (models vs SPY) is still below the orders on phone; hero still repeats Robinhood balances; the review rows under the orders are tall.
 - lab5 · 2026-11-26 · In-Claude chat changes brought into the repo so both copies match (Analyze, unlock). Jack, Nov 26 6 PM ET: "put today's in-Claude LAB changes into the repo lab/ folder". Ported as published: Expand/Collapse control inside the ticker search bar (replaces lab4's one-row CSS, removed), ticker count under the search box, support/resistance block with mini chart (same tested-zone method as the real app v268 — a calculation change Jack approved in chat), passphrase kept in IndexedDB + Face ID fill + "Remember on this device". RULE: change the lab in the repo first, then republish; never edit the in-Claude copy alone.

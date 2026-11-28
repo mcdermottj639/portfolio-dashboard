@@ -62,8 +62,8 @@
       : 'Reprice required · these are estimates from ' + age(state.options.data?.generatedAt) + ' quotes, not current order prices.';
     return '<div class="td-trade-card"><span class="td-eyebrow">Apex · Self-directed</span>' +
       (lines.length ? '<p class="td-muted" data-td-price-note>' + esc(priceNote) + '</p><div class="td-trade-list">' + rows + '</div><button type="button" class="td-primary" data-td-confirm>Confirm with Claude <span aria-hidden="true">↗</span></button><p class="td-muted" style="margin-top:8px">Full Apex book · ' + lines.length + ' proposed order' + (lines.length === 1 ? '' : 's') + '. You enter approved orders in Robinhood.</p>' : '<p class="td-empty">No proposed Apex trades in the current plan.</p>') +
-      (reviews.length ? '<details data-td-details="reviews"><summary class="td-link">' + reviews.length + ' review-only item' + (reviews.length === 1 ? '' : 's') + ' · no orders</summary>' + reviews.map(r => '<p class="td-muted"><strong>' + esc(r.sym) + '</strong> · ' + esc(r.why) + '</p>').join('') + '</details>' : '') +
-      '<p class="td-muted" role="status" data-td-confirm-status>' + esc(state.notice) + '</p>' + jump('plan','Open self-directed plan','main') + '</div>';
+      '<div class="lab-td-foot">' + (reviews.length ? '<details data-td-details="reviews"><summary class="td-link">' + reviews.length + ' review-only · no orders</summary>' + reviews.map(r => '<p class="td-muted"><strong>' + esc(r.sym) + '</strong> · ' + esc(r.why) + '</p>').join('') + '</details>' : '') + jump('plan','Open plan','main') + '</div>' +
+      '<p class="td-muted" role="status" data-td-confirm-status>' + esc(state.notice) + '</p></div>';
   }
 
   // v264 Scoreboard: SPY, Apex v2.8 live picks, Apex v2.9 PAPER and Agentic from one start date. Display only: it reads
@@ -96,7 +96,7 @@
   }
 
   function attentionRow(item) {
-    return '<div class="td-attention-row"><div><strong>' + esc(item.title) + '</strong><p class="td-muted">' + esc(item.detail) + '</p></div>' + jump(item.route,'Review',item.account) + '</div>';
+    return '<div class="td-attention-row lab-att"><div><strong>' + esc(item.title) + '</strong><p class="td-muted" data-lab-sub title="Tap to show the full line">' + esc(item.detail) + '</p></div>' + jump(item.route,'Review',item.account) + '</div>';
   }
 
   function waiting(brief, ticket) {
@@ -105,7 +105,7 @@
     const count = (state.book && (state.book.lines.length || state.book.reviews.length) ? 1 : 0) + (ticket.group === 'waiting' ? 1 : 0) + alerts.length + earnings.length;
     let html = '<section class="td-waiting td-panel"><div class="td-section-head"><h2>Waiting on you</h2><button type="button" class="td-link" data-td-apex-ticket style="margin-left:auto">🧾 Order ticket <span aria-hidden="true">↗</span></button><span class="td-count" aria-label="' + count + ' items to review">' + count + '</span></div>' + tradeCard(state.book);
     if (ticket.group === 'waiting') html += attentionRow({title:'Agentic · ' + ticket.label,detail:ticket.detail,route:'plan',account:'agentic'});
-    html += earnings.map(e => '<div class="td-attention-row"><div><strong>' + esc(e.symbol) + ' earnings · ' + esc(when(e.days)) + '</strong><p class="td-muted">' + esc(e.date) + ' · Check the research before acting.</p></div><button type="button" class="td-link" data-td-holding="' + esc(e.symbol) + '">Review <span aria-hidden="true">↗</span></button></div>').join('');
+    html += earnings.map(e => '<div class="td-attention-row lab-att"><div><strong>' + esc(e.symbol) + ' earnings · ' + esc(when(e.days)) + '</strong><p class="td-muted" data-lab-sub title="Tap to show the full line">' + esc(e.date) + ' · Check the research before acting.</p></div><button type="button" class="td-link" data-td-holding="' + esc(e.symbol) + '">Review <span aria-hidden="true">↗</span></button></div>').join('');
     html += alerts.slice(0,2).map(attentionRow).join('');
     if (alerts.length > 2) html += '<details data-td-details="attention"><summary class="td-link">' + (alerts.length - 2) + ' more items</summary>' + alerts.slice(2).map(attentionRow).join('') + '</details>';
     return html + '</section>';
